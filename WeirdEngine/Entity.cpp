@@ -1,7 +1,8 @@
 #include "Entity.h"
 #include "ECS.h"
-Entity::Entity()
+Entity::Entity(std::string name)
 {
+	Name = name;
 	_components = std::vector<Component*>();
 	Transform_ = new Transform();
 }

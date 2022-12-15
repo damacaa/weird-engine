@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "PhysicsEngine.h"
 
 void Scene::Update()
 {
@@ -17,9 +18,9 @@ void Scene::FixedUpdate()
 
 	for (auto e : RigidBody::Instances())
 	{
-		Vector3D force = Vector3D(1, 0, 0);
-		((RigidBody*)e)->AddForce(force);
 	}
+
+	PhysicsEngine::GetInstance()->Update();
 }
 
 void Scene::Render()

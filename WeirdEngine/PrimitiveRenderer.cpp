@@ -14,7 +14,7 @@ void PrimitiveRenderer::Render() {
 		t = t->Parent;
 	}
 
-	while(!parentTransforms.empty()) {
+	while (!parentTransforms.empty()) {
 
 		t = parentTransforms.top();
 		parentTransforms.pop();
@@ -23,7 +23,7 @@ void PrimitiveRenderer::Render() {
 		glTranslatef(position.x, position.y, position.z);
 
 
-		Vector3D eulerRotation = t->eulerRotation;
+		Vector3D eulerRotation = t->Rotation.ToEuler();
 		glRotatef(eulerRotation.x, 1.0, 0.0, 0.0);
 		glRotatef(eulerRotation.y, 0.0, 1.0, 0.0);
 		glRotatef(eulerRotation.z, 0.0, 0.0, 1.0);

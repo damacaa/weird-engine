@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 template<class S> class Vector3Dx;
 
 typedef Vector3Dx<float> Vector3D;
@@ -28,6 +30,9 @@ public:
 	Vector3Dx<S> Product(S s);
 	Vector3Dx<S> Division(S s);
 	S DotProduct(Vector3Dx<S> v);
+	Vector3Dx<S> CrossProduct(Vector3Dx<S> v);
+	S Norm();
+	void Normalize();
 
 	Vector3Dx<S> operator+(Vector3Dx<S> v);
 	Vector3Dx<S> operator-(Vector3Dx<S> v);
@@ -81,6 +86,27 @@ template <class S> Vector3Dx<S> Vector3Dx<S>::operator/(S s)
 template <class S> S Vector3Dx<S>::DotProduct(Vector3Dx<S> v)
 {
 	return this->X() * v.X + this->Y * v.Y + this->Z * v.Z;
+}
+
+template <class S> Vector3Dx<S> Vector3Dx<S>::CrossProduct(Vector3Dx<S> v)
+{
+	return Vector3Dx<S>(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.z);
+}
+
+template<class S> S Vector3Dx<S>::Norm()
+{
+	return sqrt(x * x + y * y + z * z);
+}
+
+template<class S>
+inline void Vector3Dx<S>::Normalize()
+{
+	S norm = Norm();
+	if (norm == 0)
+		return;
+	x = x / norm;
+	y = y / norm;
+	z = z / norm;
 }
 
 template <class S> S Vector3Dx<S>::operator*(Vector3Dx<S> v)

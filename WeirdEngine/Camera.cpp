@@ -3,7 +3,7 @@
 
 void Camera::Render()
 {
-	Vector3D eulerRotation = _entity->Transform_->eulerRotation;
+	Vector3D eulerRotation = _entity->Transform_->Rotation.ToEuler();
 	glRotatef(eulerRotation.x, 1.0, 0.0, 0.0);
 	glRotatef(eulerRotation.y, 0.0, 1.0, 0.0);
 	glRotatef(eulerRotation.z, 0.0, 0.0, 1.0);

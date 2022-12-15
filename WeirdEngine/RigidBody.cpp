@@ -1,47 +1,109 @@
 #include "RigidBody.h"
 #include "ECS.h"
+#include "PhysicsEngine.h"
+#include <iostream>
 
 RigidBody::RigidBody(Entity* owner) :Component(owner)
 {
-	_colliders = owner->GetComponents<Collider>();
+	_collider = owner->GetComponent<Collider>();
+	PhysicsEngine::GetInstance()->Add(this);
+
+	_inverseMass = 1.0 / _mass;
+
+	_orientation = Quaternion();
+
+	float i[3][3]{ {0,0,0}, {0,0,0}, {0,0,0} }; // Collider.GetInertiaTensor() ????
+	_inertiaTensor = Matrix3D(i);
 }
 
-void RigidBody::Update()
+void RigidBody::UpdatePhysics(float delta)
 {
-	///_entity->Transform_->postition.x += 0.01f;
-	//_entity->Transform_->postition.y += 0.01f;
-	//_entity->Transform_->postition.z += 0.01f;
 
-	_entity->Transform_->eulerRotation.x += 90.0f * Time::DeltaTime;
-	_entity->Transform_->eulerRotation.y += 90.0f * Time::DeltaTime;
-	//_entity->Transform_->eulerRotation.z += 90.0f * delta;
-
-	//_entity->Transform_->postition.y += 0.5  *delta;
-}
-
-void RigidBody::FixedUpdate()
-{
-	_f = _f + Vector3D(0, -9.8 * _mass, 0);
-
-	if (_entity->Transform_->postition.y < -2) {
-		_f = _f + Vector3D(0, -(_entity->Transform_->postition.y + 2), 0) * 10000;
+	if (_entity->Transform_->postition.y < -2)
+	{
+		_force = _force + Vector3D(0, -(_entity->Transform_->postition.y + 2), 0) * 1000;
 	}
 
-	Vector3D a = _f / _mass;
-	_velocity = _velocity + Time::FixedDeltaTime * a;
-	_entity->Transform_->postition = _entity->Transform_->postition + Time::FixedDeltaTime * _velocity;
+	Vector3D acceleration = _force * _inverseMass;
 
-	_f.x = 0;
-	_f.y = 0;
-	_f.z = 0;
+	if (_applyGravity && _inverseMass > 0)
+	{
+		acceleration = acceleration + _gravity; // don ’t move infinitely heavy things
+	}
+
+	_velocity = 0.95f * _velocity + delta * acceleration;
+	_entity->Transform_->postition = _entity->Transform_->postition + delta * _velocity;
+
+
+	// Rotation
+
+	UpdateInertiaTensor();
+
+	Vector3D angAccel = _inertiaTensor * _torque;
+	_angularVelocity = 0.95f * _angularVelocity + angAccel * delta;
+
+	//Quaternion a = Quaternion(delta * 0.5f * _angularVelocity, 1);
+	//Quaternion b = a * _orientation;
+	Quaternion c = Quaternion(delta * 0.5f * _angularVelocity.x, delta * 0.5f * _angularVelocity.y, delta * 0.5f * _angularVelocity.z);
+
+	_orientation = _orientation * c;
+	//_orientation.Normalize();
+
+	_time = _time + 1;
+	if (_time > 360)
+		_time -= 360;
+
+	_entity->Transform_->Rotation = _orientation;
+
+	ClearForces();
 }
 
-void RigidBody::AddCollider(Collider* collider)
+void RigidBody::SetCollider(Collider* collider)
 {
-	_colliders.push_back(collider);
+	_collider = collider;
 }
 
-void RigidBody::AddForce(Vector3D& force)
+void RigidBody::AddForce(Vector3D force)
 {
-	_f = _f + force;
+	_force = _force + force;
+}
+
+void RigidBody::AddForce(Vector3D force, Vector3D position)
+{
+	_force = _force + force;
+	Vector3D distance = position - _entity->Transform_->postition;
+	_torque = _torque + 10.0f * distance.CrossProduct(force); // WHY *10????????
+}
+
+void RigidBody::CheckCollision(Collider* other)
+{
+}
+
+
+void RigidBody::ClearForces()
+{
+	_force.x = 0;
+	_force.y = 0;
+	_force.z = 0;
+
+	_torque.x = 0;
+	_torque.y = 0;
+	_torque.z = 0;
+}
+
+Transform* RigidBody::GetTransform()
+{
+	return _entity->Transform_;
+}
+
+void RigidBody::UpdateInertiaTensor()
+{
+	float i = .2f * _mass * _entity->Transform_->scale.x;
+	float _values[3][3] = { {i,0,0}, {0,i,0}, {0,0,i} };
+	_inertiaTensor = Matrix3D(_values);
+}
+
+Vector3D RigidBody::GetPosition()
+{
+	return _entity->Transform_->postition;
 }

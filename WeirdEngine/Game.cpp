@@ -8,22 +8,88 @@ void Game::Init()
 	Entity* camera = new Entity();
 	camera->AddComponent<Camera>();
 	camera->Transform_->postition = Vector3D(0, 0, -10);
-	camera->Transform_->eulerRotation = Vector3D(0, 180, 0);
-	camera->name = "Camera";
+	camera->Transform_->Rotation = Quaternion(Vector3D(0, 1, 0), 180);
+	camera->Name = "Camera";
 	entities.push_back(camera);
 
-	Entity* box = new Entity();
+	Quaternion q = Quaternion(Vector3D(0, 1, 0), 90);
+	Vector3D euler = q.ToEuler();
+
+	Entity* floor = new Entity();
 	{
-		box->AddComponent<RigidBody>();
-		box->AddComponent<Collider>();
-		auto renderer = box->AddComponent<PrimitiveRenderer>();
+		//floor->AddComponent<RigidBody>();
+		//floor->AddComponent<BoxCollider>();
+		auto renderer = floor->AddComponent<PrimitiveRenderer>();
+		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
+		renderer->_color = Color(1, 1, 1);
+		floor->Transform_->postition = Vector3D(0, -4, 0);
+		floor->Transform_->Rotation = Quaternion();
+		floor->Transform_->scale = Vector3D(100, 1, 100);
+		floor->Name = "Floor";
+		entities.push_back(floor);
+	}
+
+	/*Entity* ball1 = new Entity();
+	{
+		ball1->AddComponent<RigidBody>();
+		ball1->AddComponent<SphereCollider>();
+		auto renderer = ball1->AddComponent<PrimitiveRenderer>();
+		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
+		renderer->_color = Color(1, 0, 0);
+		ball1->Transform_->postition = Vector3D(.5, 0, 0);
+		ball1->Transform_->eulerRotation = Vector3D(0, 0, 0);
+		ball1->Transform_->scale = Vector3D(2, 2, 2);
+		ball1->Name = "Ball_1";
+		entities.push_back(ball1);
+	}
+
+	Entity* ball2 = new Entity();
+	{
+		ball2->AddComponent<RigidBody>();
+		ball2->AddComponent<SphereCollider>();
+		auto renderer = ball2->AddComponent<PrimitiveRenderer>();
+		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
+		renderer->_color = Color(1, 0, 0);
+		ball2->Transform_->postition = Vector3D(-1, 3, 1);
+		ball2->Transform_->eulerRotation = Vector3D(0, 0, 0);
+		ball2->Transform_->scale = Vector3D(4, 4, 4);
+		ball2->Name = "Ball_2";
+		entities.push_back(ball2);
+	}*/
+
+	/* {
+		Entity* rb = new Entity();
+		rb->AddComponent<RigidBody>();
+		rb->AddComponent<SphereCollider>();
+		auto renderer = rb->AddComponent<PrimitiveRenderer>();
 		renderer->_color = Color(1, 0, 0);
 		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
-		box->Transform_->postition = Vector3D(0, 0, 0);
-		box->Transform_->eulerRotation = Vector3D(0, 0, 0);
-		box->Transform_->scale = Vector3D(1, 1, 1);
-		box->name = "Box";
-		entities.push_back(box);
+		rb->Transform_->postition = Vector3D(0, 0, 0);
+		rb->Transform_->Rotation = Quaternion();
+		rb->Transform_->scale = Vector3D(1, 1, 1) * (1 + 5 * ((double)rand() / (RAND_MAX)));
+		rb->Name = "rigidbody";
+		entities.push_back(rb);
+	}*/
+
+	srand((unsigned)time(NULL));
+	for (size_t i = 0; i < 20; i++)
+	{
+		Entity* ball = new Entity();
+
+		ball->AddComponent<RigidBody>();
+		ball->AddComponent<SphereCollider>();
+		auto renderer = ball->AddComponent<PrimitiveRenderer>();
+		renderer->_color = Color(1, 0, 0);
+		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
+		ball->Transform_->postition = Vector3D(
+			0.1f * (((float)rand() / (RAND_MAX)) - 0.5f),
+			100.0f * (((float)rand() / (RAND_MAX))),
+			0.1f * (((float)rand() / (RAND_MAX))) - 0.5f);
+
+		ball->Transform_->Rotation = Quaternion();
+		ball->Transform_->scale = Vector3D(1, 1, 1) * (1 + 5 * ((double)rand() / (RAND_MAX)));
+		ball->Name = "Ball_";
+		entities.push_back(ball);
 	}
 
 	//auto renderer = box->GetComponent<PrimitiveRenderer>();

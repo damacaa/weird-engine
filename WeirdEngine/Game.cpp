@@ -33,13 +33,13 @@ void Game::Update()
 
 	Time::DeltaTime = delta / 1000.f;
 	this->activeScene->Update();
+
+	Input::Update();
 }
 
-#include "PhysicsEngine.h"
 void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 {
-
-	PhysicsEngine::GetInstance().TestFunc();
+	Input::PressKey(key);
 
 	if (key == 27)
 	{
@@ -50,18 +50,15 @@ void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 
 void Game::ProcessKeyReleased(unsigned char key, int px, int py)
 {
-
+	Input::ReleaseKey(key);
 }
 
 void Game::ProcessMouseMovement(int x, int y)
 {
-
+	Input::SetMouseXY(x, y);
 }
 
 void Game::ProcessMouseClick(int button, int state, int x, int y)
 {
-	if (state == 0)
-	{
-		activeScene->AddBall();
-	}
+	Input::HandleMouseButton(button, state);
 }

@@ -20,5 +20,12 @@ public:
 		scale.y = scale.y / parent->scale.y;
 		scale.z = scale.z / parent->scale.z;
 	}
+
+	void Rotate(Vector3D axis, float angle);
 };
 
+inline void Transform::Rotate(Vector3D axis, float angle)
+{
+	Quaternion newRotation = Rotation * Quaternion(axis, angle);
+	Rotation = newRotation ;
+}

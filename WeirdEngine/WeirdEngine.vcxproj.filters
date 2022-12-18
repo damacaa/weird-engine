@@ -43,11 +43,20 @@
     <Filter Include="Archivos de encabezado\Components">
       <UniqueIdentifier>{b149e817-170d-4111-84b7-85c44ad9c668}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Archivos de origen\Components\Physics">
+      <UniqueIdentifier>{7cb80e38-886e-455d-933d-ed4c299f1455}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\Components\Rendering">
+      <UniqueIdentifier>{03a7ce2b-2d8a-4ddd-8ebc-9cce32b93f53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de encabezado\Components\Physics">
+      <UniqueIdentifier>{3f1145a0-1a47-453e-b84a-aaf2e9175d43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de encabezado\Components\Rendering">
+      <UniqueIdentifier>{56b47a50-da85-43ab-9d8d-da058dd21a4b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Archivos de origen\Components</Filter>
-    </ClCompile>
     <ClCompile Include="Scene.cpp">
       <Filter>Archivos de origen\Core</Filter>
     </ClCompile>
@@ -81,17 +90,8 @@
     <ClCompile Include="ECS.cpp">
       <Filter>Archivos de origen\ECS</Filter>
     </ClCompile>
-    <ClCompile Include="Collider.cpp">
-      <Filter>Archivos de origen\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="RigidBody.cpp">
-      <Filter>Archivos de origen\Components</Filter>
-    </ClCompile>
     <ClCompile Include="Transform.cpp">
       <Filter>Archivos de origen\Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="PrimitiveRenderer.cpp">
-      <Filter>Archivos de origen\Components</Filter>
     </ClCompile>
     <ClCompile Include="Solid.cpp">
       <Filter>Archivos de origen\Models</Filter>
@@ -111,8 +111,29 @@
     <ClCompile Include="Time.cpp">
       <Filter>Archivos de origen\Core</Filter>
     </ClCompile>
+    <ClCompile Include="PhysicsEngine.cpp">
+      <Filter>Archivos de origen\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="BoxCollider.cpp">
+      <Filter>Archivos de origen\Components\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Collider.cpp">
+      <Filter>Archivos de origen\Components\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="SphereCollider.cpp">
+      <Filter>Archivos de origen\Components\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="RigidBody.cpp">
+      <Filter>Archivos de origen\Components\Physics</Filter>
+    </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>Archivos de origen\Components</Filter>
+      <Filter>Archivos de origen\Components\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="PrimitiveRenderer.cpp">
+      <Filter>Archivos de origen\Components\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Archivos de origen\Components\Rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -124,9 +145,6 @@
     </ClInclude>
     <ClInclude Include="Color.h">
       <Filter>Archivos de encabezado\Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Archivos de encabezado\Components</Filter>
     </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Archivos de encabezado\Core</Filter>
@@ -155,20 +173,8 @@
     <ClInclude Include="ECS.h">
       <Filter>Archivos de encabezado\ECS</Filter>
     </ClInclude>
-    <ClInclude Include="Collider.h">
-      <Filter>Archivos de encabezado\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="RigidBody.h">
-      <Filter>Archivos de encabezado\Components</Filter>
-    </ClInclude>
     <ClInclude Include="Transform.h">
       <Filter>Archivos de encabezado\Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="PrimitiveRenderer.h">
-      <Filter>Archivos de encabezado\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="Text.h">
-      <Filter>Archivos de encabezado\Components</Filter>
     </ClInclude>
     <ClInclude Include="Solid.h">
       <Filter>Archivos de encabezado\Models</Filter>
@@ -182,7 +188,37 @@
     <ClInclude Include="Time.h">
       <Filter>Archivos de encabezado\Core</Filter>
     </ClInclude>
+    <ClInclude Include="PhysicsEngine.h">
+      <Filter>Archivos de encabezado\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Quaternion.h">
+      <Filter>Archivos de encabezado\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix3D.h">
+      <Filter>Archivos de encabezado\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="BoxCollider.h">
+      <Filter>Archivos de encabezado\Components\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Collider.h">
+      <Filter>Archivos de encabezado\Components\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="RigidBody.h">
+      <Filter>Archivos de encabezado\Components\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Archivos de encabezado\Components\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="PrimitiveRenderer.h">
+      <Filter>Archivos de encabezado\Components\Rendering</Filter>
+    </ClInclude>
     <ClInclude Include="Renderer.h">
+      <Filter>Archivos de encabezado\Components\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="SphereCollider.h">
+      <Filter>Archivos de encabezado\Components\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Text.h">
       <Filter>Archivos de encabezado\Components</Filter>
     </ClInclude>
   </ItemGroup>

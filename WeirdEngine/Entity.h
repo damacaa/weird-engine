@@ -8,11 +8,10 @@ class Entity
 private:
 	std::vector<Component*> _components;
 public:
-	std::string name;
+	std::string Name;
 	Transform* Transform_;
 
-
-	Entity();
+	Entity(std::string name = "Entity");
 
 	template<class T>
 	T* AddComponent();

@@ -1,11 +1,12 @@
 #pragma once
 #include "Entity.h"
 #include "Component.h"
+#include "Transform.h"
 
 #include "Camera.h"
-#include "Collider.h"
 #include "RigidBody.h"
-#include "Transform.h"
+#include "BoxCollider.h"
+#include "SphereCollider.h"
 
 #include "Renderer.h"
 #include "PrimitiveRenderer.h"

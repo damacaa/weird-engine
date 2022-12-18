@@ -15,8 +15,11 @@ private:
 	
 	const GLclampf RED, GREEN, BLUE, ALPHA;
 	std::vector<Entity*> _entities;
+	Entity* _camera;
 
 public:
+
+	Scene();
 
 	Scene(const std::vector<Entity*>& entities) :  RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	{
@@ -24,9 +27,11 @@ public:
 		_entities = entities;
 	}
 
+
 	
 	void Update();
 	void FixedUpdate();
 	void Render();
+	void AddBall();
 };
 

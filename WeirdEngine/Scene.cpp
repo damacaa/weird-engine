@@ -111,6 +111,35 @@ void Scene::Update()
 	{
 		e->Update();
 	}
+
+	// Ball shooting
+	if (Input::GetKeyDown('p')) {
+		AddBall();
+	}
+
+	// Camera movement
+	auto rb = _camera->GetComponent<RigidBody>();
+
+	if (Input::GetKey('w')) {
+		rb->AddForce(Vector3D(0, 0, -100));
+	}
+	else if (Input::GetKey('s')) {
+		rb->AddForce(Vector3D(0, 0, 100));
+	}
+
+	if (Input::GetKey('a')) {
+		rb->AddForce(Vector3D(-100, 0, 0));
+	}
+	else if (Input::GetKey('d')) {
+		rb->AddForce(Vector3D(100, 0, 0));
+	}
+
+	if (Input::GetMouseButtonDown(Input::MouseButton::LeftClick)) {
+		AddBall();
+	}
+
+	//_camera->Transform_->Rotate(Vector3D(0, 1, 0), 10000.0f * Time::DeltaTime * Input::GetMouseDeltaX());
+	//_camera->Transform_->Rotate(Vector3D(1, 0, 0), 10000.0f * Time::DeltaTime * Input::GetMouseDeltaY());
 }
 
 void Scene::FixedUpdate()
@@ -148,7 +177,7 @@ void Scene::AddBall()
 	renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
 	entity->AddComponent<SphereCollider>();
 
-	rb->AddForce(Vector3D( 1000.0f*(((double)rand() / (RAND_MAX))-.5f) , 1000, -5000));
+	rb->AddForce(Vector3D(1000.0f * (((double)rand() / (RAND_MAX)) - .5f), 500, -5000));
 
 	_entities.push_back(entity);
 }

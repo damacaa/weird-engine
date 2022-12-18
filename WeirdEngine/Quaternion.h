@@ -62,6 +62,8 @@ public:
 
 	Vector3D ToEuler();
 	Matrix3D ToRotationMatrix();
+
+	Quaternion& operator = (const Quaternion& rhs);
 };
 
 
@@ -154,4 +156,15 @@ inline Matrix3D Quaternion::ToRotationMatrix()
 	values[2][2] = 2 * (q0 * q0 + q3 * q3) - 1;
 
 	return Matrix3D(values);
+}
+
+inline Quaternion& Quaternion::operator=(const Quaternion& rhs)
+{
+	if (this != &rhs) {
+		_x = rhs._x;
+		_y = rhs._y;
+		_z = rhs._z;
+		_w = rhs._w;
+	}
+	return *this;
 }

@@ -4,7 +4,8 @@ class Transform
 {
 public:
 	Vector3D postition;
-	Vector3D eulerRotation;
+	//Vector3D eulerRotation;
+	Quaternion Rotation;
 	Vector3D scale = Vector3D(1, 1, 1);
 	Transform* Parent = nullptr;
 

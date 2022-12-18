@@ -5,45 +5,7 @@ void Game::Init()
 {
 	vector<Entity*> entities;
 
-	Entity* camera = new Entity();
-	camera->AddComponent<Camera>();
-	camera->Transform_->postition = Vector3D(0, 0, -10);
-	camera->Transform_->eulerRotation = Vector3D(0, 180, 0);
-	camera->name = "Camera";
-	entities.push_back(camera);
-
-	Entity* box = new Entity();
-	{
-		box->AddComponent<RigidBody>();
-		box->AddComponent<Collider>();
-		auto renderer = box->AddComponent<PrimitiveRenderer>();
-		renderer->_color = Color(1, 0, 0);
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
-		box->Transform_->postition = Vector3D(0, 0, 0);
-		box->Transform_->eulerRotation = Vector3D(0, 0, 0);
-		box->Transform_->scale = Vector3D(1, 1, 1);
-		box->name = "Box";
-		entities.push_back(box);
-	}
-
-	//auto renderer = box->GetComponent<PrimitiveRenderer>();
-	//renderer->_primitive = PrimitiveRenderer::Primitive::Octahedron;
-
-	/*Entity* box2 = new Entity();
-	{
-		auto renderer = box2->AddComponent<PrimitiveRenderer>();
-		renderer->_color = Color(0, 1, 0);
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
-		box2->Transform_->postition = Vector3D(1, 1, 0);
-		box2->Transform_->eulerRotation = Vector3D(0, 45, 0);
-		box2->Transform_->scale = Vector3D(1, 1, 1);
-		box2->Transform_->SetParent(box->Transform_);
-		box2->name = "Box2";
-		entities.push_back(box2);
-	}*/
-
-
-	Scene* mainScene = new(nothrow) Scene(entities);
+	Scene* mainScene = new(nothrow) Scene();
 	this->scenes.push_back(mainScene);
 
 	this->activeScene = mainScene;
@@ -73,8 +35,11 @@ void Game::Update()
 	this->activeScene->Update();
 }
 
+#include "PhysicsEngine.h"
 void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 {
+
+	PhysicsEngine::GetInstance().TestFunc();
 
 	if (key == 27)
 	{
@@ -97,6 +62,6 @@ void Game::ProcessMouseClick(int button, int state, int x, int y)
 {
 	if (state == 0)
 	{
-
+		activeScene->AddBall();
 	}
 }

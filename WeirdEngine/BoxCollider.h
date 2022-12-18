@@ -3,6 +3,6 @@
 class BoxCollider : public Collider
 {
 public:
-	BoxCollider(Entity* owner) :Collider(owner) {};
+	BoxCollider(Entity* owner) :Collider(owner) { type = Type::AABB; };
 };
 

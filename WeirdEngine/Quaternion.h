@@ -61,6 +61,7 @@ public:
 	Quaternion Conjugate();
 
 	Vector3D ToEuler();
+	Matrix3D ToRotationMatrix();
 };
 
 
@@ -127,4 +128,30 @@ inline Vector3D Quaternion::ToEuler()
 	angles.z = RAD_TO_DEG * std::atan2(siny_cosp, cosy_cosp);
 
 	return angles;
+}
+
+inline Matrix3D Quaternion::ToRotationMatrix()
+{
+	float values[3][3];
+
+	float q0 = _w;
+	float q1 = _x;
+	float q2 = _y;
+	float q3 = _z;
+
+
+	values[0][0] = 2 * (q0 * q0 + q1 * q1) - 1;
+	values[0][1] = 2 * (q1 * q2 - q0 * q3);
+	values[0][2] = 2 * (q1 * q3 + q0 * q2);
+
+	values[1][0] = 2 * (q1 * q2 + q0 * q3);
+	values[1][1] = 2 * (q0 * q0 + q2 * q2) - 1;
+	values[1][2] = 2 * (q2 * q3 - q0 * q1);
+
+
+	values[2][0] = 2 * (q1 * q3 - q0 * q2);
+	values[2][1] = 2 * (q2 * q3 + q0 * q1);
+	values[2][2] = 2 * (q0 * q0 + q3 * q3) - 1;
+
+	return Matrix3D(values);
 }

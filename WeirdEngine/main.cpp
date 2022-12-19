@@ -140,9 +140,11 @@ int main(int argc, char** argv)
 	glutKeyboardFunc(keyPressed);
 	glutKeyboardUpFunc(keyReleased);
 	glutSpecialFunc(specialKey);
+	glutMotionFunc(mouseMoved);
 	glutPassiveMotionFunc(mouseMoved);
 	glutMouseFunc(mouseClicked);
 	glutIdleFunc(idle);
+
 
 	initGraphics();
 

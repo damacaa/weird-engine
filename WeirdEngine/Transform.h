@@ -25,10 +25,32 @@ public:
 	}
 
 	void Rotate(Vector3D axis, float angle);
+
+	Vector3D GetRightVector();
+	Vector3D GetUpVector();
+	Vector3D GetForwardVector();
 };
 
 inline void Transform::Rotate(Vector3D axis, float angle)
 {
 	Quaternion newRotation = rotation * Quaternion(axis, angle);
 	rotation = newRotation;
+}
+
+inline Vector3D Transform::GetRightVector()
+{
+	Matrix3D rotMat = rotation.ToRotationMatrix();
+	return rotMat * Vector3D(1, 0, 0);
+}
+
+inline Vector3D Transform::GetUpVector()
+{
+	Matrix3D rotMat = rotation.ToRotationMatrix();
+	return rotMat * Vector3D(0, 1, 0);
+}
+
+inline Vector3D Transform::GetForwardVector()
+{
+	Matrix3D rotMat = rotation.ToRotationMatrix();
+	return rotMat * Vector3D(0, 0, -1);
 }

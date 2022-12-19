@@ -14,6 +14,8 @@
 #include "Time.h"
 #include "Input.h"
 
+#include "FlyMovement.h"
+
 class ECS
 {
 };

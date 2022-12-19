@@ -25,7 +25,7 @@ class Input
 	int m_keyTable[256];
 	int m_mouseKeysTable[5];
 
-	bool m_mouseWarp;
+	bool m_mouseWarp = true;
 
 public:
 

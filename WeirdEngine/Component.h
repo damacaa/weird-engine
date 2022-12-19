@@ -10,6 +10,7 @@ protected:
 	Component(Entity* owner) {
 		m_entity = owner;
 		m_instances.push_back(this);
+		Awake();
 	};
 
 

@@ -34,7 +34,8 @@ void Game::Update()
 	Time::deltaTime = delta / 1000.f;
 	this->m_activeScene->Update();
 
-	cout << Input::GetInstance().GetMouseX() << endl;
+	Time::currentTime += Time::deltaTime;
+
 
 	Input::GetInstance().Update();
 }
@@ -48,6 +49,7 @@ void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 		cout << "Exit Game" << endl;
 		glutDestroyWindow(1);
 	}
+
 }
 
 void Game::ProcessKeyReleased(unsigned char key, int px, int py)

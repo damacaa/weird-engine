@@ -72,6 +72,11 @@ Vector3D RigidBody::GetPosition()
 	return m_entity->GetTransform().position;
 }
 
+void RigidBody::Rotate(Vector3D axis, float amount)
+{
+	orientation = orientation * Quaternion(axis, amount);
+}
+
 void RigidBody::Update()
 {
 	m_entity->GetTransform().position = position;

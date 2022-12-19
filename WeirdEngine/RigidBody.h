@@ -51,6 +51,8 @@ public:
 
 	Vector3D GetForce() { return force; };
 
+	void Rotate(Vector3D axis, float amount);
+
 	void Update();
 };
 

@@ -114,33 +114,34 @@ void Scene::Update()
 	}
 
 	// Ball shooting
-	if (Input::GetKeyDown('p')) {
+	if (Input::GetInstance().GetKeyDown('p')) {
 		AddBall();
 	}
 
 	// Camera movement
 	auto rb = m_camera->GetComponent<RigidBody>();
 
-	if (Input::GetKey('w')) {
+	if (Input::GetInstance().GetKey('w')) {
 		rb->AddForce(Vector3D(0, 0, -100));
 	}
-	else if (Input::GetKey('s')) {
+	else if (Input::GetInstance().GetKey('s')) {
 		rb->AddForce(Vector3D(0, 0, 100));
 	}
 
-	if (Input::GetKey('a')) {
+	if (Input::GetInstance().GetKey('a')) {
 		rb->AddForce(Vector3D(-100, 0, 0));
 	}
-	else if (Input::GetKey('d')) {
+	else if (Input::GetInstance().GetKey('d')) {
 		rb->AddForce(Vector3D(100, 0, 0));
 	}
 
-	if (Input::GetMouseButtonDown(Input::MouseButton::LeftClick)) {
+	if (Input::GetInstance().GetMouseButtonDown(Input::MouseButton::LeftClick)) {
 		AddBall();
 	}
 
-	//_camera->Transform_->Rotate(Vector3D(0, 1, 0), 10000.0f * Time::DeltaTime * Input::GetMouseDeltaX());
-	//_camera->Transform_->Rotate(Vector3D(1, 0, 0), 10000.0f * Time::DeltaTime * Input::GetMouseDeltaY());
+	//m_camera->GetTransform().Rotate(Vector3D(0, 1, 0), 10000.0f * Time::deltaTime * Input::GetInstance().GetMouseDeltaX());
+	rb->Rotate(Vector3D(0, 1, 0), 10000.0f * Time::deltaTime * Input::GetInstance().GetMouseDeltaX());
+
 }
 
 void Scene::FixedUpdate()

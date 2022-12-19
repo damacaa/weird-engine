@@ -14,16 +14,22 @@
 /// </summary>
 class Input
 {
-	static int m_mouseX;
-	static int m_mouseY;
-	static bool m_mouseHasBeenMoved;
-	static int m_deltaX;
-	static int m_deltaY;
 
-	static int m_keyTable[256];
-	static int m_mouseKeysTable[5];
+	int m_mouseX;
+	int m_mouseY;
+	bool m_mouseHasBeenMoved;
+	int m_deltaX;
+	int m_deltaY;
+
+	int m_keyTable[256];
+	int m_mouseKeysTable[5];
 
 public:
+
+	static Input& GetInstance() {
+		static Input* _instance = new Input();
+		return *_instance;
+	};
 
 	enum class MouseButton {
 		LeftClick = 0,
@@ -33,12 +39,13 @@ public:
 		WheelDown = 4
 	};
 
-	static int GetMouseX() { return m_mouseX; };
-	static int GetMouseY() { return m_mouseY; };
-	static float GetMouseDeltaX() { return (float)m_deltaX / (float)GLUT_SCREEN_WIDTH; };
-	static float GetMouseDeltaY() { return (float)m_deltaY / (float)GLUT_SCREEN_HEIGHT; };
+	int GetMouseX() { return m_mouseX; };
+	int GetMouseY() { return m_mouseY; };
+	float GetMouseDeltaX() { return (float)m_deltaX / (float)GLUT_SCREEN_WIDTH; };
+	float GetMouseDeltaY() { return (float)m_deltaY / (float)GLUT_SCREEN_HEIGHT; };
 
-	static void SetMouseXY(int x, int y) {
+	void SetMouseXY(int x, int y) {
+
 		m_deltaX = x - m_mouseX;
 		m_mouseX = x;
 
@@ -48,25 +55,25 @@ public:
 		m_mouseHasBeenMoved = true;
 	}
 
-	static bool GetMouseButton(MouseButton button) { return m_mouseKeysTable[(int)button] > 0; }
-	static bool GetMouseButtonDown(MouseButton button) { return m_mouseKeysTable[(int)button] == 1; }
-	static bool GetMouseButtonUp(MouseButton button) { return m_mouseKeysTable[(int)button] == -1; }
+	bool GetMouseButton(MouseButton button) { return m_mouseKeysTable[(int)button] > 0; }
+	bool GetMouseButtonDown(MouseButton button) { return m_mouseKeysTable[(int)button] == 1; }
+	bool GetMouseButtonUp(MouseButton button) { return m_mouseKeysTable[(int)button] == -1; }
 
-	static void HandleMouseButton(int button, int state) { m_mouseKeysTable[button] = -((2 * state) - 1); }
+	void HandleMouseButton(int button, int state) { m_mouseKeysTable[button] = -((2 * state) - 1); }
 
-	static bool GetKey(unsigned char key) { return m_keyTable[toupper(key)] > 0; }
-	static bool GetKeyDown(unsigned char key) { return m_keyTable[toupper(key)] == 1; }
-	static bool GetKeyUp(unsigned char key) { return m_keyTable[toupper(key)] == -1; }
+	bool GetKey(unsigned char key) { return m_keyTable[toupper(key)] > 0; }
+	bool GetKeyDown(unsigned char key) { return m_keyTable[toupper(key)] == 1; }
+	bool GetKeyUp(unsigned char key) { return m_keyTable[toupper(key)] == -1; }
 
-	static void PressKey(unsigned char key) {
+	void PressKey(unsigned char key) {
 		m_keyTable[toupper(key)]++;
 	}
 
-	static void ReleaseKey(unsigned char key) {
+	void ReleaseKey(unsigned char key) {
 		m_keyTable[toupper(key)] = -1;
 	}
 
-	static void Update() {
+	void Update() {
 		for (size_t i = 0; i < 256; i++)
 		{
 			// Updates after first frame where button was down

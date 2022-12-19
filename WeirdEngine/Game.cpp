@@ -34,14 +34,14 @@ void Game::Update()
 	Time::deltaTime = delta / 1000.f;
 	this->m_activeScene->Update();
 
-	cout << Input::GetMouseX() << endl;
+	cout << Input::GetInstance().GetMouseX() << endl;
 
-	Input::Update();
+	Input::GetInstance().Update();
 }
 
 void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 {
-	Input::PressKey(key);
+	Input::GetInstance().PressKey(key);
 
 	if (key == 27)
 	{
@@ -52,15 +52,15 @@ void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 
 void Game::ProcessKeyReleased(unsigned char key, int px, int py)
 {
-	Input::ReleaseKey(key);
+	Input::GetInstance().ReleaseKey(key);
 }
 
 void Game::ProcessMouseMovement(int x, int y)
 {
-	Input::SetMouseXY(x, y);
+	Input::GetInstance().SetMouseXY(x, y);
 }
 
 void Game::ProcessMouseClick(int button, int state, int x, int y)
 {
-	Input::HandleMouseButton(button, state);
+	Input::GetInstance().HandleMouseButton(button, state);
 }

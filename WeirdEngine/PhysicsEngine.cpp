@@ -48,7 +48,7 @@ void PhysicsEngine::Step(float delta)
 		rb->position = rb->position + delta * rb->velocity;
 
 
-		Vector3D torque = rb->torque - (100.0f * delta rb->angularVelocity); // Damping
+		Vector3D torque = rb->torque - (100.0f * delta *rb->angularVelocity); // Damping
 		Vector3D angAccel = rb->GetUpdatedInvertedInertiaTensor() * torque;
 		rb->angularVelocity =  rb->angularVelocity + angAccel * delta;
 

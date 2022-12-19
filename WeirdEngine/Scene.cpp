@@ -13,12 +13,10 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		Entity* camera = new Entity();
 		camera->AddComponent<Camera>();
 		camera->GetTransform().position = Vector3D(0, 0, 20);
-		camera->GetTransform().scale = Vector3D(3,3,3);
+		camera->GetTransform().scale = Vector3D(3, 3, 3);
 		camera->GetTransform().rotation = Quaternion(0, 0, 0);
 		camera->name = "Camera";
-		auto rb = camera->AddComponent<RigidBody>();
-		rb->applyGravity = false;
-		camera->AddComponent<SphereCollider>();
+		camera->AddComponent<FlyMovement>();
 		m_entities.push_back(camera);
 
 		m_camera = camera;
@@ -114,34 +112,9 @@ void Scene::Update()
 	}
 
 	// Ball shooting
-	if (Input::GetInstance().GetKeyDown('p')) {
-		AddBall();
-	}
-
-	// Camera movement
-	auto rb = m_camera->GetComponent<RigidBody>();
-
-	if (Input::GetInstance().GetKey('w')) {
-		rb->AddForce(Vector3D(0, 0, -100));
-	}
-	else if (Input::GetInstance().GetKey('s')) {
-		rb->AddForce(Vector3D(0, 0, 100));
-	}
-
-	if (Input::GetInstance().GetKey('a')) {
-		rb->AddForce(Vector3D(-100, 0, 0));
-	}
-	else if (Input::GetInstance().GetKey('d')) {
-		rb->AddForce(Vector3D(100, 0, 0));
-	}
-
 	if (Input::GetInstance().GetMouseButtonDown(Input::MouseButton::LeftClick)) {
 		AddBall();
 	}
-
-	//m_camera->GetTransform().Rotate(Vector3D(0, 1, 0), 10000.0f * Time::deltaTime * Input::GetInstance().GetMouseDeltaX());
-	rb->Rotate(Vector3D(0, 1, 0), 10000.0f * Time::deltaTime * Input::GetInstance().GetMouseDeltaX());
-
 }
 
 void Scene::FixedUpdate()
@@ -166,7 +139,7 @@ void Scene::AddBall()
 {
 	Entity* entity = new Entity();
 	entity->name = "Ball_";
-	entity->GetTransform().position = m_camera->GetTransform().position - Vector3D(0, 0, 3);
+	entity->GetTransform().position = m_camera->GetTransform().position + 3.0f * m_camera->GetTransform().GetForwardVector();
 
 	entity->GetTransform().rotation = Quaternion();
 	entity->GetTransform().scale = Vector3D(1, 1, 1) * (1 + 1 * ((double)rand() / (RAND_MAX)));
@@ -179,7 +152,9 @@ void Scene::AddBall()
 	renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
 	entity->AddComponent<SphereCollider>();
 
-	rb->AddForce(Vector3D(1000.0f * (((double)rand() / (RAND_MAX)) - .5f), 500, -5000));
+	rb->AddForce(
+		10000.0f * m_camera->GetTransform().GetForwardVector() +
+		Vector3D(500.0f * (((double)rand() / (RAND_MAX)) - .5f), 500, 0));
 
 	m_entities.push_back(entity);
 }

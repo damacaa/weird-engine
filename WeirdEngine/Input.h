@@ -4,6 +4,7 @@
 #include <string>
 #include <GL/glut.h>
 
+
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
 /// States are:
@@ -23,6 +24,8 @@ class Input
 
 	int m_keyTable[256];
 	int m_mouseKeysTable[5];
+
+	bool m_mouseWarp;
 
 public:
 
@@ -53,6 +56,16 @@ public:
 		m_mouseY = y;
 
 		m_mouseHasBeenMoved = true;
+
+		if (m_mouseWarp && (
+			x < 100 || x > GLUT_SCREEN_WIDTH - 100 || 
+			y < 100 || y > GLUT_SCREEN_HEIGHT - 100)) {
+
+			m_mouseX = GLUT_SCREEN_WIDTH / 2;
+			m_mouseY = GLUT_SCREEN_HEIGHT / 2;
+
+			glutWarpPointer(GLUT_SCREEN_WIDTH / 2, GLUT_SCREEN_HEIGHT / 2);
+		}
 	}
 
 	bool GetMouseButton(MouseButton button) { return m_mouseKeysTable[(int)button] > 0; }

@@ -26,6 +26,7 @@ class Input
 	int m_mouseKeysTable[5];
 
 	bool m_mouseWarp = true;
+	bool m_firstMouseInput = true;
 
 public:
 
@@ -49,6 +50,12 @@ public:
 
 	void SetMouseXY(int x, int y) {
 
+		if (m_firstMouseInput) {
+			m_firstMouseInput = false;
+			m_mouseX = x;
+			m_mouseY = y;
+		}
+
 		m_deltaX = x - m_mouseX;
 		m_mouseX = x;
 
@@ -58,7 +65,7 @@ public:
 		m_mouseHasBeenMoved = true;
 
 		if (m_mouseWarp && (
-			x < 100 || x > GLUT_SCREEN_WIDTH - 100 || 
+			x < 100 || x > GLUT_SCREEN_WIDTH - 100 ||
 			y < 100 || y > GLUT_SCREEN_HEIGHT - 100)) {
 
 			m_mouseX = GLUT_SCREEN_WIDTH / 2;

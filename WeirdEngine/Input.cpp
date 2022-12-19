@@ -1,10 +1,10 @@
 #include "Input.h"
-int Input::_mouseX = 0;
-int Input::_mouseY = 0;
+int Input::m_mouseX = 0;
+int Input::m_mouseY = 0;
 
-bool Input::_mouseHasBeenMoved;
-int Input::_deltaX = 0;
-int Input::_deltaY = 0;
+bool Input::m_mouseHasBeenMoved;
+int Input::m_deltaX = 0;
+int Input::m_deltaY = 0;
 
-int Input::_keyTable[256]{ 0 };
-int Input::_mouseKeysTable[5];
+int Input::m_keyTable[256]{ 0 };
+int Input::m_mouseKeysTable[5];

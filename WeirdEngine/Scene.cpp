@@ -12,24 +12,25 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	{
 		Entity* camera = new Entity();
 		camera->AddComponent<Camera>();
-		camera->Transform_->postition = Vector3D(0, 0, 20);
-		camera->Transform_->Rotation = Quaternion(0, 0, 0);
-		camera->Name = "Camera";
+		camera->GetTransform().postition = Vector3D(0, 0, 20);
+		camera->GetTransform().scale = Vector3D(3,3,3);
+		camera->GetTransform().rotation = Quaternion(0, 0, 0);
+		camera->name = "Camera";
 		auto rb = camera->AddComponent<RigidBody>();
-		rb->_applyGravity = false;
+		rb->applyGravity = false;
 		camera->AddComponent<SphereCollider>();
-		_entities.push_back(camera);
+		m_entities.push_back(camera);
 
-		_camera = camera;
+		m_camera = camera;
 	}
 
 	// Floor
 	{
 		Entity* floor = new Entity();
-		floor->Name = "Floor";
-		floor->Transform_->postition = Vector3D(0, -9, 0);
-		floor->Transform_->Rotation = Quaternion();
-		floor->Transform_->scale = Vector3D(100, 10, 100);
+		floor->name = "Floor";
+		floor->GetTransform().postition = Vector3D(0, -9, 0);
+		floor->GetTransform().rotation = Quaternion();
+		floor->GetTransform().scale = Vector3D(100, 10, 100);
 
 		auto rb = floor->AddComponent<RigidBody>();
 		rb->Fix();
@@ -40,7 +41,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
 		renderer->_color = Color(1, 1, 1);
 
-		_entities.push_back(floor);
+		m_entities.push_back(floor);
 	}
 
 	if (false)
@@ -49,28 +50,28 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 
 		auto rb = entity->AddComponent<RigidBody>();
 
-		rb->_applyGravity = false;
+		rb->applyGravity = false;
 		rb->Fix();
 
 		entity->AddComponent<SphereCollider>();
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
-		entity->Transform_->Rotation = Quaternion();
-		entity->Transform_->scale = Vector3D(2, 2, 2);
-		entity->Transform_->postition = Vector3D(0, 0, 0);
-		entity->Name = "Test";
-		_entities.push_back(entity);
+		entity->GetTransform().rotation = Quaternion();
+		entity->GetTransform().scale = Vector3D(2, 2, 2);
+		entity->GetTransform().postition = Vector3D(0, 0, 0);
+		entity->name = "Test";
+		m_entities.push_back(entity);
 	}
 
 	if (false)
 	{
 		Entity* entity = new Entity();
 
-		entity->Name = "Test";
+		entity->name = "Test";
 
-		entity->Transform_->Rotation = Quaternion(0, 0, 45);
-		entity->Transform_->scale = Vector3D(3, 1, 3);
-		entity->Transform_->postition = Vector3D(-1, 4, 0);
+		entity->GetTransform().rotation = Quaternion(0, 0, 45);
+		entity->GetTransform().scale = Vector3D(3, 1, 3);
+		entity->GetTransform().postition = Vector3D(-1, 4, 0);
 
 		auto rb = entity->AddComponent<RigidBody>();
 		entity->AddComponent<BoxCollider>();
@@ -78,36 +79,36 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
 
-		_entities.push_back(entity);
+		m_entities.push_back(entity);
 	}
 
 	srand((unsigned)time(NULL));
 	for (size_t i = 0; i < 10; i++)
 	{
 		Entity* entity = new Entity();
-		entity->Name = "Ball_";
-		entity->Transform_->postition = Vector3D(
+		entity->name = "Ball_";
+		entity->GetTransform().postition = Vector3D(
 			10.0f * (((float)rand() / (RAND_MAX)) - 0.5f),
 			(3 * i) + 6,
 			10.0f * (((float)rand() / (RAND_MAX))) - 0.5f);
 
-		entity->Transform_->Rotation = Quaternion();
-		entity->Transform_->scale = Vector3D(1, 1, 1) * (1 + 3 * ((double)rand() / (RAND_MAX)));
+		entity->GetTransform().rotation = Quaternion();
+		entity->GetTransform().scale = Vector3D(1, 1, 1) * (1 + 3 * ((double)rand() / (RAND_MAX)));
 
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->_color = Color(1, 1, 1);
+		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
 
 		auto rb = entity->AddComponent<RigidBody>();
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
 		entity->AddComponent<BoxCollider>();
 
-		_entities.push_back(entity);
+		m_entities.push_back(entity);
 	}
 }
 
 void Scene::Update()
 {
-	for (auto e : _entities)
+	for (auto e : m_entities)
 	{
 		e->Update();
 	}
@@ -118,7 +119,7 @@ void Scene::Update()
 	}
 
 	// Camera movement
-	auto rb = _camera->GetComponent<RigidBody>();
+	auto rb = m_camera->GetComponent<RigidBody>();
 
 	if (Input::GetKey('w')) {
 		rb->AddForce(Vector3D(0, 0, -100));
@@ -144,7 +145,7 @@ void Scene::Update()
 
 void Scene::FixedUpdate()
 {
-	for (auto e : _entities)
+	for (auto e : m_entities)
 	{
 		e->FixedUpdate();
 	}
@@ -163,11 +164,11 @@ void Scene::Render()
 void Scene::AddBall()
 {
 	Entity* entity = new Entity();
-	entity->Name = "Ball_";
-	entity->Transform_->postition = _camera->Transform_->postition - Vector3D(0, 0, 3);
+	entity->name = "Ball_";
+	entity->GetTransform().postition = m_camera->GetTransform().postition - Vector3D(0, 0, 3);
 
-	entity->Transform_->Rotation = Quaternion();
-	entity->Transform_->scale = Vector3D(1, 1, 1) * (1 + 1 * ((double)rand() / (RAND_MAX)));
+	entity->GetTransform().rotation = Quaternion();
+	entity->GetTransform().scale = Vector3D(1, 1, 1) * (1 + 1 * ((double)rand() / (RAND_MAX)));
 
 	auto renderer = entity->AddComponent<PrimitiveRenderer>();
 	renderer->_color = Color(1, 1, 1);
@@ -179,7 +180,7 @@ void Scene::AddBall()
 
 	rb->AddForce(Vector3D(1000.0f * (((double)rand() / (RAND_MAX)) - .5f), 500, -5000));
 
-	_entities.push_back(entity);
+	m_entities.push_back(entity);
 }
 
 

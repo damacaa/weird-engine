@@ -6,16 +6,16 @@ void PrimitiveRenderer::Render() {
 
 	glPushMatrix();
 
-	Transform* t = _entity->Transform_;
-	Vector3D position = t->postition;
+	Transform& t = GetEntity().GetTransform();
+	Vector3D position = t.postition;
 	glTranslatef(position.x, position.y, position.z);
 
-	Vector3D eulerRotation = t->Rotation.ToEuler();
+	Vector3D eulerRotation = t.rotation.ToEuler();
 	glRotatef(eulerRotation.x, 1.0, 0.0, 0.0);
 	glRotatef(eulerRotation.y, 0.0, 1.0, 0.0);
 	glRotatef(eulerRotation.z, 0.0, 0.0, 1.0);
 
-	Vector3D scale = t->scale;
+	Vector3D scale = t.scale;
 	glScalef(scale.x, scale.y, scale.z);
 
 	glColor3f(_color.GetRedComponent(), _color.GetGreenComponent(), _color.GetBlueComponent());

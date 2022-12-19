@@ -159,7 +159,6 @@
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RigidBody.cpp" />
     <ClCompile Include="Scene.cpp" />
-    <ClCompile Include="Singleton.cpp" />
     <ClCompile Include="Solid.cpp" />
     <ClCompile Include="SphereCollider.cpp" />
     <ClCompile Include="Text.cpp" />
@@ -191,7 +190,6 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RigidBody.h" />
     <ClInclude Include="Scene.h" />
-    <ClInclude Include="Singleton.h" />
     <ClInclude Include="Solid.h" />
     <ClInclude Include="SphereCollider.h" />
     <ClInclude Include="Text.h" />

@@ -11,7 +11,7 @@ private:
 	float _delta;
 	int _substeps;
 
-	Vector3D _gravity = Vector3D(0, -9.8f, 0);
+	Vector3D gravity = Vector3D(0, -9.8f, 0);
 
 	PhysicsEngine() :_delta(0.02f), _substeps(3) {};
 

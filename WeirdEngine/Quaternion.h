@@ -7,14 +7,13 @@ const float RAD_TO_DEG = 57.29577951308;
 class Quaternion
 {
 private:
-
+	float m_x, m_y, m_z, m_w;
 public:
-	float _x, _y, _z, _w;
 
-	Quaternion() : _x(0), _y(0), _z(0), _w(1) {};
+	Quaternion() : m_x(0), m_y(0), m_z(0), m_w(1) {};
 
 	Quaternion(float x, float y, float z, float w) :
-		_x(x), _y(y), _z(z), _w(w) {};
+		m_x(x), m_y(y), m_z(z), m_w(w) {};
 
 	/// <summary>
 	/// Axis-angle to quaternion
@@ -25,30 +24,28 @@ public:
 		axis.Normalize();
 		float rad = angle * DEG_TO_RAD;
 
-		_x = sin(rad / 2.0f) * axis.x;
-		_y = sin(rad / 2.0f) * axis.y;
-		_z = sin(rad / 2.0f) * axis.z;
-		_w = cos(rad / 2.0f);
+		m_x = sin(rad / 2.0f) * axis.x;
+		m_y = sin(rad / 2.0f) * axis.y;
+		m_z = sin(rad / 2.0f) * axis.z;
+		m_w = cos(rad / 2.0f);
 	};
 
 	Quaternion(float roll, float pitch, float yaw) // roll (x), pitch (Y), yaw (z)
 	{
 		// Abbreviations for the various angular functions
 
-		float cr = cos(roll * DEG_TO_RAD * 0.5);
-		float sr = sin(roll * DEG_TO_RAD * 0.5);
-		float cp = cos(pitch * DEG_TO_RAD * 0.5);
-		float sp = sin(pitch * DEG_TO_RAD * 0.5);
-		float cy = cos(yaw * DEG_TO_RAD * 0.5);
-		float sy = sin(yaw * DEG_TO_RAD * 0.5);
+		float cr = cos(roll * DEG_TO_RAD * 0.5f);
+		float sr = sin(roll * DEG_TO_RAD * 0.5f);
+		float cp = cos(pitch * DEG_TO_RAD * 0.5f);
+		float sp = sin(pitch * DEG_TO_RAD * 0.5f);
+		float cy = cos(yaw * DEG_TO_RAD * 0.5f);
+		float sy = sin(yaw * DEG_TO_RAD * 0.5f);
 
-		_w = cr * cp * cy + sr * sp * sy;
-		_x = sr * cp * cy - cr * sp * sy;
-		_y = cr * sp * cy + sr * cp * sy;
-		_z = cr * cp * sy - sr * sp * cy;
+		m_w = cr * cp * cy + sr * sp * sy;
+		m_x = sr * cp * cy - cr * sp * sy;
+		m_y = cr * sp * cy + sr * cp * sy;
+		m_z = cr * cp * sy - sr * sp * cy;
 	}
-
-
 
 	Quaternion operator+(Quaternion other);
 	Quaternion operator*(Quaternion other);
@@ -69,15 +66,15 @@ public:
 
 inline Quaternion Quaternion::operator+(Quaternion other)
 {
-	return Quaternion(_x + other._x, _y + other._y, _z + other._z, _w + other._w);
+	return Quaternion(m_x + other.m_x, m_y + other.m_y, m_z + other.m_z, m_w + other.m_w);
 }
 
 inline Quaternion Quaternion::operator*(Quaternion other)
 {
-	float a = _x * other._w + _w * other._x + _y * other._z - _z * other._y;
-	float b = _y * other._w + _w * other._y + _z * other._x - _x * other._z;
-	float c = _z * other._w + _w * other._z + _x * other._y - _y * other._x;
-	float d = _w * other._w - _x * other._x - _y * other._y - _z * other._z;
+	float a = m_x * other.m_w + m_w * other.m_x + m_y * other.m_z - m_z * other.m_y;
+	float b = m_y * other.m_w + m_w * other.m_y + m_z * other.m_x - m_x * other.m_z;
+	float c = m_z * other.m_w + m_w * other.m_z + m_x * other.m_y - m_y * other.m_x;
+	float d = m_w * other.m_w - m_x * other.m_x - m_y * other.m_y - m_z * other.m_z;
 
 	return Quaternion(a, b, c, d);
 }
@@ -85,27 +82,27 @@ inline Quaternion Quaternion::operator*(Quaternion other)
 inline void Quaternion::Normalize()
 {
 	float inverseNorm = 1 / Norm();
-	_x = _x * inverseNorm;
-	_y = _y * inverseNorm;
-	_z = _z * inverseNorm;
-	_w = _w * inverseNorm;
+	m_x = m_x * inverseNorm;
+	m_y = m_y * inverseNorm;
+	m_z = m_z * inverseNorm;
+	m_w = m_w * inverseNorm;
 }
 
 inline void Quaternion::Invert()
 {
-	_x = -_x;
-	_y = -_y;
-	_z = -_z;
+	m_x = -m_x;
+	m_y = -m_y;
+	m_z = -m_z;
 }
 
 inline float Quaternion::Norm()
 {
-	return sqrt(_x * _x + _y * _y + _z * _z + _w + _w);
+	return sqrt(m_x * m_x + m_y * m_y + m_z * m_z + m_w + m_w);
 }
 
 inline Quaternion Quaternion::Conjugate()
 {
-	return Quaternion(-_x, -_y, -_z, _w);
+	return Quaternion(-m_x, -m_y, -m_z, m_w);
 }
 
 inline Vector3D Quaternion::ToEuler()
@@ -113,20 +110,20 @@ inline Vector3D Quaternion::ToEuler()
 	Vector3D angles;
 
 	// roll (x-axis rotation)
-	float sinr_cosp = 2 * (_w * _x + _y * _z);
-	float cosr_cosp = 1 - 2 * (_x * _x + _y * _y);
+	float sinr_cosp = 2 * (m_w * m_x + m_y * m_z);
+	float cosr_cosp = 1 - 2 * (m_x * m_x + m_y * m_y);
 	angles.x = RAD_TO_DEG * std::atan2(sinr_cosp, cosr_cosp);
 
 	// pitch (y-axis rotation)
-	float sinp = 2 * (_w * _y - _z * _x);
+	float sinp = 2 * (m_w * m_y - m_z * m_x);
 	if (std::abs(sinp) >= 1)
 		angles.y = RAD_TO_DEG * std::copysign(3.1416 / 2.0, sinp); // use 90 degrees if out of range
 	else
 		angles.y = RAD_TO_DEG * std::asin(sinp);
 
 	// yaw (z-axis rotation)
-	float siny_cosp = 2 * (_w * _z + _x * _y);
-	float cosy_cosp = 1 - 2 * (_y * _y + _z * _z);
+	float siny_cosp = 2 * (m_w * m_z + m_x * m_y);
+	float cosy_cosp = 1 - 2 * (m_y * m_y + m_z * m_z);
 	angles.z = RAD_TO_DEG * std::atan2(siny_cosp, cosy_cosp);
 
 	return angles;
@@ -136,10 +133,10 @@ inline Matrix3D Quaternion::ToRotationMatrix()
 {
 	float values[3][3];
 
-	float q0 = _w;
-	float q1 = _x;
-	float q2 = _y;
-	float q3 = _z;
+	float q0 = m_w;
+	float q1 = m_x;
+	float q2 = m_y;
+	float q3 = m_z;
 
 
 	values[0][0] = 2 * (q0 * q0 + q1 * q1) - 1;
@@ -161,10 +158,10 @@ inline Matrix3D Quaternion::ToRotationMatrix()
 inline Quaternion& Quaternion::operator=(const Quaternion& rhs)
 {
 	if (this != &rhs) {
-		_x = rhs._x;
-		_y = rhs._y;
-		_z = rhs._z;
-		_w = rhs._w;
+		m_x = rhs.m_x;
+		m_y = rhs.m_y;
+		m_z = rhs.m_z;
+		m_w = rhs.m_w;
 	}
 	return *this;
 }

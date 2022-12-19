@@ -6,39 +6,38 @@ class Collider;
 class RigidBody : public Component
 {
 private:
-	Collider* _collider;
+	Collider* m_collider;
 
-	float _mass = 1;
-	float _inverseMass = 0;
-	Matrix3D _inertiaTensor;
+	float m_mass = 1;
+	float m_inverseMass = 0;
+	Matrix3D m_inertiaTensor;
 
 public:
 
-	bool _applyGravity = true;
-	Vector3D _gravity = Vector3D(0, -9.8, 0);
+	bool applyGravity = true;
+	Vector3D gravity = Vector3D(0, -9.8, 0);
 
-	Vector3D _velocity = Vector3D(0, 0, 0);
-	Vector3D _force = Vector3D(0, 0, 0);
+	Vector3D force = Vector3D(0, 0, 0);
+	Vector3D velocity = Vector3D(0, 0, 0);
+	Vector3D position = Vector3D(0, 0, 0);
 
-	Quaternion _orientation = Quaternion();
-	Vector3D _angularVelocity = Vector3D(0, 0, 0);
-	Vector3D _torque = Vector3D(0, 0, 0);
+	Vector3D torque = Vector3D(0, 0, 0);
+	Vector3D angularVelocity = Vector3D(0, 0, 0);
+	Quaternion orientation = Quaternion();
 
 	RigidBody(Entity* owner);
 
 	void SetCollider(Collider* collider);
 
-	Transform& GetTransform();
-
 	void SetMass(float mass) {
-		_mass = mass;
-		_inverseMass = 1 / mass;
+		m_mass = mass;
+		m_inverseMass = 1 / mass;
 	}
 
-	void Fix();
+	float GetMass() { return m_mass; }
+	float GetInverseMass() { return m_inverseMass; }
 
-	float GetMass() { return _mass; }
-	float GetInverseMass() { return _inverseMass; }
+	void Fix();
 
 	void AddForce(Vector3D force);
 
@@ -50,7 +49,7 @@ public:
 
 	Vector3D GetPosition();
 
-	Vector3D GetForce() { return _force; };
+	Vector3D GetForce() { return force; };
 };
 
 

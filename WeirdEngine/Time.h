@@ -2,7 +2,7 @@
 class Time
 {
 public:
-	static float CurrentTime;
-	static float DeltaTime;
-	static float FixedDeltaTime;
+	static float currentTime;
+	static float deltaTime;
+	static float fixedDeltaTime;
 };

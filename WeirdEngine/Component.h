@@ -3,19 +3,19 @@
 class Component
 {
 protected:
-	static std::vector<Component*> _instances;
+	static std::vector<Component*> m_instances;
 
-	Entity* _entity;
+	Entity* m_entity;
 
 	Component(Entity* owner) {
-		_entity = owner;
-		_instances.push_back(this);
+		m_entity = owner;
+		m_instances.push_back(this);
 	};
 
 
 public:
 
-	Entity* GetEntity() { return _entity; };
+	Entity& GetEntity() { return *m_entity; };
 
 	virtual void Awake() {}
 	virtual void Start() {}
@@ -24,6 +24,6 @@ public:
 	virtual void FixedUpdate() {}
 	virtual void LateUpdate() {}
 
-	const static std::vector<Component*> Instances() { return _instances; }
+	const static std::vector<Component*> Instances() { return m_instances; }
 };
 

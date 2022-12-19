@@ -7,9 +7,10 @@ class Entity
 {
 private:
 	std::vector<Component*> _components;
+protected:
+	Transform* m_transform;
 public:
-	std::string Name;
-	Transform* Transform_;
+	std::string name;
 
 	Entity(std::string name = "Entity");
 
@@ -25,8 +26,9 @@ public:
 	void Update();
 	void FixedUpdate();
 	void LateUpdate() {};
-
 	void Render();
+
+	Transform& GetTransform() { return *m_transform; };
 };
 
 template<class T>

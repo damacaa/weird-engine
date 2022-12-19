@@ -17,17 +17,17 @@ private:
 
 	const double UPDATE_PERIOD = 10; // ms tiempo mundo real
 
-	milliseconds initialMilliseconds;
-	long long lastUpdatedTime;
-	long long _delay = 0;
+	milliseconds m_initialMilliseconds;
+	long long m_lastUpdatedTime;
+	long long m_delay = 0;
 
-	Scene* activeScene;
-	vector<Scene*> scenes;
+	Scene* m_activeScene;
+	vector<Scene*> m_scenes;
 
 public:
-	Game() : activeScene(nullptr),
-		initialMilliseconds(duration_cast<milliseconds>(system_clock::now().time_since_epoch())),
-		lastUpdatedTime(0) {};
+	Game() : m_activeScene(nullptr),
+		m_initialMilliseconds(duration_cast<milliseconds>(system_clock::now().time_since_epoch())),
+		m_lastUpdatedTime(0) {};
 
 	void Init();
 	void Render();

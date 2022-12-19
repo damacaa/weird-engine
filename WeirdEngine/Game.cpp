@@ -6,33 +6,33 @@ void Game::Init()
 	vector<Entity*> entities;
 
 	Scene* mainScene = new(nothrow) Scene();
-	this->scenes.push_back(mainScene);
+	this->m_scenes.push_back(mainScene);
 
-	this->activeScene = mainScene;
+	this->m_activeScene = mainScene;
 
 }
 
 void Game::Render()
 {
-	this->activeScene->Render();
+	this->m_activeScene->Render();
 }
 
 void Game::Update()
 {
-	auto time = (duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - this->initialMilliseconds.count());
-	auto delta = time - this->lastUpdatedTime;
-	this->lastUpdatedTime = time;
+	auto time = (duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - this->m_initialMilliseconds.count());
+	auto delta = time - this->m_lastUpdatedTime;
+	this->m_lastUpdatedTime = time;
 
-	_delay += delta;
-	while (_delay > UPDATE_PERIOD)
+	m_delay += delta;
+	while (m_delay > UPDATE_PERIOD)
 	{
-		Time::FixedDeltaTime = UPDATE_PERIOD / 1000.f;
-		this->activeScene->FixedUpdate();
-		_delay -= UPDATE_PERIOD;
+		Time::fixedDeltaTime = UPDATE_PERIOD / 1000.f;
+		this->m_activeScene->FixedUpdate();
+		m_delay -= UPDATE_PERIOD;
 	}
 
-	Time::DeltaTime = delta / 1000.f;
-	this->activeScene->Update();
+	Time::deltaTime = delta / 1000.f;
+	this->m_activeScene->Update();
 
 	Input::Update();
 }

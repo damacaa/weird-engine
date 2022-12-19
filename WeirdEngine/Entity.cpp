@@ -2,9 +2,9 @@
 #include "ECS.h"
 Entity::Entity(std::string name)
 {
-	Name = name;
+	name = name;
 	_components = std::vector<Component*>();
-	Transform_ = new Transform();
+	m_transform = new Transform();
 }
 
 void Entity::Update()

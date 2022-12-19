@@ -127,16 +127,14 @@ void mouseClicked(int button, int state, int x, int y)
 
 int main(int argc, char** argv)
 {
-	writeLine("Hello World con OpenGL");
+	writeLine("Starting Weird Engine...");
 
-	writeLine("Generando ventana...");
 	glutInit(&argc, argv);											// Inicializa Glut
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);		// doble buffer, modo rgba, depth buffer
 	glutInitWindowSize(800, 600);									// tamaño inicial de la ventana
 	glutInitWindowPosition(100, 100);								// posición inicial ventana
 	glutCreateWindow("title");										// crea una ventana con título dado
 
-	writeLine("Registrando funciones de tratamiento de eventos...");
 	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
 	glutKeyboardFunc(keyPressed);
@@ -146,10 +144,8 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouseClicked);
 	glutIdleFunc(idle);
 
-	writeLine("Iniciando gráficos...");
 	initGraphics();
 
-	writeLine("Iniciando bucle infinito...");
 	glutMainLoop();
 }
 

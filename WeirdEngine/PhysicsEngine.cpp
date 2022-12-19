@@ -31,40 +31,40 @@ void PhysicsEngine::Step(float delta)
 	{
 		auto rb = _rigidBodies[i];
 
-		Transform* t = rb->GetEntity()->Transform_;
+		Transform& t = rb->GetEntity().GetTransform();
 
 		auto inverseMass = rb->GetInverseMass();
 
-		Vector3D force = rb->GetForce() - (3.0f * rb->_velocity); // Damping
+		Vector3D force = rb->GetForce() - (3.0f * rb->velocity); // Damping
 
 		Vector3D acceleration = force * inverseMass;
 
-		if (rb->_applyGravity && inverseMass > 0)
+		if (rb->applyGravity && inverseMass > 0)
 		{
-			acceleration = acceleration + _gravity; // don ’t move infinitely heavy things
+			acceleration = acceleration + gravity; // don ’t move infinitely heavy things
 		}
 
-		rb->_velocity = rb->_velocity + delta * acceleration;
-		t->postition = t->postition + delta * rb->_velocity;
+		rb->velocity = rb->velocity + delta * acceleration;
+		t.postition = t.postition + delta * rb->velocity;
 
 
-		// Rotation
+		// rotation
 
-		if (rb->_torque.Norm() > 0) {
+		if (rb->torque.Norm() > 0) {
 			int stop = 1;
 		}
 
-		Vector3D torque = rb->_torque - (1.0f * rb->_angularVelocity); // Damping
+		Vector3D torque = rb->torque - (1.0f * rb->angularVelocity); // Damping
 		Vector3D angAccel = rb->GetUpdatedInvertedInertiaTensor() * torque;
-		rb->_angularVelocity =  rb->_angularVelocity + angAccel * delta;
+		rb->angularVelocity =  rb->angularVelocity + angAccel * delta;
 
 		Quaternion angularVelocityQuaternion = Quaternion(
-			delta * 0.5f * rb->_angularVelocity.x,
-			delta * 0.5f * rb->_angularVelocity.y,
-			delta * 0.5f * rb->_angularVelocity.z);
+			delta * 0.5f * rb->angularVelocity.x,
+			delta * 0.5f * rb->angularVelocity.y,
+			delta * 0.5f * rb->angularVelocity.z);
 
-		rb->_orientation = rb->_orientation * angularVelocityQuaternion;
-		t->Rotation = rb->_orientation;
+		rb->orientation = rb->orientation * angularVelocityQuaternion;
+		t.rotation = rb->orientation;
 
 		rb->ClearForces();
 	}
@@ -108,8 +108,8 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 	auto& rigidBodyA = sphere.GetRigidBody();
 	auto& rigidBodyB = otherSphere.GetRigidBody();
 
-	Transform& transformA = rigidBodyA.GetTransform();
-	Transform& transformB = rigidBodyB.GetTransform();
+	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
+	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
 
 	Vector3D delta = transformB.postition - transformA.postition;
 	float distance = delta.Norm();
@@ -124,7 +124,7 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 		delta.Normalize();
 
 		Vector3D pointA = radiusA * delta;
-		Vector3D pointB = (radiusB * delta) * -1;
+		Vector3D pointB = -(radiusB * delta);
 
 		collisionInfo.AddContactPoint(pointA, pointB, delta, penetration); // points where suposed to be in local
 
@@ -139,8 +139,8 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 	auto& rigidBodyA = box.GetRigidBody();
 	auto& rigidBodyB = otherBox.GetRigidBody();
 
-	Transform& transformA = rigidBodyA.GetTransform();
-	Transform& transformB = rigidBodyB.GetTransform();
+	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
+	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
 
 	Vector3D delta = transformB.postition - transformA.postition;
 	Vector3D totalSize = (transformA.scale * 0.5f) + (transformB.scale * 0.5f);
@@ -196,17 +196,17 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 	auto& rigidBodyBox = box.GetRigidBody();
 	auto& rigidBodySphere = sphere.GetRigidBody();
 
-	Transform& transformBox = rigidBodyBox.GetTransform();
-	Transform& transformSphere = rigidBodySphere.GetTransform();
+	Transform& transformBox = rigidBodyBox.GetEntity().GetTransform();
+	Transform& transformSphere = rigidBodySphere.GetEntity().GetTransform();
 
 	Vector3D halfSize = transformBox.scale * 0.5f;
 
 	Vector3D delta = transformSphere.postition - transformBox.postition;
 
-	// Matrix3D inverseRotationMatrix = transformBox.Rotation.ToRotationMatrix().Inverse();
+	// Matrix3D inverseRotationMatrix = transformBox.rotation.ToRotationMatrix().Inverse();
 	// Vector3D inverseDelta = inverseRotationMatrix * delta;
 
-	Vector3D closestPointOnBox = Vector3D::Clamp(delta, halfSize * -1, halfSize);
+	Vector3D closestPointOnBox = Vector3D::Clamp(delta, -halfSize, halfSize);
 
 	Vector3D localPoint = delta - closestPointOnBox;
 	float distance = localPoint.Norm();
@@ -216,7 +216,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 		float penetration = sphere.GetRadius() - distance;
 
 		Vector3D boxPoint = Vector3D();
-		Vector3D spherePoint = (collisionNormal * sphere.GetRadius()) * -1;
+		Vector3D spherePoint = -(collisionNormal * sphere.GetRadius());
 
 		collisionInfo.AddContactPoint(boxPoint, spherePoint, collisionNormal, penetration);
 		return true;
@@ -229,15 +229,15 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 
 void PhysicsEngine::ResolveCollision(int i, int j, CollisionInfo& collisionInfo)
 {
-	//collisionInfo.a->GetRigidBody()._velocity = collisionInfo.a->GetRigidBody()._velocity * -1;
-	//collisionInfo.b->GetRigidBody()._velocity = collisionInfo.b->GetRigidBody()._velocity * -1;
+	//collisionInfo.a->GetRigidBody()._velocity = -collisionInfo.a->GetRigidBody()._velocity;
+	//collisionInfo.b->GetRigidBody()._velocity = -collisionInfo.b->GetRigidBody()._velocity;
 
 	Vector3D force = 100.0f * collisionInfo.point.normal * collisionInfo.point.penetration;
 
 	//collisionInfo.a->GetRigidBody().Fix();
 	//collisionInfo.b->GetRigidBody().Fix();
 
-	collisionInfo.a->GetRigidBody().AddForce(force * -1.0f, collisionInfo.point.localA);
+	collisionInfo.a->GetRigidBody().AddForce(-force, collisionInfo.point.localA);
 	collisionInfo.b->GetRigidBody().AddForce(force, collisionInfo.point.localB);
 }
 

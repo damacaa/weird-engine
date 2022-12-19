@@ -10,6 +10,7 @@ RigidBody::RigidBody(Entity* owner) :Component(owner)
 
 	m_inverseMass = 1.0 / m_mass;
 
+	position = owner->GetTransform().position;
 	orientation = owner->GetTransform().rotation;
 
 	float values[3][3]{ {0,0,0}, {0,0,0}, {0,0,0} }; // Collider.GetInertiaTensor() ????
@@ -68,5 +69,16 @@ Matrix3D RigidBody::GetUpdatedInvertedInertiaTensor()
 
 Vector3D RigidBody::GetPosition()
 {
-	return m_entity->GetTransform().postition;
+	return m_entity->GetTransform().position;
+}
+
+void RigidBody::Rotate(Vector3D axis, float amount)
+{
+	orientation = orientation * Quaternion(axis, amount);
+}
+
+void RigidBody::Update()
+{
+	m_entity->GetTransform().position = position;
+	m_entity->GetTransform().rotation = orientation;
 }

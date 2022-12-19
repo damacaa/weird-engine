@@ -3,7 +3,7 @@
 class Transform
 {
 public:
-	Vector3D postition;
+	Vector3D position;
 	Quaternion rotation;
 	Vector3D scale = Vector3D(1, 1, 1);
 	Transform* parent = nullptr;
@@ -15,9 +15,9 @@ public:
 		if (!parent)
 			return;
 
-		postition.x = postition.x / parent->scale.x;
-		postition.y = postition.y / parent->scale.y;
-		postition.z = postition.z / parent->scale.z;
+		position.x = position.x / parent->scale.x;
+		position.y = position.y / parent->scale.y;
+		position.z = position.z / parent->scale.z;
 
 		scale.x = scale.x / parent->scale.x;
 		scale.y = scale.y / parent->scale.y;

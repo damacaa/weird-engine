@@ -13,7 +13,7 @@ private:
 
 	Vector3D gravity = Vector3D(0, -9.8f, 0);
 
-	PhysicsEngine() :_delta(0.02f), _substeps(3) {};
+	PhysicsEngine() :_delta(0.01f), _substeps(3) {};
 
 public:
 

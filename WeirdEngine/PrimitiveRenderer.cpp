@@ -7,7 +7,7 @@ void PrimitiveRenderer::Render() {
 	glPushMatrix();
 
 	Transform& t = GetEntity().GetTransform();
-	Vector3D position = t.postition;
+	Vector3D position = t.position;
 	glTranslatef(position.x, position.y, position.z);
 
 	Vector3D eulerRotation = t.rotation.ToEuler();

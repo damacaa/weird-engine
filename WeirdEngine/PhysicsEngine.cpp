@@ -9,7 +9,7 @@ void PhysicsEngine::Update()
 {
 	for (int i = 0; i < _substeps; i++)
 	{
-		Step(_delta / _substeps);
+		Step(_delta / (float)_substeps);
 	}
 }
 
@@ -35,7 +35,7 @@ void PhysicsEngine::Step(float delta)
 
 		auto inverseMass = rb->GetInverseMass();
 
-		Vector3D force = rb->GetForce() - (3.0f * rb->velocity); // Damping
+		Vector3D force = rb->GetForce() - (500.0f * delta * rb->velocity); // Damping
 
 		Vector3D acceleration = force * inverseMass;
 
@@ -45,16 +45,10 @@ void PhysicsEngine::Step(float delta)
 		}
 
 		rb->velocity = rb->velocity + delta * acceleration;
-		t.postition = t.postition + delta * rb->velocity;
+		rb->position = rb->position + delta * rb->velocity;
 
 
-		// rotation
-
-		if (rb->torque.Norm() > 0) {
-			int stop = 1;
-		}
-
-		Vector3D torque = rb->torque - (1.0f * rb->angularVelocity); // Damping
+		Vector3D torque = rb->torque - (100.0f * delta *rb->angularVelocity); // Damping
 		Vector3D angAccel = rb->GetUpdatedInvertedInertiaTensor() * torque;
 		rb->angularVelocity =  rb->angularVelocity + angAccel * delta;
 
@@ -64,7 +58,6 @@ void PhysicsEngine::Step(float delta)
 			delta * 0.5f * rb->angularVelocity.z);
 
 		rb->orientation = rb->orientation * angularVelocityQuaternion;
-		t.rotation = rb->orientation;
 
 		rb->ClearForces();
 	}
@@ -111,7 +104,7 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
 	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
 
-	Vector3D delta = transformB.postition - transformA.postition;
+	Vector3D delta = transformB.position - transformA.position;
 	float distance = delta.Norm();
 
 	float radiusA = sphere.GetRadius();
@@ -142,7 +135,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
 	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
 
-	Vector3D delta = transformB.postition - transformA.postition;
+	Vector3D delta = transformB.position - transformA.position;
 	Vector3D totalSize = (transformA.scale * 0.5f) + (transformB.scale * 0.5f);
 
 	if (abs(delta.x) < totalSize.x &&
@@ -156,11 +149,11 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 			Vector3D(0, 0, -1), Vector3D(0, 0, 1),
 		};
 
-		Vector3D maxA = transformA.postition + transformA.scale;
-		Vector3D minA = transformA.postition - transformA.scale;
+		Vector3D maxA = transformA.position + transformA.scale;
+		Vector3D minA = transformA.position - transformA.scale;
 
-		Vector3D maxB = transformB.postition + transformB.scale;
-		Vector3D minB = transformB.postition - transformB.scale;
+		Vector3D maxB = transformB.position + transformB.scale;
+		Vector3D minB = transformB.position - transformB.scale;
 
 		float distances[6]{
 				(maxB.x - minA.x),// distance of box ’b’ to ’left ’ of ’a ’.
@@ -201,7 +194,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 
 	Vector3D halfSize = transformBox.scale * 0.5f;
 
-	Vector3D delta = transformSphere.postition - transformBox.postition;
+	Vector3D delta = transformSphere.position - transformBox.position;
 
 	// Matrix3D inverseRotationMatrix = transformBox.rotation.ToRotationMatrix().Inverse();
 	// Vector3D inverseDelta = inverseRotationMatrix * delta;

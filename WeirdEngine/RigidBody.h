@@ -50,6 +50,8 @@ public:
 	Vector3D GetPosition();
 
 	Vector3D GetForce() { return force; };
+
+	void Update();
 };
 
 

@@ -12,7 +12,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	{
 		Entity* camera = new Entity();
 		camera->AddComponent<Camera>();
-		camera->GetTransform().postition = Vector3D(0, 0, 20);
+		camera->GetTransform().position = Vector3D(0, 0, 20);
 		camera->GetTransform().scale = Vector3D(3,3,3);
 		camera->GetTransform().rotation = Quaternion(0, 0, 0);
 		camera->name = "Camera";
@@ -28,7 +28,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	{
 		Entity* floor = new Entity();
 		floor->name = "Floor";
-		floor->GetTransform().postition = Vector3D(0, -9, 0);
+		floor->GetTransform().position = Vector3D(0, -9, 0);
 		floor->GetTransform().rotation = Quaternion();
 		floor->GetTransform().scale = Vector3D(100, 10, 100);
 
@@ -58,7 +58,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
 		entity->GetTransform().rotation = Quaternion();
 		entity->GetTransform().scale = Vector3D(2, 2, 2);
-		entity->GetTransform().postition = Vector3D(0, 0, 0);
+		entity->GetTransform().position = Vector3D(0, 0, 0);
 		entity->name = "Test";
 		m_entities.push_back(entity);
 	}
@@ -71,7 +71,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 
 		entity->GetTransform().rotation = Quaternion(0, 0, 45);
 		entity->GetTransform().scale = Vector3D(3, 1, 3);
-		entity->GetTransform().postition = Vector3D(-1, 4, 0);
+		entity->GetTransform().position = Vector3D(-1, 4, 0);
 
 		auto rb = entity->AddComponent<RigidBody>();
 		entity->AddComponent<BoxCollider>();
@@ -87,7 +87,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	{
 		Entity* entity = new Entity();
 		entity->name = "Ball_";
-		entity->GetTransform().postition = Vector3D(
+		entity->GetTransform().position = Vector3D(
 			10.0f * (((float)rand() / (RAND_MAX)) - 0.5f),
 			(3 * i) + 6,
 			10.0f * (((float)rand() / (RAND_MAX))) - 0.5f);
@@ -165,7 +165,7 @@ void Scene::AddBall()
 {
 	Entity* entity = new Entity();
 	entity->name = "Ball_";
-	entity->GetTransform().postition = m_camera->GetTransform().postition - Vector3D(0, 0, 3);
+	entity->GetTransform().position = m_camera->GetTransform().position - Vector3D(0, 0, 3);
 
 	entity->GetTransform().rotation = Quaternion();
 	entity->GetTransform().scale = Vector3D(1, 1, 1) * (1 + 1 * ((double)rand() / (RAND_MAX)));

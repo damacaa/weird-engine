@@ -34,6 +34,8 @@ void Game::Update()
 	Time::deltaTime = delta / 1000.f;
 	this->m_activeScene->Update();
 
+	cout << Input::GetMouseX() << endl;
+
 	Input::Update();
 }
 

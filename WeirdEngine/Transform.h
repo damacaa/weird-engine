@@ -4,14 +4,17 @@ class Transform
 {
 public:
 	Vector3D postition;
-	//Vector3D eulerRotation;
-	Quaternion Rotation;
+	Quaternion rotation;
 	Vector3D scale = Vector3D(1, 1, 1);
-	Transform* Parent = nullptr;
+	Transform* parent = nullptr;
 
 	Transform() {};
 	void SetParent(Transform* parent) {
-		Parent = parent;
+		this->parent = parent;
+
+		if (!parent)
+			return;
+
 		postition.x = postition.x / parent->scale.x;
 		postition.y = postition.y / parent->scale.y;
 		postition.z = postition.z / parent->scale.z;
@@ -26,6 +29,6 @@ public:
 
 inline void Transform::Rotate(Vector3D axis, float angle)
 {
-	Quaternion newRotation = Rotation * Quaternion(axis, angle);
-	Rotation = newRotation ;
+	Quaternion newRotation = rotation * Quaternion(axis, angle);
+	rotation = newRotation;
 }

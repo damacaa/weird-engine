@@ -39,6 +39,7 @@ public:
 	Vector3Dx<S> operator-(Vector3Dx<S> v);
 	Vector3Dx<S> operator*(S s);
 	Vector3Dx<S> operator/(S s);
+	Vector3Dx<S> operator-() const;
 	S operator*(Vector3Dx<S> v);
 
 	static Vector3Dx<S> Clamp(Vector3Dx<S> v, Vector3Dx<S> min, Vector3Dx<S> max);
@@ -46,49 +47,52 @@ public:
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::Add(Vector3Dx<S> v)
 {
-	return Vector3Dx<S>(this->X() + v.X(), this->Y() + v.Y(), this->Z() + v.Z());
+	return Vector3Dx<S>(x + v.X(), y + v.Y(), z + v.Z());
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::operator+(Vector3Dx<S> v)
 {
-	return Vector3Dx<S>(this->X() + v.X(), this->Y() + v.Y(), this->Z() + v.Z());
+	return Vector3Dx<S>(x + v.X(), y + v.Y(), z + v.Z());
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::Substract(Vector3Dx<S> v)
 {
-	return Vector3Dx<S>(this->X() - v.X(), this->Y() - v.Y(), this->Z() - v.Z());
+	return Vector3Dx<S>(x - v.X(), y - v.Y(), z - v.Z());
 }
 
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::operator-(Vector3Dx<S> v)
 {
-	return Vector3Dx<S>(this->X() - v.X(), this->Y() - v.Y(), this->Z() - v.Z());
+	return Vector3Dx<S>(x - v.X(), y - v.Y(), z - v.Z());
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::Product(S s)
 {
-	return Vector3Dx<S>(this->X() * s, this->Y() * s, this->Z() * s);
+	return Vector3Dx<S>(x * s, y * s, z * s);
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::operator*(S s)
 {
-	return Vector3Dx<S>(this->X() * s, this->Y() * s, this->Z() * s);
+	return Vector3Dx<S>(x * s, y * s, z * s);
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::Division(S s)
 {
-	return Vector3Dx<S>(this->X() / s, this->Y() / s, this->Z() / s);
+	return Vector3Dx<S>(x / s, y / s, z / s);
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::operator/(S s)
 {
-	return Vector3Dx<S>(this->X() / s, this->Y() / s, this->Z() / s);
+	return Vector3Dx<S>(x / s, y / s, z / s);
 }
 
+template <class S> Vector3Dx<S> Vector3Dx<S>::operator-() const {
+	return Vector3Dx<S>(-x, -y, -z);
+}
 
 template <class S> S Vector3Dx<S>::DotProduct(Vector3Dx<S> v)
 {
-	return this->X() * v.X + this->Y * v.Y + this->Z * v.Z;
+	return x * v.X + this->Y * v.Y + this->Z * v.Z;
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::CrossProduct(Vector3Dx<S> v)
@@ -127,7 +131,7 @@ inline Vector3D Vector3Dx<S>::Normalized()
 
 template <class S> S Vector3Dx<S>::operator*(Vector3Dx<S> v)
 {
-	return this->X() * v.X + this->Y * v.Y + this->Z * v.Z;
+	return x * v.X + this->Y * v.Y + this->Z * v.Z;
 }
 
 template<class S>

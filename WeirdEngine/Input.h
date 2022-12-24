@@ -125,8 +125,8 @@ public:
 		if (!m_mouseHasBeenMoved) {
 			m_deltaX = 0;
 			m_deltaY = 0;
-			m_mouseHasBeenMoved = false;
 		}
+		m_mouseHasBeenMoved = false;
 	}
 };
 

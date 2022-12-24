@@ -92,7 +92,7 @@ template <class S> Vector3Dx<S> Vector3Dx<S>::operator-() const {
 
 template <class S> S Vector3Dx<S>::DotProduct(Vector3Dx<S> v)
 {
-	return x * v.X + this->Y * v.Y + this->Z * v.Z;
+	return  x * v.x + y * v.y + z * v.z;
 }
 
 template <class S> Vector3Dx<S> Vector3Dx<S>::CrossProduct(Vector3Dx<S> v)

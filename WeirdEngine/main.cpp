@@ -82,13 +82,13 @@ void idle()
 void keyPressed(unsigned char key, int px, int py)
 {
 	game.ProcessKeyPressed(key, px, py);
-	glutPostRedisplay();
+	//glutPostRedisplay();
 }
 
 void keyReleased(unsigned char key, int px, int py)
 {
 	game.ProcessKeyReleased(key, px, py);
-	glutPostRedisplay();
+	//glutPostRedisplay();
 }
 
 void specialKey(int key, int x, int y)
@@ -113,13 +113,13 @@ void specialKey(int key, int x, int y)
 void mouseMoved(int x, int y)
 {
 	game.ProcessMouseMovement(x, y);
-	glutPostRedisplay();
+	//glutPostRedisplay();
 }
 
 void mouseClicked(int button, int state, int x, int y)
 {
 	game.ProcessMouseClick(button, state, x, y);
-	glutPostRedisplay();
+	//glutPostRedisplay();
 }
 
 

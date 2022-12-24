@@ -13,6 +13,22 @@ public:
 
 	enum class Type { Sphere, AABB };
 	Type type;
+
+	void EnterCollision(Collider* collider) {
+		auto& components = m_entity->GetComponents();
+		for (size_t i = 0; i < components.size(); i++)
+		{
+			components[i]->OnCollisionEnter(collider);
+		}
+	}
+
+	void ExitCollision(Collider* collider) {
+		auto& components = m_entity->GetComponents();
+		for (size_t i = 0; i < components.size(); i++)
+		{
+			components[i]->OnCollisionExit(collider);
+		}
+	}
 };
 
 struct ContactPoint {

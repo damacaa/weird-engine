@@ -4,7 +4,7 @@
 class PrimitiveRenderer : public Renderer
 {
 public:
-	enum class Primitive { Sphere, Cube, Cone, Torus, Dodecahedron, Octahedron, Tetrahedron, Icosahedron, Teapot };
+	enum class Primitive { Sphere, BigSphere, Cube, Cone, Torus, Dodecahedron, Octahedron, Tetrahedron, Icosahedron, Teapot };
 
 private:
 

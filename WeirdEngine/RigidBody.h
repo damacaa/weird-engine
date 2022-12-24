@@ -25,16 +25,21 @@ public:
 	Vector3D angularVelocity = Vector3D(0, 0, 0);
 	Quaternion orientation = Quaternion();
 
+	float restitution = 0.2f;
+	float linearDrag = 100.0f;
+	float angularDrag = 100.0f;
+
 	RigidBody(Entity* owner);
 
 	void SetCollider(Collider* collider);
 
 	void SetMass(float mass) {
 		m_mass = mass;
-		m_inverseMass = 1 / mass;
+		m_inverseMass = 1.0f / mass;
 	}
 
 	float GetMass() { return m_mass; }
+
 	float GetInverseMass() { return m_inverseMass; }
 
 	void Fix();
@@ -54,6 +59,8 @@ public:
 	void Rotate(Vector3D axis, float amount);
 
 	void Update();
+
+	void OnCollisionEnter(Collider* collider) {  }
 };
 
 

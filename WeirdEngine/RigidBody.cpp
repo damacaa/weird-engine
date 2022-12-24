@@ -13,8 +13,8 @@ RigidBody::RigidBody(Entity* owner) :Component(owner)
 	position = owner->GetTransform().position;
 	orientation = owner->GetTransform().rotation;
 
-	float values[3][3]{ {0,0,0}, {0,0,0}, {0,0,0} }; // Collider.GetInertiaTensor() ????
-	m_inertiaTensor = orientation.ToRotationMatrix() * Matrix3D(values);
+	float values[3][3]{ {0,0,0}, {0,0,0}, {0,0,0} };
+	m_inertiaTensor = Matrix3D(values);
 }
 
 void RigidBody::SetCollider(Collider* collider)
@@ -38,7 +38,7 @@ void RigidBody::AddForce(Vector3D force)
 void RigidBody::AddForce(Vector3D force, Vector3D position)
 {
 	this->force = this->force + force;
-	torque = torque + 10000.0f * position.CrossProduct(force);
+	torque = torque + position.CrossProduct(force);
 }
 
 void RigidBody::ClearForces()
@@ -54,11 +54,16 @@ void RigidBody::ClearForces()
 
 Matrix3D RigidBody::GetUpdatedInvertedInertiaTensor()
 {
-	float i = 1;
-	float j = 1;
-	float k = 1;
 
-	float values[3][3] = { {i,0,0}, {0,j,0}, {0,0,k} };
+	float w = m_entity->GetTransform().scale.x;
+	float h = m_entity->GetTransform().scale.y;
+	float d = m_entity->GetTransform().scale.z;
+
+	float i = 0.083333f * m_mass * (w * w + d * d);
+	float j = 0.083333f * m_mass * (d * d + h * h);
+	float k = 0.083333f * m_mass * (w * w + h * h);
+
+	float values[3][3] = { {1.0f / i, 0, 0}, {0, 1.0f / j, 0}, {0, 0, 1.0f / k} };
 	auto newInertiaTensor = Matrix3D(values);
 
 	auto orientationMatrix = orientation.ToRotationMatrix();
@@ -80,5 +85,5 @@ void RigidBody::Rotate(Vector3D axis, float amount)
 void RigidBody::Update()
 {
 	m_entity->GetTransform().position = position;
-	m_entity->GetTransform().rotation = orientation;
+	//m_entity->GetTransform().rotation = orientation;
 }

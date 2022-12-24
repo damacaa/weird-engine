@@ -5,21 +5,23 @@ class PhysicsEngine
 {
 private:
 
-	std::vector<RigidBody*> _rigidBodies;
-	std::vector<Collider*> _colliders;
+	std::vector<RigidBody*> m_rigidBodies;
+	std::vector<Collider*> m_colliders;
 
-	float _delta;
-	int _substeps;
+	std::vector<CollisionInfo> m_collisions;
+
+	float m_delta;
+	int m_substeps;
 
 	Vector3D gravity = Vector3D(0, -9.8f, 0);
 
-	PhysicsEngine() :_delta(0.01f), _substeps(3) {};
+	PhysicsEngine() :m_delta(0.01f), m_substeps(5) {};
 
 public:
 
 	static PhysicsEngine& GetInstance() {
-		static PhysicsEngine* _instance = new PhysicsEngine();
-		return *_instance;
+		static PhysicsEngine* m_instance = new PhysicsEngine();
+		return *m_instance;
 	};
 
 	PhysicsEngine(PhysicsEngine& other) = delete;
@@ -41,7 +43,7 @@ public:
 	bool CheckCollision(BoxCollider& box, BoxCollider& otherBox, CollisionInfo& collisionInfo);
 	bool CheckCollision(BoxCollider& box, SphereCollider& sphere, CollisionInfo& collisionInfo);
 
-	void ResolveCollision(int i, int j, CollisionInfo& collisionInfo);
+	void ResolveCollision(int i, int j, CollisionInfo& collisionInfo, float delta);
 
 	void TestFunc();
 };

@@ -25,6 +25,9 @@ void PrimitiveRenderer::Render() {
 	case PrimitiveRenderer::Primitive::Sphere:
 		glutSolidSphere(.5, 12, 12);
 		break;
+	case PrimitiveRenderer::Primitive::BigSphere:
+		glutSolidSphere(.5, 100, 100);
+		break;
 	case PrimitiveRenderer::Primitive::Cube:
 		glutSolidCube(1);
 		break;

@@ -3,27 +3,27 @@
 Entity::Entity(std::string name)
 {
 	name = name;
-	_components = std::vector<Component*>();
+	m_components = std::vector<Component*>();
 	m_transform = new Transform();
 }
 
 void Entity::Update()
 {
-	for (auto c : _components) {
+	for (auto c : m_components) {
 		c->Update();
 	}
 }
 
 void Entity::FixedUpdate()
 {
-	for (auto c : _components) {
+	for (auto c : m_components) {
 		c->FixedUpdate();
 	}
 }
 
 void Entity::Render()
 {
-	for (auto c : _components) {
+	for (auto c : m_components) {
 		c->Render();
 	}
 }

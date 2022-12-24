@@ -1,5 +1,6 @@
 #pragma once
 #include "Entity.h"
+class Collider;
 class Component
 {
 protected:
@@ -24,6 +25,9 @@ public:
 	virtual void Update() {}
 	virtual void FixedUpdate() {}
 	virtual void LateUpdate() {}
+
+	virtual void OnCollisionEnter(Collider* collider) {}
+	virtual void OnCollisionExit(Collider* collider) {}
 
 	const static std::vector<Component*> Instances() { return m_instances; }
 };

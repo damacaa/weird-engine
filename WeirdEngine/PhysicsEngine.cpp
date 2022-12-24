@@ -1,41 +1,44 @@
 #include <iostream>
 
 #include "PhysicsEngine.h"
-#include "Collider.h"
-#include <cassert>
-
 
 void PhysicsEngine::Update()
 {
-	for (int i = 0; i < _substeps; i++)
+	for (int i = 0; i < m_substeps; i++)
 	{
-		Step(_delta / (float)_substeps);
+		Step(m_delta / (float)m_substeps);
 	}
 }
 
 void PhysicsEngine::Step(float delta)
 {
 
-	for (size_t i = 0; i < _colliders.size(); i++)
+	for (size_t i = 0; i < m_colliders.size(); i++)
 	{
-		for (size_t j = i + 1; j < _colliders.size(); j++)
+		for (size_t j = i + 1; j < m_colliders.size(); j++)
 		{
 			CollisionInfo collisionInfo;
 			if (CheckCollision(i, j, collisionInfo)) {
-				ResolveCollision(i, j, collisionInfo);
+
+				ResolveCollision(i, j, collisionInfo, delta);
+
+				collisionInfo.a->EnterCollision(collisionInfo.b);
+				collisionInfo.b->EnterCollision(collisionInfo.a);
+
+				//m_collisions.push_back(collisionInfo);
 			}
 		}
 	}
 
-	for (size_t i = 0; i < _rigidBodies.size(); i++)
+	for (size_t i = 0; i < m_rigidBodies.size(); i++)
 	{
-		auto rb = _rigidBodies[i];
+		auto rb = m_rigidBodies[i];
 
 		Transform& t = rb->GetEntity().GetTransform();
 
 		auto inverseMass = rb->GetInverseMass();
 
-		Vector3D force = rb->GetForce() - (500.0f * delta * rb->velocity); // Damping
+		Vector3D force = rb->GetForce() - (rb->linearDrag * delta * rb->GetMass() * rb->velocity); // Damping
 
 		Vector3D acceleration = force * inverseMass;
 
@@ -48,16 +51,16 @@ void PhysicsEngine::Step(float delta)
 		rb->position = rb->position + delta * rb->velocity;
 
 
-		Vector3D torque = rb->torque - (100.0f * delta *rb->angularVelocity); // Damping
-		Vector3D angAccel = rb->GetUpdatedInvertedInertiaTensor() * torque;
-		rb->angularVelocity =  rb->angularVelocity + angAccel * delta;
+		//Vector3D torque = rb->torque - (rb->angularDrag * delta * rb->angularVelocity); // Damping
+		//Vector3D angAccel = rb->GetUpdatedInvertedInertiaTensor() * torque;
+		//rb->angularVelocity = rb->angularVelocity + angAccel * delta;
 
-		Quaternion angularVelocityQuaternion = Quaternion(
-			delta * 0.5f * rb->angularVelocity.x,
-			delta * 0.5f * rb->angularVelocity.y,
-			delta * 0.5f * rb->angularVelocity.z);
+		//Quaternion angularVelocityQuaternion = Quaternion(
+		//	delta * 0.5f * rb->angularVelocity.x,
+		//	delta * 0.5f * rb->angularVelocity.y,
+		//	delta * 0.5f * rb->angularVelocity.z);
 
-		rb->orientation = rb->orientation * angularVelocityQuaternion;
+		//rb->orientation = rb->orientation * angularVelocityQuaternion;
 
 		rb->ClearForces();
 	}
@@ -67,8 +70,8 @@ void PhysicsEngine::Step(float delta)
 
 bool PhysicsEngine::CheckCollision(int i, int j, CollisionInfo& collisionInfo)
 {
-	auto* a = _colliders[i];
-	auto* b = _colliders[j];
+	auto* a = m_colliders[i];
+	auto* b = m_colliders[j];
 
 	collisionInfo.a = a;
 	collisionInfo.b = b;
@@ -101,10 +104,7 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 	auto& rigidBodyA = sphere.GetRigidBody();
 	auto& rigidBodyB = otherSphere.GetRigidBody();
 
-	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
-	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
-
-	Vector3D delta = transformB.position - transformA.position;
+	Vector3D delta = rigidBodyB.position - rigidBodyA.position;
 	float distance = delta.Norm();
 
 	float radiusA = sphere.GetRadius();
@@ -119,7 +119,7 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 		Vector3D pointA = radiusA * delta;
 		Vector3D pointB = -(radiusB * delta);
 
-		collisionInfo.AddContactPoint(pointA, pointB, delta, penetration); // points where suposed to be in local
+		collisionInfo.AddContactPoint(pointA, pointB, delta, penetration);
 
 		return true;
 	}
@@ -135,7 +135,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 	Transform& transformA = rigidBodyA.GetEntity().GetTransform();
 	Transform& transformB = rigidBodyB.GetEntity().GetTransform();
 
-	Vector3D delta = transformB.position - transformA.position;
+	Vector3D delta = rigidBodyB.position - rigidBodyA.position;
 	Vector3D totalSize = (transformA.scale * 0.5f) + (transformB.scale * 0.5f);
 
 	if (abs(delta.x) < totalSize.x &&
@@ -149,19 +149,19 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 			Vector3D(0, 0, -1), Vector3D(0, 0, 1),
 		};
 
-		Vector3D maxA = transformA.position + transformA.scale;
-		Vector3D minA = transformA.position - transformA.scale;
+		Vector3D maxA = rigidBodyA.position + (0.5f * transformA.scale);
+		Vector3D minA = rigidBodyA.position - (0.5f * transformA.scale);
 
-		Vector3D maxB = transformB.position + transformB.scale;
-		Vector3D minB = transformB.position - transformB.scale;
+		Vector3D maxB = rigidBodyB.position + (0.5f * transformB.scale);
+		Vector3D minB = rigidBodyB.position - (0.5f * transformB.scale);
 
 		float distances[6]{
-				(maxB.x - minA.x),// distance of box ’b’ to ’left ’ of ’a ’.
-				(maxA.x - minB.x),// distance of box ’b’ to ’right ’ of ’a ’.
-				(maxB.y - minA.y),// distance of box ’b’ to ’bottom ’ of ’a ’.
-				(maxA.y - minB.y),// distance of box ’b’ to ’top ’ of ’a ’.
-				(maxB.z - minA.z),// distance of box ’b’ to ’far ’ of ’a ’.
-				(maxA.z - minB.z) // distance of box ’b’ to ’near ’ of ’a ’.
+				(maxB.x - minA.x),
+				(maxA.x - minB.x),
+				(maxB.y - minA.y),
+				(maxA.y - minB.y),
+				(maxB.z - minA.z),
+				(maxA.z - minB.z)
 		};
 
 		float penetration = FLT_MAX;
@@ -174,8 +174,6 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 				bestAxis = faces[i];
 			}
 		}
-
-		penetration *= 0.1f;
 
 		collisionInfo.AddContactPoint(Vector3D(), Vector3D(), bestAxis, penetration);
 		return true;
@@ -194,10 +192,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 
 	Vector3D halfSize = transformBox.scale * 0.5f;
 
-	Vector3D delta = transformSphere.position - transformBox.position;
-
-	// Matrix3D inverseRotationMatrix = transformBox.rotation.ToRotationMatrix().Inverse();
-	// Vector3D inverseDelta = inverseRotationMatrix * delta;
+	Vector3D delta = rigidBodySphere.position - rigidBodyBox.position;
 
 	Vector3D closestPointOnBox = Vector3D::Clamp(delta, -halfSize, halfSize);
 
@@ -220,35 +215,73 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, Col
 
 
 
-void PhysicsEngine::ResolveCollision(int i, int j, CollisionInfo& collisionInfo)
+void PhysicsEngine::ResolveCollision(int i, int j, CollisionInfo& collisionInfo, float delta)
 {
-	//collisionInfo.a->GetRigidBody()._velocity = -collisionInfo.a->GetRigidBody()._velocity;
-	//collisionInfo.b->GetRigidBody()._velocity = -collisionInfo.b->GetRigidBody()._velocity;
+	RigidBody& rbA = collisionInfo.a->GetRigidBody();
+	RigidBody& rbB = collisionInfo.b->GetRigidBody();
 
-	Vector3D force = 100.0f * collisionInfo.point.normal * collisionInfo.point.penetration;
+	// Pojection method
+	float totalMass = rbA.GetInverseMass() + rbB.GetInverseMass();
 
-	//collisionInfo.a->GetRigidBody().Fix();
-	//collisionInfo.b->GetRigidBody().Fix();
+	rbA.position = rbA.position - 100.0f * delta * (collisionInfo.point.penetration * (rbA.GetInverseMass() / totalMass) * collisionInfo.point.normal);
+	rbB.position = rbB.position + 100.0f * delta * (collisionInfo.point.penetration * (rbB.GetInverseMass() / totalMass) * collisionInfo.point.normal);
 
-	collisionInfo.a->GetRigidBody().AddForce(-force, collisionInfo.point.localA);
-	collisionInfo.b->GetRigidBody().AddForce(force, collisionInfo.point.localB);
+	// Penalty method
+
+	Vector3D force = 10000.0f * collisionInfo.point.normal * collisionInfo.point.penetration;
+
+	rbA.AddForce(-rbA.restitution * (rbA.GetInverseMass() / totalMass) * force, collisionInfo.point.localA);
+	rbB.AddForce(rbB.restitution * (rbB.GetInverseMass() / totalMass) * force, collisionInfo.point.localB);
+
+	rbA.AddForce(-rbA.velocity, collisionInfo.point.localA);
+	rbB.AddForce(-rbB.velocity, collisionInfo.point.localB);
+
+	return;
+	// Impulse method
+
+	Vector3D relativeA = collisionInfo.point.localA - rbA.position;
+	Vector3D relativeB = collisionInfo.point.localB - rbB.position;
+
+	Vector3D angVelocityA = rbA.angularVelocity.CrossProduct(relativeA);
+	Vector3D angVelocityB = rbB.angularVelocity.CrossProduct(relativeB);
+
+	Vector3D fullVelocityA = rbA.velocity + angVelocityA;
+	Vector3D fullVelocityB = rbB.velocity + angVelocityB;
+
+	Vector3D contactVelocity = fullVelocityB - fullVelocityA;
+
+	float impulseForce = contactVelocity.DotProduct(collisionInfo.point.normal);
+
+	Vector3D inertiaA = (rbA.GetUpdatedInvertedInertiaTensor() * relativeA.CrossProduct(collisionInfo.point.normal)).CrossProduct(relativeA);
+	Vector3D inertiaB = (rbB.GetUpdatedInvertedInertiaTensor() * relativeB.CrossProduct(collisionInfo.point.normal)).CrossProduct(relativeB);
+
+	float angularEffect = (inertiaA + inertiaB).DotProduct(collisionInfo.point.normal);
+
+	float cRestitution = 0.5f * (rbA.restitution + rbB.restitution);
+
+	float impulseJ = (-(1.0f + cRestitution) * impulseForce) / (totalMass + angularEffect);
+
+	Vector3D fullImpulse = impulseJ * collisionInfo.point.normal;
+
+	rbA.velocity = rbA.velocity - (rbA.GetInverseMass() * fullImpulse);
+	rbB.velocity = rbB.velocity + (rbB.GetInverseMass() * fullImpulse);
 }
 
 void PhysicsEngine::TestFunc()
 {
-	_rigidBodies[2]->AddForce(Vector3D(0, 0, -1000), Vector3D(1.5f, 1.5f, 1.5f));
+	m_rigidBodies[2]->AddForce(Vector3D(0, 0, -1000), Vector3D(-1.0f, 0, 0));
 }
 
 int PhysicsEngine::Add(RigidBody* newRigidBody)
 {
-	_rigidBodies.push_back(newRigidBody);
+	m_rigidBodies.push_back(newRigidBody);
 
-	return _rigidBodies.size() - 1;
+	return m_rigidBodies.size() - 1;
 }
 
 int PhysicsEngine::Add(Collider* collider)
 {
-	_colliders.push_back(collider);
+	m_colliders.push_back(collider);
 
-	return _colliders.size() - 1;
+	return m_colliders.size() - 1;
 }

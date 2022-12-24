@@ -5,6 +5,8 @@
 #include <GL/glut.h>
 
 
+
+
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
 /// States are:
@@ -16,19 +18,29 @@
 class Input
 {
 
-	int m_mouseX;
-	int m_mouseY;
-	bool m_mouseHasBeenMoved;
-	int m_deltaX;
-	int m_deltaY;
+	int m_mouseX = 0;
+	int m_mouseY = 0;
+	bool m_mouseHasBeenMoved = false;
+	int m_deltaX = 0;
+	int m_deltaY = 0;
 
-	int m_keyTable[256];
-	int m_mouseKeysTable[5];
+	int* m_keyTable;
+	int* m_mouseKeysTable;
 
 	bool m_mouseWarp = true;
 	bool m_firstMouseInput = true;
 
 public:
+
+	Input() {
+		m_keyTable = new int[256]{ 0 };
+		m_mouseKeysTable = new int[5]{ 0 };
+	}
+
+	~Input() {
+		delete m_keyTable;
+		delete m_mouseKeysTable;
+	}
 
 	static Input& GetInstance() {
 		static Input* _instance = new Input();
@@ -81,35 +93,38 @@ public:
 
 	void HandleMouseButton(int button, int state) { m_mouseKeysTable[button] = -((2 * state) - 1); }
 
-	bool GetKey(unsigned char key) { return m_keyTable[toupper(key)] > 0; }
-	bool GetKeyDown(unsigned char key) { return m_keyTable[toupper(key)] == 1; }
-	bool GetKeyUp(unsigned char key) { return m_keyTable[toupper(key)] == -1; }
+	bool GetKey(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] > 0; }
+	bool GetKeyDown(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] == 1; }
+	bool GetKeyUp(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] == -1; }
 
 	void PressKey(unsigned char key) {
-		m_keyTable[toupper(key)]++;
+		m_keyTable[toupper(std::min(255, (int)key))]++;
 	}
 
 	void ReleaseKey(unsigned char key) {
-		m_keyTable[toupper(key)] = -1;
+		m_keyTable[toupper(std::min(255, (int)key))] = -1;
 	}
 
 	void Update() {
+
 		for (size_t i = 0; i < 256; i++)
 		{
 			// Updates after first frame where button was down
 			m_keyTable[i] = m_keyTable[i] == 1 ? 2 : m_keyTable[i];
-			m_mouseKeysTable[i] = m_mouseKeysTable[i] == 1 ? 2 : m_mouseKeysTable[i];
 
 			// Updates after first frame where button was up
 			m_keyTable[i] = m_keyTable[i] == -1 ? 0 : m_keyTable[i];
+		}
+
+		for (size_t i = 0; i < 5; i++)
+		{
+			m_mouseKeysTable[i] = m_mouseKeysTable[i] == 1 ? 2 : m_mouseKeysTable[i];
 			m_mouseKeysTable[i] = m_mouseKeysTable[i] == -1 ? 0 : m_mouseKeysTable[i];
+		}
 
-
-			if (!m_mouseHasBeenMoved) {
-				m_deltaX = 0;
-				m_deltaY = 0;
-			}
-
+		if (!m_mouseHasBeenMoved) {
+			m_deltaX = 0;
+			m_deltaY = 0;
 			m_mouseHasBeenMoved = false;
 		}
 	}

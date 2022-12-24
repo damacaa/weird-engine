@@ -6,8 +6,7 @@ class Transform;
 class Entity
 {
 private:
-	std::vector<Component*> _components;
-protected:
+	std::vector<Component*> m_components;
 	Transform* m_transform;
 public:
 	std::string name;
@@ -29,13 +28,14 @@ public:
 	void Render();
 
 	Transform& GetTransform() { return *m_transform; };
+	std::vector<Component*>& GetComponents() { return m_components; }
 };
 
 template<class T>
 inline T* Entity::AddComponent()
 {
 	auto c = new T(this);
-	_components.push_back(c);
+	m_components.push_back(c);
 	return c;
 }
 
@@ -43,7 +43,7 @@ inline T* Entity::AddComponent()
 template<class T>
 inline T* Entity::GetComponent()
 {
-	for (Component* c : _components)
+	for (Component* c : m_components)
 		if (dynamic_cast<T*>(c))
 			return (T*)c;
 
@@ -54,7 +54,7 @@ template<class T>
 inline std::vector<T*> Entity::GetComponents()
 {
 	std::vector<T*> v;
-	for (Component* c : _components)
+	for (Component* c : m_components)
 		if (dynamic_cast<T*>(c))
 			v.push_back((T*)c);
 	return v;

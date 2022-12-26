@@ -39,18 +39,22 @@ inline void Transform::Rotate(Vector3D axis, float angle)
 
 inline Vector3D Transform::GetRightVector()
 {
-	Matrix3D rotMat = rotation.ToRotationMatrix();
-	return rotMat * Vector3D(1, 0, 0);
+	//Matrix3D rotMat = rotation.ToRotationMatrix();
+	//return rotMat * Vector3D(1, 0, 0);
+	return rotation.Right();
 }
 
 inline Vector3D Transform::GetUpVector()
 {
-	Matrix3D rotMat = rotation.ToRotationMatrix();
-	return rotMat * Vector3D(0, 1, 0);
+	//Matrix3D rotMat = rotation.ToRotationMatrix();
+	//return rotMat * Vector3D(0, 1, 0);
+	return rotation.Up();
 }
 
 inline Vector3D Transform::GetForwardVector()
 {
-	Matrix3D rotMat = rotation.ToRotationMatrix();
-	return rotMat * Vector3D(0, 0, -1);
+	//Matrix3D rotMat = rotation.ToRotationMatrix().Inverse();
+	//Vector3D forward = rotMat * Vector3D(0, 0, 1);
+	//forward.z = -forward.z;
+	return rotation.Forward();
 }

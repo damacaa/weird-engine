@@ -12,7 +12,6 @@ void PhysicsEngine::Update()
 
 void PhysicsEngine::Step(float delta)
 {
-
 	for (size_t i = 0; i < m_colliders.size(); i++)
 	{
 		for (size_t j = i + 1; j < m_colliders.size(); j++)

@@ -9,7 +9,7 @@ private:
 	Collider* m_collider;
 
 	float m_mass = 1;
-	float m_inverseMass = 0;
+	float m_inverseMass = 1;
 	Matrix3D m_inertiaTensor;
 
 public:

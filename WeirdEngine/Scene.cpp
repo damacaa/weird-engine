@@ -130,11 +130,11 @@ void Scene::Update()
 	}
 
 	// Ball shooting
-	if (Input::GetInstance().GetMouseButtonDown(Input::MouseButton::LeftClick)) {
+	if (Input::GetMouseButtonDown(Input::MouseButton::LeftClick)) {
 		AddBall();
 	}
 
-	if (Input::GetInstance().GetMouseButtonDown(Input::MouseButton::RightClick)) {
+	if (Input::GetMouseButtonDown(Input::MouseButton::RightClick)) {
 		PhysicsEngine::GetInstance().TestFunc();
 	}
 }

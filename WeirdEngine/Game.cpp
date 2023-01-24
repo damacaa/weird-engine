@@ -37,12 +37,12 @@ void Game::Update()
 	Time::currentTime += Time::deltaTime;
 
 
-	Input::GetInstance().Update();
+	Input::Update();
 }
 
 void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 {
-	Input::GetInstance().PressKey(key);
+	Input::PressKey(key);
 
 	if (key == 27)
 	{
@@ -54,15 +54,15 @@ void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 
 void Game::ProcessKeyReleased(unsigned char key, int px, int py)
 {
-	Input::GetInstance().ReleaseKey(key);
+	Input::ReleaseKey(key);
 }
 
 void Game::ProcessMouseMovement(int x, int y)
 {
-	Input::GetInstance().SetMouseXY(x, y);
+	Input::SetMouseXY(x, y);
 }
 
 void Game::ProcessMouseClick(int button, int state, int x, int y)
 {
-	Input::GetInstance().HandleMouseButton(button, state);
+	Input::HandleMouseButton(button, state);
 }

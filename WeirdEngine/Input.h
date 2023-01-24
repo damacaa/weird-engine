@@ -30,8 +30,6 @@ class Input
 	bool m_mouseWarp = true;
 	bool m_firstMouseInput = true;
 
-public:
-
 	Input() {
 		m_keyTable = new int[256]{ 0 };
 		m_mouseKeysTable = new int[5]{ 0 };
@@ -47,6 +45,8 @@ public:
 		return *_instance;
 	};
 
+public:
+
 	enum class MouseButton {
 		LeftClick = 0,
 		MiddleClick = 1,
@@ -55,78 +55,84 @@ public:
 		WheelDown = 4
 	};
 
-	int GetMouseX() { return m_mouseX; };
-	int GetMouseY() { return m_mouseY; };
-	float GetMouseDeltaX() { return (float)m_deltaX / (float)GLUT_SCREEN_WIDTH; };
-	float GetMouseDeltaY() { return (float)m_deltaY / (float)GLUT_SCREEN_HEIGHT; };
+	static int GetMouseX() { return GetInstance().m_mouseX; };
+	static int GetMouseY() { return GetInstance().m_mouseY; };
+	static float GetMouseDeltaX() { return (float)GetInstance().m_deltaX / (float)GLUT_SCREEN_WIDTH; };
+	static float GetMouseDeltaY() { return (float)GetInstance().m_deltaY / (float)GLUT_SCREEN_HEIGHT; };
 
-	void SetMouseXY(int x, int y) {
+	static void SetMouseXY(int x, int y) {
 
-		if (m_firstMouseInput) {
-			m_firstMouseInput = false;
-			m_mouseX = x;
-			m_mouseY = y;
+		auto& instance = GetInstance();
+
+		if (instance.m_firstMouseInput) {
+			instance.m_firstMouseInput = false;
+			instance.m_mouseX = x;
+			instance.m_mouseY = y;
 		}
 
-		m_deltaX = x - m_mouseX;
-		m_mouseX = x;
+		instance.m_deltaX = x - instance.m_mouseX;
+		instance.m_mouseX = x;
 
-		m_deltaY = y - m_mouseY;
-		m_mouseY = y;
+		instance.m_deltaY = y - instance.m_mouseY;
+		instance.m_mouseY = y;
 
-		m_mouseHasBeenMoved = true;
+		instance.m_mouseHasBeenMoved = true;
 
-		if (m_mouseWarp && (
+		if (instance.m_mouseWarp && (
 			x < 100 || x > GLUT_SCREEN_WIDTH - 100 ||
 			y < 100 || y > GLUT_SCREEN_HEIGHT - 100)) {
 
-			m_mouseX = GLUT_SCREEN_WIDTH / 2;
-			m_mouseY = GLUT_SCREEN_HEIGHT / 2;
+			instance.m_mouseX = GLUT_SCREEN_WIDTH / 2;
+			instance.m_mouseY = GLUT_SCREEN_HEIGHT / 2;
 
 			glutWarpPointer(GLUT_SCREEN_WIDTH / 2, GLUT_SCREEN_HEIGHT / 2);
 		}
 	}
 
-	bool GetMouseButton(MouseButton button) { return m_mouseKeysTable[(int)button] > 0; }
-	bool GetMouseButtonDown(MouseButton button) { return m_mouseKeysTable[(int)button] == 1; }
-	bool GetMouseButtonUp(MouseButton button) { return m_mouseKeysTable[(int)button] == -1; }
+	static bool GetMouseButton(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] > 0; }
+	static bool GetMouseButtonDown(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] == 1; }
+	static bool GetMouseButtonUp(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] == -1; }
 
-	void HandleMouseButton(int button, int state) { m_mouseKeysTable[button] = -((2 * state) - 1); }
+	static void HandleMouseButton(int button, int state) { GetInstance().m_mouseKeysTable[button] = -((2 * state) - 1); }
 
-	bool GetKey(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] > 0; }
-	bool GetKeyDown(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] == 1; }
-	bool GetKeyUp(unsigned char key) { return m_keyTable[toupper(std::min(255, (int)key))] == -1; }
 
-	void PressKey(unsigned char key) {
-		m_keyTable[toupper(std::min(255, (int)key))]++;
+
+	static bool GetKey(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] > 0; }
+	static bool GetKeyDown(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] == 1; }
+	static bool GetKeyUp(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] == -1; }
+
+	static void PressKey(unsigned char key) {
+		GetInstance().m_keyTable[toupper(std::min(255, (int)key))]++;
 	}
 
-	void ReleaseKey(unsigned char key) {
-		m_keyTable[toupper(std::min(255, (int)key))] = -1;
+	static void ReleaseKey(unsigned char key) {
+		GetInstance().m_keyTable[toupper(std::min(255, (int)key))] = -1;
 	}
 
-	void Update() {
+	static void Update() {
+
+		auto& instance = GetInstance();
 
 		for (size_t i = 0; i < 256; i++)
 		{
 			// Updates after first frame where button was down
-			m_keyTable[i] = m_keyTable[i] == 1 ? 2 : m_keyTable[i];
+			instance.m_keyTable[i] = instance.m_keyTable[i] == 1 ? 2 : instance.m_keyTable[i];
 
 			// Updates after first frame where button was up
-			m_keyTable[i] = m_keyTable[i] == -1 ? 0 : m_keyTable[i];
+			instance.m_keyTable[i] = instance.m_keyTable[i] == -1 ? 0 : instance.m_keyTable[i];
 		}
 
 		for (size_t i = 0; i < 5; i++)
 		{
-			m_mouseKeysTable[i] = m_mouseKeysTable[i] == 1 ? 2 : m_mouseKeysTable[i];
-			m_mouseKeysTable[i] = m_mouseKeysTable[i] == -1 ? 0 : m_mouseKeysTable[i];
+			instance.m_mouseKeysTable[i] = instance.m_mouseKeysTable[i] == 1 ? 2 : instance.m_mouseKeysTable[i];
+			instance.m_mouseKeysTable[i] = instance.m_mouseKeysTable[i] == -1 ? 0 : instance.m_mouseKeysTable[i];
 		}
 
-		if (!m_mouseHasBeenMoved) {
-			m_deltaX = 0;
-			m_deltaY = 0;
+		if (!instance.m_mouseHasBeenMoved) {
+			instance.m_deltaX = 0;
+			instance.m_deltaY = 0;
 		}
-		m_mouseHasBeenMoved = false;
+		instance.m_mouseHasBeenMoved = false;
 	}
 };
 

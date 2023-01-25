@@ -7,6 +7,15 @@ Entity::Entity(std::string name)
 	m_transform = new Transform();
 }
 
+Entity::~Entity()
+{
+	for (auto it = begin(m_components); it != end(m_components); ++it) {
+		delete* it;
+	}
+
+	delete m_transform;
+}
+
 void Entity::Update()
 {
 	for (auto c : m_components) {

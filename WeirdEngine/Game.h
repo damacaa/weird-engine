@@ -21,13 +21,20 @@ private:
 	long long m_lastUpdatedTime;
 	long long m_delay = 0;
 
-	Scene* m_activeScene;
+	std::shared_ptr<Scene> m_activeScene;
 	vector<Scene*> m_scenes;
 
 public:
 	Game() : m_activeScene(nullptr),
 		m_initialMilliseconds(duration_cast<milliseconds>(system_clock::now().time_since_epoch())),
 		m_lastUpdatedTime(0) {};
+
+	~Game() {
+		for (auto it = begin(m_scenes); it != end(m_scenes); ++it)
+		{
+			delete *it;
+		}
+	};
 
 	void Init();
 	void Render();

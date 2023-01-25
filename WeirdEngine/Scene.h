@@ -27,6 +27,12 @@ public:
 		m_entities = entities;
 	}
 
+	~Scene() {
+		for (auto it = begin(m_entities); it != end(m_entities); ++it) {
+			delete* it;
+		}
+	}
+
 	void Update();
 	void FixedUpdate();
 	void Render();

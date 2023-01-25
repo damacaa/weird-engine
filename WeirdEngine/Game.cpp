@@ -3,13 +3,9 @@
 
 void Game::Init()
 {
-	vector<Entity*> entities;
-
 	Scene* mainScene = new(nothrow) Scene();
-	this->m_scenes.push_back(mainScene);
-
-	this->m_activeScene = mainScene;
-
+	m_scenes.push_back(mainScene);
+	m_activeScene.reset(mainScene);
 }
 
 void Game::Render()
@@ -35,7 +31,6 @@ void Game::Update()
 	this->m_activeScene->Update();
 
 	Time::currentTime += Time::deltaTime;
-
 
 	Input::Update();
 }

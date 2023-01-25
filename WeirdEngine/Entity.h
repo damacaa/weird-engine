@@ -12,6 +12,7 @@ public:
 	std::string name;
 
 	Entity(std::string name = "Entity");
+	~Entity();
 
 	template<class T>
 	T* AddComponent();

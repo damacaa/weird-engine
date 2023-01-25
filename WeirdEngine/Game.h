@@ -8,6 +8,8 @@
 #include <chrono>
 #include <iostream>
 
+#include "DebugHelper.h"
+
 using namespace std::chrono;
 using namespace std;
 
@@ -16,6 +18,7 @@ class Game
 private:
 
 	const double UPDATE_PERIOD = 10; // ms tiempo mundo real
+	const double MAX_FIXED_UPDATES_PER_FRAME = 2;
 
 	milliseconds m_initialMilliseconds;
 	long long m_lastUpdatedTime;
@@ -24,10 +27,16 @@ private:
 	std::shared_ptr<Scene> m_activeScene;
 	vector<Scene*> m_scenes;
 
+	DebugHelper m_debugHelper;
+
 public:
 	Game() : m_activeScene(nullptr),
 		m_initialMilliseconds(duration_cast<milliseconds>(system_clock::now().time_since_epoch())),
-		m_lastUpdatedTime(0) {};
+		m_lastUpdatedTime(0) {
+
+		m_debugHelper = DebugHelper();
+
+	};
 
 	~Game() {
 		for (auto it = begin(m_scenes); it != end(m_scenes); ++it)

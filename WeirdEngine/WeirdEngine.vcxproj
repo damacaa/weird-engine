@@ -146,6 +146,7 @@
     <ClCompile Include="Collider.cpp" />
     <ClCompile Include="Color.cpp" />
     <ClCompile Include="Component.cpp" />
+    <ClCompile Include="DebugHelper.cpp" />
     <ClCompile Include="FlyMovement.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Math.cpp" />
@@ -177,6 +178,7 @@
     <ClInclude Include="Collider.h" />
     <ClInclude Include="Color.h" />
     <ClInclude Include="Component.h" />
+    <ClInclude Include="DebugHelper.h" />
     <ClInclude Include="FlyMovement.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Math.h" />

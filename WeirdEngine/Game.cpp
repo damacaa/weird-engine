@@ -15,16 +15,21 @@ void Game::Render()
 
 void Game::Update()
 {
+	m_debugHelper.RecordTime("Update");
+
+
 	auto time = (duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - this->m_initialMilliseconds.count());
 	auto delta = time - this->m_lastUpdatedTime;
 	this->m_lastUpdatedTime = time;
 
 	m_delay += delta;
-	while (m_delay > UPDATE_PERIOD)
+	int fixedUpdates = 0;
+	while (m_delay > UPDATE_PERIOD && fixedUpdates < MAX_FIXED_UPDATES_PER_FRAME)
 	{
 		Time::fixedDeltaTime = UPDATE_PERIOD / 1000.f;
 		this->m_activeScene->FixedUpdate();
 		m_delay -= UPDATE_PERIOD;
+		++fixedUpdates;
 	}
 
 	Time::deltaTime = delta / 1000.f;
@@ -33,6 +38,8 @@ void Game::Update()
 	Time::currentTime += Time::deltaTime;
 
 	Input::Update();
+
+	m_debugHelper.Wait();
 }
 
 void Game::ProcessKeyPressed(unsigned char key, int px, int py)
@@ -42,6 +49,7 @@ void Game::ProcessKeyPressed(unsigned char key, int px, int py)
 	if (key == 27)
 	{
 		cout << "Exit Game" << endl;
+		m_debugHelper.PrintTimes();
 		glutDestroyWindow(1);
 	}
 

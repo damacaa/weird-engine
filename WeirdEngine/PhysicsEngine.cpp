@@ -12,9 +12,15 @@ void PhysicsEngine::Update()
 
 void PhysicsEngine::Step(float delta)
 {
-	for (size_t i = 0; i < m_colliders.size(); i++)
+	int boxCount = 0;
+	BoxCollider* boxes = ComponentManager<BoxCollider>::GetActiveComponents(&boxCount);
+
+	m_colliderCount = boxCount;
+	m_colliders = boxes;
+
+	for (size_t i = 0; i < m_colliderCount; i++)
 	{
-		for (size_t j = i + 1; j < m_colliders.size(); j++)
+		for (size_t j = i + 1; j < m_colliderCount; j++)
 		{
 			CollisionInfo collisionInfo;
 			if (CheckCollision(i, j, collisionInfo)) {
@@ -29,9 +35,14 @@ void PhysicsEngine::Step(float delta)
 		}
 	}
 
-	for (size_t i = 0; i < m_rigidBodies.size(); i++)
+	int rbCount = 0;
+	RigidBody* rbs = ComponentManager<RigidBody>::GetActiveComponents(&rbCount);
+
+
+	for (size_t i = 0; i < rbCount; i++)
 	{
-		auto rb = m_rigidBodies[i];
+
+		RigidBody* rb = &rbs[i];
 
 		Transform& t = rb->GetEntity().GetTransform();
 
@@ -69,8 +80,8 @@ void PhysicsEngine::Step(float delta)
 
 bool PhysicsEngine::CheckCollision(int i, int j, CollisionInfo& collisionInfo)
 {
-	auto* a = m_colliders[i];
-	auto* b = m_colliders[j];
+	Collider* a = &m_colliders[i];
+	Collider* b = &m_colliders[j];
 
 	collisionInfo.a = a;
 	collisionInfo.b = b;
@@ -271,16 +282,4 @@ void PhysicsEngine::TestFunc()
 	m_rigidBodies[2]->AddForce(Vector3D(0, 0, -1000), Vector3D(-1.0f, 0, 0));
 }
 
-int PhysicsEngine::Add(RigidBody* newRigidBody)
-{
-	m_rigidBodies.push_back(newRigidBody);
 
-	return m_rigidBodies.size() - 1;
-}
-
-int PhysicsEngine::Add(Collider* collider)
-{
-	m_colliders.push_back(collider);
-
-	return m_colliders.size() - 1;
-}

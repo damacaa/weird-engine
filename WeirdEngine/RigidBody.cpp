@@ -3,10 +3,11 @@
 #include "PhysicsEngine.h"
 #include <iostream>
 
-RigidBody::RigidBody(Entity* owner) :Component(owner)
+void RigidBody::SetUp(Entity* owner)
 {
+	Component::SetUp(owner);
+
 	m_collider = owner->GetComponent<Collider>();
-	PhysicsEngine::GetInstance().Add(this);
 
 	m_inverseMass = 1.0 / m_mass;
 

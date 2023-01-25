@@ -7,7 +7,7 @@ class Camera : public Component
 private:
 
 public:
-	Camera(Entity* owner):Component(owner) {};
+	Camera() :Component() {};
 	void Render();
 };
 

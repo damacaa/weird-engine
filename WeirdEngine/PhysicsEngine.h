@@ -6,7 +6,10 @@ class PhysicsEngine
 private:
 
 	std::vector<RigidBody*> m_rigidBodies;
-	std::vector<Collider*> m_colliders;
+
+
+	Collider* m_colliders;
+	int m_colliderCount;
 
 	std::vector<CollisionInfo> m_collisions;
 
@@ -16,6 +19,10 @@ private:
 	Vector3D gravity = Vector3D(0, -9.8f, 0);
 
 	PhysicsEngine() :m_delta(0.01f), m_substeps(5) {};
+
+	int Add(RigidBody* newRigidBody);
+
+	int Add(Collider* collider);
 
 public:
 
@@ -28,14 +35,9 @@ public:
 
 	void operator=(const PhysicsEngine&) = delete;
 
-	int Add(RigidBody* newRigidBody);
-
-	int Add(Collider* collider);
-
 	void Update();
 
 	void Step(float delta);
-
 
 	bool CheckCollision(int i, int j, CollisionInfo& collisionInfo);
 

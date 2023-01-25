@@ -20,7 +20,7 @@ void PrimitiveRenderer::Render() {
 
 	glColor3f(_color.GetRedComponent(), _color.GetGreenComponent(), _color.GetBlueComponent());
 
-	switch (_primitive)
+	switch (m_primitive)
 	{
 	case PrimitiveRenderer::Primitive::Sphere:
 		glutSolidSphere(.5, 12, 12);

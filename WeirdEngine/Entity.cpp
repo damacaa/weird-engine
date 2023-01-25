@@ -2,7 +2,7 @@
 #include "ECS.h"
 Entity::Entity(std::string name)
 {
-	name = name;
+	this->name = name;
 	m_components = std::vector<Component*>();
 	m_transform = new Transform();
 }
@@ -16,23 +16,16 @@ Entity::~Entity()
 	delete m_transform;
 }
 
-void Entity::Update()
+void Entity::OnCollisionEnter(Collider& collider)
 {
-	for (auto c : m_components) {
-		c->Update();
+	for (auto it = begin(m_components); it != end(m_components); ++it) {
+		(*it)->OnCollisionEnter(collider);
 	}
 }
 
-void Entity::FixedUpdate()
+void Entity::OnCollisionExit(Collider& collider)
 {
-	for (auto c : m_components) {
-		c->FixedUpdate();
-	}
-}
-
-void Entity::Render()
-{
-	for (auto c : m_components) {
-		c->Render();
+	for (auto it = begin(m_components); it != end(m_components); ++it) {
+		(*it)->OnCollisionExit(collider);
 	}
 }

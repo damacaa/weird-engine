@@ -4,7 +4,8 @@
 class SphereCollider : public Collider
 {
 public:
-	SphereCollider(Entity* owner) :Collider(owner) { type = Type::Sphere; };
+	SphereCollider() :Collider() { type = Type::Sphere; };
+
 	float GetRadius() { return GetEntity().GetTransform().scale.x / 2; };
 };
 

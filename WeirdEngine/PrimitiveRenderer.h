@@ -9,10 +9,11 @@ public:
 private:
 
 public:
-	Primitive _primitive;
+	Primitive m_primitive;
 
-	PrimitiveRenderer(Entity* owner) :Renderer(owner), _primitive(Primitive::Sphere) {};
-	void Render();
+	PrimitiveRenderer():Renderer(), m_primitive(Primitive::Sphere) {};
 
+	Primitive GetPrimitive() { return m_primitive; }
+	void Render() override;
 };
 

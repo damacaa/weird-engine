@@ -2,8 +2,10 @@
 #include "ECS.h"
 
 
-FlyMovement::FlyMovement(Entity* owner) :Component(owner)
+void FlyMovement::SetUp(Entity* owner)
 {
+	Component::SetUp(owner);
+
 	auto rb = m_entity->AddComponent<RigidBody>();
 	rb->applyGravity = true;
 	m_entity->AddComponent<SphereCollider>();
@@ -42,7 +44,8 @@ void FlyMovement::Update()
 	}
 
 	//rb->AddForce(100.0f * direction);
-	rb->velocity = 20.0f * direction;
+	
+		rb->velocity = 20.0f * direction;
 
 	m_angleX += 10000.0f * Time::deltaTime * Input::GetMouseDeltaY();
 	m_angleX = std::max(-75.0f, std::min(m_angleX, 75.0f));

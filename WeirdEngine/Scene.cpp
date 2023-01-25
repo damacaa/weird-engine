@@ -36,7 +36,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		floor->AddComponent<BoxCollider>();
 
 		auto renderer = floor->AddComponent<PrimitiveRenderer>();
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
+		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
 		renderer->_color = Color(1, 1, 1);
 
 		m_entities.push_back(floor);
@@ -54,7 +54,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		floor->AddComponent<SphereCollider>();
 
 		auto renderer = floor->AddComponent<PrimitiveRenderer>();
-		renderer->_primitive = PrimitiveRenderer::Primitive::BigSphere;
+		renderer->m_primitive = PrimitiveRenderer::Primitive::BigSphere;
 		renderer->_color = Color(1, 1, 1);
 
 		m_entities.push_back(floor);
@@ -71,7 +71,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 
 		entity->AddComponent<SphereCollider>();
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
-		renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
+		renderer->m_primitive = PrimitiveRenderer::Primitive::Sphere;
 		entity->GetTransform().rotation = Quaternion();
 		entity->GetTransform().scale = Vector3D(2, 2, 2);
 		entity->GetTransform().position = Vector3D(0, 0, 0);
@@ -93,7 +93,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		entity->AddComponent<BoxCollider>();
 
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
+		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
 
 		m_entities.push_back(entity);
 	}
@@ -113,7 +113,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->_color = Color(1, 1, 1);
-		renderer->_primitive = PrimitiveRenderer::Primitive::Cube;
+		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
 
 		auto rb = entity->AddComponent<RigidBody>();
 		entity->AddComponent<BoxCollider>();
@@ -124,11 +124,6 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 
 void Scene::Update()
 {
-	for (auto e : m_entities)
-	{
-		e->Update();
-	}
-
 	// Ball shooting
 	if (Input::GetMouseButtonDown(Input::MouseButton::LeftClick)) {
 		AddBall();
@@ -137,24 +132,22 @@ void Scene::Update()
 	if (Input::GetMouseButtonDown(Input::MouseButton::RightClick)) {
 		PhysicsEngine::GetInstance().TestFunc();
 	}
+
+	ComponentManager<FlyMovement>::Update();
+	ComponentManager<RigidBody>::Update();
 }
 
 void Scene::FixedUpdate()
 {
-	for (auto e : m_entities)
-	{
-		e->FixedUpdate();
-	}
-
 	PhysicsEngine::GetInstance().Update();
 }
 
 void Scene::Render()
 {
-	for (auto e : Renderer::Instances())
-	{
-		e->Render();
-	}
+
+	m_camera->GetComponent<Camera>()->Render();
+
+	ComponentManager<PrimitiveRenderer>::Render();
 }
 
 void Scene::AddBall()
@@ -172,7 +165,7 @@ void Scene::AddBall()
 	auto rb = entity->AddComponent<RigidBody>();
 	rb->SetMass(0.5f);
 
-	renderer->_primitive = PrimitiveRenderer::Primitive::Sphere;
+	renderer->m_primitive = PrimitiveRenderer::Primitive::Sphere;
 	entity->AddComponent<SphereCollider>();
 
 	rb->velocity = 25.0f * m_camera->GetTransform().GetForwardVector();

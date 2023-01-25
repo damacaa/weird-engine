@@ -1,6 +1,7 @@
 #pragma once
 #include "Entity.h"
 #include "Component.h"
+#include "ComponentManager.h"
 #include "Transform.h"
 
 #include "Camera.h"
@@ -16,7 +17,4 @@
 
 #include "FlyMovement.h"
 
-class ECS
-{
-};
 

@@ -5,29 +5,26 @@
 class RigidBody;
 class Collider : public Component
 {
+public:
+	enum class Type { Sphere, AABB };
+
 protected:
 	RigidBody* m_rb;
-	Collider(Entity* owner);
-public:
-	RigidBody& GetRigidBody() { return *m_rb; }
 
-	enum class Type { Sphere, AABB };
+public:
 	Type type;
 
+	Collider():Component(), m_rb(nullptr), type(Type::AABB) {};
+	void SetUp(Entity* owner) override;
+
+	RigidBody& GetRigidBody() { return *m_rb; }
+
 	void EnterCollision(Collider* collider) {
-		auto& components = m_entity->GetComponents();
-		for (size_t i = 0; i < components.size(); i++)
-		{
-			components[i]->OnCollisionEnter(collider);
-		}
+		m_entity->OnCollisionEnter(*collider);
 	}
 
 	void ExitCollision(Collider* collider) {
-		auto& components = m_entity->GetComponents();
-		for (size_t i = 0; i < components.size(); i++)
-		{
-			components[i]->OnCollisionExit(collider);
-		}
+		m_entity->OnCollisionExit(*collider);
 	}
 };
 

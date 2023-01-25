@@ -1,43 +1,44 @@
 #pragma once
 #include <vector>
 #include <string>
+#include "ComponentManager.h"
+
 class Component;
 class Transform;
+class Collider;
 class Entity
 {
 private:
-	std::vector<Component*> m_components;
 	Transform* m_transform;
+	std::vector<Component*> m_components;
+	std::vector<Component*>& GetAllComponents() { return m_components; }
 public:
 	std::string name;
-
+	 
 	Entity(std::string name = "Entity");
 	~Entity();
+
+	Transform& GetTransform() { return *m_transform; };
 
 	template<class T>
 	T* AddComponent();
 
 	template<class T>
 	T* GetComponent();
-
 	template<class T>
 	std::vector<T*> GetComponents();
 
-	void Update();
-	void FixedUpdate();
-	void LateUpdate() {};
-	void Render();
-
-	Transform& GetTransform() { return *m_transform; };
-	std::vector<Component*>& GetComponents() { return m_components; }
+	void OnCollisionEnter(Collider& collider);
+	void OnCollisionExit(Collider& collider);
 };
 
 template<class T>
 inline T* Entity::AddComponent()
 {
-	auto c = new T(this);
-	m_components.push_back(c);
-	return c;
+	T& c = ComponentManager<T>::GetComponent();
+	c.SetUp(this);
+	m_components.push_back(&c);
+	return &c;
 }
 
 // https://stackoverflow.com/questions/44105058/implementing-component-system-from-unity-in-c

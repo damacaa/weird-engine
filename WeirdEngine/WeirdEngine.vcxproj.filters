@@ -93,9 +93,6 @@
     <ClCompile Include="Solid.cpp">
       <Filter>Archivos de origen\Models</Filter>
     </ClCompile>
-    <ClCompile Include="Text.cpp">
-      <Filter>Archivos de origen\Components</Filter>
-    </ClCompile>
     <ClCompile Include="Input.cpp">
       <Filter>Archivos de origen\Core</Filter>
     </ClCompile>
@@ -132,8 +129,14 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Archivos de origen\Components\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="ComponentManager.cpp">
+      <Filter>Archivos de origen\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Text.cpp">
+      <Filter>Archivos de origen\Components\Rendering</Filter>
+    </ClCompile>
     <ClCompile Include="FlyMovement.cpp">
-      <Filter>Archivos de origen</Filter>
+      <Filter>Archivos de origen\Components</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -215,11 +218,14 @@
     <ClInclude Include="SphereCollider.h">
       <Filter>Archivos de encabezado\Components\Physics</Filter>
     </ClInclude>
+    <ClInclude Include="ComponentManager.h">
+      <Filter>Archivos de encabezado\ECS</Filter>
+    </ClInclude>
     <ClInclude Include="Text.h">
-      <Filter>Archivos de encabezado\Components</Filter>
+      <Filter>Archivos de encabezado\Components\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="FlyMovement.h">
-      <Filter>Archivos de encabezado</Filter>
+      <Filter>Archivos de encabezado\Components</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

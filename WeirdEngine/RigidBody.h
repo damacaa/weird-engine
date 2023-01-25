@@ -14,6 +14,10 @@ private:
 
 public:
 
+	RigidBody():Component(), m_collider(nullptr) {}
+
+	void SetUp(Entity* owner) override;
+
 	bool applyGravity = true;
 	Vector3D gravity = Vector3D(0, -9.8, 0);
 

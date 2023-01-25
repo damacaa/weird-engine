@@ -9,7 +9,7 @@ class Renderer : public Component
 public:
 	Color _color;
 
-	Renderer(Entity* owner) :Component(owner), _color(Color(1, 1, 1)) {};
+	Renderer() :Component(), _color(Color(1, 1, 1)) {};
 
 	void Render() = 0;
 };

@@ -7,8 +7,9 @@ private:
 	float m_angleY = 0;
 	float m_speed = 10000.0f;
 public:
+	void SetUp(Entity* owner)override;
 
-	FlyMovement(Entity* owner);
+	FlyMovement():Component() {};
 
 	void Update();
 };

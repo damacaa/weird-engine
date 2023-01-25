@@ -102,7 +102,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	for (size_t i = 0; i < 10; i++)
 	{
 		Entity* entity = new Entity();
-		entity->name = "Ball_";
+		entity->name = "Box";
 		entity->GetTransform().position = Vector3D(
 			10.0f * (((float)rand() / (RAND_MAX)) - 0.5f),
 			(3 * i) + 6,

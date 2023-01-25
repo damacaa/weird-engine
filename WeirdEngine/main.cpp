@@ -145,7 +145,6 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouseClicked);
 	glutIdleFunc(idle);
 
-
 	initGraphics();
 
 	glutMainLoop();

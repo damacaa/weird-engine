@@ -135,6 +135,9 @@
     <ClCompile Include="FlyMovement.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="DebugHelper.cpp">
+      <Filter>Archivos de origen\Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -220,6 +223,9 @@
     </ClInclude>
     <ClInclude Include="FlyMovement.h">
       <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugHelper.h">
+      <Filter>Archivos de encabezado\Utilities</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

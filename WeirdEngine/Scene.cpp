@@ -99,7 +99,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	}
 
 	srand((unsigned)time(NULL));
-	for (size_t i = 0; i < 10; i++)
+	for (size_t i = 0; i < 300; i++)
 	{
 		Entity* entity = new Entity();
 		entity->name = "Box";

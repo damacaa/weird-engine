@@ -129,9 +129,6 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Archivos de origen\Components\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="ComponentManager.cpp">
-      <Filter>Archivos de origen\ECS</Filter>
-    </ClCompile>
     <ClCompile Include="Text.cpp">
       <Filter>Archivos de origen\Components\Rendering</Filter>
     </ClCompile>
@@ -140,6 +137,9 @@
     </ClCompile>
     <ClCompile Include="DebugHelper.cpp">
       <Filter>Archivos de origen\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="ComponentManager.cpp">
+      <Filter>Archivos de origen\ECS</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -221,9 +221,6 @@
     <ClInclude Include="SphereCollider.h">
       <Filter>Archivos de encabezado\Components\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="ComponentManager.h">
-      <Filter>Archivos de encabezado\ECS</Filter>
-    </ClInclude>
     <ClInclude Include="Text.h">
       <Filter>Archivos de encabezado\Components\Rendering</Filter>
     </ClInclude>
@@ -232,6 +229,9 @@
     </ClInclude>
     <ClInclude Include="DebugHelper.h">
       <Filter>Archivos de encabezado\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="ComponentManager.h">
+      <Filter>Archivos de encabezado\ECS</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

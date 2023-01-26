@@ -38,13 +38,10 @@ void PhysicsEngine::Step(float delta)
 	int rbCount = 0;
 	RigidBody* rbs = ComponentManager<RigidBody>::GetActiveComponents(&rbCount);
 
-
 	for (size_t i = 0; i < rbCount; i++)
 	{
 
 		RigidBody* rb = &rbs[i];
-
-		Transform& t = rb->GetEntity().GetTransform();
 
 		auto inverseMass = rb->GetInverseMass();
 

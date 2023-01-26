@@ -8,7 +8,7 @@ template<class C> class ComponentManager
 private:
 	C* m_components;
 
-	size_t m_initialPoolSize = 100;
+	size_t m_initialPoolSize = 305;
 	size_t m_usedComponents = 0;
 
 	ComponentManager() {

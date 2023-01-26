@@ -8,7 +8,7 @@ void FlyMovement::SetUp(Entity* owner)
 
 	auto rb = m_entity->AddComponent<RigidBody>();
 	rb->applyGravity = true;
-	m_entity->AddComponent<SphereCollider>();
+	m_entity->AddComponent<Collider>();
 
 	Vector3D defaultRotation = m_entity->GetTransform().rotation.ToEuler();
 	m_angleX = defaultRotation.x;

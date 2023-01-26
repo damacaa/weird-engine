@@ -11,4 +11,13 @@ void Collider::SetUp(Entity* owner)
 
 	if (m_rb != nullptr)
 		m_rb->SetCollider(this);
+
+	
+	m_position = m_entity->GetTransform().position;
+	m_rotation = m_entity->GetTransform().rotation.ToEuler();
+	m_scale = m_entity->GetTransform().scale;
+}
+
+void Collider::Update()
+{
 }

@@ -6,8 +6,7 @@
 
 #include "Camera.h"
 #include "RigidBody.h"
-#include "BoxCollider.h"
-#include "SphereCollider.h"
+#include "Collider.h"
 
 #include "Renderer.h"
 #include "PrimitiveRenderer.h"

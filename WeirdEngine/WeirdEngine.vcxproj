@@ -174,7 +174,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BoxCollider.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Collider.h" />
     <ClInclude Include="Color.h" />
@@ -197,7 +196,6 @@
     <ClInclude Include="RigidBody.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Solid.h" />
-    <ClInclude Include="SphereCollider.h" />
     <ClInclude Include="Text.h" />
     <ClInclude Include="Time.h" />
     <ClInclude Include="Transform.h" />

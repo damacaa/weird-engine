@@ -41,9 +41,9 @@ public:
 
 	bool CheckCollision(int i, int j, CollisionInfo& collisionInfo);
 
-	bool CheckCollision(SphereCollider& sphere, SphereCollider& otherSphere, CollisionInfo& collisionInfo);
-	bool CheckCollision(BoxCollider& box, BoxCollider& otherBox, CollisionInfo& collisionInfo);
-	bool CheckCollision(BoxCollider& box, SphereCollider& sphere, CollisionInfo& collisionInfo);
+	bool CheckCollisionSphereSphere(Collider& sphere, Collider& otherSphere, CollisionInfo& collisionInfo);
+	bool CheckCollisionBoxBox(Collider& box, Collider& otherBox, CollisionInfo& collisionInfo);
+	bool CheckCollisionBoxSphere(Collider& box, Collider& sphere, CollisionInfo& collisionInfo);
 
 	void ResolveCollision(int i, int j, CollisionInfo& collisionInfo, float delta);
 

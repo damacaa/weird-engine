@@ -8,7 +8,7 @@ template<class C> class ComponentManager
 private:
 	C* m_components;
 
-	size_t m_initialPoolSize = 305;
+	size_t m_initialPoolSize = 1005;
 	size_t m_usedComponents = 0;
 
 	ComponentManager() {
@@ -32,6 +32,8 @@ public:
 	static void LateUpdate();
 
 	static C* GetActiveComponents(int* count);
+
+	static C* GetComponentFrom(int id);
 };
 
 template<class C>
@@ -74,3 +76,10 @@ inline C* ComponentManager<C>::GetActiveComponents(int* count)
 	*count = GetInstance().m_usedComponents;
 	return GetInstance().m_components;
 }
+
+template<class C>
+inline C* ComponentManager<C>::GetComponentFrom(int id)
+{
+	return &GetInstance().m_components[id];
+}
+

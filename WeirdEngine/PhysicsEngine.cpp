@@ -13,7 +13,7 @@ void PhysicsEngine::Update()
 void PhysicsEngine::Step(float delta)
 {
 	int boxCount = 0;
-	BoxCollider* boxes = ComponentManager<BoxCollider>::GetActiveComponents(&boxCount);
+	Collider* boxes = ComponentManager<Collider>::GetActiveComponents(&boxCount);
 
 	m_colliderCount = boxCount;
 	m_colliders = boxes;
@@ -85,28 +85,28 @@ bool PhysicsEngine::CheckCollision(int i, int j, CollisionInfo& collisionInfo)
 
 	if (a->type == b->type) {
 
-		if (a->type == Collider::Type::Sphere) {
-			return CheckCollision((SphereCollider&)*a, (SphereCollider&)*b, collisionInfo);
+		if (a->type == Collider::ColliderType::Sphere) {
+			return CheckCollisionSphereSphere(*a, *b, collisionInfo);
 		}
 		else {
-			return CheckCollision((BoxCollider&)*a, (BoxCollider&)*b, collisionInfo);
+			return CheckCollisionBoxBox(*a, *b, collisionInfo);
 		}
 	}
 	else {
 
-		if (a->type == Collider::Type::Sphere)
+		if (a->type == Collider::ColliderType::Sphere)
 		{
 			collisionInfo.a = b;
 			collisionInfo.b = a;
-			return CheckCollision((BoxCollider&)*b, (SphereCollider&)*a, collisionInfo);
+			return CheckCollisionBoxSphere(*b, *a, collisionInfo);
 		}
 		else {
-			return CheckCollision((BoxCollider&)*a, (SphereCollider&)*b, collisionInfo);
+			return CheckCollisionBoxSphere(*a, *b, collisionInfo);
 		}
 	}
 }
 
-bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& otherSphere, CollisionInfo& collisionInfo)
+bool PhysicsEngine::CheckCollisionSphereSphere(Collider& sphere, Collider& otherSphere, CollisionInfo& collisionInfo)
 {
 	auto& rigidBodyA = sphere.GetRigidBody();
 	auto& rigidBodyB = otherSphere.GetRigidBody();
@@ -134,7 +134,7 @@ bool PhysicsEngine::CheckCollision(SphereCollider& sphere, SphereCollider& other
 	return false;
 }
 
-bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, CollisionInfo& collisionInfo)
+bool PhysicsEngine::CheckCollisionBoxBox(Collider& box, Collider& otherBox, CollisionInfo& collisionInfo)
 {
 	auto& rigidBodyA = box.GetRigidBody();
 	auto& rigidBodyB = otherBox.GetRigidBody();
@@ -189,7 +189,7 @@ bool PhysicsEngine::CheckCollision(BoxCollider& box, BoxCollider& otherBox, Coll
 
 }
 
-bool PhysicsEngine::CheckCollision(BoxCollider& box, SphereCollider& sphere, CollisionInfo& collisionInfo)
+bool PhysicsEngine::CheckCollisionBoxSphere(Collider& box, Collider& sphere, CollisionInfo& collisionInfo)
 {
 	auto& rigidBodyBox = box.GetRigidBody();
 	auto& rigidBodySphere = sphere.GetRigidBody();
@@ -276,7 +276,6 @@ void PhysicsEngine::ResolveCollision(int i, int j, CollisionInfo& collisionInfo,
 
 void PhysicsEngine::TestFunc()
 {
-	m_rigidBodies[2]->AddForce(Vector3D(0, 0, -1000), Vector3D(-1.0f, 0, 0));
 }
 
 

@@ -6,6 +6,7 @@ class Collider;
 class RigidBody : public Component
 {
 private:
+	//Entity* m_entity;
 	Collider* m_collider;
 
 	float m_mass = 1;
@@ -13,11 +14,6 @@ private:
 	Matrix3D m_inertiaTensor;
 
 public:
-
-	RigidBody():Component(), m_collider(nullptr) {}
-
-	void SetUp(Entity* owner) override;
-
 	bool applyGravity = true;
 	Vector3D gravity = Vector3D(0, -9.8, 0);
 
@@ -33,7 +29,10 @@ public:
 	float linearDrag = 100.0f;
 	float angularDrag = 100.0f;
 
-	RigidBody(Entity* owner);
+	RigidBody() : Component(), m_collider(nullptr) {}
+
+	void SetUp(Entity* owner);
+	Entity& GetEntity() { return *m_entity; };
 
 	void SetCollider(Collider* collider);
 

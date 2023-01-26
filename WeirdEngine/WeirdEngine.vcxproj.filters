@@ -200,9 +200,6 @@
     <ClInclude Include="Matrix3D.h">
       <Filter>Archivos de encabezado\Utilities</Filter>
     </ClInclude>
-    <ClInclude Include="BoxCollider.h">
-      <Filter>Archivos de encabezado\Components\Physics</Filter>
-    </ClInclude>
     <ClInclude Include="Collider.h">
       <Filter>Archivos de encabezado\Components\Physics</Filter>
     </ClInclude>
@@ -217,9 +214,6 @@
     </ClInclude>
     <ClInclude Include="Renderer.h">
       <Filter>Archivos de encabezado\Components\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="SphereCollider.h">
-      <Filter>Archivos de encabezado\Components\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Text.h">
       <Filter>Archivos de encabezado\Components\Rendering</Filter>

@@ -33,7 +33,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		auto rb = floor->AddComponent<RigidBody>();
 		rb->Fix();
 
-		floor->AddComponent<BoxCollider>();
+		floor->AddComponent<Collider>();
 
 		auto renderer = floor->AddComponent<PrimitiveRenderer>();
 		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
@@ -51,7 +51,8 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		auto rb = floor->AddComponent<RigidBody>();
 		rb->Fix();
 
-		floor->AddComponent<SphereCollider>();
+		auto collider = floor->AddComponent<Collider>();
+		
 
 		auto renderer = floor->AddComponent<PrimitiveRenderer>();
 		renderer->m_primitive = PrimitiveRenderer::Primitive::BigSphere;
@@ -69,7 +70,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		rb->applyGravity = false;
 		rb->Fix();
 
-		entity->AddComponent<SphereCollider>();
+		entity->AddComponent<Collider>();
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->m_primitive = PrimitiveRenderer::Primitive::Sphere;
 		entity->GetTransform().rotation = Quaternion();
@@ -90,7 +91,7 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		entity->GetTransform().position = Vector3D(-1, 4, 0);
 
 		auto rb = entity->AddComponent<RigidBody>();
-		entity->AddComponent<BoxCollider>();
+		entity->AddComponent<Collider>();
 
 		auto renderer = entity->AddComponent<PrimitiveRenderer>();
 		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
@@ -99,13 +100,13 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 	}
 
 	srand((unsigned)time(NULL));
-	for (size_t i = 0; i < 300; i++)
+	for (size_t i = 0; i < 50; i++)
 	{
 		Entity* entity = new Entity();
 		entity->name = "Box";
 		entity->GetTransform().position = Vector3D(
 			10.0f * (((float)rand() / (RAND_MAX)) - 0.5f),
-			(3 * i) + 6,
+			(1 * i) + 6,
 			10.0f * (((float)rand() / (RAND_MAX))) - 0.5f);
 
 		entity->GetTransform().rotation = Quaternion();
@@ -116,7 +117,8 @@ Scene::Scene() : RED(1), GREEN(1), BLUE(1), ALPHA(1)
 		renderer->m_primitive = PrimitiveRenderer::Primitive::Cube;
 
 		auto rb = entity->AddComponent<RigidBody>();
-		entity->AddComponent<BoxCollider>();
+		auto collider = entity->AddComponent<Collider>();
+		collider->type = Collider::ColliderType::AABB;
 
 		m_entities.push_back(entity);
 	}
@@ -166,7 +168,7 @@ void Scene::AddBall()
 	rb->SetMass(0.5f);
 
 	renderer->m_primitive = PrimitiveRenderer::Primitive::Sphere;
-	entity->AddComponent<SphereCollider>();
+	entity->AddComponent<Collider>();
 
 	rb->velocity = 25.0f * m_camera->GetTransform().GetForwardVector();
 

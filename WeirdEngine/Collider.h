@@ -6,16 +6,25 @@ class RigidBody;
 class Collider : public Component
 {
 public:
-	enum class Type { Sphere, AABB };
+	enum class ColliderType { Sphere, AABB };
 
 protected:
 	RigidBody* m_rb;
 
-public:
-	Type type;
+	Vector3D m_position = Vector3D(1, 1, 1);
+	Vector3D m_rotation = Vector3D(1, 1, 1);
+	Vector3D m_scale = Vector3D(1, 1, 1);
 
-	Collider():Component(), m_rb(nullptr), type(Type::AABB) {};
+public:
+	ColliderType type;
+
+	Collider() :Component(), m_rb(nullptr), type(ColliderType::AABB) {};
 	void SetUp(Entity* owner) override;
+
+	float GetRadius() { return m_scale.x * 0.5f; };
+	Vector3D GetPosition() { return m_position; };
+	Vector3D GetRotation() { return m_rotation; };
+	Vector3D GetScale() { return m_scale; };
 
 	RigidBody& GetRigidBody() { return *m_rb; }
 
@@ -26,6 +35,8 @@ public:
 	void ExitCollision(Collider* collider) {
 		m_entity->OnCollisionExit(*collider);
 	}
+
+	void Update() override;
 };
 
 struct ContactPoint {

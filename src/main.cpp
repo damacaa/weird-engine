@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 
 int main()
 {
-	// RenderModels resolution
+	// Render resolution
 	const unsigned int width = 1200;
 	const unsigned int height = 800;
 

@@ -3,7 +3,7 @@
 #include "../weird-renderer/Model.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-renderer/RenderPlane.h"
-
+#include "ecs/ECS.h"
 
 using namespace std;
 class Scene

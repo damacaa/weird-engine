@@ -143,6 +143,24 @@
     <ClInclude Include="src\weird-renderer\Light.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\weird-physics\RigidBody.h">
+      <Filter>Header Files\weird-physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Entity.h">
+      <Filter>Header Files\weird-engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Component.h">
+      <Filter>Header Files\weird-engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\ECS.h">
+      <Filter>Header Files\weird-engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Components\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\ComponentManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\weird-renderer\shaders\default.frag">

@@ -169,6 +169,12 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\weird-engine\ecs\Component.h" />
+    <ClInclude Include="src\weird-engine\ecs\ComponentManager.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\Transform.h" />
+    <ClInclude Include="src\weird-engine\ecs\ECS.h" />
+    <ClInclude Include="src\weird-engine\ecs\Entity.h" />
+    <ClInclude Include="src\weird-physics\RigidBody.h" />
     <ClInclude Include="src\weird-renderer\Light.h" />
     <ClInclude Include="src\weird-engine\Input.h" />
     <ClInclude Include="src\weird-engine\Scene.h" />

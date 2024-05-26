@@ -14,6 +14,28 @@ Scene::Scene()
 	LoadScene();
 
 	m_simulation = new Simulation(m_data, m_size);
+
+	//////////////////////////////////////
+
+
+
+	ECS ecs;
+	ecs.registerComponent<Transform>();
+
+	Entity entity = ecs.createEntity();
+	ecs.addComponent(entity, Transform());
+
+
+	/*auto movementSystem = std::make_shared<MovementSystem>();
+	ecs.addSystem<MovementSystem>(movementSystem);
+
+	movementSystem->entities.push_back(entity);
+
+	for (int i = 0; i < 10; ++i) {
+		movementSystem->update(ecs);
+		auto& pos = ecs.getComponent<Transform>(entity);
+		std::cout << "Entity Position: (" << pos.x << ", " << pos.y << ")\n";
+	}*/
 }
 
 

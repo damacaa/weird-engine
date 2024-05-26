@@ -87,7 +87,6 @@ Renderer::~Renderer()
 
 void Renderer::Render(Scene& scene, const double time)
 {
-
 	// Bind sdf renderer frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
 

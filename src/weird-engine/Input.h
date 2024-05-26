@@ -12,33 +12,47 @@
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
 /// States are:
-#define RELEASED_THIS_FRAME        -1	/// -1 Button released this frame.
-#define NOT_PRESSED                 0	/// 0 Button not pressed.
-#define PRESSED_IN_CURRENT_FRAME    1	/// 1 Started pressing the button in current frame.
-#define IS_PRESSED                  2	/// 2 Button has been pressed down for at least one previous frame. 
+#define RELEASED_THIS_FRAME        -1	/// Button released this frame.
+#define NOT_PRESSED                 0	/// Button not pressed.
+#define IS_PRESSED                  1	/// Button has been pressed down for at least one previous frame. 
+#define FIRST_PRESSED    2	/// Started pressing the button in current frame.
 /// </summary>
+
+#define SUPPORTED_KEYS			  342
+
 class Input
 {
 private:
 
+	// Mouse position
+	double m_mouseX = 0;
+	double m_mouseY = 0;
 
-	int m_mouseX = 0;
-	int m_mouseY = 0;
+	// Mouse position difference since last frame
+	double m_deltaX = 0;
+	double m_deltaY = 0;
+
+	// Mouse has been moved since last frame
 	bool m_mouseHasBeenMoved = false;
-	int m_deltaX = 0;
-	int m_deltaY = 0;
 
+	// OpenGL window
 	GLFWwindow* m_window;
+
+	// Window size
 	int m_width, m_height;
 
+	// Store the state of every key and mouse button
 	int* m_keyTable;
 	int* m_mouseKeysTable;
 
-	bool m_mouseWarp = true;
+	// Lock mouse position to the center of the screen
+	bool m_mouseWarp = false;
+
+	// First frame where mouse has been captured
 	bool m_firstMouseInput = true;
 
 	Input() {
-		m_keyTable = new int[256] { 0 };
+		m_keyTable = new int[SUPPORTED_KEYS] { 0 };
 		m_mouseKeysTable = new int[5] { 0 };
 	}
 
@@ -54,7 +68,7 @@ private:
 
 public:
 
-	enum class MouseButton {
+	enum  MouseButton {
 		LeftClick = 0,
 		MiddleClick = 1,
 		RightClick = 2,
@@ -62,109 +76,215 @@ public:
 		WheelDown = 4
 	};
 
+	enum KeyCode
+	{
+		// Letters
+		A = 'A',
+		B = 'B',
+		C = 'C',
+		D = 'D',
+		E = 'E',
+		F = 'F',
+		G = 'G',
+		H = 'H',
+		I = 'I',
+		J = 'J',
+		K = 'K',
+		L = 'L',
+		M = 'M',
+		N = 'N',
+		O = 'O',
+		P = 'P',
+		Q = 'Q',
+		R = 'R',
+		S = 'S',
+		T = 'T',
+		U = 'U',
+		V = 'V',
+		W = 'W',
+		X = 'X',
+		Y = 'Y',
+		Z = 'Z',
+
+		// Digits
+		Num0 = '0',
+		Num1 = '1',
+		Num2 = '2',
+		Num3 = '3',
+		Num4 = '4',
+		Num5 = '5',
+		Num6 = '6',
+		Num7 = '7',
+		Num8 = '8',
+		Num9 = '9',
+
+		// Special keys
+		Space = ' ',
+		Enter = 13,
+		Tab = 9,
+		Backspace = 8,
+		Esc = 27,
+		Up = 128,
+		Down = 129,
+		Left = 130,
+		Right = 131,
+		F1 = 132,
+		F2 = 133,
+		F3 = 134,
+		F4 = 135,
+		F5 = 136,
+		F6 = 137,
+		F7 = 138,
+		F8 = 139,
+		F9 = 140,
+		F10 = 141,
+		F11 = 142,
+		F12 = 143,
+
+		LeftShift = GLFW_KEY_LEFT_SHIFT,
+		LeftCrtl = GLFW_KEY_LEFT_CONTROL,
+		LeftAlt = GLFW_KEY_LEFT_ALT
+	};
+
 #pragma region MouseMovement
-
-
 
 	static int GetMouseX() { return GetInstance().m_mouseX; };
 	static int GetMouseY() { return GetInstance().m_mouseY; };
 	static float GetMouseDeltaX() { return (float)GetInstance().m_deltaX / GetInstance().m_width; };
 	static float GetMouseDeltaY() { return (float)GetInstance().m_deltaY / GetInstance().m_height; };
 
-	static void SetMouseXY(int x, int y) {
+	static void SetMousePosition(int x, int y) {
 
 		auto& instance = GetInstance();
+		instance.m_deltaX += x - instance.m_mouseX;
+		instance.m_deltaY += y - instance.m_mouseY;
 
-		if (instance.m_firstMouseInput) {
-			instance.m_firstMouseInput = false;
-			instance.m_mouseX = x;
-			instance.m_mouseY = y;
-		}
-
-		instance.m_deltaX = x - instance.m_mouseX;
 		instance.m_mouseX = x;
-
-		instance.m_deltaY = y - instance.m_mouseY;
 		instance.m_mouseY = y;
 
-		instance.m_mouseHasBeenMoved = true;
+		glfwSetCursorPos(instance.m_window, x, y);
 
-		if (instance.m_mouseWarp && (
-			x < 100 || x > instance.m_width - 100 ||
-			y < 100 || y > instance.m_height - 100)) {
-
-			int centerX = instance.m_width / 2;
-			int centerY = instance.m_height / 2;
-
-			instance.m_mouseX = centerX;
-			instance.m_mouseY = centerY;
-
-			//glutWarpPointer(GLUT_SCREEN_WIDTH / 2, GLUT_SCREEN_HEIGHT / 2);
-			// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-			glfwSetCursorPos(instance.m_window, centerX, centerY);
-		}
 	}
+
+	// Hides mouse cursor
+	static void ShowMouse() { glfwSetInputMode(GetInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+
+	// Hides mouse cursor
+	static void HideMouse() { glfwSetInputMode(GetInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); }
 
 #pragma endregion
 
 #pragma region MouseButtons
 
-	static bool GetMouseButton(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] > 0; }
-	static bool GetMouseButtonDown(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] == 1; }
-	static bool GetMouseButtonUp(MouseButton button) { return GetInstance().m_mouseKeysTable[(int)button] == RELEASED_THIS_FRAME; }
+	static bool GetMouseButton(MouseButton button)
+	{
+		return GetInstance().m_mouseKeysTable[(int)button] >= IS_PRESSED;
+	}
 
-	// WTF
-	static void HandleMouseButton(int button, int state) { GetInstance().m_mouseKeysTable[button] = -((2 * state) - 1); }
+	static bool GetMouseButtonDown(MouseButton button) 
+	{
+		return GetInstance().m_mouseKeysTable[(int)button] == IS_PRESSED;
+	}
+
+	static bool GetMouseButtonUp(MouseButton button) 
+	{
+		return GetInstance().m_mouseKeysTable[(int)button] == RELEASED_THIS_FRAME;
+	}
 
 #pragma endregion
 
 
 #pragma region Keyboard
 
-	static bool GetKey(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] > NOT_PRESSED; }
-	static bool GetKeyDown(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] == PRESSED_IN_CURRENT_FRAME; }
-	static bool GetKeyUp(unsigned char key) { return GetInstance().m_keyTable[toupper(std::min(255, (int)key))] == RELEASED_THIS_FRAME; }
-
-	static void PressKey(unsigned char key) {
-		GetInstance().m_keyTable[toupper(std::min(255, (int)key))]++;
+	static bool GetKey(KeyCode key)
+	{
+		return GetInstance().m_keyTable[key] >= IS_PRESSED;
 	}
 
-	static void ReleaseKey(unsigned char key) {
-		GetInstance().m_keyTable[toupper(std::min(255, (int)key))] = -1;
+	static bool GetKeyDown(unsigned char key)
+	{
+		return GetInstance().m_keyTable[key] == IS_PRESSED;
 	}
+
+	static bool GetKeyUp(unsigned char key)
+	{
+		return GetInstance().m_keyTable[key] == RELEASED_THIS_FRAME;
+	}
+
+
 
 #pragma endregion
 
+private:
 
+	static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+	{
+		auto& instance = GetInstance();
+		instance.m_mouseKeysTable[(int)MouseButton::WheelUp] = yoffset > 0 ? FIRST_PRESSED : NOT_PRESSED;
+		instance.m_mouseKeysTable[(int)MouseButton::WheelDown] = yoffset < 0 ? FIRST_PRESSED : NOT_PRESSED;
+	}
+
+	void update(GLFWwindow* window, int width, int height)
+	{
+
+		if (m_window == nullptr) {
+			m_window = window;
+
+			// Set the scroll callback
+			glfwSetScrollCallback(window, scroll_callback);
+		}
+
+		m_mouseKeysTable[(int)MouseButton::LeftClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT);
+		m_mouseKeysTable[(int)MouseButton::RightClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT);
+		m_mouseKeysTable[(int)MouseButton::MiddleClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_MIDDLE);
+
+		//m_mouseKeysTable[(int)MouseButton::WheelUp] =
+		//m_mouseKeysTable[(int)MouseButton::WheelDown] =
+
+		// Fetches the coordinates of the cursor
+		glfwGetCursorPos(window, &m_mouseX, &m_mouseY);
+
+
+		for (int i = 0; i < SUPPORTED_KEYS; i++) {
+
+			int current = glfwGetKey(m_window, i);
+			int previous = m_keyTable[i];
+
+			if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
+			{
+				// If it wasn't pressed in previous frame, it's a first press
+				current = FIRST_PRESSED;
+			}
+			else if (current == NOT_PRESSED && (previous == FIRST_PRESSED || previous == IS_PRESSED))
+			{
+				// If it was pressed in previous frame, it's a first release
+				current = RELEASED_THIS_FRAME;
+			}
+
+			m_keyTable[i] = current;
+		}
+
+	}
+
+	void clear() {
+		m_mouseKeysTable[(int)MouseButton::WheelUp] = NOT_PRESSED;
+		m_mouseKeysTable[(int)MouseButton::WheelDown] = NOT_PRESSED;
+	}
+
+public:
 
 	static void Update(GLFWwindow* window, int width, int height) {
-
 		auto& instance = GetInstance();
-		instance.m_window = window;
-		instance.m_width = width;
-		instance.m_height = height;
-
-		for (size_t i = 0; i < 256; i++)
-		{
-			// Updates after first frame where button was down
-			instance.m_keyTable[i] = instance.m_keyTable[i] == 1 ? 2 : instance.m_keyTable[i];
-
-			// Updates after first frame where button was up
-			instance.m_keyTable[i] = instance.m_keyTable[i] == -1 ? 0 : instance.m_keyTable[i];
-		}
-
-		for (size_t i = 0; i < 5; i++)
-		{
-			instance.m_mouseKeysTable[i] = instance.m_mouseKeysTable[i] == 1 ? 2 : instance.m_mouseKeysTable[i];
-			instance.m_mouseKeysTable[i] = instance.m_mouseKeysTable[i] == -1 ? 0 : instance.m_mouseKeysTable[i];
-		}
-
-		if (!instance.m_mouseHasBeenMoved) {
-			instance.m_deltaX = 0;
-			instance.m_deltaY = 0;
-		}
-
-		instance.m_mouseHasBeenMoved = false;
+		instance.update(window, width, height);
 	}
+
+	/// <summary>
+	/// Must be called after update but before render
+	/// </summary>
+	static void Clear() {
+		auto& instance = GetInstance();
+		instance.clear();
+	}
+
 };
 

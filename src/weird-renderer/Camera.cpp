@@ -1,6 +1,6 @@
 #include"Camera.h"
+#include "../weird-engine/Input.h"
 #include <iomanip>
-
 
 
 Camera::Camera(glm::vec3 position)
@@ -11,7 +11,7 @@ Camera::Camera(glm::vec3 position)
 	//instance = this;
 }
 
-void Camera::updateMatrix(float FOVdeg, float nearPlane, float farPlane, int width, int height)
+void Camera::UpdateMatrix(float nearPlane, float farPlane, int width, int height)
 {
 	m_width = width;
 	m_height = height;
@@ -24,7 +24,7 @@ void Camera::updateMatrix(float FOVdeg, float nearPlane, float farPlane, int wid
 	view = glm::lookAt(Position, Position + Orientation, Up);
 
 	// Adds perspective to the Scene
-	projection = glm::perspective(glm::radians(FOVdeg), (float)width / height, nearPlane, farPlane);
+	projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
 
 	// Sets new camera matrix
 	cameraMatrix = projection * view;
@@ -37,61 +37,68 @@ void Camera::Matrix(Shader& shader, const char* uniform)
 }
 
 
-void Camera::Inputs(GLFWwindow* window, float delta)
+void Camera::Inputs(float delta)
 {
 	// Handles key inputs
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	if (Input::GetKey(Input::W))
 	{
 		Position += delta * speed * Orientation;
 	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	if (Input::GetKey(Input::A))
 	{
 		Position += delta * speed * -glm::normalize(glm::cross(Orientation, Up));
 	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	if (Input::GetKey(Input::S))
 	{
 		Position += delta * speed * -Orientation;
 	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	if (Input::GetKey(Input::D))
 	{
 		Position += delta * speed * glm::normalize(glm::cross(Orientation, Up));
 	}
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	if (Input::GetKey(Input::Space))
 	{
 		Position += delta * speed * Up;
 	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	if (Input::GetKey(Input::LeftCrtl))
 	{
 		Position += delta * speed * -Up;
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+	if (Input::GetKey(Input::LeftShift))
 	{
 		speed = 0.4f;
 	}
-	else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
+	else if (Input::GetKeyUp(Input::LeftCrtl))
 	{
 		speed = 0.1f;
 	}
 
-	// Handles mouse inputs
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	if (Input::GetMouseButton(Input::WheelDown))
 	{
-		// Hides mouse cursor
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+		fov += delta * 3.0f;
+	}
+	else 	if (Input::GetMouseButton(Input::WheelUp))
+	{
+		fov -= delta * 2.0f;
+	}
+
+
+	// Handles mouse inputs
+	if (Input::GetMouseButton(Input::LeftClick))
+	{
+		Input::HideMouse();
 
 		// Prevents camera from jumping on the first click
 		if (firstClick)
 		{
-			glfwSetCursorPos(window, (m_width / 2), (m_height / 2));
+			Input::SetMousePosition((m_width / 2), (m_height / 2));
 			firstClick = false;
 		}
 
 		// Stores the coordinates of the cursor
-		double mouseX;
-		double mouseY;
-		// Fetches the coordinates of the cursor
-		glfwGetCursorPos(window, &mouseX, &mouseY);
+		double mouseX = Input::GetMouseX();
+		double mouseY = Input::GetMouseY();
 
 		// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
 		// and then "transforms" them into degrees 
@@ -117,12 +124,12 @@ void Camera::Inputs(GLFWwindow* window, float delta)
 		//std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " << std::endl;
 
 		// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-		glfwSetCursorPos(window, (m_width / 2), (m_height / 2));
+		Input::SetMousePosition((m_width / 2), (m_height / 2));
 	}
-	else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+	else if (Input::GetMouseButtonUp(Input::LeftClick))
 	{
 		// Unhides cursor since camera is not looking around anymore
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		Input::ShowMouse();
 		// Makes sure the next time the camera looks around it doesn't jump
 		firstClick = true;
 	}

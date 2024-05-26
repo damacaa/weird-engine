@@ -2,6 +2,8 @@
 #include "../weird-renderer/Shape.h"
 #include "../weird-renderer/Model.h"
 #include "../weird-physics/Simulation.h"
+#include "../weird-renderer/RenderPlane.h"
+
 
 using namespace std;
 class Scene
@@ -9,17 +11,22 @@ class Scene
 public:
 	Scene();
 	~Scene();
-	void Render(Camera& camera, Shader& shader);
+	void RenderModels(Shader& shader) const;
+	void RenderShapes(Shader& shader, RenderPlane* rp) const;
 	void Update(double delta, double time);
 
 	size_t m_size = 10;
 	Shape* m_data;
 	vector<Model*> m_models;
 
+
 	Camera* m_camera;
+	vec3 m_lightPosition;
 private:
-	double simulationDelay = 0.0;
-	//std::unique_ptr<Simulation> m_simulation;
+	double m_simulationDelay = 0.0;
+	Simulation* m_simulation;
+
+	vector<Light> m_lights;
 
 	void LoadScene();
 };

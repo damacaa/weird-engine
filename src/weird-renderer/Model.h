@@ -13,10 +13,13 @@ public:
 	// Loads in a model from a file and stores tha information in 'data', 'JSON', and 'file'
 	Model(const char* file);
 
-	void Draw(Shader& shader, Camera& camera) const;
+	void Draw(Shader& shader, Camera& camera, const std::vector<Light>& lights) const;
 
 	glm::vec3 translation;
+	glm::vec3 scale;
+	glm::vec3 rotation;
 
+	Mesh GetMesh() const;
 private:
 	// Variables for easy access
 	const char* file;
@@ -50,8 +53,8 @@ private:
 	// Assembles all the floats into vertices
 	std::vector<Vertex> assembleVertices
 	(
-		std::vector<glm::vec3> positions, 
-		std::vector<glm::vec3> normals, 
+		std::vector<glm::vec3> positions,
+		std::vector<glm::vec3> normals,
 		std::vector<glm::vec2> texUVs
 	);
 

@@ -28,10 +28,10 @@ void Mesh::Draw
 (
 	Shader& shader,
 	Camera& camera,
-	glm::mat4 matrix,
 	glm::vec3 translation,
-	glm::quat rotation,
-	glm::vec3 scale
+	glm::vec3 rotation,
+	glm::vec3 scale,
+	const std::vector<Light>& lights
 ) const
 {
 	// Bind shader to be able to access uniforms
@@ -58,12 +58,32 @@ void Mesh::Draw
 		textures[i].Bind();
 	}
 
+
 	// Take care of the camera Matrix
 	glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
 	camera.Matrix(shader, "camMatrix");
 
+	auto q = glm::quat(rotation);
+
+	glm::vec3 direction = lights[0].rotation;
+	// Calculate the inverse (conjugate for normalized quaternions)
+	glm::quat inverseQuat = glm::conjugate(q);
+
+	// Convert direction vector to a quaternion with zero w component
+	glm::quat directionQuat(0, direction.x, direction.y, direction.z);
+
+	// Apply the inverse rotation: inverseQuat * directionQuat * normalizedQuat
+	glm::quat resultQuat = inverseQuat * directionQuat * q;
+
+	// Extract the rotated direction vector
+	glm::vec3 rotatedDirection = glm::vec3(resultQuat.x, resultQuat.y, resultQuat.z);
+
+
+	glUniform3f(glGetUniformLocation(shader.ID, "directionalLightDirection"), rotatedDirection.x, rotatedDirection.y, rotatedDirection.z);
+
+
 	// Initialize matrices
-	glm::mat4 trans = glm::mat4(1.0f);
+	/*glm::mat4 trans = glm::mat4(1.0f);
 	glm::mat4 rot = glm::mat4(1.0f);
 	glm::mat4 sca = glm::mat4(1.0f);
 
@@ -71,11 +91,21 @@ void Mesh::Draw
 	trans = glm::translate(trans, translation);
 	rot = glm::mat4_cast(rotation);
 	sca = glm::scale(sca, scale);
+	
+	auto matrix = trans * rot * sca;*/
+
+
+	auto matrix = glm::translate(glm::mat4(1.0f), translation);
+
+	matrix = glm::rotate(matrix, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+	matrix = glm::rotate(matrix, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+	matrix = glm::rotate(matrix, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f)); // TODO: replace with consts
+
+	matrix = glm::scale(matrix, scale);
+
+	
 
 	// Push the matrices to the vertex shader
-	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "translation"), 1, GL_FALSE, glm::value_ptr(trans));
-	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "rotation"), 1, GL_FALSE, glm::value_ptr(rot));
-	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "scale"), 1, GL_FALSE, glm::value_ptr(sca));
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(matrix));
 
 	// Draw the actual mesh

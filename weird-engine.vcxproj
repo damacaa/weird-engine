@@ -149,7 +149,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Game.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
     <ClCompile Include="src\weird-engine\Scene.cpp" />
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
@@ -162,7 +161,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\weird-renderer\Mesh.cpp" />
     <ClCompile Include="src\weird-renderer\Model.cpp" />
-    <ClCompile Include="src\weird-renderer\shaderClass.cpp" />
+    <ClCompile Include="src\weird-renderer\Shader.cpp" />
     <ClCompile Include="src\weird-renderer\stb.cpp" />
     <ClCompile Include="src\weird-renderer\Texture.cpp" />
     <ClCompile Include="src\Utils.h" />
@@ -170,10 +169,9 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Game.h" />
+    <ClInclude Include="src\weird-renderer\Light.h" />
     <ClInclude Include="src\weird-engine\Input.h" />
     <ClInclude Include="src\weird-engine\Scene.h" />
-    <ClInclude Include="src\weird-physics\RigidBody.h" />
     <ClInclude Include="src\weird-physics\Simulation.h" />
     <ClInclude Include="src\weird-renderer\Renderer.h" />
     <ClInclude Include="src\weird-renderer\RenderPlane.h" />
@@ -182,7 +180,7 @@
     <ClInclude Include="src\weird-renderer\EBO.h" />
     <ClInclude Include="src\weird-renderer\Mesh.h" />
     <ClInclude Include="src\weird-renderer\Model.h" />
-    <ClInclude Include="src\weird-renderer\shaderClass.h" />
+    <ClInclude Include="src\weird-renderer\Shader.h" />
     <ClInclude Include="src\weird-renderer\Texture.h" />
     <ClInclude Include="src\weird-renderer\VAO.h" />
     <ClInclude Include="src\weird-renderer\VBO.h" />
@@ -191,9 +189,6 @@
     <None Include="src\weird-renderer\shaders\default.frag" />
     <None Include="src\weird-renderer\shaders\default.vert" />
     <None Include="src\weird-renderer\shaders\hg_sdf.glsl" />
-    <None Include="src\weird-renderer\shaders\lavalamp.frag" />
-    <None Include="src\weird-renderer\shaders\pp.frag" />
-    <None Include="src\weird-renderer\shaders\pp.vert" />
     <None Include="src\weird-renderer\shaders\raymarching.frag" />
     <None Include="src\weird-renderer\shaders\raymarching.vert" />
   </ItemGroup>

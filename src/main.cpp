@@ -7,23 +7,18 @@ namespace fs = std::filesystem;
 
 #include <cmath>
 
-#include "weird-physics/Simulation.h"
-#include "weird-renderer/Renderer.h"
+#include "weird-engine/Input.h"
 #include "weird-engine/Scene.h"
-
-
+#include "weird-renderer/Renderer.h"
 
 
 int main()
 {
-	// Render resolution
+	// RenderModels resolution
 	const unsigned int width = 1200;
 	const unsigned int height = 800;
 
 	Renderer renderer(width, height);
-
-	size_t size;
-	Shape* data;
 	Scene scene;
 
 	// Time
@@ -32,10 +27,6 @@ int main()
 	double delta = 0;
 	double timeDiff = 0;
 	unsigned int frameCounter = 0;
-
-	const double fixedDeltaTime = 1 / 100.0;
-	const size_t MAX_STEPS = 1000000;
-	double simulationDelay = 0;
 
 	// Main while loop
 	while (!renderer.CheckWindowClosed())
@@ -60,25 +51,15 @@ int main()
 			frameCounter = 0;
 		}
 
+		// Capture window input
+		Input::Update(renderer.m_window, width, height);
 
-		int steps = 0;
-		while (simulationDelay >= fixedDeltaTime && steps < MAX_STEPS)
-		{
-			//m_simulation.Step((float)fixedDeltaTime);
-			simulationDelay -= fixedDeltaTime;
-			++steps;
-		}
-
-		if (steps >= MAX_STEPS)
-			std::cout << "Not enough steps for simulation" << std::endl;
-
-
+		// Update scene logic and physics
 		scene.Update(delta, time);
 
-		// TODO: move somewhere else
-		// Handles camera inputs
-		scene.m_camera->Inputs(renderer.m_window, delta * 100.0f);
-		
+		// Clear input
+		Input::Clear();
+
 		// Render scene
 		renderer.Render(scene, time);
 	}

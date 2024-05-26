@@ -99,7 +99,7 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 
 
 
-void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size, float time) const
+void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 {
 	glDisable(GL_DEPTH_TEST);
 	// Tell OpenGL which Shader Program we want to use

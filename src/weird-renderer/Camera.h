@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <iostream>
 
-#include"shaderClass.h"
+#include"Shader.h"
 
 class Camera
 {
@@ -43,11 +43,11 @@ public:
 	Camera(glm::vec3 position);
 
 	// Updates the camera matrix to the Vertex Shader
-	void updateMatrix(float FOVdeg, float nearPlane, float farPlane, int width, int height);
+	void UpdateMatrix(float nearPlane, float farPlane, int width, int height);
 	// Exports the camera matrix to a shader
 	void Matrix(Shader& shader, const char* uniform);
 	// Handles camera inputs
-	void Inputs(GLFWwindow* window, float delta);
+	void Inputs(float delta);
 
 private:
 

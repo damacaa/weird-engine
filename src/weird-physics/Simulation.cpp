@@ -1,5 +1,6 @@
 #include "Simulation.h"
 #include <vector>
+#include "../weird-engine/Input.h"
 
 Simulation::Simulation(Shape* data, size_t size)
 {
@@ -15,7 +16,7 @@ Simulation::Simulation(Shape* data, size_t size)
 		m_forces[i] = vec3(0.0f);
 	}
 
-	m_invMass = 1.0f / m_mass;
+	//m_invMass = 1.0f / m_mass;
 }
 
 Simulation::~Simulation()
@@ -30,6 +31,7 @@ void Simulation::Step(float delta)
 	// TODO:     
 	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
 
+	bool attracttionEnabled = Input::GetKey(Input::G);
 
 	std::vector<Collision> collisions;
 	// Detect collisions
@@ -40,17 +42,18 @@ void Simulation::Step(float delta)
 		{
 			vec3 ij = m_positions[j] - m_positions[i];
 
-			// Attraction
-			float d = length(ij);
-			d = d < 1.0f ? 1.0f : d;
-			vec3 g = 100.0f * (m_mass * normalize(ij)) / (d * d);
+			float distance = length(ij);
 
-			//m_forces[i] += g;
-			//m_forces[j] -= g;
+			if (attracttionEnabled && distance > m_diameter) {
+				// Attraction
+				distance = distance < m_diameter ? m_diameter : distance;
+				vec3 attractionForce = (1.0f * (m_mass * m_mass) / (distance * distance)) * normalize(ij);
+				m_forces[i] += attractionForce;
+				m_forces[j] -= attractionForce;
+			}
 
-			if (length(ij) < 1.0f * m_diameter) {
-				vec3 half = 0.5f * ij;
-				collisions.push_back(Collision(i, j, half));
+			if (distance < 1.0f * m_diameter) {
+				collisions.push_back(Collision(i, j, ij));
 			}
 		}
 	}
@@ -63,6 +66,10 @@ void Simulation::Step(float delta)
 
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
+
+		/*vec3 t = 0.01f * (length(col.AB) - m_diameter) * normalize(col.AB);
+		m_positions[col.A] += t;
+		m_positions[col.B] -= t;*/
 	}
 
 	// Calculate forces
@@ -74,17 +81,20 @@ void Simulation::Step(float delta)
 		// Floor at y = 0
 		if (p.y < m_radious) {
 
-			p.y += (m_radious - p.y);
+			//p.y += 0.1f * (m_radious - p.y);
+			//p.y = (m_radious);
 
 			force += vec3(
 				0.0f,
-				-m_mass * m_push * (m_radious - p.y),
+				m_mass * m_push * (m_radious - p.y),
 				0.0f
 			);
 		}
-
-		// Gravity
-		force.y += m_mass * m_gravity;
+		else {
+			// Gravity
+			if (!attracttionEnabled)
+				force.y += m_mass * m_gravity;
+		}
 
 		m_positions[i] = p;
 		m_forces[i] = force;
@@ -106,6 +116,7 @@ void Simulation::Copy(Shape* target)
 {
 	for (size_t i = 0; i < m_size; i++)
 	{
+		float y = m_positions[i].y;
 		target[i].position = m_positions[i];
 	}
 }

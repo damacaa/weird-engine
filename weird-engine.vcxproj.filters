@@ -66,7 +66,7 @@
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp">
       <Filter>Source Files\weird-renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\weird-renderer\shaderClass.cpp">
+    <ClCompile Include="src\weird-renderer\Shader.cpp">
       <Filter>Source Files\weird-renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-renderer\Shape.cpp">
@@ -92,9 +92,6 @@
     </ClCompile>
     <ClCompile Include="src\weird-renderer\Renderer.cpp">
       <Filter>Source Files\weird-renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="Game.cpp">
-      <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-engine\Input.cpp">
       <Filter>Source Files\weird-engine</Filter>
@@ -122,7 +119,7 @@
     <ClInclude Include="src\weird-renderer\RenderPlane.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-renderer\shaderClass.h">
+    <ClInclude Include="src\weird-renderer\Shader.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\Shape.h">
@@ -134,20 +131,17 @@
     <ClInclude Include="src\weird-renderer\VAO.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-physics\RigidBody.h">
-      <Filter>Header Files\weird-physics</Filter>
-    </ClInclude>
     <ClInclude Include="src\weird-physics\Simulation.h">
       <Filter>Header Files\weird-physics</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\Renderer.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Game.h">
-      <Filter>Header Files\weird-engine</Filter>
-    </ClInclude>
     <ClInclude Include="src\weird-engine\Input.h">
       <Filter>Header Files\weird-engine</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-renderer\Light.h">
+      <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -164,15 +158,6 @@
       <Filter>Source Files\weird-renderer\Shaders</Filter>
     </None>
     <None Include="src\weird-renderer\shaders\hg_sdf.glsl">
-      <Filter>Source Files\weird-renderer\Shaders</Filter>
-    </None>
-    <None Include="src\weird-renderer\shaders\lavalamp.frag">
-      <Filter>Source Files\weird-renderer\Shaders</Filter>
-    </None>
-    <None Include="src\weird-renderer\shaders\pp.frag">
-      <Filter>Source Files\weird-renderer\Shaders</Filter>
-    </None>
-    <None Include="src\weird-renderer\shaders\pp.vert">
       <Filter>Source Files\weird-renderer\Shaders</Filter>
     </None>
   </ItemGroup>

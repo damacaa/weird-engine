@@ -16,14 +16,18 @@ Model::Model(const char* file)
 	translation = glm::vec3(0);
 }
 
-void Model::Draw(Shader& shader, Camera& camera) const
+void Model::Draw(Shader& shader, Camera& camera, const std::vector<Light>& lights) const
 {
 	// Go over all meshes and draw each one
 	for (unsigned int i = 0; i < meshes.size(); i++)
 	{
-		auto matrix = glm::translate(glm::mat4(1.0f), translation);
-		meshes[i].Mesh::Draw(shader, camera, matrix);
+		meshes[i].Mesh::Draw(shader, camera, translation, rotation, scale, lights);
 	}
+}
+
+Mesh Model::GetMesh() const
+{
+	return meshes.at(0);
 }
 
 void Model::loadMesh(unsigned int indMesh)

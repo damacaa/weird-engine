@@ -64,11 +64,11 @@ Renderer::Renderer(const unsigned int width, const unsigned int height)
 	m_defaultShaderProgram.setUniform("lightColor", lightColor);
 	m_defaultShaderProgram.setUniform("lightPos", lightPos);
 
-	m_sdfShaderProgram =  Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
+	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
 	m_sdfShaderProgram.Activate();
 
 	// A plane that takes 100% of the screen and displays the result of a shader
-	m_sdfRenderPlane = new RenderPlane(width, height, m_sdfShaderProgram);
+	m_sdfRenderPlane = RenderPlane(width, height, m_sdfShaderProgram);
 }
 
 Renderer::~Renderer()
@@ -77,10 +77,7 @@ Renderer::~Renderer()
 	m_defaultShaderProgram.Delete();
 	m_sdfShaderProgram.Delete();
 
-	//delete m_defaultShaderProgram;
-	//delete m_sdfShaderProgram;
-
-	delete m_sdfRenderPlane;
+	//delete m_sdfRenderPlane;
 
 	// Delete m_window before ending the program
 	glfwDestroyWindow(m_window);
@@ -90,51 +87,45 @@ Renderer::~Renderer()
 
 void Renderer::Render(Scene& scene, const double time)
 {
-	double fov = scene.m_camera->fov;
-
-	// Updates and exports the camera matrix to the Vertex Shader
-	scene.m_camera->updateMatrix(fov, 0.1f, 100.0f, m_width, m_height);
 
 	// Bind sdf renderer frame buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane->GetFrameBuffer());
+	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
 
 	//glViewport(0, 0, width, height);
 	// Specify the color of the background
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 	// Clean the back buffer and depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
 
+	// Updates and exports the camera matrix to the Vertex Shader
+	scene.m_camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
 
 	// Draw meshes
 	m_defaultShaderProgram.Activate();
+	//m_defaultShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
 
-	/*if ((int)time % 2 == 0 || true) {
+	// Draw objects in scene
+	scene.RenderModels(m_defaultShaderProgram);
 
-		// Draw models
-		for (const Model* obj : scene.m_models) {
-			obj->Draw(m_defaultShaderProgram, *scene.m_camera);
-		}
-	}*/
-	scene.Render(*scene.m_camera, m_defaultShaderProgram);
-
+	// Bind to default frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 
 	// Draw ray marching stuff
 	m_sdfShaderProgram.Activate();
 
 	// Magical math to calculate ray marching shader FOV
-	float shaderFov = 1.0 / tan(fov * 0.01745 * 0.5);
+	float shaderFov = 1.0 / tan(scene.m_camera->fov * 0.01745 * 0.5);
 	// Set uniforms
 	m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.m_camera->view);
 	m_sdfShaderProgram.setUniform("u_fov", shaderFov);
 	m_sdfShaderProgram.setUniform("u_time", time);
 	m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_width, m_height));
+	m_sdfShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
 
 	// Draw render plane with sdf shader
-	m_sdfRenderPlane->Draw(m_sdfShaderProgram, scene.m_data, scene.m_size, time);
+	scene.RenderShapes(m_sdfShaderProgram, &m_sdfRenderPlane);
 
 	// Swap the back buffer with the front buffer
 	glfwSwapBuffers(m_window);

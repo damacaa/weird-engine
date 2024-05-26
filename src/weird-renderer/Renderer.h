@@ -12,7 +12,7 @@ class Renderer
 private:
 
 
-	RenderPlane* m_sdfRenderPlane;
+	RenderPlane m_sdfRenderPlane;
 
 	Shader m_defaultShaderProgram;
 	Shader m_sdfShaderProgram;

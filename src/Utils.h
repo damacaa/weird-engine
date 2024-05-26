@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <glm/mat4x4.hpp>
+
 
 
 static unsigned int hash(unsigned int x) {
@@ -14,11 +14,6 @@ static unsigned int hash(unsigned int x) {
 	return x;
 }
 
-class ExtraUtils {
 
-public:
-
-	
-};
 
 #endif

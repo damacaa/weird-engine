@@ -5,7 +5,6 @@ class Simulation
 {
 public:
 	Simulation(Shape* data, size_t size);
-	Simulation() {};
 	~Simulation();
 
 	void Step(float delta);
@@ -22,16 +21,16 @@ private:
 
 	size_t m_size;
 
-	float m_mass = 10000.0f;
-	float m_invMass = 1.0f;
+	const float m_mass = 100.0f;
+	const float m_invMass = 1.0f / m_mass;
 
-	float m_diameter = 1.0f;
-	float m_radious = 0.5f;
+	const float m_diameter = 1.0f;
+	const float m_radious = 0.5f * m_diameter;
 
-	float m_push = 1000.0f;
-	float m_damping = 0.0f;
+	const float m_push = 1000.0f;
+	const float m_damping = 1.0f;
 
-	float m_gravity = -9.81f;
+	const float m_gravity = -9.81f;
 
 	struct Collision
 	{

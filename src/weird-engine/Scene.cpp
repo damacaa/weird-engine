@@ -1,5 +1,6 @@
 #include "scene.h"
 #include <filesystem>
+
 namespace fs = std::filesystem;
 
 constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
@@ -36,12 +37,15 @@ Scene::~Scene()
 }
 
 
-void Scene::RenderModels(Shader& shader) const
+void Scene::RenderModels(Shader& shader) 
 {
 	// Draw models
 	for (const Model* model : m_models) {
 		model->Draw(shader, *m_camera, m_lights);
 	}
+
+	m_renderSystem->render(m_ecs, shader, *m_camera, m_lights);
+	m_instancedRenderSystem->render(m_ecs, shader, *m_camera, m_lights);
 }
 
 
@@ -74,12 +78,14 @@ void Scene::Update(double delta, double time)
 	m_camera->Inputs(delta * 100.0f);
 
 
+
 	for (int i = 0; i < 10; ++i) {
 		movementSystem->update(m_ecs, delta, time);
-		auto& pos = m_ecs.getComponent<Transform>(i);
+	
+		/*auto& pos = m_ecs.getComponent<Transform>(i);
 		m_models[i]->translation.x = pos.x;
 		m_models[i]->translation.y = pos.y;
-		m_models[i]->translation.z = pos.z;
+		m_models[i]->translation.z = pos.z;*/
 	}
 
 }
@@ -98,12 +104,21 @@ void Scene::LoadScene()
 
 
 
-	// Register component
-	m_ecs.registerComponent<Transform>();
-
 	// Make movement system
 	movementSystem = std::make_shared<MovementSystem>();
 	m_ecs.addSystem<MovementSystem>(movementSystem);
+
+	m_renderSystem = std::make_shared<RenderSystem>();
+	m_ecs.addSystem<MovementSystem>(m_renderSystem);
+
+	m_instancedRenderSystem = std::make_shared<InstancedRenderSystem>();
+	m_ecs.addSystem<InstancedMeshRenderer>(m_instancedRenderSystem);
+
+
+	// Register component
+	m_ecs.registerComponent<Transform>(movementSystem);
+	m_ecs.registerComponent<MeshRenderer>(m_renderSystem);
+	m_ecs.registerComponent<InstancedMeshRenderer>(m_instancedRenderSystem);
 
 
 	// Create camera object
@@ -112,16 +127,19 @@ void Scene::LoadScene()
 
 
 	// Spawn balls
-	for (size_t i = 0; i < 10; i++)
+	for (size_t i = 0; i < 1000; i++)
 	{
-		Model* ball = new Model((projectDir + spherePath).c_str());
-		ball->translation = vec3(0);
-		ball->scale = vec3(1.0f);
-		m_models.push_back(ball);
+		//Model* ball = new Model((projectDir + spherePath).c_str());
+		//ball->translation = vec3(0);
+		//ball->scale = vec3(1.0f);
+		//m_models.push_back(ball);
 
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, Transform());
 		movementSystem->entities.push_back(entity);
+
+		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str())));
+		m_renderSystem->entities.push_back(entity);
 	}
 
 

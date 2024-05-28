@@ -40,6 +40,9 @@
     <Filter Include="Header Files\weird-engine\SampleScenes">
       <UniqueIdentifier>{253c166b-155f-4c2c-8794-caa764b41873}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\weird-engine\ECS">
+      <UniqueIdentifier>{3d615b5c-7124-428a-9db3-513c73634272}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -95,6 +98,9 @@
     </ClCompile>
     <ClCompile Include="src\weird-engine\Input.cpp">
       <Filter>Source Files\weird-engine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\weird-engine\ResourceManager.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -155,10 +161,19 @@
     <ClInclude Include="src\weird-engine\ecs\ECS.h">
       <Filter>Header Files\weird-engine</Filter>
     </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\ComponentManager.h">
+      <Filter>Header Files\weird-engine\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Components\MeshRenderer.h">
+      <Filter>Header Files\weird-engine\ECS</Filter>
+    </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Components\Transform.h">
+      <Filter>Header Files\weird-engine\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-engine\ecs\ComponentManager.h">
+    <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

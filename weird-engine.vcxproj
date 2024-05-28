@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
     <ClCompile Include="src\weird-engine\Scene.cpp" />
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
@@ -169,8 +170,11 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h" />
+    <ClInclude Include="src\weird-engine\ResourceManager.h" />
     <ClInclude Include="src\weird-engine\ecs\Component.h" />
     <ClInclude Include="src\weird-engine\ecs\ComponentManager.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\MeshRenderer.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\Transform.h" />
     <ClInclude Include="src\weird-engine\ecs\ECS.h" />
     <ClInclude Include="src\weird-engine\ecs\Entity.h" />

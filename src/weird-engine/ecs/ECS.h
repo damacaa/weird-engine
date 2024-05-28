@@ -13,13 +13,11 @@
 
 
 
-class ECS;
-
 // System base class
 class System {
 public:
+	std::shared_ptr<ComponentManager> manager;
 	std::vector<Entity> entities;
-	virtual void update(ECS& ecs, double delta, double time) = 0;
 };
 
 // ECS Manager
@@ -32,6 +30,7 @@ public:
 	void destroyEntity(Entity entity) {
 		for (auto const& pair : componentManagers) {
 			auto const& component = pair.second;
+			// TODO:
 			/*if (component->hasData(entity)) {
 				component->removeData(entity);
 			}*/
@@ -49,8 +48,21 @@ public:
 	}
 
 	template <typename T>
+	void registerComponent(std::shared_ptr<System> system) {
+
+		ComponentManager manager;
+		manager.registerComponent<T>();
+		auto pointerToManager = std::make_shared<ComponentManager>(manager);
+
+		componentManagers[typeid(T).name()] = pointerToManager;
+
+		system->manager = pointerToManager;
+	}
+
+	template <typename T>
 	void addComponent(Entity entity, T component) {
 		auto cm = getComponentManager<T>();
+		component.Owner = entity;
 		cm->addComponent(entity, component);
 	}
 
@@ -65,7 +77,7 @@ public:
 	}
 
 	template <typename T>
-	bool hasComponent(Entity entity) {
+	bool hasComponent(Entity entity) const {
 		return getComponentManager<T>()->hasComponent<T>(entity);
 	}
 
@@ -85,21 +97,10 @@ private:
 	}
 };
 
+#include "Components/Transform.h"
+#include "Components/MeshRenderer.h"
+#include "Components/InstancedMeshRenderer.h"
 
 
 
-// Example Systems
-class MovementSystem : public System {
-public:
-	void update(ECS& ecs, double delta, double time) {
-		for (auto entity : entities) {
-
-			auto& t = ecs.getComponent<Transform>(entity);
-
-			t.x = 3.0f * sin(entity + time);
-			t.y = entity + 1;
-			t.z = 3.0f * cos(entity + time);
-		}
-	}
-};
 

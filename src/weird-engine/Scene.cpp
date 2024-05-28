@@ -19,23 +19,6 @@ Scene::Scene()
 
 
 
-	ECS ecs;
-	ecs.registerComponent<Transform>();
-
-	Entity entity = ecs.createEntity();
-	ecs.addComponent(entity, Transform());
-
-
-	/*auto movementSystem = std::make_shared<MovementSystem>();
-	ecs.addSystem<MovementSystem>(movementSystem);
-
-	movementSystem->entities.push_back(entity);
-
-	for (int i = 0; i < 10; ++i) {
-		movementSystem->update(ecs);
-		auto& pos = ecs.getComponent<Transform>(entity);
-		std::cout << "Entity Position: (" << pos.x << ", " << pos.y << ")\n";
-	}*/
 }
 
 
@@ -85,10 +68,19 @@ void Scene::Update(double delta, double time)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
 	// Copy simulation data to scene
- 	m_simulation->Copy(m_data);
+	m_simulation->Copy(m_data);
 
 	// Handles camera inputs
 	m_camera->Inputs(delta * 100.0f);
+
+
+	for (int i = 0; i < 10; ++i) {
+		movementSystem->update(m_ecs, delta, time);
+		auto& pos = m_ecs.getComponent<Transform>(i);
+		m_models[i]->translation.x = pos.x;
+		m_models[i]->translation.y = pos.y;
+		m_models[i]->translation.z = pos.z;
+	}
 
 }
 
@@ -96,9 +88,6 @@ void Scene::Update(double delta, double time)
 #define PI 3.1416f
 void Scene::LoadScene()
 {
-	// Creates camera object
-	m_camera = new Camera(glm::vec3(0.0f, 2.0f, 5.0f));
-
 	// Load models
 	std::string projectDir = fs::current_path().string();
 
@@ -106,6 +95,40 @@ void Scene::LoadScene()
 	std::string cubePath = "/Resources/Models/cube.gltf";
 	std::string demoPath = "/Resources/Models/demo.gltf";
 	std::string planePath = "/Resources/Models/plane.gltf";
+
+
+
+	// Register component
+	m_ecs.registerComponent<Transform>();
+
+	// Make movement system
+	movementSystem = std::make_shared<MovementSystem>();
+	m_ecs.addSystem<MovementSystem>(movementSystem);
+
+
+	// Create camera object
+	m_camera = new Camera(glm::vec3(0.0f, 2.0f, 5.0f));
+
+
+
+	// Spawn balls
+	for (size_t i = 0; i < 10; i++)
+	{
+		Model* ball = new Model((projectDir + spherePath).c_str());
+		ball->translation = vec3(0);
+		ball->scale = vec3(1.0f);
+		m_models.push_back(ball);
+
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, Transform());
+		movementSystem->entities.push_back(entity);
+	}
+
+
+
+
+
+
 
 	// Make monke
 	Model* monkey = new Model((projectDir + demoPath).c_str());

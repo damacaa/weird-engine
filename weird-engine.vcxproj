@@ -198,6 +198,7 @@
   <ItemGroup>
     <None Include="src\weird-renderer\shaders\default.frag" />
     <None Include="src\weird-renderer\shaders\default.vert" />
+    <None Include="src\weird-renderer\shaders\default_instancing.vert" />
     <None Include="src\weird-renderer\shaders\hg_sdf.glsl" />
     <None Include="src\weird-renderer\shaders\raymarching.frag" />
     <None Include="src\weird-renderer\shaders\raymarching.vert" />

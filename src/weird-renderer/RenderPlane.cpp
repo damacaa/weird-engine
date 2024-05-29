@@ -126,7 +126,7 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 
 	// Bind UBO
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * 2 * size, shapes, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * size, shapes, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	shader.setUniform("u_loadedObjects", (int)size);

@@ -46,6 +46,6 @@ private:
 
 public:
 
-	Mesh GetMesh(const char* path);
+	Mesh GetMesh(const char* path, bool instancing);
 };
 

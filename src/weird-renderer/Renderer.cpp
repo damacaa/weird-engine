@@ -51,18 +51,26 @@ Renderer::Renderer(const unsigned int width, const unsigned int height)
 	glCullFace(GL_FRONT);
 	glFrontFace(GL_CCW);
 
-	// Generates Shader objects
-	m_defaultShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
-	m_defaultShaderProgram.Activate();
-
 	// Take care of all the light related things
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
 	glm::mat4 lightModel = glm::mat4(1.0f);
 	lightModel = glm::translate(lightModel, lightPos);
 
+	// Generates Shader objects
+	m_defaultShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
+	m_defaultShaderProgram.Activate();
+
 	m_defaultShaderProgram.setUniform("lightColor", lightColor);
 	m_defaultShaderProgram.setUniform("lightPos", lightPos);
+
+	// Generates Shader objects
+	m_defaultInstancedShaderProgram = Shader("src/weird-renderer/shaders/default_instancing.vert", "src/weird-renderer/shaders/default.frag");
+	m_defaultInstancedShaderProgram.Activate();
+
+	m_defaultInstancedShaderProgram.setUniform("lightColor", lightColor);
+	m_defaultInstancedShaderProgram.setUniform("lightPos", lightPos);
+
 
 	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
 	m_sdfShaderProgram.Activate();
@@ -75,6 +83,7 @@ Renderer::~Renderer()
 {
 	// Delete all the objects we've created
 	m_defaultShaderProgram.Delete();
+	m_defaultInstancedShaderProgram.Delete();
 	m_sdfShaderProgram.Delete();
 
 	//delete m_sdfRenderPlane;
@@ -102,11 +111,11 @@ void Renderer::Render(Scene& scene, const double time)
 	scene.m_camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
 
 	// Draw meshes
-	m_defaultShaderProgram.Activate();
+	//m_defaultShaderProgram.Activate();
 	//m_defaultShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
 
 	// Draw objects in scene
-	scene.RenderModels(m_defaultShaderProgram);
+	scene.RenderModels(m_defaultShaderProgram, m_defaultInstancedShaderProgram);
 
 	// Bind to default frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);

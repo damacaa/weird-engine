@@ -16,7 +16,7 @@ class Scene
 public:
 	Scene();
 	~Scene();
-	void RenderModels(Shader& shader) ;
+	void RenderModels(Shader& shader, Shader& instancingShader);
 	void RenderShapes(Shader& shader, RenderPlane* rp) const;
 	void Update(double delta, double time);
 

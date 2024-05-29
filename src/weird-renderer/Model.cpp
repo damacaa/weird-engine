@@ -52,7 +52,7 @@ void Model::loadMesh(unsigned int indMesh)
 	std::vector<Texture> textures = getTextures();
 
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(vertices, indices, textures));
+	meshes.push_back(Mesh(vertices, indices, textures, 1));
 }
 
 void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)

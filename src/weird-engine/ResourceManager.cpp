@@ -18,7 +18,7 @@ std::string get_file_contentss(const char* filename)
 }
 
 
-Mesh ResourceManager::GetMesh(const char* file)
+Mesh ResourceManager::GetMesh(const char* file, bool instancing)
 {
 	if (meshMap.find(file) != meshMap.end()) {
 		return meshMap[file];
@@ -79,7 +79,7 @@ void ResourceManager::loadMesh(unsigned int indMesh, std::vector<Mesh>& meshes)
 	std::vector<Texture> textures;
 
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(vertices, indices, textures));
+	meshes.push_back(Mesh(vertices, indices, textures, 1000));
 }
 
 void ResourceManager::traverseNode(unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)

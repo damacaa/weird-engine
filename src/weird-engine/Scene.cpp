@@ -37,15 +37,19 @@ Scene::~Scene()
 }
 
 
-void Scene::RenderModels(Shader& shader) 
+void Scene::RenderModels(Shader& shader, Shader& instancingShader)
 {
+	shader.Activate();
+
 	// Draw models
 	for (const Model* model : m_models) {
 		model->Draw(shader, *m_camera, m_lights);
 	}
 
 	m_renderSystem->render(m_ecs, shader, *m_camera, m_lights);
-	m_instancedRenderSystem->render(m_ecs, shader, *m_camera, m_lights);
+
+	instancingShader.Activate();
+	m_instancedRenderSystem->render(m_ecs, instancingShader, *m_camera, m_lights);
 }
 
 
@@ -138,7 +142,7 @@ void Scene::LoadScene()
 		m_ecs.addComponent(entity, Transform());
 		movementSystem->entities.push_back(entity);
 
-		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str())));
+		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str(), 1000 )));
 		m_renderSystem->entities.push_back(entity);
 	}
 

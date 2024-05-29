@@ -15,6 +15,7 @@ private:
 	RenderPlane m_sdfRenderPlane;
 
 	Shader m_defaultShaderProgram;
+	Shader m_defaultInstancedShaderProgram;
 	Shader m_sdfShaderProgram;
 
 	unsigned int m_width, m_height;

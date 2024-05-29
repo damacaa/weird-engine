@@ -193,5 +193,6 @@
     <None Include="src\weird-renderer\shaders\hg_sdf.glsl">
       <Filter>Source Files\weird-renderer\Shaders</Filter>
     </None>
+    <None Include="src\weird-renderer\shaders\default_instancing.vert" />
   </ItemGroup>
 </Project>

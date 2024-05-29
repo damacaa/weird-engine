@@ -1,6 +1,6 @@
 #include "Mesh.h"
 
-Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures)
+Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures, unsigned int instances)
 {
 	Mesh::vertices = vertices;
 	Mesh::indices = indices;
@@ -21,6 +21,19 @@ Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::v
 	VAO.Unbind();
 	VBO.Unbind();
 	EBO.Unbind();
+
+	this->m_instances = instances;
+	if (instances > 1) {
+		// Uniform buffer to store shapes
+		glGenBuffers(1, &UBO);
+		// Bind UBO to shader program (assuming location 0 for UBO)
+		glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+
+		//glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_instances, NULL, GL_STATIC_DRAW); // Allocate space
+
+		//	glBufferData(GL_UNIFORM_BUFFER, 6 * sizeof(float) * MAX_DATA, 0, GL_STREAM_DRAW);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
 }
 
 
@@ -91,7 +104,7 @@ void Mesh::Draw
 	trans = glm::translate(trans, translation);
 	rot = glm::mat4_cast(rotation);
 	sca = glm::scale(sca, scale);
-	
+
 	auto matrix = trans * rot * sca;*/
 
 
@@ -103,7 +116,7 @@ void Mesh::Draw
 
 	matrix = glm::scale(matrix, scale);
 
-	
+
 
 	// Push the matrices to the vertex shader
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(matrix));
@@ -112,7 +125,8 @@ void Mesh::Draw
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 }
 
-void Mesh::DrawInstance(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale, const std::vector<Light>& lights) const
+
+void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, std::vector<glm::vec3> translations, std::vector<glm::vec3> rotations, std::vector<glm::vec3> scales, const std::vector<Light>& lights) const
 {
 	// Bind shader to be able to access uniforms
 	shader.Activate();
@@ -122,42 +136,24 @@ void Mesh::DrawInstance(Shader& shader, Camera& camera, glm::vec3 translation, g
 	unsigned int numDiffuse = 0;
 	unsigned int numSpecular = 0;
 
-	for (unsigned int i = 0; i < textures.size(); i++)
-	{
-		std::string num;
-		std::string type = textures[i].type;
-		if (type == "diffuse")
-		{
-			num = std::to_string(numDiffuse++);
-		}
-		else if (type == "specular")
-		{
-			num = std::to_string(numSpecular++);
-		}
-		textures[i].texUnit(shader, (type + num).c_str(), i);
-		textures[i].Bind();
-	}
+	// TODO: load textures
 
 
-	// Take care of the camera Matrix
+		// Take care of the camera Matrix
 	glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
 	camera.Matrix(shader, "camMatrix");
 
-	auto q = glm::quat(rotation);
-
+	// TODO: how do lights work?
+	auto q = glm::quat(rotations[0]);
 	glm::vec3 direction = lights[0].rotation;
 	// Calculate the inverse (conjugate for normalized quaternions)
 	glm::quat inverseQuat = glm::conjugate(q);
-
 	// Convert direction vector to a quaternion with zero w component
 	glm::quat directionQuat(0, direction.x, direction.y, direction.z);
-
 	// Apply the inverse rotation: inverseQuat * directionQuat * normalizedQuat
 	glm::quat resultQuat = inverseQuat * directionQuat * q;
-
 	// Extract the rotated direction vector
 	glm::vec3 rotatedDirection = glm::vec3(resultQuat.x, resultQuat.y, resultQuat.z);
-
 
 	glUniform3f(glGetUniformLocation(shader.ID, "directionalLightDirection"), rotatedDirection.x, rotatedDirection.y, rotatedDirection.z);
 
@@ -175,19 +171,36 @@ void Mesh::DrawInstance(Shader& shader, Camera& camera, glm::vec3 translation, g
 	auto matrix = trans * rot * sca;*/
 
 
-	auto matrix = glm::translate(glm::mat4(1.0f), translation);
 
-	matrix = glm::rotate(matrix, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-	matrix = glm::rotate(matrix, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-	matrix = glm::rotate(matrix, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f)); // TODO: replace with consts
 
-	matrix = glm::scale(matrix, scale);
+	glm::mat4* models = new glm::mat4[instances];
 
+	for (size_t i = 0; i < instances; i++)
+	{
+		auto matrix = glm::translate(glm::mat4(1.0f), translations[i]);
+
+		matrix = glm::rotate(matrix, rotations[i].x, glm::vec3(1.0f, 0.0f, 0.0f));
+		matrix = glm::rotate(matrix, rotations[i].y, glm::vec3(0.0f, 1.0f, 0.0f));
+		matrix = glm::rotate(matrix, rotations[i].z, glm::vec3(0.0f, 0.0f, 1.0f)); // TODO: replace with consts
+
+		matrix = glm::scale(matrix, scales[i]);
+
+		models[i] = matrix;
+	}
+
+
+	// Bind UBO
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * 4 * instances, models, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	shader.setUniform("u_loadedObjects", (int)instances);
 
 
 	// Push the matrices to the vertex shader
-	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(matrix));
+	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
 
 	// Draw the actual mesh
 	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, 3000);
 }
+

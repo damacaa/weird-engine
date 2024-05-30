@@ -57,6 +57,10 @@ public:
 	void setUniform(const std::string& name, const glm::mat4& value) const {
 		glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &value[0][0]);
 	}
+	
+	void setUniform(const std::string& name, const glm::mat4* value, unsigned int size = 1) const {
+		glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), size, GL_FALSE, &value[0][0][0]);
+	}
 
 private:
 	const char* m_vertexFile;

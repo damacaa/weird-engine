@@ -56,10 +56,11 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 
 	// Uniform buffer to store shapes
 	glGenBuffers(1, &UBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
 	// Bind UBO to shader program (assuming location 0 for UBO)
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
-	//	glBufferData(GL_UNIFORM_BUFFER, 6 * sizeof(float) * MAX_DATA, 0, GL_STREAM_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 
 
 	// Frame buffer to store normal render and apply ray marching as a post process, using depth to blend

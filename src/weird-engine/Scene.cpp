@@ -131,7 +131,7 @@ void Scene::LoadScene()
 
 
 	// Spawn balls
-	for (size_t i = 0; i < 1000; i++)
+	for (size_t i = 0; i < m_size; i++)
 	{
 		//Model* ball = new Model((projectDir + spherePath).c_str());
 		//ball->translation = vec3(0);

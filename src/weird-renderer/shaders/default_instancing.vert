@@ -24,16 +24,14 @@ out vec2 texCoord;
 // Imports the camera matrix
 uniform mat4 camMatrix;
 // Imports the transformation matrices
-layout(std140) uniform Matrices {
-    mat4[1000] models;
-};
+uniform mat4 u_models[255];
 
 
 
 void main()
 {
 	// calculates current position
-	crntPos = vec3(models[gl_InstanceID]  * vec4(aPos, 1.0f));
+	crntPos = vec3(u_models[gl_InstanceID] * vec4(aPos, 1.0f));// + vec3(0, gl_InstanceID, 0);
 	// Assigns the normal from the Vertex Data to "Normal"
 	Normal = aNormal;
 	// Assigns the colors from the Vertex Data to "color"

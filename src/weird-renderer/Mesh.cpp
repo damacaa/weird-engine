@@ -23,17 +23,7 @@ Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::v
 	EBO.Unbind();
 
 	this->m_instances = instances;
-	if (instances > 1) {
-		// Uniform buffer to store shapes
-		glGenBuffers(1, &UBO);
-		// Bind UBO to shader program (assuming location 0 for UBO)
-		glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
-
-		//glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * m_instances, NULL, GL_STATIC_DRAW); // Allocate space
-
-		//	glBufferData(GL_UNIFORM_BUFFER, 6 * sizeof(float) * MAX_DATA, 0, GL_STREAM_DRAW);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	}
+	
 }
 
 
@@ -126,6 +116,7 @@ void Mesh::Draw
 }
 
 
+
 void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, std::vector<glm::vec3> translations, std::vector<glm::vec3> rotations, std::vector<glm::vec3> scales, const std::vector<Light>& lights) const
 {
 	// Bind shader to be able to access uniforms
@@ -189,18 +180,12 @@ void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, 
 	}
 
 
-	// Bind UBO
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * 4 * instances, models, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	shader.setUniform("u_loadedObjects", (int)instances);
-
+	shader.setUniform("u_models", models, instances);
 
 	// Push the matrices to the vertex shader
-	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+	//glUniformMatrix4fv(glGetUniformLocation(shader.ID, "u_models"), MESHES_INSTANCIATED, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
 
 	// Draw the actual mesh
-	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, 3000);
+	glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
 }
 

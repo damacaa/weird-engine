@@ -18,7 +18,6 @@ public:
 	std::vector <Texture> textures;
 	// Store quadVAO in public so it can be used in the Draw function
 	VAO VAO;
-	GLuint UBO;
 
 	// Holds number of m_instances (if 1 the mesh will be rendered normally)
 	unsigned int m_instances;

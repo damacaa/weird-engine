@@ -2,16 +2,17 @@
 #include <vector>
 #include "../weird-engine/Input.h"
 
-Simulation::Simulation(Shape* data, size_t size)
+
+Simulation::Simulation(size_t size) :
+	m_positions(new vec3[size]{ vec3(0.0f) }),
+	m_velocities(new vec3[size]),
+	m_forces(new vec3[size]),
+	m_size(size)
 {
-	m_positions = new vec3[size];
-	m_velocities = new vec3[size];
-	m_forces = new vec3[size];
-	m_size = size;
 
 	for (size_t i = 0; i < m_size; i++)
 	{
-		m_positions[i] = data[i].position;
+		m_positions[i] = vec3(0.0f);
 		m_velocities[i] = vec3(0.0f);
 		m_forces[i] = vec3(0.0f);
 	}
@@ -112,14 +113,19 @@ void Simulation::Step(float delta)
 	}
 }
 
-void Simulation::Copy(Shape* target)
+void Simulation::Copy(Shape* target, size_t size)
 {
-	for (size_t i = 0; i < m_size; i++)
+	for (size_t i = 0; i < size; i++)
 	{
 		float y = m_positions[i].y;
 		target[i].position = m_positions[i];
 	}
 }
+
+/*void Simulation::Copy(std::shared_ptr<ComponentArray<RigidBody>> target)
+{
+
+}*/
 
 void Simulation::Shake(float f)
 {
@@ -136,12 +142,22 @@ void Simulation::Push(vec3 v)
 	m_forces[0] = v;
 }
 
-void Simulation::SetPositions(Shape* data)
+
+
+vec3 Simulation::GetPosition(Entity entity)
 {
-	for (size_t i = 0; i < m_size; i++)
-	{
-		m_positions[i] = data[i].position;
-		m_velocities[i] = vec3(0.0f);
-		m_forces[i] = vec3(0.0f);
-	}
+	return m_positions[entity];
+}
+
+void Simulation::SetPosition(Entity entity, vec3 pos)
+{
+	m_positions[entity] = pos;
+	m_velocities[entity] = vec3(0.0f);
+	m_forces[entity] = vec3(0.0f);
+}
+
+void Simulation::UpdateTransform(Transform& transform, Entity entity)
+{
+	transform.position = m_positions[entity];
+
 }

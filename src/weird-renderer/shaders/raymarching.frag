@@ -217,7 +217,7 @@ vec3 getMaterial(vec3 p, float id)
 {
     vec3 m;
     vec3 colors[2];
-    colors[0] = vec3(1.0, 0.0, 0.0);
+    colors[0] = vec3(0.0, 1.0, 0.0);
     colors[1] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
 
     return colors[int(id)];

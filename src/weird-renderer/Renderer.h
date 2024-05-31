@@ -11,6 +11,7 @@ class Renderer
 {
 private:
 
+	bool vSyncEnabled = false;
 
 	RenderPlane m_sdfRenderPlane;
 

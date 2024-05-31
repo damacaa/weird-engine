@@ -17,16 +17,11 @@ public:
 	Scene();
 	~Scene();
 	void RenderModels(Shader& shader, Shader& instancingShader);
-	void RenderShapes(Shader& shader, RenderPlane* rp) const;
+	void RenderShapes(Shader& shader, RenderPlane& rp);
 	void Update(double delta, double time);
 
-	ResourceManager m_resourceManager;
-
-
 	size_t m_size = 10;
-	Shape* m_data;
-	vector<Model*> m_models;
-
+	ResourceManager m_resourceManager;
 
 	Camera* m_camera;
 	vec3 m_lightPosition;
@@ -42,9 +37,10 @@ private:
 
 	vector<Light> m_lights;
 
-	std::shared_ptr<MovementSystem> movementSystem;
-	std::shared_ptr<RenderSystem> m_renderSystem;
-	std::shared_ptr<InstancedRenderSystem> m_instancedRenderSystem;
+	SDFRenderSystem m_sdfRenderSystem;
+	RenderSystem m_renderSystem;
+	InstancedRenderSystem m_instancedRenderSystem;
+	RBPhysicsSystem m_rbPhysicsSystem;
 
 	void LoadScene();
 };

@@ -1,19 +1,32 @@
 #pragma once
-#include "../weird-renderer/Shape.h"
+#include "../weird-renderer/Shape.h" // TODO: replace with components
+#include "../weird-engine/ecs/Entity.h"
+#include "../weird-engine/ecs/Components/Transform.h"
+
+
 using glm::vec3;
 class Simulation
 {
 public:
-	Simulation(Shape* data, size_t size);
+	Simulation(size_t size);
 	~Simulation();
 
 	void Step(float delta);
-	void Copy(Shape* target);
+
+	void Copy(Shape* target, size_t size);
+	//void Copy(std::shared_ptr<ComponentArray<RigidBody>> target);
+
 
 	void Shake(float f);
 	void Push(vec3 v);
 
-	void SetPositions(Shape* data);
+
+
+	vec3 GetPosition(Entity entity);
+	void SetPosition(Entity entity, vec3 pos);
+
+	void UpdateTransform(Transform& transform, Entity entity);
+
 private:
 	vec3* m_positions;
 	vec3* m_velocities;

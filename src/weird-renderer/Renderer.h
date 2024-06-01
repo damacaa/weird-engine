@@ -11,7 +11,8 @@ class Renderer
 {
 private:
 
-	bool vSyncEnabled = false;
+	bool m_vSyncEnabled = true;
+	bool m_renderMeshesOnly = false;
 
 	RenderPlane m_sdfRenderPlane;
 

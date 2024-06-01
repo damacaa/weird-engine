@@ -66,9 +66,6 @@
     <ClCompile Include="src\weird-renderer\Mesh.cpp">
       <Filter>Source Files\weird-renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\weird-renderer\Model.cpp">
-      <Filter>Source Files\weird-renderer</Filter>
-    </ClCompile>
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp">
       <Filter>Source Files\weird-renderer</Filter>
     </ClCompile>
@@ -120,9 +117,6 @@
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\Mesh.h">
-      <Filter>Header Files\weird-renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\weird-renderer\Model.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\RenderPlane.h">

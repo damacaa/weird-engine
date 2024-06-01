@@ -1,9 +1,6 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#include "weird-renderer/Model.h"
-#include "weird-renderer/Shape.h"
-#include "weird-renderer/RenderPlane.h"
 
 #include <cmath>
 

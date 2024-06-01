@@ -209,7 +209,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
     vec2 shadowObject = rayMarch(p - rd * 0.02, L);
     float d = shadowObject.x;
 
-    return (d > 10*length(L)) ? diffuse + ambient + specular + fresnel
+    return (d >= FAR * length(L)) ? diffuse + ambient + specular + fresnel
                                       : ambient + fresnel;
 }
 

@@ -16,6 +16,8 @@ public:
 
 		auto& componentArray = GetManagerArray<InstancedMeshRenderer>();
 
+		if (componentArray.getSize() == 0)
+			return;
 
 		auto& firstMesh = componentArray[0];
 

@@ -19,12 +19,9 @@ public:
 	// Store quadVAO in public so it can be used in the Draw function
 	VAO VAO;
 
-	// Holds number of m_instances (if 1 the mesh will be rendered normally)
-	unsigned int m_instances;
-
-	Mesh() :m_instances(1) {};
+	Mesh() {};
 	// Initializes the mesh
-	Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures, unsigned int instances);
+	Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
 
 	// Draws the mesh
 	void Draw

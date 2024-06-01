@@ -27,6 +27,6 @@ public:
 
 		delete[] data;
 
-		//rp->Draw(shader, m_data, m_size);
+		//rp->Draw(shader, m_data, m_shapes);
 	}
 };

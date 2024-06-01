@@ -39,9 +39,22 @@
             ]
         }
     ],
+    "materials" : [
+        {
+            "doubleSided" : true,
+            "name" : "Material.001",
+            "pbrMetallicRoughness" : {
+                "baseColorTexture" : {
+                    "index" : 0
+                },
+                "metallicFactor" : 0,
+                "roughnessFactor" : 0.5
+            }
+        }
+    ],
     "meshes" : [
         {
-            "name" : "Mesh",
+            "name" : "Suzanne",
             "primitives" : [
                 {
                     "attributes" : {
@@ -49,7 +62,8 @@
                         "NORMAL" : 1,
                         "TEXCOORD_0" : 2
                     },
-                    "indices" : 3
+                    "indices" : 3,
+                    "material" : 0
                 }
             ]
         },
@@ -67,39 +81,52 @@
             ]
         }
     ],
+    "textures" : [
+        {
+            "sampler" : 0,
+            "source" : 0
+        }
+    ],
+    "images" : [
+        {
+            "mimeType" : "image/png",
+            "name" : "fabric1_albedo",
+            "uri" : "fabric1_albedo.png"
+        }
+    ],
     "accessors" : [
         {
             "bufferView" : 0,
             "componentType" : 5126,
-            "count" : 7872,
+            "count" : 1966,
             "max" : [
-                1.325934886932373,
-                0.9392362236976624,
-                0.8223199844360352
+                1.3671875,
+                0.984375,
+                0.8515625
             ],
             "min" : [
-                -1.325934886932373,
-                -0.9704862236976624,
-                -0.7782661318778992
+                -1.3671875,
+                -0.984375,
+                -0.8515625
             ],
             "type" : "VEC3"
         },
         {
             "bufferView" : 1,
             "componentType" : 5126,
-            "count" : 7872,
+            "count" : 1966,
             "type" : "VEC3"
         },
         {
             "bufferView" : 2,
             "componentType" : 5126,
-            "count" : 7872,
+            "count" : 1966,
             "type" : "VEC2"
         },
         {
             "bufferView" : 3,
             "componentType" : 5123,
-            "count" : 11808,
+            "count" : 2904,
             "type" : "SCALAR"
         },
         {
@@ -140,56 +167,62 @@
     "bufferViews" : [
         {
             "buffer" : 0,
-            "byteLength" : 94464,
+            "byteLength" : 23592,
             "byteOffset" : 0,
             "target" : 34962
         },
         {
             "buffer" : 0,
-            "byteLength" : 94464,
-            "byteOffset" : 94464,
+            "byteLength" : 23592,
+            "byteOffset" : 23592,
             "target" : 34962
         },
         {
             "buffer" : 0,
-            "byteLength" : 62976,
-            "byteOffset" : 188928,
+            "byteLength" : 15728,
+            "byteOffset" : 47184,
             "target" : 34962
         },
         {
             "buffer" : 0,
-            "byteLength" : 23616,
-            "byteOffset" : 251904,
+            "byteLength" : 5808,
+            "byteOffset" : 62912,
             "target" : 34963
         },
         {
             "buffer" : 0,
             "byteLength" : 12948,
-            "byteOffset" : 275520,
+            "byteOffset" : 68720,
             "target" : 34962
         },
         {
             "buffer" : 0,
             "byteLength" : 12948,
-            "byteOffset" : 288468,
+            "byteOffset" : 81668,
             "target" : 34962
         },
         {
             "buffer" : 0,
             "byteLength" : 8632,
-            "byteOffset" : 301416,
+            "byteOffset" : 94616,
             "target" : 34962
         },
         {
             "buffer" : 0,
             "byteLength" : 3432,
-            "byteOffset" : 310048,
+            "byteOffset" : 103248,
             "target" : 34963
+        }
+    ],
+    "samplers" : [
+        {
+            "magFilter" : 9729,
+            "minFilter" : 9987
         }
     ],
     "buffers" : [
         {
-            "byteLength" : 313480,
+            "byteLength" : 106680,
             "uri" : "demo.bin"
         }
     ]

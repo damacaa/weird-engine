@@ -35,7 +35,7 @@ Mesh ResourceManager::GetMesh(const char* file, bool instancing)
 
 
 	// All the meshes and transformations
-	std::vector<Mesh> meshes; // TODO: make flyweight
+	std::vector<Mesh> meshes;
 	std::vector<glm::vec3> translationsMeshes;
 	std::vector<glm::quat> rotationsMeshes;
 	std::vector<glm::vec3> scalesMeshes;
@@ -47,14 +47,14 @@ Mesh ResourceManager::GetMesh(const char* file, bool instancing)
 
 
 	// Traverse all nodes
-	traverseNode(0, meshes);
+	traverseNode(file, 0, meshes);
 
 	meshMap[file] = meshes[0];
 
 	return meshes[0];
 }
 
-void ResourceManager::loadMesh(unsigned int indMesh, std::vector<Mesh>& meshes)
+void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh>& meshes)
 {
 	// Get all accessor indices
 	unsigned int posAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
@@ -75,14 +75,14 @@ void ResourceManager::loadMesh(unsigned int indMesh, std::vector<Mesh>& meshes)
 	std::vector<GLuint> indices = getIndices(JSON["accessors"][indAccInd]);
 
 	// TODO: restore this
-	// std::vector<Texture> textures = getTextures();
-	std::vector<Texture> textures;
+	std::vector<Texture> textures = getTextures(file);
+
 
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(vertices, indices, textures, 1000));
+	meshes.push_back(Mesh(vertices, indices, textures));
 }
 
-void ResourceManager::traverseNode(unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)
+void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)
 {
 	// Current node
 	json node = JSON["nodes"][nextNode];
@@ -150,17 +150,17 @@ void ResourceManager::traverseNode(unsigned int nextNode, std::vector<Mesh>& mes
 		// scalesMeshes.push_back(scale);
 		// matricesMeshes.push_back(matNextNode);
 
-		loadMesh(node["mesh"], meshes);
+		loadMesh(file, node["mesh"], meshes);
 	}
 
-	/* TODO: retore this
+	// TODO: retore this
 	// Check if the node has children, and if it does, apply this function to them with the matNextNode
-	if (node.find("children") != node.end())
+	/*if (node.find("children") != node.end())
 	{
 		for (unsigned int i = 0; i < node["children"].size(); i++)
-			traverseNode(node["children"][i], matNextNode);
-	}
-	*/
+			traverseNode(file, node["children"][i], matNextNode);
+	}*/
+
 }
 
 std::vector<unsigned char> ResourceManager::getData(const char* file)
@@ -265,72 +265,122 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	return indices;
 }
 
-std::vector<Texture> ResourceManager::getTextures(const char* file, std::vector<Texture>& loadedTex, std::vector<std::string>& loadedTexName)
+std::vector<Texture> ResourceManager::getTextures(const char* file)
 {
 	std::vector<Texture> textures;
 
-	std::string fileStr = std::string(file);
-	std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
+
+	const std::string DIFFUSE = "diffuse";
+	const std::string SPECULAR = "specular";
 
 	if (JSON["images"].size() == 0) {
 		std::cout << "No textures";
 
-		std::string texPath = "diffuse";
+		std::string key = "default" + DIFFUSE;
+		if (textureMap.find(key) != textureMap.end()) {
 
-		Texture defaultDiffuse = Texture(glm::vec4(255), "diffuse", loadedTex.size());
-		textures.push_back(defaultDiffuse);
-		loadedTex.push_back(defaultDiffuse);
-		loadedTexName.push_back(texPath);
+			textures.push_back(textureMap[key]);
+		}
+		else {
+			Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, textures.size());
+			textures.push_back(defaultDiffuse);
 
-		Texture defaultSpecular = Texture(glm::vec4(0), "specular", loadedTex.size());
-		textures.push_back(defaultSpecular);
-		loadedTex.push_back(defaultSpecular);
-		loadedTexName.push_back(texPath);
+			textureMap[key] = defaultDiffuse;
+		}
+
+
+		key = "default" + SPECULAR;
+		if (textureMap.find(key) != textureMap.end()) {
+
+			textures.push_back(textureMap[key]);
+		}
+		else {
+			Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
+			textures.push_back(defaultSpecular);
+			textureMap[key] = defaultSpecular;
+		}
+
 
 		return textures;
 	}
 
 	// Go over all images
+
+	bool hasSpecular = false;
+
+	std::string fileStr = std::string(file);
+	std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
 	for (unsigned int i = 0; i < JSON["images"].size(); i++)
 	{
 		// uri of current texture
 		std::string texPath = JSON["images"][i]["uri"];
 
-		// Check if the texture has already been loaded
-		bool skip = false;
-		for (unsigned int j = 0; j < loadedTexName.size(); j++)
-		{
-			if (loadedTexName[j] == texPath)
-			{
-				textures.push_back(loadedTex[j]);
-				skip = true;
-				break;
-			}
+		if (textureMap.find(texPath) != textureMap.end()) {
+			// Texture already loaded!
+			textures.push_back(textureMap[texPath]);
+			continue;
 		}
 
 		// If the texture has been loaded, skip this
-		if (!skip)
+
+		// Load diffuse texture
+		if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos || texPath.find("albedo") != std::string::npos)
 		{
-			// Load diffuse texture
-			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos)
-			{
-				Texture diffuse = Texture((fileDirectory + texPath).c_str(), "diffuse", loadedTex.size());
-				textures.push_back(diffuse);
-				loadedTex.push_back(diffuse);
-				loadedTexName.push_back(texPath);
-			}
-			// Load defaultSpecular texture
-			else if (texPath.find("metallicRoughness") != std::string::npos || texPath.find("specular") != std::string::npos)
-			{
-				Texture specular = Texture((fileDirectory + texPath).c_str(), "specular", loadedTex.size());
-				textures.push_back(specular);
-				loadedTex.push_back(specular);
-				loadedTexName.push_back(texPath);
-			}
+			Texture diffuse = Texture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size());
+			textures.push_back(diffuse);
+			textureMap[texPath] = diffuse;
+		}
+		// Load defaultSpecular texture
+		else if (texPath.find("metallicRoughness") != std::string::npos || texPath.find("specular") != std::string::npos)
+		{
+			Texture specular = Texture((fileDirectory + texPath).c_str(), SPECULAR, textures.size());
+			textures.push_back(specular);
+			textureMap[texPath] = specular;
+
+			hasSpecular = true;
+		}
+
+	}
+
+	if (!hasSpecular) {
+		const std::string SPECULAR = "specular";
+		std::string key = "default" + SPECULAR;
+		if (textureMap.find(key) != textureMap.end()) {
+
+			textures.push_back(textureMap[key]);
+		}
+		else {
+			Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
+			textures.push_back(defaultSpecular);
+			textureMap[key] = defaultSpecular;
 		}
 	}
 
 	return textures;
+}
+
+void ResourceManager::AddDefaultTextures(std::vector<Texture>& textures)
+{
+	Texture diffuse();
+
+	// Generate a texture object
+	GLuint texture;
+	glGenTextures(1, &texture);
+
+	// Bind the texture object
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// Set texture parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Define the texture image (1x1 white pixel)
+	unsigned char whitePixel[3] = { 255, 255, 255 }; // RGB
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
+
+
 }
 
 std::vector<Vertex> ResourceManager::assembleVertices

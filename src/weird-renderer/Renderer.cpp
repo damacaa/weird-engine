@@ -92,13 +92,19 @@ Renderer::~Renderer()
 
 void Renderer::Render(Scene& scene, const double time)
 {
-	if (vSyncEnabled)
+	if (m_vSyncEnabled)
 		glfwSwapInterval(1);
 	else
 		glfwSwapInterval(0);
 
-	// Bind sdf renderer frame buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
+	if (m_renderMeshesOnly) {
+		// Bind to default frame buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+	else {
+		// Bind sdf renderer frame buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
+	}
 
 	//glViewport(0, 0, width, height);
 	// Specify the color of the background
@@ -111,31 +117,28 @@ void Renderer::Render(Scene& scene, const double time)
 	// Updates and exports the camera matrix to the Vertex Shader
 	scene.m_camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
 
-	// Draw meshes
-	//m_defaultShaderProgram.Activate();
-	//m_defaultShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
-
-
 	// Draw objects in scene
 	scene.RenderModels(m_defaultShaderProgram, m_defaultInstancedShaderProgram);
 
-	// Bind to default frame buffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	if (!m_renderMeshesOnly) {
+		// Bind to default frame buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// Draw ray marching stuff
-	m_sdfShaderProgram.Activate();
+		// Draw ray marching stuff
+		m_sdfShaderProgram.Activate();
 
-	// Magical math to calculate ray marching shader FOV
-	float shaderFov = 1.0 / tan(scene.m_camera->fov * 0.01745 * 0.5);
-	// Set uniforms
-	m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.m_camera->view);
-	m_sdfShaderProgram.setUniform("u_fov", shaderFov);
-	m_sdfShaderProgram.setUniform("u_time", time);
-	m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_width, m_height));
-	m_sdfShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
+		// Magical math to calculate ray marching shader FOV
+		float shaderFov = 1.0 / tan(scene.m_camera->fov * 0.01745 * 0.5);
+		// Set uniforms
+		m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.m_camera->view);
+		m_sdfShaderProgram.setUniform("u_fov", shaderFov);
+		m_sdfShaderProgram.setUniform("u_time", time);
+		m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_width, m_height));
+		m_sdfShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
 
-	// Draw render plane with sdf shader
-	scene.RenderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+		// Draw render plane with sdf shader
+		scene.RenderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+	}
 
 	// Swap the back buffer with the front buffer
 	glfwSwapBuffers(m_window);

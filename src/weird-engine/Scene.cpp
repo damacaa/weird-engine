@@ -21,11 +21,12 @@ Scene::Scene()
 	// Read scene file and load everything
 	LoadScene();
 
-	m_simulation = new Simulation(m_size * 2);
+	unsigned int simulationSize = m_ecs.getComponentManager<RigidBody>()->getComponentArray<RigidBody>()->size;
+	m_simulation = new Simulation(simulationSize);
 	m_rbPhysicsSystem.init(m_ecs, *m_simulation);
 
 
-	//m_data = new Shape[m_size];
+	//m_data = new Shape[m_shapes];
 
 	//////////////////////////////////////
 
@@ -51,7 +52,7 @@ void Scene::RenderModels(Shader& shader, Shader& instancingShader)
 }
 
 
-void Scene::RenderShapes(Shader& shader, RenderPlane& rp) 
+void Scene::RenderShapes(Shader& shader, RenderPlane& rp)
 {
 	shader.Activate();
 	m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
@@ -105,50 +106,55 @@ void Scene::LoadScene()
 	// Create camera object
 	m_camera = new Camera(glm::vec3(0.0f, 2.0f, 5.0f));
 
-	// Spawn balls
-	for (size_t i = 0; i < m_size; i++)
+	// Spawn mesh balls
+	for (size_t i = 0; i < m_meshes; i++)
 	{
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, Transform());
 
-		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str(), 10)));
-		m_renderSystem.Add(entity);
+		if (m_useMeshInstancing) {
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str(), true)));
+			m_instancedRenderSystem.Add(entity);
+		}
+		else {
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str())));
+			m_renderSystem.Add(entity);
+		}
 
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.Add(entity);
 	}
 
-	for (size_t i = 0; i < m_size; i++)
+	// Spawn shape balls
+	for (size_t i = 0; i < m_shapes; i++)
 	{
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, Transform());
 
 		m_ecs.addComponent(entity, SDFRenderer());
-		m_renderSystem.Add(entity);
+		m_sdfRenderSystem.Add(entity);
 
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.Add(entity);
 	}
 
 
-	// Make monke
-	Entity monkey = m_ecs.createEntity();
-	Transform monkeyTransform;
-	monkeyTransform.position = vec3(10, 3.5f, -30);
-	monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-	monkeyTransform.scale = vec3(8.0f);
-	m_ecs.addComponent(monkey, monkeyTransform);
 
-	m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.GetMesh((projectDir + demoPath).c_str(), 1)));
-	m_renderSystem.Add(monkey);
+	{
+		// Make monke
+		Entity monkey = m_ecs.createEntity();
+		Transform monkeyTransform;
+		monkeyTransform.position = vec3(10, 3.5f, -30);
+		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+		monkeyTransform.scale = vec3(8.0f);
+		m_ecs.addComponent(monkey, monkeyTransform);
 
-	/*Model* monkey = new Model((projectDir + demoPath).c_str());
-	monkey->translation = vec3(10, 3.5f, -30);
-	monkey->scale = vec3(8);
-	monkey->rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.GetMesh((projectDir + demoPath).c_str(), 1)));
+		m_renderSystem.Add(monkey);
+	}
 
 
-	Model* bigBall = new Model((projectDir + spherePath).c_str());
+	/*Model* bigBall = new Model((projectDir + spherePath).c_str());
 	bigBall->translation = vec3(20, 1.5f, 20);
 	bigBall->scale = vec3(3.0f);*/
 

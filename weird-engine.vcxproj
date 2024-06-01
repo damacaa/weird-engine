@@ -161,7 +161,6 @@
     <ClCompile Include="src\weird-renderer\glad.c" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\weird-renderer\Mesh.cpp" />
-    <ClCompile Include="src\weird-renderer\Model.cpp" />
     <ClCompile Include="src\weird-renderer\Shader.cpp" />
     <ClCompile Include="src\weird-renderer\stb.cpp" />
     <ClCompile Include="src\weird-renderer\Texture.cpp" />
@@ -193,7 +192,6 @@
     <ClInclude Include="src\weird-renderer\Camera.h" />
     <ClInclude Include="src\weird-renderer\EBO.h" />
     <ClInclude Include="src\weird-renderer\Mesh.h" />
-    <ClInclude Include="src\weird-renderer\Model.h" />
     <ClInclude Include="src\weird-renderer\Shader.h" />
     <ClInclude Include="src\weird-renderer\Texture.h" />
     <ClInclude Include="src\weird-renderer\VAO.h" />

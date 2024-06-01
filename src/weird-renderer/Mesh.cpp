@@ -1,6 +1,6 @@
 #include "Mesh.h"
 
-Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures, unsigned int instances)
+Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures)
 {
 	Mesh::vertices = vertices;
 	Mesh::indices = indices;
@@ -21,8 +21,6 @@ Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::v
 	VAO.Unbind();
 	VBO.Unbind();
 	EBO.Unbind();
-
-	this->m_instances = instances;
 	
 }
 
@@ -57,8 +55,9 @@ void Mesh::Draw
 		{
 			num = std::to_string(numSpecular++);
 		}
+
+		textures[i].Bind(i);
 		textures[i].texUnit(shader, (type + num).c_str(), i);
-		textures[i].Bind();
 	}
 
 
@@ -127,7 +126,22 @@ void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, 
 	unsigned int numDiffuse = 0;
 	unsigned int numSpecular = 0;
 
-	// TODO: load textures
+	for (unsigned int i = 0; i < textures.size(); i++)
+	{
+		std::string num;
+		std::string type = textures[i].type;
+		if (type == "diffuse")
+		{
+			num = std::to_string(numDiffuse++);
+		}
+		else if (type == "specular")
+		{
+			num = std::to_string(numSpecular++);
+		}
+
+		textures[i].Bind(i);
+		textures[i].texUnit(shader, (type + num).c_str(), i);
+	}
 
 
 		// Take care of the camera Matrix

@@ -72,6 +72,7 @@ vec4 direcLight()
 	float specular = specAmount * specularLight;
 
 	return (texture(diffuse0, texCoord) * (diffuse + ambient) + texture(specular0, texCoord).r * specular) * lightColor;
+	//return texture(diffuse0, texCoord) + 0.1f;
 }
 
 vec4 spotLight()
@@ -121,5 +122,5 @@ void main()
 	// outputs final color
 	float depth = logisticDepth(gl_FragCoord.z, 0.5f, 5.0f);
 	FragColor = direcLight();// * (1.0f - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
-	//FragColor = vec4(texCoord.x, texCoord.x, texCoord.x, 1);
+	//FragColor = vec4(vec3(depth * depth * depth), 1);
 }

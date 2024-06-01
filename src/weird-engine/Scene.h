@@ -1,6 +1,5 @@
 #pragma once
 #include "../weird-renderer/Shape.h"
-#include "../weird-renderer/Model.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-renderer/RenderPlane.h"
 
@@ -20,14 +19,16 @@ public:
 	void RenderShapes(Shader& shader, RenderPlane& rp);
 	void Update(double delta, double time);
 
-	size_t m_size = 10;
-	ResourceManager m_resourceManager;
-
 	Camera* m_camera;
 	vec3 m_lightPosition;
 
-
 private:
+
+	size_t m_shapes = 0;
+	size_t m_meshes = 255;
+	bool m_useMeshInstancing = true;
+
+	ResourceManager m_resourceManager;
 
 	ECS m_ecs;
 	std::vector<Entity> m_entities;

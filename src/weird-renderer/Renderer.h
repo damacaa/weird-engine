@@ -10,29 +10,25 @@ using namespace std;
 class Renderer
 {
 private:
+	GLFWwindow* m_window;
+	unsigned int m_width, m_height;
 
 	bool m_vSyncEnabled = true;
 	bool m_renderMeshesOnly = false;
-
-	RenderPlane m_sdfRenderPlane;
 
 	Shader m_defaultShaderProgram;
 	Shader m_defaultInstancedShaderProgram;
 	Shader m_sdfShaderProgram;
 
-	unsigned int m_width, m_height;
-
-
+	RenderPlane m_sdfRenderPlane;
 
 public:
 	Renderer(const unsigned int width, const unsigned int height);
 	~Renderer();
-	void Render(Scene& scene, const double time);
-	bool CheckWindowClosed() const;
-	void SetWindowTitle(const char* name);
+	void render(Scene& scene, const double time);
+	bool checkWindowClosed() const;
+	void setWindowTitle(const char* name);
 
-	// TODO: move to private after implementing input system
-	GLFWwindow* m_window;
-
+	GLFWwindow* getWindow();
 };
 

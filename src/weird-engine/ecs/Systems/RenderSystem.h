@@ -2,16 +2,12 @@
 #include "../ECS.h"
 
 class RenderSystem : public System {
-
 public:
-	RenderSystem() {
-
-		m_entities = std::vector<Entity>();
-
-	}
-
-
 	void render(ECS& ecs, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
+
+		shader.activate();
+		shader.setUniform("lightColor", lights[0].color);
+		shader.setUniform("lightPos", lights[0].position);
 
 		auto& componentArray = GetManagerArray<MeshRenderer>();
 

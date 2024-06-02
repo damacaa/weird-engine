@@ -1,5 +1,6 @@
 #include "ResourceManager.h"
 
+
 // Reads a text file and outputs a string with everything in the text file
 std::string get_file_contentss(const char* filename)
 {
@@ -17,6 +18,11 @@ std::string get_file_contentss(const char* filename)
 	throw(errno);
 }
 
+ResourceManager::ResourceManager()
+{
+	Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, 0);
+	textureMap[MISSING_TEXTURE] = defaultDiffuse;
+}
 
 Mesh ResourceManager::GetMesh(const char* file, bool instancing)
 {
@@ -79,7 +85,7 @@ void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vect
 
 
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(vertices, indices, textures));
+	meshes.push_back(Mesh(m_meshCount++, vertices, indices, textures));
 }
 
 void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)
@@ -265,14 +271,30 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	return indices;
 }
 
+Texture& ResourceManager::getTexture(std::string path, std::string textureType, GLuint slot)
+{
+	try
+	{
+		// Load texture
+		Texture t = Texture(path.c_str(), textureType, slot);
+		// Store it in map
+		textureMap[path] = t;
+		// Add it to mesh textures
+		return t;
+	}
+	catch (const std::exception& ex)
+	{
+		// Couldn't load texture, using missing texture
+		return textureMap[MISSING_TEXTURE];
+	}
+}
+
+
 std::vector<Texture> ResourceManager::getTextures(const char* file)
 {
 	std::vector<Texture> textures;
 
-
-	const std::string DIFFUSE = "diffuse";
-	const std::string SPECULAR = "specular";
-
+	// If mesh doesn't contain any texture, use 1x1 white textures
 	if (JSON["images"].size() == 0) {
 		std::cout << "No textures";
 
@@ -282,9 +304,8 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 			textures.push_back(textureMap[key]);
 		}
 		else {
-			Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, textures.size());
+			Texture defaultDiffuse = Texture(glm::vec4(255), DIFFUSE, textures.size());
 			textures.push_back(defaultDiffuse);
-
 			textureMap[key] = defaultDiffuse;
 		}
 
@@ -304,10 +325,10 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 		return textures;
 	}
 
-	// Go over all images
 
 	bool hasSpecular = false;
 
+	// Load mesh textures
 	std::string fileStr = std::string(file);
 	std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
 	for (unsigned int i = 0; i < JSON["images"].size(); i++)
@@ -321,26 +342,21 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 			continue;
 		}
 
-		// If the texture has been loaded, skip this
-
+		// If the texture already exists in map, get it from there
 		// Load diffuse texture
 		if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos || texPath.find("albedo") != std::string::npos)
 		{
-			Texture diffuse = Texture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size());
-			textures.push_back(diffuse);
-			textureMap[texPath] = diffuse;
+			textures.push_back(getTexture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size()));
 		}
 		// Load defaultSpecular texture
-		else if (texPath.find("metallicRoughness") != std::string::npos || texPath.find("specular") != std::string::npos)
+		else if (texPath.find("roughness") != std::string::npos || texPath.find("specular") != std::string::npos)
 		{
-			Texture specular = Texture((fileDirectory + texPath).c_str(), SPECULAR, textures.size());
-			textures.push_back(specular);
-			textureMap[texPath] = specular;
-
+			textures.push_back(getTexture((fileDirectory + texPath).c_str(), SPECULAR, textures.size()));
 			hasSpecular = true;
 		}
 
 	}
+
 
 	if (!hasSpecular) {
 		const std::string SPECULAR = "specular";
@@ -434,3 +450,5 @@ std::vector<glm::vec4> ResourceManager::groupFloatsVec4(std::vector<float> float
 	}
 	return vectors;
 }
+
+

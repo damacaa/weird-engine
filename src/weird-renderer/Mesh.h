@@ -10,9 +10,12 @@
 #include"Texture.h"
 #include "Light.h"
 
+using MeshID = std::uint32_t;
+
 class Mesh
 {
 public:
+	MeshID id;
 	std::vector <Vertex> vertices;
 	std::vector <GLuint> indices;
 	std::vector <Texture> textures;
@@ -21,7 +24,7 @@ public:
 
 	Mesh() {};
 	// Initializes the mesh
-	Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
+	Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
 
 	// Draws the mesh
 	void Draw

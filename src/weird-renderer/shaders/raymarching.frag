@@ -198,7 +198,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 
     // color = vec3(0.0);
 
-    vec3 specColor = vec3(0.5);
+    vec3 specColor = vec3(1.0);
     vec3 specular = specColor * pow(clamp(dot(R, V), 0.0, 1.0), 100.0);
 
     vec3 diffuse = color * clamp(dot(L, N), 0.0, 1.0);
@@ -217,7 +217,7 @@ vec3 getMaterial(vec3 p, float id)
 {
     vec3 m;
     vec3 colors[2];
-    colors[0] = vec3(0.0, 1.0, 0.0);
+    colors[0] = vec3(1.0, 0.05, 0.03);
     colors[1] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
 
     return colors[int(id)];
@@ -297,11 +297,14 @@ void main()
     float z_n = 2.0 * depth - 1.0;
     float z_e = 2.0 * NEAR * FAR / (FAR + NEAR - z_n * (FAR - NEAR));
 
+    // Failed attempt to correct depth
+    // z_e = pow((z_e * z_e)+(u_resolution.x*0.25*(uv.x * uv.x)), 0.5); 
+
     vec3 originalColor = texture(u_colorTexture, screenUV).xyz;
 
     vec3 col = Render(uv, originalColor, z_e);
     col = pow(col, vec3(0.4545));
 
     FragColor = vec4(col, 1.0);
-    // FragColor = vec4(screenUV, 0.0, 0.0);
+    //FragColor = vec4(10000*uv, 0.0, 0.0);
 }

@@ -1,18 +1,29 @@
 #pragma once
 #include"../weird-renderer/Mesh.h"
 #include<json/json.h>
+#include <set>
 
 using json = nlohmann::json;
 
 
-class ResourceManager
-{
-
-
+class ResourceManager {
 private:
 
+	const std::string MISSING_TEXTURE = "missing";
+	const std::string DIFFUSE = "diffuse";
+	const std::string SPECULAR = "specular";
+
+	const std::list<std::string> m_diffuseNames{
+		"diffuse",
+		"Diffuse",
+		"Albedo",
+		"albedo"
+	};
+
 	std::map<std::string, Mesh> meshMap;
+	unsigned int m_meshCount = 0;
 	std::map<std::string, Texture> textureMap;
+	unsigned int m_textureCount = 0;
 
 	std::vector<unsigned char> data;
 	json JSON;
@@ -34,8 +45,7 @@ private:
 
 
 	// Assembles all the floats into vertices
-	std::vector<Vertex> assembleVertices
-	(
+	std::vector<Vertex> assembleVertices(
 		std::vector<glm::vec3> positions,
 		std::vector<glm::vec3> normals,
 		std::vector<glm::vec2> texUVs
@@ -46,8 +56,11 @@ private:
 	std::vector<glm::vec3> groupFloatsVec3(std::vector<float> floatVec);
 	std::vector<glm::vec4> groupFloatsVec4(std::vector<float> floatVec);
 
+	Texture& getTexture(std::string path, std::string textureType, GLuint slot);
 
 public:
+
+	ResourceManager();
 
 	Mesh GetMesh(const char* path, bool instancing = false);
 };

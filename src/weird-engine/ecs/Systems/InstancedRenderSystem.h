@@ -13,6 +13,9 @@ public:
 
 	void render(ECS& ecs, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
 
+		shader.activate();
+		shader.setUniform("lightColor", lights[0].color);
+		shader.setUniform("lightPos", lights[0].position);
 
 		auto& componentArray = GetManagerArray<InstancedMeshRenderer>();
 

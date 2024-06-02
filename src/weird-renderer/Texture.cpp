@@ -89,23 +89,23 @@ void Texture::texUnit(Shader& shader, const char* uniform, GLuint unit) const
 	// Gets the location of the uniform
 	GLuint texUni = glGetUniformLocation(shader.ID, uniform);
 	// Shader needs to be activated before changing the value of a uniform
-	shader.Activate();
+	shader.activate();
 	// Sets the value of the uniform
 	glUniform1i(texUni, unit);
 }
 
-void Texture::Bind(GLuint unit) const
+void Texture::bind(GLuint unit) const
 {
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 
-void Texture::Unbind() const
+void Texture::unbind() const
 {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Texture::Delete() const
+void Texture::dispose() const
 {
 	glDeleteTextures(1, &ID);
 }

@@ -15,34 +15,29 @@ class Scene
 public:
 	Scene();
 	~Scene();
-	void RenderModels(Shader& shader, Shader& instancingShader);
-	void RenderShapes(Shader& shader, RenderPlane& rp);
-	void Update(double delta, double time);
+	void renderModels(Shader& shader, Shader& instancingShader);
+	void renderShapes(Shader& shader, RenderPlane& rp);
+	void update(double delta, double time);
 
-	Camera* m_camera;
-	vec3 m_lightPosition;
+	std::unique_ptr<Camera> camera;
 
 private:
-
-	size_t m_shapes = 0;
-	size_t m_meshes = 255;
-	bool m_useMeshInstancing = true;
-
+	ECS m_ecs;
 	ResourceManager m_resourceManager;
 
-	ECS m_ecs;
-	std::vector<Entity> m_entities;
-
+	Simulation m_simulation;
 	double m_simulationDelay = 0.0;
-	Simulation* m_simulation;
-
-	vector<Light> m_lights;
 
 	SDFRenderSystem m_sdfRenderSystem;
 	RenderSystem m_renderSystem;
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
 
-	void LoadScene();
+	size_t m_shapes = 10;
+	size_t m_meshes = 10;
+	bool m_useMeshInstancing = true;
+	vector<Light> m_lights;
+
+	void loadScene();
 };
 

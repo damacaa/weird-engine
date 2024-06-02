@@ -8,7 +8,7 @@
 
 #include <glm/vec4.hpp>
 
-
+using TextureID = std::uint32_t;
 
 class Texture
 {
@@ -26,11 +26,11 @@ public:
 	// Assigns a texture unit to a texture
 	void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
 	// Binds a texture
-	void Bind(GLuint unit) const;
+	void bind(GLuint unit) const;
 	// Unbinds a texture
-	void Unbind() const;
+	void unbind() const;
 	// Deletes a texture
-	void Delete() const;
+	void dispose() const;
 
 private:
 

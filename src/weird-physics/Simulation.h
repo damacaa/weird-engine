@@ -11,27 +11,25 @@ public:
 	Simulation(size_t size);
 	~Simulation();
 
-	void Step(float delta);
+	// Manage simulation
+	void step(float delta);
+	void setSize(unsigned int size);
 
-	void Copy(Shape* target, size_t size);
-	//void Copy(std::shared_ptr<ComponentArray<RigidBody>> target);
+	// Add external forces
+	void shake(float f);
+	void push(vec3 v);
 
-
-	void Shake(float f);
-	void Push(vec3 v);
-
-
-
-	vec3 GetPosition(Entity entity);
-	void SetPosition(Entity entity, vec3 pos);
-
-	void UpdateTransform(Transform& transform, Entity entity);
+	// Retrieve results
+	vec3 getPosition(Entity entity);
+	void setPosition(Entity entity, vec3 pos);
+	void updateTransform(Transform& transform, Entity entity);
 
 private:
 	vec3* m_positions;
 	vec3* m_velocities;
 	vec3* m_forces;
 
+	size_t m_maxSize;
 	size_t m_size;
 
 	const float m_mass = 100.0f;
@@ -47,7 +45,6 @@ private:
 
 	struct Collision
 	{
-	public:
 		Collision(int a, int b, vec3 ab) {
 			A = a;
 			B = b;

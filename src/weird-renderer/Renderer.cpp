@@ -3,13 +3,10 @@
 
 
 
-Renderer::Renderer(const unsigned int width, const unsigned int height)
+Renderer::Renderer(const unsigned int width, const unsigned int height):
+	m_width(width),
+	m_height(height)
 {
-	m_width = width;
-	m_height = height;
-
-
-
 	// Initialize GLFW
 	glfwInit();
 
@@ -53,23 +50,17 @@ Renderer::Renderer(const unsigned int width, const unsigned int height)
 
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
-	glm::mat4 lightModel = glm::mat4(1.0f);
-	lightModel = glm::translate(lightModel, lightPos);
 
 	// Generates Shader objects
 	m_defaultShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
-	m_defaultShaderProgram.Activate();
-	m_defaultShaderProgram.setUniform("lightColor", lightColor);
-	m_defaultShaderProgram.setUniform("lightPos", lightPos);
+	m_defaultShaderProgram.activate();
 
 	// Generates Shader objects
 	m_defaultInstancedShaderProgram = Shader("src/weird-renderer/shaders/default_instancing.vert", "src/weird-renderer/shaders/default.frag");
-	m_defaultInstancedShaderProgram.Activate();
-	m_defaultInstancedShaderProgram.setUniform("lightColor", lightColor);
-	m_defaultInstancedShaderProgram.setUniform("lightPos", lightPos);
+	m_defaultInstancedShaderProgram.activate();
 
 	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
-	m_sdfShaderProgram.Activate();
+	m_sdfShaderProgram.activate();
 
 	// A plane that takes 100% of the screen and displays the result of a shader
 	m_sdfRenderPlane = RenderPlane(width, height, m_sdfShaderProgram);
@@ -90,12 +81,13 @@ Renderer::~Renderer()
 	glfwTerminate();
 }
 
-void Renderer::Render(Scene& scene, const double time)
+void Renderer::render(Scene& scene, const double time)
 {
 	if (m_vSyncEnabled)
 		glfwSwapInterval(1);
 	else
 		glfwSwapInterval(0);
+
 
 	if (m_renderMeshesOnly) {
 		// Bind to default frame buffer
@@ -106,7 +98,6 @@ void Renderer::Render(Scene& scene, const double time)
 		glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
 	}
 
-	//glViewport(0, 0, width, height);
 	// Specify the color of the background
 	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 	// Clean the back buffer and depth buffer
@@ -115,29 +106,28 @@ void Renderer::Render(Scene& scene, const double time)
 	glEnable(GL_DEPTH_TEST);
 
 	// Updates and exports the camera matrix to the Vertex Shader
-	scene.m_camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
+	scene.camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
 
 	// Draw objects in scene
-	scene.RenderModels(m_defaultShaderProgram, m_defaultInstancedShaderProgram);
+	scene.renderModels(m_defaultShaderProgram, m_defaultInstancedShaderProgram);
 
 	if (!m_renderMeshesOnly) {
 		// Bind to default frame buffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// Draw ray marching stuff
-		m_sdfShaderProgram.Activate();
+		m_sdfShaderProgram.activate();
 
 		// Magical math to calculate ray marching shader FOV
-		float shaderFov = 1.0 / tan(scene.m_camera->fov * 0.01745 * 0.5);
+		float shaderFov = 1.0 / tan(scene.camera->fov * 0.01745 * 0.5);
 		// Set uniforms
-		m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.m_camera->view);
+		m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.camera->view);
 		m_sdfShaderProgram.setUniform("u_fov", shaderFov);
 		m_sdfShaderProgram.setUniform("u_time", time);
 		m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_width, m_height));
-		m_sdfShaderProgram.setUniform("directionalLightDirection", scene.m_lightPosition);
 
 		// Draw render plane with sdf shader
-		scene.RenderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+		scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
 	}
 
 	// Swap the back buffer with the front buffer
@@ -145,15 +135,21 @@ void Renderer::Render(Scene& scene, const double time)
 	// Take care of all GLFW events
 	glfwPollEvents();
 
+
 }
 
-bool Renderer::CheckWindowClosed() const
+bool Renderer::checkWindowClosed() const
 {
 	return glfwWindowShouldClose(m_window);
 }
 
-void Renderer::SetWindowTitle(const char* name)
+void Renderer::setWindowTitle(const char* name)
 {
 	glfwSetWindowTitle(m_window, name);
+}
+
+GLFWwindow* Renderer::getWindow()
+{
+	return m_window;
 }
 

@@ -5,8 +5,6 @@
 constexpr size_t MAX_PATH_LENGTH = 4096;
 
 struct MeshRenderer : public Component {
-private:
-
 public:
 	Mesh mesh;
 

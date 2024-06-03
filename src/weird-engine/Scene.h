@@ -1,6 +1,5 @@
 #pragma once
 #include "../weird-renderer/Shape.h"
-#include "../weird-renderer/Model.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-renderer/RenderPlane.h"
 
@@ -16,36 +15,29 @@ class Scene
 public:
 	Scene();
 	~Scene();
-	void RenderModels(Shader& shader, Shader& instancingShader);
-	void RenderShapes(Shader& shader, RenderPlane* rp) const;
-	void Update(double delta, double time);
+	void renderModels(Shader& shader, Shader& instancingShader);
+	void renderShapes(Shader& shader, RenderPlane& rp);
+	void update(double delta, double time);
 
-	ResourceManager m_resourceManager;
-
-
-	size_t m_size = 10;
-	Shape* m_data;
-	vector<Model*> m_models;
-
-
-	Camera* m_camera;
-	vec3 m_lightPosition;
-
+	std::unique_ptr<Camera> camera;
 
 private:
-
 	ECS m_ecs;
-	std::vector<Entity> m_entities;
+	ResourceManager m_resourceManager;
 
+	Simulation m_simulation;
 	double m_simulationDelay = 0.0;
-	Simulation* m_simulation;
 
+	SDFRenderSystem m_sdfRenderSystem;
+	RenderSystem m_renderSystem;
+	InstancedRenderSystem m_instancedRenderSystem;
+	RBPhysicsSystem m_rbPhysicsSystem;
+
+	size_t m_shapes = 10;
+	size_t m_meshes = 10;
+	bool m_useMeshInstancing = true;
 	vector<Light> m_lights;
 
-	std::shared_ptr<MovementSystem> movementSystem;
-	std::shared_ptr<RenderSystem> m_renderSystem;
-	std::shared_ptr<InstancedRenderSystem> m_instancedRenderSystem;
-
-	void LoadScene();
+	void loadScene();
 };
 

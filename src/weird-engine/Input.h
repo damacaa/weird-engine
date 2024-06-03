@@ -68,7 +68,7 @@ private:
 
 public:
 
-	enum  MouseButton {
+	enum MouseButton {
 		LeftClick = 0,
 		MiddleClick = 1,
 		RightClick = 2,
@@ -224,7 +224,7 @@ private:
 		instance.m_mouseKeysTable[(int)MouseButton::WheelDown] = yoffset < 0 ? FIRST_PRESSED : NOT_PRESSED;
 	}
 
-	void update(GLFWwindow* window, int width, int height)
+	void updateTables(GLFWwindow* window, int width, int height)
 	{
 
 		if (m_window == nullptr) {
@@ -266,24 +266,24 @@ private:
 
 	}
 
-	void clear() {
+	void clearTables() {
 		m_mouseKeysTable[(int)MouseButton::WheelUp] = NOT_PRESSED;
 		m_mouseKeysTable[(int)MouseButton::WheelDown] = NOT_PRESSED;
 	}
 
 public:
 
-	static void Update(GLFWwindow* window, int width, int height) {
+	static void update(GLFWwindow* window, int width, int height) {
 		auto& instance = GetInstance();
-		instance.update(window, width, height);
+		instance.updateTables(window, width, height);
 	}
 
 	/// <summary>
 	/// Must be called after update but before render
 	/// </summary>
-	static void Clear() {
+	static void clear() {
 		auto& instance = GetInstance();
-		instance.clear();
+		instance.clearTables();
 	}
 
 };

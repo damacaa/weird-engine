@@ -39,7 +39,7 @@ static bool isFileModified(const char* filename, time_t& lastModifiedTime) {
 }
 
 // Activates the Shader Program
-void Shader::Activate()
+void Shader::activate()
 {
 	if (isFileModified(m_fragmentFile, m_lastModifiedTime)) {
 		Recompile();

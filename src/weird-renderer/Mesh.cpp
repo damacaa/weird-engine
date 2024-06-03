@@ -1,6 +1,7 @@
 #include "Mesh.h"
 
-Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures, unsigned int instances)
+Mesh::Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures) :
+	id(id)
 {
 	Mesh::vertices = vertices;
 	Mesh::indices = indices;
@@ -22,8 +23,6 @@ Mesh::Mesh(std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::v
 	VBO.Unbind();
 	EBO.Unbind();
 
-	this->m_instances = instances;
-	
 }
 
 
@@ -38,7 +37,7 @@ void Mesh::Draw
 ) const
 {
 	// Bind shader to be able to access uniforms
-	shader.Activate();
+	shader.activate();
 	VAO.Bind();
 
 	// Keep track of how many of each type of textures we have
@@ -49,16 +48,20 @@ void Mesh::Draw
 	{
 		std::string num;
 		std::string type = textures[i].type;
+		unsigned int unit;
 		if (type == "diffuse")
 		{
 			num = std::to_string(numDiffuse++);
+			unit = 0;
 		}
 		else if (type == "specular")
 		{
 			num = std::to_string(numSpecular++);
+			unit = 1;
 		}
-		textures[i].texUnit(shader, (type + num).c_str(), i);
-		textures[i].Bind();
+
+		textures[i].bind(i);
+		textures[i].texUnit(shader, (type + num).c_str(), unit);
 	}
 
 
@@ -120,17 +123,32 @@ void Mesh::Draw
 void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, std::vector<glm::vec3> translations, std::vector<glm::vec3> rotations, std::vector<glm::vec3> scales, const std::vector<Light>& lights) const
 {
 	// Bind shader to be able to access uniforms
-	shader.Activate();
+	shader.activate();
 	VAO.Bind();
 
 	// Keep track of how many of each type of textures we have
 	unsigned int numDiffuse = 0;
 	unsigned int numSpecular = 0;
 
-	// TODO: load textures
+	for (unsigned int i = 0; i < textures.size(); i++)
+	{
+		std::string num;
+		std::string type = textures[i].type;
+		if (type == "diffuse")
+		{
+			num = std::to_string(numDiffuse++);
+		}
+		else if (type == "specular")
+		{
+			num = std::to_string(numSpecular++);
+		}
+
+		textures[i].bind(i);
+		textures[i].texUnit(shader, (type + num).c_str(), i);
+	}
 
 
-		// Take care of the camera Matrix
+	// Take care of the camera Matrix
 	glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
 	camera.Matrix(shader, "camMatrix");
 

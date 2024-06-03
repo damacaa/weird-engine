@@ -1,7 +1,7 @@
 #include"Texture.h"
+const char* DIFFUSE = "diffuse";
 
-
-Texture::Texture(const char* image, const char* texType, GLuint slot)
+Texture::Texture(const char* image, std::string	texType, GLuint slot)
 {
 	// Assigns the type of the texture ot the texture object
 	type = texType;
@@ -17,7 +17,6 @@ Texture::Texture(const char* image, const char* texType, GLuint slot)
 	glGenTextures(1, &ID);
 	// Assigns the texture to a Texture Unit
 	glActiveTexture(GL_TEXTURE0 + slot);
-	unit = slot;
 	glBindTexture(GL_TEXTURE_2D, ID);
 
 	// Configures the type of algorithm that is used to make the image smaller or bigger
@@ -90,35 +89,33 @@ void Texture::texUnit(Shader& shader, const char* uniform, GLuint unit) const
 	// Gets the location of the uniform
 	GLuint texUni = glGetUniformLocation(shader.ID, uniform);
 	// Shader needs to be activated before changing the value of a uniform
-	shader.Activate();
+	shader.activate();
 	// Sets the value of the uniform
 	glUniform1i(texUni, unit);
 }
 
-void Texture::Bind() const
+void Texture::bind(GLuint unit) const
 {
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(GL_TEXTURE_2D, ID);
 }
 
-void Texture::Unbind() const
+void Texture::unbind() const
 {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Texture::Delete() const
+void Texture::dispose() const
 {
 	glDeleteTextures(1, &ID);
 }
 
-Texture::Texture(glm::vec4 color, const char* texType, GLuint slot)
+Texture::Texture(glm::vec4 color, std::string texType, GLuint slot)
 {
-	// Assigns the type of the texture ot the texture object
 	type = texType;
 
 	glGenTextures(1, &ID);
 	glActiveTexture(GL_TEXTURE0 + slot);
-	unit = slot;
 	glBindTexture(GL_TEXTURE_2D, ID);
 
 	// Create a 1x1 texture with the default color

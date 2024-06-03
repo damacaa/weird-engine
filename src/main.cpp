@@ -1,9 +1,6 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#include "weird-renderer/Model.h"
-#include "weird-renderer/Shape.h"
-#include "weird-renderer/RenderPlane.h"
 
 #include <cmath>
 
@@ -29,7 +26,7 @@ int main()
 	unsigned int frameCounter = 0;
 
 	// Main while loop
-	while (!renderer.CheckWindowClosed())
+	while (!renderer.checkWindowClosed())
 	{
 		// Meassure time
 		time = glfwGetTime();
@@ -44,7 +41,7 @@ int main()
 			std::string FPS = std::to_string(frameCounter / timeDiff);
 			std::string ms = std::to_string((timeDiff / frameCounter) * 1000);
 			std::string newTitle = FPS + "FPS / " + ms + "ms";
-			renderer.SetWindowTitle(newTitle.c_str());
+			renderer.setWindowTitle(newTitle.c_str());
 
 			// Resets times and frameCounter
 			timeDiff = 0;
@@ -52,16 +49,16 @@ int main()
 		}
 
 		// Capture window input
-		Input::Update(renderer.m_window, width, height);
+		Input::update(renderer.getWindow(), width, height);
 
 		// Update scene logic and physics
-		scene.Update(delta, time);
+		scene.update(delta, time);
 
 		// Clear input
-		Input::Clear();
+		Input::clear();
 
 		// Render scene
-		renderer.Render(scene, time);
+		renderer.render(scene, time);
 	}
 
 	return 0;

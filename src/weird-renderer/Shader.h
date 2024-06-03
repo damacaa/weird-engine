@@ -9,7 +9,7 @@
 #include<cerrno>
 #include <glm/glm.hpp>
 
-
+using ShaderID = std::uint32_t;
 
 std::string get_file_contents(const char* filename);
 
@@ -23,7 +23,7 @@ public:
 	Shader() {};
 
 	// Activates the Shader Program
-	void Activate();
+	void activate();
 	// Deletes the Shader Program
 	void Delete();
 

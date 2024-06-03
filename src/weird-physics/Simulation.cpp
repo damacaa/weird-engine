@@ -2,16 +2,18 @@
 #include <vector>
 #include "../weird-engine/Input.h"
 
-Simulation::Simulation(Shape* data, size_t size)
-{
-	m_positions = new vec3[size];
-	m_velocities = new vec3[size];
-	m_forces = new vec3[size];
-	m_size = size;
 
-	for (size_t i = 0; i < m_size; i++)
+Simulation::Simulation(size_t size) :
+	m_positions(new vec3[size]{ vec3(0.0f) }),
+	m_velocities(new vec3[size]),
+	m_forces(new vec3[size]),
+	m_maxSize(size),
+	m_size(0)
+{
+
+	for (size_t i = 0; i < m_maxSize; i++)
 	{
-		m_positions[i] = data[i].position;
+		m_positions[i] = vec3(0.0f, 0.01f * i, 0.0f);
 		m_velocities[i] = vec3(0.0f);
 		m_forces[i] = vec3(0.0f);
 	}
@@ -26,7 +28,7 @@ Simulation::~Simulation()
 	delete[] m_forces;
 }
 
-void Simulation::Step(float delta)
+void Simulation::step(float delta)
 {
 	// TODO:     
 	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
@@ -112,16 +114,9 @@ void Simulation::Step(float delta)
 	}
 }
 
-void Simulation::Copy(Shape* target)
-{
-	for (size_t i = 0; i < m_size; i++)
-	{
-		float y = m_positions[i].y;
-		target[i].position = m_positions[i];
-	}
-}
 
-void Simulation::Shake(float f)
+
+void Simulation::shake(float f)
 {
 	for (size_t i = 0; i < m_size; i++)
 	{
@@ -131,17 +126,31 @@ void Simulation::Shake(float f)
 	}
 }
 
-void Simulation::Push(vec3 v)
+void Simulation::push(vec3 v)
 {
 	m_forces[0] = v;
 }
 
-void Simulation::SetPositions(Shape* data)
+
+
+vec3 Simulation::getPosition(Entity entity)
 {
-	for (size_t i = 0; i < m_size; i++)
-	{
-		m_positions[i] = data[i].position;
-		m_velocities[i] = vec3(0.0f);
-		m_forces[i] = vec3(0.0f);
-	}
+	return m_positions[entity];
+}
+
+void Simulation::setPosition(Entity entity, vec3 pos)
+{
+	m_positions[entity] = pos;
+	m_velocities[entity] = vec3(0.0f);
+	m_forces[entity] = vec3(0.0f);
+}
+
+void Simulation::updateTransform(Transform& transform, Entity entity)
+{
+	transform.position = m_positions[entity];
+}
+
+void Simulation::setSize(unsigned int size)
+{
+	m_size = size;
 }

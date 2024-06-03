@@ -15,9 +15,29 @@
 
 // System base class
 class System {
+protected:
+	std::shared_ptr<ComponentManager> m_manager;
+	std::vector<Entity> m_entities;
+
 public:
-	std::shared_ptr<ComponentManager> manager;
-	std::vector<Entity> entities;
+	void Add(Entity entity) {
+		m_entities.push_back(entity);
+	}
+
+	void SetManager(std::shared_ptr<ComponentManager> manager) {
+		m_manager = manager;
+	}
+
+protected:
+	template<typename T>
+	ComponentArray<T>& GetManagerArray() {
+		return *m_manager->getComponentArray<T>();
+	}
+
+	template<typename T>
+	std::shared_ptr<ComponentArray<T>> GetManagerArrayPtr() {
+		return m_manager->getComponentArray<T>();
+	}
 };
 
 // ECS Manager
@@ -37,27 +57,7 @@ public:
 		}
 	}
 
-	template <typename T>
-	void registerComponent() {
 
-		ComponentManager manager;
-		manager.registerComponent<T>();
-		auto pointerToManager = std::make_shared<ComponentManager>(manager);
-
-		componentManagers[typeid(T).name()] = pointerToManager;
-	}
-
-	template <typename T>
-	void registerComponent(std::shared_ptr<System> system) {
-
-		ComponentManager manager;
-		manager.registerComponent<T>();
-		auto pointerToManager = std::make_shared<ComponentManager>(manager);
-
-		componentManagers[typeid(T).name()] = pointerToManager;
-
-		system->manager = pointerToManager;
-	}
 
 	template <typename T>
 	void addComponent(Entity entity, T component) {
@@ -86,21 +86,70 @@ public:
 		systems.push_back(system);
 	}
 
+	template <typename T>
+	void registerComponent() {
+
+		ComponentManager manager;
+		manager.registerComponent<T>();
+		auto pointerToManager = std::make_shared<ComponentManager>(manager);
+
+		componentManagers[typeid(T).name()] = pointerToManager;
+	}
+
+	template <typename T>
+	void registerComponent(std::shared_ptr<System> system) {
+
+		addSystem<T>(system);
+
+		ComponentManager manager;
+		manager.registerComponent<T>();
+		auto pointerToManager = std::make_shared<ComponentManager>(manager);
+
+		componentManagers[typeid(T).name()] = pointerToManager;
+
+
+		system->SetManager(pointerToManager);
+	}
+
+	template <typename T>
+	void registerComponent(System& system) {
+
+		std::shared_ptr<System> pointerToSystem = std::make_shared<System>(system);
+
+		addSystem<T>(pointerToSystem);
+
+		ComponentManager manager;
+		manager.registerComponent<T>();
+		auto pointerToManager = std::make_shared<ComponentManager>(manager);
+
+		componentManagers[typeid(T).name()] = pointerToManager;
+
+
+		system.SetManager(pointerToManager);
+	}
+
+public:
+	template <typename T>
+	std::shared_ptr<ComponentManager> getComponentManager() {
+		return componentManagers[typeid(T).name()];
+	}
+
 private:
 	std::unordered_map<const char*, std::shared_ptr<ComponentManager>> componentManagers;
 	std::vector<std::shared_ptr<System>> systems;
 	Entity entityCount = 0;
 
-	template <typename T>
-	std::shared_ptr<ComponentManager> getComponentManager() {
-		return componentManagers[typeid(T).name()];
-	}
 };
 
 #include "Components/Transform.h"
+#include "Components/SDFRenderer.h"
 #include "Components/MeshRenderer.h"
 #include "Components/InstancedMeshRenderer.h"
+#include "Components/RigidBody.h"
 
+#include "Systems/RenderSystem.h"
+#include "Systems/InstancedRenderSystem.h"
+#include "Systems/SDFRenderSystem.h"
 
 
 

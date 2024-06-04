@@ -114,6 +114,16 @@ void Simulation::step(float delta)
 	}
 }
 
+SimulationID Simulation::generateSimulationID()
+{
+	return m_size++;
+}
+
+size_t Simulation::getSize()
+{
+	return m_size;
+}
+
 
 
 void Simulation::shake(float f)
@@ -132,25 +142,20 @@ void Simulation::push(vec3 v)
 }
 
 
-
-vec3 Simulation::getPosition(Entity entity)
+vec3 Simulation::getPosition(SimulationID entity)
 {
 	return m_positions[entity];
 }
 
-void Simulation::setPosition(Entity entity, vec3 pos)
+void Simulation::setPosition(SimulationID entity, vec3 pos)
 {
 	m_positions[entity] = pos;
 	m_velocities[entity] = vec3(0.0f);
 	m_forces[entity] = vec3(0.0f);
 }
 
-void Simulation::updateTransform(Transform& transform, Entity entity)
+void Simulation::updateTransform(Transform& transform, SimulationID entity)
 {
 	transform.position = m_positions[entity];
 }
 
-void Simulation::setSize(unsigned int size)
-{
-	m_size = size;
-}

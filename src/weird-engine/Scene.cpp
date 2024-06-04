@@ -2,12 +2,24 @@
 #include "Input.h"
 
 #include <filesystem>
+#include <random>
 
 namespace fs = std::filesystem;
 
 constexpr double FIXED_DELTA_TIME = 1 / 100.0;
 constexpr size_t MAX_STEPS = 1000000;
 constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
+
+
+
+// Create a random device to seed the generator
+std::random_device rd;
+
+// Use the Mersenne Twister engine seeded with the random device
+std::mt19937 gen(rd());
+
+// Define a uniform integer distribution from 1 to 100
+std::uniform_int_distribution<> dis(1, 100);
 
 Scene::Scene() : m_simulation(MAX_SIMULATED_OBJECTS)
 {
@@ -71,6 +83,36 @@ void Scene::update(double delta, double time)
 		t.isDirty = true;
 		t.position = glm::vec3(0, 5, 0);
 	}
+
+	if (Input::GetKeyDown(Input::KeyCode::Z)) {
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, Transform());
+
+		float x = dis(gen) - 50;
+		float y = dis(gen);
+		float z = dis(gen) - 50;
+
+		m_ecs.getComponent<Transform>(entity).position =
+			vec3(x, y, z);
+
+		std::string projectDir = fs::current_path().string();
+		std::string meshPath = "/Resources/Models/sphere.gltf";
+
+		if (m_useMeshInstancing) {
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + meshPath).c_str(), true)));
+			m_instancedRenderSystem.add(entity);
+		}
+		else {
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.GetMesh((projectDir + meshPath).c_str())));
+			m_renderSystem.add(entity);
+		}
+
+		//m_ecs.addComponent(entity, RigidBody());
+		//m_rbPhysicsSystem.add(entity);
+		//m_rbPhysicsSystem.addNewRigidbodiesToSimulation(m_ecs, m_simulation);
+	}
+
+
 }
 
 
@@ -95,15 +137,15 @@ void Scene::loadScene()
 
 		if (m_useMeshInstancing) {
 			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str(), true)));
-			m_instancedRenderSystem.Add(entity);
+			m_instancedRenderSystem.add(entity);
 		}
 		else {
 			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str())));
-			m_renderSystem.Add(entity);
+			m_renderSystem.add(entity);
 		}
 
 		m_ecs.addComponent(entity, RigidBody());
-		m_rbPhysicsSystem.Add(entity);
+		m_rbPhysicsSystem.add(entity);
 	}
 
 	// Spawn shape balls
@@ -113,10 +155,10 @@ void Scene::loadScene()
 		m_ecs.addComponent(entity, Transform());
 
 		m_ecs.addComponent(entity, SDFRenderer());
-		m_sdfRenderSystem.Add(entity);
+		m_sdfRenderSystem.add(entity);
 
 		m_ecs.addComponent(entity, RigidBody());
-		m_rbPhysicsSystem.Add(entity);
+		m_rbPhysicsSystem.add(entity);
 	}
 
 
@@ -130,7 +172,7 @@ void Scene::loadScene()
 		m_ecs.addComponent(monkey, monkeyTransform);
 
 		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.GetMesh((projectDir + demoPath).c_str(), 1)));
-		m_renderSystem.Add(monkey);
+		m_renderSystem.add(monkey);
 	}
 
 	Light light;

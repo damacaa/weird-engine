@@ -4,6 +4,8 @@
 #include "../weird-engine/ecs/Components/Transform.h"
 
 
+using SimulationID = std::uint32_t;
+
 using glm::vec3;
 class Simulation
 {
@@ -13,16 +15,18 @@ public:
 
 	// Manage simulation
 	void step(float delta);
-	void setSize(unsigned int size);
+	//void setSize(unsigned int size);
+	SimulationID generateSimulationID();
+	size_t getSize();
 
 	// Add external forces
 	void shake(float f);
 	void push(vec3 v);
 
 	// Retrieve results
-	vec3 getPosition(Entity entity);
-	void setPosition(Entity entity, vec3 pos);
-	void updateTransform(Transform& transform, Entity entity);
+	vec3 getPosition(SimulationID entity);
+	void setPosition(SimulationID entity, vec3 pos);
+	void updateTransform(Transform& transform, SimulationID entity);
 
 private:
 	vec3* m_positions;

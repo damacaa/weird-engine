@@ -15,7 +15,7 @@
 #define RELEASED_THIS_FRAME        -1	/// Button released this frame.
 #define NOT_PRESSED                 0	/// Button not pressed.
 #define IS_PRESSED                  1	/// Button has been pressed down for at least one previous frame. 
-#define FIRST_PRESSED    2	/// Started pressing the button in current frame.
+#define FIRST_PRESSED               2	/// Started pressing the button in current frame.
 /// </summary>
 
 #define SUPPORTED_KEYS			  342
@@ -183,7 +183,7 @@ public:
 
 	static bool GetMouseButtonDown(MouseButton button) 
 	{
-		return GetInstance().m_mouseKeysTable[(int)button] == IS_PRESSED;
+		return GetInstance().m_mouseKeysTable[(int)button] == FIRST_PRESSED;
 	}
 
 	static bool GetMouseButtonUp(MouseButton button) 
@@ -203,7 +203,7 @@ public:
 
 	static bool GetKeyDown(unsigned char key)
 	{
-		return GetInstance().m_keyTable[key] == IS_PRESSED;
+		return GetInstance().m_keyTable[key] == FIRST_PRESSED;
 	}
 
 	static bool GetKeyUp(unsigned char key)

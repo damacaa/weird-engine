@@ -20,7 +20,7 @@ protected:
 	std::vector<Entity> m_entities;
 
 public:
-	void Add(Entity entity) {
+	virtual void add(Entity entity) {
 		m_entities.push_back(entity);
 	}
 

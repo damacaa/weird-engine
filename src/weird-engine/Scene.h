@@ -33,8 +33,8 @@ private:
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
 
-	size_t m_shapes = 10;
-	size_t m_meshes = 10;
+	size_t m_shapes = 0;
+	size_t m_meshes = 0;
 	bool m_useMeshInstancing = true;
 	vector<Light> m_lights;
 

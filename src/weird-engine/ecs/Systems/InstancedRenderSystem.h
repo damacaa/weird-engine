@@ -1,7 +1,10 @@
 #pragma once
 #include "../ECS.h"
+#define min(a, b) a < b ? a : b
 
 class InstancedRenderSystem : public System {
+private:
+	const size_t MAX_INSTANCES = 255;
 
 public:
 	InstancedRenderSystem() {
@@ -22,25 +25,46 @@ public:
 		if (componentArray.getSize() == 0)
 			return;
 
-		auto& firstMesh = componentArray[0];
+		auto& mesh = componentArray[0];
 
-		std::vector<glm::vec3> translations;
-		std::vector<glm::vec3> rotations;
-		std::vector<glm::vec3> scales;
+		int arraySize = componentArray.getSize();
+		int iterations = (arraySize / MAX_INSTANCES) + 1;
 
-		for (size_t i = 0; i < componentArray.getSize(); i++)
+		if (iterations > 1)
+			int stop = 1;
+
+		int k = 0;
+		for (size_t i = 0; i < iterations; i++)
 		{
-			auto& mr = componentArray[i];
-			auto& t = ecs.getComponent<Transform>(mr.Owner);
 
-			translations.push_back(t.position);
-			rotations.push_back(glm::vec3(0));
-			scales.push_back(glm::vec3(1));
+			std::vector<glm::vec3> translations;
+			std::vector<glm::vec3> rotations;
+			std::vector<glm::vec3> scales;
 
-			//mr.mesh.Draw(shader, camera, glm::vec3(t.x, t.y, t.z), glm::vec3(0), glm::vec3(1), lights);
+			int count = i == iterations - 1
+				?
+				arraySize - (i * MAX_INSTANCES)
+				:
+				MAX_INSTANCES;
+
+			if (count == 0)
+				break;
+
+
+			for (size_t j = 0; j < count; j++)
+			{
+				auto& mr = componentArray[k];
+				auto& t = ecs.getComponent<Transform>(mr.Owner);
+
+				translations.push_back(t.position);
+				rotations.push_back(t.rotation);
+				scales.push_back(t.scale);
+
+				k++;
+			}
+
+			mesh.mesh.DrawInstance(shader, camera, count, translations, rotations, scales, lights);
 		}
-
-		firstMesh.mesh.DrawInstance(shader, camera, componentArray.getSize(), translations, rotations, scales, lights);
 	}
 
 };

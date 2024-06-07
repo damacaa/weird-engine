@@ -44,16 +44,17 @@ protected:
 class ECS {
 public:
 	Entity createEntity() {
-		return entityCount++;
+		return m_entityCount++;
 	}
 
+
 	void destroyEntity(Entity entity) {
-		for (auto const& pair : componentManagers) {
-			auto const& component = pair.second;
+		for (auto const& pair : m_componentManagers) {
+			const std::shared_ptr<ComponentManager>& component = pair.second;
 			// TODO:
-			/*if (component->hasData(entity)) {
+			if (component->hasData(entity)) {
 				component->removeData(entity);
-			}*/
+			}
 		}
 	}
 
@@ -83,7 +84,7 @@ public:
 
 	template <typename T>
 	void addSystem(std::shared_ptr<System> system) {
-		systems.push_back(system);
+		m_systems.push_back(system);
 	}
 
 	template <typename T>
@@ -93,7 +94,7 @@ public:
 		manager.registerComponent<T>();
 		auto pointerToManager = std::make_shared<ComponentManager>(manager);
 
-		componentManagers[typeid(T).name()] = pointerToManager;
+		m_componentManagers[typeid(T).name()] = pointerToManager;
 	}
 
 	template <typename T>
@@ -105,8 +106,7 @@ public:
 		manager.registerComponent<T>();
 		auto pointerToManager = std::make_shared<ComponentManager>(manager);
 
-		componentManagers[typeid(T).name()] = pointerToManager;
-
+		m_componentManagers[typeid(T).name()] = pointerToManager;
 
 		system->SetManager(pointerToManager);
 	}
@@ -122,7 +122,7 @@ public:
 		manager.registerComponent<T>();
 		auto pointerToManager = std::make_shared<ComponentManager>(manager);
 
-		componentManagers[typeid(T).name()] = pointerToManager;
+		m_componentManagers[typeid(T).name()] = pointerToManager;
 
 
 		system.SetManager(pointerToManager);
@@ -131,13 +131,13 @@ public:
 public:
 	template <typename T>
 	std::shared_ptr<ComponentManager> getComponentManager() {
-		return componentManagers[typeid(T).name()];
+		return m_componentManagers[typeid(T).name()];
 	}
 
 private:
-	std::unordered_map<const char*, std::shared_ptr<ComponentManager>> componentManagers;
-	std::vector<std::shared_ptr<System>> systems;
-	Entity entityCount = 0;
+	std::unordered_map<const char*, std::shared_ptr<ComponentManager>> m_componentManagers;
+	std::vector<std::shared_ptr<System>> m_systems;
+	Entity m_entityCount = 0;
 
 };
 

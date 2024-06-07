@@ -31,8 +31,8 @@ uniform mat4 u_models[255];
 void main()
 {
 	// calculates current position
-	crntPos = vec3(u_models[gl_InstanceID] * vec4(aPos, 1.0f));// + vec3(0, gl_InstanceID, 0);
-	// Assigns the normal from the Vertex Data to "Normal"
+	crntPos = vec3(u_models[gl_InstanceID] * vec4(aPos, 1.0f));
+	//crntPos = aPos + vec3(10.0*sin(0.01 * gl_InstanceID), 0.005*gl_InstanceID, 10.0*cos(0.01 * gl_InstanceID)); 
 	Normal = aNormal;
 	// Assigns the colors from the Vertex Data to "color"
 	color = aColor;

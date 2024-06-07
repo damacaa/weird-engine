@@ -5,6 +5,7 @@
 
 using json = nlohmann::json;
 
+using MeshID = std::uint32_t;
 
 class ResourceManager {
 private:
@@ -20,13 +21,15 @@ private:
 		"albedo"
 	};
 
+	std::map<std::string, MeshID> m_meshIdMap;
 	std::map<std::string, Mesh> meshMap;
-	unsigned int m_meshCount = 0;
-	std::map<std::string, Texture> textureMap;
+
+	unsigned int m_loadedMeshesCount = 0;
+	std::map<std::string, Texture> m_textureMap;
 	unsigned int m_textureCount = 0;
 
-	std::vector<unsigned char> data;
-	json JSON;
+	std::vector<unsigned char> m_data;
+	json m_json;
 
 
 	// Loads a single mesh by its index
@@ -41,7 +44,7 @@ private:
 	std::vector<float> getFloats(json accessor);
 	std::vector<GLuint> getIndices(json accessor);
 	std::vector<Texture> getTextures(const char* file);
-	void AddDefaultTextures(std::vector<Texture>& textures);
+	void addDefaultTextures(std::vector<Texture>& textures);
 
 
 	// Assembles all the floats into vertices
@@ -62,6 +65,7 @@ public:
 
 	ResourceManager();
 
-	Mesh GetMesh(const char* path, bool instancing = false);
+	Mesh getMesh(const char* path, bool instancing = false);
+	MeshID getMeshId(const char* path, bool instancing = false);
 };
 

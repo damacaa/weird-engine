@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "../weird-engine/Input.h"
 
 
 
@@ -7,6 +8,7 @@ Renderer::Renderer(const unsigned int width, const unsigned int height):
 	m_width(width),
 	m_height(height)
 {
+
 	// Initialize GLFW
 	glfwInit();
 
@@ -83,6 +85,12 @@ Renderer::~Renderer()
 
 void Renderer::render(Scene& scene, const double time)
 {
+	if (Input::GetKeyDown(Input::KeyCode::V))
+		m_vSyncEnabled = !m_vSyncEnabled;
+
+	if (Input::GetKeyDown(Input::C))
+		m_renderMeshesOnly = !m_renderMeshesOnly;
+
 	if (m_vSyncEnabled)
 		glfwSwapInterval(1);
 	else

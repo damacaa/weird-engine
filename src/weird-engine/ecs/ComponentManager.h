@@ -3,6 +3,8 @@
 #include "Entity.h"
 #include "Component.h"
 
+#include "Components/Transform.h"
+
 // ComponentArray to store components of a specific type
 template <typename T>
 class ComponentArray {
@@ -38,7 +40,7 @@ public:
 	}
 
 	bool hasData(Entity entity) {
-		return entityToIndexMap.find(entity) != entityToIndexMap.end();
+		return entityToIndexMap.size() > 0 && entityToIndexMap.find(entity) != entityToIndexMap.end();
 	}
 
 
@@ -77,6 +79,10 @@ private:
 
 public:
 
+	ComponentManager() {
+
+	}
+
 	template <typename T>
 	void registerComponent() {
 		const char* typeName = typeid(T).name();
@@ -89,7 +95,7 @@ public:
 	void addComponent(Entity entity, T component) {
 		auto castedComponentArray = getComponentArray<T>();
 		castedComponentArray->insertData(entity, component);
-		m_componentArray = castedComponentArray;
+		//m_componentArray = castedComponentArray;
 	}
 
 	template <typename T>
@@ -107,10 +113,17 @@ public:
 		return getComponentArray<T>()->hasData(entity);
 	}
 
+	bool hasData(Entity entity) {
 
-	ComponentManager() {
+		auto array = getComponentArray<Transform>();
+		bool hasData = array->hasData(entity);
+		return hasData;
+	}
+
+	void removeData(Entity entity) {
 
 	}
+
 
 	template <typename T>
 	std::shared_ptr<ComponentArray<T>> getComponentArray() const {

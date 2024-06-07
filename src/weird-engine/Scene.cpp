@@ -88,28 +88,34 @@ void Scene::update(double delta, double time)
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, Transform());
 
-		float x = dis(gen) - 50;
-		float y = dis(gen);
-		float z = dis(gen) - 50;
+		float x = 0.001f * dis(gen);
+		float y = 5;
+		float z = 0.001f * dis(gen);
 
-		m_ecs.getComponent<Transform>(entity).position =
-			vec3(x, y, z);
+		m_ecs.getComponent<Transform>(entity).position = vec3(x, y, z);
 
 		std::string projectDir = fs::current_path().string();
 		std::string meshPath = "/Resources/Models/sphere.gltf";
 
 		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + meshPath).c_str(), true)));
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMesh((projectDir + meshPath).c_str(), true)));
 			m_instancedRenderSystem.add(entity);
 		}
 		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.GetMesh((projectDir + meshPath).c_str())));
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMesh((projectDir + meshPath).c_str())));
 			m_renderSystem.add(entity);
 		}
 
-		//m_ecs.addComponent(entity, RigidBody());
-		//m_rbPhysicsSystem.add(entity);
-		//m_rbPhysicsSystem.addNewRigidbodiesToSimulation(m_ecs, m_simulation);
+		m_ecs.addComponent(entity, RigidBody());
+		m_rbPhysicsSystem.add(entity);
+		m_rbPhysicsSystem.addNewRigidbodiesToSimulation(m_ecs, m_simulation);
+	}
+
+	if (Input::GetKeyDown(Input::KeyCode::X)) {
+		Entity entity = 0;
+		//m_ecs.removeComponent<
+		m_ecs.destroyEntity(entity);
+	
 	}
 
 
@@ -129,18 +135,41 @@ void Scene::loadScene()
 	// Create camera object
 	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 2.0f, 5.0f)));
 
+	{
+		// Make monke
+		Entity monkey = m_ecs.createEntity();
+		Transform monkeyTransform;
+		monkeyTransform.position = vec3(10, 3.5f, -30);
+		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+		monkeyTransform.scale = vec3(8.0f);
+		m_ecs.addComponent(monkey, monkeyTransform);
+
+		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMesh((projectDir + demoPath).c_str(), 1)));
+		m_renderSystem.add(monkey);
+	}
+
 	// Spawn mesh balls
 	for (size_t i = 0; i < m_meshes; i++)
 	{
 		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, Transform());
+
+
+		float x = dis(gen) - 50;
+		float y = dis(gen);
+		float z = dis(gen) - 50;
+
+		Transform t;
+		t.position = vec3(x, y, z);
+		m_ecs.addComponent(entity, t);
 
 		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str(), true)));
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMesh((projectDir +
+				(i % 2 == 0 ? cubePath : spherePath)
+				).c_str(), true)));
 			m_instancedRenderSystem.add(entity);
 		}
 		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.GetMesh((projectDir + spherePath).c_str())));
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMesh((projectDir + spherePath).c_str())));
 			m_renderSystem.add(entity);
 		}
 
@@ -162,18 +191,7 @@ void Scene::loadScene()
 	}
 
 
-	{
-		// Make monke
-		Entity monkey = m_ecs.createEntity();
-		Transform monkeyTransform;
-		monkeyTransform.position = vec3(10, 3.5f, -30);
-		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-		monkeyTransform.scale = vec3(8.0f);
-		m_ecs.addComponent(monkey, monkeyTransform);
 
-		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.GetMesh((projectDir + demoPath).c_str(), 1)));
-		m_renderSystem.add(monkey);
-	}
 
 	Light light;
 	light.rotation = normalize(vec3(1.f, 1.5f, 1.f));

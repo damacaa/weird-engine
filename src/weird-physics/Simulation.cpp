@@ -69,9 +69,9 @@ void Simulation::step(float delta)
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
 
-		/*vec3 t = 0.01f * (length(col.AB) - m_diameter) * normalize(col.AB);
-		m_positions[col.A] += t;
-		m_positions[col.B] -= t;*/
+		// vec3 t = 0.01f * (length(col.AB) - m_diameter) * normalize(col.AB);
+		// m_positions[col.A] += t;
+		// m_positions[col.B] -= t;
 	}
 
 	// Calculate forces
@@ -83,7 +83,7 @@ void Simulation::step(float delta)
 		// Floor at y = 0
 		if (p.y < m_radious) {
 
-			//p.y += 0.1f * (m_radious - p.y);
+			p.y += 0.5f * (m_radious - p.y);
 			//p.y = (m_radious);
 
 			force += vec3(

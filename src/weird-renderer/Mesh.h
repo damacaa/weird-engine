@@ -9,6 +9,8 @@
 #include"Camera.h"
 #include"Texture.h"
 #include "Light.h"
+#include "../weird-engine/ecs/ComponentManager.h"
+#include "../weird-engine/ecs/Components/Transform.h"
 
 using MeshID = std::uint32_t;
 
@@ -46,6 +48,15 @@ public:
 		std::vector<glm::vec3> translations,
 		std::vector<glm::vec3> rotations,
 		std::vector<glm::vec3> scales,
+		const std::vector<Light>& lights
+	) const;
+	
+	void DrawInstance
+	(
+		Shader& shader,
+		Camera& camera,
+		unsigned int instances,
+		std::vector<Transform> &transforms,
 		const std::vector<Light>& lights
 	) const;
 

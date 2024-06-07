@@ -58,6 +58,7 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 }
 
 
+
 void Scene::update(double delta, double time)
 {
 	m_simulationDelay += delta;
@@ -113,13 +114,13 @@ void Scene::update(double delta, double time)
 
 	if (Input::GetKeyDown(Input::KeyCode::X)) {
 		Entity entity = 0;
-		//m_ecs.removeComponent<
 		m_ecs.destroyEntity(entity);
-	
 	}
 
 
 }
+
+
 
 
 #define PI 3.1416f

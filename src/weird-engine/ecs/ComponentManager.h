@@ -4,6 +4,7 @@
 #include "Component.h"
 
 #include "Components/Transform.h"
+#include <queue>
 
 // ComponentArray to store components of a specific type
 template <typename T>
@@ -76,6 +77,7 @@ class ComponentManager {
 private:
 
 	std::shared_ptr<void> m_componentArray;
+	std::queue<Entity> m_removedEntities;
 
 public:
 
@@ -113,25 +115,28 @@ public:
 		return getComponentArray<T>()->hasData(entity);
 	}
 
-	bool hasData(Entity entity) {
-
-		auto array = getComponentArray<Transform>();
-		bool hasData = array->hasData(entity);
-		return hasData;
-	}
-
 	void removeData(Entity entity) {
-
+		m_removedEntities.push(entity);
 	}
 
 
 	template <typename T>
-	std::shared_ptr<ComponentArray<T>> getComponentArray() const {
+	std::shared_ptr<ComponentArray<T>> getComponentArray() {
 
-		return std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
+		auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
+
+		while (m_removedEntities.size() > 0)
+		{
+			Entity e = m_removedEntities.front();
+
+			if (componentArray->hasData(e)) {
+				componentArray->removeData(e);
+			}
+
+			m_removedEntities.pop();
+		}
+
+		return componentArray;
 
 	}
-
-
-
 };

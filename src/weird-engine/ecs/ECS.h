@@ -23,6 +23,10 @@ public:
 	virtual void add(Entity entity) {
 		m_entities.push_back(entity);
 	}
+	
+	virtual void remove(Entity entity) {
+		m_entities.erase(std::remove(m_entities.begin(), m_entities.end(), entity), m_entities.end());
+	}
 
 	void SetManager(std::shared_ptr<ComponentManager> manager) {
 		m_manager = manager;
@@ -52,9 +56,11 @@ public:
 		for (auto const& pair : m_componentManagers) {
 			const std::shared_ptr<ComponentManager>& component = pair.second;
 			// TODO:
-			if (component->hasData(entity)) {
-				component->removeData(entity);
-			}
+			component->removeData(entity);
+		}
+
+		for (auto sys : m_systems) {
+			sys->remove(entity);
 		}
 	}
 

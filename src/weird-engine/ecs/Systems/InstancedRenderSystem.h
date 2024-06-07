@@ -25,7 +25,8 @@ public:
 		if (componentArray.getSize() == 0)
 			return;
 
-		auto& mesh = componentArray[0];
+		auto& meshRenderer = componentArray[0];
+
 
 		int arraySize = componentArray.getSize();
 		int iterations = (arraySize / MAX_INSTANCES) + 1;
@@ -33,13 +34,12 @@ public:
 		if (iterations > 1)
 			int stop = 1;
 
+
+		//std::unordered_map<Mesh, std::vector<Transform>> transformMap;
+
 		int k = 0;
 		for (size_t i = 0; i < iterations; i++)
 		{
-
-			std::vector<glm::vec3> translations;
-			std::vector<glm::vec3> rotations;
-			std::vector<glm::vec3> scales;
 
 			int count = i == iterations - 1
 				?
@@ -51,6 +51,11 @@ public:
 				break;
 
 
+			/*std::vector<glm::vec3> translations;
+			std::vector<glm::vec3> rotations;
+			std::vector<glm::vec3> scales;
+
+			// 5fps drop
 			for (size_t j = 0; j < count; j++)
 			{
 				auto& mr = componentArray[k];
@@ -63,7 +68,19 @@ public:
 				k++;
 			}
 
-			mesh.mesh.DrawInstance(shader, camera, count, translations, rotations, scales, lights);
+			mesh.mesh.DrawInstance(shader, camera, count, translations, rotations, scales, lights);*/
+
+			std::vector<Transform> transforms;
+			for (size_t j = 0; j < count; j++)
+			{
+				auto& mr = componentArray[k];
+				auto& t = ecs.getComponent<Transform>(mr.Owner);
+				transforms.push_back(t);
+
+				k++;
+			}
+
+			meshRenderer.mesh.DrawInstance(shader, camera, count, transforms, lights);
 		}
 	}
 

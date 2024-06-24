@@ -1,14 +1,14 @@
 #include "Renderer.h"
-#include "../weird-engine/Input.h"
 
 
 
 
 Renderer::Renderer(const unsigned int width, const unsigned int height):
-	m_width(width),
-	m_height(height)
+	m_windowWidth(width),
+	m_windowHeight(height),
+	m_renderWidth(width * m_renderScale),
+	m_renderHeight(height * m_renderScale)
 {
-
 	// Initialize GLFW
 	glfwInit();
 
@@ -57,15 +57,18 @@ Renderer::Renderer(const unsigned int width, const unsigned int height):
 	m_defaultShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
 	m_defaultShaderProgram.activate();
 
+
 	// Generates Shader objects
 	m_defaultInstancedShaderProgram = Shader("src/weird-renderer/shaders/default_instancing.vert", "src/weird-renderer/shaders/default.frag");
 	m_defaultInstancedShaderProgram.activate();
 
+
 	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
 	m_sdfShaderProgram.activate();
 
+
 	// A plane that takes 100% of the screen and displays the result of a shader
-	m_sdfRenderPlane = RenderPlane(width, height, m_sdfShaderProgram);
+	m_sdfRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, m_sdfShaderProgram);
 }
 
 Renderer::~Renderer()
@@ -85,12 +88,6 @@ Renderer::~Renderer()
 
 void Renderer::render(Scene& scene, const double time)
 {
-	if (Input::GetKeyDown(Input::KeyCode::V))
-		m_vSyncEnabled = !m_vSyncEnabled;
-
-	if (Input::GetKeyDown(Input::C))
-		m_renderMeshesOnly = !m_renderMeshesOnly;
-
 	if (m_vSyncEnabled)
 		glfwSwapInterval(1);
 	else
@@ -113,15 +110,20 @@ void Renderer::render(Scene& scene, const double time)
 	// Enable depth test
 	glEnable(GL_DEPTH_TEST);
 
+	glViewport(0, 0, m_renderWidth, m_renderHeight);
+
 	// Updates and exports the camera matrix to the Vertex Shader
-	scene.camera->UpdateMatrix(0.1f, 100.0f, m_width, m_height);
+	scene.camera->UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 	// Draw objects in scene
 	scene.renderModels(m_defaultShaderProgram, m_defaultInstancedShaderProgram);
 
 	if (!m_renderMeshesOnly) {
+
+
 		// Bind to default frame buffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, m_windowWidth, m_windowHeight);
 
 		// Draw ray marching stuff
 		m_sdfShaderProgram.activate();
@@ -132,7 +134,7 @@ void Renderer::render(Scene& scene, const double time)
 		m_sdfShaderProgram.setUniform("u_cameraMatrix", scene.camera->view);
 		m_sdfShaderProgram.setUniform("u_fov", shaderFov);
 		m_sdfShaderProgram.setUniform("u_time", time);
-		m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_width, m_height));
+		m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 
 		// Draw render plane with sdf shader
 		scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);

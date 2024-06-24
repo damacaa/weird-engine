@@ -1,10 +1,13 @@
 #pragma once
-#include"../weird-renderer/Mesh.h"
-#include<json/json.h>
+#include "../weird-renderer/Mesh.h"
+#include "ecs/Entity.h"
+#include <json/json.h>
 #include <set>
+#include <unordered_set>
 
 using json = nlohmann::json;
 
+using MeshID = std::uint32_t;
 
 class ResourceManager {
 private:
@@ -20,20 +23,27 @@ private:
 		"albedo"
 	};
 
-	std::map<std::string, Mesh> meshMap;
-	unsigned int m_meshCount = 0;
-	std::map<std::string, Texture> textureMap;
+	MeshID m_meshCount = 0;
+
+	std::map<std::string, MeshID> m_meshPathMap;
+	std::map<MeshID, Mesh*> m_meshIdMap;
+
+	std::map<Entity, std::unordered_set<MeshID>> m_resourcesUsedByEntity;
+	std::map<MeshID, unsigned int> m_resourceReferenceCount;
+
+	unsigned int m_loadedMeshesCount = 0;
+	std::map<std::string, Texture> m_textureMap;
 	unsigned int m_textureCount = 0;
 
-	std::vector<unsigned char> data;
-	json JSON;
+	std::vector<unsigned char> m_data;
+	json m_json;
 
 
 	// Loads a single mesh by its index
-	void loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh>& meshes);
+	void loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes);
 
 	// Traverses a node recursively, so it essentially traverses all connected nodes
-	void traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix = glm::mat4(1.0f));
+	void traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes, glm::mat4 matrix = glm::mat4(1.0f));
 
 	// Gets the binary data from a file
 	std::vector<unsigned char> getData(const char* file);
@@ -41,7 +51,7 @@ private:
 	std::vector<float> getFloats(json accessor);
 	std::vector<GLuint> getIndices(json accessor);
 	std::vector<Texture> getTextures(const char* file);
-	void AddDefaultTextures(std::vector<Texture>& textures);
+	void addDefaultTextures(std::vector<Texture>& textures);
 
 
 	// Assembles all the floats into vertices
@@ -62,6 +72,8 @@ public:
 
 	ResourceManager();
 
-	Mesh GetMesh(const char* path, bool instancing = false);
+	MeshID getMeshId(const char* path, const Entity entity, bool instancing = false);
+	Mesh& getMesh(const MeshID id);
+	void freeResources(const Entity entity);
 };
 

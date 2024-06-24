@@ -21,27 +21,37 @@ std::string get_file_contentss(const char* filename)
 ResourceManager::ResourceManager()
 {
 	Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, 0);
-	textureMap[MISSING_TEXTURE] = defaultDiffuse;
+	m_textureMap[MISSING_TEXTURE] = defaultDiffuse;
 }
 
-Mesh ResourceManager::GetMesh(const char* file, bool instancing)
+
+
+MeshID ResourceManager::getMeshId(const char* file, const Entity entity, bool instancing)
 {
-	if (meshMap.find(file) != meshMap.end()) {
-		return meshMap[file];
+	// If file exists
+	if (m_meshPathMap.find(file) != m_meshPathMap.end()) {
+		auto id = m_meshPathMap[file];
+
+		// And id is loaded
+		if (m_meshIdMap.find(id) != m_meshIdMap.end()) {
+			// Return existing id
+			m_resourceReferenceCount[id]++;
+			m_resourcesUsedByEntity[id].insert(entity);
+			return id;
+		}
 	}
 
+	// New mesh
 
 	// Make a JSON object
 	std::string text = get_file_contentss(file);
-	JSON = json::parse(text);
+	m_json = json::parse(text);
 
 	// Get the binary data
-	data = getData(file);
-
-
+	m_data = getData(file);
 
 	// All the meshes and transformations
-	std::vector<Mesh> meshes;
+	std::vector<Mesh*> meshes;
 	std::vector<glm::vec3> translationsMeshes;
 	std::vector<glm::quat> rotationsMeshes;
 	std::vector<glm::vec3> scalesMeshes;
@@ -55,43 +65,77 @@ Mesh ResourceManager::GetMesh(const char* file, bool instancing)
 	// Traverse all nodes
 	traverseNode(file, 0, meshes);
 
-	meshMap[file] = meshes[0];
+	auto* mesh = meshes[0];
+	MeshID id = m_meshCount++;
 
-	return meshes[0];
+	m_meshPathMap[file] = id;
+	m_meshIdMap[id] = mesh;
+
+	m_resourceReferenceCount[id] = 1;
+	m_resourcesUsedByEntity[id].insert(entity);
+
+	m_json = NULL;
+	m_data.clear();
+
+	return id;
 }
 
-void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh>& meshes)
+Mesh& ResourceManager::getMesh(const MeshID id)
+{
+	return *m_meshIdMap[id];
+}
+
+void ResourceManager::freeResources(const Entity entity)
+{
+	std::unordered_set<MeshID>& resources = m_resourcesUsedByEntity[entity];
+	for (auto& resourceId : resources) {
+		if (--m_resourceReferenceCount[resourceId] == 0) {
+			// Remove resource from memory
+
+			m_meshIdMap[resourceId]->Delete();
+			delete m_meshIdMap[resourceId];
+			m_meshIdMap.erase(resourceId);
+
+		}
+	}
+
+
+	resources.clear();
+	m_resourcesUsedByEntity.erase(entity);
+
+}
+
+void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes)
 {
 	// Get all accessor indices
-	unsigned int posAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
-	unsigned int normalAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["NORMAL"];
-	unsigned int texAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["TEXCOORD_0"];
-	unsigned int indAccInd = JSON["meshes"][indMesh]["primitives"][0]["indices"];
+	unsigned int posAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
+	unsigned int normalAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["NORMAL"];
+	unsigned int texAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["TEXCOORD_0"];
+	unsigned int indAccInd = m_json["meshes"][indMesh]["primitives"][0]["indices"];
 
 	// Use accessor indices to get all vertices components
-	std::vector<float> posVec = getFloats(JSON["accessors"][posAccInd]);
+	std::vector<float> posVec = getFloats(m_json["accessors"][posAccInd]);
 	std::vector<glm::vec3> positions = groupFloatsVec3(posVec);
-	std::vector<float> normalVec = getFloats(JSON["accessors"][normalAccInd]);
+	std::vector<float> normalVec = getFloats(m_json["accessors"][normalAccInd]);
 	std::vector<glm::vec3> normals = groupFloatsVec3(normalVec);
-	std::vector<float> texVec = getFloats(JSON["accessors"][texAccInd]);
+	std::vector<float> texVec = getFloats(m_json["accessors"][texAccInd]);
 	std::vector<glm::vec2> texUVs = groupFloatsVec2(texVec);
 
 	// Combine all the vertex components and also get the indices and textures
 	std::vector<Vertex> vertices = assembleVertices(positions, normals, texUVs);
-	std::vector<GLuint> indices = getIndices(JSON["accessors"][indAccInd]);
+	std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
 
-	// TODO: restore this
+
 	std::vector<Texture> textures = getTextures(file);
 
-
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(m_meshCount++, vertices, indices, textures));
+	meshes.push_back(new Mesh(m_loadedMeshesCount++, vertices, indices, textures));
 }
 
-void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)
+void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes, glm::mat4 matrix)
 {
 	// Current node
-	json node = JSON["nodes"][nextNode];
+	json node = m_json["nodes"][nextNode];
 
 	// Get translation if it exists
 	glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -173,7 +217,7 @@ std::vector<unsigned char> ResourceManager::getData(const char* file)
 {
 	// Create a place to store the raw text, and get the uri of the .bin file
 	std::string bytesText;
-	std::string uri = JSON["buffers"][0]["uri"];
+	std::string uri = m_json["buffers"][0]["uri"];
 
 	// Store raw text data into bytesText
 	std::string fileStr = std::string(file);
@@ -196,7 +240,7 @@ std::vector<float> ResourceManager::getFloats(json accessor)
 	std::string type = accessor["type"];
 
 	// Get properties from the bufferView
-	json bufferView = JSON["bufferViews"][buffViewInd];
+	json bufferView = m_json["bufferViews"][buffViewInd];
 	unsigned int byteOffset = bufferView["byteOffset"];
 
 	// Interpret the type and store it into numPerVert
@@ -212,7 +256,7 @@ std::vector<float> ResourceManager::getFloats(json accessor)
 	unsigned int lengthOfData = count * 4 * numPerVert;
 	for (unsigned int i = beginningOfData; i < beginningOfData + lengthOfData; i)
 	{
-		unsigned char bytes[] = { data[i++], data[i++], data[i++], data[i++] };
+		unsigned char bytes[] = { m_data[i++], m_data[i++], m_data[i++], m_data[i++] };
 		float value;
 		std::memcpy(&value, bytes, sizeof(float));
 		floatVec.push_back(value);
@@ -232,7 +276,7 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	unsigned int componentType = accessor["componentType"];
 
 	// Get properties from the bufferView
-	json bufferView = JSON["bufferViews"][buffViewInd];
+	json bufferView = m_json["bufferViews"][buffViewInd];
 	unsigned int byteOffset = bufferView["byteOffset"];
 
 	// Get indices with regards to their type: unsigned int, unsigned short, or short
@@ -241,7 +285,7 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	{
 		for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 4; i)
 		{
-			unsigned char bytes[] = { data[i++], data[i++], data[i++], data[i++] };
+			unsigned char bytes[] = { m_data[i++], m_data[i++], m_data[i++], m_data[i++] };
 			unsigned int value;
 			std::memcpy(&value, bytes, sizeof(unsigned int));
 			indices.push_back((GLuint)value);
@@ -251,7 +295,7 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	{
 		for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i)
 		{
-			unsigned char bytes[] = { data[i++], data[i++] };
+			unsigned char bytes[] = { m_data[i++], m_data[i++] };
 			unsigned short value;
 			std::memcpy(&value, bytes, sizeof(unsigned short));
 			indices.push_back((GLuint)value);
@@ -261,7 +305,7 @@ std::vector<GLuint> ResourceManager::getIndices(json accessor)
 	{
 		for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i)
 		{
-			unsigned char bytes[] = { data[i++], data[i++] };
+			unsigned char bytes[] = { m_data[i++], m_data[i++] };
 			short value;
 			std::memcpy(&value, bytes, sizeof(short));
 			indices.push_back((GLuint)value);
@@ -278,14 +322,14 @@ Texture& ResourceManager::getTexture(std::string path, std::string textureType, 
 		// Load texture
 		Texture t = Texture(path.c_str(), textureType, slot);
 		// Store it in map
-		textureMap[path] = t;
+		m_textureMap[path] = t;
 		// Add it to mesh textures
 		return t;
 	}
 	catch (const std::exception& ex)
 	{
 		// Couldn't load texture, using missing texture
-		return textureMap[MISSING_TEXTURE];
+		return m_textureMap[MISSING_TEXTURE];
 	}
 }
 
@@ -295,30 +339,30 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 	std::vector<Texture> textures;
 
 	// If mesh doesn't contain any texture, use 1x1 white textures
-	if (JSON["images"].size() == 0) {
+	if (m_json["images"].size() == 0) {
 		std::cout << "No textures";
 
 		std::string key = "default" + DIFFUSE;
-		if (textureMap.find(key) != textureMap.end()) {
+		if (m_textureMap.find(key) != m_textureMap.end()) {
 
-			textures.push_back(textureMap[key]);
+			textures.push_back(m_textureMap[key]);
 		}
 		else {
 			Texture defaultDiffuse = Texture(glm::vec4(255), DIFFUSE, textures.size());
 			textures.push_back(defaultDiffuse);
-			textureMap[key] = defaultDiffuse;
+			m_textureMap[key] = defaultDiffuse;
 		}
 
 
 		key = "default" + SPECULAR;
-		if (textureMap.find(key) != textureMap.end()) {
+		if (m_textureMap.find(key) != m_textureMap.end()) {
 
-			textures.push_back(textureMap[key]);
+			textures.push_back(m_textureMap[key]);
 		}
 		else {
 			Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
 			textures.push_back(defaultSpecular);
-			textureMap[key] = defaultSpecular;
+			m_textureMap[key] = defaultSpecular;
 		}
 
 
@@ -331,14 +375,14 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 	// Load mesh textures
 	std::string fileStr = std::string(file);
 	std::string fileDirectory = fileStr.substr(0, fileStr.find_last_of('/') + 1);
-	for (unsigned int i = 0; i < JSON["images"].size(); i++)
+	for (unsigned int i = 0; i < m_json["images"].size(); i++)
 	{
 		// uri of current texture
-		std::string texPath = JSON["images"][i]["uri"];
+		std::string texPath = m_json["images"][i]["uri"];
 
-		if (textureMap.find(texPath) != textureMap.end()) {
+		if (m_textureMap.find(texPath) != m_textureMap.end()) {
 			// Texture already loaded!
-			textures.push_back(textureMap[texPath]);
+			textures.push_back(m_textureMap[texPath]);
 			continue;
 		}
 
@@ -361,21 +405,21 @@ std::vector<Texture> ResourceManager::getTextures(const char* file)
 	if (!hasSpecular) {
 		const std::string SPECULAR = "specular";
 		std::string key = "default" + SPECULAR;
-		if (textureMap.find(key) != textureMap.end()) {
+		if (m_textureMap.find(key) != m_textureMap.end()) {
 
-			textures.push_back(textureMap[key]);
+			textures.push_back(m_textureMap[key]);
 		}
 		else {
 			Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
 			textures.push_back(defaultSpecular);
-			textureMap[key] = defaultSpecular;
+			m_textureMap[key] = defaultSpecular;
 		}
 	}
 
 	return textures;
 }
 
-void ResourceManager::AddDefaultTextures(std::vector<Texture>& textures)
+void ResourceManager::addDefaultTextures(std::vector<Texture>& textures)
 {
 	Texture diffuse();
 

@@ -11,11 +11,8 @@ public:
 
 	InstancedMeshRenderer() {};
 
-	InstancedMeshRenderer(Mesh mesh) : mesh(mesh) {	};
-
 	InstancedMeshRenderer(MeshID mesh) : meshID(mesh) {	};
 
-	Mesh mesh;
 	MeshID meshID;
 	glm::vec3 translation;
 	glm::vec3 scale;

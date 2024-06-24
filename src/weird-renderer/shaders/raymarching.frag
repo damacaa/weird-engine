@@ -286,6 +286,7 @@ void main()
     vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
 
     // vec2 fragCoord = floor(gl_FragCoord.xy*pixelScale) / pixelScale;
+    //vec2 fragCoord = gl_FragCoord.xy + vec2(10.0 * tan((0.1f * gl_FragCoord.x )), 0.0);
     vec2 fragCoord = gl_FragCoord.xy;
 
     vec2 screenUV = (fragCoord.xy / u_resolution.xy);

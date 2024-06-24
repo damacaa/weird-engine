@@ -3,6 +3,9 @@
 #include "Entity.h"
 #include "Component.h"
 
+#include "Components/Transform.h"
+#include <queue>
+
 // ComponentArray to store components of a specific type
 template <typename T>
 class ComponentArray {
@@ -38,7 +41,7 @@ public:
 	}
 
 	bool hasData(Entity entity) {
-		return entityToIndexMap.find(entity) != entityToIndexMap.end();
+		return entityToIndexMap.size() > 0 && entityToIndexMap.find(entity) != entityToIndexMap.end();
 	}
 
 
@@ -74,8 +77,13 @@ class ComponentManager {
 private:
 
 	std::shared_ptr<void> m_componentArray;
+	std::queue<Entity> m_removedEntities;
 
 public:
+
+	ComponentManager() {
+
+	}
 
 	template <typename T>
 	void registerComponent() {
@@ -89,7 +97,7 @@ public:
 	void addComponent(Entity entity, T component) {
 		auto castedComponentArray = getComponentArray<T>();
 		castedComponentArray->insertData(entity, component);
-		m_componentArray = castedComponentArray;
+		//m_componentArray = castedComponentArray;
 	}
 
 	template <typename T>
@@ -107,18 +115,28 @@ public:
 		return getComponentArray<T>()->hasData(entity);
 	}
 
-
-	ComponentManager() {
-
+	void removeData(Entity entity) {
+		m_removedEntities.push(entity);
 	}
+
 
 	template <typename T>
-	std::shared_ptr<ComponentArray<T>> getComponentArray() const {
+	std::shared_ptr<ComponentArray<T>> getComponentArray() {
 
-		return std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
+		auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
+
+		while (m_removedEntities.size() > 0)
+		{
+			Entity e = m_removedEntities.front();
+
+			if (componentArray->hasData(e)) {
+				componentArray->removeData(e);
+			}
+
+			m_removedEntities.pop();
+		}
+
+		return componentArray;
 
 	}
-
-
-
 };

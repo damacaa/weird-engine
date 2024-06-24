@@ -73,8 +73,8 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 	glBindTexture(GL_TEXTURE_2D, m_colorTexture);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture, 0);
@@ -102,10 +102,15 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 
 void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 {
+
+
+
 	glDisable(GL_DEPTH_TEST);
 	// Tell OpenGL which Shader Program we want to use
 	glUseProgram(shader.ID);
 	// Bind the VAO so OpenGL knows to use it
+	glBindVertexArray(VAO);
+
 
 	// Read color texture
 	glActiveTexture(GL_TEXTURE0);
@@ -118,17 +123,21 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 	glUniform1i(m_depthTextureLocation, 1);
 
 
-	glBindVertexArray(VAO);
 
 	glDisable(GL_DEPTH_TEST);
 
+
 	// Draw the triangle using the GL_TRIANGLES primitive
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
 
 	// Bind UBO
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * size, shapes, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
 
 	shader.setUniform("u_loadedObjects", (int)size);
 	glEnable(GL_DEPTH_TEST);

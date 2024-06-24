@@ -1,5 +1,6 @@
 #pragma once
 #include "../ECS.h"
+#include "../../ResourceManager.h"
 #define min(a, b) a < b ? a : b
 
 class InstancedRenderSystem : public System {
@@ -14,7 +15,7 @@ public:
 	}
 
 
-	void render(ECS& ecs, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
+	void render(ECS& ecs, ResourceManager& resourceManager, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
 
 		shader.activate();
 		shader.setUniform("lightColor", lights[0].color);
@@ -29,13 +30,37 @@ public:
 
 
 		int arraySize = componentArray.getSize();
+
+
+		std::unordered_map<MeshID, std::vector<Transform>> transformMap;
+
+		for (size_t i = 0; i < arraySize; i++)
+		{
+
+			auto& mr = componentArray[i];
+			auto& t = ecs.getComponent<Transform>(mr.Owner);
+
+			auto id = mr.meshID;
+
+			auto& vector = transformMap[id];
+			vector.push_back(t);
+
+			if (vector.size() == MAX_INSTANCES) {
+				resourceManager.getMesh(mr.meshID).DrawInstance(shader, camera, MAX_INSTANCES, vector, lights);
+				vector.clear();
+			}
+		}
+
+		for (auto& pair : transformMap)
+		{
+			resourceManager.getMesh(pair.first).DrawInstance(shader, camera, pair.second.size(), pair.second, lights);
+		}
+
+		return;
 		int iterations = (arraySize / MAX_INSTANCES) + 1;
 
 		if (iterations > 1)
 			int stop = 1;
-
-
-		//std::unordered_map<Mesh, std::vector<Transform>> transformMap;
 
 		int k = 0;
 		for (size_t i = 0; i < iterations; i++)
@@ -80,7 +105,7 @@ public:
 				k++;
 			}
 
-			meshRenderer.mesh.DrawInstance(shader, camera, count, transforms, lights);
+			resourceManager.getMesh(meshRenderer.meshID).DrawInstance(shader, camera, count, transforms, lights);
 		}
 	}
 

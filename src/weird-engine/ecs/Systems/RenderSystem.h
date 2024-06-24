@@ -1,9 +1,10 @@
 #pragma once
 #include "../ECS.h"
+#include "../../ResourceManager.h"
 
 class RenderSystem : public System {
 public:
-	void render(ECS& ecs, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
+	void render(ECS& ecs, ResourceManager& resourceManager, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
 
 		shader.activate();
 		shader.setUniform("lightColor", lights[0].color);
@@ -16,7 +17,7 @@ public:
 			MeshRenderer& mr = componentArray[i];
 			auto& t = ecs.getComponent<Transform>(mr.Owner);
 
-			mr.mesh.Draw(shader, camera, t.position, t.rotation, t.scale, lights);
+			resourceManager.getMesh(mr.mesh).Draw(shader, camera, t.position, t.rotation, t.scale, lights);
 		}
 	}
 };

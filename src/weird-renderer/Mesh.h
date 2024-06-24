@@ -22,11 +22,18 @@ public:
 	std::vector <GLuint> indices;
 	std::vector <Texture> textures;
 	// Store quadVAO in public so it can be used in the Draw function
-	VAO VAO;
+	VAO m_vao;
+	VBO m_vbo;
+	EBO m_ebo;
 
-	Mesh() {};
+
+	Mesh() {
+		int b = 0;
+	};
+
 	// Initializes the mesh
 	Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
+	~Mesh();
 
 	// Draws the mesh
 	void Draw
@@ -59,6 +66,8 @@ public:
 		std::vector<Transform> &transforms,
 		const std::vector<Light>& lights
 	) const;
+
+	void Delete();
 
 private:
 

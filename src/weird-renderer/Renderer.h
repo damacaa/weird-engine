@@ -11,7 +11,9 @@ class Renderer
 {
 private:
 	GLFWwindow* m_window;
-	unsigned int m_width, m_height;
+	unsigned int m_windowWidth, m_windowHeight;
+	double m_renderScale = 0.25;
+	unsigned int m_renderWidth, m_renderHeight;
 
 	bool m_vSyncEnabled = true;
 	bool m_renderMeshesOnly = false;

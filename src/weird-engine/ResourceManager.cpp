@@ -24,12 +24,24 @@ ResourceManager::ResourceManager()
 	m_textureMap[MISSING_TEXTURE] = defaultDiffuse;
 }
 
-Mesh ResourceManager::getMesh(const char* file, bool instancing)
+
+
+MeshID ResourceManager::getMeshId(const char* file, const Entity entity, bool instancing)
 {
-	if (meshMap.find(file) != meshMap.end()) {
-		return meshMap[file];
+	// If file exists
+	if (m_meshPathMap.find(file) != m_meshPathMap.end()) {
+		auto id = m_meshPathMap[file];
+
+		// And id is loaded
+		if (m_meshIdMap.find(id) != m_meshIdMap.end()) {
+			// Return existing id
+			m_resourceReferenceCount[id]++;
+			m_resourcesUsedByEntity[id].insert(entity);
+			return id;
+		}
 	}
 
+	// New mesh
 
 	// Make a JSON object
 	std::string text = get_file_contentss(file);
@@ -38,10 +50,8 @@ Mesh ResourceManager::getMesh(const char* file, bool instancing)
 	// Get the binary data
 	m_data = getData(file);
 
-
-
 	// All the meshes and transformations
-	std::vector<Mesh> meshes;
+	std::vector<Mesh*> meshes;
 	std::vector<glm::vec3> translationsMeshes;
 	std::vector<glm::quat> rotationsMeshes;
 	std::vector<glm::vec3> scalesMeshes;
@@ -55,17 +65,47 @@ Mesh ResourceManager::getMesh(const char* file, bool instancing)
 	// Traverse all nodes
 	traverseNode(file, 0, meshes);
 
-	meshMap[file] = meshes[0];
+	auto* mesh = meshes[0];
+	MeshID id = m_meshCount++;
 
-	return meshes[0];
+	m_meshPathMap[file] = id;
+	m_meshIdMap[id] = mesh;
+
+	m_resourceReferenceCount[id] = 1;
+	m_resourcesUsedByEntity[id].insert(entity);
+
+	m_json = NULL;
+	m_data.clear();
+
+	return id;
 }
 
-MeshID ResourceManager::getMeshId(const char* path, bool instancing)
+Mesh& ResourceManager::getMesh(const MeshID id)
 {
-	return 0;
+	return *m_meshIdMap[id];
 }
 
-void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh>& meshes)
+void ResourceManager::freeResources(const Entity entity)
+{
+	std::unordered_set<MeshID>& resources = m_resourcesUsedByEntity[entity];
+	for (auto& resourceId : resources) {
+		if (--m_resourceReferenceCount[resourceId] == 0) {
+			// Remove resource from memory
+
+			m_meshIdMap[resourceId]->Delete();
+			delete m_meshIdMap[resourceId];
+			m_meshIdMap.erase(resourceId);
+
+		}
+	}
+
+
+	resources.clear();
+	m_resourcesUsedByEntity.erase(entity);
+
+}
+
+void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes)
 {
 	// Get all accessor indices
 	unsigned int posAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
@@ -85,15 +125,14 @@ void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vect
 	std::vector<Vertex> vertices = assembleVertices(positions, normals, texUVs);
 	std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
 
-	// TODO: restore this
+
 	std::vector<Texture> textures = getTextures(file);
 
-
 	// Combine the vertices, indices, and textures into a mesh
-	meshes.push_back(Mesh(m_loadedMeshesCount++, vertices, indices, textures));
+	meshes.push_back(new Mesh(m_loadedMeshesCount++, vertices, indices, textures));
 }
 
-void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh>& meshes, glm::mat4 matrix)
+void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes, glm::mat4 matrix)
 {
 	// Current node
 	json node = m_json["nodes"][nextNode];

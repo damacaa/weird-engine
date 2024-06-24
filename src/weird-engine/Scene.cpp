@@ -6,11 +6,11 @@
 
 namespace fs = std::filesystem;
 
-constexpr double FIXED_DELTA_TIME = 1 / 100.0;
+constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
 constexpr size_t MAX_STEPS = 1000000;
 constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
-
+#define PI 3.1416f
 
 // Create a random device to seed the generator
 std::random_device rd;
@@ -45,9 +45,9 @@ Scene::~Scene()
 
 void Scene::renderModels(Shader& shader, Shader& instancingShader)
 {
-	m_renderSystem.render(m_ecs, shader, *camera, m_lights);
+	m_renderSystem.render(m_ecs, m_resourceManager, shader, *camera, m_lights);
 
-	m_instancedRenderSystem.render(m_ecs, instancingShader, *camera, m_lights);
+	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, *camera, m_lights);
 }
 
 
@@ -58,7 +58,7 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 }
 
 
-
+Entity monkey;
 void Scene::update(double delta, double time)
 {
 	m_simulationDelay += delta;
@@ -99,11 +99,11 @@ void Scene::update(double delta, double time)
 		std::string meshPath = "/Resources/Models/sphere.gltf";
 
 		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMesh((projectDir + meshPath).c_str(), true)));
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity, true)));
 			m_instancedRenderSystem.add(entity);
 		}
 		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMesh((projectDir + meshPath).c_str())));
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity)));
 			m_renderSystem.add(entity);
 		}
 
@@ -113,17 +113,37 @@ void Scene::update(double delta, double time)
 	}
 
 	if (Input::GetKeyDown(Input::KeyCode::X)) {
-		Entity entity = 0;
+		Entity entity = monkey;
 		m_ecs.destroyEntity(entity);
+		m_resourceManager.freeResources(entity);
 	}
 
 
+	if (Input::GetKeyDown(Input::KeyCode::M)) {
+
+		std::string projectDir = fs::current_path().string();
+
+		std::string spherePath = "/Resources/Models/sphere.gltf";
+		std::string cubePath = "/Resources/Models/cube.gltf";
+		std::string demoPath = "/Resources/Models/Monkey/monkey.gltf";
+		std::string planePath = "/Resources/Models/plane.gltf";
+
+		// Make monke
+		monkey = m_ecs.createEntity();
+		Transform monkeyTransform;
+		monkeyTransform.position = vec3(10, 3.5f, -30);
+		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+		monkeyTransform.scale = vec3(8.0f);
+		m_ecs.addComponent(monkey, monkeyTransform);
+
+		MeshID monkeyMeshID = m_resourceManager.getMeshId((projectDir + demoPath).c_str(), monkey, false);
+		m_ecs.addComponent(monkey, MeshRenderer(monkeyMeshID));
+		m_renderSystem.add(monkey);
+
+	}
 }
 
 
-
-
-#define PI 3.1416f
 void Scene::loadScene()
 {
 	std::string projectDir = fs::current_path().string();
@@ -136,7 +156,7 @@ void Scene::loadScene()
 	// Create camera object
 	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 2.0f, 5.0f)));
 
-	{
+	if (false) {
 		// Make monke
 		Entity monkey = m_ecs.createEntity();
 		Transform monkeyTransform;
@@ -145,7 +165,7 @@ void Scene::loadScene()
 		monkeyTransform.scale = vec3(8.0f);
 		m_ecs.addComponent(monkey, monkeyTransform);
 
-		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMesh((projectDir + demoPath).c_str(), 1)));
+		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + demoPath).c_str(), 1)));
 		m_renderSystem.add(monkey);
 	}
 
@@ -164,13 +184,15 @@ void Scene::loadScene()
 		m_ecs.addComponent(entity, t);
 
 		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMesh((projectDir +
+
+			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir +
 				(i % 2 == 0 ? cubePath : spherePath)
-				).c_str(), true)));
+				).c_str(), entity, true)));
+
 			m_instancedRenderSystem.add(entity);
 		}
 		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMesh((projectDir + spherePath).c_str())));
+			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMeshId((projectDir + spherePath).c_str(), entity)));
 			m_renderSystem.add(entity);
 		}
 
@@ -181,8 +203,16 @@ void Scene::loadScene()
 	// Spawn shape balls
 	for (size_t i = 0; i < m_shapes; i++)
 	{
+		float x = dis(gen) - 50;
+		float y = dis(gen);
+		float z = dis(gen) - 50;
+
+		Transform t;
+		t.position = vec3(x, y, z);
+
+
 		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, Transform());
+		m_ecs.addComponent(entity, t);
 
 		m_ecs.addComponent(entity, SDFRenderer());
 		m_sdfRenderSystem.add(entity);

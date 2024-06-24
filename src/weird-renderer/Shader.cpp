@@ -28,6 +28,8 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 }
 
 static bool isFileModified(const char* filename, time_t& lastModifiedTime) {
+	return false;
+
 	struct stat result;
 	if (stat(filename, &result) == 0) {
 		if (lastModifiedTime != result.st_mtime) {
@@ -56,7 +58,7 @@ void Shader::Delete()
 
 void Shader::Recompile()
 {
-	if (ID != NULL)
+	if (ID != -1)
 		Delete();
 
 	// Read vertexFile and fragmentFile and store the strings

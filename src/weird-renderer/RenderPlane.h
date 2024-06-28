@@ -5,8 +5,9 @@ class RenderPlane
 {
 public:
 	RenderPlane() {};
-	RenderPlane(int width, int height, Shader& shader);
+	RenderPlane(int width, int height, Shader& shader, bool shapeRenderer);
 
+	void Draw(Shader& shader) const;
 	void Draw(Shader& shader, Shape* shapes, size_t size) const;
 	void Delete();
 

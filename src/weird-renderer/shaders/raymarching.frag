@@ -279,14 +279,18 @@ vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
     return col;
 }
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main()
 {
 
     float aspectRatio = u_resolution.x / u_resolution.y;
     vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
 
-    // vec2 fragCoord = floor(gl_FragCoord.xy*pixelScale) / pixelScale;
-    //vec2 fragCoord = gl_FragCoord.xy + vec2(10.0 * tan((0.1f * gl_FragCoord.x )), 0.0);
+    // vec2 fragCoord = floor(gl_FragCoord.xy * pixelScale) / pixelScale;
+    // vec2 fragCoord = gl_FragCoord.xy + vec2(10.0 * tan((0.1f * gl_FragCoord.x )), 0.0);
     vec2 fragCoord = gl_FragCoord.xy;
 
     vec2 screenUV = (fragCoord.xy / u_resolution.xy);
@@ -305,6 +309,15 @@ void main()
 
     vec3 col = Render(uv, originalColor, z_e);
     col = pow(col, vec3(0.4545));
+
+    /*float r = 0.1 * rand(uv);
+
+    float a = 5;
+    float invA = 1.0/a;
+
+    col.x = floor((col.x + r) * a) * invA;
+    col.y = floor((col.x + r)* a) * invA;
+    col.z = floor((col.x + r)* a) * invA;*/
 
     FragColor = vec4(col, 1.0);
     //FragColor = vec4(10000*uv, 0.0, 0.0);

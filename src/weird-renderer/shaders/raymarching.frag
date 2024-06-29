@@ -1,5 +1,14 @@
 #version 330 core
 
+#define DITHERING 0
+
+
+
+#if (DITHERING == 1)
+
+uniform float _Spread = 0.15f;
+uniform int _ColorCount = 5;
+
 // Dithering and posterizing
 uniform int bayer2[2 * 2] = int[2 * 2](
     0, 2,
@@ -24,10 +33,6 @@ uniform int bayer8[8 * 8] = int[8 * 8](
     63, 31, 55, 23, 61, 29, 53, 21
 );
 
-uniform float _Spread = 0.15f;
-uniform int _ColorCount = 5;
-
-
 float GetBayer2(int x, int y) {
     return float(bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
 }
@@ -39,6 +44,8 @@ float GetBayer4(int x, int y) {
 float GetBayer8(int x, int y) {
     return float(bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
 }
+
+#endif
 
 // Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -65,6 +72,15 @@ float fOpSmoochUnion(float d1, float d2, float k)
 float fSphere(vec3 p, float r)
 {
     return length(p) - r;
+}
+
+float vmax(vec3 v) {
+	return max(max(v.x, v.y), v.z);
+}
+
+float fBox(vec3 p, vec3 b) {
+	vec3 d = abs(p) - b;
+	return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
 }
 
 float fPlane(vec3 p, vec3 n, float distanceFromOrigin)
@@ -117,19 +133,17 @@ uniform vec3 directionalLightDirection;
 
 
 
-
-
-
-
 float map(vec3 p)
 {
     float res = FAR;
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
-        float sphereDist = fSphere(p - data[i].position, data[i].size);
+        //float objectDist = fSphere(p - data[i].position, data[i].size);
+        float objectDist = i % 2 == 0 ? fBox(p - data[i].position, vec3(data[i].size)) : fSphere(p - data[i].position, data[i].size);
+        
 
-        res = fOpUnionSoft(sphereDist, res, 0.5);
+        res = fOpUnionSoft(objectDist, res, 0.5);
     }
 
     float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
@@ -142,7 +156,6 @@ float map(vec3 p)
 
 vec3 getMaterial(vec3 p, int id)
 {
-    vec3 m;
     vec3 colors[3];
     colors[0] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
     colors[1] = vec3(1.0,0.05,0.01);
@@ -151,33 +164,30 @@ vec3 getMaterial(vec3 p, int id)
     return colors[id];
 }
 
-
-
-
 vec3 getColor(vec3 p)
 {
-
     float d = FAR;
-    vec3 col = vec3(0.5);
+    vec3 col = vec3(0.0);
 
+    float k = 0.5;
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
-        float sphereDist = fSphere(p - data[i].position, data[i].size);
-        
-        vec2 result = fOpUnionSoft2(sphereDist, d, 0.5);
-        
-
         int id = i % 2 == 0 ? 1 : 2;
-        d = result.x;
-        col = mix(getMaterial(p, id), col, result.y);
+
+        float objectDist = i % 2 == 0 ? fBox(p - data[i].position, vec3(data[i].size)) : fSphere(p - data[i].position, data[i].size);
         
+        //float delta = objectDist / (objectDist + d); // Calculate using old d
+        d = fOpUnionSoft(objectDist, d, k);
+        float delta = 1 - (max( k - abs(objectDist - d), 0.0 ) / k); // After new d is calculated
+
+        col = mix(getMaterial(p, id), col, delta);   
     }
 
     float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
 
     d = min(d, planeDist);
-    col = mix(getMaterial(p, 0), col, d < planeDist ? 1.0 : 0.0);
+    col = d >= planeDist ? getMaterial(p, 0) : col;
 
     return col;
 }
@@ -297,7 +307,7 @@ vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
         {
             vec3 p = ro + object * rd;
             vec3 material = getColor(p);
-            col += getDirectionalLight(p, rd, material);
+            col = getDirectionalLight(p, rd, material);
         }
         else
         {
@@ -322,6 +332,7 @@ float rand(vec2 co){
     return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+
 void main()
 {
 
@@ -343,6 +354,7 @@ void main()
 
     col = pow(col, vec3(0.4545));
 
+#if (DITHERING == 1)
     int x = int(gl_FragCoord.x);
     int y = int(gl_FragCoord.y);
     col  = col + _Spread * GetBayer4(x, y);
@@ -350,6 +362,7 @@ void main()
     col.r = floor((_ColorCount - 1.0f) * col.r + 0.5) / (_ColorCount - 1.0f);
     col.g = floor((_ColorCount - 1.0f) * col.g + 0.5) / (_ColorCount - 1.0f);
     col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
+#endif 
 
     FragColor = vec4(col.xyz, 1.0);
 }

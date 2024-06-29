@@ -205,6 +205,8 @@
     <None Include="src\weird-renderer\shaders\default_instancing.vert">
       <Filter>Source Files\weird-renderer\Shaders</Filter>
     </None>
-    <None Include="src\weird-renderer\shaders\output.frag" />
+    <None Include="src\weird-renderer\shaders\output.frag">
+      <Filter>Source Files\weird-renderer\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

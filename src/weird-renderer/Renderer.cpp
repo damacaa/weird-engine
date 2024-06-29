@@ -148,8 +148,10 @@ void Renderer::render(Scene& scene, const double time)
 	glViewport(0, 0, m_windowWidth, m_windowHeight);
 
 	m_outputShaderProgram.activate();
+	m_outputShaderProgram.setUniform("u_time", time);
 	m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
-	//m_outputShaderProgram.setUniform("u_resolution", glm::vec2(0.5f, 0.5f));
+	m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
+
 	m_outputRenderPlane.Draw(m_outputShaderProgram);
 
 

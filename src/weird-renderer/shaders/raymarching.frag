@@ -24,10 +24,9 @@ uniform int bayer8[8 * 8] = int[8 * 8](
     63, 31, 55, 23, 61, 29, 53, 21
 );
 
-uniform float _Spread = 0.1f;
-uniform int _RedColorCount = 5;
-uniform int _GreenColorCount = 5;
-uniform int _BlueColorCount = 5;
+uniform float _Spread = 0.15f;
+uniform int _ColorCount = 5;
+
 
 float GetBayer2(int x, int y) {
     return float(bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
@@ -116,7 +115,7 @@ vec2 fOpSubtractionID(vec2 res1, vec2 res2)
 
 vec2 fSmoothUnionID(vec2 res1, vec2 res2)
 {
-    return vec2(fOpUnionSoft(res1.x, res2.x, 0.5), res1.y);
+    return vec2(fOpUnionSoft(res1.x, res2.x, 0.5), res1.x < res2.x ? res1.y : res2.y);
 }
 
 float opSmoochUnion(float d1, float d2, float k)
@@ -128,13 +127,13 @@ float opSmoochUnion(float d1, float d2, float k)
 vec2 map(vec3 p)
 {
 
-    vec2 res = vec2(1000000000.0, 0.0);
+    vec2 res = vec2(FAR, 0.0);
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
         float sphereDist = fSphere(p - data[i].position, data[i].size);
         // float sphereDist =  fBox(p - data[i].position, data[i].size);
-        float sphereID = 0.0;
+        float sphereID = i % 2 == 0 ? 1.0 : 2.0;
         vec2 sphere = vec2(sphereDist, sphereID);
 
         res = fSmoothUnionID(sphere, res);
@@ -142,7 +141,7 @@ vec2 map(vec3 p)
     }
 
     float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
-    float planeID = 1.0;
+    float planeID = 0.0;
     vec2 plane = vec2(planeDist, planeID);
 
     // vec2 cylinder = vec2(fCylinder(p-vec3(0), 5, 100), 0.0);
@@ -150,7 +149,7 @@ vec2 map(vec3 p)
 
     res = fOpUnionID(res, plane);
 
-    //res.x += 0.001*(sin(100*p.x)*sin(100*p.y)*sin(100*p.z)); 
+    //res.x += 0.01*(sin(10*p.x)*sin(10*p.y)*sin(10*p.z)); 
 
     return res;
 }
@@ -163,38 +162,19 @@ vec2 rayMarch(vec3 ro, vec3 rd)
     float traveled = NEAR;
     float id = 0;
 
-    float overshoot = OVERSHOOT;
-    float move = 0.0;
-
     for (int i = 0; i < MAX_STEPS; i++)
     {
-
         vec3 p = ro + (traveled * rd);
 
         hit = map(p);
 
-        if (sign(hit.x) < 0.0)
-        {
-
-            float moveBack = move * overshoot;
-            traveled -= moveBack;
-
-            p = ro + (traveled * rd);
-
-            hit = map(p);
-
-            overshoot = 1.0; // * disable overshoot now
-        }
-
-        move = hit.x * overshoot;
-        traveled += move;
-
-        // eps *= EPS_MULTIPLIER;
-
-        id = hit.y;
 
         if (abs(hit.x) < EPSILON || traveled > FAR)
             break;
+
+        traveled += hit.x;
+        id = hit.y;
+
     }
 
     return vec2(traveled, id);
@@ -261,9 +241,10 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 vec3 getMaterial(vec3 p, float id)
 {
     vec3 m;
-    vec3 colors[2];
-    colors[0] = vec3(1.0,0.05,0.01);
-    colors[1] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
+    vec3 colors[3];
+    colors[0] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
+    colors[1] = vec3(1.0,0.05,0.01);
+    colors[2] = vec3(0.1, 0.05, 0.80);
 
     return colors[int(id)];
 }
@@ -354,9 +335,9 @@ void main()
     int y = int(gl_FragCoord.y);
     col  = col + _Spread * GetBayer4(x, y);
 
-    col.r = floor((_RedColorCount - 1.0f) * col.r + 0.5) / (_RedColorCount - 1.0f);
-    col.g = floor((_GreenColorCount - 1.0f) * col.g + 0.5) / (_GreenColorCount - 1.0f);
-    col.b = floor((_BlueColorCount - 1.0f) * col.b + 0.5) / (_BlueColorCount - 1.0f);
+    col.r = floor((_ColorCount - 1.0f) * col.r + 0.5) / (_ColorCount - 1.0f);
+    col.g = floor((_ColorCount - 1.0f) * col.g + 0.5) / (_ColorCount - 1.0f);
+    col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
 
     FragColor = vec4(col.xyz, 1.0);
 }

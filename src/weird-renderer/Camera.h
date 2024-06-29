@@ -36,8 +36,8 @@ public:
 	bool firstClick = true;
 
 	// Adjust the speed of the camera and it's sensitivity when looking around
-	float speed = 0.1f;
-	float sensitivity = 100.0f;
+	float speed = 10.f;
+	float sensitivity = 50000.0f;
 
 	// Camera constructor to set up initial values
 	Camera(glm::vec3 position);

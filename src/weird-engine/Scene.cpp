@@ -66,6 +66,9 @@ void Scene::update(double delta, double time)
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
+		// Handles camera inputs
+		camera->Inputs(FIXED_DELTA_TIME);
+
 		m_simulation.step((float)FIXED_DELTA_TIME);
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		++steps;
@@ -74,8 +77,7 @@ void Scene::update(double delta, double time)
 	if (steps >= MAX_STEPS)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
-	// Handles camera inputs
-	camera->Inputs(delta * 100.0f);
+
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 
@@ -154,7 +156,7 @@ void Scene::loadScene()
 	std::string planePath = "/Resources/Models/plane.gltf";
 
 	// Create camera object
-	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 2.0f, 5.0f)));
+	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
 
 	if (false) {
 		// Make monke
@@ -180,7 +182,7 @@ void Scene::loadScene()
 		float z = dis(gen) - 50;
 
 		Transform t;
-		t.position = vec3(x, y, z);
+		t.position = 0.1f * vec3(x, y, z);
 		m_ecs.addComponent(entity, t);
 
 		if (m_useMeshInstancing) {
@@ -208,7 +210,7 @@ void Scene::loadScene()
 		float z = dis(gen) - 50;
 
 		Transform t;
-		t.position = vec3(x, y, z);
+		t.position = 0.1f * vec3(x, y, z);
 
 
 		Entity entity = m_ecs.createEntity();

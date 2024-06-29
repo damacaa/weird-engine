@@ -1,6 +1,6 @@
 #version 330 core
 
-#define DITHERING 0
+#define DITHERING 1
 
 
 
@@ -140,7 +140,7 @@ float map(vec3 p)
     for (int i = 0; i < u_loadedObjects; i++)
     {
         //float objectDist = fSphere(p - data[i].position, data[i].size);
-        float objectDist = i % 2 == 0 ? fBox(p - data[i].position, vec3(data[i].size)) : fSphere(p - data[i].position, data[i].size);
+        float objectDist = fSphere(p - data[i].position, data[i].size);
         
 
         res = fOpUnionSoft(objectDist, res, 0.5);
@@ -175,7 +175,7 @@ vec3 getColor(vec3 p)
     {
         int id = i % 2 == 0 ? 1 : 2;
 
-        float objectDist = i % 2 == 0 ? fBox(p - data[i].position, vec3(data[i].size)) : fSphere(p - data[i].position, data[i].size);
+        float objectDist = fSphere(p - data[i].position, data[i].size);
         
         //float delta = objectDist / (objectDist + d); // Calculate using old d
         d = fOpUnionSoft(objectDist, d, k);

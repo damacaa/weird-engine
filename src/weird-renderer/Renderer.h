@@ -15,7 +15,7 @@ private:
 	double m_renderScale = 0.5f;
 	unsigned int m_renderWidth, m_renderHeight;
 
-	bool m_vSyncEnabled = true;
+	bool m_vSyncEnabled = false;
 	bool m_renderMeshesOnly = false;
 
 	Shader m_geometryShaderProgram;

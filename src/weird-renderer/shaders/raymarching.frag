@@ -47,6 +47,20 @@ float fOpUnionSoft(float a, float b, float r)
     return min(a, b) - e * e * 0.25 / r;
 }
 
+vec2 fOpUnionSoft2( float a, float b, float k )
+{
+    float h = max( k - abs(a-b), 0.0 )/k;
+    float m = h*h*h*0.5;
+    float s = m*k*(1.0/3.0); 
+    return (a < b) ? vec2(a-s,m) : vec2(b-s,1.0-m);
+}
+
+float fOpSmoochUnion(float d1, float d2, float k)
+{
+    float h = max(k - abs(d1 - d2), 0.0);
+    return min(d1, d2) + h * h * 0.35 / k;
+}
+
 // Shapes
 float fSphere(vec3 p, float r)
 {
@@ -103,64 +117,77 @@ uniform vec3 directionalLightDirection;
 
 
 
-vec2 fOpUnionID(vec2 res1, vec2 res2)
-{
-    return (res1.x < res2.x) ? res1 : res2;
-}
 
-vec2 fOpSubtractionID(vec2 res1, vec2 res2)
-{
-    return (-res1.x > res2.x) ? -res1 : res2;
-}
 
-vec2 fSmoothUnionID(vec2 res1, vec2 res2)
-{
-    return vec2(fOpUnionSoft(res1.x, res2.x, 0.5), res1.x < res2.x ? res1.y : res2.y);
-}
 
-float opSmoochUnion(float d1, float d2, float k)
-{
-    float h = max(k - abs(d1 - d2), 0.0);
-    return min(d1, d2) + h * h * 0.35 / k;
-}
 
-vec2 map(vec3 p)
+float map(vec3 p)
 {
-
-    vec2 res = vec2(FAR, 0.0);
+    float res = FAR;
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
         float sphereDist = fSphere(p - data[i].position, data[i].size);
-        // float sphereDist =  fBox(p - data[i].position, data[i].size);
-        float sphereID = i % 2 == 0 ? 1.0 : 2.0;
-        vec2 sphere = vec2(sphereDist, sphereID);
 
-        res = fSmoothUnionID(sphere, res);
-        // res = fOpUnionID(sphere, res);
+        res = fOpUnionSoft(sphereDist, res, 0.5);
     }
 
     float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
-    float planeID = 0.0;
-    vec2 plane = vec2(planeDist, planeID);
 
-    // vec2 cylinder = vec2(fCylinder(p-vec3(0), 5, 100), 0.0);
-    // plane = fOpSubtractionID(cylinder, plane);
-
-    res = fOpUnionID(res, plane);
-
-    //res.x += 0.01*(sin(10*p.x)*sin(10*p.y)*sin(10*p.z)); 
+    res = min(res, planeDist);
 
     return res;
 }
 
-vec2 rayMarch(vec3 ro, vec3 rd)
+
+vec3 getMaterial(vec3 p, int id)
+{
+    vec3 m;
+    vec3 colors[3];
+    colors[0] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
+    colors[1] = vec3(1.0,0.05,0.01);
+    colors[2] = vec3(0.1, 0.05, 0.80);
+
+    return colors[id];
+}
+
+
+
+
+vec3 getColor(vec3 p)
 {
 
-    vec2 hit;
+    float d = FAR;
+    vec3 col = vec3(0.5);
+
+
+    for (int i = 0; i < u_loadedObjects; i++)
+    {
+        float sphereDist = fSphere(p - data[i].position, data[i].size);
+        
+        vec2 result = fOpUnionSoft2(sphereDist, d, 0.5);
+        
+
+        int id = i % 2 == 0 ? 1 : 2;
+        d = result.x;
+        col = mix(getMaterial(p, id), col, result.y);
+        
+    }
+
+    float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
+
+    d = min(d, planeDist);
+    col = mix(getMaterial(p, 0), col, d < planeDist ? 1.0 : 0.0);
+
+    return col;
+}
+
+
+float rayMarch(vec3 ro, vec3 rd)
+{
+    float hit;
 
     float traveled = NEAR;
-    float id = 0;
 
     for (int i = 0; i < MAX_STEPS; i++)
     {
@@ -169,21 +196,19 @@ vec2 rayMarch(vec3 ro, vec3 rd)
         hit = map(p);
 
 
-        if (abs(hit.x) < EPSILON || traveled > FAR)
+        if (abs(hit) < EPSILON || traveled > FAR)
             break;
 
-        traveled += hit.x;
-        id = hit.y;
-
+        traveled += hit;
     }
 
-    return vec2(traveled, id);
+    return traveled;
 }
 
 vec3 getNormal(vec3 p)
 {
     vec2 e = vec2(EPSILON, 0.0);
-    vec3 n = vec3(map(p).x) - vec3(map(p - e.xyy).x, map(p - e.yxy).x, map(p - e.yyx).x);
+    vec3 n = vec3(map(p)) - vec3(map(p - e.xyy), map(p - e.yxy), map(p - e.yyx));
     return normalize(n);
 }
 
@@ -207,8 +232,7 @@ vec3 getLight(vec3 p, vec3 rd, vec3 color)
     vec3 ambient = color * 0.05;
     vec3 fresnel = 0.1 * color * pow(1.0 + dot(rd, N), 3.0);
 
-    vec2 shadowObject = rayMarch(p - rd * 0.02, normalize(lightPos));
-    float d = shadowObject.x;
+    float d = rayMarch(p - rd * 0.02, normalize(lightPos));
 
     return (d > length(lightPos - p)) ? diffuse + ambient + specular + fresnel
                                       : ambient + fresnel;
@@ -231,23 +255,12 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
     vec3 ambient = color * 0.05;
     vec3 fresnel = 0.1 * color * pow(1.0 + dot(rd, N), 3.0);
 
-    vec2 shadowObject = rayMarch(p - rd * 0.02, L);
-    float d = shadowObject.x;
+    float d = rayMarch(p - rd * 0.02, L);
 
     return (d >= FAR * length(L)) ? diffuse + ambient + specular + fresnel
                                       : ambient + fresnel;
 }
 
-vec3 getMaterial(vec3 p, float id)
-{
-    vec3 m;
-    vec3 colors[3];
-    colors[0] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
-    colors[1] = vec3(1.0,0.05,0.01);
-    colors[2] = vec3(0.1, 0.05, 0.80);
-
-    return colors[int(id)];
-}
 
 vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
 {
@@ -266,10 +279,10 @@ vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
     // rd = (vec4(rd, 0) * u_cameraMatrix).xyz;
 
     // Ray march to find closest SDF
-    vec2 object = rayMarch(ro, rd);
+    float object = rayMarch(ro, rd);
 
     // If ray marched distance is bigger than depth from zbuffer, set alpha to 1
-    float minDepth = min(object.x, depth);
+    float minDepth = min(object, depth);
 
 
     // Output color
@@ -280,11 +293,10 @@ vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
     if (minDepth < FAR)
     {
 
-        if (object.x < depth)
+        if (object < depth)
         {
-            // col += 3.0 / object.x;
-            vec3 p = ro + object.x * rd;
-            vec3 material = getMaterial(p, object.y);
+            vec3 p = ro + object * rd;
+            vec3 material = getColor(p);
             col += getDirectionalLight(p, rd, material);
         }
         else

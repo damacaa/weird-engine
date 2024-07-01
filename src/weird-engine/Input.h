@@ -45,11 +45,6 @@ private:
 	int* m_keyTable;
 	int* m_mouseKeysTable;
 
-	// Lock mouse position to the center of the screen
-	bool m_mouseWarp = false;
-
-	// First frame where mouse has been captured
-	bool m_firstMouseInput = true;
 
 	Input() {
 		m_keyTable = new int[SUPPORTED_KEYS] { 0 };
@@ -120,10 +115,10 @@ public:
 
 		// Special keys
 		Space = ' ',
-		Enter = 13,
+		Enter = GLFW_KEY_ENTER,
 		Tab = 9,
-		Backspace = 8,
-		Esc = 27,
+		Backspace = GLFW_KEY_BACKSPACE,
+		Esc = GLFW_KEY_ESCAPE,
 		Up = 128,
 		Down = 129,
 		Left = 130,
@@ -181,12 +176,12 @@ public:
 		return GetInstance().m_mouseKeysTable[(int)button] >= IS_PRESSED;
 	}
 
-	static bool GetMouseButtonDown(MouseButton button) 
+	static bool GetMouseButtonDown(MouseButton button)
 	{
 		return GetInstance().m_mouseKeysTable[(int)button] == FIRST_PRESSED;
 	}
 
-	static bool GetMouseButtonUp(MouseButton button) 
+	static bool GetMouseButtonUp(MouseButton button)
 	{
 		return GetInstance().m_mouseKeysTable[(int)button] == RELEASED_THIS_FRAME;
 	}
@@ -226,6 +221,8 @@ private:
 
 	void updateTables(GLFWwindow* window, int width, int height)
 	{
+		m_width = width;
+		m_height = height;
 
 		if (m_window == nullptr) {
 			m_window = window;
@@ -234,15 +231,48 @@ private:
 			glfwSetScrollCallback(window, scroll_callback);
 		}
 
-		m_mouseKeysTable[(int)MouseButton::LeftClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT);
-		m_mouseKeysTable[(int)MouseButton::RightClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT);
-		m_mouseKeysTable[(int)MouseButton::MiddleClick] = glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_MIDDLE);
-
-		//m_mouseKeysTable[(int)MouseButton::WheelUp] =
-		//m_mouseKeysTable[(int)MouseButton::WheelDown] =
-
 		// Fetches the coordinates of the cursor
-		glfwGetCursorPos(window, &m_mouseX, &m_mouseY);
+		double mouseX, mouseY;
+		glfwGetCursorPos(window, &mouseX, &mouseY);
+
+		m_deltaX = mouseX - m_mouseX;
+		m_deltaY = mouseY - m_mouseY;
+
+		m_mouseX = mouseX;
+		m_mouseY = mouseY;
+
+		// GLFW defined buttons transformed to my values
+		int b[3] = {
+			(int)MouseButton::LeftClick,
+			(int)MouseButton::RightClick,
+			(int)MouseButton::MiddleClick
+		};
+
+		int g[3] = {
+			GLFW_MOUSE_BUTTON_LEFT,
+			GLFW_MOUSE_BUTTON_RIGHT,
+			GLFW_MOUSE_BUTTON_MIDDLE
+		};
+
+		for (int i = 0; i < 3; i++) {
+
+			int current = glfwGetMouseButton(m_window, g[i]);
+			int previous = m_mouseKeysTable[b[i]];
+
+			if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
+			{
+				// If it wasn't pressed in previous frame, it's a first press
+				current = FIRST_PRESSED;
+				
+			}
+			else if (current == NOT_PRESSED && (previous == FIRST_PRESSED || previous == IS_PRESSED))
+			{
+				// If it was pressed in previous frame, it's a first release
+				current = RELEASED_THIS_FRAME;
+			}
+
+			m_mouseKeysTable[b[i]] = current;
+		}
 
 
 		for (int i = 0; i < SUPPORTED_KEYS; i++) {
@@ -263,7 +293,6 @@ private:
 
 			m_keyTable[i] = current;
 		}
-
 	}
 
 	void clearTables() {

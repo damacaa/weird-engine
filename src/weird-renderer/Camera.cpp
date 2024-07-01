@@ -78,27 +78,42 @@ void Camera::Inputs(float delta)
 	{
 		fov += delta * 300.0f;
 	}
-	else 	if (Input::GetMouseButton(Input::WheelUp))
+	else if (Input::GetMouseButton(Input::WheelUp))
 	{
 		fov -= delta * 200.0f;
 	}
 
-
-	// Handles mouse inputs
-	if (Input::GetMouseButton(Input::LeftClick))
+	if (Input::GetKey(Input::KeyCode::Esc))
 	{
+		m_locked = false;
+		// Unhides cursor since camera is not looking around anymore
+		Input::ShowMouse();
+		// Makes sure the next time the camera looks around it doesn't jump
+		firstClick = true;
+	}
+
+
+	if (Input::GetMouseButton(Input::LeftClick)) {
+		m_locked = true;
 		Input::HideMouse();
+	}
+
+
+	if(m_locked){
+
+		// Stores the coordinates of the cursor
+		double mouseX = Input::GetMouseX();
+		double mouseY = Input::GetMouseY();
 
 		// Prevents camera from jumping on the first click
 		if (firstClick)
 		{
 			Input::SetMousePosition((m_width / 2), (m_height / 2));
 			firstClick = false;
+			mouseX = m_width / 2;
+			mouseY = m_height / 2;
 		}
 
-		// Stores the coordinates of the cursor
-		double mouseX = Input::GetMouseX();
-		double mouseY = Input::GetMouseY();
 
 		// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
 		// and then "transforms" them into degrees 
@@ -126,12 +141,6 @@ void Camera::Inputs(float delta)
 		// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
 		Input::SetMousePosition((m_width / 2), (m_height / 2));
 	}
-	else if (Input::GetMouseButtonUp(Input::LeftClick))
-	{
-		// Unhides cursor since camera is not looking around anymore
-		Input::ShowMouse();
-		// Makes sure the next time the camera looks around it doesn't jump
-		firstClick = true;
-	}
+
 }
 

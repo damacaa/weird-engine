@@ -34,6 +34,7 @@ public:
 
 	// Prevents the camera from jumping around when first clicking left click
 	bool firstClick = true;
+	bool m_locked = false;
 
 	// Adjust the speed of the camera and it's sensitivity when looking around
 	float speed = 10.f;

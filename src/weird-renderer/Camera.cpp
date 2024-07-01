@@ -65,22 +65,22 @@ void Camera::Inputs(float delta)
 		Position += delta * speed * -Up;
 	}
 
-	if (Input::GetKey(Input::LeftShift))
+	if (Input::GetKeyDown(Input::LeftShift))
 	{
-		speed = 0.4f;
+		speed *= 4.0f;
 	}
-	else if (Input::GetKeyUp(Input::LeftCrtl))
+	else if (Input::GetKeyUp(Input::LeftShift))
 	{
-		speed = 0.1f;
+		speed *= 0.25f;
 	}
 
 	if (Input::GetMouseButton(Input::WheelDown))
 	{
-		fov += delta * 3.0f;
+		fov += delta * 300.0f;
 	}
 	else 	if (Input::GetMouseButton(Input::WheelUp))
 	{
-		fov -= delta * 2.0f;
+		fov -= delta * 200.0f;
 	}
 
 

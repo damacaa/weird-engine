@@ -2,7 +2,7 @@
 
 
 
-RenderPlane::RenderPlane(int width, int height, Shader& shader)
+RenderPlane::RenderPlane(int width, int height, Shader& shader, bool shapeRenderer)
 {
 	float f = 1.0f;
 	// Vertices coordinates
@@ -54,12 +54,15 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 	// This does not apply to the VBO because the VBO is already linked to the VAO during glVertexAttribPointer
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	// Uniform buffer to store shapes
-	glGenBuffers(1, &UBO);
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	// Bind UBO to shader program (assuming location 0 for UBO)
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	if (shapeRenderer) {
+
+		// Uniform buffer to store shapes
+		glGenBuffers(1, &UBO);
+		glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+		// Bind UBO to shader program (assuming location 0 for UBO)
+		glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
 
 
 
@@ -99,6 +102,36 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader)
 }
 
 
+
+void RenderPlane::Draw(Shader& shader) const
+{
+	glDisable(GL_DEPTH_TEST);
+	// Tell OpenGL which Shader Program we want to use
+	glUseProgram(shader.ID);
+	// Bind the VAO so OpenGL knows to use it
+	glBindVertexArray(VAO);
+
+
+	// Read color texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+	glUniform1i(m_colorTextureLocation, 0);
+
+	// Read depth texture
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+	glUniform1i(m_depthTextureLocation, 1);
+
+
+
+	glDisable(GL_DEPTH_TEST);
+
+
+	// Draw the triangle using the GL_TRIANGLES primitive
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glEnable(GL_DEPTH_TEST);
+}
 
 void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 {

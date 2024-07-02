@@ -21,15 +21,13 @@ std::mt19937 gen(rd());
 // Define a uniform integer distribution from 1 to 100
 std::uniform_int_distribution<> dis(1, 100);
 
-Scene::Scene() : m_simulation(MAX_SIMULATED_OBJECTS)
+Scene::Scene() :
+	m_simulation(MAX_SIMULATED_OBJECTS),
+	m_sdfRenderSystem(m_ecs),
+	m_renderSystem(m_ecs),
+	m_instancedRenderSystem(m_ecs),
+	m_rbPhysicsSystem(m_ecs)
 {
-	// Register component and bind to a system
-	m_ecs.registerComponent<Transform>();
-	m_ecs.registerComponent<MeshRenderer>(m_renderSystem);
-	m_ecs.registerComponent<InstancedMeshRenderer>(m_instancedRenderSystem);
-	m_ecs.registerComponent<SDFRenderer>(m_sdfRenderSystem);
-	m_ecs.registerComponent<RigidBody>(m_rbPhysicsSystem);
-
 	// Read scene file and load everything
 	loadScene();
 
@@ -77,74 +75,13 @@ void Scene::update(double delta, double time)
 	if (steps >= MAX_STEPS)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
-
-
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
-
-	if (Input::GetKeyDown(Input::KeyCode::T)) {
-		auto& t = m_ecs.getComponent<Transform>(0);
-		t.isDirty = true;
-		t.position = glm::vec3(0, 5, 0);
-	}
-
-	if (Input::GetKeyDown(Input::KeyCode::Z)) {
-		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, Transform());
-
-		float x = 0.001f * dis(gen);
-		float y = 5;
-		float z = 0.001f * dis(gen);
-
-		m_ecs.getComponent<Transform>(entity).position = vec3(x, y, z);
-
-		std::string projectDir = fs::current_path().string();
-		std::string meshPath = "/Resources/Models/sphere.gltf";
-
-		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity, true)));
-			m_instancedRenderSystem.add(entity);
-		}
-		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity)));
-			m_renderSystem.add(entity);
-		}
-
-		m_ecs.addComponent(entity, RigidBody());
-		m_rbPhysicsSystem.add(entity);
-		m_rbPhysicsSystem.addNewRigidbodiesToSimulation(m_ecs, m_simulation);
-	}
-
-	if (Input::GetKeyDown(Input::KeyCode::X)) {
-		Entity entity = monkey;
-		m_ecs.destroyEntity(entity);
-		m_resourceManager.freeResources(entity);
-	}
-
-
-	if (Input::GetKeyDown(Input::KeyCode::M)) {
-
-		std::string projectDir = fs::current_path().string();
-
-		std::string spherePath = "/Resources/Models/sphere.gltf";
-		std::string cubePath = "/Resources/Models/cube.gltf";
-		std::string demoPath = "/Resources/Models/Monkey/monkey.gltf";
-		std::string planePath = "/Resources/Models/plane.gltf";
-
-		// Make monke
-		monkey = m_ecs.createEntity();
-		Transform monkeyTransform;
-		monkeyTransform.position = vec3(10, 3.5f, -30);
-		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-		monkeyTransform.scale = vec3(8.0f);
-		m_ecs.addComponent(monkey, monkeyTransform);
-
-		MeshID monkeyMeshID = m_resourceManager.getMeshId((projectDir + demoPath).c_str(), monkey, false);
-		m_ecs.addComponent(monkey, MeshRenderer(monkeyMeshID));
-		m_renderSystem.add(monkey);
-
-	}
 }
 
+
+const int m_meshes = 10;
+const int m_shapes = 10;
+const bool m_useMeshInstancing = true;
 
 void Scene::loadScene()
 {
@@ -158,18 +95,17 @@ void Scene::loadScene()
 	// Create camera object
 	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
 
-	if (false) {
-		// Make monke
-		Entity monkey = m_ecs.createEntity();
-		Transform monkeyTransform;
-		monkeyTransform.position = vec3(10, 3.5f, -30);
-		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-		monkeyTransform.scale = vec3(8.0f);
-		m_ecs.addComponent(monkey, monkeyTransform);
+	// Make monke
+	Entity monkey = m_ecs.createEntity();
+	Transform monkeyTransform;
+	monkeyTransform.position = vec3(10, 3.5f, -30);
+	monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+	monkeyTransform.scale = vec3(8.0f);
+	m_ecs.addComponent(monkey, monkeyTransform);
 
-		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + demoPath).c_str(), 1)));
-		m_renderSystem.add(monkey);
-	}
+	m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + demoPath).c_str(), 1)));
+	m_renderSystem.add(monkey);
+
 
 	// Spawn mesh balls
 	for (size_t i = 0; i < m_meshes; i++)

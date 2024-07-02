@@ -3,11 +3,18 @@
 #include "../../../weird-renderer/RenderPlane.h"
 
 class SDFRenderSystem : public System {
+private:
+	std::shared_ptr<ComponentManager> m_sdfRendererManager;
 
 public:
+
+	SDFRenderSystem(ECS& ecs) {
+		m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
+	}
+
 	void render(ECS& ecs, Shader& shader, RenderPlane& rp, const std::vector<Light>& lights) {
 
-		auto& componentArray = GetManagerArray<SDFRenderer>();
+		auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
 
 		unsigned int size = componentArray.getSize();
 

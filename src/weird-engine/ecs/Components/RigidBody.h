@@ -15,12 +15,20 @@ public:
 
 
 // Example Systems
-class RBPhysicsSystem : public System {
+class RBPhysicsSystem : public System
+{
+private:
+	std::shared_ptr<ComponentManager> m_rbManager;
+
 public:
+
+	RBPhysicsSystem(ECS& ecs) {
+		m_rbManager = ecs.getComponentManager<RigidBody>();
+	}
+
 	void init(ECS& ecs, Simulation& simulation) {
 
-		auto& componentArray = GetManagerArray<RigidBody>();
-
+		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
 
 		for (size_t i = 0; i < componentArray.size; i++)
 		{
@@ -30,13 +38,12 @@ public:
 
 			simulation.setPosition(rb.Owner, transform.position);
 		}
-
 	}
 
 	void addNewRigidbodiesToSimulation(ECS& ecs, Simulation& simulation) {
 
-		auto& componentArray = GetManagerArray<RigidBody>();
-		
+		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
+
 		for (size_t i = simulation.getSize(); i < componentArray.size; i++)
 		{
 			RigidBody& rb = componentArray[i];
@@ -44,12 +51,11 @@ public:
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 			simulation.setPosition(rb.simulationId, transform.position);
 		}
-
 	}
 
 	void update(ECS& ecs, Simulation& simulation) {
 
-		auto& componentArray = GetManagerArray<RigidBody>();
+		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
 
 		for (size_t i = 0; i < componentArray.size; i++)
 		{

@@ -6,14 +6,14 @@
 class InstancedRenderSystem : public System {
 private:
 	const size_t MAX_INSTANCES = 255;
+	std::shared_ptr<ComponentManager> m_iRendererManager;
 
 public:
-	InstancedRenderSystem() {
 
-		m_entities = std::vector<Entity>();
-
+	InstancedRenderSystem(ECS& ecs) 
+	{
+		m_iRendererManager = ecs.getComponentManager<InstancedMeshRenderer>();
 	}
-
 
 	void render(ECS& ecs, ResourceManager& resourceManager, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
 
@@ -21,7 +21,7 @@ public:
 		shader.setUniform("lightColor", lights[0].color);
 		shader.setUniform("lightPos", lights[0].position);
 
-		auto& componentArray = GetManagerArray<InstancedMeshRenderer>();
+		auto& componentArray = *m_iRendererManager->getComponentArray<InstancedMeshRenderer>();
 
 		if (componentArray.getSize() == 0)
 			return;

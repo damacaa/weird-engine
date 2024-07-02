@@ -71,8 +71,6 @@ private:
 
 
 
-
-
 class ComponentManager {
 private:
 
@@ -87,9 +85,6 @@ public:
 
 	template <typename T>
 	void registerComponent() {
-		const char* typeName = typeid(T).name();
-		//componentArrays[typeName] = std::make_shared<ComponentArray<T>>();
-
 		m_componentArray = std::make_shared<ComponentArray<T>>();
 	}
 
@@ -97,7 +92,6 @@ public:
 	void addComponent(Entity entity, T component) {
 		auto castedComponentArray = getComponentArray<T>();
 		castedComponentArray->insertData(entity, component);
-		//m_componentArray = castedComponentArray;
 	}
 
 	template <typename T>

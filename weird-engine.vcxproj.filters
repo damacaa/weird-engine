@@ -46,6 +46,9 @@
     <Filter Include="Header Files\weird-engine\ECS\Components">
       <UniqueIdentifier>{1333b08b-291e-47c0-9d56-641fc2f1691c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\weird-engine\ECS\Systems">
+      <UniqueIdentifier>{0299a4b8-57c4-4d1c-b8bc-471a1b273f88}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -149,9 +152,6 @@
     <ClInclude Include="src\weird-engine\ecs\ComponentManager.h">
       <Filter>Header Files\weird-engine\ECS</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-engine\ResourceManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h">
       <Filter>Header Files\weird-engine\ECS\Components</Filter>
     </ClInclude>
@@ -174,16 +174,19 @@
       <Filter>Header Files\weird-engine\ECS</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Components\SDFRenderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\weird-engine\ECS\Components</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Systems\InstancedRenderSystem.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Systems\RenderSystem.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ResourceManager.h">
+      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

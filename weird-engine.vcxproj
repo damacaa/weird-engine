@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\weird-engine\SceneManager.cpp" />
     <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
     <ClCompile Include="src\weird-engine\Scene.cpp" />
@@ -169,6 +170,9 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\weird-engine\ecs\Systems\TestSystem.h" />
+    <ClInclude Include="src\weird-engine\SceneManager.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\LogicComponent.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\RigidBody.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\SDFRenderer.h" />
@@ -196,8 +200,11 @@
     <ClInclude Include="src\weird-renderer\Texture.h" />
     <ClInclude Include="src\weird-renderer\VAO.h" />
     <ClInclude Include="src\weird-renderer\VBO.h" />
+    <ClInclude Include="src\WeirdEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="SampleProject\project.weird" />
+    <None Include="SampleProject\Scenes\SampleScene.json" />
     <None Include="src\weird-renderer\shaders\default.frag" />
     <None Include="src\weird-renderer\shaders\default.vert" />
     <None Include="src\weird-renderer\shaders\default_instancing.vert" />

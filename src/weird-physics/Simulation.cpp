@@ -23,6 +23,7 @@ Simulation::Simulation(size_t size) :
 
 Simulation::~Simulation()
 {
+	// TO DO: Exceptions
 	delete[] m_positions;
 	delete[] m_velocities;
 	delete[] m_forces;

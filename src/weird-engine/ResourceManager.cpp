@@ -1,23 +1,6 @@
 #include "ResourceManager.h"
 
 
-// Reads a text file and outputs a string with everything in the text file
-std::string get_file_contentss(const char* filename)
-{
-	std::ifstream in(filename, std::ios::binary);
-	if (in)
-	{
-		std::string contents;
-		in.seekg(0, std::ios::end);
-		contents.resize(in.tellg());
-		in.seekg(0, std::ios::beg);
-		in.read(&contents[0], contents.size());
-		in.close();
-		return(contents);
-	}
-	throw(errno);
-}
-
 ResourceManager::ResourceManager()
 {
 	Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, 0);
@@ -44,7 +27,7 @@ MeshID ResourceManager::getMeshId(const char* file, const Entity entity, bool in
 	// New mesh
 
 	// Make a JSON object
-	std::string text = get_file_contentss(file);
+	std::string text = get_file_contents(file);
 	m_json = json::parse(text);
 
 	// Get the binary data

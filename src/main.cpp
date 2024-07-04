@@ -5,18 +5,22 @@ namespace fs = std::filesystem;
 #include <cmath>
 
 #include "weird-engine/Input.h"
-#include "weird-engine/Scene.h"
+#include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
 
 
 int main()
 {
+	const char* projectPath = "SampleProject/";
+
 	// Render resolution
 	const unsigned int width = 1200;
 	const unsigned int height = 800;
 
 	Renderer renderer(width, height);
-	Scene scene;
+	SceneManager sceneManager;
+	sceneManager.Load(projectPath);
+
 
 	// Time
 	double time = glfwGetTime();
@@ -52,14 +56,16 @@ int main()
 		Input::update(renderer.getWindow(), width, height);
 
 		// Update scene logic and physics
-		scene.update(delta, time);
+		sceneManager.getCurrentScene().update(delta, time);
 
 		// Clear input
 		Input::clear();
 
 		// Render scene
-		renderer.render(scene, time);
+		renderer.render(sceneManager.getCurrentScene(), time);
 	}
+
+	int i = 0;
 
 	return 0;
 }

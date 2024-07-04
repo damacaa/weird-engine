@@ -14,6 +14,7 @@ class Scene
 {
 public:
 	Scene();
+	Scene(const char* file);
 	~Scene();
 	void renderModels(Shader& shader, Shader& instancingShader);
 	void renderShapes(Shader& shader, RenderPlane& rp);
@@ -21,17 +22,24 @@ public:
 
 	std::unique_ptr<Camera> camera;
 
+
+	Scene(const Scene&) = default; // Deleted copy constructor
+	Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
+	Scene(Scene&&) = default; // Defaulted move constructor
+	Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
+
 private:
 	ECS m_ecs;
 	ResourceManager m_resourceManager;
 
-	Simulation m_simulation;
+	Simulation* m_simulation;
 	double m_simulationDelay = 0.0;
 
 	SDFRenderSystem m_sdfRenderSystem;
 	RenderSystem m_renderSystem;
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
+	TestSystem m_testSystem;
 
 	vector<Light> m_lights;
 

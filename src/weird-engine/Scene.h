@@ -39,10 +39,9 @@ private:
 	RenderSystem m_renderSystem;
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
-	TestSystem m_testSystem;
 
 	vector<Light> m_lights;
 
-	void loadScene();
+	void loadScene(std::string sceneFileContent);
 };
 

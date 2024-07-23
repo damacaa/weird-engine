@@ -6,7 +6,7 @@ SceneManager::~SceneManager()
 	m_currentScene = nullptr;
 }
 
-void SceneManager::Load(std::string projectDir)
+void SceneManager::loadProject(std::string projectDir)
 {
 	// Find .weird file
 	/*auto files = getAllFilesWithExtension(projectDir, "weird");
@@ -21,8 +21,20 @@ void SceneManager::Load(std::string projectDir)
 	projectFile = json::parse(content);
 	std::cout << projectFile["Name"] << std::endl;
 
-	m_scenes.push_back(Scene(projectDir.c_str()));
-	m_currentScene = &m_scenes[0];
+
+	// Check if "Scenes" key exists and is an array
+	if (projectFile.contains("Scenes") && projectFile["Scenes"].is_array()) {
+		for (const auto& scene : projectFile["Scenes"]) {
+			m_scenes.push_back(projectDir + scene.get<std::string>());
+		}
+	}
+	else {
+		std::cerr << "The 'Scenes' key is missing or is not an array." << std::endl;
+	}
+
+
+	//m_scenes.push_back("{}");
+	m_currentScene = new Scene(m_scenes[0].c_str());
 }
 
 Scene& SceneManager::getCurrentScene()

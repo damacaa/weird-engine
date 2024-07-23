@@ -106,7 +106,7 @@
       <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-engine\SceneManager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -198,10 +198,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\SceneManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\weird-engine\ecs\Systems\TestSystem.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\weird-engine</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -227,6 +224,7 @@
       <Filter>Source Files\weird-renderer\Shaders</Filter>
     </None>
     <None Include="SampleProject\project.weird" />
-    <None Include="SampleProject\Scenes\SampleScene.json" />
+    <None Include="SampleProject\Scenes\SampleScene.scene" />
+    <None Include="SampleProject\Scenes\EmptyScene.scene" />
   </ItemGroup>
 </Project>

@@ -10,13 +10,13 @@ class SceneManager
 {
 private:
 	Scene* m_currentScene;
-	std::vector<Scene> m_scenes;
+	std::vector<std::string> m_scenes;
 
 
 public:
 	~SceneManager();
 
-	void Load(std::string projectDir);
+	void loadProject(std::string projectDir);
 
 	Scene& getCurrentScene();
 

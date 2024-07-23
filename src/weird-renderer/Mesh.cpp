@@ -31,6 +31,9 @@ Mesh::~Mesh()
 }
 
 
+const auto RIGHT = glm::vec3(1.0f, 0.0f, 0.0f);
+const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
+const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
 void Mesh::Draw
 (
@@ -109,9 +112,9 @@ void Mesh::Draw
 
 	auto matrix = glm::translate(glm::mat4(1.0f), translation);
 
-	matrix = glm::rotate(matrix, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-	matrix = glm::rotate(matrix, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-	matrix = glm::rotate(matrix, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f)); // TODO: replace with consts
+	matrix = glm::rotate(matrix, rotation.x, RIGHT);
+	matrix = glm::rotate(matrix, rotation.y, UP);
+	matrix = glm::rotate(matrix, rotation.z, FORWARD); // TODO: replace with consts
 
 	matrix = glm::scale(matrix, scale);
 

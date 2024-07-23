@@ -170,7 +170,6 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\weird-engine\ecs\Systems\TestSystem.h" />
     <ClInclude Include="src\weird-engine\SceneManager.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\LogicComponent.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h" />
@@ -204,7 +203,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="SampleProject\project.weird" />
-    <None Include="SampleProject\Scenes\SampleScene.json" />
+    <None Include="SampleProject\Scenes\EmptyScene.scene" />
+    <None Include="SampleProject\Scenes\SampleScene.scene" />
     <None Include="src\weird-renderer\shaders\default.frag" />
     <None Include="src\weird-renderer\shaders\default.vert" />
     <None Include="src\weird-renderer\shaders\default_instancing.vert" />

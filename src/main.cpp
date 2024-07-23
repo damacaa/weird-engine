@@ -13,13 +13,15 @@ int main()
 {
 	const char* projectPath = "SampleProject/";
 
-	// Render resolution
+	// Window resolution
 	const unsigned int width = 1200;
 	const unsigned int height = 800;
 
 	Renderer renderer(width, height);
+
+	// Scenes
 	SceneManager sceneManager;
-	sceneManager.Load(projectPath);
+	sceneManager.loadProject(projectPath);
 
 
 	// Time
@@ -64,9 +66,5 @@ int main()
 		// Render scene
 		renderer.render(sceneManager.getCurrentScene(), time);
 	}
-
-	int i = 0;
-
-	return 0;
 }
 

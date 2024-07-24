@@ -85,8 +85,6 @@ public:
 		m_componentManagers[typeid(T).name()] = pointerToManager;
 	}
 
-	
-public:
 	template <typename T>
 	std::shared_ptr<ComponentManager> getComponentManager() {
 

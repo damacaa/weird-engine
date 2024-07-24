@@ -42,11 +42,11 @@ void SceneManager::loadProject(std::string projectDir)
 Scene& SceneManager::getCurrentScene()
 {
 	if (m_nextScene != -1) {
-
 		if (m_currentScene)
 			delete m_currentScene;
 
 		m_currentScene = new Scene(m_scenes[m_nextScene].c_str());
+		m_currentSceneIdx = m_nextScene;
 		m_nextScene = -1;
 	}
 
@@ -56,6 +56,11 @@ Scene& SceneManager::getCurrentScene()
 void SceneManager::loadScene(int idx)
 {
 	m_nextScene = idx;
+}
+
+void SceneManager::loadNextScene()
+{
+	m_nextScene = (m_currentSceneIdx + 1) % m_scenes.size();
 }
 
 

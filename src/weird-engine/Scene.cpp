@@ -15,7 +15,7 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 
 Scene::Scene(const char* file) :
-	m_simulation(new Simulation(MAX_SIMULATED_OBJECTS)),
+	m_simulation(MAX_SIMULATED_OBJECTS),
 	m_sdfRenderSystem(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
@@ -28,7 +28,7 @@ Scene::Scene(const char* file) :
 	loadScene(content);
 
 	// Start simulation
-	m_rbPhysicsSystem.init(m_ecs, *m_simulation);
+	m_rbPhysicsSystem.init(m_ecs, m_simulation);
 }
 
 
@@ -63,7 +63,7 @@ void Scene::update(double delta, double time)
 		// Handles camera inputs
 		camera->Inputs(FIXED_DELTA_TIME);
 
-		//m_simulation->step((float)FIXED_DELTA_TIME);
+		m_simulation.step((float)FIXED_DELTA_TIME);
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		++steps;
 	}
@@ -71,10 +71,10 @@ void Scene::update(double delta, double time)
 	if (steps >= MAX_STEPS)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
-	m_rbPhysicsSystem.update(m_ecs, *m_simulation);
+	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 
 	if (Input::GetKeyDown(Input::Q)) {
-		SceneManager::getInstance().loadScene(1);
+		SceneManager::getInstance().loadNextScene();
 	}
 }
 
@@ -97,15 +97,18 @@ void Scene::loadScene(std::string sceneFileContent)
 
 
 	// Make monke
-	Entity monkey = m_ecs.createEntity();
-	Transform monkeyTransform;
-	monkeyTransform.position = vec3(10, 3.5f, -30);
-	monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-	monkeyTransform.scale = vec3(8.0f);
-	m_ecs.addComponent(monkey, monkeyTransform);
+	if (false) {
 
-	m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + monkeyPath).c_str(), 1)));
-	m_renderSystem.add(monkey);
+		Entity monkey = m_ecs.createEntity();
+		Transform monkeyTransform;
+		monkeyTransform.position = vec3(10, 3.5f, -30);
+		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
+		monkeyTransform.scale = vec3(8.0f);
+		m_ecs.addComponent(monkey, monkeyTransform);
+
+		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + monkeyPath).c_str(), 1)));
+		m_renderSystem.add(monkey);
+	}
 
 
 	// Create camera object

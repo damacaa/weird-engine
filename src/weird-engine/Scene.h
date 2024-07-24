@@ -32,7 +32,7 @@ private:
 	ECS m_ecs;
 	ResourceManager m_resourceManager;
 
-	Simulation* m_simulation;
+	Simulation m_simulation;
 	double m_simulationDelay = 0.0;
 
 	SDFRenderSystem m_sdfRenderSystem;

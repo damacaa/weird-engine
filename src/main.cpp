@@ -20,7 +20,7 @@ int main()
 	Renderer renderer(width, height);
 
 	// Scenes
-	SceneManager sceneManager;
+	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.loadProject(projectPath);
 
 

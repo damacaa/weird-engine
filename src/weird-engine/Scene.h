@@ -13,7 +13,7 @@ using namespace std;
 class Scene
 {
 public:
-	Scene();
+
 	Scene(const char* file);
 	~Scene();
 	void renderModels(Shader& shader, Shader& instancingShader);

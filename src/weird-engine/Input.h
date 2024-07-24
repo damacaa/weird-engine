@@ -56,7 +56,7 @@ private:
 		delete m_mouseKeysTable;
 	}
 
-	static Input& GetInstance() {
+	static Input& getInstance() {
 		static Input* _instance = new Input();
 		return *_instance;
 	};
@@ -143,14 +143,14 @@ public:
 
 #pragma region MouseMovement
 
-	static int GetMouseX() { return GetInstance().m_mouseX; };
-	static int GetMouseY() { return GetInstance().m_mouseY; };
-	static float GetMouseDeltaX() { return (float)GetInstance().m_deltaX / GetInstance().m_width; };
-	static float GetMouseDeltaY() { return (float)GetInstance().m_deltaY / GetInstance().m_height; };
+	static int GetMouseX() { return getInstance().m_mouseX; };
+	static int GetMouseY() { return getInstance().m_mouseY; };
+	static float GetMouseDeltaX() { return (float)getInstance().m_deltaX / getInstance().m_width; };
+	static float GetMouseDeltaY() { return (float)getInstance().m_deltaY / getInstance().m_height; };
 
 	static void SetMousePosition(int x, int y) {
 
-		auto& instance = GetInstance();
+		auto& instance = getInstance();
 		instance.m_deltaX += x - instance.m_mouseX;
 		instance.m_deltaY += y - instance.m_mouseY;
 
@@ -162,10 +162,10 @@ public:
 	}
 
 	// Hides mouse cursor
-	static void ShowMouse() { glfwSetInputMode(GetInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+	static void ShowMouse() { glfwSetInputMode(getInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
 
 	// Hides mouse cursor
-	static void HideMouse() { glfwSetInputMode(GetInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); }
+	static void HideMouse() { glfwSetInputMode(getInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); }
 
 #pragma endregion
 
@@ -173,17 +173,17 @@ public:
 
 	static bool GetMouseButton(MouseButton button)
 	{
-		return GetInstance().m_mouseKeysTable[(int)button] >= IS_PRESSED;
+		return getInstance().m_mouseKeysTable[(int)button] >= IS_PRESSED;
 	}
 
 	static bool GetMouseButtonDown(MouseButton button)
 	{
-		return GetInstance().m_mouseKeysTable[(int)button] == FIRST_PRESSED;
+		return getInstance().m_mouseKeysTable[(int)button] == FIRST_PRESSED;
 	}
 
 	static bool GetMouseButtonUp(MouseButton button)
 	{
-		return GetInstance().m_mouseKeysTable[(int)button] == RELEASED_THIS_FRAME;
+		return getInstance().m_mouseKeysTable[(int)button] == RELEASED_THIS_FRAME;
 	}
 
 #pragma endregion
@@ -193,17 +193,17 @@ public:
 
 	static bool GetKey(KeyCode key)
 	{
-		return GetInstance().m_keyTable[key] >= IS_PRESSED;
+		return getInstance().m_keyTable[key] >= IS_PRESSED;
 	}
 
 	static bool GetKeyDown(unsigned char key)
 	{
-		return GetInstance().m_keyTable[key] == FIRST_PRESSED;
+		return getInstance().m_keyTable[key] == FIRST_PRESSED;
 	}
 
 	static bool GetKeyUp(unsigned char key)
 	{
-		return GetInstance().m_keyTable[key] == RELEASED_THIS_FRAME;
+		return getInstance().m_keyTable[key] == RELEASED_THIS_FRAME;
 	}
 
 
@@ -214,7 +214,7 @@ private:
 
 	static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	{
-		auto& instance = GetInstance();
+		auto& instance = getInstance();
 		instance.m_mouseKeysTable[(int)MouseButton::WheelUp] = yoffset > 0 ? FIRST_PRESSED : NOT_PRESSED;
 		instance.m_mouseKeysTable[(int)MouseButton::WheelDown] = yoffset < 0 ? FIRST_PRESSED : NOT_PRESSED;
 	}
@@ -303,7 +303,7 @@ private:
 public:
 
 	static void update(GLFWwindow* window, int width, int height) {
-		auto& instance = GetInstance();
+		auto& instance = getInstance();
 		instance.updateTables(window, width, height);
 	}
 
@@ -311,7 +311,7 @@ public:
 	/// Must be called after update but before render
 	/// </summary>
 	static void clear() {
-		auto& instance = GetInstance();
+		auto& instance = getInstance();
 		instance.clearTables();
 	}
 

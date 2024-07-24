@@ -12,6 +12,9 @@ private:
 	Scene* m_currentScene;
 	std::vector<std::string> m_scenes;
 
+	int m_nextScene = -1;
+
+	SceneManager() {};
 
 public:
 	~SceneManager();
@@ -20,5 +23,11 @@ public:
 
 	Scene& getCurrentScene();
 
+	static SceneManager& getInstance() {
+		static SceneManager* _instance = new SceneManager();
+		return *_instance;
+	};
+
+	 void loadScene(int idx);
 };
 

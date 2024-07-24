@@ -1,6 +1,8 @@
 #include "SceneManager.h"
 
 
+
+
 SceneManager::~SceneManager()
 {
 	m_currentScene = nullptr;
@@ -34,11 +36,26 @@ void SceneManager::loadProject(std::string projectDir)
 
 
 	//m_scenes.push_back("{}");
-	m_currentScene = new Scene(m_scenes[0].c_str());
+	loadScene(0);
 }
 
 Scene& SceneManager::getCurrentScene()
 {
+	if (m_nextScene != -1) {
+
+		if (m_currentScene)
+			delete m_currentScene;
+
+		m_currentScene = new Scene(m_scenes[m_nextScene].c_str());
+		m_nextScene = -1;
+	}
+
 	return *m_currentScene;
 }
+
+void SceneManager::loadScene(int idx)
+{
+	m_nextScene = idx;
+}
+
 

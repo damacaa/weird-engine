@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <random>
+#include "SceneManager.h"
 
 namespace fs = std::filesystem;
 
@@ -12,19 +13,6 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 #define PI 3.1416f
 
-Scene::Scene() :
-	m_simulation(new Simulation(MAX_SIMULATED_OBJECTS)),
-	m_sdfRenderSystem(m_ecs),
-	m_renderSystem(m_ecs),
-	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs)
-{
-	// Read scene file and load everything
-	loadScene("");
-
-	// Start simulation
-	m_rbPhysicsSystem.init(m_ecs, *m_simulation);
-}
 
 Scene::Scene(const char* file) :
 	m_simulation(new Simulation(MAX_SIMULATED_OBJECTS)),
@@ -46,7 +34,7 @@ Scene::Scene(const char* file) :
 
 Scene::~Scene()
 {
-
+	m_resourceManager.freeResources(0);
 }
 
 
@@ -84,6 +72,10 @@ void Scene::update(double delta, double time)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
 	m_rbPhysicsSystem.update(m_ecs, *m_simulation);
+
+	if (Input::GetKeyDown(Input::Q)) {
+		SceneManager::getInstance().loadScene(1);
+	}
 }
 
 

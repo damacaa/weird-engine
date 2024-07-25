@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <filesystem>
 
-
+namespace fs = std::filesystem;
 
 static unsigned int hash(unsigned int x) {
 	x = ((x >> 16) ^ x) * 0x119de1f3;
@@ -16,10 +16,6 @@ static unsigned int hash(unsigned int x) {
 	x = (x >> 16) ^ x;
 	return x;
 }
-
-
-
-
 
 static std::string get_file_contents(const char* filename)
 {

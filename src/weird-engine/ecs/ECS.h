@@ -4,7 +4,6 @@
 #include "Component.h"
 #include "ComponentManager.h"
 
-
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -12,14 +11,14 @@
 #include <memory>
 
 
-
 // System base class
 class System {
 protected:
-	std::shared_ptr<ComponentManager> m_manager;
+
 	std::vector<Entity> m_entities;
 
 public:
+
 	virtual void add(Entity entity) {
 		m_entities.push_back(entity);
 	}
@@ -28,43 +27,26 @@ public:
 		m_entities.erase(std::remove(m_entities.begin(), m_entities.end(), entity), m_entities.end());
 	}
 
-	void SetManager(std::shared_ptr<ComponentManager> manager) {
-		m_manager = manager;
-	}
-
-protected:
-	template<typename T>
-	ComponentArray<T>& GetManagerArray() {
-		return *m_manager->getComponentArray<T>();
-	}
-
-	template<typename T>
-	std::shared_ptr<ComponentArray<T>> GetManagerArrayPtr() {
-		return m_manager->getComponentArray<T>();
-	}
 };
 
 // ECS Manager
 class ECS {
 public:
+
 	Entity createEntity() {
 		return m_entityCount++;
 	}
 
-
 	void destroyEntity(Entity entity) {
 		for (auto const& pair : m_componentManagers) {
-			const std::shared_ptr<ComponentManager>& component = pair.second;
-			// TODO:
-			component->removeData(entity);
+			const std::shared_ptr<ComponentManager>& manager = pair.second;
+			manager->removeData(entity);
 		}
 
 		for (auto sys : m_systems) {
 			sys->remove(entity);
 		}
 	}
-
-
 
 	template <typename T>
 	void addComponent(Entity entity, T component) {
@@ -104,40 +86,19 @@ public:
 	}
 
 	template <typename T>
-	void registerComponent(std::shared_ptr<System> system) {
-
-		addSystem<T>(system);
-
-		ComponentManager manager;
-		manager.registerComponent<T>();
-		auto pointerToManager = std::make_shared<ComponentManager>(manager);
-
-		m_componentManagers[typeid(T).name()] = pointerToManager;
-
-		system->SetManager(pointerToManager);
-	}
-
-	template <typename T>
-	void registerComponent(System& system) {
-
-		std::shared_ptr<System> pointerToSystem = std::make_shared<System>(system);
-
-		addSystem<T>(pointerToSystem);
-
-		ComponentManager manager;
-		manager.registerComponent<T>();
-		auto pointerToManager = std::make_shared<ComponentManager>(manager);
-
-		m_componentManagers[typeid(T).name()] = pointerToManager;
-
-
-		system.SetManager(pointerToManager);
-	}
-
-public:
-	template <typename T>
 	std::shared_ptr<ComponentManager> getComponentManager() {
-		return m_componentManagers[typeid(T).name()];
+
+		auto key = typeid(T).name();
+
+		// Attempt to find the key in the map
+		auto it = m_componentManagers.find(key);
+
+		// Check if the key was found
+		if (it == m_componentManagers.end()) {
+			registerComponent<T>();
+		}
+
+		return m_componentManagers[key];
 	}
 
 private:

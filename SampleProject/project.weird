@@ -1,0 +1,7 @@
+{
+  "Name": "SampleProject",
+  "Scenes": [
+    "Scenes/SampleScene.scene",
+    "Scenes/EmptyScene.scene"
+  ]
+}

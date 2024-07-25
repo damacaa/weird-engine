@@ -1,11 +1,10 @@
 #include "scene.h"
 #include "Input.h"
-
-#include <filesystem>
-#include <random>
 #include "SceneManager.h"
 
-namespace fs = std::filesystem;
+#include <random>
+
+
 
 constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
 constexpr size_t MAX_STEPS = 1000000;
@@ -13,13 +12,13 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 #define PI 3.1416f
 
-
 Scene::Scene(const char* file) :
 	m_simulation(MAX_SIMULATED_OBJECTS),
 	m_sdfRenderSystem(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs)
+	m_rbPhysicsSystem(m_ecs),
+	m_simulationDelay(0)
 {
 
 	std::string content = get_file_contents(file);

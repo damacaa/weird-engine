@@ -22,7 +22,6 @@ public:
 
 	std::unique_ptr<Camera> camera;
 
-
 	Scene(const Scene&) = default; // Deleted copy constructor
 	Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
 	Scene(Scene&&) = default; // Defaulted move constructor
@@ -33,7 +32,7 @@ private:
 	ResourceManager m_resourceManager;
 
 	Simulation m_simulation;
-	double m_simulationDelay = 0.0;
+	double m_simulationDelay;
 
 	SDFRenderSystem m_sdfRenderSystem;
 	RenderSystem m_renderSystem;

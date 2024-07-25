@@ -1,13 +1,8 @@
-#include <filesystem>
-namespace fs = std::filesystem;
-
-
-#include <cmath>
+#include "Utils.h"
 
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
-
 
 int main()
 {

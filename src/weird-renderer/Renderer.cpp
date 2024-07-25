@@ -100,7 +100,7 @@ void Renderer::render(Scene& scene, const double time)
 
 	if (m_renderMeshesOnly) {
 		// Bind to default frame buffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_outputRenderPlane.GetFrameBuffer());
 	}
 	else {
 		// Bind sdf renderer frame buffer
@@ -153,6 +153,7 @@ void Renderer::render(Scene& scene, const double time)
 	m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 
 	m_outputRenderPlane.Draw(m_outputShaderProgram);
+
 
 
 	// Swap the back buffer with the front buffer

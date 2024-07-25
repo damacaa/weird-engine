@@ -1,10 +1,10 @@
 #include "scene.h"
 #include "Input.h"
+#include "SceneManager.h"
 
-#include <filesystem>
 #include <random>
 
-namespace fs = std::filesystem;
+
 
 constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
 constexpr size_t MAX_STEPS = 1000000;
@@ -12,34 +12,28 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 #define PI 3.1416f
 
-// Create a random device to seed the generator
-std::random_device rd;
-
-// Use the Mersenne Twister engine seeded with the random device
-std::mt19937 gen(rd());
-
-// Define a uniform integer distribution from 1 to 100
-std::uniform_int_distribution<> dis(1, 100);
-
-Scene::Scene() : m_simulation(MAX_SIMULATED_OBJECTS)
+Scene::Scene(const char* file) :
+	m_simulation(MAX_SIMULATED_OBJECTS),
+	m_sdfRenderSystem(m_ecs),
+	m_renderSystem(m_ecs),
+	m_instancedRenderSystem(m_ecs),
+	m_rbPhysicsSystem(m_ecs),
+	m_simulationDelay(0)
 {
-	// Register component and bind to a system
-	m_ecs.registerComponent<Transform>();
-	m_ecs.registerComponent<MeshRenderer>(m_renderSystem);
-	m_ecs.registerComponent<InstancedMeshRenderer>(m_instancedRenderSystem);
-	m_ecs.registerComponent<SDFRenderer>(m_sdfRenderSystem);
-	m_ecs.registerComponent<RigidBody>(m_rbPhysicsSystem);
+
+	std::string content = get_file_contents(file);
 
 	// Read scene file and load everything
-	loadScene();
+	loadScene(content);
 
+	// Start simulation
 	m_rbPhysicsSystem.init(m_ecs, m_simulation);
 }
 
 
 Scene::~Scene()
 {
-
+	m_resourceManager.freeResources(0);
 }
 
 
@@ -58,7 +52,6 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 }
 
 
-Entity monkey;
 void Scene::update(double delta, double time)
 {
 	m_simulationDelay += delta;
@@ -77,89 +70,34 @@ void Scene::update(double delta, double time)
 	if (steps >= MAX_STEPS)
 		std::cout << "Not enough steps for simulation" << std::endl;
 
-
-
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 
-	if (Input::GetKeyDown(Input::KeyCode::T)) {
-		auto& t = m_ecs.getComponent<Transform>(0);
-		t.isDirty = true;
-		t.position = glm::vec3(0, 5, 0);
-	}
-
-	if (Input::GetKeyDown(Input::KeyCode::Z)) {
-		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, Transform());
-
-		float x = 0.001f * dis(gen);
-		float y = 5;
-		float z = 0.001f * dis(gen);
-
-		m_ecs.getComponent<Transform>(entity).position = vec3(x, y, z);
-
-		std::string projectDir = fs::current_path().string();
-		std::string meshPath = "/Resources/Models/sphere.gltf";
-
-		if (m_useMeshInstancing) {
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity, true)));
-			m_instancedRenderSystem.add(entity);
-		}
-		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMeshId((projectDir + meshPath).c_str(), entity)));
-			m_renderSystem.add(entity);
-		}
-
-		m_ecs.addComponent(entity, RigidBody());
-		m_rbPhysicsSystem.add(entity);
-		m_rbPhysicsSystem.addNewRigidbodiesToSimulation(m_ecs, m_simulation);
-	}
-
-	if (Input::GetKeyDown(Input::KeyCode::X)) {
-		Entity entity = monkey;
-		m_ecs.destroyEntity(entity);
-		m_resourceManager.freeResources(entity);
-	}
-
-
-	if (Input::GetKeyDown(Input::KeyCode::M)) {
-
-		std::string projectDir = fs::current_path().string();
-
-		std::string spherePath = "/Resources/Models/sphere.gltf";
-		std::string cubePath = "/Resources/Models/cube.gltf";
-		std::string demoPath = "/Resources/Models/Monkey/monkey.gltf";
-		std::string planePath = "/Resources/Models/plane.gltf";
-
-		// Make monke
-		monkey = m_ecs.createEntity();
-		Transform monkeyTransform;
-		monkeyTransform.position = vec3(10, 3.5f, -30);
-		monkeyTransform.rotation = vec3(0.0f, PI * 2.75f / 2.0f, 0.6f);
-		monkeyTransform.scale = vec3(8.0f);
-		m_ecs.addComponent(monkey, monkeyTransform);
-
-		MeshID monkeyMeshID = m_resourceManager.getMeshId((projectDir + demoPath).c_str(), monkey, false);
-		m_ecs.addComponent(monkey, MeshRenderer(monkeyMeshID));
-		m_renderSystem.add(monkey);
-
+	if (Input::GetKeyDown(Input::Q)) {
+		SceneManager::getInstance().loadNextScene();
 	}
 }
 
 
-void Scene::loadScene()
+
+void Scene::loadScene(std::string sceneFileContent)
 {
-	std::string projectDir = fs::current_path().string();
+
+	json scene = json::parse(sceneFileContent);
+
+	size_t meshes = scene["Meshes"].get<int>();
+	size_t shapes = scene["Shapes"].get<int>();
+
+	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 	std::string spherePath = "/Resources/Models/sphere.gltf";
 	std::string cubePath = "/Resources/Models/cube.gltf";
-	std::string demoPath = "/Resources/Models/Monkey/monkey.gltf";
+	std::string monkeyPath = "/Resources/Models/Monkey/monkey.gltf";
 	std::string planePath = "/Resources/Models/plane.gltf";
 
-	// Create camera object
-	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
 
+	// Make monke
 	if (false) {
-		// Make monke
+
 		Entity monkey = m_ecs.createEntity();
 		Transform monkeyTransform;
 		monkeyTransform.position = vec3(10, 3.5f, -30);
@@ -167,47 +105,62 @@ void Scene::loadScene()
 		monkeyTransform.scale = vec3(8.0f);
 		m_ecs.addComponent(monkey, monkeyTransform);
 
-		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + demoPath).c_str(), 1)));
+		m_ecs.addComponent(monkey, MeshRenderer(m_resourceManager.getMeshId((projectDir + monkeyPath).c_str(), 1)));
 		m_renderSystem.add(monkey);
 	}
 
+
+	// Create camera object
+	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
+
+	// Add a light
+	Light light;
+	light.rotation = normalize(vec3(1.f, 1.5f, 1.f));
+	m_lights.push_back(light);
+
+
+	// Create a random device to seed the generator
+	std::random_device rdd;
+
+	// Use the Mersenne Twister engine seeded with the random device
+	std::mt19937 gen(rdd());
+
+	// Define a uniform integer distribution from 1 to 100
+	std::uniform_int_distribution<> diss(1, 100);
+
+
 	// Spawn mesh balls
-	for (size_t i = 0; i < m_meshes; i++)
+	for (size_t i = 0; i < meshes; i++)
 	{
 		Entity entity = m_ecs.createEntity();
 
 
-		float x = dis(gen) - 50;
-		float y = dis(gen);
-		float z = dis(gen) - 50;
+		float x = diss(gen) - 50;
+		float y = diss(gen);
+		float z = diss(gen) - 50;
 
 		Transform t;
 		t.position = 0.1f * vec3(x, y, z);
 		m_ecs.addComponent(entity, t);
 
-		if (m_useMeshInstancing) {
 
-			m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir +
-				(i % 2 == 0 ? cubePath : spherePath)
-				).c_str(), entity, true)));
+		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir +
+			(i % 2 == 0 ? cubePath : spherePath)
+			).c_str(), entity, true)));
 
-			m_instancedRenderSystem.add(entity);
-		}
-		else {
-			m_ecs.addComponent(entity, MeshRenderer(m_resourceManager.getMeshId((projectDir + spherePath).c_str(), entity)));
-			m_renderSystem.add(entity);
-		}
+		m_instancedRenderSystem.add(entity);
+
 
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.add(entity);
 	}
 
 	// Spawn shape balls
-	for (size_t i = 0; i < m_shapes; i++)
+	for (size_t i = 0; i < shapes; i++)
 	{
-		float x = dis(gen) - 50;
-		float y = dis(gen);
-		float z = dis(gen) - 50;
+		float x = diss(gen) - 50;
+		float y = diss(gen);
+		float z = diss(gen) - 50;
 
 		Transform t;
 		t.position = 0.1f * vec3(x, y, z);
@@ -222,12 +175,4 @@ void Scene::loadScene()
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.add(entity);
 	}
-
-
-
-
-	Light light;
-	light.rotation = normalize(vec3(1.f, 1.5f, 1.f));
-
-	m_lights.push_back(light);
 }

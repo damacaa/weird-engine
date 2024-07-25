@@ -1,22 +1,23 @@
-#include <filesystem>
-namespace fs = std::filesystem;
-
-
-#include <cmath>
+#include "Utils.h"
 
 #include "weird-engine/Input.h"
-#include "weird-engine/Scene.h"
+#include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
-
 
 int main()
 {
-	// Render resolution
+	const char* projectPath = "SampleProject/";
+
+	// Window resolution
 	const unsigned int width = 1200;
 	const unsigned int height = 800;
 
 	Renderer renderer(width, height);
-	Scene scene;
+
+	// Scenes
+	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.loadProject(projectPath);
+
 
 	// Time
 	double time = glfwGetTime();
@@ -52,15 +53,13 @@ int main()
 		Input::update(renderer.getWindow(), width, height);
 
 		// Update scene logic and physics
-		scene.update(delta, time);
+		sceneManager.getCurrentScene().update(delta, time);
 
 		// Clear input
 		Input::clear();
 
 		// Render scene
-		renderer.render(scene, time);
+		renderer.render(sceneManager.getCurrentScene(), time);
 	}
-
-	return 0;
 }
 

@@ -153,6 +153,7 @@
     <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
     <ClCompile Include="src\weird-engine\Scene.cpp" />
+    <ClCompile Include="src\weird-physics\CollisionDetection\SpatialHash.h" />
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
     <ClCompile Include="src\weird-renderer\Renderer.cpp" />
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp" />

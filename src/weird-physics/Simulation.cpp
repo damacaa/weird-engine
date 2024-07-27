@@ -1,6 +1,7 @@
 #include "Simulation.h"
-#include <vector>
+#include "CollisionDetection/SpatialHash.h"
 #include "../weird-engine/Input.h"
+
 
 
 Simulation::Simulation(size_t size) :
@@ -8,7 +9,8 @@ Simulation::Simulation(size_t size) :
 	m_velocities(new vec3[size]),
 	m_forces(new vec3[size]),
 	m_maxSize(size),
-	m_size(0)
+	m_size(0),
+	m_collisionDetectionMethod(SpatialHashMethod)
 {
 
 	for (size_t i = 0; i < m_maxSize; i++)
@@ -34,32 +36,95 @@ void Simulation::step(float delta)
 	// TODO:     
 	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
 
+	// Attraction
 	bool attracttionEnabled = Input::GetKey(Input::G);
-
-	std::vector<Collision> collisions;
-	// Detect collisions
-	for (size_t i = 0; i < m_size; i++)
-	{
-		// Simple collisions
-		for (size_t j = i + 1; j < m_size; j++)
+	if (attracttionEnabled) {
+		for (size_t i = 0; i < m_size; i++)
 		{
-			vec3 ij = m_positions[j] - m_positions[i];
+			for (size_t j = i + 1; j < m_size; j++)
+			{
+				vec3 ij = m_positions[j] - m_positions[i];
 
-			float distance = length(ij);
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
 
-			if (attracttionEnabled && distance > m_diameter) {
-				// Attraction
-				distance = distance < m_diameter ? m_diameter : distance;
-				vec3 attractionForce = (1.0f * (m_mass * m_mass) / (distance * distance)) * normalize(ij);
-				m_forces[i] += attractionForce;
-				m_forces[j] -= attractionForce;
-			}
+				if (distanceSquared > m_diameterSquared) {
+					distanceSquared = distanceSquared < m_diameterSquared ? 999999.0f : distanceSquared;
 
-			if (distance < 1.0f * m_diameter) {
-				collisions.push_back(Collision(i, j, ij));
+					vec3 attractionForce = (1.0f * (m_mass * m_mass) / distanceSquared) * normalize(ij);
+					m_forces[i] += attractionForce;
+					m_forces[j] -= attractionForce;
+				}
 			}
 		}
 	}
+
+	std::vector<Collision> collisions;
+
+	int checks = 0;
+
+	switch (m_collisionDetectionMethod)
+	{
+	case None:
+		break;
+	case NaiveMethod:
+	{
+		// Detect collisions
+		for (size_t i = 0; i < m_size; i++)
+		{
+			// Simple collisions
+			for (size_t j = i + 1; j < m_size; j++)
+			{
+				vec3 ij = m_positions[j] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
+
+				if (distanceSquared < m_diameterSquared) {
+					collisions.push_back(Collision(i, j, ij));
+				}
+
+				checks++;
+			}
+		}
+	}
+	break;
+	case SpatialHashMethod:
+	{
+		SpatialHash spatialHash(1.0f);
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+			auto pos = m_positions[i];
+			spatialHash.insert(pos, m_radious, i);
+		}
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+			auto pos = m_positions[i];
+			auto possibleCollisions = spatialHash.retrieve(pos, m_radious);
+
+			//std::cout << "Possible collisions with query sphere: ";
+			for (int id : possibleCollisions) {
+
+				checks++;
+
+				vec3 ij = m_positions[id] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
+
+				if (distanceSquared < m_diameterSquared) {
+					collisions.push_back(Collision(i, id, ij));
+				}
+			}
+		}
+	}
+	break;
+	default:
+		break;
+	}
+
+
+	checks; // Add a breakpoint to check how many collision checks were calculated
+
 
 	// Handle collisions
 	for (size_t i = 0; i < collisions.size(); i++)

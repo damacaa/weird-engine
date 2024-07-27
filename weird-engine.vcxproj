@@ -186,6 +186,7 @@
     <ClInclude Include="src\weird-engine\ecs\Components\Transform.h" />
     <ClInclude Include="src\weird-engine\ecs\ECS.h" />
     <ClInclude Include="src\weird-engine\ecs\Entity.h" />
+    <ClInclude Include="src\weird-physics\CollisionDetection\Octree.h" />
     <ClInclude Include="src\weird-renderer\Light.h" />
     <ClInclude Include="src\weird-engine\Input.h" />
     <ClInclude Include="src\weird-engine\Scene.h" />

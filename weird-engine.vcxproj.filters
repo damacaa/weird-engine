@@ -108,6 +108,9 @@
     <ClCompile Include="src\weird-engine\SceneManager.cpp">
       <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
+    <ClCompile Include="src\weird-physics\CollisionDetection\SpatialHash.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\weird-engine\Scene.h">

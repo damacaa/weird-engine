@@ -40,12 +40,21 @@ private:
 	const float m_invMass = 1.0f / m_mass;
 
 	const float m_diameter = 1.0f;
+	const float m_diameterSquared = m_diameter * m_diameter;
 	const float m_radious = 0.5f * m_diameter;
 
-	const float m_push = 1000.0f;
+	const float m_push = 100.0f;
 	const float m_damping = 1.0f;
 
 	const float m_gravity = -9.81f;
+
+	enum CollisionDetectionMethod {
+		None,
+		NaiveMethod,
+		SpatialHashMethod
+	};
+
+	CollisionDetectionMethod m_collisionDetectionMethod;
 
 	struct Collision
 	{

@@ -1,6 +1,7 @@
 #include "Simulation.h"
 #include "CollisionDetection/SpatialHash.h"
 #include "../weird-engine/Input.h"
+#include "CollisionDetection/Octree.h"
 
 
 
@@ -10,7 +11,7 @@ Simulation::Simulation(size_t size) :
 	m_forces(new vec3[size]),
 	m_maxSize(size),
 	m_size(0),
-	m_collisionDetectionMethod(SpatialHashMethod)
+	m_collisionDetectionMethod(OctreeMethod)
 {
 
 	for (size_t i = 0; i < m_maxSize; i++)
@@ -58,17 +59,16 @@ void Simulation::step(float delta)
 		}
 	}
 
-	std::vector<Collision> collisions;
 
 	int checks = 0;
-
+	// Detect collisions
+	std::vector<Collision> collisions;
 	switch (m_collisionDetectionMethod)
 	{
 	case None:
 		break;
 	case NaiveMethod:
 	{
-		// Detect collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
 			// Simple collisions
@@ -89,7 +89,7 @@ void Simulation::step(float delta)
 	break;
 	case SpatialHashMethod:
 	{
-		SpatialHash spatialHash(1.0f);
+		SpatialHash spatialHash(100.0f);
 
 		for (size_t i = 0; i < m_size; i++)
 		{
@@ -101,6 +101,40 @@ void Simulation::step(float delta)
 		{
 			auto pos = m_positions[i];
 			auto possibleCollisions = spatialHash.retrieve(pos, m_radious);
+
+			//std::cout << "Possible collisions with query sphere: ";
+			for (int id : possibleCollisions) {
+
+				checks++;
+
+				vec3 ij = m_positions[id] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
+
+				if (distanceSquared < m_diameterSquared) {
+					collisions.push_back(Collision(i, id, ij));
+				}
+			}
+		}
+	}
+	break;
+	case OctreeMethod:
+	{
+		// Create an Octree with a center at (0, 0, 0) and a half-size of 100 units
+		Octree octree({ 0.0f, 0.0f, 0.0f }, 10.0f);
+
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+			auto pos = m_positions[i];
+			octree.insert(pos, m_radious, i);
+		}
+
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+			auto pos = m_positions[i];
+			auto possibleCollisions = octree.retrieve(pos, m_radious);
 
 			//std::cout << "Possible collisions with query sphere: ";
 			for (int id : possibleCollisions) {

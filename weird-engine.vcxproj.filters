@@ -203,6 +203,9 @@
     <ClInclude Include="src\weird-engine\SceneManager.h">
       <Filter>Header Files\weird-engine</Filter>
     </ClInclude>
+    <ClInclude Include="src\weird-physics\CollisionDetection\Octree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\weird-renderer\shaders\default.frag">

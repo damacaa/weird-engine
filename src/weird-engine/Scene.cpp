@@ -6,8 +6,7 @@
 
 
 
-constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
-constexpr size_t MAX_STEPS = 1000000;
+
 constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 #define PI 3.1416f
@@ -17,8 +16,7 @@ Scene::Scene(const char* file) :
 	m_sdfRenderSystem(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs),
-	m_simulationDelay(0)
+	m_rbPhysicsSystem(m_ecs)
 {
 
 	std::string content = get_file_contents(file);
@@ -54,21 +52,10 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 
 void Scene::update(double delta, double time)
 {
-	m_simulationDelay += delta;
+	m_simulation.update(delta);
 
-	int steps = 0;
-	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
-	{
-		// Handles camera inputs
-		camera->Inputs(FIXED_DELTA_TIME);
-
-		m_simulation.step((float)FIXED_DELTA_TIME);
-		m_simulationDelay -= FIXED_DELTA_TIME;
-		++steps;
-	}
-
-	if (steps >= MAX_STEPS)
-		std::cout << "Not enough steps for simulation" << std::endl;
+	// Handles camera inputs
+	camera->Inputs(delta);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 
@@ -144,9 +131,17 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(entity, t);
 
 
-		m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir +
+		/*m_ecs.addComponent(entity, InstancedMeshRenderer(m_resourceManager.getMeshId((projectDir +
 			(i % 2 == 0 ? cubePath : spherePath)
-			).c_str(), entity, true)));
+			).c_str(), entity, true)));*/
+
+		m_ecs.addComponent(entity, InstancedMeshRenderer(
+			m_resourceManager.getMeshId(
+				(projectDir + spherePath).c_str(),
+				entity,
+				true)
+		)
+		);
 
 		m_instancedRenderSystem.add(entity);
 

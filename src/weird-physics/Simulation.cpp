@@ -3,7 +3,8 @@
 #include "../weird-engine/Input.h"
 #include "CollisionDetection/Octree.h"
 
-
+constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
+constexpr size_t MAX_STEPS = 10;
 
 Simulation::Simulation(size_t size) :
 	m_positions(new vec3[size]{ vec3(0.0f) }),
@@ -11,7 +12,8 @@ Simulation::Simulation(size_t size) :
 	m_forces(new vec3[size]),
 	m_maxSize(size),
 	m_size(0),
-	m_collisionDetectionMethod(OctreeMethod)
+	m_simulationDelay(0),
+	m_collisionDetectionMethod(NaiveMethod)
 {
 
 	for (size_t i = 0; i < m_maxSize; i++)
@@ -32,37 +34,32 @@ Simulation::~Simulation()
 	delete[] m_forces;
 }
 
-void Simulation::step(float delta)
+void Simulation::update(double delta)
 {
-	// TODO:     
-	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
+	m_simulationDelay += delta;
 
-	// Attraction
-	bool attracttionEnabled = Input::GetKey(Input::G);
-	if (attracttionEnabled) {
-		for (size_t i = 0; i < m_size; i++)
-		{
-			for (size_t j = i + 1; j < m_size; j++)
-			{
-				vec3 ij = m_positions[j] - m_positions[i];
-
-				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
-
-				if (distanceSquared > m_diameterSquared) {
-					distanceSquared = distanceSquared < m_diameterSquared ? 999999.0f : distanceSquared;
-
-					vec3 attractionForce = (1.0f * (m_mass * m_mass) / distanceSquared) * normalize(ij);
-					m_forces[i] += attractionForce;
-					m_forces[j] -= attractionForce;
-				}
-			}
-		}
+	int steps = 0;
+	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
+	{
+		checkCollisions();
+		step((float)FIXED_DELTA_TIME);
+		m_simulationDelay -= FIXED_DELTA_TIME;
+		++steps;
 	}
 
+	//if (steps >= MAX_STEPS)
+	//	std::cout << "Not enough steps for simulation" << std::endl;
 
-	int checks = 0;
+}
+
+void Simulation::checkCollisions()
+{
 	// Detect collisions
-	std::vector<Collision> collisions;
+	int checks = 0;
+
+	//m_collisionCount = 0;
+	m_collisions.clear();
+
 	switch (m_collisionDetectionMethod)
 	{
 	case None:
@@ -79,7 +76,7 @@ void Simulation::step(float delta)
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
 
 				if (distanceSquared < m_diameterSquared) {
-					collisions.push_back(Collision(i, j, ij));
+					m_collisions.push_back(Collision(i, j, ij));
 				}
 
 				checks++;
@@ -112,7 +109,7 @@ void Simulation::step(float delta)
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
 
 				if (distanceSquared < m_diameterSquared) {
-					collisions.push_back(Collision(i, id, ij));
+					m_collisions.push_back(Collision(i, id, ij));
 				}
 			}
 		}
@@ -122,7 +119,6 @@ void Simulation::step(float delta)
 	{
 		// Create an Octree with a center at (0, 0, 0) and a half-size of 100 units
 		Octree octree({ 0.0f, 0.0f, 0.0f }, 10.0f);
-
 
 		for (size_t i = 0; i < m_size; i++)
 		{
@@ -136,7 +132,6 @@ void Simulation::step(float delta)
 			auto pos = m_positions[i];
 			auto possibleCollisions = octree.retrieve(pos, m_radious);
 
-			//std::cout << "Possible collisions with query sphere: ";
 			for (int id : possibleCollisions) {
 
 				checks++;
@@ -146,7 +141,7 @@ void Simulation::step(float delta)
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
 
 				if (distanceSquared < m_diameterSquared) {
-					collisions.push_back(Collision(i, id, ij));
+					m_collisions.push_back(Collision(i, id, ij));
 				}
 			}
 		}
@@ -158,17 +153,44 @@ void Simulation::step(float delta)
 
 
 	checks; // Add a breakpoint to check how many collision checks were calculated
+}
+
+void Simulation::step(float timeStep)
+{
+	// TODO:     
+	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
+
+	// Attraction force
+	bool attracttionEnabled = Input::GetKey(Input::G);
+	if (attracttionEnabled) {
+		for (size_t i = 0; i < m_size; i++)
+		{
+			for (size_t j = i + 1; j < m_size; j++)
+			{
+				vec3 ij = m_positions[j] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
+
+				if (distanceSquared > m_diameterSquared) {
+					vec3 attractionForce = (1.0f * (m_mass * m_mass) / distanceSquared) * normalize(ij);
+					m_forces[i] += attractionForce;
+					m_forces[j] -= attractionForce;
+				}
+			}
+		}
+	}
 
 
 	// Handle collisions
-	for (size_t i = 0; i < collisions.size(); i++)
+	for (size_t i = 0; i < m_collisions.size(); i++) //m_collisionCount
 	{
-		Collision col = collisions[i];
+		Collision col = m_collisions[i];
 		vec3 force = m_mass * m_push * col.AB;
 
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
 
+		// Position based solver
 		// vec3 t = 0.01f * (length(col.AB) - m_diameter) * normalize(col.AB);
 		// m_positions[col.A] += t;
 		// m_positions[col.B] -= t;
@@ -206,8 +228,8 @@ void Simulation::step(float delta)
 	for (size_t i = 0; i < m_size; i++)
 	{
 		vec3 acc = m_forces[i] * m_invMass;
-		m_velocities[i] += delta * (acc - (m_damping * m_velocities[i]));
-		m_positions[i] += delta * m_velocities[i];
+		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+		m_positions[i] += timeStep * m_velocities[i];
 
 		// Reset forces
 		m_forces[i] = vec3(0.0f);

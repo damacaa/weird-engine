@@ -32,7 +32,6 @@ private:
 	ResourceManager m_resourceManager;
 
 	Simulation m_simulation;
-	double m_simulationDelay;
 
 	SDFRenderSystem m_sdfRenderSystem;
 	RenderSystem m_renderSystem;

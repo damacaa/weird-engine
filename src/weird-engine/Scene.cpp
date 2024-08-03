@@ -7,6 +7,7 @@
 
 
 
+
 constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 #define PI 3.1416f
@@ -16,13 +17,17 @@ Scene::Scene(const char* file) :
 	m_sdfRenderSystem(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs)
+	m_rbPhysicsSystem(m_ecs),
+	m_runSimulationInThread(true)
 {
 
 	std::string content = get_file_contents(file);
 
 	// Read scene file and load everything
 	loadScene(content);
+
+	if (m_runSimulationInThread)
+		m_simulation.startSimulationThread();
 
 	// Start simulation
 	m_rbPhysicsSystem.init(m_ecs, m_simulation);
@@ -31,6 +36,9 @@ Scene::Scene(const char* file) :
 
 Scene::~Scene()
 {
+	if (m_runSimulationInThread)
+		m_simulation.stopSimulationThread();
+
 	m_resourceManager.freeResources(0);
 }
 
@@ -46,13 +54,21 @@ void Scene::renderModels(Shader& shader, Shader& instancingShader)
 void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 {
 	shader.activate();
+
 	m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
+	
 }
 
 
+Simulation* simulation;
+void doStuff(double delta) {
+	simulation->update(delta);
+}
+
 void Scene::update(double delta, double time)
 {
-	m_simulation.update(delta);
+	if (!m_runSimulationInThread)
+		m_simulation.update(delta);
 
 	// Handles camera inputs
 	camera->Inputs(delta);

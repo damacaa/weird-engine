@@ -3,17 +3,24 @@
 #include "../weird-engine/Input.h"
 #include "CollisionDetection/Octree.h"
 
-constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
+#include <chrono>
+using namespace std::chrono;
+
+constexpr double FIXED_DELTA_TIME = 1 / 100.0;
 constexpr size_t MAX_STEPS = 10;
 
 Simulation::Simulation(size_t size) :
 	m_positions(new vec3[size]{ vec3(0.0f) }),
 	m_velocities(new vec3[size]),
 	m_forces(new vec3[size]),
+	m_mass(new float[size]),
+	m_invMass(new float[size]),
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
-	m_collisionDetectionMethod(NaiveMethod)
+	m_collisionDetectionMethod(SpatialHashMethod),
+	m_simulating(false),
+	m_useSimdOperations(false)
 {
 
 	for (size_t i = 0; i < m_maxSize; i++)
@@ -21,6 +28,9 @@ Simulation::Simulation(size_t size) :
 		m_positions[i] = vec3(0.0f, 0.01f * i, 0.0f);
 		m_velocities[i] = vec3(0.0f);
 		m_forces[i] = vec3(0.0f);
+
+		m_mass[i] = 100.0f;
+		m_invMass[i] = 0.01f;
 	}
 
 	//m_invMass = 1.0f / m_mass;
@@ -32,6 +42,8 @@ Simulation::~Simulation()
 	delete[] m_positions;
 	delete[] m_velocities;
 	delete[] m_forces;
+	delete[] m_mass;
+	delete[] m_invMass;
 }
 
 void Simulation::update(double delta)
@@ -50,6 +62,19 @@ void Simulation::update(double delta)
 	//if (steps >= MAX_STEPS)
 	//	std::cout << "Not enough steps for simulation" << std::endl;
 
+}
+
+void Simulation::startSimulationThread()
+{
+	m_simulating = true;
+
+	m_simulationThread = std::thread(&Simulation::runSimulationThread, this);
+}
+
+void Simulation::stopSimulationThread()
+{
+	m_simulating = false;
+	m_simulationThread.join();
 }
 
 void Simulation::checkCollisions()
@@ -86,7 +111,7 @@ void Simulation::checkCollisions()
 	break;
 	case SpatialHashMethod:
 	{
-		SpatialHash spatialHash(100.0f);
+		SpatialHash spatialHash(2.0f);
 
 		for (size_t i = 0; i < m_size; i++)
 		{
@@ -155,6 +180,8 @@ void Simulation::checkCollisions()
 	checks; // Add a breakpoint to check how many collision checks were calculated
 }
 
+#include <immintrin.h>
+
 void Simulation::step(float timeStep)
 {
 	// TODO:     
@@ -172,7 +199,7 @@ void Simulation::step(float timeStep)
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y) + (ij.z * ij.z);
 
 				if (distanceSquared > m_diameterSquared) {
-					vec3 attractionForce = (1.0f * (m_mass * m_mass) / distanceSquared) * normalize(ij);
+					vec3 attractionForce = (1.0f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
 					m_forces[i] += attractionForce;
 					m_forces[j] -= attractionForce;
 				}
@@ -185,7 +212,7 @@ void Simulation::step(float timeStep)
 	for (size_t i = 0; i < m_collisions.size(); i++) //m_collisionCount
 	{
 		Collision col = m_collisions[i];
-		vec3 force = m_mass * m_push * col.AB;
+		vec3 force = m_mass[i] * m_push * col.AB;
 
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
@@ -210,29 +237,88 @@ void Simulation::step(float timeStep)
 
 			force += vec3(
 				0.0f,
-				m_mass * m_push * (m_radious - p.y),
+				m_mass[i] * m_push * (m_radious - p.y),
 				0.0f
 			);
 		}
 		else {
 			// Gravity
 			if (!attracttionEnabled)
-				force.y += m_mass * m_gravity;
+				force.y += m_mass[i] * m_gravity;
 		}
 
 		m_positions[i] = p;
 		m_forces[i] = force;
 	}
 
-	// Integrate
-	for (size_t i = 0; i < m_size; i++)
+	if (m_useSimdOperations)
 	{
-		vec3 acc = m_forces[i] * m_invMass;
-		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-		m_positions[i] += timeStep * m_velocities[i];
+		const __m256 vec_timeStep = _mm256_set1_ps(timeStep);
+		const __m256 vec_damping = _mm256_set1_ps(m_damping);
+		const __m256 vec_zero = _mm256_setzero_ps();
 
-		// Reset forces
-		m_forces[i] = vec3(0.0f);
+		size_t i = 0;
+		for (; i + 2 <= m_size; i += 2) {  // Processing two vec3 elements (6 floats) at a time
+
+			// Load forces and inverse masses
+			__m256 force1 = _mm256_loadu_ps(&m_forces[i].x);
+			__m256 force2 = _mm256_loadu_ps(&m_forces[i + 1].x);
+			__m256 invMass = _mm256_set_ps(m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1],
+				m_invMass[i], m_invMass[i], m_invMass[i], m_invMass[i]);
+
+
+			// Calculate accelerations
+			__m256 acc1 = _mm256_mul_ps(force1, invMass);
+			__m256 acc2 = _mm256_mul_ps(force2, invMass);
+
+			// Load velocities
+			__m256 vel1 = _mm256_loadu_ps(&m_velocities[i].x);
+			__m256 vel2 = _mm256_loadu_ps(&m_velocities[i + 1].x);
+
+			// Calculate new velocities
+			__m256 dampingVel1 = _mm256_mul_ps(vec_damping, vel1);
+			__m256 dampingVel2 = _mm256_mul_ps(vec_damping, vel2);
+
+			__m256 newVel1 = _mm256_add_ps(vel1, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc1, dampingVel1)));
+			__m256 newVel2 = _mm256_add_ps(vel2, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc2, dampingVel2)));
+
+			// Store new velocities
+			_mm256_storeu_ps(&m_velocities[i].x, newVel1);
+			_mm256_storeu_ps(&m_velocities[i + 1].x, newVel2);
+
+			// Calculate new positions
+			__m256 newPos1 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i].x), _mm256_mul_ps(vec_timeStep, newVel1));
+			__m256 newPos2 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i + 1].x), _mm256_mul_ps(vec_timeStep, newVel2));
+
+			// Store new positions
+			_mm256_storeu_ps(&m_positions[i].x, newPos1);
+			_mm256_storeu_ps(&m_positions[i + 1].x, newPos2);
+
+			// Reset forces
+			_mm256_storeu_ps(&m_forces[i].x, vec_zero);
+			_mm256_storeu_ps(&m_forces[i + 1].x, vec_zero);
+		}
+
+		// Handle remaining elements
+		for (; i < m_size; ++i) {
+			vec3 acc = m_forces[i] * m_invMass[i];
+			m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+			m_positions[i] += timeStep * m_velocities[i];
+			m_forces[i] = vec3{ 0.0f, 0.0f, 0.0f };
+		}
+
+	}
+	else {
+		// Integrate
+		for (size_t i = 0; i < m_size; i++)
+		{
+			vec3 acc = m_forces[i] * m_invMass[i];
+			m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+			m_positions[i] += timeStep * m_velocities[i];
+
+			// Reset forces
+			m_forces[i] = vec3(0.0f);
+		}
 	}
 }
 
@@ -253,7 +339,7 @@ void Simulation::shake(float f)
 	for (size_t i = 0; i < m_size; i++)
 	{
 		vec3 p = 0.123456f * m_positions[i];
-		m_forces[i] = -(m_mass * f) * p + vec3(0.f, m_mass * f, 0.f);
+		m_forces[i] = -(m_mass[i] * f) * p + vec3(0.f, m_mass[i] * f, 0.f);
 		//m_forces[i] += 50.0f * vec3(sin(p.x + i), cos(p.y + i), 1 * cos(3.14 * sin(p.z + i)));
 	}
 }
@@ -279,5 +365,31 @@ void Simulation::setPosition(SimulationID entity, vec3 pos)
 void Simulation::updateTransform(Transform& transform, SimulationID entity)
 {
 	transform.position = m_positions[entity];
+}
+
+
+
+
+void Simulation::runSimulationThread()
+{
+
+	auto start = high_resolution_clock::now();
+	auto end = high_resolution_clock::now();
+
+	while (m_simulating)
+	{
+		duration<double, std::milli> iteration_time = end - start;
+		double duration = 0.001 * iteration_time.count();
+		start = high_resolution_clock::now();
+		if (duration < FIXED_DELTA_TIME) 
+		{
+			std::this_thread::sleep_for(milliseconds((int)(1000 * (FIXED_DELTA_TIME - duration))));
+		}
+		else 
+		{
+			update(duration);
+		}
+		end = high_resolution_clock::now();
+	}
 }
 

@@ -141,9 +141,16 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 	glDisable(GL_DEPTH_TEST);
 	// Tell OpenGL which Shader Program we want to use
 	glUseProgram(shader.ID);
+
 	// Bind the VAO so OpenGL knows to use it
 	glBindVertexArray(VAO);
 
+	// Bind UBO
+	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * size, shapes, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	shader.setUniform("u_loadedObjects", (int)size);
 
 	// Read color texture
 	glActiveTexture(GL_TEXTURE0);
@@ -155,24 +162,12 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
 	glUniform1i(m_depthTextureLocation, 1);
 
-
-
 	glDisable(GL_DEPTH_TEST);
 
 
 	// Draw the triangle using the GL_TRIANGLES primitive
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-
-
-	// Bind UBO
-	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * size, shapes, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-
-
-	shader.setUniform("u_loadedObjects", (int)size);
 	glEnable(GL_DEPTH_TEST);
 }
 

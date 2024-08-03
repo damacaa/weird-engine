@@ -32,6 +32,7 @@ private:
 	ResourceManager m_resourceManager;
 
 	Simulation m_simulation;
+	bool m_runSimulationInThread;
 
 	SDFRenderSystem m_sdfRenderSystem;
 	RenderSystem m_renderSystem;

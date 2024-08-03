@@ -3,6 +3,7 @@
 #include "../weird-engine/ecs/Entity.h"
 #include "../weird-engine/ecs/Components/Transform.h"
 #include <vector>
+#include <thread>
 
 using SimulationID = std::uint32_t;
 
@@ -17,7 +18,13 @@ public:
 	~Simulation();
 
 	// Manage simulation
+	void startSimulationThread();
+	void stopSimulationThread();
+
+
 	void update(double delta);
+
+
 	void checkCollisions();
 	void step(float timeStep);
 	//void setSize(unsigned int size);
@@ -63,8 +70,10 @@ private:
 		OctreeMethod
 	};
 
-
+	bool m_simulating;
 	double m_simulationDelay;
+
+	bool m_useSimdOperations;
 
 	vec3* m_positions;
 	vec3* m_velocities;
@@ -73,8 +82,8 @@ private:
 	size_t m_maxSize;
 	size_t m_size;
 
-	const float m_mass = 100.0f;
-	const float m_invMass = 1.0f / m_mass;
+	float* m_mass;
+	float* m_invMass;
 
 	const float m_diameter = 1.0f;
 	const float m_diameterSquared = m_diameter * m_diameter;
@@ -88,5 +97,7 @@ private:
 	CollisionDetectionMethod m_collisionDetectionMethod;
 	std::vector<Collision> m_collisions;
 
+	std::thread m_simulationThread;
+	void runSimulationThread();
 };
 

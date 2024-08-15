@@ -36,7 +36,7 @@ public:
 		shader.setUniform("directionalLightDirection", lights[0].rotation);
 		rp.Draw(shader, data, size);
 
-		//delete[] data;
+		delete[] data;
 
 		//rp->Draw(shader, m_data, m_shapes);
 	}

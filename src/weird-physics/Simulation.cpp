@@ -4,6 +4,8 @@
 #include "CollisionDetection/Octree.h"
 
 #include <chrono>
+#include <immintrin.h>
+
 using namespace std::chrono;
 
 constexpr double FIXED_DELTA_TIME = 1 / 100.0;
@@ -33,12 +35,10 @@ Simulation::Simulation(size_t size) :
 		m_invMass[i] = 0.01f;
 	}
 
-	//m_invMass = 1.0f / m_mass;
 }
 
 Simulation::~Simulation()
 {
-	// TO DO: Exceptions
 	delete[] m_positions;
 	delete[] m_velocities;
 	delete[] m_forces;
@@ -179,8 +179,6 @@ void Simulation::checkCollisions()
 
 	checks; // Add a breakpoint to check how many collision checks were calculated
 }
-
-#include <immintrin.h>
 
 void Simulation::step(float timeStep)
 {
@@ -378,6 +376,7 @@ void Simulation::runSimulationThread()
 
 	while (m_simulating)
 	{
+		end = high_resolution_clock::now();
 		duration<double, std::milli> iteration_time = end - start;
 		double duration = 0.001 * iteration_time.count();
 		start = high_resolution_clock::now();
@@ -389,7 +388,6 @@ void Simulation::runSimulationThread()
 		{
 			update(duration);
 		}
-		end = high_resolution_clock::now();
 	}
 }
 

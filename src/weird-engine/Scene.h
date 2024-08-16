@@ -1,6 +1,7 @@
 #pragma once
 #include "../weird-renderer/Shape.h"
 #include "../weird-physics/Simulation.h"
+#include "../weird-physics/Simulation2D.h"
 #include "../weird-renderer/RenderPlane.h"
 
 
@@ -32,12 +33,15 @@ private:
 	ResourceManager m_resourceManager;
 
 	Simulation m_simulation;
+	Simulation2D m_simulation2D;
 	bool m_runSimulationInThread;
 
 	SDFRenderSystem m_sdfRenderSystem;
+	SDFRenderSystem2D m_sdfRenderSystem2D;
 	RenderSystem m_renderSystem;
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
+	PhysicsSystem2D m_rbPhysicsSystem2D;
 
 	vector<Light> m_lights;
 

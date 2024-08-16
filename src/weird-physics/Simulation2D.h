@@ -4,18 +4,19 @@
 #include "../weird-engine/ecs/Components/Transform.h"
 #include <vector>
 #include <thread>
+#include <unordered_set>
 
 using SimulationID = std::uint32_t;
 
-using glm::vec3;
+using vec2 = glm::vec2;
 
-class Simulation
+class Simulation2D
 {
 
 
 public:
-	Simulation(size_t size);
-	~Simulation();
+	Simulation2D(size_t size);
+	~Simulation2D();
 
 	// Manage simulation
 	void startSimulationThread();
@@ -33,11 +34,11 @@ public:
 
 	// Add external forces
 	void shake(float f);
-	void push(vec3 v);
+	void push(vec2 v);
 
 	// Retrieve results
-	vec3 getPosition(SimulationID entity);
-	void setPosition(SimulationID entity, vec3 pos);
+	vec2 getPosition(SimulationID entity);
+	void setPosition(SimulationID entity, vec2 pos);
 	void updateTransform(Transform& transform, SimulationID entity);
 
 private:
@@ -48,19 +49,33 @@ private:
 		Collision() {
 			A = -1;
 			B = -1;
-			AB = vec3();
+			AB = vec2();
 		}
 
 
-		Collision(int a, int b, vec3 ab) {
+		Collision(int a, int b, vec2 ab) {
 			A = a;
 			B = b;
 			AB = ab;
 		}
 
+
+		bool operator==(const Collision& other) const {
+			return (A == other.A && B == other.B) || (A == other.B && B == other.A);
+		}
+
 		int A;
 		int B;
-		vec3 AB;
+		vec2 AB;
+	};
+
+	struct CollisionHash {
+		std::size_t operator()(const Collision& s) const {
+			bool flip = s.A < s.B;
+			int first = flip ? s.B : s.A;
+			int last = flip ? s.A : s.B;
+			return std::hash<int>()(first) ^ std::hash<int>()(last);
+		}
 	};
 
 	enum CollisionDetectionMethod {
@@ -75,9 +90,9 @@ private:
 
 	bool m_useSimdOperations;
 
-	vec3* m_positions;
-	vec3* m_velocities;
-	vec3* m_forces;
+	vec2* m_positions;
+	vec2* m_velocities;
+	vec2* m_forces;
 
 	size_t m_maxSize;
 	size_t m_size;
@@ -89,13 +104,14 @@ private:
 	const float m_diameterSquared = m_diameter * m_diameter;
 	const float m_radious = 0.5f * m_diameter;
 
-	const float m_push = 100.0f;
+	const float m_push = 10000.0f;
 	const float m_damping = 1.0f;
 
-	const float m_gravity = -9.81f;
+	const float m_gravity = -100.0f;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
-	std::vector<Collision> m_collisions;
+	//std::vector<Collision> m_collisions;
+	std::unordered_set<Collision, CollisionHash> m_collisions;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

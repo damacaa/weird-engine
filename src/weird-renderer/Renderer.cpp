@@ -64,7 +64,7 @@ Renderer::Renderer(const unsigned int width, const unsigned int height) :
 	m_instancedGeometryShaderProgram.activate();
 
 
-	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
+	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching2d.frag");
 	m_sdfShaderProgram.activate();
 
 	m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/output.frag");

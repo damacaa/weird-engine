@@ -14,11 +14,14 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 Scene::Scene(const char* file) :
 	m_simulation(MAX_SIMULATED_OBJECTS),
+	m_simulation2D(MAX_SIMULATED_OBJECTS),
 	m_sdfRenderSystem(m_ecs),
+	m_sdfRenderSystem2D(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
 	m_rbPhysicsSystem(m_ecs),
-	m_runSimulationInThread(true)
+	m_rbPhysicsSystem2D(m_ecs),
+	m_runSimulationInThread(false)
 {
 
 	std::string content = get_file_contents(file);
@@ -26,18 +29,23 @@ Scene::Scene(const char* file) :
 	// Read scene file and load everything
 	loadScene(content);
 
-	if (m_runSimulationInThread)
+	if (m_runSimulationInThread) {
 		m_simulation.startSimulationThread();
+		m_simulation2D.startSimulationThread();
+	}
 
 	// Start simulation
 	m_rbPhysicsSystem.init(m_ecs, m_simulation);
+	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
 }
 
 
 Scene::~Scene()
 {
-	if (m_runSimulationInThread)
+	if (m_runSimulationInThread) {
 		m_simulation.stopSimulationThread();
+		m_simulation2D.stopSimulationThread();
+	}
 
 	m_resourceManager.freeResources(0);
 }
@@ -56,24 +64,25 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 	shader.activate();
 
 	m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
-	
+	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
+
 }
 
 
-Simulation* simulation;
-void doStuff(double delta) {
-	simulation->update(delta);
-}
+
 
 void Scene::update(double delta, double time)
 {
-	if (!m_runSimulationInThread)
+	if (!m_runSimulationInThread) {
 		m_simulation.update(delta);
+		m_simulation2D.update(delta);
+	}
 
 	// Handles camera inputs
 	camera->Inputs(delta);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
+	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 
 	if (Input::GetKeyDown(Input::Q)) {
 		SceneManager::getInstance().loadNextScene();
@@ -89,6 +98,7 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	size_t meshes = scene["Meshes"].get<int>();
 	size_t shapes = scene["Shapes"].get<int>();
+	size_t circles = scene["Circles"].get<int>();
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
@@ -185,5 +195,30 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.add(entity);
+	}
+
+	// Spawn 2d balls
+	for (size_t i = 0; i < circles; i++)
+	{
+		/*float x = diss(gen);
+		float y = diss(gen);
+		float z = 0;*/
+
+		float x = i % 30;
+		float y = (int)(i / 30);
+		float z = 0;
+
+		Transform t;
+		t.position =  vec3(x + 0.5f, y + 10.0f, z);
+
+
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, t);
+
+		m_ecs.addComponent(entity, SDFRenderer());
+		m_sdfRenderSystem2D.add(entity);
+
+		m_ecs.addComponent(entity, RigidBody2D());
+		m_rbPhysicsSystem2D.add(entity);
 	}
 }

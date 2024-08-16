@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\weird-physics\Simulation2D.cpp" />
     <ClCompile Include="src\weird-engine\SceneManager.cpp" />
     <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
@@ -171,6 +172,10 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
+    <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />
+    <ClInclude Include="src\weird-physics\CollisionDetection\UniformGrid2D.h" />
+    <ClInclude Include="src\weird-physics\Simulation2D.h" />
     <ClInclude Include="src\weird-engine\SceneManager.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\LogicComponent.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\InstancedMeshRenderer.h" />
@@ -214,6 +219,7 @@
     <None Include="src\weird-renderer\shaders\output.frag" />
     <None Include="src\weird-renderer\shaders\raymarching.frag" />
     <None Include="src\weird-renderer\shaders\raymarching.vert" />
+    <None Include="src\weird-renderer\shaders\raymarching2d.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

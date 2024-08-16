@@ -66,7 +66,7 @@ private:
 	enum CollisionDetectionMethod {
 		None,
 		NaiveMethod,
-		SpatialHashMethod,
+		MethodUniformGrid,
 		OctreeMethod
 	};
 

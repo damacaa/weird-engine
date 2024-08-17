@@ -71,9 +71,12 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 
+const int MAX_STEPS = 256;
+const float EPSILON = 0.01;
+const float NEAR = 0.1f;
 const float FAR = 100.0f;
 
-const vec3 background = vec3(0.0);
+const vec3 background = vec3(0.2);
 
 uniform sampler2D u_colorTexture;
 uniform sampler2D u_depthTexture;
@@ -169,12 +172,35 @@ vec3 getMaterial(vec2 p, int id)
     return colors[id];
 }
 
+uniform float k = 3.5;
+
 vec4 getColor(vec2 p)
 {
     float d = FAR;
     vec3 col = vec3(0.0);
 
-    float k = 0.005;
+
+    for (int i = 0; i < u_loadedObjects; i++)
+    {
+      int id = i % 2 == 0 ? 1 : 2;
+
+      float objectDist = shape_circle(p - data[i].position.xy);
+        
+      d = fOpUnionSoft(objectDist, d, k);
+      float delta = 1 - (max( k - abs(objectDist - d), 0.0 ) / k); // After new d is calculated
+      col = mix(getMaterial(p, id), col, delta);   
+
+      //d = min(d, objectDist);
+      //col = d == objectDist ? vec3(0.1 * data[i].position.z, 0.0, 0.0) : col;
+    }
+
+    return vec4(col, d);
+}
+
+float map(vec2 p)
+{
+    float d = FAR;
+
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
@@ -182,17 +208,36 @@ vec4 getColor(vec2 p)
 
         float objectDist = shape_circle(p - data[i].position.xy);
         
-        /*d = fOpUnionSoft(objectDist, d, k);
-        float delta = 1 - (max( k - abs(objectDist - d), 0.0 ) / k); // After new d is calculated
-        col = mix(getMaterial(p, id), col, delta);   */
 
-        d = min(d, objectDist);
-        col = vec3(1.0, 0.0, 0.0);
+        //d = min(d, objectDist);
+        d = fOpUnionSoft(objectDist, d, k);
+        float delta = 1 - (max( k - abs(objectDist - d), 0.0 ) / k); // After new d is calculated
     }
 
-    return vec4(col, d);
+    return d;
 }
 
+float rayMarch(vec2 ro, vec2 rd)
+{
+    float d;
+
+    float traveled = NEAR;
+
+    for (int i = 0; i < MAX_STEPS; i++)
+    {
+        vec2 p = ro + (traveled * rd);
+
+        d = map(p);
+
+
+        if (abs(d) < EPSILON || traveled > FAR)
+            break;
+
+        traveled += d;
+    }
+
+    return traveled;
+}
 
 vec3 render(vec2 uv){
     /*float d = map(uv);
@@ -200,9 +245,23 @@ vec3 render(vec2 uv){
     vec3 col = vec3(d < 0.0 ? 1.0 : 0.0);*/
 
     vec4 col = getColor(uv);
+    // Paint walls
     col = uv.y < 0.0 || uv.x < 0.0  || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
 
-    return col.xyz * (col.w < 0.0 ? 1.0 : 0.0);
+    if(col.w > 0){
+
+      float d = rayMarch(uv, directionalLightDirection.xy);
+      return (d < FAR ? 0.3 : 1.0) * background;
+
+      //float d = rayMarch(uv, normalize(vec2(15) - uv));
+      //return (d < length(vec2(15) - uv) ? 0.3 : 1.0) * background;
+
+
+      //return vec3(0.001 * d);
+    }
+
+
+    return col.xyz;
 }
 
 void main()

@@ -80,9 +80,8 @@ private:
 
 	enum CollisionDetectionMethod {
 		None,
-		NaiveMethod,
-		MethodUniformGrid,
-		OctreeMethod
+		MethodNaive,
+		MethodUniformGrid
 	};
 
 	bool m_simulating;
@@ -104,10 +103,10 @@ private:
 	const float m_diameterSquared = m_diameter * m_diameter;
 	const float m_radious = 0.5f * m_diameter;
 
-	const float m_push = 10000.0f;
-	const float m_damping = 1.0f;
+	const float m_push = 100.0f;
+	const float m_damping = 10.0f;
 
-	const float m_gravity = -100.0f;
+	const float m_gravity = -10.0f;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
 	//std::vector<Collision> m_collisions;

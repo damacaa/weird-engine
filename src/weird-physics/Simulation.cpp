@@ -89,7 +89,7 @@ void Simulation::checkCollisions()
 	{
 	case None:
 		break;
-	case NaiveMethod:
+	case MethodNaive:
 	{
 		for (size_t i = 0; i < m_size; i++)
 		{

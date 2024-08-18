@@ -203,6 +203,7 @@
     <ClInclude Include="src\weird-renderer\EBO.h" />
     <ClInclude Include="src\weird-renderer\Mesh.h" />
     <ClInclude Include="src\weird-renderer\Shader.h" />
+    <ClInclude Include="src\weird-renderer\Shape2D.h" />
     <ClInclude Include="src\weird-renderer\Texture.h" />
     <ClInclude Include="src\weird-renderer\VAO.h" />
     <ClInclude Include="src\weird-renderer\VBO.h" />

@@ -21,23 +21,21 @@ public:
 
 		unsigned int size = componentArray.getSize();
 
-		Shape* data = new Shape[size];
+		Shape2D* data = new Shape2D[size];
 
 		for (size_t i = 0; i < size; i++)
 		{
 			auto& mr = componentArray[i];
-			//auto& t = ecs.getComponent<Transform>(mr.Owner);
 			auto& t = transformArray.getData(mr.Owner);
 
-			data[i].position = t.position;// +glm::vec3(0, mr.Owner, 0);
-			//data[i].size = t.scale.x;
+			data[i].position = t.position;
+			data[i].material = 0;
+			data[i].parameters = glm::vec4(i);
 		}
 
 		shader.setUniform("directionalLightDirection", lights[0].rotation);
 		rp.Draw(shader, data, size);
 
 		delete[] data;
-
-		//rp->Draw(shader, m_data, m_shapes);
 	}
 };

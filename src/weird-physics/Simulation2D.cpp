@@ -10,9 +10,11 @@
 using namespace std::chrono;
 
 constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
-constexpr size_t MAX_STEPS = 2;
+constexpr size_t MAX_STEPS = 5;
 
 float side = 30.0f;
+
+UniformGrid2D grid(2.0f * side, 2.0f);
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -35,7 +37,7 @@ Simulation2D::Simulation2D(size_t size) :
 		m_velocities[i] = vec2(0.0f);
 		m_forces[i] = vec2(0.0f);
 
-		m_mass[i] = 100.0f;
+		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.01f;
 	}
 
@@ -81,8 +83,6 @@ void Simulation2D::stopSimulationThread()
 	m_simulationThread.join();
 }
 
-UniformGrid2D grid(10.0f * side, 3.0f);
-
 void Simulation2D::checkCollisions()
 {
 	// Detect collisions
@@ -93,9 +93,8 @@ void Simulation2D::checkCollisions()
 	{
 	case Simulation2D::None:
 		break;
-	case Simulation2D::NaiveMethod:
+	case Simulation2D::MethodNaive:
 	{
-
 		for (size_t i = 0; i < m_size; i++)
 		{
 			// Simple collisions
@@ -116,63 +115,59 @@ void Simulation2D::checkCollisions()
 	}
 	case Simulation2D::MethodUniformGrid:
 	{
+		// Clear grid
+		grid.clear();
 
-		for (size_t substep = 0; substep < 8; substep++)
+		// Add elements to grid
+		for (size_t i = 0; i < m_size; i++)
 		{
+			grid.addElement(i, m_positions[i]);
+		}
 
+		int cellsPerSide = grid.getCellCountPerSide();
 
-			grid.clear();
-
-			for (size_t i = 0; i < m_size; i++)
+		for (int x = 1; x < cellsPerSide - 1; x++)
+		{
+			int a = 0;
+			for (int y = 1; y < cellsPerSide - 1; y++)
 			{
-				grid.addElement(i, m_positions[i]);
-			}
+				std::vector<int> cells;
 
-			int cellsPerSide = grid.getCellCountPerSide();
-
-			for (int x = 1; x < cellsPerSide - 1; x++)
-			{
-				for (int y = 1; y < cellsPerSide - 1; y++)
+				for (int offsetX = -1; offsetX <= 1; offsetX++)
 				{
-					std::vector<int> cells;
-
-					for (int offsetX = -1; offsetX <= 1; offsetX++)
+					for (int offsetY = -1; offsetY <= 1; offsetY++)
 					{
-						for (int offsetY = -1; offsetY <= 1; offsetY++)
-						{
-							auto& objectsInCell = grid.getCell(x + offsetX, y + offsetY);
-							if (objectsInCell.size() > 0)
-								cells.insert(cells.end(), objectsInCell.begin(), objectsInCell.end());
-						}
+						auto& objectsInCell = grid.getCell(x + offsetX, y + offsetY);
+						if (objectsInCell.size() > 0)
+							cells.insert(cells.end(), objectsInCell.begin(), objectsInCell.end());
 					}
-
-
-					for (size_t i = 0; i < cells.size(); i++)
-					{
-						// Simple collisions
-						for (size_t j = i + 1; j < cells.size(); j++)
-						{
-							int a = cells[i];
-							int b = cells[j];
-
-							vec2 ab = m_positions[b] - m_positions[a];
-
-							float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
-
-							if (distanceSquared < m_diameterSquared) {
-								m_collisions.insert(Collision(a, b, ab));
-							}
-
-							checks++;
-						}
-					}
-
-
-
 				}
-			}
 
-			break;
+
+				for (size_t i = 0; i < cells.size(); i++)
+				{
+					// Simple collisions
+					for (size_t j = i + 1; j < cells.size(); j++)
+					{
+						int a = cells[i];
+						int b = cells[j];
+
+						vec2 ab = m_positions[b] - m_positions[a];
+
+						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
+
+						if (distanceSquared < m_diameterSquared) {
+							m_collisions.insert(Collision(a, b, ab));
+						}
+
+						checks++;
+					}
+				}
+
+
+
+
+			}
 		}
 	}
 	default:
@@ -210,7 +205,8 @@ void Simulation2D::step(float timeStep)
 	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
 		Collision col = *it;
 
-		vec2 force = m_mass[col.A] * m_push * col.AB;
+		float penalty = (m_radious + m_radious - col.AB.length());
+		vec2 force = -m_mass[col.A] * m_push * penalty * normalize(col.AB);
 
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
@@ -225,17 +221,17 @@ void Simulation2D::step(float timeStep)
 		if (p.y < m_radious) {
 
 			p.y += (m_radious - p.y);
-			m_velocities[i].y = -0.9f * m_velocities[i].y;
+			m_velocities[i].y = -m_velocities[i].y;
 
 		}
 
 		if (p.x < m_radious) {
 			p.x += m_radious - p.x;
-			m_velocities[i].x = -0.9f * m_velocities[i].x;
+			m_velocities[i].x = -m_velocities[i].x;
 		}
 		else if (p.x > side - m_radious) {
 			p.x -= m_radious - (side - p.x);
-			m_velocities[i].x = -0.9f * m_velocities[i].x;
+			m_velocities[i].x = -m_velocities[i].x;
 		}
 	}
 
@@ -256,6 +252,32 @@ void Simulation2D::step(float timeStep)
 		m_forces[i] = vec2(0.0f);
 	}
 
+
+	/*std::vector<int> cells;
+	for (size_t x = 0; x < 4; x++)
+	{
+		for (size_t y = 0; y < 2; y++)
+		{
+			auto& objectsInCell = grid.getCell(x, y);
+			if (objectsInCell.size() > 0)
+				cells.insert(cells.end(), objectsInCell.begin(), objectsInCell.end());
+		}
+	}
+
+
+	// Integrate
+	for (size_t c = 0; c < cells.size(); c++)
+	{
+		int i = cells[c];
+		m_forces[i].y += m_mass[i] * m_gravity;
+
+		vec2 acc = m_forces[i] * m_invMass[i];
+		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+		m_positions[i] += timeStep * m_velocities[i];
+
+		// Reset forces
+		m_forces[i] = vec2(0.0f);
+	}*/
 }
 
 SimulationID Simulation2D::generateSimulationID()
@@ -300,7 +322,8 @@ void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 
 void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 {
-	transform.position = glm::vec3(m_positions[entity], 0.0f);
+	transform.position.x = m_positions[entity].x;
+	transform.position.y = m_positions[entity].y;
 }
 
 

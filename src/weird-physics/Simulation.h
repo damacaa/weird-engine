@@ -65,7 +65,7 @@ private:
 
 	enum CollisionDetectionMethod {
 		None,
-		NaiveMethod,
+		MethodNaive,
 		MethodUniformGrid,
 		OctreeMethod
 	};

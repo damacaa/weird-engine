@@ -6,6 +6,8 @@
 #include <thread>
 #include <unordered_set>
 
+#include "CollisionDetection/UniformGrid2D.h"
+
 using SimulationID = std::uint32_t;
 
 using vec2 = glm::vec2;
@@ -26,8 +28,7 @@ public:
 	void update(double delta);
 
 
-	void checkCollisions();
-	void step(float timeStep);
+
 	//void setSize(unsigned int size);
 	SimulationID generateSimulationID();
 	size_t getSize();
@@ -42,6 +43,12 @@ public:
 	void updateTransform(Transform& transform, SimulationID entity);
 
 private:
+
+	void checkCollisions();
+	void solveCollisionsPositionBased();
+	void applyForces();
+	void step(float timeStep);
+
 
 	struct Collision
 	{
@@ -103,14 +110,18 @@ private:
 	const float m_diameterSquared = m_diameter * m_diameter;
 	const float m_radious = 0.5f * m_diameter;
 
-	const float m_push = 100.0f;
-	const float m_damping = 10.0f;
+	const float m_push;
+	const float m_damping;
 
-	const float m_gravity = -10.0f;
+	const float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
 	//std::vector<Collision> m_collisions;
 	std::unordered_set<Collision, CollisionHash> m_collisions;
+
+
+
+	UniformGrid2D grid;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

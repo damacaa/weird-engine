@@ -1,5 +1,6 @@
 #version 330 core
 
+
 #define DITHERING 1
 #define SHADOWS_ENABLED 1
 #define BLEND_SHAPES 1
@@ -225,8 +226,9 @@ float rayMarch(vec2 ro, vec2 rd)
 
     d = map(p);
 
-    if (abs(d) < EPSILON || traveled > FAR)
+    if (d < EPSILON || traveled > FAR)
       break;
+
 
     traveled += d;
   }

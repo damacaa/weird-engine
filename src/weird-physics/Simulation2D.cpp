@@ -5,16 +5,15 @@
 
 #include <chrono>
 #include <immintrin.h>
-#include "CollisionDetection/UniformGrid2D.h"
+
 
 using namespace std::chrono;
 
-constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
+constexpr double FIXED_DELTA_TIME = 1 / 200.0;
 constexpr size_t MAX_STEPS = 5;
 
 float side = 30.0f;
 
-UniformGrid2D grid(2.0f * side, 2.0f);
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -26,8 +25,12 @@ Simulation2D::Simulation2D(size_t size) :
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
-	m_collisionDetectionMethod(MethodUniformGrid),
+	m_gravity(-10),
+	m_push(100),
+	m_damping(1),
 	m_simulating(false),
+	m_collisionDetectionMethod(MethodUniformGrid),
+	grid(2.0f * side, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
 
@@ -38,7 +41,7 @@ Simulation2D::Simulation2D(size_t size) :
 		m_forces[i] = vec2(0.0f);
 
 		m_mass[i] = 1000.0f;
-		m_invMass[i] = 0.01f;
+		m_invMass[i] = 0.001f;
 	}
 
 }
@@ -59,7 +62,12 @@ void Simulation2D::update(double delta)
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
-		checkCollisions();
+		for (size_t i = 0; i < 1; i++)
+		{
+			checkCollisions();
+			solveCollisionsPositionBased();
+		}
+		applyForces();
 		step((float)FIXED_DELTA_TIME);
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		++steps;
@@ -152,6 +160,10 @@ void Simulation2D::checkCollisions()
 						int a = cells[i];
 						int b = cells[j];
 
+						if (a == b) {
+							continue;
+						}
+
 						vec2 ab = m_positions[b] - m_positions[a];
 
 						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
@@ -175,11 +187,20 @@ void Simulation2D::checkCollisions()
 	}
 }
 
-void Simulation2D::step(float timeStep)
+void Simulation2D::solveCollisionsPositionBased()
 {
-	// TODO:     
-	//std::for_each(std::execution::par, m_positions.begin(), m_positions.end(), [&](glm::vec3& p) { size_t i = &p - &m_positions[0]; } for parallel execution of the loop
+	// Calculate forces
+	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
+		Collision col = *it;
+		vec2 penetration = 0.5f * ((m_radious + m_radious) - length(col.AB)) * normalize(col.AB);
 
+		m_positions[col.A] -= penetration;
+		m_positions[col.B] += penetration;
+	}
+}
+
+void Simulation2D::applyForces()
+{
 	// Attraction force
 	bool attracttionEnabled = Input::GetKey(Input::G);
 	if (attracttionEnabled) {
@@ -192,11 +213,38 @@ void Simulation2D::step(float timeStep)
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
 
 				if (distanceSquared > m_diameterSquared) {
-					vec2 attractionForce = (1.0f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
+					vec2 attractionForce = (0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
 					m_forces[i] += attractionForce;
 					m_forces[j] -= attractionForce;
 				}
 			}
+		}
+	}
+
+	bool repulsionEnabled = Input::GetKey(Input::H);
+	if (repulsionEnabled) {
+		for (size_t i = 0; i < m_size; i++)
+		{
+			for (size_t j = i + 1; j < m_size; j++)
+			{
+				vec2 ij = m_positions[j] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+				if (distanceSquared > m_diameterSquared) {
+					vec2 attractionForce = -(0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
+					m_forces[i] += attractionForce;
+					m_forces[j] -= attractionForce;
+				}
+			}
+		}
+	}
+
+	bool liftEnabled = Input::GetKey(Input::F);
+	if (liftEnabled) {
+		for (size_t i = 0; i < m_size / 2; i++)
+		{
+			m_forces[i] += vec2(0, 100000.0f);
 		}
 	}
 
@@ -205,12 +253,25 @@ void Simulation2D::step(float timeStep)
 	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
 		Collision col = *it;
 
+		/*
 		float penalty = (m_radious + m_radious - col.AB.length());
 		vec2 force = -m_mass[col.A] * m_push * penalty * normalize(col.AB);
+		m_forces[col.A] -= force;
+		m_forces[col.B] += force;
+		*/
+
+
+		float e = m_push;
+		vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
+		vec2 normal = normalize(col.AB);
+		float dot = glm::dot(normal, vRel);
+		float impulseMagnitude = -(1 + e) * dot / (m_invMass[col.A] + m_invMass[col.B]);
+		vec2 force = impulseMagnitude * normal;
 
 		m_forces[col.A] -= force;
 		m_forces[col.B] += force;
 	}
+
 
 	for (size_t i = 0; i < m_size; i++)
 	{
@@ -221,23 +282,23 @@ void Simulation2D::step(float timeStep)
 		if (p.y < m_radious) {
 
 			p.y += (m_radious - p.y);
-			m_velocities[i].y = -m_velocities[i].y;
+			m_velocities[i].y = -0.5f * m_velocities[i].y;
 
 		}
 
 		if (p.x < m_radious) {
 			p.x += m_radious - p.x;
-			m_velocities[i].x = -m_velocities[i].x;
+			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
 		else if (p.x > side - m_radious) {
 			p.x -= m_radious - (side - p.x);
-			m_velocities[i].x = -m_velocities[i].x;
+			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
 	}
+}
 
-
-
-
+void Simulation2D::step(float timeStep)
+{
 
 	// Integrate
 	for (size_t i = 0; i < m_size; i++)

@@ -21,7 +21,7 @@ Scene::Scene(const char* file) :
 	m_instancedRenderSystem(m_ecs),
 	m_rbPhysicsSystem(m_ecs),
 	m_rbPhysicsSystem2D(m_ecs),
-	m_runSimulationInThread(false)
+	m_runSimulationInThread(true)
 {
 
 	std::string content = get_file_contents(file);
@@ -200,21 +200,24 @@ void Scene::loadScene(std::string sceneFileContent)
 	// Spawn 2d balls
 	for (size_t i = 0; i < circles; i++)
 	{
-		/*float x = diss(gen);
-		float y = diss(gen);
-		float z = 0;*/
+		/*
+		float x = diss(gen) / 3;
+		float y = diss(gen) / 3;
+		float z = 0;
+		*/
 
 		float x = i % 30;
-		float y = (int)(i / 30);
+		float y = (int)(i / 30) + x;
 		float z = 0;
 
 		Transform t;
-		t.position =  vec3(x + 0.5f, y + 10.0f, z);
+		t.position =  vec3(x + 0.5f, y + 0.5f  , z);
 
 
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, t);
 
+		//m_ecs.addComponent(entity, SDFRenderer((int)((int)y % 3)));
 		m_ecs.addComponent(entity, SDFRenderer());
 		m_sdfRenderSystem2D.add(entity);
 

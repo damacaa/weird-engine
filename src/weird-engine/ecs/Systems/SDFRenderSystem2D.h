@@ -8,6 +8,27 @@ private:
 	std::shared_ptr<ComponentManager> m_sdfRendererManager;
 	std::shared_ptr<ComponentManager> m_transformManager;
 
+	glm::vec3 m_colorPalette[16] = {
+		glm::vec3(0.0, 0.9, 0.1),
+		glm::vec3(1.0, 0.05, 0.01),
+		glm::vec3(0.1, 0.05, 0.80),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, 0.0)
+	};
+
+	bool m_materialsAreDirty = true;
+
 public:
 	SDFRenderSystem2D(ECS &ecs)
 	{
@@ -17,6 +38,11 @@ public:
 
 	void render(ECS &ecs, Shader &shader, RenderPlane &rp, const std::vector<Light> &lights)
 	{
+		if (m_materialsAreDirty) {
+
+			shader.setUniform("u_staticColors", m_colorPalette, 16);
+			m_materialsAreDirty = false;
+		}
 
 		auto &componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
 		auto &transformArray = *m_transformManager->getComponentArray<Transform>();

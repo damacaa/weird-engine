@@ -21,14 +21,17 @@ public:
 	void renderShapes(Shader& shader, RenderPlane& rp);
 	void update(double delta, double time);
 
-	std::unique_ptr<Camera> camera;
-
 	Scene(const Scene&) = default; // Deleted copy constructor
 	Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
 	Scene(Scene&&) = default; // Defaulted move constructor
 	Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
 
+	std::unique_ptr<Camera> camera;
+
 private:
+
+	void loadScene(std::string sceneFileContent);
+
 	ECS m_ecs;
 	ResourceManager m_resourceManager;
 
@@ -45,6 +48,6 @@ private:
 
 	vector<Light> m_lights;
 
-	void loadScene(std::string sceneFileContent);
+	
 };
 

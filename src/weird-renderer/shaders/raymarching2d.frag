@@ -1,15 +1,14 @@
 #version 330 core
 
-
 #define DITHERING 1
-#define SHADOWS_ENABLED 1
+#define SHADOWS_ENABLED 0
 #define BLEND_SHAPES 1
 
-uniform float k = 3.0;
+uniform float k = 1.5;
 
 #if (DITHERING == 1)
 
-uniform float _Spread = 0.15f;
+uniform float _Spread = .15f;
 uniform int _ColorCount = 5;
 
 // Dithering and posterizing
@@ -50,27 +49,29 @@ float GetBayer8(int x, int y)
 
 #endif
 
-// Outputs colors in RGBA
+// Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
+// Uniforms
 uniform int u_loadedObjects;
-
-uniform mat4 u_cameraMatrix;
+uniform samplerBuffer myBufferTexture;
 
 uniform vec2 u_resolution;
 uniform float u_time;
 
+uniform mat4 u_cameraMatrix;
+uniform vec3 u_staticColors[16];
+uniform vec3 directionalLightDirection;
+
+uniform sampler2D u_colorTexture;
+uniform sampler2D u_depthTexture;
+
+// Constants
 const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
 
-uniform samplerBuffer myBufferTexture;
-
-uniform sampler2D u_colorTexture;
-uniform sampler2D u_depthTexture;
-
-uniform vec3 directionalLightDirection;
 
 // Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -160,15 +161,8 @@ vec3 draw_line(float d)
 
 vec3 getMaterial(vec2 p, int materialId)
 {
-  vec3 colors[3];
-  colors[0] = vec3(0.0, 0.9, 0.1);
-  colors[1] = vec3(1.0, 0.05, 0.01);
-  colors[2] = vec3(0.1, 0.05, 0.80);
-
-  return colors[materialId];
+  return u_staticColors[materialId];
 }
-
-
 
 vec4 getColor(vec2 p)
 {
@@ -178,7 +172,7 @@ vec4 getColor(vec2 p)
   for (int i = 0; i < u_loadedObjects; i++)
   {
     vec4 positionAndMaterial = texelFetch(myBufferTexture, 2 * i);
-    int materialId = i%3;
+    int materialId = int(positionAndMaterial.w);
 
     float objectDist = shape_circle(p - positionAndMaterial.xy);
 
@@ -229,7 +223,6 @@ float rayMarch(vec2 ro, vec2 rd)
     if (d < EPSILON || traveled > FAR)
       break;
 
-
     traveled += d;
   }
 
@@ -250,7 +243,7 @@ vec3 render(vec2 uv)
   // col = uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
 
   vec3 background = vec3(0.2 + 0.4 * mod(floor(uv.x) + floor(uv.y), 2.0));
-  
+
 #if SHADOWS_ENABLED
   if (col.w > 0)
   {

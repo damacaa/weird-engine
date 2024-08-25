@@ -21,7 +21,7 @@ Scene::Scene(const char* file) :
 	m_instancedRenderSystem(m_ecs),
 	m_rbPhysicsSystem(m_ecs),
 	m_rbPhysicsSystem2D(m_ecs),
-	m_runSimulationInThread(true)
+	m_runSimulationInThread(false)
 {
 
 	std::string content = get_file_contents(file);
@@ -70,7 +70,7 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 
 
 
-
+double lastTime = 0;
 void Scene::update(double delta, double time)
 {
 	if (!m_runSimulationInThread) {
@@ -86,6 +86,27 @@ void Scene::update(double delta, double time)
 
 	if (Input::GetKeyDown(Input::Q)) {
 		SceneManager::getInstance().loadNextScene();
+	}
+
+	if (time > lastTime + 0.5) {
+
+		float x = 15 + (0.1f*sinf(time));
+		float y = 30;
+		float z = 0;
+
+		Transform t;
+		t.position = vec3(x + 0.5f, y + 0.5f, z);
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, t);
+
+		m_ecs.addComponent(entity, SDFRenderer());
+		m_sdfRenderSystem2D.add(entity);
+
+		m_ecs.addComponent(entity, RigidBody2D());
+		m_rbPhysicsSystem2D.add(entity);
+		m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+
+		lastTime = time;
 	}
 }
 
@@ -124,7 +145,7 @@ void Scene::loadScene(std::string sceneFileContent)
 
 
 	// Create camera object
-	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
+	camera = std::make_unique<Camera>(Camera(glm::vec3(15.0f, 17.5f, 20.0f)));
 
 	// Add a light
 	Light light;
@@ -211,7 +232,7 @@ void Scene::loadScene(std::string sceneFileContent)
 		float z = 0;
 
 		Transform t;
-		t.position =  vec3(x + 0.5f, y + 0.5f  , z);
+		t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 
 		Entity entity = m_ecs.createEntity();

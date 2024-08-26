@@ -257,7 +257,7 @@ vec3 render(vec2 uv)
     // return vec3(0.001 * d);
   }
 #else
-  col = col.w < 0 ? col : background;
+  col = col.w < 0 ? col : vec4(background, 1.0);
 #endif
 
   return col.xyz;

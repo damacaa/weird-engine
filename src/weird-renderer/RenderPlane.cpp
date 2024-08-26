@@ -62,6 +62,12 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader, bool shapeRender
 		// Bind UBO to shader program (assuming location 0 for UBO)
 		glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+		// Generate shape buffer and texture
+		glGenBuffers(1, &m_shapeBuffer);
+		glGenTextures(1, &m_shapeTexture);
+
 	}
 
 
@@ -97,6 +103,7 @@ RenderPlane::RenderPlane(int width, int height, Shader& shader, bool shapeRender
 
 	m_colorTextureLocation = glGetUniformLocation(shader.ID, "u_colorTexture");
 	m_depthTextureLocation = glGetUniformLocation(shader.ID, "u_depthTexture");
+	m_shapeTextureLocation = glGetUniformLocation(shader.ID, "myBufferTexture");
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -147,7 +154,7 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 
 	// Bind UBO
 	glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(float) * 4 * size, shapes, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(Shape) * size, shapes, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	shader.setUniform("u_loadedObjects", (int)size);
@@ -161,6 +168,56 @@ void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
 	glUniform1i(m_depthTextureLocation, 1);
+
+	glDisable(GL_DEPTH_TEST);
+
+
+	// Draw the triangle using the GL_TRIANGLES primitive
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glEnable(GL_DEPTH_TEST);
+}
+
+void RenderPlane::Draw(Shader& shader, Shape2D* shapes, size_t size) const
+{
+	glDisable(GL_DEPTH_TEST);
+	// Tell OpenGL which Shader Program we want to use
+	glUseProgram(shader.ID);
+
+	// Bind the VAO so OpenGL knows to use it
+	glBindVertexArray(VAO);
+
+	// Bind UBO
+
+
+	shader.setUniform("u_loadedObjects", (int)size);
+
+	// Read color texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+	glUniform1i(m_colorTextureLocation, 0);
+
+	// Read depth texture
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+	glUniform1i(m_depthTextureLocation, 1);
+
+	// Shape texture
+	glActiveTexture(GL_TEXTURE2);
+
+	glBindBuffer(GL_TEXTURE_BUFFER, m_shapeBuffer);
+	glBufferData(GL_TEXTURE_BUFFER, sizeof(Shape2D) * size, shapes, GL_STREAM_DRAW);
+	//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Shape2D) * size, shapes);
+
+	glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);
+	glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_shapeBuffer);
+
+	glUniform1i(m_shapeTextureLocation, 2);
+
+
+
+
+
 
 	glDisable(GL_DEPTH_TEST);
 

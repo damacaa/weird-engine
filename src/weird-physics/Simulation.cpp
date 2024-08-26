@@ -20,7 +20,7 @@ Simulation::Simulation(size_t size) :
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
-	m_collisionDetectionMethod(SpatialHashMethod),
+	m_collisionDetectionMethod(MethodUniformGrid),
 	m_simulating(false),
 	m_useSimdOperations(false)
 {
@@ -89,7 +89,7 @@ void Simulation::checkCollisions()
 	{
 	case None:
 		break;
-	case NaiveMethod:
+	case MethodNaive:
 	{
 		for (size_t i = 0; i < m_size; i++)
 		{
@@ -109,7 +109,7 @@ void Simulation::checkCollisions()
 		}
 	}
 	break;
-	case SpatialHashMethod:
+	case MethodUniformGrid:
 	{
 		SpatialHash spatialHash(2.0f);
 

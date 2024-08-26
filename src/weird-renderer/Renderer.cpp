@@ -3,11 +3,12 @@
 
 
 
-Renderer::Renderer(const unsigned int width, const unsigned int height):
+Renderer::Renderer(const unsigned int width, const unsigned int height) :
 	m_windowWidth(width),
 	m_windowHeight(height),
-	m_renderWidth(width * m_renderScale),
-	m_renderHeight(height * m_renderScale)
+	m_renderWidth(width* m_renderScale),
+	m_renderHeight(height* m_renderScale),
+	m_renderMeshesOnly(false)
 {
 	// Initialize GLFW
 	glfwInit();
@@ -63,10 +64,10 @@ Renderer::Renderer(const unsigned int width, const unsigned int height):
 	m_instancedGeometryShaderProgram.activate();
 
 
-	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching.frag");
+	m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching2d.frag");
 	m_sdfShaderProgram.activate();
 
-	m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert","src/weird-renderer/shaders/output.frag");
+	m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/output.frag");
 	m_outputShaderProgram.activate();
 
 	// A plane that takes 100% of the screen and displays the result of a shader
@@ -97,15 +98,8 @@ void Renderer::render(Scene& scene, const double time)
 	else
 		glfwSwapInterval(0);
 
-
-	if (m_renderMeshesOnly) {
-		// Bind to default frame buffer
-		glBindFramebuffer(GL_FRAMEBUFFER, m_outputRenderPlane.GetFrameBuffer());
-	}
-	else {
-		// Bind sdf renderer frame buffer
-		glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
-	}
+	auto fbo = m_renderMeshesOnly ? m_outputRenderPlane.GetFrameBuffer() : m_sdfRenderPlane.GetFrameBuffer();
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	// Specify the color of the background
 	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);

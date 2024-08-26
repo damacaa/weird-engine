@@ -5,7 +5,7 @@
 #include <random>
 
 
-
+bool runSimulation = true;
 
 
 constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
@@ -14,30 +14,41 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 Scene::Scene(const char* file) :
 	m_simulation(MAX_SIMULATED_OBJECTS),
+	m_simulation2D(MAX_SIMULATED_OBJECTS),
 	m_sdfRenderSystem(m_ecs),
+	m_sdfRenderSystem2D(m_ecs),
 	m_renderSystem(m_ecs),
 	m_instancedRenderSystem(m_ecs),
 	m_rbPhysicsSystem(m_ecs),
+	m_rbPhysicsSystem2D(m_ecs),
 	m_runSimulationInThread(true)
 {
-
+	// Read content from file
 	std::string content = get_file_contents(file);
 
 	// Read scene file and load everything
 	loadScene(content);
 
-	if (m_runSimulationInThread)
-		m_simulation.startSimulationThread();
-
-	// Start simulation
+	// Initialize simulation
 	m_rbPhysicsSystem.init(m_ecs, m_simulation);
+	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
+
+	// Start simulation if different thread
+	if (m_runSimulationInThread) 
+	{
+		m_simulation.startSimulationThread();
+		m_simulation2D.startSimulationThread();
+	}
 }
 
 
 Scene::~Scene()
 {
-	if (m_runSimulationInThread)
+	if (m_runSimulationInThread) 
+	{
 		m_simulation.stopSimulationThread();
+		m_simulation2D.stopSimulationThread();
+	}
 
 	m_resourceManager.freeResources(0);
 }
@@ -51,44 +62,64 @@ void Scene::renderModels(Shader& shader, Shader& instancingShader)
 }
 
 
+
 void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 {
 	shader.activate();
 
 	m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
-	
+	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
 
 
-Simulation* simulation;
-void doStuff(double delta) {
-	simulation->update(delta);
-}
 
+double lastSpawnTime = 0;
 void Scene::update(double delta, double time)
 {
 	if (!m_runSimulationInThread)
+	{
 		m_simulation.update(delta);
+		m_simulation2D.update(delta);
+	}
 
 	// Handles camera inputs
 	camera->Inputs(delta);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
+	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 
-	if (Input::GetKeyDown(Input::Q)) {
+	if (Input::GetKeyDown(Input::Q)) 
+	{
 		SceneManager::getInstance().loadNextScene();
+	}
+
+	if (runSimulation && time > lastSpawnTime + 0.5)
+	{
+
+		float x = 15 + (0.1f * sinf(time));
+		float y = 30;
+		float z = 0;
+
+		Transform t;
+		t.position = vec3(x + 0.5f, y + 0.5f, z);
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, t);
+
+		m_ecs.addComponent(entity, SDFRenderer(((int)(2 * time)) % 3));
+		m_sdfRenderSystem2D.add(entity);
+
+		m_ecs.addComponent(entity, RigidBody2D());
+		m_rbPhysicsSystem2D.add(entity);
+		m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+
+		lastSpawnTime = time;
 	}
 }
 
 
-
 void Scene::loadScene(std::string sceneFileContent)
 {
-
 	json scene = json::parse(sceneFileContent);
-
-	size_t meshes = scene["Meshes"].get<int>();
-	size_t shapes = scene["Shapes"].get<int>();
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
@@ -99,7 +130,8 @@ void Scene::loadScene(std::string sceneFileContent)
 
 
 	// Make monke
-	if (false) {
+	if (false) 
+	{
 
 		Entity monkey = m_ecs.createEntity();
 		Transform monkeyTransform;
@@ -114,13 +146,18 @@ void Scene::loadScene(std::string sceneFileContent)
 
 
 	// Create camera object
-	camera = std::make_unique<Camera>(Camera(glm::vec3(0.0f, 5.0f, 15.0f)));
+	camera = std::make_unique<Camera>(Camera(glm::vec3(15.0f, 17.5f, 20.0f)));
 
 	// Add a light
 	Light light;
 	light.rotation = normalize(vec3(1.f, 1.5f, 1.f));
 	m_lights.push_back(light);
 
+
+
+	size_t meshes = scene["Meshes"].get<int>();
+	size_t shapes = scene["Shapes"].get<int>();
+	size_t circles = scene["Circles"].get<int>();
 
 	// Create a random device to seed the generator
 	std::random_device rdd;
@@ -185,5 +222,35 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		m_ecs.addComponent(entity, RigidBody());
 		m_rbPhysicsSystem.add(entity);
+	}
+
+	// Spawn 2d balls
+	for (size_t i = 0; i < circles; i++)
+	{
+		/*
+		float x = diss(gen) / 3;
+		float y = diss(gen) / 3;
+		float z = 0;
+		*/
+
+		float x = i % 30;
+		float y = (int)(i / 30) + x;
+		float z = 0;
+
+		Transform t;
+		t.position = vec3(x + 0.5f, y + 0.5f, z);
+
+
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, t);
+
+		m_ecs.addComponent(entity, SDFRenderer(2));
+		m_sdfRenderSystem2D.add(entity);
+
+		if (runSimulation) 
+		{
+			m_ecs.addComponent(entity, RigidBody2D());
+			m_rbPhysicsSystem2D.add(entity);
+		}
 	}
 }

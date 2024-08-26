@@ -111,6 +111,9 @@
     <ClCompile Include="src\weird-physics\CollisionDetection\SpatialHash.h">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\weird-physics\Simulation2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\weird-engine\Scene.h">
@@ -206,6 +209,21 @@
     <ClInclude Include="src\weird-physics\CollisionDetection\Octree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\weird-physics\Simulation2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-physics\CollisionDetection\UniformGrid2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-renderer\Shape2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\weird-renderer\shaders\default.frag">
@@ -232,5 +250,6 @@
     <None Include="SampleProject\project.weird" />
     <None Include="SampleProject\Scenes\SampleScene.scene" />
     <None Include="SampleProject\Scenes\EmptyScene.scene" />
+    <None Include="src\weird-renderer\shaders\raymarching2d.frag" />
   </ItemGroup>
 </Project>

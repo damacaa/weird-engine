@@ -272,7 +272,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 }
 
 
-vec3 Render(in vec2 uv, in vec3 originalColor, in float depth)
+vec3 render(in vec2 uv, in vec3 originalColor, in float depth)
 {
 
     // Ray origin
@@ -350,7 +350,7 @@ void main()
 
     vec3 originalColor = texture(u_colorTexture, screenUV).xyz;
 
-    vec3 col = 1.0f*Render(uv, originalColor, z_e);
+    vec3 col = render(uv, originalColor, z_e);
 
     col = pow(col, vec3(0.4545));
 

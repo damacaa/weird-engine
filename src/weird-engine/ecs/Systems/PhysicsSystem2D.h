@@ -71,4 +71,8 @@ public:
 			simulation.updateTransform(transform, rb.simulationId);
 		}
 	}
+
+	void addForce(ECS& ecs, Simulation2D& simulation, Entity entity, vec2 force) {
+		simulation.addForce(ecs.getComponent<RigidBody2D>(entity).simulationId, force);
+	}
 };

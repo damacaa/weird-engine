@@ -1,6 +1,6 @@
 #version 330 core
 
-#define DITHERING 1
+#define DITHERING 0
 #define SHADOWS_ENABLED 0
 #define BLEND_SHAPES 1
 
@@ -167,6 +167,7 @@ vec3 getMaterial(vec2 p, int materialId)
 vec4 getColor(vec2 p)
 {
   float d = FAR;
+  d = p.y - sin(0.5 * p.x);
   vec3 col = vec3(0.0);
 
   for (int i = 0; i < u_loadedObjects; i++)
@@ -192,6 +193,7 @@ vec4 getColor(vec2 p)
 float map(vec2 p)
 {
   float d = FAR;
+  d = p.y - sin(0.5 * p.x);
 
   for (int i = 0; i < u_loadedObjects; i++)
   {
@@ -231,7 +233,7 @@ float rayMarch(vec2 ro, vec2 rd)
 
 vec3 render(vec2 uv)
 {
-  if (uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0)
+  if ( uv.x < 0.0 || uv.x > 30.0)
     return vec3(0.0);
 
   /*float d = map(uv);
@@ -239,6 +241,15 @@ vec3 render(vec2 uv)
   vec3 col = vec3(d < 0.0 ? 1.0 : 0.0);*/
 
   vec4 col = getColor(uv);
+
+  /*
+  vec2 p = uv;
+  vec2 e = vec2(EPSILON, 0.0);
+  //vec2 n = vec2(map(p) - map(p - e.xy), map(p - e.yx));
+  vec2 n = vec2(map(p)) - vec2(map(p - e.xy), map(p - e.yx));
+  col = vec4(vec3(normalize(n), 0.0), -10.0);
+  */
+
   // Paint walls
   // col = uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
 

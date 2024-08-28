@@ -21,7 +21,7 @@ Scene::Scene(const char* file) :
 	m_instancedRenderSystem(m_ecs),
 	m_rbPhysicsSystem(m_ecs),
 	m_rbPhysicsSystem2D(m_ecs),
-	m_runSimulationInThread(true)
+	m_runSimulationInThread(false)
 {
 	// Read content from file
 	std::string content = get_file_contents(file);
@@ -34,7 +34,7 @@ Scene::Scene(const char* file) :
 	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
 
 	// Start simulation if different thread
-	if (m_runSimulationInThread) 
+	if (m_runSimulationInThread)
 	{
 		m_simulation.startSimulationThread();
 		m_simulation2D.startSimulationThread();
@@ -44,7 +44,7 @@ Scene::Scene(const char* file) :
 
 Scene::~Scene()
 {
-	if (m_runSimulationInThread) 
+	if (m_runSimulationInThread)
 	{
 		m_simulation.stopSimulationThread();
 		m_simulation2D.stopSimulationThread();
@@ -88,31 +88,42 @@ void Scene::update(double delta, double time)
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 
-	if (Input::GetKeyDown(Input::Q)) 
+	if (Input::GetKeyDown(Input::Q))
 	{
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	if (runSimulation && time > lastSpawnTime + 0.5)
+	if (Input::GetKey(Input::E) && runSimulation && time > lastSpawnTime + 0.2)
 	{
+		int amount = 3;
+		for (size_t i = 0; i < amount; i++)
+		{
 
-		float x = 15 + (0.1f * sinf(time));
-		float y = 30;
-		float z = 0;
+			float x = 0.f;
+			float y = 30 + (2 * i);
+			float z = 0;
 
-		Transform t;
-		t.position = vec3(x + 0.5f, y + 0.5f, z);
-		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, t);
+			Transform t;
+			t.position = vec3(x + 0.5f, y + 0.5f, z);
+			Entity entity = m_ecs.createEntity();
+			m_ecs.addComponent(entity, t);
 
-		m_ecs.addComponent(entity, SDFRenderer(((int)(2 * time)) % 3));
-		m_sdfRenderSystem2D.add(entity);
+			m_ecs.addComponent(entity, SDFRenderer(((int)(2 * time)) % 3));
+			m_sdfRenderSystem2D.add(entity);
 
-		m_ecs.addComponent(entity, RigidBody2D());
-		m_rbPhysicsSystem2D.add(entity);
-		m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+			m_ecs.addComponent(entity, RigidBody2D());
+			m_rbPhysicsSystem2D.add(entity);
+			m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+			m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20000, 0));
+		}
 
 		lastSpawnTime = time;
+	}
+
+	if (Input::GetKey(Input::T))
+	{
+		auto v = vec2(15, 30) - m_simulation2D.getPosition(0);
+		m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, 0, 10.0f * normalize(v));
 	}
 }
 
@@ -130,7 +141,7 @@ void Scene::loadScene(std::string sceneFileContent)
 
 
 	// Make monke
-	if (false) 
+	if (false)
 	{
 
 		Entity monkey = m_ecs.createEntity();
@@ -150,7 +161,7 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	// Add a light
 	Light light;
-	light.rotation = normalize(vec3(1.f, 1.5f, 1.f));
+	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 
 
@@ -247,7 +258,7 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(entity, SDFRenderer(2));
 		m_sdfRenderSystem2D.add(entity);
 
-		if (runSimulation) 
+		if (runSimulation)
 		{
 			m_ecs.addComponent(entity, RigidBody2D());
 			m_rbPhysicsSystem2D.add(entity);

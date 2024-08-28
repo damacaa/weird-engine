@@ -36,6 +36,7 @@ public:
 	// Add external forces
 	void shake(float f);
 	void push(vec2 v);
+	void addForce(SimulationID id, vec2 force);
 
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);
@@ -93,12 +94,16 @@ private:
 
 	bool m_simulating;
 	double m_simulationDelay;
+	double m_simulationTime;
 
 	bool m_useSimdOperations;
 
 	vec2* m_positions;
 	vec2* m_velocities;
 	vec2* m_forces;
+
+	bool m_externalForcesSinceLastUpdate;
+	vec2* m_externalForces;
 
 	size_t m_maxSize;
 	size_t m_size;

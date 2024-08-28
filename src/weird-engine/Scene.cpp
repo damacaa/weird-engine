@@ -93,7 +93,7 @@ void Scene::update(double delta, double time)
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	if (runSimulation && m_simulation2D.getSimulationTime() > lastSpawnTime + 0.2)//Input::GetKey(Input::E) &&
+	if (Input::GetKey(Input::E) && runSimulation && m_simulation2D.getSimulationTime() > lastSpawnTime + 0.2)
 	{
 		int amount = 3;
 		for (size_t i = 0; i < amount; i++)

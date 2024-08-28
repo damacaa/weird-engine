@@ -27,6 +27,10 @@ public:
 		m_entities.erase(std::remove(m_entities.begin(), m_entities.end(), entity), m_entities.end());
 	}
 
+	virtual size_t getEntityCount() {
+		return m_entities.size();
+	}
+
 };
 
 // ECS Manager

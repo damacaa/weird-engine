@@ -9,8 +9,10 @@
 
 using namespace std::chrono;
 
-constexpr double FIXED_DELTA_TIME = 1 / 1000.0;
-constexpr size_t MAX_STEPS = 1;
+constexpr float SIMULATION_FREQUENCY = 1000.0;
+constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
+
+constexpr size_t MAX_STEPS = 2;
 
 float side = 30.0f;
 
@@ -80,6 +82,11 @@ void Simulation2D::update(double delta)
 	//if (steps >= MAX_STEPS)
 	//	std::cout << "Not enough steps for Simulation2D" << std::endl;
 
+}
+
+double Simulation2D::getSimulationTime()
+{
+	return m_simulationTime;
 }
 
 void Simulation2D::startSimulationThread()
@@ -207,7 +214,7 @@ float EPSILON = 0.01f;
 
 void Simulation2D::applyForces()
 {
-
+	// External forces
 	if (m_externalForcesSinceLastUpdate) {
 		m_externalForcesSinceLastUpdate = false;
 		for (size_t i = 0; i < m_size; i++)
@@ -426,7 +433,7 @@ void Simulation2D::push(vec2 v)
 void Simulation2D::addForce(SimulationID id, vec2 force)
 {
 	m_externalForcesSinceLastUpdate = true;
-	m_externalForces[id] += m_mass[id] * force;
+	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 }
 
 

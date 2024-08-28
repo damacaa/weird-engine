@@ -27,7 +27,7 @@ public:
 
 	void update(double delta);
 
-
+	double getSimulationTime();
 
 	//void setSize(unsigned int size);
 	SimulationID generateSimulationID();

@@ -93,14 +93,14 @@ void Scene::update(double delta, double time)
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	if (Input::GetKey(Input::E) && runSimulation && time > lastSpawnTime + 0.2)
+	if (runSimulation && m_simulation2D.getSimulationTime() > lastSpawnTime + 0.2)//Input::GetKey(Input::E) &&
 	{
 		int amount = 3;
 		for (size_t i = 0; i < amount; i++)
 		{
 
 			float x = 0.f;
-			float y = 30 + (2 * i);
+			float y = 30 + (1.2 * i);
 			float z = 0;
 
 			Transform t;
@@ -108,17 +108,18 @@ void Scene::update(double delta, double time)
 			Entity entity = m_ecs.createEntity();
 			m_ecs.addComponent(entity, t);
 
-			m_ecs.addComponent(entity, SDFRenderer(((int)(2 * time)) % 3));
+			m_ecs.addComponent(entity, SDFRenderer(m_sdfRenderSystem2D.getEntityCount() % 3));
 			m_sdfRenderSystem2D.add(entity);
 
 			m_ecs.addComponent(entity, RigidBody2D());
 			m_rbPhysicsSystem2D.add(entity);
 			m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
-			m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20000, 0));
+			m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20, 0));
 		}
 
-		lastSpawnTime = time;
+		lastSpawnTime = m_simulation2D.getSimulationTime();
 	}
+
 
 	if (Input::GetKey(Input::T))
 	{

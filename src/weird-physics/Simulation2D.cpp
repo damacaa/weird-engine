@@ -12,7 +12,7 @@ using namespace std::chrono;
 constexpr float SIMULATION_FREQUENCY = 1000.0;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
-constexpr size_t MAX_STEPS = 2;
+constexpr size_t MAX_STEPS = 10;
 
 float side = 30.0f;
 

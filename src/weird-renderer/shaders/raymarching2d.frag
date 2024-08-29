@@ -1,8 +1,8 @@
 #version 330 core
 
-#define DITHERING 0
+#define DITHERING 1
 #define SHADOWS_ENABLED 0
-#define BLEND_SHAPES 1
+#define BLEND_SHAPES 0
 
 uniform float k = 1.5;
 
@@ -167,7 +167,7 @@ vec3 getMaterial(vec2 p, int materialId)
 vec4 getColor(vec2 p)
 {
   float d = FAR;
-  d = p.y - sin(0.5 * p.x);
+  d = p.y - 2.5 * sin(0.5 * p.x);
   vec3 col = vec3(0.0);
 
   for (int i = 0; i < u_loadedObjects; i++)

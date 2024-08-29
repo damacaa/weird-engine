@@ -9,10 +9,10 @@
 
 using namespace std::chrono;
 
-constexpr float SIMULATION_FREQUENCY = 500.0;
+constexpr float SIMULATION_FREQUENCY = 300.0;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
-constexpr size_t MAX_STEPS = 10;
+constexpr size_t MAX_STEPS = 100;
 
 float side = 30.0f;
 
@@ -31,8 +31,8 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationDelay(0),
 	m_simulationTime(0),
 	m_gravity(-10),
-	m_push(1000),
-	m_damping(0.05),
+	m_push(20.0f * SIMULATION_FREQUENCY),
+	m_damping(0.1),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodNaive),
 	grid(2.0f * side, 2.0f * m_diameter),
@@ -281,28 +281,29 @@ void Simulation2D::applyForces()
 		vec2 normal = normalize(col.AB);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
-		vec2 translation = 0.5f * penetration * normal;
+		// Position
+		/*	
+		vec2 translation = 0.25f * penetration * normal;
 		m_positions[col.A] -= translation;
 		m_positions[col.B] += translation;
-
-
-		// Penalty method
-		vec2 penalty =  10.f * m_push * penetration * normal;
-		m_forces[col.A] -= penalty * m_mass[col.A];
-		m_forces[col.B] += penalty * m_mass[col.B];
+		*/
 
 
 		// Impulse method
-		float e = 0.5f;
+		float restitution = 0.5f;
 		vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
-		float dot = glm::dot(normal, vRel);
-		float impulseMagnitude = -(1 + e) * dot / ( + m_invMass[col.B]);
-		vec2 impulse = 100000.0f * impulseMagnitude * normal;
+		float velocityAlongNormal = glm::dot(normal, vRel);
+		float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
+		vec2 impulse = impulseMagnitude * normal;
+
+		m_velocities[col.A] -= m_invMass[col.A] * impulse;
+		m_velocities[col.B] += m_invMass[col.B] * impulse;
 
 
-		// Add forces
-		m_forces[col.A] -= impulse * m_invMass[col.A];
-		m_forces[col.B] += impulse * m_invMass[col.B];
+		// Penalty method
+		vec2 penalty = m_push * penetration * normal;
+		m_forces[col.A] -= m_mass[col.A] * penalty;
+		m_forces[col.B] += m_mass[col.B] * penalty;
 
 	}
 
@@ -328,23 +329,25 @@ void Simulation2D::applyForces()
 			vec2 normal = vec2(d - d1, d - d2);
 			normal = normalize(normal);
 
-
+			// Position
 			p += penetration * normal;
+
+
+			// Impulse
+			float restitution = 0.5f;
+			vec2 vRel = -m_velocities[i];
+			float velocityAlongNormal = glm::dot(normal, vRel);
+			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later 
+			vec2 impulse = impulseMagnitude * normal;
+
+			m_velocities[i] -= impulse; // * m_invMass[i]
 
 
 			// Penalty
 			vec2 v = penetration * normal;
-			vec2 force = SIMULATION_FREQUENCY * m_mass[i] * m_push * v;
-
-
-			/*float restitution = 0.5f;
-			vec2 vRel = m_velocities[i];
-			float velocityAlongNormal = glm::dot(normal, vRel);
-			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal * m_mass[i];
-
-			force += m_invMass[i] * impulseMagnitude * normal;*/
-
+			vec2 force = m_mass[i] * m_push * v;
 			m_forces[i] += force;
+
 		}
 
 

@@ -9,7 +9,7 @@
 
 using namespace std::chrono;
 
-constexpr float SIMULATION_FREQUENCY = 1000.0;
+constexpr float SIMULATION_FREQUENCY = 500.0;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 10;
@@ -32,7 +32,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationTime(0),
 	m_gravity(-10),
 	m_push(1000),
-	m_damping(0.01),
+	m_damping(0.05),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodNaive),
 	grid(2.0f * side, 2.0f * m_diameter),
@@ -273,66 +273,78 @@ void Simulation2D::applyForces()
 
 
 
-	// Calculate forces
-	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
+	// Sphere collisions
+	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it)
+	{
 		Collision col = *it;
 
+		vec2 normal = normalize(col.AB);
+		float penetration = (m_radious + m_radious) - length(col.AB);
+
+		vec2 translation = 0.5f * penetration * normal;
+		m_positions[col.A] -= translation;
+		m_positions[col.B] += translation;
+
+
 		// Penalty method
-		{
-			float penalty = (m_radious + m_radious - col.AB.length());
-			vec2 force = -m_mass[col.A] * m_push * penalty * normalize(col.AB);
-			m_forces[col.A] -= force;
-			m_forces[col.B] += force;
-		}
+		vec2 penalty =  10.f * m_push * penetration * normal;
+		m_forces[col.A] -= penalty * m_mass[col.A];
+		m_forces[col.B] += penalty * m_mass[col.B];
+
 
 		// Impulse method
-		{
-			float e = m_push;
-			vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
-			vec2 normal = normalize(col.AB);
-			float dot = glm::dot(normal, vRel);
-			float impulseMagnitude = -(1 + e) * dot / (m_invMass[col.A] + m_invMass[col.B]);
-			vec2 force = impulseMagnitude * normal;
+		float e = 0.5f;
+		vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
+		float dot = glm::dot(normal, vRel);
+		float impulseMagnitude = -(1 + e) * dot / ( + m_invMass[col.B]);
+		vec2 impulse = 100000.0f * impulseMagnitude * normal;
 
-			m_forces[col.A] -= force;
-			m_forces[col.B] += force;
-		}
+
+		// Add forces
+		m_forces[col.A] -= impulse * m_invMass[col.A];
+		m_forces[col.B] += impulse * m_invMass[col.B];
+
 	}
 
 
+	// Bounds collisions
 	for (size_t i = 0; i < m_size; i++)
 	{
 		//vec2& force = m_forces[i];
 		vec2& p = m_positions[i];
 
+
 		// Wavy floor
-		float d = p.y - sinf(0.5f * p.x);
+		float a = 1.0f;
+		float d = p.y - a * sinf(0.5f * p.x);
 		if (d < m_radious) {
 
 			float penetration = (m_radious - d);
 
 			// Collision normal calculation
-			float d1 = p.y - sinf((0.5f * p.x) - EPSILON);
-			float d2 = p.y - EPSILON - sinf((0.5f * p.x));
+			float d1 = p.y - a * sinf((0.5f * p.x) - EPSILON);
+			float d2 = p.y - a * EPSILON - sinf((0.5f * p.x));
 
-			vec2 n = vec2(d - d1, d - d2);
-			n = normalize(n);
+			vec2 normal = vec2(d - d1, d - d2);
+			normal = normalize(normal);
+
+
+			p += penetration * normal;
+
 
 			// Penalty
-			vec2 v = penetration * n;
-			m_forces[i] += 10 * m_mass[i] * m_push * v;
+			vec2 v = penetration * normal;
+			vec2 force = SIMULATION_FREQUENCY * m_mass[i] * m_push * v;
 
 
+			/*float restitution = 0.5f;
+			vec2 vRel = m_velocities[i];
+			float velocityAlongNormal = glm::dot(normal, vRel);
+			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal * m_mass[i];
 
-			float e = m_mass[i];
-			vec2 vRel = -m_velocities[i];
-			float dot = glm::dot(n, vRel);
-			float impulseMagnitude = -(1 + e) * dot * m_mass[i];
-			vec2 force = impulseMagnitude * n;
+			force += m_invMass[i] * impulseMagnitude * normal;*/
 
-			//m_forces[i] -= force;
-
-			//m_velocities[i] = -m_velocities[i];
+			m_forces[i] += force;
 		}
 
 

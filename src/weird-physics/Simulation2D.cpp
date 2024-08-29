@@ -282,7 +282,7 @@ void Simulation2D::applyForces()
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
 		// Position
-		/*	
+		/*
 		vec2 translation = 0.25f * penetration * normal;
 		m_positions[col.A] -= translation;
 		m_positions[col.B] += translation;
@@ -316,15 +316,15 @@ void Simulation2D::applyForces()
 
 
 		// Wavy floor
-		float a = 1.0f;
+		float a = 2.5f;
 		float d = p.y - a * sinf(0.5f * p.x);
-		if (d < m_radious) {
-
+		if (d < m_radious) 
+		{
 			float penetration = (m_radious - d);
 
 			// Collision normal calculation
-			float d1 = p.y - a * sinf((0.5f * p.x) - EPSILON);
-			float d2 = p.y - a * EPSILON - sinf((0.5f * p.x));
+			float d1 = p.y - a * sinf(0.5f * (p.x - EPSILON));
+			float d2 = (p.y - EPSILON) - a * sinf(0.5f * p.x);
 
 			vec2 normal = vec2(d - d1, d - d2);
 			normal = normalize(normal);

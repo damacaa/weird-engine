@@ -20,7 +20,7 @@ Scene::Scene(const char* file) :
 	m_rbPhysicsSystem(m_ecs),
 	m_rbPhysicsSystem2D(m_ecs),
 	m_physicsInteractionSystem(m_ecs),
-	m_runSimulationInThread(false)
+	m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents(file);
@@ -43,11 +43,8 @@ Scene::Scene(const char* file) :
 
 Scene::~Scene()
 {
-	if (m_runSimulationInThread)
-	{
-		m_simulation.stopSimulationThread();
-		m_simulation2D.stopSimulationThread();
-	}
+	m_simulation.stopSimulationThread();
+	m_simulation2D.stopSimulationThread();
 
 	m_resourceManager.freeResources(0);
 }
@@ -75,7 +72,7 @@ void Scene::renderShapes(Shader& shader, RenderPlane& rp)
 double lastSpawnTime = 0;
 void Scene::update(double delta, double time)
 {
-	if (!m_runSimulationInThread)
+	if (true || !m_runSimulationInThread)
 	{
 		m_simulation.update(delta);
 		m_simulation2D.update(delta);

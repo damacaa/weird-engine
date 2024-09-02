@@ -5,17 +5,20 @@
 
 #include <chrono>
 #include <immintrin.h>
+#include <mutex>
 
 
 using namespace std::chrono;
 
-constexpr float SIMULATION_FREQUENCY = 300.0;
+
+constexpr float SIMULATION_FREQUENCY = 500.0;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 100;
 
-float side = 30.0f;
+float g_worldSideLenght = 30.0f;
 
+std::mutex g_simulationTimeMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -35,7 +38,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_damping(0.1),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodNaive),
-	grid(2.0f * side, 2.0f * m_diameter),
+	grid(20.0f * g_worldSideLenght, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
 
@@ -62,26 +65,31 @@ Simulation2D::~Simulation2D()
 
 void Simulation2D::update(double delta)
 {
-	m_simulationDelay += delta;
+	{
+		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+		m_simulationDelay += delta;
+	}
 
+	if (m_simulating)
+		return;
+
+	process();
+}
+
+void Simulation2D::process()
+{
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
-		for (size_t i = 0; i < 1; i++)
-		{
-			checkCollisions();
-			//solveCollisionsPositionBased();
-		}
+		checkCollisions();
 		applyForces();
 		step((float)FIXED_DELTA_TIME);
+		++steps;
+
+		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		m_simulationTime += FIXED_DELTA_TIME;
-		++steps;
 	}
-
-	//if (steps >= MAX_STEPS)
-	//	std::cout << "Not enough steps for Simulation2D" << std::endl;
-
 }
 
 double Simulation2D::getSimulationTime()
@@ -101,6 +109,7 @@ void Simulation2D::stopSimulationThread()
 	m_simulating = false;
 	m_simulationThread.join();
 }
+
 
 void Simulation2D::checkCollisions()
 {
@@ -308,17 +317,20 @@ void Simulation2D::applyForces()
 	}
 
 
-	// Bounds collisions
+	// Apply extra forces
 	for (size_t i = 0; i < m_size; i++)
 	{
-		//vec2& force = m_forces[i];
 		vec2& p = m_positions[i];
+		//vec2& force = m_forces[i];
 
+		// Gravity
+		m_forces[i].y += m_mass[i] * m_gravity;
 
+		// Bounds collisions
 		// Wavy floor
 		float a = 2.5f;
 		float d = p.y - a * sinf(0.5f * p.x);
-		if (d < m_radious) 
+		if (d < m_radious)
 		{
 			float penetration = (m_radious - d);
 
@@ -346,29 +358,20 @@ void Simulation2D::applyForces()
 			// Penalty
 			vec2 v = penetration * normal;
 			vec2 force = m_mass[i] * m_push * v;
+
+			force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
+
 			m_forces[i] += force;
 
 		}
 
-
-		/*
-		// Floor at y = 0
-		if (p.y < m_radious) {
-
-			p.y += (m_radious - p.y);
-			m_velocities[i].y = -0.5f * m_velocities[i].y;
-
-		}
-		*/
-
-
-
+		// Old walls
 		if (p.x < m_radious) {
 			p.x += m_radious - p.x;
 			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
-		else if (p.x > side - m_radious) {
-			p.x -= m_radious - (side - p.x);
+		else if (p.x > g_worldSideLenght - m_radious) {
+			p.x -= m_radious - (g_worldSideLenght - p.x);
 			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
 	}
@@ -376,12 +379,9 @@ void Simulation2D::applyForces()
 
 void Simulation2D::step(float timeStep)
 {
-
 	// Integrate
 	for (size_t i = 0; i < m_size; i++)
 	{
-		m_forces[i].y += m_mass[i] * m_gravity;
-
 		vec2 acc = m_forces[i] * m_invMass[i];
 		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
 		m_positions[i] += timeStep * m_velocities[i];
@@ -391,6 +391,7 @@ void Simulation2D::step(float timeStep)
 	}
 
 
+	// Step through cells
 	/*std::vector<int> cells;
 	for (size_t x = 0; x < 4; x++)
 	{
@@ -475,21 +476,9 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 
 void Simulation2D::runSimulationThread()
 {
-
-	auto start = high_resolution_clock::now();
-	auto end = high_resolution_clock::now();
-
-
 	while (m_simulating)
 	{
-		end = high_resolution_clock::now();
-		duration<double, std::milli> iteration_time = end - start;
-		double duration = 0.001 * iteration_time.count();
-		start = high_resolution_clock::now();
-		update(duration);
-
-
+		process();
 	}
-
 }
 

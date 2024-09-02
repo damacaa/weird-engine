@@ -45,6 +45,7 @@ public:
 
 private:
 
+	void process();
 	void checkCollisions();
 	void solveCollisionsPositionBased();
 	void applyForces();

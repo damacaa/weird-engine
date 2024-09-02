@@ -45,6 +45,7 @@ private:
 	InstancedRenderSystem m_instancedRenderSystem;
 	RBPhysicsSystem m_rbPhysicsSystem;
 	PhysicsSystem2D m_rbPhysicsSystem2D;
+	PhysicsInteractionSystem m_physicsInteractionSystem;
 
 	vector<Light> m_lights;
 

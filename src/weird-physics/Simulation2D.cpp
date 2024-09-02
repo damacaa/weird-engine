@@ -5,32 +5,40 @@
 
 #include <chrono>
 #include <immintrin.h>
+#include <mutex>
 
 
 using namespace std::chrono;
 
-constexpr double FIXED_DELTA_TIME = 1 / 200.0;
-constexpr size_t MAX_STEPS = 5;
 
-float side = 30.0f;
+constexpr float SIMULATION_FREQUENCY = 500.0;
+constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
+constexpr size_t MAX_STEPS = 100;
+
+float g_worldSideLenght = 30.0f;
+
+std::mutex g_simulationTimeMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
 	m_positions(new vec2[size]),
 	m_velocities(new vec2[size]),
 	m_forces(new vec2[size]),
+	m_externalForcesSinceLastUpdate(false),
+	m_externalForces(new vec2[size]),
 	m_mass(new float[size]),
 	m_invMass(new float[size]),
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
+	m_simulationTime(0),
 	m_gravity(-10),
-	m_push(100),
-	m_damping(1),
+	m_push(20.0f * SIMULATION_FREQUENCY),
+	m_damping(0.1),
 	m_simulating(false),
-	m_collisionDetectionMethod(MethodUniformGrid),
-	grid(2.0f * side, 2.0f * m_diameter),
+	m_collisionDetectionMethod(MethodNaive),
+	grid(20.0f * g_worldSideLenght, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
 
@@ -57,25 +65,36 @@ Simulation2D::~Simulation2D()
 
 void Simulation2D::update(double delta)
 {
-	m_simulationDelay += delta;
+	{
+		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+		m_simulationDelay += delta;
+	}
 
+	if (m_simulating)
+		return;
+
+	process();
+}
+
+void Simulation2D::process()
+{
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
-		for (size_t i = 0; i < 1; i++)
-		{
-			checkCollisions();
-			solveCollisionsPositionBased();
-		}
+		checkCollisions();
 		applyForces();
 		step((float)FIXED_DELTA_TIME);
-		m_simulationDelay -= FIXED_DELTA_TIME;
 		++steps;
+
+		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+		m_simulationDelay -= FIXED_DELTA_TIME;
+		m_simulationTime += FIXED_DELTA_TIME;
 	}
+}
 
-	//if (steps >= MAX_STEPS)
-	//	std::cout << "Not enough steps for Simulation2D" << std::endl;
-
+double Simulation2D::getSimulationTime()
+{
+	return m_simulationTime;
 }
 
 void Simulation2D::startSimulationThread()
@@ -90,6 +109,7 @@ void Simulation2D::stopSimulationThread()
 	m_simulating = false;
 	m_simulationThread.join();
 }
+
 
 void Simulation2D::checkCollisions()
 {
@@ -199,8 +219,20 @@ void Simulation2D::solveCollisionsPositionBased()
 	}
 }
 
+float EPSILON = 0.01f;
+
 void Simulation2D::applyForces()
 {
+	// External forces
+	if (m_externalForcesSinceLastUpdate) {
+		m_externalForcesSinceLastUpdate = false;
+		for (size_t i = 0; i < m_size; i++)
+		{
+			m_forces[i] = m_externalForces[i];
+			m_externalForces[i] = vec2(0);
+		}
+	}
+
 	// Attraction force
 	bool attracttionEnabled = Input::GetKey(Input::G);
 	if (attracttionEnabled) {
@@ -249,49 +281,97 @@ void Simulation2D::applyForces()
 	}
 
 
-	// Calculate forces
-	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
+
+	// Sphere collisions
+	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it)
+	{
 		Collision col = *it;
 
+		vec2 normal = normalize(col.AB);
+		float penetration = (m_radious + m_radious) - length(col.AB);
+
+		// Position
 		/*
-		float penalty = (m_radious + m_radious - col.AB.length());
-		vec2 force = -m_mass[col.A] * m_push * penalty * normalize(col.AB);
-		m_forces[col.A] -= force;
-		m_forces[col.B] += force;
+		vec2 translation = 0.25f * penetration * normal;
+		m_positions[col.A] -= translation;
+		m_positions[col.B] += translation;
 		*/
 
 
-		float e = m_push;
+		// Impulse method
+		float restitution = 0.5f;
 		vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
-		vec2 normal = normalize(col.AB);
-		float dot = glm::dot(normal, vRel);
-		float impulseMagnitude = -(1 + e) * dot / (m_invMass[col.A] + m_invMass[col.B]);
-		vec2 force = impulseMagnitude * normal;
+		float velocityAlongNormal = glm::dot(normal, vRel);
+		float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
+		vec2 impulse = impulseMagnitude * normal;
 
-		m_forces[col.A] -= force;
-		m_forces[col.B] += force;
+		m_velocities[col.A] -= m_invMass[col.A] * impulse;
+		m_velocities[col.B] += m_invMass[col.B] * impulse;
+
+
+		// Penalty method
+		vec2 penalty = m_push * penetration * normal;
+		m_forces[col.A] -= m_mass[col.A] * penalty;
+		m_forces[col.B] += m_mass[col.B] * penalty;
+
 	}
 
 
+	// Apply extra forces
 	for (size_t i = 0; i < m_size; i++)
 	{
-		//vec2& force = m_forces[i];
 		vec2& p = m_positions[i];
+		//vec2& force = m_forces[i];
 
-		// Floor at y = 0
-		if (p.y < m_radious) {
+		// Gravity
+		m_forces[i].y += m_mass[i] * m_gravity;
 
-			p.y += (m_radious - p.y);
-			m_velocities[i].y = -0.5f * m_velocities[i].y;
+		// Bounds collisions
+		// Wavy floor
+		float a = 2.5f;
+		float d = p.y - a * sinf(0.5f * p.x);
+		if (d < m_radious)
+		{
+			float penetration = (m_radious - d);
+
+			// Collision normal calculation
+			float d1 = p.y - a * sinf(0.5f * (p.x - EPSILON));
+			float d2 = (p.y - EPSILON) - a * sinf(0.5f * p.x);
+
+			vec2 normal = vec2(d - d1, d - d2);
+			normal = normalize(normal);
+
+			// Position
+			p += penetration * normal;
+
+
+			// Impulse
+			float restitution = 0.5f;
+			vec2 vRel = -m_velocities[i];
+			float velocityAlongNormal = glm::dot(normal, vRel);
+			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later 
+			vec2 impulse = impulseMagnitude * normal;
+
+			m_velocities[i] -= impulse; // * m_invMass[i]
+
+
+			// Penalty
+			vec2 v = penetration * normal;
+			vec2 force = m_mass[i] * m_push * v;
+
+			force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
+
+			m_forces[i] += force;
 
 		}
 
+		// Old walls
 		if (p.x < m_radious) {
 			p.x += m_radious - p.x;
 			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
-		else if (p.x > side - m_radious) {
-			p.x -= m_radious - (side - p.x);
+		else if (p.x > g_worldSideLenght - m_radious) {
+			p.x -= m_radious - (g_worldSideLenght - p.x);
 			m_velocities[i].x = -0.5f * m_velocities[i].x;
 		}
 	}
@@ -299,12 +379,9 @@ void Simulation2D::applyForces()
 
 void Simulation2D::step(float timeStep)
 {
-
 	// Integrate
 	for (size_t i = 0; i < m_size; i++)
 	{
-		m_forces[i].y += m_mass[i] * m_gravity;
-
 		vec2 acc = m_forces[i] * m_invMass[i];
 		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
 		m_positions[i] += timeStep * m_velocities[i];
@@ -314,6 +391,7 @@ void Simulation2D::step(float timeStep)
 	}
 
 
+	// Step through cells
 	/*std::vector<int> cells;
 	for (size_t x = 0; x < 4; x++)
 	{
@@ -368,6 +446,12 @@ void Simulation2D::push(vec2 v)
 	m_forces[0] = v;
 }
 
+void Simulation2D::addForce(SimulationID id, vec2 force)
+{
+	m_externalForcesSinceLastUpdate = true;
+	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
+}
+
 
 vec2 Simulation2D::getPosition(SimulationID entity)
 {
@@ -392,21 +476,9 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 
 void Simulation2D::runSimulationThread()
 {
-
-	auto start = high_resolution_clock::now();
-	auto end = high_resolution_clock::now();
-
-
 	while (m_simulating)
 	{
-		end = high_resolution_clock::now();
-		duration<double, std::milli> iteration_time = end - start;
-		double duration = 0.001 * iteration_time.count();
-		start = high_resolution_clock::now();
-		update(duration);
-
-
+		process();
 	}
-
 }
 

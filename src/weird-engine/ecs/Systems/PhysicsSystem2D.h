@@ -71,4 +71,13 @@ public:
 			simulation.updateTransform(transform, rb.simulationId);
 		}
 	}
+
+	void addForce(ECS& ecs, Simulation2D& simulation, Entity entity, vec2 force) {
+		simulation.addForce(ecs.getComponent<RigidBody2D>(entity).simulationId, force);
+	}
+
+	// This shouldn't exist. Editing the transform and setting it dirty should be enough
+	void setPosition(ECS& ecs, Simulation2D& simulation, Entity entity, vec2 position) {
+		simulation.setPosition(ecs.getComponent<RigidBody2D>(entity).simulationId, position);
+	}
 };

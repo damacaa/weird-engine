@@ -9,9 +9,9 @@ Texture::Texture(const char* image, std::string	texType, GLuint slot)
 	// Stores the width, height, and the number of color channels of the image
 	int widthImg, heightImg, numColCh;
 	// Flips the image so it appears right side up
-	stbi_set_flip_vertically_on_load(true);
+	//TODO: fix this in cmake file stbi_set_flip_vertically_on_load(true);
 	// Reads the image from a file and stores it in bytes
-	unsigned char* bytes = stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+	unsigned char* bytes = nullptr ; //TODO: fix this in cmake file stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 
 	// Generates an OpenGL texture object
 	glGenTextures(1, &ID);
@@ -78,7 +78,7 @@ Texture::Texture(const char* image, std::string	texType, GLuint slot)
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	// Deletes the image data as it is already in the OpenGL Texture object
-	stbi_image_free(bytes);
+	//TODO: fix this in cmake file stbi_image_free(bytes);
 
 	// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 	glBindTexture(GL_TEXTURE_2D, 0);

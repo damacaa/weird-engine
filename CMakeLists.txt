@@ -93,7 +93,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # Optional: Specify the output directory
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
 )
 
 

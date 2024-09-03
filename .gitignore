@@ -17,7 +17,6 @@
 mono_crash.*
 
 # Build results
-[Bb]uild/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -32,6 +31,11 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+
+# CMake
+.github/
+.vscode/
+[Bb]uild/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

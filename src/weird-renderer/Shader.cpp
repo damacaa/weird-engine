@@ -1,5 +1,5 @@
-#include"Shader.h"
-#include "Utils.h"
+#include "Shader.h"
+#include "../Utils.h"
 
 // Constructor that build the Shader Program from 2 different shaders
 Shader::Shader(const char* vertexFile, const char* fragmentFile)
@@ -7,7 +7,7 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	m_vertexFile = vertexFile;
 	m_fragmentFile = fragmentFile;
 
-	
+
 	Recompile();
 }
 

@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Define the executable
-add_executable(${PROJECT_NAME}
+set(SOURCES
     src/main.cpp
     src/Utils.h
     src/WeirdEngine.h
@@ -53,26 +53,47 @@ add_executable(${PROJECT_NAME}
     src/weird-renderer/Mesh.h
     src/weird-renderer/Renderer.cpp
     src/weird-renderer/Renderer.h
+    src/weird-renderer/Shader.cpp
+    src/weird-renderer/Shader.h
+    src/weird-renderer/Texture.cpp
+    src/weird-renderer/Texture.h
+    src/weird-renderer/RenderPlane.cpp
+    src/weird-renderer/RenderPlane.h
+    src/weird-renderer/VBO.cpp
+    src/weird-renderer/VBO.h
+    src/weird-renderer/VAO.cpp
+    src/weird-renderer/VAO.h
     # Add other source files here
 )
+
+# Glad needs to be compiled as well
+# Add glad library
+add_library(glad STATIC src/weird-renderer/glad.c)
+
+# Include directory for glad
+target_include_directories(glad PRIVATE ${CMAKE_SOURCE_DIR}/Libraries/include)
+
+# Ensure glad is built before WeirdEngine
+add_executable(${PROJECT_NAME} ${SOURCES})
+add_dependencies(${PROJECT_NAME} glad)
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/Libraries/include
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/weird-engine
 )
 
 # Link GLFW library
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/Libraries/lib/glfw3.lib
     opengl32.lib
+    glad
 )
 
 # Optional: Specify the output directory
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin
 )
 
-# Glad needs to be compiled as well
-add_library(glad STATIC src/weird-renderer/glad.c)
-target_link_libraries(${PROJECT_NAME} PRIVATE glad)
+

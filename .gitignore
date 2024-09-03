@@ -33,7 +33,6 @@ bld/
 [Ll]ogs/
 
 # CMake
-.github/
 .vscode/
 [Bb]uild/
 

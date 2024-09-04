@@ -3,6 +3,8 @@
 #include "../../ResourceManager.h"
 #define min(a, b) a < b ? a : b
 
+
+
 class InstancedRenderSystem : public System {
 private:
 	const size_t MAX_INSTANCES = 255;
@@ -10,12 +12,12 @@ private:
 
 public:
 
-	InstancedRenderSystem(ECS& ecs)
+	InstancedRenderSystem(ECSManager& ecs)
 	{
 		m_iRendererManager = ecs.getComponentManager<InstancedMeshRenderer>();
 	}
 
-	void render(ECS& ecs, ResourceManager& resourceManager, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
+	void render(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader, WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights) {
 
 		shader.activate();
 		shader.setUniform("lightColor", lights[0].color);
@@ -55,6 +57,6 @@ public:
 		{
 			resourceManager.getMesh(pair.first).DrawInstance(shader, camera, pair.second.size(), pair.second, lights);
 		}
-		
+
 	}
 };

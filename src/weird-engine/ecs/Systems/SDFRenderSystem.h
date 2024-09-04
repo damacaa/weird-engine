@@ -9,19 +9,19 @@ private:
 
 public:
 
-	SDFRenderSystem(ECS& ecs) {
+	SDFRenderSystem(ECSManager& ecs) {
 		m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
 		m_transformManager = ecs.getComponentManager<Transform>();
 	}
 
-	void render(ECS& ecs, Shader& shader, RenderPlane& rp, const std::vector<Light>& lights) {
+	void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights) {
 
 		auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
 		auto& transformArray = *m_transformManager->getComponentArray<Transform>();
 
 		unsigned int size = componentArray.getSize();
 
-		Shape* data = new Shape[size];
+		WeirdRenderer::Shape* data = new WeirdRenderer::Shape[size];
 
 		for (size_t i = 0; i < size; i++)
 		{

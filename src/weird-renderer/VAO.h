@@ -4,22 +4,25 @@
 #include<glad/glad.h>
 #include"VBO.h"
 
-class VAO
+namespace WeirdRenderer
 {
-public:
-	// ID reference for the Vertex Array Object
-	GLuint ID;
-	// Constructor that generates a quadVAO ID
-	VAO();
+	class VAO
+	{
+	public:
+		// ID reference for the Vertex Array Object
+		GLuint ID;
+		// Constructor that generates a quadVAO ID
+		VAO();
 
-	// Links a VBO Attribute such as a position or color to the quadVAO
-	void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
-	// Binds the quadVAO
-	void Bind() const;
-	// Unbinds the quadVAO
-	void Unbind() const;
-	// Deletes the quadVAO
-	void Delete() const;
-};
+		// Links a VBO Attribute such as a position or color to the quadVAO
+		void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
+		// Binds the quadVAO
+		void Bind() const;
+		// Unbinds the quadVAO
+		void Unbind() const;
+		// Deletes the quadVAO
+		void Delete() const;
+	};
+}
 
 #endif

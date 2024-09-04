@@ -2,6 +2,7 @@
 #include "../ECS.h"
 #include "../../../weird-renderer/RenderPlane.h"
 
+
 class SDFRenderSystem2D : public System
 {
 private:
@@ -30,13 +31,13 @@ private:
 	bool m_materialsAreDirty = true;
 
 public:
-	SDFRenderSystem2D(ECS &ecs)
+	SDFRenderSystem2D(ECSManager& ecs)
 	{
 		m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
 		m_transformManager = ecs.getComponentManager<Transform>();
 	}
 
-	void render(ECS &ecs, Shader &shader, RenderPlane &rp, const std::vector<Light> &lights)
+	void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
 	{
 		if (m_materialsAreDirty) {
 
@@ -44,17 +45,17 @@ public:
 			m_materialsAreDirty = false;
 		}
 
-		auto &componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
-		auto &transformArray = *m_transformManager->getComponentArray<Transform>();
+		auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
+		auto& transformArray = *m_transformManager->getComponentArray<Transform>();
 
 		unsigned int size = componentArray.getSize();
 
-		Shape2D *data = new Shape2D[size];
+		WeirdRenderer::Shape2D* data = new  WeirdRenderer::Shape2D[size];
 
 		for (size_t i = 0; i < size; i++)
 		{
-			auto &mr = componentArray[i];
-			auto &t = transformArray.getData(mr.Owner);
+			auto& mr = componentArray[i];
+			auto& t = transformArray.getData(mr.Owner);
 
 			data[i].position = t.position;
 			data[i].material = mr.materialId;

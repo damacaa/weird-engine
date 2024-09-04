@@ -50,16 +50,18 @@ Scene::~Scene()
 }
 
 
-void Scene::renderModels(Shader& shader, Shader& instancingShader)
+void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
-	m_renderSystem.render(m_ecs, m_resourceManager, shader, *camera, m_lights);
+	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).m_camera;
 
-	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, *camera, m_lights);
+	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
+
+	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
 
 
-void Scene::renderShapes(Shader& shader, RenderPlane& rp)
+void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
 	shader.activate();
 
@@ -78,8 +80,9 @@ void Scene::update(double delta, double time)
 		m_simulation2D.update(delta);
 	}
 
-	// Handles camera inputs
-	camera->Inputs(delta);
+	// Handles m_camera inputs
+	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).m_camera;
+	camera.Inputs(delta);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
@@ -126,17 +129,34 @@ void Scene::update(double delta, double time)
 }
 
 
+WeirdRenderer::Camera& Scene::getCamera()
+{
+	return m_ecs.getComponent<Camera>(m_camera).m_camera;
+}
+
 void Scene::loadScene(std::string sceneFileContent)
 {
 	json scene = json::parse(sceneFileContent);
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
-	// Create camera object
-	camera = std::make_unique<Camera>(Camera(glm::vec3(15.0f, 10.f, 10.0f)));
+	// Create m_camera object
+	Entity cameraEntity = m_ecs.createEntity();
+
+	Transform t;
+	t.position = vec3(15.0f, 10.f, 10.0f);
+	t.rotation = vec3(0.0f);
+	m_ecs.addComponent(cameraEntity, t);
+
+	ECS::Camera c(vec3(15.0f, 10.f, 10.0f));
+	m_ecs.addComponent(cameraEntity, c);
+
+
+
+	//m_camera = std::make_unique<Camera>(Camera(glm::vec3(15.0f, 10.f, 10.0f)));
 
 	// Add a light
-	Light light;
+	WeirdRenderer::Light light;
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 

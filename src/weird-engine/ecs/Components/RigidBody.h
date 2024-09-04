@@ -22,11 +22,11 @@ private:
 
 public:
 
-	RBPhysicsSystem(ECS& ecs) {
+	RBPhysicsSystem(ECSManager& ecs) {
 		m_rbManager = ecs.getComponentManager<RigidBody>();
 	}
 
-	void init(ECS& ecs, Simulation& simulation) {
+	void init(ECSManager& ecs, Simulation& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
 
@@ -40,7 +40,7 @@ public:
 		}
 	}
 
-	void addNewRigidbodiesToSimulation(ECS& ecs, Simulation& simulation) {
+	void addNewRigidbodiesToSimulation(ECSManager& ecs, Simulation& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
 
@@ -53,7 +53,7 @@ public:
 		}
 	}
 
-	void update(ECS& ecs, Simulation& simulation) {
+	void update(ECSManager& ecs, Simulation& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody>();
 

@@ -4,6 +4,9 @@
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
 
+
+using namespace WeirdRenderer;
+
 int main()
 {
 	const char* projectPath = "SampleProject/";

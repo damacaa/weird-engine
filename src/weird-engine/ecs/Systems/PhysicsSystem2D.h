@@ -23,11 +23,11 @@ private:
 
 public:
 
-	PhysicsSystem2D(ECS& ecs) {
+	PhysicsSystem2D(ECSManager& ecs) {
 		m_rbManager = ecs.getComponentManager<RigidBody2D>();
 	}
 
-	void init(ECS& ecs, Simulation2D& simulation) {
+	void init(ECSManager& ecs, Simulation2D& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
@@ -41,7 +41,7 @@ public:
 		}
 	}
 
-	void addNewRigidbodiesToSimulation(ECS& ecs, Simulation2D& simulation) {
+	void addNewRigidbodiesToSimulation(ECSManager& ecs, Simulation2D& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
@@ -54,7 +54,7 @@ public:
 		}
 	}
 
-	void update(ECS& ecs, Simulation2D& simulation) {
+	void update(ECSManager& ecs, Simulation2D& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
@@ -72,12 +72,12 @@ public:
 		}
 	}
 
-	void addForce(ECS& ecs, Simulation2D& simulation, Entity entity, vec2 force) {
+	void addForce(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 force) {
 		simulation.addForce(ecs.getComponent<RigidBody2D>(entity).simulationId, force);
 	}
 
 	// This shouldn't exist. Editing the transform and setting it dirty should be enough
-	void setPosition(ECS& ecs, Simulation2D& simulation, Entity entity, vec2 position) {
+	void setPosition(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 position) {
 		simulation.setPosition(ecs.getComponent<RigidBody2D>(entity).simulationId, position);
 	}
 };

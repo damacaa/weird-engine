@@ -61,7 +61,7 @@ private:
 			for (size_t i = 0; i < componentArray.size; i++)
 			{
 				auto& rb = componentArray[i];
-				simulation.addForce(rb.simulationId, 1.f * direction);
+				simulation.addForce(rb.simulationId, 3.f * direction);
 			}
 		}
 		else if (Input::GetMouseButtonDown(Input::RightClick))

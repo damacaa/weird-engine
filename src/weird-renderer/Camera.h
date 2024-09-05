@@ -34,13 +34,7 @@ namespace WeirdRenderer
 
 		float fov = 45.0f;
 
-		// Prevents the m_camera from jumping around when first clicking left click
-		bool firstClick = true;
-		bool m_locked = false;
 
-		// Adjust the speed of the m_camera and it's sensitivity when looking around
-		float speed = 10.f;
-		float sensitivity = 50000.0f;
 
 		// Camera constructor to set up initial values
 		Camera(glm::vec3 position);
@@ -49,8 +43,6 @@ namespace WeirdRenderer
 		void UpdateMatrix(float nearPlane, float farPlane, int width, int height);
 		// Exports the m_camera matrix to a shader
 		void Matrix(Shader& shader, const char* uniform);
-		// Handles m_camera inputs
-		void Inputs(float delta);
 
 	private:
 

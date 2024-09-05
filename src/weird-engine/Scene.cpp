@@ -11,16 +11,18 @@ constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 
 Scene::Scene(const char* file) :
-	m_simulation(MAX_SIMULATED_OBJECTS),
-	m_simulation2D(MAX_SIMULATED_OBJECTS),
-	m_sdfRenderSystem(m_ecs),
-	m_sdfRenderSystem2D(m_ecs),
-	m_renderSystem(m_ecs),
-	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs),
-	m_rbPhysicsSystem2D(m_ecs),
-	m_physicsInteractionSystem(m_ecs),
-	m_runSimulationInThread(true)
+	m_simulation(MAX_SIMULATED_OBJECTS)
+	, m_simulation2D(MAX_SIMULATED_OBJECTS)
+	, m_sdfRenderSystem(m_ecs)
+	, m_sdfRenderSystem2D(m_ecs)
+	, m_renderSystem(m_ecs)
+	, m_instancedRenderSystem(m_ecs)
+	, m_rbPhysicsSystem(m_ecs)
+	, m_rbPhysicsSystem2D(m_ecs)
+	, m_physicsInteractionSystem(m_ecs)
+	, m_playerMovementSystem(m_ecs)
+	, m_cameraSystem(m_ecs)
+	, m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents(file);
@@ -52,7 +54,7 @@ Scene::~Scene()
 
 void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
-	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).m_camera;
+	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).camera;
 
 	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
@@ -80,9 +82,9 @@ void Scene::update(double delta, double time)
 		m_simulation2D.update(delta);
 	}
 
-	// Handles m_camera inputs
-	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).m_camera;
-	camera.Inputs(delta);
+	// Handles camera inputs
+	m_playerMovementSystem.update(m_ecs, m_camera, delta);
+	m_cameraSystem.update(m_ecs, m_camera);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
@@ -131,7 +133,7 @@ void Scene::update(double delta, double time)
 
 WeirdRenderer::Camera& Scene::getCamera()
 {
-	return m_ecs.getComponent<Camera>(m_camera).m_camera;
+	return m_ecs.getComponent<Camera>(m_camera).camera;
 }
 
 void Scene::loadScene(std::string sceneFileContent)
@@ -140,20 +142,17 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
-	// Create m_camera object
-	Entity cameraEntity = m_ecs.createEntity();
+	// Create camera object
+	m_camera = m_ecs.createEntity();
 
 	Transform t;
 	t.position = vec3(15.0f, 10.f, 10.0f);
-	t.rotation = vec3(0.0f);
-	m_ecs.addComponent(cameraEntity, t);
+	t.rotation = vec3(0, 0, -1.0f);
+	m_ecs.addComponent(m_camera, t);
 
-	ECS::Camera c(vec3(15.0f, 10.f, 10.0f));
-	m_ecs.addComponent(cameraEntity, c);
+	ECS::Camera c;
+	m_ecs.addComponent(m_camera, c);
 
-
-
-	//m_camera = std::make_unique<Camera>(Camera(glm::vec3(15.0f, 10.f, 10.0f)));
 
 	// Add a light
 	WeirdRenderer::Light light;

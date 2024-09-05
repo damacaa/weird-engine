@@ -50,6 +50,8 @@ private:
 	RBPhysicsSystem m_rbPhysicsSystem;
 	PhysicsSystem2D m_rbPhysicsSystem2D;
 	PhysicsInteractionSystem m_physicsInteractionSystem;
+	PlayerMovementSystem m_playerMovementSystem;
+	CameraSystem m_cameraSystem;
 
 	vector<WeirdRenderer::Light> m_lights;
 

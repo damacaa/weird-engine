@@ -128,5 +128,7 @@ private:
 #include "Systems/SDFRenderSystem2D.h"
 #include "Systems/PhysicsSystem2D.h"
 #include "Systems/PhysicsInteractionSystem.h"
+#include "Systems/PlayerMovementSystem.h"
+#include "Systems/CameraSystem.h"
 
 

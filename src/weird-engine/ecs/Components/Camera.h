@@ -6,13 +6,13 @@ namespace ECS
 {
 	struct Camera : public Component {
 
-		WeirdRenderer::Camera m_camera;
+		WeirdRenderer::Camera camera;
 
-		Camera() : m_camera(vec3(0.0f)) {
+		Camera() : camera(vec3(0.0f)) {
 
 		}
 
-		Camera(vec3 v) : m_camera(v) {
+		Camera(vec3 v) : camera(v) {
 
 		}
 

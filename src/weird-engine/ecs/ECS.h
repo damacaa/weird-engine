@@ -118,6 +118,8 @@ private:
 #include "Components/InstancedMeshRenderer.h"
 #include "Components/RigidBody.h"
 #include "Components/Camera.h"
+#include "Components/FlyMovement.h"
+#include "Components/FlyMovement2D.h"
 
 #include "Systems/RenderSystem.h"
 #include "Systems/InstancedRenderSystem.h"

@@ -40,7 +40,7 @@ namespace WeirdRenderer
 	void Mesh::Draw
 	(
 		Shader& shader,
-		Camera& m_camera,
+		Camera& camera,
 		glm::vec3 translation,
 		glm::vec3 rotation,
 		glm::vec3 scale,
@@ -76,9 +76,9 @@ namespace WeirdRenderer
 		}
 
 
-		// Take care of the m_camera Matrix
-		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), m_camera.Position.x, m_camera.Position.y, m_camera.Position.z);
-		m_camera.Matrix(shader, "camMatrix");
+		// Take care of the camera Matrix
+		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+		camera.Matrix(shader, "camMatrix");
 
 		auto q = glm::quat(rotation);
 
@@ -131,7 +131,7 @@ namespace WeirdRenderer
 
 
 
-	void Mesh::DrawInstance(Shader& shader, Camera& m_camera, unsigned int instances, std::vector<glm::vec3> translations, std::vector<glm::vec3> rotations, std::vector<glm::vec3> scales, const std::vector<Light>& lights) const
+	void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, std::vector<glm::vec3> translations, std::vector<glm::vec3> rotations, std::vector<glm::vec3> scales, const std::vector<Light>& lights) const
 	{
 		// Bind shader to be able to access uniforms
 		shader.activate();
@@ -159,9 +159,9 @@ namespace WeirdRenderer
 		}
 
 
-		// Take care of the m_camera Matrix
-		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), m_camera.Position.x, m_camera.Position.y, m_camera.Position.z);
-		m_camera.Matrix(shader, "camMatrix");
+		// Take care of the camera Matrix
+		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+		camera.Matrix(shader, "camMatrix");
 
 		// TODO: how do lights work?
 		auto q = glm::quat(rotations[0]);
@@ -221,7 +221,7 @@ namespace WeirdRenderer
 		glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
 	}
 
-	void Mesh::DrawInstance(Shader& shader, Camera& m_camera, unsigned int instances, std::vector<Transform>& transforms, const std::vector<Light>& lights) const
+	void Mesh::DrawInstance(Shader& shader, Camera& camera, unsigned int instances, std::vector<Transform>& transforms, const std::vector<Light>& lights) const
 	{
 		// Bind shader to be able to access uniforms
 		shader.activate();
@@ -249,9 +249,9 @@ namespace WeirdRenderer
 		}
 
 
-		// Take care of the m_camera Matrix
-		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), m_camera.Position.x, m_camera.Position.y, m_camera.Position.z);
-		m_camera.Matrix(shader, "camMatrix");
+		// Take care of the camera Matrix
+		glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+		camera.Matrix(shader, "camMatrix");
 
 		// TODO: how do lights work?
 		auto q = glm::quat(transforms[0].rotation);

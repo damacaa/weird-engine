@@ -17,13 +17,18 @@ namespace ECS
 
 		}
 
-		void update(ECSManager& ecs, Entity mainCamera)
+		void update(ECSManager& ecs)
 		{
-			Transform& t = ecs.getComponent<Transform>(mainCamera);
-			Camera& c = ecs.getComponent<Camera>(mainCamera);
+			auto& componentArray = *ecs.getComponentManager<Camera>()->getComponentArray<Camera>();
+			unsigned int size = componentArray.getSize();
+			for (size_t i = 0; i < size; i++)
+			{
+				Camera& c = componentArray[i];
+				Transform& t = ecs.getComponent<Transform>(c.Owner);
 
-			c.camera.Position = t.position;
-			c.camera.Orientation = t.rotation;
+				c.camera.Position = t.position;
+				c.camera.Orientation = t.rotation;
+			}
 		}
 
 	private:

@@ -23,7 +23,7 @@ namespace WeirdRenderer
 
 		static Camera* instance;
 
-		// Stores the main vectors of the m_camera
+		// Stores the main vectors of the camera
 		glm::vec3 Position;
 		glm::vec3 Orientation = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 Up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -39,9 +39,9 @@ namespace WeirdRenderer
 		// Camera constructor to set up initial values
 		Camera(glm::vec3 position);
 
-		// Updates the m_camera matrix to the Vertex Shader
+		// Updates the camera matrix to the Vertex Shader
 		void UpdateMatrix(float nearPlane, float farPlane, int width, int height);
-		// Exports the m_camera matrix to a shader
+		// Exports the camera matrix to a shader
 		void Matrix(Shader& shader, const char* uniform);
 
 	private:

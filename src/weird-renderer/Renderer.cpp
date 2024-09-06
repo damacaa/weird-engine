@@ -111,7 +111,7 @@ namespace WeirdRenderer
 		glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 		auto& sceneCamera = scene.getCamera();
-		// Updates and exports the m_camera matrix to the Vertex Shader
+		// Updates and exports the camera matrix to the Vertex Shader
 		sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 		// Draw objects in scene

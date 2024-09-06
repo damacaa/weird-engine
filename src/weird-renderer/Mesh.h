@@ -42,7 +42,7 @@ namespace WeirdRenderer
 		void Draw
 		(
 			Shader& shader,
-			Camera& m_camera,
+			Camera& camera,
 			glm::vec3 translation,
 			glm::vec3 rotation,
 			glm::vec3 scale,
@@ -53,7 +53,7 @@ namespace WeirdRenderer
 		void DrawInstance
 		(
 			Shader& shader,
-			Camera& m_camera,
+			Camera& camera,
 			unsigned int instances,
 			std::vector<glm::vec3> translations,
 			std::vector<glm::vec3> rotations,
@@ -64,7 +64,7 @@ namespace WeirdRenderer
 		void DrawInstance
 		(
 			Shader& shader,
-			Camera& m_camera,
+			Camera& camera,
 			unsigned int instances,
 			std::vector<Transform>& transforms,
 			const std::vector<Light>& lights

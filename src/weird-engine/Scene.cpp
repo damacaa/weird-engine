@@ -4,10 +4,10 @@
 
 #include <random>
 
+constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 bool g_runSimulation = true;
-
-constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
+double g_lastSpawnTime = 0;
 
 
 Scene::Scene(const char* file) :
@@ -54,7 +54,7 @@ Scene::~Scene()
 
 void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
-	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_camera).camera;
+	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 
 	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
@@ -73,18 +73,14 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 
-double lastSpawnTime = 0;
+
 void Scene::update(double delta, double time)
 {
-	if (true || !m_runSimulationInThread)
-	{
-		m_simulation.update(delta);
-		m_simulation2D.update(delta);
-	}
+	m_simulation.update(delta);
+	m_simulation2D.update(delta);
 
-	// Handles camera inputs
-	m_playerMovementSystem.update(m_ecs, m_camera, delta);
-	m_cameraSystem.update(m_ecs, m_camera);
+	m_playerMovementSystem.update(m_ecs, delta);
+	m_cameraSystem.update(m_ecs);
 
 	m_rbPhysicsSystem.update(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
@@ -95,7 +91,7 @@ void Scene::update(double delta, double time)
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	if (Input::GetKey(Input::E) && g_runSimulation && m_simulation2D.getSimulationTime() > lastSpawnTime + 0.05)
+	if (Input::GetKey(Input::E) && g_runSimulation && m_simulation2D.getSimulationTime() > g_lastSpawnTime + 0.05)
 	{
 		int amount = 1;
 		for (size_t i = 0; i < amount; i++)
@@ -119,7 +115,7 @@ void Scene::update(double delta, double time)
 			m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20, 0));
 		}
 
-		lastSpawnTime = m_simulation2D.getSimulationTime();
+		g_lastSpawnTime = m_simulation2D.getSimulationTime();
 	}
 
 
@@ -133,7 +129,7 @@ void Scene::update(double delta, double time)
 
 WeirdRenderer::Camera& Scene::getCamera()
 {
-	return m_ecs.getComponent<Camera>(m_camera).camera;
+	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
 
 void Scene::loadScene(std::string sceneFileContent)
@@ -143,15 +139,16 @@ void Scene::loadScene(std::string sceneFileContent)
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 	// Create camera object
-	m_camera = m_ecs.createEntity();
+	m_mainCamera = m_ecs.createEntity();
 
 	Transform t;
 	t.position = vec3(15.0f, 10.f, 10.0f);
 	t.rotation = vec3(0, 0, -1.0f);
-	m_ecs.addComponent(m_camera, t);
+	m_ecs.addComponent(m_mainCamera, t);
 
 	ECS::Camera c;
-	m_ecs.addComponent(m_camera, c);
+	m_ecs.addComponent(m_mainCamera, c);
+	m_ecs.addComponent(m_mainCamera, FlyMovement2D());
 
 
 	// Add a light

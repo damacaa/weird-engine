@@ -21,19 +21,19 @@ namespace WeirdRenderer
 		view = glm::mat4(1.0f);
 		projection = glm::mat4(1.0f);
 
-		// Makes m_camera look in the right direction from the right position
+		// Makes camera look in the right direction from the right position
 		view = glm::lookAt(Position, Position + Orientation, Up);
 
 		// Adds perspective to the Scene
 		projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
 
-		// Sets new m_camera matrix
+		// Sets new camera matrix
 		cameraMatrix = projection * view;
 	}
 
 	void Camera::Matrix(Shader& shader, const char* uniform)
 	{
-		// Exports m_camera matrix
+		// Exports camera matrix
 		glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 	}
 

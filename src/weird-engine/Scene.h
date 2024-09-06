@@ -32,7 +32,7 @@ public:
 
 
 private:
-	Entity m_camera;
+	Entity m_mainCamera;
 
 	void loadScene(std::string sceneFileContent);
 

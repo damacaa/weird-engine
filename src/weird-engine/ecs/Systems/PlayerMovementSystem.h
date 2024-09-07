@@ -15,7 +15,7 @@ namespace ECS
 		bool m_locked = false;
 
 		// Adjust the speed of the camera and it's sensitivity when looking around
-		
+
 
 
 	public:
@@ -39,6 +39,8 @@ namespace ECS
 			unsigned int size = componentArray.getSize();
 			for (size_t i = 0; i < size; i++)
 			{
+
+
 				auto& flyComponent = componentArray[i];
 				Entity target = flyComponent.Owner;
 
@@ -48,33 +50,65 @@ namespace ECS
 				uint32_t m_width = 1200; // Todo get real screen size
 				uint32_t m_height = 800;
 
+
+				if (Input::GetMouseButtonDown(Input::MiddleClick))
+				{
+					firstClick = true;
+					m_locked = true;
+					Input::HideMouse();
+				}
+				else if (Input::GetMouseButtonUp(Input::MiddleClick))
+				{
+					m_locked = false;
+					Input::ShowMouse();
+				}
+
+				if (firstClick)
+				{
+					firstClick = false;
+				}
+				else if (m_locked)
+				{
+					t.position += 100.0f * t.position.z * delta * flyComponent.speed * vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
+					Input::SetMousePosition((m_width / 2), (m_height / 2));
+					continue;
+				}
+
+				if (Input::GetMouseButtonDown(Input::LeftClick))
+				{
+
+				}
+
 				// Handles key inputs
 				if (Input::GetKey(Input::W))
 				{
-					t.position += delta * flyComponent.speed * c.camera.Up;
+					t.position += t.position.z * delta * flyComponent.speed * c.camera.Up;
 				}
 				if (Input::GetKey(Input::A))
 				{
-					t.position += delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
+					t.position += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
 				}
 				if (Input::GetKey(Input::S))
 				{
-					t.position += delta * flyComponent.speed * -c.camera.Up;
+					t.position += t.position.z * delta * flyComponent.speed * -c.camera.Up;
 				}
 				if (Input::GetKey(Input::D))
 				{
-					t.position += delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
+					t.position += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
 				}
 
 
 				if (Input::GetMouseButton(Input::WheelDown))
 				{
-					t.position += delta * flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
+					t.position += flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
+					firstClick = true;
 				}
 				else if (Input::GetMouseButton(Input::WheelUp))
 				{
-					t.position += delta * flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
+					t.position += flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
 				}
+
+
 
 				if (Input::GetKeyDown(Input::Space)) // T ??
 				{

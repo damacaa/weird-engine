@@ -9,9 +9,9 @@ namespace ECS
 	{
 
 		float speed;
-		float scrollSpeed = 10.1f;
+		float scrollSpeed = 5.0f;
 
-		FlyMovement2D() : speed(10.0f) 
+		FlyMovement2D() : speed(1.0f) 
 		{
 
 		}

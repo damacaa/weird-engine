@@ -21,7 +21,7 @@ Scene::Scene(const char* file) :
 	, m_physicsInteractionSystem(m_ecs)
 	, m_playerMovementSystem(m_ecs)
 	, m_cameraSystem(m_ecs)
-	, m_runSimulationInThread(true)
+	, m_runSimulationInThread(false)
 {
 	// Read content from file
 	std::string content = get_file_contents(file);

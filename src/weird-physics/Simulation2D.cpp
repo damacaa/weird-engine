@@ -7,7 +7,7 @@
 #include <immintrin.h>
 #include <mutex>
 
-#define MEASURE_PERFORMANCE FALSE	
+#define MEASURE_PERFORMANCE 1	
 
 
 using namespace std::chrono;
@@ -111,7 +111,7 @@ void Simulation2D::process()
 		g_simulationSteps++;
 		g_time += 1000 * duration.count();
 
-		if (g_simulationSteps == 10 * SIMULATION_FREQUENCY)
+		if (g_simulationSteps == 20 * SIMULATION_FREQUENCY)
 		{
 			auto average = g_time / g_simulationSteps;
 			std::cout << average << std::endl;

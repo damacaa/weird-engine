@@ -1,0 +1,1 @@
+tree /F src/ > project_tree.txt

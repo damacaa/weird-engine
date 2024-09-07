@@ -33,8 +33,8 @@ public:
 
 };
 
-// ECS Manager
-class ECS {
+// ECSManager Manager
+class ECSManager {
 public:
 
 	Entity createEntity() {
@@ -117,6 +117,9 @@ private:
 #include "Components/MeshRenderer.h"
 #include "Components/InstancedMeshRenderer.h"
 #include "Components/RigidBody.h"
+#include "Components/Camera.h"
+#include "Components/FlyMovement.h"
+#include "Components/FlyMovement2D.h"
 
 #include "Systems/RenderSystem.h"
 #include "Systems/InstancedRenderSystem.h"
@@ -127,5 +130,7 @@ private:
 #include "Systems/SDFRenderSystem2D.h"
 #include "Systems/PhysicsSystem2D.h"
 #include "Systems/PhysicsInteractionSystem.h"
+#include "Systems/PlayerMovementSystem.h"
+#include "Systems/CameraSystem.h"
 
 

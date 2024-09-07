@@ -254,7 +254,7 @@ vec3 render(vec2 uv)
   // col = uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
 
   vec3 background = vec3(0.2 + 0.4 * mod(floor(uv.x) + floor(uv.y), 2.0));
-
+  
 #if SHADOWS_ENABLED
   if (col.w > 0)
   {
@@ -276,16 +276,7 @@ vec3 render(vec2 uv)
 
 void main()
 {
-
-  float aspectRatio = u_resolution.x / u_resolution.y;
-  vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
-
-  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
-
-  // Calculate true z value from the depth buffer: https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
-
   vec3 col = render((-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy);
 
   col = pow(col, vec3(0.4545));
@@ -300,6 +291,5 @@ void main()
   col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
 #endif
 
-  // FragColor = vec4(vec3(uv, 0.0), 1.0);
   FragColor = vec4(col.xyz, 1.0);
 }

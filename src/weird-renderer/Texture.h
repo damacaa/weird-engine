@@ -8,31 +8,35 @@
 
 #include <glm/vec4.hpp>
 
-using TextureID = std::uint32_t;
-
-class Texture
+namespace WeirdRenderer
 {
-public:
+	using TextureID = std::uint32_t;
 
-	GLuint ID = -1;
-	std::string type = "";
+	class Texture
+	{
+	public:
 
-	Texture(){};
+		GLuint ID = -1;
+		std::string type = "";
 
-	Texture(const char* image, std::string texType, GLuint slot);
+		Texture() {};
 
-	Texture(glm::vec4 color, std::string texType, GLuint slot);
+		Texture(const char* image, std::string texType, GLuint slot);
 
-	// Assigns a texture unit to a texture
-	void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
-	// Binds a texture
-	void bind(GLuint unit) const;
-	// Unbinds a texture
-	void unbind() const;
-	// Deletes a texture
-	void dispose() const;
+		Texture(glm::vec4 color, std::string texType, GLuint slot);
 
-private:
+		// Assigns a texture unit to a texture
+		void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
+		// Binds a texture
+		void bind(GLuint unit) const;
+		// Unbinds a texture
+		void unbind() const;
+		// Deletes a texture
+		void dispose() const;
 
-};
+	private:
+
+	};
+}
+
 #endif

@@ -12,64 +12,69 @@
 #include "../weird-engine/ecs/ComponentManager.h"
 #include "../weird-engine/ecs/Components/Transform.h"
 
-using MeshID = std::uint32_t;
-
-class Mesh
+namespace WeirdRenderer
 {
-public:
-	MeshID id;
-	std::vector <Vertex> vertices;
-	std::vector <GLuint> indices;
-	std::vector <Texture> textures;
-	// Store quadVAO in public so it can be used in the Draw function
-	VAO m_vao;
-	VBO m_vbo;
-	EBO m_ebo;
+
+	using MeshID = std::uint32_t;
+
+	class Mesh
+	{
+	public:
+		MeshID id;
+		std::vector <Vertex> vertices;
+		std::vector <GLuint> indices;
+		std::vector <Texture> textures;
+		// Store quadVAO in public so it can be used in the Draw function
+		VAO m_vao;
+		VBO m_vbo;
+		EBO m_ebo;
 
 
-	Mesh() {
-		int b = 0;
+		Mesh() {
+			int b = 0;
+		};
+
+		// Initializes the mesh
+		Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
+		~Mesh();
+
+		// Draws the mesh
+		void Draw
+		(
+			Shader& shader,
+			Camera& camera,
+			glm::vec3 translation,
+			glm::vec3 rotation,
+			glm::vec3 scale,
+			const std::vector<Light>& lights
+		) const;
+
+		// Draws the mesh
+		void DrawInstance
+		(
+			Shader& shader,
+			Camera& camera,
+			unsigned int instances,
+			std::vector<glm::vec3> translations,
+			std::vector<glm::vec3> rotations,
+			std::vector<glm::vec3> scales,
+			const std::vector<Light>& lights
+		) const;
+
+		void DrawInstance
+		(
+			Shader& shader,
+			Camera& camera,
+			unsigned int instances,
+			std::vector<Transform>& transforms,
+			const std::vector<Light>& lights
+		) const;
+
+		void Delete();
+
+	private:
+
 	};
+}
 
-	// Initializes the mesh
-	Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures);
-	~Mesh();
-
-	// Draws the mesh
-	void Draw
-	(
-		Shader& shader,
-		Camera& camera,
-		glm::vec3 translation,
-		glm::vec3 rotation,
-		glm::vec3 scale,
-		const std::vector<Light>& lights
-	) const;
-
-	// Draws the mesh
-	void DrawInstance
-	(
-		Shader& shader,
-		Camera& camera,
-		unsigned int instances,
-		std::vector<glm::vec3> translations,
-		std::vector<glm::vec3> rotations,
-		std::vector<glm::vec3> scales,
-		const std::vector<Light>& lights
-	) const;
-	
-	void DrawInstance
-	(
-		Shader& shader,
-		Camera& camera,
-		unsigned int instances,
-		std::vector<Transform> &transforms,
-		const std::vector<Light>& lights
-	) const;
-
-	void Delete();
-
-private:
-
-};
 #endif

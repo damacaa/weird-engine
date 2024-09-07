@@ -8,7 +8,11 @@
 
 using json = nlohmann::json;
 
-using MeshID = std::uint32_t;
+using WeirdRenderer::Mesh;
+using WeirdRenderer::Texture;
+using WeirdRenderer::MeshID;
+using WeirdRenderer::TextureID;
+using WeirdRenderer::Vertex;
 
 class ResourceManager {
 private:

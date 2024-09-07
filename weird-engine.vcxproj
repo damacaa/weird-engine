@@ -172,6 +172,11 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\weird-engine\ecs\Components\Camera.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement2D.h" />
+    <ClInclude Include="src\weird-engine\ecs\Systems\CameraSystem.h" />
+    <ClInclude Include="src\weird-engine\ecs\Systems\PlayerMovementSystem.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsInteractionSystem.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />

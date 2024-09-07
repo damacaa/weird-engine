@@ -7,6 +7,8 @@
 #include <immintrin.h>
 #include <mutex>
 
+#define MEASURE_PERFORMANCE FALSE	
+
 
 using namespace std::chrono;
 
@@ -76,11 +78,20 @@ void Simulation2D::update(double delta)
 	process();
 }
 
+#if MEASURE_PERFORMANCE == 1
+double g_time = 0;
+int32_t g_simulationSteps = 0;
+#endif
+
 void Simulation2D::process()
 {
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
+#if MEASURE_PERFORMANCE == 1
+		auto start = std::chrono::high_resolution_clock::now();
+#endif
+
 		checkCollisions();
 		applyForces();
 		step((float)FIXED_DELTA_TIME);
@@ -89,6 +100,23 @@ void Simulation2D::process()
 		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		m_simulationTime += FIXED_DELTA_TIME;
+
+#if MEASURE_PERFORMANCE == 1
+		// Get the ending time
+		auto end = std::chrono::high_resolution_clock::now();
+
+		// Calculate the duration
+		std::chrono::duration<double> duration = end - start;
+
+		g_simulationSteps++;
+		g_time += 1000 * duration.count();
+
+		if (g_simulationSteps == 10 * SIMULATION_FREQUENCY)
+		{
+			auto average = g_time / g_simulationSteps;
+			std::cout << average << std::endl;
+		}
+#endif
 	}
 }
 

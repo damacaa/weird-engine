@@ -101,16 +101,23 @@ namespace ECS
 				if (Input::GetMouseButton(Input::WheelDown))
 				{
 					t.position += flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
-					firstClick = true;
+
+					vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
+					vec2 travel = cursorPosition - (vec2)t.position;
+					t.position -= flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
 				}
-				else if (Input::GetMouseButton(Input::WheelUp))
+				else if (Input::GetMouseButton(Input::WheelUp) && t.position.z > 10.0f)
 				{
 					t.position += flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
+
+					vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
+					vec2 travel = cursorPosition - (vec2)t.position;
+					t.position += flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
 				}
 
 
 
-				if (Input::GetKeyDown(Input::Space)) // T ??
+				if (Input::GetKeyDown(Input::Space))
 				{
 					flyComponent.speed *= 4.0f;
 				}

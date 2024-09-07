@@ -1,8 +1,8 @@
 #version 330 core
 
-#define DITHERING 1
-#define SHADOWS_ENABLED 1
-#define BLEND_SHAPES 1
+#define DITHERING 0
+#define SHADOWS_ENABLED 0
+#define BLEND_SHAPES 0
 
 uniform float k = 1.5;
 

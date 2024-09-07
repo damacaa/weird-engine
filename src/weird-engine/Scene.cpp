@@ -4,15 +4,14 @@
 
 #include <random>
 
-constexpr size_t MAX_SIMULATED_OBJECTS = 100000;
 
 bool g_runSimulation = true;
 double g_lastSpawnTime = 0;
 
 
 Scene::Scene(const char* file) :
-	m_simulation(MAX_SIMULATED_OBJECTS)
-	, m_simulation2D(MAX_SIMULATED_OBJECTS)
+	m_simulation(MAX_ENTITIES)
+	, m_simulation2D(MAX_ENTITIES)
 	, m_sdfRenderSystem(m_ecs)
 	, m_sdfRenderSystem2D(m_ecs)
 	, m_renderSystem(m_ecs)

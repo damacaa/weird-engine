@@ -124,6 +124,35 @@ void Scene::update(double delta, double time)
 		auto v = vec2(15, 30) - m_simulation2D.getPosition(0);
 		m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, 0, 10.0f * normalize(v));
 	}
+
+
+	if (Input::GetMouseButtonDown(Input::LeftClick))
+	{
+		// Test screen coordinates to 2D world coordinates
+		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+
+		int x = Input::GetMouseX();
+		int y = Input::GetMouseY();
+
+		vec2 resolution(1200, 800);
+		vec2 halfResolution(600, 400);
+
+		vec2 screenPosition(x, resolution.y - y);
+		vec2 uv = (2.0f * screenPosition - resolution) / resolution.y;
+		vec2 position = (vec2)cameraTransform.position + ((screenPosition - halfResolution) * (cameraTransform.position.z / halfResolution.y));
+
+		Transform t;
+		t.position = vec3(position.x, position.y, 0.0);
+		Entity entity = m_ecs.createEntity();
+		m_ecs.addComponent(entity, t);
+
+		m_ecs.addComponent(entity, SDFRenderer(3));
+		m_sdfRenderSystem2D.add(entity);
+
+		m_ecs.addComponent(entity, RigidBody2D());
+		m_rbPhysicsSystem2D.add(entity);
+		m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+	}
 }
 
 
@@ -142,7 +171,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	m_mainCamera = m_ecs.createEntity();
 
 	Transform t;
-	t.position = vec3(15.0f, 10.f, 10.0f);
+	t.position = vec3(15.0f, 10.f, 20.0f);
 	t.rotation = vec3(0, 0, -1.0f);
 	m_ecs.addComponent(m_mainCamera, t);
 

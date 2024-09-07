@@ -13,19 +13,19 @@ private:
 
 public:
 
-	PhysicsInteractionSystem(ECS& ecs) : m_holdingMouse(false)
+	PhysicsInteractionSystem(ECSManager& ecs) : m_holdingMouse(false)
 	{
 
 	}
 
-	void update(ECS& ecs, Simulation2D& simulation)
+	void update(ECSManager& ecs, Simulation2D& simulation)
 	{
 		push(ecs, simulation);
 	}
 
 private:
 
-	void explode(ECS& ecs, Simulation2D& simulation)
+	void explode(ECSManager& ecs, Simulation2D& simulation)
 	{
 		if (Input::GetMouseButtonDown(Input::RightClick))
 		{
@@ -45,7 +45,7 @@ private:
 		}
 	}
 
-	void push(ECS& ecs, Simulation2D& simulation)
+	void push(ECSManager& ecs, Simulation2D& simulation)
 	{
 		if (m_holdingMouse && Input::GetMouseButtonUp(Input::RightClick))
 		{

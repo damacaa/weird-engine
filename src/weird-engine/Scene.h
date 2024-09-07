@@ -10,15 +10,17 @@
 
 #include "ResourceManager.h"
 
+using namespace ECS;
 using namespace std;
+
 class Scene
 {
 public:
 
 	Scene(const char* file);
 	~Scene();
-	void renderModels(Shader& shader, Shader& instancingShader);
-	void renderShapes(Shader& shader, RenderPlane& rp);
+	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
 	void update(double delta, double time);
 
 	Scene(const Scene&) = default; // Deleted copy constructor
@@ -26,13 +28,15 @@ public:
 	Scene(Scene&&) = default; // Defaulted move constructor
 	Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
 
-	std::unique_ptr<Camera> camera;
+	WeirdRenderer::Camera& getCamera();
+
 
 private:
+	Entity m_mainCamera;
 
 	void loadScene(std::string sceneFileContent);
 
-	ECS m_ecs;
+	ECSManager m_ecs;
 	ResourceManager m_resourceManager;
 
 	Simulation m_simulation;
@@ -46,9 +50,11 @@ private:
 	RBPhysicsSystem m_rbPhysicsSystem;
 	PhysicsSystem2D m_rbPhysicsSystem2D;
 	PhysicsInteractionSystem m_physicsInteractionSystem;
+	PlayerMovementSystem m_playerMovementSystem;
+	CameraSystem m_cameraSystem;
 
-	vector<Light> m_lights;
+	vector<WeirdRenderer::Light> m_lights;
 
-	
+
 };
 

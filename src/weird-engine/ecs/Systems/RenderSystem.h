@@ -2,17 +2,18 @@
 #include "../ECS.h"
 #include "../../ResourceManager.h"
 
+
 class RenderSystem : public System {
 private:
 	std::shared_ptr<ComponentManager> m_meshRendererManager;
 
 public:
 
-	RenderSystem(ECS& ecs) {
+	RenderSystem(ECSManager& ecs) {
 		m_meshRendererManager = ecs.getComponentManager<MeshRenderer>();
 	}
 
-	void render(ECS& ecs, ResourceManager& resourceManager, Shader& shader, Camera& camera, const std::vector<Light>& lights) {
+	void render(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader, WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights) {
 
 		shader.activate();
 		shader.setUniform("lightColor", lights[0].color);

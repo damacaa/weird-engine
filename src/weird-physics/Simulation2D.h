@@ -7,10 +7,50 @@
 #include <unordered_set>
 
 #include "CollisionDetection/UniformGrid2D.h"
+#include <bitset>
 
 using SimulationID = std::uint32_t;
 
 using vec2 = glm::vec2;
+
+
+
+
+class CustomBitset
+{
+public:
+	CustomBitset(size_t size) : bits((size + 63) / 64, 0), size(size) {}
+
+	void set(size_t pos)
+	{
+		if (pos < size) {
+			bits[pos / 64] |= (1ULL << (pos % 64));
+		}
+	}
+
+	void clear(size_t pos)
+	{
+		if (pos < size) {
+			bits[pos / 64] &= ~(1ULL << (pos % 64));
+		}
+	}
+
+	bool test(size_t pos) const
+	{
+		if (pos < size)
+		{
+			return bits[pos / 64] & (1ULL << (pos % 64));
+		}
+		return false;
+	}
+
+private:
+	std::vector<uint64_t> bits;
+	size_t size;
+};
+
+
+
 
 class Simulation2D
 {
@@ -122,9 +162,9 @@ private:
 	const float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
-	//std::vector<Collision> m_collisions;
-	std::unordered_set<Collision, CollisionHash> m_collisions;
 
+	std::vector<Collision> m_collisions;
+	bool* m_smallCollisionPairs;
 
 
 	UniformGrid2D grid;

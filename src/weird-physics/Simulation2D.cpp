@@ -7,7 +7,7 @@
 #include <immintrin.h>
 #include <mutex>
 
-#define MEASURE_PERFORMANCE 1	
+#define MEASURE_PERFORMANCE true		
 
 
 using namespace std::chrono;
@@ -23,6 +23,7 @@ float g_worldSideLenght = 30.0f;
 std::mutex g_simulationTimeMutex;
 
 
+
 Simulation2D::Simulation2D(size_t size) :
 	m_positions(new vec2[size]),
 	m_velocities(new vec2[size]),
@@ -31,6 +32,8 @@ Simulation2D::Simulation2D(size_t size) :
 	m_externalForces(new vec2[size]),
 	m_mass(new float[size]),
 	m_invMass(new float[size]),
+	//m_smallCollisionPairs(new bool[(size * (size + 1)) / 2]),
+	m_smallCollisionPairs(new bool[size * size]),
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
@@ -39,10 +42,12 @@ Simulation2D::Simulation2D(size_t size) :
 	m_push(20.0f * SIMULATION_FREQUENCY),
 	m_damping(0.1),
 	m_simulating(false),
-	m_collisionDetectionMethod(MethodNaive),
+	m_collisionDetectionMethod(MethodUniformGrid),
 	grid(20.0f * g_worldSideLenght, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
+
+
 
 	for (size_t i = 0; i < m_maxSize; i++)
 	{
@@ -63,6 +68,7 @@ Simulation2D::~Simulation2D()
 	delete[] m_forces;
 	delete[] m_mass;
 	delete[] m_invMass;
+	delete[] m_smallCollisionPairs;
 }
 
 void Simulation2D::update(double delta)
@@ -78,9 +84,10 @@ void Simulation2D::update(double delta)
 	process();
 }
 
-#if MEASURE_PERFORMANCE == 1
+#if MEASURE_PERFORMANCE
 double g_time = 0;
-int32_t g_simulationSteps = 0;
+uint32_t g_simulationSteps = 0;
+uint64_t g_collisionCount = 0;
 #endif
 
 void Simulation2D::process()
@@ -88,7 +95,7 @@ void Simulation2D::process()
 	int steps = 0;
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
-#if MEASURE_PERFORMANCE == 1
+#if MEASURE_PERFORMANCE
 		auto start = std::chrono::high_resolution_clock::now();
 #endif
 
@@ -101,7 +108,7 @@ void Simulation2D::process()
 		m_simulationDelay -= FIXED_DELTA_TIME;
 		m_simulationTime += FIXED_DELTA_TIME;
 
-#if MEASURE_PERFORMANCE == 1
+#if MEASURE_PERFORMANCE
 		// Get the ending time
 		auto end = std::chrono::high_resolution_clock::now();
 
@@ -114,7 +121,8 @@ void Simulation2D::process()
 		if (g_simulationSteps == 20 * SIMULATION_FREQUENCY)
 		{
 			auto average = g_time / g_simulationSteps;
-			std::cout << average << std::endl;
+			std::cout << average << "ms" << std::endl;
+			std::cout << g_collisionCount << " checks" << std::endl;
 		}
 #endif
 	}
@@ -160,8 +168,9 @@ void Simulation2D::checkCollisions()
 
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
 
-				if (distanceSquared < m_diameterSquared) {
-					m_collisions.insert(Collision(i, j, ij));
+				if (distanceSquared < m_diameterSquared)
+				{
+					m_collisions.emplace_back(Collision(i, j, ij));
 				}
 
 				checks++;
@@ -182,9 +191,10 @@ void Simulation2D::checkCollisions()
 
 		int cellsPerSide = grid.getCellCountPerSide();
 
+		int maxSize = (m_maxSize * (m_maxSize + 1)) / 2;
+
 		for (int x = 1; x < cellsPerSide - 1; x++)
 		{
-			int a = 0;
 			for (int y = 1; y < cellsPerSide - 1; y++)
 			{
 				std::vector<int> cells;
@@ -208,6 +218,10 @@ void Simulation2D::checkCollisions()
 						int a = cells[i];
 						int b = cells[j];
 
+						size_t pairId = (b * m_maxSize) + a;// -(b * (b + 1) / 2);
+						if (m_smallCollisionPairs[pairId])
+							continue;
+
 						if (a == b) {
 							continue;
 						}
@@ -216,17 +230,15 @@ void Simulation2D::checkCollisions()
 
 						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
 
-						if (distanceSquared < m_diameterSquared) {
-							m_collisions.insert(Collision(a, b, ab));
+						if (distanceSquared < m_diameterSquared)
+						{
+							m_smallCollisionPairs[pairId] = true;
+							m_collisions.emplace_back(Collision(a, b, ab));
 						}
 
 						checks++;
 					}
 				}
-
-
-
-
 			}
 		}
 	}
@@ -246,6 +258,8 @@ void Simulation2D::solveCollisionsPositionBased()
 		m_positions[col.B] += penetration;
 	}
 }
+
+
 
 float EPSILON = 0.01f;
 
@@ -315,6 +329,12 @@ void Simulation2D::applyForces()
 	{
 		Collision col = *it;
 
+		if (m_collisionDetectionMethod == MethodUniformGrid)
+		{
+			size_t pairId = (col.B * m_maxSize) + col.A;// -(col.B * (col.B + 1) / 2);
+			m_smallCollisionPairs[pairId] = false;
+		}
+
 		vec2 normal = normalize(col.AB);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
@@ -342,6 +362,10 @@ void Simulation2D::applyForces()
 		m_forces[col.A] -= m_mass[col.A] * penalty;
 		m_forces[col.B] += m_mass[col.B] * penalty;
 
+
+#if MEASURE_PERFORMANCE
+		g_collisionCount++;
+#endif
 	}
 
 

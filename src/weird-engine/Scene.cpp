@@ -166,7 +166,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	m_mainCamera = m_ecs.createEntity();
 
 	Transform t;
-	t.position = vec3(15.0f, 10.f, 20.0f);
+	t.position = vec3(15.0f, 40.f, 60.0f);
 	t.rotation = vec3(0, 0, -1.0f);
 	m_ecs.addComponent(m_mainCamera, t);
 

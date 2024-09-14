@@ -24,6 +24,10 @@ float g_worldSideLenght = 30.0f;
 std::mutex g_simulationTimeMutex;
 
 
+std::vector<int> objectIDs;
+std::unordered_map<int, SimulationID> treeIdToSimulationID;
+bool* treeNodeRequiresUpdate;
+
 
 Simulation2D::Simulation2D(size_t size) :
 	m_positions(new vec2[size]),
@@ -43,12 +47,12 @@ Simulation2D::Simulation2D(size_t size) :
 	m_push(20.0f * SIMULATION_FREQUENCY),
 	m_damping(0.1),
 	m_simulating(false),
-	m_collisionDetectionMethod(MethodUniformGrid),
+	m_collisionDetectionMethod(MethodTree),
 	grid(20.0f * g_worldSideLenght, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
 
-
+	treeNodeRequiresUpdate = new bool[m_maxSize];
 
 	for (size_t i = 0; i < m_maxSize; i++)
 	{
@@ -58,7 +62,10 @@ Simulation2D::Simulation2D(size_t size) :
 
 		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.001f;
+
+		treeIdToSimulationID[i] = 0;
 	}
+
 
 }
 
@@ -233,13 +240,92 @@ void Simulation2D::checkCollisions()
 
 			}
 		}
+		break;
+	}
+	case  Simulation2D::MethodTree:
+	{
+
+
+		for (size_t i = tree.count; i < m_size; i++)
+		{
+			auto id = tree.insertObject(AABB(0, 0, 0, 0));
+			objectIDs.push_back(id);
+			treeIdToSimulationID[id] = i;
+			treeNodeRequiresUpdate[i] = true;
+		}
+
+		// Update the objects' positions (example movement)
+		for (size_t i = 0; i < objectIDs.size(); ++i)
+		{
+			if (!treeNodeRequiresUpdate[i])
+				continue;
+
+			treeNodeRequiresUpdate[i] = false;
+
+			auto& p = m_positions[i];
+
+			// Move objects slightly (this is just an example; in a real scenario, movement would be based on physics calculations)
+			AABB updatedBox = tree.nodes[objectIDs[i]].box;
+			updatedBox.minX = p.x - m_radious;
+			updatedBox.minY = p.y - m_radious;
+			updatedBox.maxX = p.x + m_radious;
+			updatedBox.maxY = p.y + m_radious;
+
+			// Update the object in the tree
+			tree.updateObject(objectIDs[i], updatedBox);
+		}
+
+		std::vector<int> possibleCollisions;
+		// Perform collision queries
+		for (size_t i = 0; i < objectIDs.size(); ++i) {
+			possibleCollisions.clear();
+			tree.query(tree.nodes[objectIDs[i]].box, possibleCollisions);
+
+			// Check actual collisions (this is where you would check if the objects are actually colliding)
+			for (int id : possibleCollisions) {
+				if (id != objectIDs[i] && tree.nodes[id].box.overlaps(tree.nodes[objectIDs[i]].box)) {
+					//std::cout << "Object " << objectIDs[i] << " is colliding with object " << id << std::endl;
+
+
+					int a = i;
+
+					// id to SimulationID
+					int b = treeIdToSimulationID[id];
+
+
+					if (a >= b)
+						continue;
+
+
+					//int pairId = (b * m_maxSize) + a;// -(b * (b + 1) / 2);
+					//if (m_smallCollisionPairs[pairId])
+					//	continue;
+
+					vec2 ab = m_positions[b] - m_positions[a];
+
+					float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
+
+					if (distanceSquared < m_diameterSquared)
+					{
+						//m_smallCollisionPairs[pairId] = true;
+						m_collisions.emplace_back(Collision(a, b, ab));
+					}
+
+					checks++;
+
+				}
+			}
+		}
+
+
+		break;
 	}
 	default:
 		break;
 	}
 
 	if (g_simulationSteps == 0)
-		std::cout << checks << std::endl;
+		std::cout << "First frame checks: " << checks << std::endl;
 }
 
 void Simulation2D::solveCollisionsPositionBased()
@@ -412,18 +498,19 @@ void Simulation2D::applyForces()
 
 		}
 
-		// Old walls
-		if (p.x < m_radious) {
-			p.x += m_radious - p.x;
-			m_velocities[i].x = -0.5f * m_velocities[i].x;
-		}
-		else if (p.x > g_worldSideLenght - m_radious) {
-			p.x -= m_radious - (g_worldSideLenght - p.x);
-			m_velocities[i].x = -0.5f * m_velocities[i].x;
-		}
+		//// Old walls
+		//if (p.x < m_radious) {
+		//	p.x += m_radious - p.x;
+		//	m_velocities[i].x = -0.5f * m_velocities[i].x;
+		//}
+		//else if (p.x > g_worldSideLenght - m_radious) {
+		//	p.x -= m_radious - (g_worldSideLenght - p.x);
+		//	m_velocities[i].x = -0.5f * m_velocities[i].x;
+		//}
 	}
 }
 
+const float speedThreshold = 0.1f;
 void Simulation2D::step(float timeStep)
 {
 	// Integrate
@@ -431,10 +518,18 @@ void Simulation2D::step(float timeStep)
 	{
 		vec2 acc = m_forces[i] * m_invMass[i];
 		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+
+		if (std::max(abs(m_velocities[i].x), abs(m_velocities[i].y)) > speedThreshold)
+		{
+			treeNodeRequiresUpdate[i] = true;
+		}
+
 		m_positions[i] += timeStep * m_velocities[i];
 
 		// Reset forces
 		m_forces[i] = vec2(0.0f);
+
+
 	}
 
 

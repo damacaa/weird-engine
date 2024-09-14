@@ -233,8 +233,8 @@ float rayMarch(vec2 ro, vec2 rd)
 
 vec3 render(vec2 uv)
 {
-  if ( uv.x < 0.0 || uv.x > 30.0)
-    return vec3(0.0);
+  // if ( uv.x < 0.0 || uv.x > 30.0)
+  //   return vec3(0.0);
 
   /*float d = map(uv);
   d = uv.y < 0.0 ? -1.0 : d;
@@ -278,6 +278,7 @@ void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
   vec3 col = render((-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy);
+  //vec3 col = vec3(uv,0);
 
   col = pow(col, vec3(0.4545));
 

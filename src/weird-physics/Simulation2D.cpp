@@ -6,6 +6,7 @@
 #include <chrono>
 #include <immintrin.h>
 #include <mutex>
+#include <set>
 
 #define MEASURE_PERFORMANCE true		
 
@@ -122,7 +123,7 @@ void Simulation2D::process()
 		{
 			auto average = g_time / g_simulationSteps;
 			std::cout << average << "ms" << std::endl;
-			std::cout << g_collisionCount << " checks" << std::endl;
+			std::cout << g_collisionCount << " collisions" << std::endl;
 		}
 #endif
 	}
@@ -189,26 +190,19 @@ void Simulation2D::checkCollisions()
 			grid.addElement(i, m_positions[i]);
 		}
 
-		int cellsPerSide = grid.getCellCountPerSide();
+		uint32_t cellsPerSide = grid.getCellCountPerSide();
 
-		int maxSize = (m_maxSize * (m_maxSize + 1)) / 2;
+		uint32_t maxSize = (m_maxSize * (m_maxSize + 1)) / 2;
+
+		std::vector<SimulationID> cells;
 
 		for (int x = 1; x < cellsPerSide - 1; x++)
 		{
 			for (int y = 1; y < cellsPerSide - 1; y++)
 			{
-				std::vector<int> cells;
+				cells.clear();
 
-				for (int offsetX = -1; offsetX <= 1; offsetX++)
-				{
-					for (int offsetY = -1; offsetY <= 1; offsetY++)
-					{
-						auto& objectsInCell = grid.getCell(x + offsetX, y + offsetY);
-						if (objectsInCell.size() > 0)
-							cells.insert(cells.end(), objectsInCell.begin(), objectsInCell.end());
-					}
-				}
-
+				grid.getPossibleCollisions(cells, x, y);
 
 				for (size_t i = 0; i < cells.size(); i++)
 				{
@@ -221,10 +215,6 @@ void Simulation2D::checkCollisions()
 						size_t pairId = (b * m_maxSize) + a;// -(b * (b + 1) / 2);
 						if (m_smallCollisionPairs[pairId])
 							continue;
-
-						if (a == b) {
-							continue;
-						}
 
 						vec2 ab = m_positions[b] - m_positions[a];
 
@@ -239,12 +229,17 @@ void Simulation2D::checkCollisions()
 						checks++;
 					}
 				}
+
+
 			}
 		}
 	}
 	default:
 		break;
 	}
+
+	if (g_simulationSteps == 0)
+		std::cout << checks << std::endl;
 }
 
 void Simulation2D::solveCollisionsPositionBased()

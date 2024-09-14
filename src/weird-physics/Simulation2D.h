@@ -21,21 +21,21 @@ class CustomBitset
 public:
 	CustomBitset(size_t size) : bits((size + 63) / 64, 0), size(size) {}
 
-	void set(size_t pos)
+	void set(SimulationID pos)
 	{
 		if (pos < size) {
 			bits[pos / 64] |= (1ULL << (pos % 64));
 		}
 	}
 
-	void clear(size_t pos)
+	void clear(SimulationID pos)
 	{
 		if (pos < size) {
 			bits[pos / 64] &= ~(1ULL << (pos % 64));
 		}
 	}
 
-	bool test(size_t pos) const
+	bool test(SimulationID pos) const
 	{
 		if (pos < size)
 		{
@@ -167,7 +167,7 @@ private:
 	bool* m_smallCollisionPairs;
 
 
-	UniformGrid2D grid;
+	UniformGrid2D<SimulationID> grid;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

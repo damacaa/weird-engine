@@ -5,9 +5,10 @@
 #include <vector>
 #include <thread>
 #include <unordered_set>
+#include <bitset>
 
 #include "CollisionDetection/UniformGrid2D.h"
-#include <bitset>
+#include "CollisionDetection/DynamicAABBTree2D.h"
 
 using SimulationID = std::uint32_t;
 
@@ -127,10 +128,12 @@ private:
 		}
 	};
 
-	enum CollisionDetectionMethod {
+	enum CollisionDetectionMethod
+	{
 		None,
 		MethodNaive,
-		MethodUniformGrid
+		MethodUniformGrid,
+		MethodTree
 	};
 
 	bool m_simulating;
@@ -162,6 +165,7 @@ private:
 	const float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
+	DynamicAABBTree tree;
 
 	std::vector<Collision> m_collisions;
 	bool* m_smallCollisionPairs;

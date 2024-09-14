@@ -1,3 +1,4 @@
+#pragma once
 #include "Simulation2D.h"
 #include "CollisionDetection/SpatialHash.h"
 #include "../weird-engine/Input.h"
@@ -8,25 +9,18 @@
 #include <mutex>
 #include <set>
 
-#define MEASURE_PERFORMANCE true		
+#define MEASURE_PERFORMANCE false			
 
 
 using namespace std::chrono;
 
 
-constexpr float SIMULATION_FREQUENCY = 500.0;
+constexpr float SIMULATION_FREQUENCY = 250;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 100;
 
-float g_worldSideLenght = 30.0f;
-
 std::mutex g_simulationTimeMutex;
-
-
-std::vector<int> objectIDs;
-std::unordered_map<int, SimulationID> treeIdToSimulationID;
-bool* treeNodeRequiresUpdate;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -37,8 +31,6 @@ Simulation2D::Simulation2D(size_t size) :
 	m_externalForces(new vec2[size]),
 	m_mass(new float[size]),
 	m_invMass(new float[size]),
-	//m_smallCollisionPairs(new bool[(size * (size + 1)) / 2]),
-	m_smallCollisionPairs(new bool[size * size]),
 	m_maxSize(size),
 	m_size(0),
 	m_simulationDelay(0),
@@ -48,12 +40,8 @@ Simulation2D::Simulation2D(size_t size) :
 	m_damping(0.1),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodTree),
-	grid(20.0f * g_worldSideLenght, 2.0f * m_diameter),
 	m_useSimdOperations(false)
 {
-
-	treeNodeRequiresUpdate = new bool[m_maxSize];
-
 	for (size_t i = 0; i < m_maxSize; i++)
 	{
 		m_positions[i] = vec2(0.0f, 0.01f * i);
@@ -62,11 +50,7 @@ Simulation2D::Simulation2D(size_t size) :
 
 		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.001f;
-
-		treeIdToSimulationID[i] = 0;
 	}
-
-
 }
 
 Simulation2D::~Simulation2D()
@@ -76,7 +60,6 @@ Simulation2D::~Simulation2D()
 	delete[] m_forces;
 	delete[] m_mass;
 	delete[] m_invMass;
-	delete[] m_smallCollisionPairs;
 }
 
 void Simulation2D::update(double delta)
@@ -101,13 +84,15 @@ uint64_t g_collisionCount = 0;
 void Simulation2D::process()
 {
 	int steps = 0;
+
+
+
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
 #if MEASURE_PERFORMANCE
 		auto start = std::chrono::high_resolution_clock::now();
 #endif
-
-		checkCollisions();
+			checkCollisions();
 		applyForces();
 		step((float)FIXED_DELTA_TIME);
 		++steps;
@@ -154,11 +139,17 @@ void Simulation2D::stopSimulationThread()
 	m_simulationThread.join();
 }
 
+// Track previous positions for lazy updates
+std::vector<AABB> previousAABBs;
+std::vector<vec2> previousAABBPositions;
+
 
 void Simulation2D::checkCollisions()
 {
 	// Detect collisions
+#if MEASURE_PERFORMANCE
 	int checks = 0;
+#endif
 	m_collisions.clear();
 
 	switch (m_collisionDetectionMethod)
@@ -181,125 +172,86 @@ void Simulation2D::checkCollisions()
 					m_collisions.emplace_back(Collision(i, j, ij));
 				}
 
+#if MEASURE_PERFORMANCE
 				checks++;
-			}
-		}
-		break;
-	}
-	case Simulation2D::MethodUniformGrid:
-	{
-		// Clear grid
-		grid.clear();
-
-		// Add elements to grid
-		for (size_t i = 0; i < m_size; i++)
-		{
-			grid.addElement(i, m_positions[i]);
-		}
-
-		uint32_t cellsPerSide = grid.getCellCountPerSide();
-
-		uint32_t maxSize = (m_maxSize * (m_maxSize + 1)) / 2;
-
-		std::vector<SimulationID> cells;
-
-		for (int x = 1; x < cellsPerSide - 1; x++)
-		{
-			for (int y = 1; y < cellsPerSide - 1; y++)
-			{
-				cells.clear();
-
-				grid.getPossibleCollisions(cells, x, y);
-
-				for (size_t i = 0; i < cells.size(); i++)
-				{
-					// Simple collisions
-					for (size_t j = i + 1; j < cells.size(); j++)
-					{
-						int a = cells[i];
-						int b = cells[j];
-
-						size_t pairId = (b * m_maxSize) + a;// -(b * (b + 1) / 2);
-						if (m_smallCollisionPairs[pairId])
-							continue;
-
-						vec2 ab = m_positions[b] - m_positions[a];
-
-						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
-
-						if (distanceSquared < m_diameterSquared)
-						{
-							m_smallCollisionPairs[pairId] = true;
-							m_collisions.emplace_back(Collision(a, b, ab));
-						}
-
-						checks++;
-					}
-				}
-
-
+#endif
 			}
 		}
 		break;
 	}
 	case  Simulation2D::MethodTree:
 	{
-
-
-		for (size_t i = tree.count; i < m_size; i++)
+		for (size_t i = m_tree.count; i < m_size; i++)
 		{
-			auto id = tree.insertObject(AABB(0, 0, 0, 0));
-			objectIDs.push_back(id);
-			treeIdToSimulationID[id] = i;
-			treeNodeRequiresUpdate[i] = true;
+			AABB boundinBox(0, 0, 0, 0);
+			auto id = m_tree.insertObject(boundinBox);
+			m_treeIDs.push_back(id);
+			m_treeIdToSimulationID[id] = i;
+			previousAABBs.push_back(boundinBox);
+			previousAABBPositions.push_back(vec2(0.0f));
 		}
 
+		float scale = 1.5f;
+		const float speedThreshold = 0.5f;
 		// Update the objects' positions (example movement)
-		for (size_t i = 0; i < objectIDs.size(); ++i)
+		for (size_t i = 0; i < m_treeIDs.size(); ++i)
 		{
-			if (!treeNodeRequiresUpdate[i])
-				continue;
-
-			treeNodeRequiresUpdate[i] = false;
-
 			auto& p = m_positions[i];
 
-			// Move objects slightly (this is just an example; in a real scenario, movement would be based on physics calculations)
-			AABB updatedBox = tree.nodes[objectIDs[i]].box;
-			updatedBox.minX = p.x - m_radious;
-			updatedBox.minY = p.y - m_radious;
-			updatedBox.maxX = p.x + m_radious;
-			updatedBox.maxY = p.y + m_radious;
+			float halfw = m_radious, halfh = m_radious;
+
+			AABB updatedBox(
+				p.x - halfw,
+				p.y - halfw,
+				p.x + halfh,
+				p.y + halfh
+			);
 
 			// Update the object in the tree
-			tree.updateObject(objectIDs[i], updatedBox);
+			m_tree.updateObject(m_treeIDs[i], updatedBox);
+
+			// Optimization ideas
+			// Lazy update: only update the tree if the object has moved significantly
+			//if (!previousAABBs[i].overlaps(updatedBox))
+			//{
+			//	m_tree.updateObject(m_treeIDs[i], updatedBox);
+			//	previousAABBs[i] = updatedBox;
+			//}
+			//else {
+			//	//std::cout << "Nope: " << i << std::endl;
+			//}
+
+			/*loat maxMovement = (scale - 1) * halfw;
+			if (fabs(p.x - previousAABBPositions[i].x) > maxMovement || fabs(p.y - previousAABBPositions[i].y) > maxMovement)
+			{
+				AABB updatedBox(
+					p.x - (scale * halfw),
+					p.y - (scale * halfw),
+					p.x + (scale * halfh),
+					p.y + (scale * halfh)
+				);
+
+				m_tree.updateObject(m_treeIDs[i], updatedBox);
+				previousAABBPositions[i] = p;
+			}*/
 		}
 
 		std::vector<int> possibleCollisions;
 		// Perform collision queries
-		for (size_t i = 0; i < objectIDs.size(); ++i) {
+		for (size_t i = 0; i < m_treeIDs.size(); ++i) {
 			possibleCollisions.clear();
-			tree.query(tree.nodes[objectIDs[i]].box, possibleCollisions);
+			m_tree.query(m_tree.nodes[m_treeIDs[i]].box, possibleCollisions);
 
-			// Check actual collisions (this is where you would check if the objects are actually colliding)
+			// Check actual collisions
 			for (int id : possibleCollisions) {
-				if (id != objectIDs[i] && tree.nodes[id].box.overlaps(tree.nodes[objectIDs[i]].box)) {
-					//std::cout << "Object " << objectIDs[i] << " is colliding with object " << id << std::endl;
-
+				if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box)) {
+					//std::cout << "Object " << m_treeIDs[i] << " is colliding with object " << id << std::endl;
 
 					int a = i;
-
-					// id to SimulationID
-					int b = treeIdToSimulationID[id];
-
+					int b = m_treeIdToSimulationID[id];
 
 					if (a >= b)
 						continue;
-
-
-					//int pairId = (b * m_maxSize) + a;// -(b * (b + 1) / 2);
-					//if (m_smallCollisionPairs[pairId])
-					//	continue;
 
 					vec2 ab = m_positions[b] - m_positions[a];
 
@@ -307,12 +259,11 @@ void Simulation2D::checkCollisions()
 
 					if (distanceSquared < m_diameterSquared)
 					{
-						//m_smallCollisionPairs[pairId] = true;
 						m_collisions.emplace_back(Collision(a, b, ab));
 					}
-
+#if MEASURE_PERFORMANCE
 					checks++;
-
+#endif
 				}
 			}
 		}
@@ -324,8 +275,10 @@ void Simulation2D::checkCollisions()
 		break;
 	}
 
+#if MEASURE_PERFORMANCE
 	if (g_simulationSteps == 0)
 		std::cout << "First frame checks: " << checks << std::endl;
+#endif
 }
 
 void Simulation2D::solveCollisionsPositionBased()
@@ -409,12 +362,6 @@ void Simulation2D::applyForces()
 	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it)
 	{
 		Collision col = *it;
-
-		if (m_collisionDetectionMethod == MethodUniformGrid)
-		{
-			size_t pairId = (col.B * m_maxSize) + col.A;// -(col.B * (col.B + 1) / 2);
-			m_smallCollisionPairs[pairId] = false;
-		}
 
 		vec2 normal = normalize(col.AB);
 		float penetration = (m_radious + m_radious) - length(col.AB);
@@ -510,7 +457,7 @@ void Simulation2D::applyForces()
 	}
 }
 
-const float speedThreshold = 0.1f;
+
 void Simulation2D::step(float timeStep)
 {
 	// Integrate
@@ -518,11 +465,6 @@ void Simulation2D::step(float timeStep)
 	{
 		vec2 acc = m_forces[i] * m_invMass[i];
 		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-
-		if (std::max(abs(m_velocities[i].x), abs(m_velocities[i].y)) > speedThreshold)
-		{
-			treeNodeRequiresUpdate[i] = true;
-		}
 
 		m_positions[i] += timeStep * m_velocities[i];
 

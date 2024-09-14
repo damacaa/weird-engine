@@ -4,7 +4,8 @@
 #include <limits>
 #include <algorithm>
 
-struct AABB {
+struct AABB
+{
 	float minX, minY;
 	float maxX, maxY;
 

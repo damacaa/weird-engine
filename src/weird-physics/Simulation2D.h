@@ -5,6 +5,8 @@
 #include <vector>
 #include <thread>
 #include <unordered_set>
+#include <unordered_map>
+#include <cstdint>
 #include <bitset>
 
 #include "CollisionDetection/UniformGrid2D.h"
@@ -132,7 +134,6 @@ private:
 	{
 		None,
 		MethodNaive,
-		MethodUniformGrid,
 		MethodTree
 	};
 
@@ -165,13 +166,11 @@ private:
 	const float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
-	DynamicAABBTree tree;
 
 	std::vector<Collision> m_collisions;
-	bool* m_smallCollisionPairs;
-
-
-	UniformGrid2D<SimulationID> grid;
+	DynamicAABBTree m_tree;
+	std::vector<int> m_treeIDs;
+	std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

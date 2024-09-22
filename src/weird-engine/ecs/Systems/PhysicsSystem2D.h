@@ -37,7 +37,7 @@ public:
 			rb.simulationId = simulation.generateSimulationID();
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 
-			simulation.setPosition(rb.Owner, glm::vec2(transform.position));
+			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
 		}
 	}
 

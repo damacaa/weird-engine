@@ -5,6 +5,7 @@
 
 # Project-specific files
 project_tree.txt
+cache/
 
 # User-specific files
 *.rsuser

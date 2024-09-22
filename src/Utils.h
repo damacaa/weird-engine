@@ -33,3 +33,32 @@ static std::string get_file_contents(const char* filename)
 	throw(errno);
 }
 
+static void saveToFile(const char* filename, std::string content)
+{
+	// Open the file in output mode, creating it if it doesn't exist
+	std::ofstream outFile(filename, std::ios::out | std::ios::trunc);
+
+	// Check if the file was opened successfully
+	if (outFile.is_open())
+	{
+		// Write the content to the file
+		outFile << content;
+
+		// Close the file
+		outFile.close();
+	}
+	else
+	{
+		// Handle the error if the file couldn't be opened
+		std::cerr << "Error: Could not open file " << filename << " for writing.\n";
+	}
+}
+
+static bool checkIfFileExists(const char* filename)
+{
+	// Try opening the file
+	std::ifstream file(filename);
+
+	// Return true if the file can be opened, false otherwise
+	return file.good();
+}

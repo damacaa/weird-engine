@@ -144,6 +144,7 @@ private:
 	bool m_useSimdOperations;
 
 	vec2* m_positions;
+	vec2* m_previousPositions;
 	vec2* m_velocities;
 	vec2* m_forces;
 

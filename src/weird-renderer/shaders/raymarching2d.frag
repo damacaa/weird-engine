@@ -4,7 +4,7 @@
 #define SHADOWS_ENABLED 0
 #define BLEND_SHAPES 0
 
-uniform float k = 1.5;
+uniform float k = 0.5;
 
 #if (DITHERING == 1)
 
@@ -167,7 +167,7 @@ vec3 getMaterial(vec2 p, int materialId)
 vec4 getColor(vec2 p)
 {
   float d = FAR;
-  d = p.y - 2.5 * sin(0.5 * p.x);
+  //d = p.y - 2.5 * sin(0.5 * p.x);
   vec3 col = vec3(0.0);
 
   for (int i = 0; i < u_loadedObjects; i++)
@@ -193,7 +193,7 @@ vec4 getColor(vec2 p)
 float map(vec2 p)
 {
   float d = FAR;
-  d = p.y - 2.5 * sin(0.5 * p.x);
+  //d = p.y - 2.5 * sin(0.5 * p.x);
 
   for (int i = 0; i < u_loadedObjects; i++)
   {
@@ -233,8 +233,8 @@ float rayMarch(vec2 ro, vec2 rd)
 
 vec3 render(vec2 uv)
 {
-  // if ( uv.x < 0.0 || uv.x > 30.0)
-  //   return vec3(0.0);
+  if ( uv.x < 0.0 || uv.x > 30.0 || uv.y <= 0)
+    return vec3(0.0);
 
   /*float d = map(uv);
   d = uv.y < 0.0 ? -1.0 : d;

@@ -105,6 +105,12 @@ public:
 		return m_componentManagers[key];
 	}
 
+	template <typename T>
+	std::shared_ptr<ComponentArray<T>> getComponentArray()
+	{
+		return getComponentManager<T>()->getComponentArray<T>();
+	}
+
 private:
 	std::unordered_map<const char*, std::shared_ptr<ComponentManager>> m_componentManagers;
 	std::vector<std::shared_ptr<System>> m_systems;
@@ -132,5 +138,6 @@ private:
 #include "Systems/PhysicsInteractionSystem.h"
 #include "Systems/PlayerMovementSystem.h"
 #include "Systems/CameraSystem.h"
+#include "Systems/DebugSystems.h"
 
 

@@ -17,7 +17,7 @@ class Scene
 {
 public:
 
-	Scene(const char* file);
+	Scene(const char* filePath);
 	~Scene();
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
@@ -52,6 +52,8 @@ private:
 	PhysicsInteractionSystem m_physicsInteractionSystem;
 	PlayerMovementSystem m_playerMovementSystem;
 	CameraSystem m_cameraSystem;
+
+	SimulatedImageGenerator m_simulatedImageGenerator;
 
 	vector<WeirdRenderer::Light> m_lights;
 

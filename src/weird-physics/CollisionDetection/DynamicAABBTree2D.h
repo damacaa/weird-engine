@@ -103,14 +103,20 @@ public:
 private:
 	int root;
 
+	std::vector<int> freeList;
+
 	int allocateNode() {
+		if (!freeList.empty()) {
+			int index = freeList.back();
+			freeList.pop_back();
+			return index;
+		}
 		nodes.push_back(TreeNode());
 		return nodes.size() - 1;
 	}
 
 	void freeNode(int index) {
-		// For simplicity, we do not actually free nodes in this example
-		nodes[index] = TreeNode();
+		freeList.push_back(index);
 	}
 
 	void insertLeaf(int leaf) {

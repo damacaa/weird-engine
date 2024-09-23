@@ -36,7 +36,7 @@ static std::string get_file_contents(const char* filename)
 static void saveToFile(const char* filename, std::string content)
 {
 	// Open the file in output mode, creating it if it doesn't exist
-	std::ofstream outFile(filename, std::ios::out | std::ios::trunc);
+	std::ofstream outFile(filename, std::ios::binary);
 
 	// Check if the file was opened successfully
 	if (outFile.is_open())

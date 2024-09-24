@@ -127,6 +127,25 @@ private:
 			return vec3();
 		}
 
+		if (x < 0)
+		{
+			x = 0;
+		}
+		else if (x >= width)
+		{
+			x = width - 1;
+		}
+
+		if (y < 0)
+		{
+			y = 0;
+		}
+		else if (y >= height)
+		{
+			y = height - 1;
+		}
+
+
 		// Calculate the index of the pixel in the image data
 		int index = (y * width + x) * channels;
 

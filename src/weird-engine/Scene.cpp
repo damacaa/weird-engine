@@ -104,7 +104,7 @@ void throwBalls(ECSManager& m_ecs, Simulation2D& m_simulation2D, PhysicsSystem2D
 }
 
 
-
+int currentMaterial = 0;
 
 
 void Scene::update(double delta, double time)
@@ -113,7 +113,7 @@ void Scene::update(double delta, double time)
 	m_playerMovementSystem.update(m_ecs, delta);
 	m_cameraSystem.update(m_ecs);
 
-	m_simulation2D.update(2.0 * delta);
+	m_simulation2D.update(10.0*delta);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 
@@ -138,7 +138,7 @@ void Scene::update(double delta, double time)
 	}
 
 
-	if (Input::GetMouseButtonDown(Input::LeftClick))
+	if (Input::GetMouseButton(Input::LeftClick))
 	{
 		// Test screen coordinates to 2D world coordinates
 		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
@@ -153,7 +153,7 @@ void Scene::update(double delta, double time)
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, t);
 
-		m_ecs.addComponent(entity, SDFRenderer(15));
+		m_ecs.addComponent(entity, SDFRenderer(currentMaterial));
 		m_sdfRenderSystem2D.add(entity);
 
 		m_ecs.addComponent(entity, RigidBody2D());
@@ -162,6 +162,12 @@ void Scene::update(double delta, double time)
 		m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 
 	}
+
+	if (Input::GetMouseButtonUp(Input::LeftClick))
+	{
+		currentMaterial = (currentMaterial + 1) % 16;
+	}
+
 }
 
 
@@ -224,5 +230,5 @@ void Scene::loadScene(std::string sceneFileContent)
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 
-	
+
 }

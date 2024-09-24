@@ -9,10 +9,6 @@
 class SimulatedImageGenerator : public System
 {
 private:
-
-	int seconds;
-
-	bool done = false;
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
 	//std::string imagePath = "SampleProject/Resources/Textures/sample.png";
@@ -20,14 +16,8 @@ private:
 
 public:
 
-	SimulatedImageGenerator() :
-#if (SCENE == 0)
-		seconds(5)
-#elif SCENE == 1
-		seconds(40)
-#endif
+	SimulatedImageGenerator()
 	{
-
 		if (checkIfFileExists(filePath.c_str()))
 		{
 			binaryString = get_file_contents(filePath.c_str());
@@ -36,16 +26,13 @@ public:
 		{
 			binaryString = "0";
 		}
-
 	}
 
 	void update(ECSManager& ecs, Simulation2D& simulation, SDFRenderSystem2D sdfRenderSystem)
 	{
 		// Get colors
-		if (simulation.getSimulationTime() > seconds && !done)
+		if (Input::GetKeyDown(Input::P))
 		{
-			done = true;
-
 			auto components = ecs.getComponentArray<RigidBody2D>();
 
 			// Result string

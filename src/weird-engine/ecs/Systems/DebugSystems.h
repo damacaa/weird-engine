@@ -5,8 +5,8 @@
 #include "../../../weird-physics/Simulation2D.h"
 
 
-#define SCENE 1
-class SimulatedImageGenerator : public System
+
+class ProceduralSpawnerSystem : public System
 {
 private:
 	std::string binaryString;
@@ -14,9 +14,11 @@ private:
 	//std::string imagePath = "SampleProject/Resources/Textures/sample.png";
 	std::string imagePath = "SampleProject/Resources/Textures/image.jpg";
 
+	uint32_t m_scene;
+
 public:
 
-	SimulatedImageGenerator()
+	ProceduralSpawnerSystem()
 	{
 		if (checkIfFileExists(filePath.c_str()))
 		{
@@ -61,20 +63,42 @@ public:
 
 
 
-	void SpawnEntities(ECSManager& ecs, PhysicsSystem2D& physicsSystem, SDFRenderSystem2D sdfRenderSystem, size_t circles)
+	void SpawnEntities(ECSManager& ecs, PhysicsSystem2D& physicsSystem, SDFRenderSystem2D sdfRenderSystem, size_t circles, uint32_t scene)
 	{
 		uint32_t currentChar = 0;
 
 		// Spawn 2d balls
 		for (size_t i = 0; i < circles; i++)
 		{
-#if (SCENE == 0)
-			float x = i % 30;
-			float y = (int)(i / 30) + 1;
-#elif SCENE == 1
-			float x = 15 + sin(i);
-			float y = 10 + (2 * i);
-#endif
+			float x;
+			float y;
+
+			switch (scene)
+			{
+			case 0:
+			{
+				x = i % 30;
+				y = (int)(i / 30) + 1;
+				break;
+			}
+			case 1:
+			{
+				x = 15 + sin(i);
+				y = 10 + (3 * i);
+				break;
+			}
+			case 2:
+			{
+				y = (int)(i / 20);
+				x =  5 + (i % 20) + sin(y);
+
+
+				break;
+			}
+			default:
+				break;
+			}
+
 			float z = 0;
 
 			Transform t;
@@ -92,11 +116,42 @@ public:
 
 			int material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			ecs.addComponent(entity, SDFRenderer(material));
+			ecs.addComponent(entity, SDFRenderer(6));
 			sdfRenderSystem.add(entity);
 
 			ecs.addComponent(entity, RigidBody2D());
 			//physicsSystem.add(entity);
+		}
+	}
+
+	double m_lastSpawnTime = 0.f;
+	void throwBalls(ECSManager& m_ecs, Simulation2D& m_simulation2D, PhysicsSystem2D& m_rbPhysicsSystem2D, SDFRenderSystem2D& m_sdfRenderSystem2D)
+	{
+		if (Input::GetKey(Input::E) && m_simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
+		{
+			int amount = 1;
+			for (size_t i = 0; i < amount; i++)
+			{
+				float x = 0.f;
+				float y = 60 + (1.2 * i);
+				float z = 0;
+
+				Transform t;
+				t.position = vec3(x + 0.5f, y + 0.5f, z);
+				Entity entity = m_ecs.createEntity();
+				m_ecs.addComponent(entity, t);
+
+				m_ecs.addComponent(entity, SDFRenderer(2 + m_sdfRenderSystem2D.getEntityCount() % 3));
+
+				m_sdfRenderSystem2D.add(entity);
+
+				m_ecs.addComponent(entity, RigidBody2D());
+				m_rbPhysicsSystem2D.add(entity);
+				m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
+				m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20, 0));
+			}
+
+			m_lastSpawnTime = m_simulation2D.getSimulationTime();
 		}
 	}
 

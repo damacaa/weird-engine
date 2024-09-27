@@ -73,63 +73,31 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 
-void throwBalls(ECSManager& m_ecs, Simulation2D& m_simulation2D, PhysicsSystem2D& m_rbPhysicsSystem2D, SDFRenderSystem2D& m_sdfRenderSystem2D)
-{
-	if (Input::GetKey(Input::E) && g_runSimulation && m_simulation2D.getSimulationTime() > g_lastSpawnTime + 0.1)
-	{
-		int amount = 1;
-		for (size_t i = 0; i < amount; i++)
-		{
-			float x = 0.f;
-			float y = 60 + (1.2 * i);
-			float z = 0;
-
-			Transform t;
-			t.position = vec3(x + 0.5f, y + 0.5f, z);
-			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
-
-			m_ecs.addComponent(entity, SDFRenderer(2 + m_sdfRenderSystem2D.getEntityCount() % 3));
-
-			m_sdfRenderSystem2D.add(entity);
-
-			m_ecs.addComponent(entity, RigidBody2D());
-			m_rbPhysicsSystem2D.add(entity);
-			m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
-			m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20, 0));
-		}
-
-		g_lastSpawnTime = m_simulation2D.getSimulationTime();
-	}
-}
 
 
-int currentMaterial = 0;
 
 
+int g_currentMaterial = 0;
 void Scene::update(double delta, double time)
 {
 	// Update systems
 	m_playerMovementSystem.update(m_ecs, delta);
+	//m_cameraSystem.follow(m_ecs, m_mainCamera, 680);
+
 	m_cameraSystem.update(m_ecs);
 
-	m_simulation2D.update(10.0*delta);
+	m_simulation2D.update(delta);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 
-	m_simulatedImageGenerator.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
+	m_weirdSystem.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
 
 	if (Input::GetKeyDown(Input::Q))
 	{
 		SceneManager::getInstance().loadNextScene();
 	}
 
-
-
-	throwBalls(m_ecs, m_simulation2D, m_rbPhysicsSystem2D, m_sdfRenderSystem2D);
-
-
-
+	m_weirdSystem.throwBalls(m_ecs, m_simulation2D, m_rbPhysicsSystem2D, m_sdfRenderSystem2D);
 
 	if (Input::GetKey(Input::T))
 	{
@@ -143,17 +111,19 @@ void Scene::update(double delta, double time)
 		// Test screen coordinates to 2D world coordinates
 		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
-		float x = Input::GetMouseX() + sin(time);
-		float y = Input::GetMouseY() + cos(time);
+		float x = Input::GetMouseX();
+		float y = Input::GetMouseY();
 
 		vec2 pp = Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
+		std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
+
 		Transform t;
-		t.position = vec3(pp.x, pp.y, 0.0);
+		t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, t);
 
-		m_ecs.addComponent(entity, SDFRenderer(currentMaterial));
+		m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial));
 		m_sdfRenderSystem2D.add(entity);
 
 		m_ecs.addComponent(entity, RigidBody2D());
@@ -165,7 +135,7 @@ void Scene::update(double delta, double time)
 
 	if (Input::GetMouseButtonUp(Input::LeftClick))
 	{
-		currentMaterial = (currentMaterial + 1) % 16;
+		g_currentMaterial = (g_currentMaterial + 1) % 16;
 	}
 
 }
@@ -185,7 +155,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 	size_t circles = scene["Circles"].get<int>();
-	m_simulatedImageGenerator.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles);
+	m_weirdSystem.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles, 2);
 
 	//// Spawn 2d balls
 	//for (size_t i = 0; i < 16*5; i++)
@@ -216,7 +186,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	m_mainCamera = m_ecs.createEntity();
 
 	Transform t;
-	t.position = vec3(15.0f, 40.f, 60.0f);
+	t.position = vec3(15.0f, 50.f, 60.0f);
 	t.rotation = vec3(0, 0, -1.0f);
 	m_ecs.addComponent(m_mainCamera, t);
 

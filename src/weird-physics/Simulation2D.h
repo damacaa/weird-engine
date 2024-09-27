@@ -157,9 +157,9 @@ private:
 	float* m_mass;
 	float* m_invMass;
 
-	const float m_diameter = 1.0f;
-	const float m_diameterSquared = m_diameter * m_diameter;
-	const float m_radious = 0.5f * m_diameter;
+	const float m_diameter;
+	const float m_diameterSquared; 
+	const float m_radious;
 
 	const float m_push;
 	const float m_damping;

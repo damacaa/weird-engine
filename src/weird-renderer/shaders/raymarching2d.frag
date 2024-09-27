@@ -4,7 +4,7 @@
 #define SHADOWS_ENABLED 0
 #define BLEND_SHAPES 0
 
-uniform float k = 0.5;
+uniform float k = 1.0;
 
 #if (DITHERING == 1)
 
@@ -71,7 +71,6 @@ const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
-
 
 // Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -167,7 +166,7 @@ vec3 getMaterial(vec2 p, int materialId)
 vec4 getColor(vec2 p)
 {
   float d = FAR;
-  //d = p.y - 2.5 * sin(0.5 * p.x);
+  // d = p.y - 2.5 * sin(0.5 * p.x);
   vec3 col = vec3(0.0);
 
   for (int i = 0; i < u_loadedObjects; i++)
@@ -193,7 +192,7 @@ vec4 getColor(vec2 p)
 float map(vec2 p)
 {
   float d = FAR;
-  //d = p.y - 2.5 * sin(0.5 * p.x);
+  // d = p.y - 2.5 * sin(0.5 * p.x);
 
   for (int i = 0; i < u_loadedObjects; i++)
   {
@@ -233,7 +232,7 @@ float rayMarch(vec2 ro, vec2 rd)
 
 vec3 render(vec2 uv)
 {
-  if ( uv.x < 0.0 || uv.x > 30.0 || uv.y <= 0)
+  if (uv.x < 0.0 || uv.x > 30.0 || uv.y <= 0)
     return vec3(0.0);
 
   /*float d = map(uv);
@@ -254,7 +253,7 @@ vec3 render(vec2 uv)
   // col = uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
 
   vec3 background = vec3(0.2 + 0.4 * mod(floor(uv.x) + floor(uv.y), 2.0));
-  
+
 #if SHADOWS_ENABLED
   if (col.w > 0)
   {
@@ -278,7 +277,7 @@ void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
   vec3 col = render((-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy);
-  //vec3 col = vec3(uv,0);
+  // vec3 col = vec3(uv,0);
 
   col = pow(col, vec3(0.4545));
 

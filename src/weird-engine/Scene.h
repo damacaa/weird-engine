@@ -53,7 +53,7 @@ private:
 	PlayerMovementSystem m_playerMovementSystem;
 	CameraSystem m_cameraSystem;
 
-	SimulatedImageGenerator m_simulatedImageGenerator;
+	ProceduralSpawnerSystem m_weirdSystem;
 
 	vector<WeirdRenderer::Light> m_lights;
 

@@ -19,10 +19,30 @@ float rand(vec2 co){
 void main()
 {
     vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-    vec3 col = texture(u_colorTexture, screenUV).xyz;
+    float distance = texture(u_colorTexture, screenUV).x;
 
 
-    vec2 TexCoords = fract(gl_FragCoord.xy * u_renderScale);
+
+     vec2 texelOffset = vec2(0.005, 0.0025);
+
+    // Sample the texture at the center and neighboring pixels
+    vec4 colorCenter = texture(u_colorTexture, screenUV);
+    vec4 colorRight = texture(u_colorTexture, screenUV + vec2(texelOffset.x, 0.0));
+    vec4 colorLeft = texture(u_colorTexture, screenUV - vec2(texelOffset.x, 0.0));
+    vec4 colorUp = texture(u_colorTexture, screenUV + vec2(0.0, texelOffset.y));
+    vec4 colorDown = texture(u_colorTexture, screenUV - vec2(0.0, texelOffset.y));
+
+    // Simple average of the neighboring pixels for antialiasing
+    vec4 averagedColor = (colorCenter + colorRight + colorLeft + colorUp + colorDown) / 5.0;
+
+    distance = averagedColor.r;
+
+    distance = sin(100.0 * distance);
+
+    //vec3 col = vec3(1.0 * distance);
+    vec3 col = distance <= 0.5 ? vec3(0.0) :  vec3(1.0);
+
+    //vec2 TexCoords = fract(gl_FragCoord.xy * u_renderScale);
 
     // Dot effect
     //vec2 dist = TexCoords - vec2(0.5f, 0.5f);

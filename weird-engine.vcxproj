@@ -172,6 +172,7 @@
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Libraries\include\stb\stb_image_write.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\Camera.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement2D.h" />

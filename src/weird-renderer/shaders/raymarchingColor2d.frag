@@ -2,9 +2,9 @@
 
 #define DITHERING 0
 #define SHADOWS_ENABLED 0
-#define BLEND_SHAPES 1
+#define BLEND_SHAPES 0
 
-uniform float k = 1.5;
+uniform float k = 1.0;
 
 #if (DITHERING == 1)
 
@@ -50,7 +50,7 @@ float GetBayer8(int x, int y)
 #endif
 
 // Outputs u_staticColors in RGBA
-layout(location = 0) out float FragColor;
+layout(location = 0) out vec4 FragColor;
 
 // Uniforms
 uniform int u_loadedObjects;
@@ -191,9 +191,6 @@ vec4 getColor(vec2 p)
 
 float map(vec2 p)
 {
-  // if (p.x < 0.0 || p.x > 30.0 || p.y <= 0)
-  //   return -1.0;
-
   float d = FAR;
   // d = p.y - 2.5 * sin(0.5 * p.x);
 
@@ -236,14 +233,14 @@ float rayMarch(vec2 ro, vec2 rd)
 vec3 render(vec2 uv)
 {
   if (uv.x < 0.0 || uv.x > 30.0 || uv.y <= 0)
-    return vec3(-100.0);
+    return vec3(0.0);
 
   /*float d = map(uv);
   d = uv.y < 0.0 ? -1.0 : d;
   vec3 col = vec3(d < 0.0 ? 1.0 : 0.0);*/
 
   vec4 col = getColor(uv);
- 
+
   /*
   vec2 p = uv;
   vec2 e = vec2(EPSILON, 0.0);
@@ -276,29 +273,23 @@ vec3 render(vec2 uv)
   return col.xyz;
 }
 
-float scale = 10.f;
-
 void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
-  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-  vec2 pos = (-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy;
+  vec3 col = render((-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy);
+  // vec3 col = vec3(uv,0);
 
-  float aux = shape_circle(0.01 * pos - vec2(0));
-  if(u_time > 2.0)
-    aux = 0.0;
+  col = pow(col, vec3(0.4545));
 
-  //float distance = 0.5 * round(texture(u_colorTexture, gl_FragCoord.xy).r) + clamp(0.1 * map(pos),0.0,1.0);
-  float distance = map(pos);
-  float distanceScaled = (distance / scale) + 0.5f;
-  distanceScaled =  clamp(distanceScaled, 0.0, 1.0);
+#if (DITHERING == 1)
+  int x = int(gl_FragCoord.x);
+  int y = int(gl_FragCoord.y);
+  col = col + _Spread * GetBayer4(x, y);
 
-  float prevD = texture(u_colorTexture, screenUV.xy).r;
-  float d = min( prevD + 0.003, distanceScaled);
-  // float d = mix(1.1 * texture(u_colorTexture, gl_FragCoord.xy).r, distanceScaled, 0.5);
+  col.r = floor((_ColorCount - 1.0f) * col.r + 0.5) / (_ColorCount - 1.0f);
+  col.g = floor((_ColorCount - 1.0f) * col.g + 0.5) / (_ColorCount - 1.0f);
+  col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
+#endif
 
-
-  
-  //FragColor = aux + prevD;//+ texture(u_colorTexture, gl_FragCoord.xy).r + (0.01 * gl_FragCoord.x / u_resolution.x);
-  FragColor = d;
+  FragColor = vec4(col.xyz, 1.0);
 }

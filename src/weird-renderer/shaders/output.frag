@@ -16,11 +16,36 @@ float rand(vec2 co){
 }
 
 
+const int MAX_STEPS = 100;
+const float EPSILON = 0.01;
+const float NEAR = 0.1f;
+const float FAR = 100.0f;
+float rayMarch(vec2 ro, vec2 rd)
+{
+  float d;
+
+  float traveled = NEAR;
+
+  for (int i = 0; i < MAX_STEPS; i++)
+  {
+    vec2 p = ro + (traveled * rd);
+
+    d = texture(u_colorTexture, p).w;
+
+    if (d < EPSILON || traveled > FAR)
+      break;
+
+    traveled += d;
+  }
+
+  return traveled;
+}
+
 void main()
 {
     vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-    float distance = texture(u_colorTexture, screenUV).x;
-
+    vec4 color = texture(u_colorTexture, screenUV);
+    float distance = color.w;
 
 
      vec2 texelOffset = vec2(0.005, 0.0025);
@@ -35,12 +60,12 @@ void main()
     // Simple average of the neighboring pixels for antialiasing
     vec4 averagedColor = (colorCenter + colorRight + colorLeft + colorUp + colorDown) / 5.0;
 
-    distance = averagedColor.r;
+    //distance = averagedColor.r;
 
-    distance = sin(100.0 * distance);
+    //distance = sin(100.0 * distance);
 
-    //vec3 col = vec3(1.0 * distance);
-    vec3 col = distance <= 0.5 ? vec3(0.0) :  vec3(1.0);
+    //vec3 col = vec3(distance);
+    vec3 col = distance <= 0.5 ? color.xyz :  vec3(0.7);
 
     //vec2 TexCoords = fract(gl_FragCoord.xy * u_renderScale);
 
@@ -54,5 +79,6 @@ void main()
     //mask = mask > 0.25 ? 1.0 : 0.0;
     //col *= mask;
 
+    //FragColor = color.wwww;
     FragColor = vec4(col, 1.0);
 }

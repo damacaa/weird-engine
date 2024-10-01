@@ -14,10 +14,10 @@ namespace WeirdRenderer
 	private:
 		GLFWwindow* m_window;
 		unsigned int m_windowWidth, m_windowHeight;
-		double m_renderScale = 0.25f;
+		double m_renderScale = .25f;
 		unsigned int m_renderWidth, m_renderHeight;
 
-		bool m_vSyncEnabled = false;
+		bool m_vSyncEnabled = true;
 		bool m_renderMeshesOnly = false;
 
 		Shader m_geometryShaderProgram;

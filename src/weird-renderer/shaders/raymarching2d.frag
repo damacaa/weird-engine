@@ -2,7 +2,7 @@
 
 #define DITHERING 0
 #define SHADOWS_ENABLED 0
-#define BLEND_SHAPES 1
+#define BLEND_SHAPES 0
 
 uniform float k = 1.5;
 
@@ -50,7 +50,7 @@ float GetBayer8(int x, int y)
 #endif
 
 // Outputs u_staticColors in RGBA
-layout(location = 0) out float FragColor;
+layout(location = 0) out vec4 FragColor;
 
 // Uniforms
 uniform int u_loadedObjects;
@@ -165,6 +165,9 @@ vec3 getMaterial(vec2 p, int materialId)
 
 vec4 getColor(vec2 p)
 {
+ if (p.x < 0.0 || p.x > 30.0 || p.y <= 0)
+     return vec4(1.0,1.0,1.0,0.0);
+
   float d = FAR;
   // d = p.y - 2.5 * sin(0.5 * p.x);
   vec3 col = vec3(0.0);
@@ -189,116 +192,31 @@ vec4 getColor(vec2 p)
   return vec4(col, d);
 }
 
-float map(vec2 p)
-{
-  // if (p.x < 0.0 || p.x > 30.0 || p.y <= 0)
-  //   return -1.0;
 
-  float d = FAR;
-  // d = p.y - 2.5 * sin(0.5 * p.x);
-
-  for (int i = 0; i < u_loadedObjects; i++)
-  {
-    vec4 positionAndMaterial = texelFetch(myBufferTexture, 2 * i);
-    float objectDist = shape_circle(p - positionAndMaterial.xy);
-
-#if BLEND_SHAPES
-    d = fOpUnionSoft(objectDist, d, k);
-#else
-    d = min(d, objectDist);
-#endif
-  }
-
-  return d;
-}
-
-float rayMarch(vec2 ro, vec2 rd)
-{
-  float d;
-
-  float traveled = NEAR;
-
-  for (int i = 0; i < MAX_STEPS; i++)
-  {
-    vec2 p = ro + (traveled * rd);
-
-    d = map(p);
-
-    if (d < EPSILON || traveled > FAR)
-      break;
-
-    traveled += d;
-  }
-
-  return traveled;
-}
-
-vec3 render(vec2 uv)
-{
-  if (uv.x < 0.0 || uv.x > 30.0 || uv.y <= 0)
-    return vec3(-100.0);
-
-  /*float d = map(uv);
-  d = uv.y < 0.0 ? -1.0 : d;
-  vec3 col = vec3(d < 0.0 ? 1.0 : 0.0);*/
-
-  vec4 col = getColor(uv);
- 
-  /*
-  vec2 p = uv;
-  vec2 e = vec2(EPSILON, 0.0);
-  //vec2 n = vec2(map(p) - map(p - e.xy), map(p - e.yx));
-  vec2 n = vec2(map(p)) - vec2(map(p - e.xy), map(p - e.yx));
-  col = vec4(vec3(normalize(n), 0.0), -10.0);
-  */
-
-  // Paint walls
-  // col = uv.y < 0.0 || uv.x < 0.0 || uv.x > 30.0 ? vec4(1.0, 1.0, 1.0, -1.0) : col;
-
-  vec3 background = vec3(0.2 + 0.4 * mod(floor(uv.x) + floor(uv.y), 2.0));
-
-#if SHADOWS_ENABLED
-  if (col.w > 0)
-  {
-
-    float d = rayMarch(uv, directionalLightDirection.xy);
-    return (d < FAR ? 0.3 : 1.0) * background;
-
-    // float d = rayMarch(uv, normalize(vec2(15) - uv));
-    // return (d < length(vec2(15) - uv) ? 0.3 : 1.0) * background;
-
-    // return vec3(0.001 * d);
-  }
-#else
-  col = col.w < 0 ? col : vec4(background, 1.0);
-#endif
-
-  return col.xyz;
-}
 
 float scale = 10.f;
 
 void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
-  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
   vec2 pos = (-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy;
 
-  float aux = shape_circle(0.01 * pos - vec2(0));
-  if(u_time > 2.0)
-    aux = 0.0;
+  float aux = 1.0;
+  if (u_time > 2.0)
+    aux = 0.001;
 
-  //float distance = 0.5 * round(texture(u_colorTexture, gl_FragCoord.xy).r) + clamp(0.1 * map(pos),0.0,1.0);
-  float distance = map(pos);
+  vec4 color = getColor(pos);
+
+  // float distance = 0.5 * round(texture(u_colorTexture, gl_FragCoord.xy).r) + clamp(0.1 * map(pos),0.0,1.0);
+  float distance = color.w;
   float distanceScaled = (distance / scale) + 0.5f;
-  distanceScaled =  clamp(distanceScaled, 0.0, 1.0);
-
-  float prevD = texture(u_colorTexture, screenUV.xy).r;
-  float d = min( prevD + 0.003, distanceScaled);
-  // float d = mix(1.1 * texture(u_colorTexture, gl_FragCoord.xy).r, distanceScaled, 0.5);
+  distanceScaled = clamp(distanceScaled, 0.0, 1.0);
 
 
-  
-  //FragColor = aux + prevD;//+ texture(u_colorTexture, gl_FragCoord.xy).r + (0.01 * gl_FragCoord.x / u_resolution.x);
-  FragColor = d;
+  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+  float previousDistance = max(texture(u_colorTexture, screenUV.xy).w + 0.005, aux);
+  float finalDistance = min(previousDistance, distanceScaled);
+  //float finalDistance = mix(previousDistance, distanceScaled, 0.99);
+
+  FragColor = vec4(color.xyz, finalDistance);
 }

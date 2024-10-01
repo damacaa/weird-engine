@@ -161,7 +161,7 @@ namespace WeirdRenderer
 	void Renderer::render(Scene& scene, const double time)
 	{
 		if (m_vSyncEnabled)
-			glfwSwapInterval(1);
+			glfwSwapInterval(3);
 		else
 			glfwSwapInterval(0);
 
@@ -184,19 +184,7 @@ namespace WeirdRenderer
 		// Draw objects in scene
 		//scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
-		if (Input::GetKeyDown(Input::P)) {
-			glBindTexture(GL_TEXTURE_2D, m_sdfRenderPlane.m_colorTexture);
-			int width, height;
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-			unsigned char* data = new unsigned char[width * height * 4];  // Assuming 4 channels (RGBA)
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-			stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
-
-			delete[] data;
-
-		}
 
 		if (!m_renderMeshesOnly) 
 		{
@@ -262,8 +250,20 @@ namespace WeirdRenderer
 
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
 
+		// Screenshot
+		if (Input::GetKeyDown(Input::P)) {
+			glBindTexture(GL_TEXTURE_2D, m_sdfRenderPlane.m_colorTexture);
+			int width, height;
+			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-		
+			unsigned char* data = new unsigned char[width * height * 4];  // Assuming 4 channels (RGBA)
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
+
+			delete[] data;
+
+		}
 
 
 		// Swap the back buffer with the front buffer

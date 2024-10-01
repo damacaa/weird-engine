@@ -18,10 +18,11 @@ namespace WeirdRenderer
 
 		unsigned int GetFrameBuffer() const;
 
-	private:
-		GLuint VAO, VBO, EBO, UBO, FBO;
 		unsigned int m_colorTexture, m_colorTextureLocation;
 		unsigned int m_depthTexture, m_depthTextureLocation;
+
+	private:
+		GLuint VAO, VBO, EBO, UBO, FBO;
 
 		GLuint m_shapeBuffer;
 		GLuint m_shapeTexture;

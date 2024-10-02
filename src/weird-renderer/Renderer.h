@@ -23,9 +23,11 @@ namespace WeirdRenderer
 		Shader m_geometryShaderProgram;
 		Shader m_instancedGeometryShaderProgram;
 		Shader m_sdfShaderProgram;
+		Shader m_postProcessShaderProgram;
 		Shader m_outputShaderProgram;
 
 		RenderPlane m_sdfRenderPlane;
+		RenderPlane m_postProcessRenderPlane;
 		RenderPlane m_outputRenderPlane;
 
 	public:

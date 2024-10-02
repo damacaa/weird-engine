@@ -9,7 +9,7 @@ namespace WeirdRenderer
 	{
 	public:
 		RenderPlane() {};
-		RenderPlane(int width, int height, Shader& shader, bool shapeRenderer);
+		RenderPlane(int width, int height, GLuint filterMode, Shader& shader, bool shapeRenderer);
 
 		void Draw(Shader& shader) const;
 		void Draw(Shader& shader, Shape* shapes, size_t size) const;

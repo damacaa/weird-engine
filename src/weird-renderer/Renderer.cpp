@@ -71,14 +71,18 @@ namespace WeirdRenderer
 		m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching2d.frag");
 		m_sdfShaderProgram.activate();
 
+		m_postProcessShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/postProcess2d.frag");
+		m_postProcessShaderProgram.activate();
+
 		m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/output.frag");
 		m_outputShaderProgram.activate();
 
 		// A plane that takes 100% of the screen and displays the result of a shader
-		m_sdfRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, m_sdfShaderProgram, true);
-		m_outputRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, m_outputShaderProgram, false);
+		m_sdfRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, GL_LINEAR, m_sdfShaderProgram, true);
+		m_outputRenderPlane = RenderPlane(m_windowWidth, m_windowWidth, GL_NEAREST, m_outputShaderProgram, false);
+		m_postProcessRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, GL_NEAREST, m_postProcessShaderProgram, false);
 
-
+		texture1 = m_postProcessRenderPlane.m_colorTexture;
 
 		//glGenFramebuffers(1, &framebuffer1);
 		//glGenFramebuffers(1, &framebuffer2);
@@ -116,8 +120,8 @@ namespace WeirdRenderer
 		};
 
 		// Generate and bind texture
-		glGenTextures(1, &texture1);
-		glBindTexture(GL_TEXTURE_2D, texture1);
+		glGenTextures(1, &texture2);
+		glBindTexture(GL_TEXTURE_2D, texture2);
 
 		// Upload texture data
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
@@ -140,7 +144,12 @@ namespace WeirdRenderer
 		m_geometryShaderProgram.Delete();
 		m_instancedGeometryShaderProgram.Delete();
 		m_sdfShaderProgram.Delete();
+		m_postProcessShaderProgram.Delete();
 		m_outputShaderProgram.Delete();
+
+		glDeleteTextures(1, &texture1);
+		glDeleteTextures(1, &texture2);
+
 
 		//delete m_sdfRenderPlane;
 
@@ -152,12 +161,12 @@ namespace WeirdRenderer
 
 	bool useFirstFramebuffer = false;
 
-	uint16_t frames = 0;
+
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
-	int a = 0;
+	int g_renderedFramesCounter = 0;
 
 
 	void Renderer::render(Scene& scene, const double time)
@@ -217,12 +226,9 @@ namespace WeirdRenderer
 			m_sdfShaderProgram.setUniform("u_time", time);
 			m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			m_sdfShaderProgram.setUniform("u_blendIterations", a % 3 == 0 ? 1 : 0);
-			a++;
+			m_sdfShaderProgram.setUniform("u_blendIterations", g_renderedFramesCounter % 3 == 0 ? 1 : 0);
+			g_renderedFramesCounter++;
 
-			auto aux = m_sdfRenderPlane.m_colorTexture;
-			//m_sdfRenderPlane.m_colorTexture = previousTexture;
-			//m_sdfRenderPlane.m_colorTexture = texture1;
 
 
 
@@ -230,8 +236,17 @@ namespace WeirdRenderer
 			scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
 
 
-			//m_sdfRenderPlane.m_colorTexture = aux;
+			//texture1 = m_sdfRenderPlane.m_colorTexture;
+			//// Post process
+			glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
+
+			m_postProcessShaderProgram.activate();
+			m_postProcessShaderProgram.setUniform("u_time", time);
+			m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 			
+			m_postProcessRenderPlane.m_colorTexture = m_sdfRenderPlane.m_colorTexture;
+
+			m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
 		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -243,7 +258,7 @@ namespace WeirdRenderer
 		m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 
 		//m_outputRenderPlane.m_colorTexture = useFirstFramebuffer ? texture2 : texture1;
-		m_outputRenderPlane.m_colorTexture = m_sdfRenderPlane.m_colorTexture;
+		m_outputRenderPlane.m_colorTexture = texture1;
 
 
 
@@ -257,7 +272,7 @@ namespace WeirdRenderer
 
 		// Screenshot
 		if (Input::GetKeyDown(Input::P)) {
-			glBindTexture(GL_TEXTURE_2D, m_sdfRenderPlane.m_colorTexture);
+			glBindTexture(GL_TEXTURE_2D, m_postProcessRenderPlane.m_colorTexture);
 			int width, height;
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);

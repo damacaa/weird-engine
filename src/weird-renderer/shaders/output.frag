@@ -80,5 +80,5 @@ void main()
     //col *= mask;
 
     //FragColor = color.wwww;
-    FragColor = vec4(col, 1.0);
+    FragColor = color;
 }

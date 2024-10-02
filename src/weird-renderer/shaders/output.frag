@@ -65,7 +65,7 @@ void main()
     //distance = sin(100.0 * distance);
 
     //vec3 col = vec3(distance);
-    vec3 col = distance <= 0.5 ? color.xyz :  vec3(0.7);
+    vec3 col = distance <= 0.5 ? color.xyz :  vec3(0.9);
 
     //vec2 TexCoords = fract(gl_FragCoord.xy * u_renderScale);
 

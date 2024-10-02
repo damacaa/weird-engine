@@ -109,9 +109,10 @@ namespace WeirdRenderer
 		//if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		//	std::cout << "Framebuffer not complete!" << std::endl;
 
-		unsigned char textureData[2][2][3] = {
-		{{255, 255, 255}, {0, 0, 0}},
-		{{0, 0, 0}, {255, 255, 255}}
+		unsigned char textureData[2][2][3] = 
+		{
+			{{255, 255, 255}, {0, 0, 0}},
+			{{0, 0, 0}, {255, 255, 255}}
 		};
 
 		// Generate and bind texture
@@ -156,12 +157,13 @@ namespace WeirdRenderer
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
+	int a = 0;
 
 
 	void Renderer::render(Scene& scene, const double time)
 	{
 		if (m_vSyncEnabled)
-			glfwSwapInterval(3);
+			glfwSwapInterval(1);
 		else
 			glfwSwapInterval(0);
 
@@ -214,6 +216,9 @@ namespace WeirdRenderer
 			m_sdfShaderProgram.setUniform("u_fov", shaderFov);
 			m_sdfShaderProgram.setUniform("u_time", time);
 			m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+			m_sdfShaderProgram.setUniform("u_blendIterations", a % 3 == 0 ? 1 : 0);
+			a++;
 
 			auto aux = m_sdfRenderPlane.m_colorTexture;
 			//m_sdfRenderPlane.m_colorTexture = previousTexture;

@@ -196,14 +196,14 @@ vec4 getColor(vec2 p)
 
 float scale = 10.f;
 
+uniform int u_blendIterations;
+
 void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
   vec2 pos = (-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy;
 
-  float aux = 1.0;
-  if (u_time > 2.0)
-    aux = 0.001;
+
 
   vec4 color = getColor(pos);
 
@@ -214,7 +214,7 @@ void main()
 
 
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-  float previousDistance = max(texture(u_colorTexture, screenUV.xy).w + 0.005, aux);
+  float previousDistance = texture(u_colorTexture, screenUV.xy).w + (u_blendIterations * 0.0025);
   float finalDistance = min(previousDistance, distanceScaled);
   //float finalDistance = mix(previousDistance, distanceScaled, 0.99);
 

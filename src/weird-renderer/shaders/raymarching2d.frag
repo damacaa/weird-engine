@@ -1,53 +1,11 @@
 #version 330 core
 
-#define DITHERING 0
-#define SHADOWS_ENABLED 0
+
 #define BLEND_SHAPES 0
 
 uniform float k = 1.5;
 
-#if (DITHERING == 1)
 
-uniform float _Spread = .15f;
-uniform int _ColorCount = 5;
-
-// Dithering and posterizing
-uniform int bayer2[2 * 2] = int[2 * 2](
-    0, 2,
-    3, 1);
-
-uniform int bayer4[4 * 4] = int[4 * 4](
-    0, 8, 2, 10,
-    12, 4, 14, 6,
-    3, 11, 1, 9,
-    15, 7, 13, 5);
-
-uniform int bayer8[8 * 8] = int[8 * 8](
-    0, 32, 8, 40, 2, 34, 10, 42,
-    48, 16, 56, 24, 50, 18, 58, 26,
-    12, 44, 4, 36, 14, 46, 6, 38,
-    60, 28, 52, 20, 62, 30, 54, 22,
-    3, 35, 11, 43, 1, 33, 9, 41,
-    51, 19, 59, 27, 49, 17, 57, 25,
-    15, 47, 7, 39, 13, 45, 5, 37,
-    63, 31, 55, 23, 61, 29, 53, 21);
-
-float GetBayer2(int x, int y)
-{
-  return float(bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
-}
-
-float GetBayer4(int x, int y)
-{
-  return float(bayer4[(x % 4) + (y % 4) * 4]) * (1.0f / 16.0f) - 0.5f;
-}
-
-float GetBayer8(int x, int y)
-{
-  return float(bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
-}
-
-#endif
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -65,6 +23,8 @@ uniform vec3 directionalLightDirection;
 
 uniform sampler2D u_colorTexture;
 uniform sampler2D u_depthTexture;
+
+uniform int u_blendIterations;
 
 // Constants
 const int MAX_STEPS = 100;
@@ -91,24 +51,6 @@ float smin(float a, float b, float k)
   return mix(b, a, h) - k * h * (1.0 - h);
 }
 
-vec2 squareFrame(vec2 screenSize, vec2 coord)
-{
-  vec2 position = 2.0 * (coord.xy / screenSize.xy) - 1.0;
-  position.x *= screenSize.x / screenSize.y;
-  return position;
-}
-
-const float PI = 3.14159265359;
-
-vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d)
-{
-  return a + b * cos(6.28318 * (c * t + d));
-}
-
-// r^2 = x^2 + y^2
-// r = sqrt(x^2 + y^2)
-// r = length([x y])
-// 0 = length([x y]) - r
 float shape_circle(vec2 p)
 {
   return length(p) - 0.5;
@@ -165,7 +107,7 @@ vec3 getMaterial(vec2 p, int materialId)
 
 vec4 getColor(vec2 p)
 {
- if (p.x < 0.0 || p.x > 30.0 || p.y <= 0)
+ if ( p.y <= 0) //p.x < 0.0 || p.x > 30.0 ||
      return vec4(1.0,1.0,1.0,0.0);
 
   float d = FAR;
@@ -196,7 +138,7 @@ vec4 getColor(vec2 p)
 
 float scale = 10.f;
 
-uniform int u_blendIterations;
+
 
 void main()
 {

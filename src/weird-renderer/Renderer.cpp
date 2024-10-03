@@ -271,14 +271,26 @@ namespace WeirdRenderer
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
 
 		// Screenshot
-		if (Input::GetKeyDown(Input::P)) {
+		if (Input::GetKeyDown(Input::O)) {
 			glBindTexture(GL_TEXTURE_2D, m_postProcessRenderPlane.m_colorTexture);
 			int width, height;
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
 			unsigned char* data = new unsigned char[width * height * 4];  // Assuming 4 channels (RGBA)
+			
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+			for (size_t i = 0; i < width * height; i++)
+			{
+				size_t idx = 4 * i;
+				data[idx] = data[idx + 3];
+				data[idx+1] = data[idx + 3];
+				data[idx+2] = data[idx + 3];
+
+				data[idx + 3] = 255;
+			}
+			
 			stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
 
 			delete[] data;

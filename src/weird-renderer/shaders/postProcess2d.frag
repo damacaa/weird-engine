@@ -5,8 +5,8 @@
 
 
 // Constants
-const int MAX_STEPS = 100;
-const float EPSILON = 0.01;
+const int MAX_STEPS = 1000;
+const float EPSILON = 0.002;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
 
@@ -26,7 +26,7 @@ uniform vec3 u_staticColors[16];
 uniform sampler2D u_colorTexture;
 uniform sampler2D u_depthTexture;
 
-uniform vec2 u_directionalLightDirection = vec2(1.0, 0.0);
+uniform vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
 
 #if (DITHERING == 1)
 
@@ -71,22 +71,16 @@ float GetBayer8(int x, int y)
 
 #endif
 
-
-
-
-
-
-
 float map(vec2 p)
 {
-  return 2.0 * (texture(u_colorTexture, p).w - 0.5);
+  return texture(u_colorTexture, p).w;
 }
 
 float rayMarch(vec2 ro, vec2 rd)
 {
   float d;
 
-  float traveled = NEAR;
+  float traveled = 0.0;
 
   for (int i = 0; i < MAX_STEPS; i++)
   {
@@ -94,10 +88,15 @@ float rayMarch(vec2 ro, vec2 rd)
 
     d = map(p);
 
-    if (d < EPSILON || traveled > FAR)
+    if (d <= EPSILON)
       break;
 
+    if(p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
+      return 1.0;
+
+    //traveled += 0.001;
     traveled += d;
+
   }
 
   return traveled;
@@ -106,15 +105,20 @@ float rayMarch(vec2 ro, vec2 rd)
 vec3 render(vec2 uv)
 {
 
-  vec3 background = vec3(0.2 + 0.4 * mod(floor(uv.x) + floor(uv.y), 2.0));
+  vec3 background = vec3(0.4 + 0.4 * mod(floor(10.0 * uv.x) + floor(10.0* (u_resolution.y / u_resolution.x) * uv.y), 2.0));
+  //vec3 background = vec3(1.0);
+
 
 #if SHADOWS_ENABLED
 
   float d = rayMarch(uv, u_directionalLightDirection.xy);
-    return (d < FAR ? 0.3 : 1.0) * background;
+  return (d < 1.0 ? 0.1: 1.0) * background;
+  //return d * background;
 
 #else
+
   return background;
+
 #endif
 
 }
@@ -126,10 +130,10 @@ void main()
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 
-    vec3 col = distance <= 0.5 ? color.xyz : render(screenUV);
-
+    vec3 col = distance <= 0.0 ? color.xyz : render(screenUV);
 
 #if (DITHERING == 1)
+
   int x = int(gl_FragCoord.x);
   int y = int(gl_FragCoord.y);
   col = col + _Spread * GetBayer4(x, y);
@@ -137,6 +141,7 @@ void main()
   col.r = floor((_ColorCount - 1.0f) * col.r + 0.5) / (_ColorCount - 1.0f);
   col.g = floor((_ColorCount - 1.0f) * col.g + 0.5) / (_ColorCount - 1.0f);
   col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
+
 #endif
 
   FragColor = vec4(col.xyz, 1.0);

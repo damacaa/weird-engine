@@ -16,30 +16,7 @@ float rand(vec2 co){
 }
 
 
-const int MAX_STEPS = 100;
-const float EPSILON = 0.01;
-const float NEAR = 0.1f;
-const float FAR = 100.0f;
-float rayMarch(vec2 ro, vec2 rd)
-{
-  float d;
 
-  float traveled = NEAR;
-
-  for (int i = 0; i < MAX_STEPS; i++)
-  {
-    vec2 p = ro + (traveled * rd);
-
-    d = texture(u_colorTexture, p).w;
-
-    if (d < EPSILON || traveled > FAR)
-      break;
-
-    traveled += d;
-  }
-
-  return traveled;
-}
 
 void main()
 {

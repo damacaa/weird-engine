@@ -226,7 +226,7 @@ namespace WeirdRenderer
 			m_sdfShaderProgram.setUniform("u_time", time);
 			m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			m_sdfShaderProgram.setUniform("u_blendIterations", g_renderedFramesCounter % 3 == 0 ? 1 : 0);
+			m_sdfShaderProgram.setUniform("u_blendIterations", g_renderedFramesCounter % 1 == 0 ? 1 : 0);
 			g_renderedFramesCounter++;
 
 
@@ -270,6 +270,8 @@ namespace WeirdRenderer
 
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
 
+		
+
 		// Screenshot
 		if (Input::GetKeyDown(Input::O)) {
 			glBindTexture(GL_TEXTURE_2D, m_postProcessRenderPlane.m_colorTexture);
@@ -277,9 +279,9 @@ namespace WeirdRenderer
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-			unsigned char* data = new unsigned char[width * height * 4];  // Assuming 4 channels (RGBA)
+			float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
 			
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, data);
 
 			for (size_t i = 0; i < width * height; i++)
 			{

@@ -1,9 +1,10 @@
 #version 330 core
 
 
-#define BLEND_SHAPES 0
+#define BLEND_SHAPES 1
+#define MOTION_BLUR 1
 
-uniform float k = 1.5;
+uniform float k = 0.5;
 
 
 
@@ -107,11 +108,8 @@ vec3 getMaterial(vec2 p, int materialId)
 
 vec4 getColor(vec2 p)
 {
- if ( p.y <= 0) //p.x < 0.0 || p.x > 30.0 ||
-     return vec4(1.0,1.0,1.0,0.0);
+  float d = 100000.0;
 
-  float d = FAR;
-  // d = p.y - 2.5 * sin(0.5 * p.x);
   vec3 col = vec3(0.0);
 
   for (int i = 0; i < u_loadedObjects; i++)
@@ -122,43 +120,48 @@ vec4 getColor(vec2 p)
     float objectDist = shape_circle(p - positionAndMaterial.xy);
 
 #if BLEND_SHAPES
+
     d = fOpUnionSoft(objectDist, d, k);
     float delta = 1 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
     col = mix(getMaterial(p, materialId), col, delta);
+
 #else
+
     d = min(d, objectDist);
     col = d == objectDist ? getMaterial(positionAndMaterial.xy, materialId) : col;
+
 #endif
   }
+
+  float floorDist = 0.25 * (p.y - 0.0 * sin(0.5 * p.x));
+  d = min(d, floorDist);
+  col = d == floorDist ? vec3(0.0) : col;
 
   return vec4(col, d);
 }
 
-
-
-float scale = 10.f;
-
-
-
 void main()
 {
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
-  vec2 pos = (-u_cameraMatrix[3].z * uv) - u_cameraMatrix[3].xy;
-
-
+  float zoom = -u_cameraMatrix[3].z;
+  vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;
 
   vec4 color = getColor(pos);
-
-  // float distance = 0.5 * round(texture(u_colorTexture, gl_FragCoord.xy).r) + clamp(0.1 * map(pos),0.0,1.0);
   float distance = color.w;
-  float distanceScaled = (distance / scale) + 0.5f;
-  distanceScaled = clamp(distanceScaled, 0.0, 1.0);
+  float finalDistance = 0.6667 * 0.5 * distance / zoom;
 
+  #if MOTION_BLUR
 
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-  float previousDistance = texture(u_colorTexture, screenUV.xy).w + (u_blendIterations * 0.0025);
-  float finalDistance = min(previousDistance, distanceScaled);
-  //float finalDistance = mix(previousDistance, distanceScaled, 0.99);
+  vec4 previousColor = texture(u_colorTexture, screenUV.xy);
+  float previousDistance = previousColor.w + (u_blendIterations * 0.0001);
+
+  FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
+  //FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.6);
+
+  #else
 
   FragColor = vec4(color.xyz, finalDistance);
+
+  #endif
 }

@@ -92,9 +92,9 @@ float rayMarch(vec2 ro, vec2 rd)
       break;
 
     if(p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
-      return 1.0;
+      return FAR;
 
-    //traveled += 0.001;
+    //traveled += 0.01;
     traveled += d;
 
   }
@@ -102,22 +102,18 @@ float rayMarch(vec2 ro, vec2 rd)
   return traveled;
 }
 
-vec3 render(vec2 uv)
+float render(vec2 uv)
 {
-
-  vec3 background = vec3(0.4 + 0.4 * mod(floor(10.0 * uv.x) + floor(10.0* (u_resolution.y / u_resolution.x) * uv.y), 2.0));
-  //vec3 background = vec3(1.0);
-
 
 #if SHADOWS_ENABLED
 
   float d = rayMarch(uv, u_directionalLightDirection.xy);
-  return (d < 1.0 ? 0.1: 1.0) * background;
+  return d < FAR ? 0.1: 1.0;
   //return d * background;
 
 #else
 
-  return background;
+  return 1.0;
 
 #endif
 
@@ -130,7 +126,8 @@ void main()
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 
-    vec3 col = distance <= 0.0 ? color.xyz : render(screenUV);
+    float light = distance <= 0.0 ? 1.0 : render(screenUV);
+    vec3 col = light * color.xyz;
 
 #if (DITHERING == 1)
 

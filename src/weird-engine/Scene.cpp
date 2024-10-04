@@ -66,7 +66,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 {
 	shader.activate();
 
-	m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
+	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
 

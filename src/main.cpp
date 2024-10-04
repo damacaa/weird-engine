@@ -55,14 +55,16 @@ int main()
 		// Capture window input
 		Input::update(renderer.getWindow(), width, height);
 
+		auto& scene = sceneManager.getCurrentScene();
+
 		// Update scene logic and physics
-		sceneManager.getCurrentScene().update(delta, time);
+		scene.update(delta, time);
 
 		// Clear input
 		Input::clear();
 
 		// Render scene
-		renderer.render(sceneManager.getCurrentScene(), time);
+		renderer.render(scene, time);
 	}
 }
 

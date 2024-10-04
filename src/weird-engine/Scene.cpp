@@ -8,6 +8,8 @@
 bool g_runSimulation = true;
 double g_lastSpawnTime = 0;
 
+vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
+
 
 Scene::Scene(const char* filePath) :
 	m_simulation(MAX_ENTITIES)
@@ -85,6 +87,7 @@ void Scene::update(double delta, double time)
 	//m_cameraSystem.follow(m_ecs, m_mainCamera, 680);
 
 	m_cameraSystem.update(m_ecs);
+	g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
 	m_simulation2D.update(delta);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
@@ -148,6 +151,8 @@ WeirdRenderer::Camera& Scene::getCamera()
 	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
 
+
+
 void Scene::loadScene(std::string sceneFileContent)
 {
 	json scene = json::parse(sceneFileContent);
@@ -186,7 +191,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	m_mainCamera = m_ecs.createEntity();
 
 	Transform t;
-	t.position = vec3(15.0f, 50.f, 60.0f);
+	t.position = g_cameraPosition;
 	t.rotation = vec3(0, 0, -1.0f);
 	m_ecs.addComponent(m_mainCamera, t);
 

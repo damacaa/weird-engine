@@ -91,7 +91,7 @@ namespace WeirdRenderer
 		//glGenTextures(1, &texture1);
 		//glGenTextures(1, &texture2);
 
-	
+
 
 		//// Initialize texture1
 		//glBindTexture(GL_TEXTURE_2D, texture1);
@@ -113,7 +113,7 @@ namespace WeirdRenderer
 		//if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		//	std::cout << "Framebuffer not complete!" << std::endl;
 
-		unsigned char textureData[2][2][3] = 
+		unsigned char textureData[2][2][3] =
 		{
 			{{255, 255, 255}, {0, 0, 0}},
 			{{0, 0, 0}, {255, 255, 255}}
@@ -197,7 +197,7 @@ namespace WeirdRenderer
 
 
 
-		if (!m_renderMeshesOnly) 
+		if (!m_renderMeshesOnly)
 		{
 			useFirstFramebuffer = !useFirstFramebuffer;
 
@@ -243,7 +243,7 @@ namespace WeirdRenderer
 			m_postProcessShaderProgram.activate();
 			m_postProcessShaderProgram.setUniform("u_time", time);
 			m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-			
+
 			m_postProcessRenderPlane.m_colorTexture = m_sdfRenderPlane.m_colorTexture;
 
 			m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
@@ -270,7 +270,7 @@ namespace WeirdRenderer
 
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
 
-		
+
 
 		// Screenshot
 		if (Input::GetKeyDown(Input::O)) {
@@ -279,23 +279,47 @@ namespace WeirdRenderer
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-			float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
-			
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, data);
+			//float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
+			//
+			//glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, data);
 
-			for (size_t i = 0; i < width * height; i++)
+			//for (size_t i = 0; i < width * height; i++)
+			//{
+			//	size_t idx = 4 * i;
+			//	data[idx] = data[idx + 3];
+			//	data[idx+1] = data[idx + 3];
+			//	data[idx+2] = data[idx + 3];
+
+			//	data[idx + 3] = 255;
+			//}
+			//
+			//stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
+
+			//delete[] data;
+
+			 // Create a buffer to hold the pixel data.
+			float* pixels = new float[width * height * 4];  // 4 channels (RGBA) with float data type
+
+			// Read the pixels from the texture into the buffer.
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels);
+
+			// Convert float data to unsigned char since stb_image_write expects that format.
+			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
+			for (int i = 0; i < width * height; i++) 
 			{
 				size_t idx = 4 * i;
-				data[idx] = data[idx + 3];
-				data[idx+1] = data[idx + 3];
-				data[idx+2] = data[idx + 3];
-
-				data[idx + 3] = 255;
+				pixels_uchar[idx] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
+				pixels_uchar[idx + 1] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
+				pixels_uchar[idx + 2] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
+				pixels_uchar[idx + 3] = 255.0f;
 			}
-			
-			stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
 
-			delete[] data;
+			// Save the image using stb_image_write. This will write it as a PNG.
+			stbi_write_png("output_texture.png", width, height, 4, pixels_uchar, width * 4);
+
+			// Free the allocated memory.
+			delete[] pixels;
+			delete[] pixels_uchar;
 
 		}
 

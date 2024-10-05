@@ -38,6 +38,7 @@ public:
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 
 			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
+			simulation.setScale(rb.simulationId, transform.scale.x);
 		}
 	}
 
@@ -51,6 +52,7 @@ public:
 			rb.simulationId = simulation.generateSimulationID();
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
+			simulation.setScale(rb.simulationId, transform.scale.x);
 		}
 	}
 
@@ -65,6 +67,7 @@ public:
 			if (transform.isDirty) {
 				// Override simulation transform
 				simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
+				simulation.setScale(rb.simulationId, transform.scale.x);
 				transform.isDirty = false; // TODO: move somewhere else
 			}
 

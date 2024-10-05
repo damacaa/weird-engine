@@ -59,7 +59,7 @@ public:
 
 			data[i].position = t.position;
 			data[i].material = mr.materialId;
-			data[i].parameters = glm::vec4(1.0f);
+			data[i].parameters = glm::vec4(t.scale, 1.0f);
 		}
 
 		//shader.setUniform("directionalLightDirection", lights[0].rotation);

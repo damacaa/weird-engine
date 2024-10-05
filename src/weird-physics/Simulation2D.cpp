@@ -42,9 +42,9 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodTree),
 	m_useSimdOperations(false),
-	m_diameter(1.0f),
-	m_diameterSquared(m_diameter* m_diameter),
-	m_radious(m_diameter / 2.0f)
+	m_diameter(new float[size]),
+	m_diameterSquared(new float[size]),
+	m_radious(new float[size])
 {
 	for (size_t i = 0; i < m_maxSize; i++)
 	{
@@ -55,6 +55,10 @@ Simulation2D::Simulation2D(size_t size) :
 
 		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.001f;
+
+		m_diameter[i] = 1.0f;
+		m_diameterSquared[i] = 1.0f;
+		m_radious[i] = 0.5f;
 	}
 }
 
@@ -172,8 +176,9 @@ void Simulation2D::checkCollisions()
 				vec2 ij = m_positions[j] - m_positions[i];
 
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+				float minDistance = m_radious[i] + m_radious[j];
 
-				if (distanceSquared < m_diameterSquared)
+				if (distanceSquared < minDistance * minDistance)
 				{
 					m_collisions.emplace_back(Collision(i, j, ij));
 				}
@@ -204,7 +209,7 @@ void Simulation2D::checkCollisions()
 		{
 			auto& p = m_positions[i];
 
-			float halfw = m_radious, halfh = m_radious;
+			float halfw = m_radious[i], halfh = m_radious[i];
 
 			AABB updatedBox(
 				p.x - halfw,
@@ -263,7 +268,9 @@ void Simulation2D::checkCollisions()
 
 					float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
 
-					if (distanceSquared < m_diameterSquared)
+					float minDistance = m_radious[a] + m_radious[b];
+
+					if (distanceSquared < minDistance * minDistance)
 					{
 						vec2 vRel = m_velocities[b] - m_velocities[a];
 						m_collisions.emplace_back(Collision(a, b, ab));
@@ -271,13 +278,13 @@ void Simulation2D::checkCollisions()
 #if MEASURE_PERFORMANCE
 					checks++;
 #endif
+					}
 				}
 			}
-		}
 
 
 		break;
-	}
+		}
 	default:
 		break;
 	}
@@ -286,14 +293,14 @@ void Simulation2D::checkCollisions()
 	if (g_simulationSteps == 0)
 		std::cout << "First frame checks: " << checks << std::endl;
 #endif
-}
+	}
 
 void Simulation2D::solveCollisionsPositionBased()
 {
 	// Calculate forces
 	for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it) {
 		Collision col = *it;
-		vec2 penetration = 0.5f * ((m_radious + m_radious) - length(col.AB)) * normalize(col.AB);
+		vec2 penetration = 0.5f * ((m_radious[col.A] + m_radious[col.B]) - length(col.AB)) * normalize(col.AB);
 
 		m_positions[col.A] -= penetration;
 		m_positions[col.B] += penetration;
@@ -327,7 +334,10 @@ void Simulation2D::applyForces()
 
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
 
-				if (distanceSquared > m_diameterSquared) {
+				float minDistance = m_radious[i] + m_radious[j];
+
+				if (distanceSquared < minDistance * minDistance)
+				{
 					vec2 attractionForce = (0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
 					m_forces[i] += attractionForce;
 					m_forces[j] -= attractionForce;
@@ -346,7 +356,10 @@ void Simulation2D::applyForces()
 
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
 
-				if (distanceSquared > m_diameterSquared) {
+				float minDistance = m_radious[i] + m_radious[j];
+
+				if (distanceSquared < minDistance * minDistance)
+				{
 					vec2 attractionForce = -(0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
 					m_forces[i] += attractionForce;
 					m_forces[j] -= attractionForce;
@@ -372,7 +385,7 @@ void Simulation2D::applyForces()
 
 		float lengthSquared = length2(col.AB);
 		vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
-		float penetration = (m_radious + m_radious) - length(col.AB);
+		float penetration = (m_radious[col.A] + m_radious[col.B]) - length(col.AB);
 
 		//// Position		
 		//vec2 translation = 0.5f * penetration * normal;
@@ -418,9 +431,9 @@ void Simulation2D::applyForces()
 		// Wavy floor
 		float a = 1.f;
 		float d = p.y - a * sinf(0.5f * p.x + m_simulationTime);
-		if (d < m_radious)
+		if (d < m_radious[i])
 		{
-			float penetration = (m_radious - d);
+			float penetration = (m_radious[i] - d);
 
 			// Collision normal calculation
 			float d1 = p.y - a * sinf(0.5f * (p.x - EPSILON) + m_simulationTime);
@@ -456,12 +469,12 @@ void Simulation2D::applyForces()
 		// Old walls
 		if (Input::GetKey(Input::R))
 		{
-			if (p.x < m_radious) {
-				p.x += m_radious - p.x;
+			if (p.x < m_radious[i]) {
+				p.x += m_radious[i] - p.x;
 				m_velocities[i].x = -0.5f * m_velocities[i].x;
 			}
-			else if (p.x > 30.0f - m_radious) {
-				p.x -= m_radious - (30.0f - p.x);
+			else if (p.x > 30.0f - m_radious[i]) {
+				p.x -= m_radious[i] - (30.0f - p.x);
 				m_velocities[i].x = -0.5f * m_velocities[i].x;
 			}
 		}
@@ -554,6 +567,13 @@ void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 	m_previousPositions[entity] = pos;
 	m_velocities[entity] = vec2(0.0f);
 	m_forces[entity] = vec2(0.0f);
+}
+
+void Simulation2D::setScale(SimulationID entity, float scale)
+{
+	m_diameter[entity] = scale;
+	m_diameterSquared[entity] = scale * scale;
+	m_radious[entity] = scale / 2.0f;
 }
 
 void Simulation2D::updateTransform(Transform& transform, SimulationID entity)

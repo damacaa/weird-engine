@@ -84,6 +84,7 @@ public:
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);
 	void setPosition(SimulationID entity, vec2 pos);
+	void setScale(SimulationID entity, float scale);
 	void updateTransform(Transform& transform, SimulationID entity);
 
 private:
@@ -157,9 +158,9 @@ private:
 	float* m_mass;
 	float* m_invMass;
 
-	const float m_diameter;
-	const float m_diameterSquared; 
-	const float m_radious;
+	 float* m_diameter;
+	 float* m_diameterSquared; 
+	 float* m_radious;
 
 	const float m_push;
 	const float m_damping;

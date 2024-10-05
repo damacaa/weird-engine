@@ -62,7 +62,7 @@ public:
 			data[i].parameters = glm::vec4(1.0f);
 		}
 
-		shader.setUniform("directionalLightDirection", lights[0].rotation);
+		//shader.setUniform("directionalLightDirection", lights[0].rotation);
 		rp.Draw(shader, data, size);
 
 		delete[] data;

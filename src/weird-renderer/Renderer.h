@@ -30,6 +30,9 @@ namespace WeirdRenderer
 		RenderPlane m_postProcessRenderPlane;
 		RenderPlane m_outputRenderPlane;
 
+		Texture m_distanceTexture;
+		Texture m_outputTexture;
+
 	public:
 		Renderer(const unsigned int width, const unsigned int height);
 		~Renderer();

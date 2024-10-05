@@ -14,7 +14,6 @@ namespace WeirdRenderer
 	}
 
 	static bool isFileModified(const char* filename, time_t& lastModifiedTime) {
-		return false;
 
 		struct stat result;
 		if (stat(filename, &result) == 0) {

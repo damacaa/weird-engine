@@ -6,16 +6,14 @@
 
 // Constants
 const int MAX_STEPS = 1000;
-const float EPSILON = 0.002;
+const float EPSILON = 0.0;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
-// Uniforms
-uniform int u_loadedObjects;
-uniform samplerBuffer myBufferTexture;
+
 
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -24,7 +22,7 @@ uniform mat4 u_cameraMatrix;
 uniform vec3 u_staticColors[16];
 
 uniform sampler2D u_colorTexture;
-uniform sampler2D u_depthTexture;
+
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
 

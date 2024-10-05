@@ -3,7 +3,7 @@
 
 namespace WeirdRenderer
 {
-	RenderPlane::RenderPlane(int width, int height, GLuint filterMode, Shader& shader, bool shapeRenderer)
+	RenderPlane::RenderPlane(bool shapeRenderer)
 	{
 		float f = 1.0f;
 		// Vertices coordinates
@@ -55,7 +55,8 @@ namespace WeirdRenderer
 		// This does not apply to the VBO because the VBO is already linked to the VAO during glVertexAttribPointer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-		if (shapeRenderer) {
+		if (shapeRenderer)
+		{
 
 			// Uniform buffer to store shapes
 			glGenBuffers(1, &UBO);
@@ -71,168 +72,82 @@ namespace WeirdRenderer
 
 		}
 
-
-
-		// Frame buffer to store normal render and apply ray marching as a post process, using depth to blend
+		// Frame buffer to store render output
 		glGenFramebuffers(1, &FBO);
 		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
-		// Create a texture for the color attachment
 
-		glGenTextures(1, &m_colorTexture);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-
-		unsigned char* textureData = new unsigned char[width * height * 4];
-
-		for (size_t i = 0; i < width * height * 4; i++)
-		{
-			textureData[i] = 255;
-		}
-
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture, 0);
-
-		delete[] textureData;
-
-		// Create a depth texture
-		glGenTextures(1, &m_depthTexture);
-		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_depthTexture, 0);
-
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			std::cerr << "Framebuffer is not complete!" << std::endl;
-			throw;
-		}
-
-		m_colorTextureLocation = glGetUniformLocation(shader.ID, "u_colorTexture");
-		m_depthTextureLocation = glGetUniformLocation(shader.ID, "u_depthTexture");
-		m_shapeTextureLocation = glGetUniformLocation(shader.ID, "myBufferTexture");
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
 
 
 	void RenderPlane::Draw(Shader& shader) const
 	{
-		glDisable(GL_DEPTH_TEST);
-		// Tell OpenGL which Shader Program we want to use
-		glUseProgram(shader.ID);
+
 		// Bind the VAO so OpenGL knows to use it
 		glBindVertexArray(VAO);
 
 
-		// Read color texture
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-		glUniform1i(m_colorTextureLocation, 0);
+		//// Read color texture
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+		//glUniform1i(m_colorTextureLocation, 0);
 
-		// Read depth texture
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-		glUniform1i(m_depthTextureLocation, 1);
+		//// Read depth texture
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+		//glUniform1i(m_depthTextureLocation, 1);
 
 
 
-		glDisable(GL_DEPTH_TEST);
+
 
 
 		// Draw the triangle using the GL_TRIANGLES primitive
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		glEnable(GL_DEPTH_TEST);
 	}
 
 	void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
 	{
-
-
-
-		glDisable(GL_DEPTH_TEST);
-		// Tell OpenGL which Shader Program we want to use
-		glUseProgram(shader.ID);
-
 		// Bind the VAO so OpenGL knows to use it
 		glBindVertexArray(VAO);
 
-		// Bind UBO
-		glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(Shape) * size, shapes, GL_STATIC_DRAW);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		shader.setUniform("u_loadedObjects", (int)size);
-
-		// Read color texture
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-		glUniform1i(m_colorTextureLocation, 0);
-
-		// Read depth texture
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-		glUniform1i(m_depthTextureLocation, 1);
-
-		glDisable(GL_DEPTH_TEST);
-
-
 		// Draw the triangle using the GL_TRIANGLES primitive
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		glEnable(GL_DEPTH_TEST);
 	}
 
 	void RenderPlane::Draw(Shader& shader, Shape2D* shapes, size_t size) const
 	{
-		// Bind the VAO so OpenGL knows to use it
-		glBindVertexArray(VAO);
+	
 
-		// Bind UBO
-
-
-		shader.setUniform("u_loadedObjects", (int)size);
-
-		// Read color texture
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-		glUniform1i(m_colorTextureLocation, 0);
-
-		// Read depth texture
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-		glUniform1i(m_depthTextureLocation, 1);
-
-		// Shape texture
-		glActiveTexture(GL_TEXTURE2);
 
 		glBindBuffer(GL_TEXTURE_BUFFER, m_shapeBuffer);
 		glBufferData(GL_TEXTURE_BUFFER, sizeof(Shape2D) * size, shapes, GL_STREAM_DRAW);
 		//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Shape2D) * size, shapes);
 
+		// Bind the buffer to the buffer texture
 		glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);
 		glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_shapeBuffer);
 
-		glUniform1i(m_shapeTextureLocation, 2);
+		// Bind texture to slot 1
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);
+
+		// Set uniforms
+		GLuint myBufferTextureLocation = glGetUniformLocation(shader.ID, "u_shapeBuffer");
+		glUniform1i(myBufferTextureLocation, 1); // Tell the shader the texture is in slot 1
+
+		GLuint loadedObjectsLocation = glGetUniformLocation(shader.ID, "u_loadedObjects");
+		glUniform1i(loadedObjectsLocation, size);
 
 
-
-
-
-
-		glDisable(GL_DEPTH_TEST);
-
-
+		// Bind the VAO so OpenGL knows to use it
+		glBindVertexArray(VAO);
 		// Draw the triangle using the GL_TRIANGLES primitive
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		glEnable(GL_DEPTH_TEST);
+
 	}
 
 	void RenderPlane::Delete()
@@ -240,6 +155,34 @@ namespace WeirdRenderer
 		glDeleteVertexArrays(1, &VAO);
 		glDeleteBuffers(1, &VBO);
 	}
+
+	void RenderPlane::BindTextureToFrameBuffer(Texture texture, GLenum attachment)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+		texture.bind();
+		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture.ID, 0);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			std::cerr << "Framebuffer is not complete!" << std::endl;
+			throw;
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void RenderPlane::BindColorTextureToFrameBuffer(Texture texture)
+	{
+		BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0);
+	}
+
+	void RenderPlane::BindDepthTextureToFrameBuffer(Texture texture)
+	{
+		BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
+	}
+
+
+	
 
 	unsigned int RenderPlane::GetFrameBuffer() const
 	{

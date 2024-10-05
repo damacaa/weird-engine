@@ -1,12 +1,9 @@
 #include "Renderer.h"
 
 
+
 namespace WeirdRenderer
 {
-
-	GLuint framebuffer1, framebuffer2;
-	GLuint texture1, texture2;
-
 	Renderer::Renderer(const unsigned int width, const unsigned int height) :
 		m_windowWidth(width),
 		m_windowHeight(height),
@@ -58,12 +55,10 @@ namespace WeirdRenderer
 		glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
 
-		// Generates Shader objects
+		// Load shaders
 		m_geometryShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
 		m_geometryShaderProgram.activate();
 
-
-		// Generates Shader objects
 		m_instancedGeometryShaderProgram = Shader("src/weird-renderer/shaders/default_instancing.vert", "src/weird-renderer/shaders/default.frag");
 		m_instancedGeometryShaderProgram.activate();
 
@@ -77,63 +72,17 @@ namespace WeirdRenderer
 		m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/output.frag");
 		m_outputShaderProgram.activate();
 
-		// A plane that takes 100% of the screen and displays the result of a shader
-		m_sdfRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, GL_LINEAR, m_sdfShaderProgram, true);
-		m_outputRenderPlane = RenderPlane(m_windowWidth, m_windowWidth, GL_NEAREST, m_outputShaderProgram, false);
-		m_postProcessRenderPlane = RenderPlane(m_renderWidth, m_renderHeight, GL_NEAREST, m_postProcessShaderProgram, false);
 
-		texture1 = m_postProcessRenderPlane.m_colorTexture;
+		// Bind textures to render planes fbo outputs
+		m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+		m_sdfRenderPlane = RenderPlane(true);
+		m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
 
-		//glGenFramebuffers(1, &framebuffer1);
-		//glGenFramebuffers(1, &framebuffer2);
+		m_outputTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+		m_postProcessRenderPlane = RenderPlane(false);
+		m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_outputTexture);
 
-		//// Create textures for each framebuffer
-		//glGenTextures(1, &texture1);
-		//glGenTextures(1, &texture2);
-
-
-
-		//// Initialize texture1
-		//glBindTexture(GL_TEXTURE_2D, texture1);
-		//glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_renderWidth, m_renderHeight, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//glBindFramebuffer(GL_FRAMEBUFFER, framebuffer1);
-		//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture1, 0);
-
-		//// Initialize texture2
-		//glBindTexture(GL_TEXTURE_2D, texture2);
-		//glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_renderWidth, m_renderHeight, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//glBindFramebuffer(GL_FRAMEBUFFER, framebuffer2);
-		//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2, 0);
-
-		//// Ensure framebuffers are complete
-		//if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		//	std::cout << "Framebuffer not complete!" << std::endl;
-
-		unsigned char textureData[2][2][3] =
-		{
-			{{255, 255, 255}, {0, 0, 0}},
-			{{0, 0, 0}, {255, 255, 255}}
-		};
-
-		// Generate and bind texture
-		glGenTextures(1, &texture2);
-		glBindTexture(GL_TEXTURE_2D, texture2);
-
-		// Upload texture data
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-		// Set texture parameters (wrap and filtering)
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-		// Unbind texture
-		glBindTexture(GL_TEXTURE_2D, 0);
+		m_outputRenderPlane = RenderPlane(false);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
@@ -147,9 +96,8 @@ namespace WeirdRenderer
 		m_postProcessShaderProgram.Delete();
 		m_outputShaderProgram.Delete();
 
-		glDeleteTextures(1, &texture1);
-		glDeleteTextures(1, &texture2);
-
+		m_distanceTexture.dispose();
+		m_outputTexture.dispose();
 
 		//delete m_sdfRenderPlane;
 
@@ -158,15 +106,6 @@ namespace WeirdRenderer
 		// Terminate GLFW before ending the program
 		glfwTerminate();
 	}
-
-	bool useFirstFramebuffer = false;
-
-
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
-
-	int g_renderedFramesCounter = 0;
 
 
 	void Renderer::render(Scene& scene, const double time)
@@ -184,7 +123,6 @@ namespace WeirdRenderer
 		// Clean the back buffer and depth buffer
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Enable depth test
-		glEnable(GL_DEPTH_TEST);
 
 		glViewport(0, 0, m_renderWidth, m_renderHeight);
 
@@ -192,62 +130,60 @@ namespace WeirdRenderer
 		// Updates and exports the camera matrix to the Vertex Shader
 		sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
+
+		glEnable(GL_DEPTH_TEST);
 		// Draw objects in scene
 		//scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-
+		glDisable(GL_DEPTH_TEST);
 
 
 		if (!m_renderMeshesOnly)
 		{
-			useFirstFramebuffer = !useFirstFramebuffer;
+			{
+				// Bind the framebuffer you want to render to
+				glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); //m_sdfRenderPlane.GetFrameBuffer()
 
-			// Bind to default frame buffer
-			//GLuint currentFramebuffer = useFirstFramebuffer ? framebuffer1 : framebuffer2;
-			//GLuint previousTexture = useFirstFramebuffer ? texture2 : texture1;
+				// Draw ray marching stuff
+				m_sdfShaderProgram.activate();
 
-			// Bind the framebuffer you want to render to
-			glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer());
-			//glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				// Magical math to calculate ray marching shader FOV
+				float shaderFov = 1.0 / tan(sceneCamera.fov * 0.01745 * 0.5);
+				// Set uniforms
+				m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+				m_sdfShaderProgram.setUniform("u_fov", shaderFov);
+				m_sdfShaderProgram.setUniform("u_time", time);
+				m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			//glViewport(0, 0, m_renderWidth, m_renderHeight);
+				m_sdfShaderProgram.setUniform("u_blendIterations", 1);
 
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_sdfShaderProgram.ID, "u_colorTexture");
+				glUniform1i(u_colorTextureLocation, 0);
 
-			glDisable(GL_DEPTH_TEST);
+				// Draw render plane with sdf shader
+				m_distanceTexture.bind(0);
+				m_outputTexture.bind(1);
 
-			// Draw ray marching stuff
-			m_sdfShaderProgram.activate();
-
-			// Magical math to calculate ray marching shader FOV
-			float shaderFov = 1.0 / tan(sceneCamera.fov * 0.01745 * 0.5);
-			// Set uniforms
-			m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
-			m_sdfShaderProgram.setUniform("u_fov", shaderFov);
-			m_sdfShaderProgram.setUniform("u_time", time);
-			m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-			m_sdfShaderProgram.setUniform("u_blendIterations", g_renderedFramesCounter % 1 == 0 ? 1 : 0);
-			g_renderedFramesCounter++;
+				scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+			}
 
 
 
+			// Post process
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
 
-			// Draw render plane with sdf shader
-			scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+				m_postProcessShaderProgram.activate();
+				m_postProcessShaderProgram.setUniform("u_time", time);
+				m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "u_colorTexture");
+				glUniform1i(u_colorTextureLocation, 0);
 
-			//texture1 = m_sdfRenderPlane.m_colorTexture;
-			//// Post process
-			glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
-
-			m_postProcessShaderProgram.activate();
-			m_postProcessShaderProgram.setUniform("u_time", time);
-			m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-			m_postProcessRenderPlane.m_colorTexture = m_sdfRenderPlane.m_colorTexture;
-
-			m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+				m_distanceTexture.bind(0);
+				m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+			}
 		}
+
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, m_windowWidth, m_windowHeight);
@@ -257,79 +193,23 @@ namespace WeirdRenderer
 		m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 		m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 
-		//m_outputRenderPlane.m_colorTexture = useFirstFramebuffer ? texture2 : texture1;
-		m_outputRenderPlane.m_colorTexture = texture1;
-
-
-
-
-		glDisable(GL_DEPTH_TEST);
 		// Tell OpenGL which Shader Program we want to use
 		glUseProgram(m_outputShaderProgram.ID);
 
-
+		m_outputTexture.bind(0);
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
-
 
 
 		// Screenshot
 		if (Input::GetKeyDown(Input::O)) {
-			glBindTexture(GL_TEXTURE_2D, m_postProcessRenderPlane.m_colorTexture);
-			int width, height;
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-			//float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
-			//
-			//glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, data);
-
-			//for (size_t i = 0; i < width * height; i++)
-			//{
-			//	size_t idx = 4 * i;
-			//	data[idx] = data[idx + 3];
-			//	data[idx+1] = data[idx + 3];
-			//	data[idx+2] = data[idx + 3];
-
-			//	data[idx + 3] = 255;
-			//}
-			//
-			//stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
-
-			//delete[] data;
-
-			 // Create a buffer to hold the pixel data.
-			float* pixels = new float[width * height * 4];  // 4 channels (RGBA) with float data type
-
-			// Read the pixels from the texture into the buffer.
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels);
-
-			// Convert float data to unsigned char since stb_image_write expects that format.
-			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
-			for (int i = 0; i < width * height; i++) 
-			{
-				size_t idx = 4 * i;
-				pixels_uchar[idx] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 1] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 2] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 3] = 255.0f;
-			}
-
-			// Save the image using stb_image_write. This will write it as a PNG.
-			stbi_write_png("output_texture.png", width, height, 4, pixels_uchar, width * 4);
-
-			// Free the allocated memory.
-			delete[] pixels;
-			delete[] pixels_uchar;
-
+			m_distanceTexture.saveToDisk("output_texture.png");
 		}
-
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(m_window);
 		// Take care of all GLFW events
 		glfwPollEvents();
-
-
 	}
 
 	bool Renderer::checkWindowClosed() const

@@ -134,7 +134,7 @@ vec4 getColor(vec2 p)
 #endif
   }
 
-  float floorDist = 0.1 * (p.y - 1.0 * sin(0.5 * p.x));
+  float floorDist = 0.1 * (p.y - 1.0 * sin(0.5 * p.x + u_time));
   d = min(d, floorDist);
   col = d == floorDist ? getMaterial(p, 0) : col;
 

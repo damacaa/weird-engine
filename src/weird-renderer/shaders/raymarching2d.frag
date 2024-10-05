@@ -1,10 +1,10 @@
 #version 330 core
 
 
-#define BLEND_SHAPES 0
+#define BLEND_SHAPES 1
 #define MOTION_BLUR 1
 
-uniform float k = 0.5;
+uniform float k = 2.5;
 
 
 
@@ -12,8 +12,10 @@ uniform float k = 0.5;
 layout(location = 0) out vec4 FragColor;
 
 // Uniforms
+uniform sampler2D u_colorTexture;
+
 uniform int u_loadedObjects;
-uniform samplerBuffer myBufferTexture;
+uniform samplerBuffer u_shapeBuffer;
 
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -21,9 +23,6 @@ uniform float u_time;
 uniform mat4 u_cameraMatrix;
 uniform vec3 u_staticColors[16];
 uniform vec3 directionalLightDirection;
-
-uniform sampler2D u_colorTexture;
-uniform sampler2D u_depthTexture;
 
 uniform int u_blendIterations;
 
@@ -114,8 +113,9 @@ vec4 getColor(vec2 p)
 
   for (int i = 0; i < u_loadedObjects; i++)
   {
-    vec4 positionAndMaterial = texelFetch(myBufferTexture, 2 * i);
+    vec4 positionAndMaterial = texelFetch(u_shapeBuffer, 2 * i);
     int materialId = int(positionAndMaterial.w);
+    vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
     float objectDist = shape_circle((p - positionAndMaterial.xy) / (extraParameters.x));
 
@@ -164,6 +164,8 @@ void main()
   FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
   if(FragColor.w > 0.0)
     FragColor = vec4(color.xyz, FragColor.w);
+
+   //FragColor = previousColor;
 
   //FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
 

@@ -29,6 +29,7 @@ public:
 	Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
 
 	WeirdRenderer::Camera& getCamera();
+	float getTime();
 
 
 private:

@@ -116,7 +116,7 @@ public:
 
 			int material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			ecs.addComponent(entity, SDFRenderer(i % 16));
+			ecs.addComponent(entity, SDFRenderer(4 + (i % 12)));
 			sdfRenderSystem.add(entity);
 
 			ecs.addComponent(entity, RigidBody2D());

@@ -117,7 +117,7 @@ vec4 getColor(vec2 p)
     vec4 positionAndMaterial = texelFetch(myBufferTexture, 2 * i);
     int materialId = int(positionAndMaterial.w);
 
-    float objectDist = shape_circle(p - positionAndMaterial.xy);
+    float objectDist = shape_circle((p - positionAndMaterial.xy) / (extraParameters.x));
 
 #if BLEND_SHAPES
 

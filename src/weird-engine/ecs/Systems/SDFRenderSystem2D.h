@@ -39,8 +39,8 @@ public:
 
 	void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
 	{
-		if (m_materialsAreDirty) {
-
+		if (m_materialsAreDirty) 
+		{
 			shader.setUniform("u_staticColors", m_colorPalette, 16);
 			m_materialsAreDirty = false;
 		}
@@ -59,7 +59,7 @@ public:
 
 			data[i].position = t.position;
 			data[i].material = mr.materialId;
-			data[i].parameters = glm::vec4(i);
+			data[i].parameters = glm::vec4(1.0f);
 		}
 
 		shader.setUniform("directionalLightDirection", lights[0].rotation);

@@ -18,8 +18,6 @@ layout(location = 0) out vec4 FragColor;
 uniform vec2 u_resolution;
 uniform float u_time;
 
-uniform mat4 u_cameraMatrix;
-uniform vec3 u_staticColors[16];
 
 uniform sampler2D u_colorTexture;
 
@@ -28,8 +26,8 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
 
 #if (DITHERING == 1)
 
-uniform float _Spread = .15f;
-uniform int _ColorCount = 5;
+uniform float _Spread = .1f;
+uniform int _ColorCount = 10;
 
 // Dithering and posterizing
 uniform int bayer2[2 * 2] = int[2 * 2](
@@ -106,7 +104,7 @@ float render(vec2 uv)
 #if SHADOWS_ENABLED
 
   float d = rayMarch(uv, u_directionalLightDirection.xy);
-  return d < FAR ? 0.1: 1.0;
+  return d < FAR ? 0.75: 1.0;
   //return d * background;
 
 #else

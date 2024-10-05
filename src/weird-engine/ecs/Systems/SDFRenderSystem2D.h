@@ -10,22 +10,22 @@ private:
 	std::shared_ptr<ComponentManager> m_transformManager;
 
 	glm::vec3 m_colorPalette[16] = {
-		glm::vec3(0.0f, 0.0f, 0.0f), // Black
-		glm::vec3(1.0f, 1.0f, 1.0f), // White
-		glm::vec3(0.584f, 0.584f, 0.584f), // Dark Gray
-		glm::vec3(0.792f, 0.792f, 0.792f), // Light Gray
-		glm::vec3(1.0f, 0.0f, 0.0f), // Red
-		glm::vec3(0.0f, 1.0f, 0.0f), // Green
-		glm::vec3(0.0f, 0.0f, 1.0f), // Blue
-		glm::vec3(1.0f, 1.0f, 0.0f), // Yellow
-		glm::vec3(1.0f, 0.5f, 0.0f), // Orange
-		glm::vec3(0.5f, 0.0f, 1.0f), // Purple
-		glm::vec3(0.0f, 1.0f, 1.0f), // Cyan
-		glm::vec3(1.0f, 0.0f, 1.0f), // Magenta
-		glm::vec3(0.5f, 1.0f, 0.5f), // Light Green
-		glm::vec3(1.0f, 0.5f, 0.5f), // Pink
-		glm::vec3(0.5f, 0.5f, 1.0f), // Light Blue
-		glm::vec3(0.5f, 0.25f, 0.0f) // Brown
+			vec3(0.025f, 0.025f, 0.05f), // Black
+			vec3(1.0f, 1.0f, 1.0f), // White
+			vec3(0.484f, 0.484f, 0.584f), // Dark Gray
+			vec3(0.752f, 0.762f, 0.74f), // Light Gray
+			vec3(.95f, 0.1f, 0.1f), // Red
+			vec3(0.1f, .95f, 0.1f), // Green
+			vec3(0.15f, 0.25f, .85f), // Blue
+			vec3(1.0f, .9f, 0.2f), // Yellow
+			vec3(.95f, 0.4f, 0.1f), // Orange
+			vec3(0.5f, 0.0f, 1.0f), // Purple
+			vec3(0.0f, .9f, .9f), // Cyan
+			vec3(1.0f, 0.3f, .6f), // Magenta
+			vec3(0.5f, 1.0f, 0.5f), // Light Green
+			vec3(1.0f, 0.5f, 0.5f), // Pink
+			vec3(0.5f, 0.5f, 1.0f), // Light Blue
+			vec3(0.4f, 0.25f, 0.1f) // Brown
 	};
 
 	bool m_materialsAreDirty = true;

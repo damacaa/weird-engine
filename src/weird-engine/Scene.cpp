@@ -124,7 +124,7 @@ void Scene::update(double delta, double time)
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, t);
 
-		m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial));
+		m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial + 4));
 		m_sdfRenderSystem2D.add(entity);
 
 		m_ecs.addComponent(entity, RigidBody2D());
@@ -136,7 +136,7 @@ void Scene::update(double delta, double time)
 
 	if (Input::GetMouseButtonUp(Input::LeftClick))
 	{
-		g_currentMaterial = (g_currentMaterial + 1) % 16;
+		g_currentMaterial = (g_currentMaterial + 1) % 12;
 	}
 
 }
@@ -158,7 +158,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 	size_t circles = scene["Circles"].get<int>();
-	m_weirdSystem.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles, 2);
+	m_weirdSystem.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles, 0);
 
 	//// Spawn 2d balls
 	//for (size_t i = 0; i < 16*5; i++)

@@ -116,7 +116,7 @@ public:
 
 			int material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			ecs.addComponent(entity, SDFRenderer(6));
+			ecs.addComponent(entity, SDFRenderer(i % 16));
 			sdfRenderSystem.add(entity);
 
 			ecs.addComponent(entity, RigidBody2D());
@@ -129,7 +129,7 @@ public:
 	{
 		if (Input::GetKey(Input::E) && m_simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
 		{
-			int amount = 1;
+			int amount = 3;
 			for (size_t i = 0; i < amount; i++)
 			{
 				float x = 0.f;
@@ -141,7 +141,7 @@ public:
 				Entity entity = m_ecs.createEntity();
 				m_ecs.addComponent(entity, t);
 
-				m_ecs.addComponent(entity, SDFRenderer(2 + m_sdfRenderSystem2D.getEntityCount() % 3));
+				m_ecs.addComponent(entity, SDFRenderer(4 + (m_sdfRenderSystem2D.getEntityCount() % 12)));
 
 				m_sdfRenderSystem2D.add(entity);
 

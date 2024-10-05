@@ -111,8 +111,6 @@ namespace WeirdRenderer
 		glBindTexture(GL_TEXTURE_2D, ID);
 	}
 
-
-
 	void Texture::unbind() const
 	{
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -211,21 +209,20 @@ namespace WeirdRenderer
 	Texture::Texture(int width, int height, GLuint filterMode)
 	{
 		glGenTextures(1, &ID);
-		bind();
+		glBindTexture(GL_TEXTURE_2D, ID);
 
-		unsigned char* textureData = new unsigned char[width * height * 4];
+		float* textureData = new float[width * height * 4];
 
 		for (size_t i = 0; i < width * height * 4; i++)
 		{
-			textureData[i] = 255;
+			textureData[i] = 1.0f;
 		}
 
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, textureData);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Prevents edge bleeding
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 
 		delete[] textureData;

@@ -196,7 +196,11 @@ namespace WeirdRenderer
 		// Tell OpenGL which Shader Program we want to use
 		glUseProgram(m_outputShaderProgram.ID);
 
+		GLuint u_colorTextureLocation = glGetUniformLocation(m_outputShaderProgram.ID, "u_colorTexture");
+		glUniform1i(u_colorTextureLocation, 0);
+
 		m_outputTexture.bind(0);
+
 		m_outputRenderPlane.Draw(m_outputShaderProgram);
 
 

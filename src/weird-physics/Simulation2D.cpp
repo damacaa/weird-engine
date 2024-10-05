@@ -125,7 +125,7 @@ void Simulation2D::process()
 		}
 #endif
 	}
-	}
+}
 
 double Simulation2D::getSimulationTime()
 {
@@ -182,9 +182,9 @@ void Simulation2D::checkCollisions()
 				checks++;
 #endif
 			}
-			}
-		break;
 		}
+		break;
+	}
 	case  Simulation2D::MethodTree:
 	{
 		for (size_t i = m_tree.count; i < m_size; i++)
@@ -272,12 +272,12 @@ void Simulation2D::checkCollisions()
 					checks++;
 #endif
 				}
-				}
 			}
+		}
 
 
 		break;
-		}
+	}
 	default:
 		break;
 	}
@@ -416,7 +416,7 @@ void Simulation2D::applyForces()
 
 		// Bounds collisions
 		// Wavy floor
-		float a = 0.f;
+		float a = 1.f;
 		float d = p.y - a * sinf(0.5f * p.x);
 		if (d < m_radious)
 		{
@@ -454,16 +454,19 @@ void Simulation2D::applyForces()
 		}
 
 		// Old walls
-		if (p.x < m_radious) {
-			p.x += m_radious - p.x;
-			m_velocities[i].x = -0.5f * m_velocities[i].x;
-		}
-		else if (p.x > 30.0f - m_radious) {
-			p.x -= m_radious - (30.0f - p.x);
-			m_velocities[i].x = -0.5f * m_velocities[i].x;
+		if (Input::GetKey(Input::R))
+		{
+			if (p.x < m_radious) {
+				p.x += m_radious - p.x;
+				m_velocities[i].x = -0.5f * m_velocities[i].x;
+			}
+			else if (p.x > 30.0f - m_radious) {
+				p.x -= m_radious - (30.0f - p.x);
+				m_velocities[i].x = -0.5f * m_velocities[i].x;
+			}
 		}
 	}
-	}
+}
 
 
 void Simulation2D::step(float timeStep)

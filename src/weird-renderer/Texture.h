@@ -40,11 +40,6 @@ namespace WeirdRenderer
 		void dispose() const;
 
 		void saveToDisk(const char* fileName);
-
-	private:
-
-		GLenum m_textureSlot;
-
 	};
 }
 

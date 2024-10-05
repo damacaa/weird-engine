@@ -151,7 +151,7 @@ namespace WeirdRenderer
 				// Set uniforms
 				m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
 				m_sdfShaderProgram.setUniform("u_fov", shaderFov);
-				m_sdfShaderProgram.setUniform("u_time", time);
+				m_sdfShaderProgram.setUniform("u_time", scene.getTime());
 				m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 				m_sdfShaderProgram.setUniform("u_blendIterations", 1);
@@ -173,7 +173,7 @@ namespace WeirdRenderer
 				glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
 
 				m_postProcessShaderProgram.activate();
-				m_postProcessShaderProgram.setUniform("u_time", time);
+				m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
 				m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "u_colorTexture");
@@ -189,7 +189,7 @@ namespace WeirdRenderer
 		glViewport(0, 0, m_windowWidth, m_windowHeight);
 
 		m_outputShaderProgram.activate();
-		m_outputShaderProgram.setUniform("u_time", time);
+		m_outputShaderProgram.setUniform("u_time", scene.getTime());
 		m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 		m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 

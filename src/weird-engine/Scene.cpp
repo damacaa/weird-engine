@@ -149,6 +149,11 @@ WeirdRenderer::Camera& Scene::getCamera()
 	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
 
+float Scene::getTime()
+{
+	return m_simulation2D.getSimulationTime();
+}
+
 
 
 void Scene::loadScene(std::string sceneFileContent)

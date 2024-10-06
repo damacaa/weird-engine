@@ -154,7 +154,36 @@ float Scene::getTime()
 	return m_simulation2D.getSimulationTime();
 }
 
+void addBall(ECSManager& ecs, PhysicsSystem2D& physicsSystem, SDFRenderSystem2D sdfRenderSystem, vec2 pos, float size, int material) {
+	Transform t;
+	t.position = vec3(pos.x, pos.y, 0);
+	t.scale = vec3(size);
 
+	Entity entity = ecs.createEntity();
+	ecs.addComponent(entity, t);
+
+	ecs.addComponent(entity, SDFRenderer(material));
+	sdfRenderSystem.add(entity);
+
+	//ecs.addComponent(entity, RigidBody2D());
+}
+
+void addLine(ECSManager& ecs, PhysicsSystem2D& physicsSystem, SDFRenderSystem2D sdfRenderSystem, vec2 start, vec2 finish, float thickness, float density, int material) {
+
+	vec2 ab = finish - start;
+	float l = length(ab);
+
+	int steps = (l * density) + 1;
+
+	float stepSize = l / steps;
+
+	for (size_t i = 0; i < steps; i++)
+	{
+		vec2 pos = start + i * stepSize * normalize(ab);
+
+		addBall(ecs, physicsSystem, sdfRenderSystem, pos, thickness, material);
+	}
+}
 
 void Scene::loadScene(std::string sceneFileContent)
 {
@@ -208,5 +237,20 @@ void Scene::loadScene(std::string sceneFileContent)
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 
+
+	addBall(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(15.0f, 20.0f), 7.0f, 9);
+
+	//eyes
+	addBall(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(17.0f, 20.0f), 1.5f, 5);
+	addBall(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(14.0f, 20.0f), 3.5f, 5);
+
+	addBall(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(15.0f, 15.0f), 5.0f, 10);
+	addBall(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(15.0f, 12.0f), 4.0f, 11);
+
+	addLine(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(18.0f, 15.0f), vec2(20.0f, 17.0f), 1.0f,  4.0f, 6);
+	addLine(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(12.0f, 15.0f), vec2(10.0f, 17.0f), 1.0f,  4.0f, 6);
+
+	addLine(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(16.0f, 11.0f), vec2(16.0f, 7.0f), 1.0f, 4.0f, 6);
+	addLine(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, vec2(14.0f, 11.0f), vec2(14.0f, 7.0f), 1.0f, 4.0f, 6);
 
 }

@@ -103,6 +103,7 @@ public:
 
 			Transform t;
 			t.position = vec3(x + 0.5f, y + 0.5f, z);
+			t.scale = vec3(i % 3);
 
 			Entity entity = ecs.createEntity();
 			ecs.addComponent(entity, t);

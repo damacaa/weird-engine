@@ -76,10 +76,12 @@ public:
 	SimulationID generateSimulationID();
 	size_t getSize();
 
-	// Add external forces
+	// Interaction
 	void shake(float f);
 	void push(vec2 v);
 	void addForce(SimulationID id, vec2 force);
+	void addSpring(SimulationID a, SimulationID b, float stiffness);
+
 
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);
@@ -121,6 +123,29 @@ private:
 		vec2 AB;
 	};
 
+	struct Spring
+	{
+	public:
+		Spring()
+		{
+			A = -1;
+			B = -1;
+			K = 0;
+		}
+
+
+		Spring(int a, int b, float k)
+		{
+			A = a;
+			B = b;
+			K = k;
+		}
+
+		int A;
+		int B;
+		float K;
+	};
+
 	struct CollisionHash {
 		std::size_t operator()(const Collision& s) const {
 			bool flip = s.A < s.B;
@@ -158,7 +183,7 @@ private:
 	float* m_invMass;
 
 	const float m_diameter;
-	const float m_diameterSquared; 
+	const float m_diameterSquared;
 	const float m_radious;
 
 	const float m_push;
@@ -172,6 +197,9 @@ private:
 	DynamicAABBTree m_tree;
 	std::vector<int> m_treeIDs;
 	std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
+
+
+	std::vector<Spring> m_springs;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

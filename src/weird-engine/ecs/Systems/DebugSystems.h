@@ -78,7 +78,7 @@ public:
 			case 0:
 			{
 				x = i % 30;
-				y = (int)(i / 30) + 1;
+				y = (int)(i / 30) + 5;
 				break;
 			}
 			case 1:

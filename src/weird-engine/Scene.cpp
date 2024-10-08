@@ -107,7 +107,7 @@ void Scene::update(double delta, double time)
 	}
 
 
-	if (Input::GetMouseButton(Input::LeftClick))
+	if (Input::GetMouseButtonDown(Input::LeftClick))
 	{
 		// Test screen coordinates to 2D world coordinates
 		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
@@ -120,7 +120,8 @@ void Scene::update(double delta, double time)
 		std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
 
 		Transform t;
-		t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
+		//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
+		t.position = vec3(pp.x, pp.y, 0.0);
 		Entity entity = m_ecs.createEntity();
 		m_ecs.addComponent(entity, t);
 
@@ -164,6 +165,18 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	size_t circles = scene["Circles"].get<int>();
 	m_weirdSystem.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles, 0);
+
+	float stiffness = 10000000000.0f;
+	for (size_t i = 0; i < 29; i += 1)
+	{
+		m_simulation2D.addSpring(i, i + 30, stiffness);
+		m_simulation2D.addSpring(i + 1, i + 31, stiffness);
+		m_simulation2D.addSpring(i, i + 1, stiffness);
+		m_simulation2D.addSpring(i + 30, i + 31, stiffness);
+
+		m_simulation2D.addSpring(i, i + 31, stiffness);
+		m_simulation2D.addSpring(i + 1, i + 30, stiffness);
+	}
 
 	//// Spawn 2d balls
 	//for (size_t i = 0; i < 16*5; i++)

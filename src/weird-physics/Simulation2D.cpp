@@ -18,7 +18,7 @@ using namespace std::chrono;
 constexpr float SIMULATION_FREQUENCY = 500;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
-constexpr size_t MAX_STEPS = 100;
+constexpr size_t MAX_STEPS = 1000;
 
 std::mutex g_simulationTimeMutex;
 
@@ -38,7 +38,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationTime(0),
 	m_gravity(-10),
 	m_push(50.0f * SIMULATION_FREQUENCY),
-	m_damping(0.001f),
+	m_damping(0.002f),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodTree),
 	m_useSimdOperations(false),
@@ -466,6 +466,43 @@ void Simulation2D::applyForces()
 			}
 		}
 	}
+
+	//for (size_t i = 0; i < m_size - 1; i++)
+	//{
+	//	vec2 v = m_positions[i + 1] - m_positions[i];
+	//	//vec2 n = normalize(v);
+	//	float d = length(v);
+
+	//	if (d > 1.0)
+	//	{
+	//		vec2 f = -0.5f * 1000000000.0f * v * (float)FIXED_DELTA_TIME;
+	//		m_forces[i] -= f;
+	//		m_forces[i + 1] += f;
+
+	//		/*vec2 f = -0.5f * v * (float)FIXED_DELTA_TIME;
+	//		m_velocities[i] -= f;
+	//		m_velocities[i + 1] += f;*/
+
+	//		/*vec2 f = -0.5f * v;
+	//		m_positions[i] -= f;
+	//		m_positions[i + 1] += f;*/
+	//	}
+	//}
+
+	for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
+	{
+		Spring spring = *it;
+
+		vec2 v = m_positions[spring.B] - m_positions[spring.A];
+		vec2 n = normalize(v);
+		float d = 1.0f - length(v);
+
+		vec2 f = -0.5f * spring.K * d * (float)FIXED_DELTA_TIME * n;
+		m_forces[spring.A] += f;
+		m_forces[spring.B] -= f;
+	}
+
+
 }
 
 
@@ -507,6 +544,11 @@ void Simulation2D::step(float timeStep)
 	//	m_forces[i] = vec2(0.0f);
 
 	//}
+
+	m_positions[30] = vec2(0.0f, 15.0f);
+	m_velocities[30] = vec2(0.0f);
+	m_positions[59] = vec2(30.0f, 15.0f);
+	m_velocities[59] = vec2(0.0f);
 }
 
 SimulationID Simulation2D::generateSimulationID()
@@ -540,6 +582,11 @@ void Simulation2D::addForce(SimulationID id, vec2 force)
 {
 	m_externalForcesSinceLastUpdate = true;
 	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
+}
+
+void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
+{
+	m_springs.emplace_back(a, b, stiffness);
 }
 
 

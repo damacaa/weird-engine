@@ -63,18 +63,11 @@ void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& i
 }
 
 
-
 void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
-
-
-
-
-
-
 
 
 int g_currentMaterial = 0;
@@ -87,9 +80,9 @@ void Scene::update(double delta, double time)
 	m_cameraSystem.update(m_ecs);
 	g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
-	m_simulation2D.update(delta);
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+	m_simulation2D.update(delta);
 
 	m_weirdSystem.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
 
@@ -98,12 +91,12 @@ void Scene::update(double delta, double time)
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	m_weirdSystem.throwBalls(m_ecs, m_simulation2D, m_rbPhysicsSystem2D, m_sdfRenderSystem2D);
+	m_weirdSystem.throwBalls(m_ecs, m_simulation2D);
 
 	if (Input::GetKey(Input::T))
 	{
 		auto v = vec2(15, 30) - m_simulation2D.getPosition(0);
-		m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, 0, 10.0f * normalize(v));
+		m_simulation2D.addForce(0, 10.0f * normalize(v));
 	}
 
 
@@ -126,13 +119,10 @@ void Scene::update(double delta, double time)
 		m_ecs.addComponent(entity, t);
 
 		m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial + 4));
-		m_sdfRenderSystem2D.add(entity);
 
-		m_ecs.addComponent(entity, RigidBody2D());
-		m_rbPhysicsSystem2D.add(entity);
-		m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
-		m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
-
+		RigidBody2D rb(m_simulation2D);
+		m_ecs.addComponent(entity, rb);
+		m_simulation2D.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 	}
 
 	if (Input::GetMouseButtonUp(Input::LeftClick))
@@ -164,10 +154,11 @@ void Scene::loadScene(std::string sceneFileContent)
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 	size_t circles = scene["Circles"].get<int>();
-	m_weirdSystem.SpawnEntities(m_ecs, m_rbPhysicsSystem2D, m_sdfRenderSystem2D, circles, 0);
+	m_weirdSystem.spawnEntities(m_ecs,m_simulation2D, circles, 0);
 
 	float stiffness = 10000000000.0f;
-	for (size_t i = 0; i < 29; i += 1)
+	
+	/*for (size_t i = 0; i < 29; i += 1)
 	{
 		m_simulation2D.addSpring(i, i + 30, stiffness);
 		m_simulation2D.addSpring(i + 1, i + 31, stiffness);
@@ -176,32 +167,9 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		m_simulation2D.addSpring(i, i + 31, stiffness);
 		m_simulation2D.addSpring(i + 1, i + 30, stiffness);
-	}
+	}*/
 
-	//// Spawn 2d balls
-	//for (size_t i = 0; i < 16*5; i++)
-	//{
-
-	//	float x = i % 16;
-	//	float y = (int)(i / 16) + 1;
-
-	//	float z = 0;
-
-	//	Transform t;
-	//	t.position = vec3(x + 0.5f, y + 0.5f, z);
-
-	//	Entity entity = m_ecs.createEntity();
-	//	m_ecs.addComponent(entity, t);
-
-
-
-	//	int material = i % 16;
-
-	//	m_ecs.addComponent(entity, SDFRenderer(material));
-	//	m_sdfRenderSystem.add(entity);
-
-	//	m_ecs.addComponent(entity, RigidBody2D());
-	//}
+	
 
 	// Create camera object
 	m_mainCamera = m_ecs.createEntity();

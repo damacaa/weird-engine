@@ -61,9 +61,7 @@ public:
 
 
 
-
-
-	void SpawnEntities(ECSManager& ecs, PhysicsSystem2D& physicsSystem, SDFRenderSystem2D sdfRenderSystem, size_t circles, uint32_t scene)
+	void spawnEntities(ECSManager& ecs, Simulation2D& simulation,  size_t circles, uint32_t scene)
 	{
 		uint32_t currentChar = 0;
 
@@ -90,7 +88,7 @@ public:
 			case 2:
 			{
 				y = (int)(i / 20);
-				x =  5 + (i % 20) + sin(y);
+				x = 5 + (i % 20) + sin(y);
 
 
 				break;
@@ -117,19 +115,20 @@ public:
 			int material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
 			ecs.addComponent(entity, SDFRenderer(4 + (i % 12)));
-			sdfRenderSystem.add(entity);
 
-			ecs.addComponent(entity, RigidBody2D());
-			//physicsSystem.add(entity);
+			RigidBody2D rb(simulation);
+			ecs.addComponent(entity, rb);
+
+			simulation.setPosition(rb.simulationId, vec2(t.position));
 		}
 	}
 
 	double m_lastSpawnTime = 0.f;
-	void throwBalls(ECSManager& m_ecs, Simulation2D& m_simulation2D, PhysicsSystem2D& m_rbPhysicsSystem2D, SDFRenderSystem2D& m_sdfRenderSystem2D)
+	void throwBalls(ECSManager& ecs, Simulation2D& simulation2D)
 	{
-		if (Input::GetKey(Input::E) && m_simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
+		if (Input::GetKey(Input::E) && simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
 		{
-			int amount = 3;
+			int amount = 1;
 			for (size_t i = 0; i < amount; i++)
 			{
 				float x = 0.f;
@@ -138,20 +137,17 @@ public:
 
 				Transform t;
 				t.position = vec3(x + 0.5f, y + 0.5f, z);
-				Entity entity = m_ecs.createEntity();
-				m_ecs.addComponent(entity, t);
+				Entity entity = ecs.createEntity();
+				ecs.addComponent(entity, t);
 
-				m_ecs.addComponent(entity, SDFRenderer(4 + (m_sdfRenderSystem2D.getEntityCount() % 12)));
+				ecs.addComponent(entity, SDFRenderer(4 + ecs.getComponentArray<SDFRenderer>()->getSize() % 12));
 
-				m_sdfRenderSystem2D.add(entity);
-
-				m_ecs.addComponent(entity, RigidBody2D());
-				m_rbPhysicsSystem2D.add(entity);
-				m_rbPhysicsSystem2D.addNewRigidbodiesToSimulation(m_ecs, m_simulation2D);
-				m_rbPhysicsSystem2D.addForce(m_ecs, m_simulation2D, entity, vec2(20, 0));
+				RigidBody2D rb = RigidBody2D(simulation2D);
+				ecs.addComponent(entity, rb);
+				simulation2D.addForce(rb.simulationId, vec2(20, 0));
 			}
 
-			m_lastSpawnTime = m_simulation2D.getSimulationTime();
+			m_lastSpawnTime = simulation2D.getSimulationTime();
 		}
 	}
 

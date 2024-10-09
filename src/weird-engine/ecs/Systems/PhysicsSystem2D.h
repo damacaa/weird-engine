@@ -9,6 +9,7 @@ private:
 public:
 
 	RigidBody2D() : simulationId(-1) {};
+	RigidBody2D(Simulation2D& simulation) : simulationId(simulation.generateSimulationID()) {}; //simulation.generateSimulationID()
 
 	unsigned int simulationId;
 
@@ -31,17 +32,10 @@ public:
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
-		for (size_t i = 0; i < componentArray.size; i++)
-		{
-			RigidBody2D& rb = componentArray[i];
-			rb.simulationId = simulation.generateSimulationID();
-			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 
-			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-		}
 	}
 
-	void addNewRigidbodiesToSimulation(ECSManager& ecs, Simulation2D& simulation) {
+	void update(ECSManager& ecs, Simulation2D& simulation) {
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
@@ -52,11 +46,6 @@ public:
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
 		}
-	}
-
-	void update(ECSManager& ecs, Simulation2D& simulation) {
-
-		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
 		for (size_t i = 0; i < componentArray.size; i++)
 		{
@@ -72,7 +61,9 @@ public:
 		}
 	}
 
-	void addForce(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 force) {
+private:
+	void addForce(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 force)
+	{
 		simulation.addForce(ecs.getComponent<RigidBody2D>(entity).simulationId, force);
 	}
 
@@ -80,4 +71,5 @@ public:
 	void setPosition(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 position) {
 		simulation.setPosition(ecs.getComponent<RigidBody2D>(entity).simulationId, position);
 	}
+
 };

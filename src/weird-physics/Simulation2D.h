@@ -77,8 +77,6 @@ public:
 	size_t getSize();
 
 	// Interaction
-	void shake(float f);
-	void push(vec2 v);
 	void addForce(SimulationID id, vec2 force);
 	void addSpring(SimulationID a, SimulationID b, float stiffness);
 
@@ -178,6 +176,7 @@ private:
 
 	size_t m_maxSize;
 	size_t m_size;
+	size_t m_lastIdGiven;
 
 	float* m_mass;
 	float* m_invMass;

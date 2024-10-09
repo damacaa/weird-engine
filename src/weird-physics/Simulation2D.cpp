@@ -35,6 +35,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_invMass(new float[size]),
 	m_maxSize(size),
 	m_size(0),
+	m_lastIdGiven(-1),
 	m_simulationDelay(0),
 	m_simulationTime(0),
 	m_gravity(-10),
@@ -68,6 +69,9 @@ Simulation2D::~Simulation2D()
 	delete[] m_mass;
 	delete[] m_invMass;
 }
+
+
+#pragma region MyRegion
 
 void Simulation2D::update(double delta)
 {
@@ -189,10 +193,10 @@ void Simulation2D::checkCollisions()
 #if MEASURE_PERFORMANCE
 				checks++;
 #endif
-				}
 			}
-		break;
 		}
+		break;
+	}
 	case  Simulation2D::MethodTree:
 	{
 		for (size_t i = m_tree.count; i < m_size; i++)
@@ -294,7 +298,7 @@ void Simulation2D::checkCollisions()
 	if (g_simulationSteps == 0)
 		std::cout << "First frame checks: " << checks << std::endl;
 #endif
-	}
+}
 
 void Simulation2D::solveCollisionsPositionBased()
 {
@@ -315,7 +319,7 @@ float EPSILON = 0.01f;
 void Simulation2D::applyForces()
 {
 	// External forces
-	if (m_externalForcesSinceLastUpdate)
+	if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
 	{
 		m_externalForcesSinceLastUpdate = false;
 		for (size_t i = 0; i < m_size; i++)
@@ -534,41 +538,24 @@ void Simulation2D::step(float timeStep)
 
 	//}
 
-	m_positions[30] = vec2(0.0f, 15.0f);
+	/*m_positions[30] = vec2(0.0f, 15.0f);
 	m_velocities[30] = vec2(0.0f);
 	m_positions[59] = vec2(30.0f, 15.0f);
-	m_velocities[59] = vec2(0.0f);
+	m_velocities[59] = vec2(0.0f);*/
 }
+
+#pragma endregion
+
 
 SimulationID Simulation2D::generateSimulationID()
 {
-	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
-
-	return m_size++;
+	//std::cout << (m_lastIdGiven + 1) << std::endl;
+	return ++m_lastIdGiven;
 }
 
 size_t Simulation2D::getSize()
 {
-	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
-
 	return m_size;
-}
-
-
-
-void Simulation2D::shake(float f)
-{
-	for (size_t i = 0; i < m_size; i++)
-	{
-		vec2 p = 0.123456f * m_positions[i];
-		m_forces[i] = -(m_mass[i] * f) * p + vec2(0.f, m_mass[i] * f);
-		//m_forces[i] += 50.0f * vec3(sin(p.x + i), cos(p.y + i), 1 * cos(3.14 * sin(p.z + i)));
-	}
-}
-
-void Simulation2D::push(vec2 v)
-{
-	m_forces[0] = v;
 }
 
 
@@ -593,12 +580,12 @@ vec2 Simulation2D::getPosition(SimulationID entity)
 
 void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 {
-	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
 
 	m_positions[entity] = pos;
 	m_previousPositions[entity] = pos;
 	//m_velocities[entity] = vec2(0.0f);
 	//m_forces[entity] = vec2(0.0f);
+	m_size = std::max((uint32_t)m_size, entity + 1);
 }
 
 void Simulation2D::updateTransform(Transform& transform, SimulationID entity)

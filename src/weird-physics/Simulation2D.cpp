@@ -18,9 +18,10 @@ using namespace std::chrono;
 constexpr float SIMULATION_FREQUENCY = 500;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
-constexpr size_t MAX_STEPS = 1000;
+constexpr size_t MAX_STEPS = 10;
 
 std::mutex g_simulationTimeMutex;
+std::mutex g_externalForcesMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -91,21 +92,25 @@ void Simulation2D::process()
 {
 	int steps = 0;
 
-
-
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
 #if MEASURE_PERFORMANCE
 		auto start = std::chrono::high_resolution_clock::now();
 #endif
 		checkCollisions();
-		applyForces();
-		step((float)FIXED_DELTA_TIME);
+
+		{
+			std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+			applyForces();
+			step((float)FIXED_DELTA_TIME);
+		}
 		++steps;
 
-		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-		m_simulationDelay -= FIXED_DELTA_TIME;
-		m_simulationTime += FIXED_DELTA_TIME;
+		{
+			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+			m_simulationDelay -= FIXED_DELTA_TIME;
+			m_simulationTime += FIXED_DELTA_TIME;
+		}
 
 #if MEASURE_PERFORMANCE
 		// Get the ending time
@@ -141,6 +146,9 @@ void Simulation2D::startSimulationThread()
 
 void Simulation2D::stopSimulationThread()
 {
+	if (!m_simulating)
+		return;
+
 	m_simulating = false;
 	m_simulationThread.join();
 }
@@ -181,10 +189,10 @@ void Simulation2D::checkCollisions()
 #if MEASURE_PERFORMANCE
 				checks++;
 #endif
+				}
 			}
-		}
 		break;
-	}
+		}
 	case  Simulation2D::MethodTree:
 	{
 		for (size_t i = m_tree.count; i < m_size; i++)
@@ -286,7 +294,7 @@ void Simulation2D::checkCollisions()
 	if (g_simulationSteps == 0)
 		std::cout << "First frame checks: " << checks << std::endl;
 #endif
-}
+	}
 
 void Simulation2D::solveCollisionsPositionBased()
 {
@@ -307,11 +315,13 @@ float EPSILON = 0.01f;
 void Simulation2D::applyForces()
 {
 	// External forces
-	if (m_externalForcesSinceLastUpdate) {
+	if (m_externalForcesSinceLastUpdate)
+	{
 		m_externalForcesSinceLastUpdate = false;
 		for (size_t i = 0; i < m_size; i++)
 		{
-			m_forces[i] = m_externalForces[i];
+			vec2& f = m_externalForces[i];
+			m_forces[i] = f;
 			m_externalForces[i] = vec2(0);
 		}
 	}
@@ -467,27 +477,6 @@ void Simulation2D::applyForces()
 		}
 	}
 
-	//for (size_t i = 0; i < m_size - 1; i++)
-	//{
-	//	vec2 v = m_positions[i + 1] - m_positions[i];
-	//	//vec2 n = normalize(v);
-	//	float d = length(v);
-
-	//	if (d > 1.0)
-	//	{
-	//		vec2 f = -0.5f * 1000000000.0f * v * (float)FIXED_DELTA_TIME;
-	//		m_forces[i] -= f;
-	//		m_forces[i + 1] += f;
-
-	//		/*vec2 f = -0.5f * v * (float)FIXED_DELTA_TIME;
-	//		m_velocities[i] -= f;
-	//		m_velocities[i + 1] += f;*/
-
-	//		/*vec2 f = -0.5f * v;
-	//		m_positions[i] -= f;
-	//		m_positions[i + 1] += f;*/
-	//	}
-	//}
 
 	for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
 	{
@@ -524,7 +513,7 @@ void Simulation2D::step(float timeStep)
 		m_positions[i] = newPosition;
 
 		// Update the previous position
-		m_previousPositions[i] = currentPosition;
+		//m_previousPositions[i] = currentPosition;
 
 		// Reset forces
 		m_forces[i] = vec2(0.0f);
@@ -553,11 +542,15 @@ void Simulation2D::step(float timeStep)
 
 SimulationID Simulation2D::generateSimulationID()
 {
+	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
 	return m_size++;
 }
 
 size_t Simulation2D::getSize()
 {
+	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
 	return m_size;
 }
 
@@ -578,8 +571,11 @@ void Simulation2D::push(vec2 v)
 	m_forces[0] = v;
 }
 
+
 void Simulation2D::addForce(SimulationID id, vec2 force)
 {
+	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
 	m_externalForcesSinceLastUpdate = true;
 	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 }
@@ -597,10 +593,12 @@ vec2 Simulation2D::getPosition(SimulationID entity)
 
 void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 {
+	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
 	m_positions[entity] = pos;
 	m_previousPositions[entity] = pos;
-	m_velocities[entity] = vec2(0.0f);
-	m_forces[entity] = vec2(0.0f);
+	//m_velocities[entity] = vec2(0.0f);
+	//m_forces[entity] = vec2(0.0f);
 }
 
 void Simulation2D::updateTransform(Transform& transform, SimulationID entity)

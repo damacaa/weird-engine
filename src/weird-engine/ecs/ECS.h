@@ -15,21 +15,8 @@
 class System {
 protected:
 
-	std::vector<Entity> m_entities;
-
 public:
-
-	virtual void add(Entity entity) {
-		m_entities.push_back(entity);
-	}
 	
-	virtual void remove(Entity entity) {
-		m_entities.erase(std::remove(m_entities.begin(), m_entities.end(), entity), m_entities.end());
-	}
-
-	virtual size_t getEntityCount() {
-		return m_entities.size();
-	}
 
 };
 
@@ -48,7 +35,7 @@ public:
 		}
 
 		for (auto sys : m_systems) {
-			sys->remove(entity);
+			
 		}
 	}
 

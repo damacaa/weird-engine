@@ -585,6 +585,9 @@ void Simulation2D::addForce(SimulationID id, vec2 force)
 
 void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
 {
+	if (a == b)
+		return;
+
 	m_springs.emplace_back(a, b, stiffness);
 }
 

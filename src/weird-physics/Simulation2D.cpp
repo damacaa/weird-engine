@@ -542,6 +542,14 @@ void Simulation2D::step(float timeStep)
 	m_velocities[30] = vec2(0.0f);
 	m_positions[59] = vec2(30.0f, 15.0f);
 	m_velocities[59] = vec2(0.0f);*/
+
+	for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+	{
+		SimulationID id = *it;
+
+		m_positions[id] -= timeStep * m_velocities[id];
+		m_velocities[id] = vec2(0.0f);
+	}
 }
 
 #pragma endregion
@@ -570,6 +578,16 @@ void Simulation2D::addForce(SimulationID id, vec2 force)
 void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
 {
 	m_springs.emplace_back(a, b, stiffness);
+}
+
+void Simulation2D::Fix(SimulationID id)
+{
+	m_fixedObjects.emplace_back(id);
+}
+
+void Simulation2D::UnFix(SimulationID id)
+{
+
 }
 
 

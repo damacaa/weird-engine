@@ -22,6 +22,7 @@ constexpr size_t MAX_STEPS = 10;
 
 std::mutex g_simulationTimeMutex;
 std::mutex g_externalForcesMutex;
+std::mutex g_collisionTreeUpdateMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -199,6 +200,9 @@ void Simulation2D::checkCollisions()
 	}
 	case  Simulation2D::MethodTree:
 	{
+
+		//std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+
 		for (size_t i = m_tree.count; i < m_size; i++)
 		{
 			AABB boundinBox(0, 0, 0, 0);
@@ -254,15 +258,19 @@ void Simulation2D::checkCollisions()
 			}*/
 		}
 
+
 		std::vector<int> possibleCollisions;
 		// Perform collision queries
-		for (size_t i = 0; i < m_treeIDs.size(); ++i) {
+		for (size_t i = 0; i < m_treeIDs.size(); ++i)
+		{
 			possibleCollisions.clear();
 			m_tree.query(m_tree.nodes[m_treeIDs[i]].box, possibleCollisions);
 
 			// Check actual collisions
-			for (int id : possibleCollisions) {
-				if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box)) {
+			for (int id : possibleCollisions)
+			{
+				if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box))
+				{
 					//std::cout << "Object " << m_treeIDs[i] << " is colliding with object " << id << std::endl;
 
 					int a = i;
@@ -610,6 +618,38 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 {
 	transform.position.x = m_positions[entity].x;
 	transform.position.y = m_positions[entity].y;
+}
+
+SimulationID Simulation2D::raycast(vec2 pos)
+{
+	for (size_t i = 0; i < m_size; i++)
+	{
+
+		vec2 ij = pos - m_positions[i];
+
+		float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+		if (distanceSquared < m_radious * m_radious)
+		{
+			return i;
+		}
+
+
+	}
+
+	return -1;
+
+
+	//std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+	//AABB boundinBox(pos.x - 1.0, pos.y - 1.0, pos.x + 1.0, pos.y + 1.0);
+	//std::vector<int> possibleCollisions;
+	////possibleCollisions.reserve(3);
+	//m_tree.query(boundinBox, possibleCollisions);
+
+	//if (possibleCollisions.size() == 0)
+	//	return 0;
+
+	//return m_treeIDs[possibleCollisions[0]];
 }
 
 

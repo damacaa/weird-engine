@@ -118,17 +118,34 @@ void Scene::update(double delta, double time)
 
 		//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
 
-		Transform t;
-		//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
-		t.position = vec3(pp.x, pp.y, 0.0);
-		Entity entity = m_ecs.createEntity();
-		m_ecs.addComponent(entity, t);
+		if (false)
+		{
+			Transform t;
+			//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
+			t.position = vec3(pp.x, pp.y, 0.0);
+			Entity entity = m_ecs.createEntity();
+			m_ecs.addComponent(entity, t);
 
-		m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial + 4));
+			m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial + 4));
 
-		RigidBody2D rb(m_simulation2D);
-		m_ecs.addComponent(entity, rb);
-		m_simulation2D.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+			RigidBody2D rb(m_simulation2D);
+			m_ecs.addComponent(entity, rb);
+			m_simulation2D.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+		}
+		else
+		{
+			SimulationID id = m_simulation2D.raycast(pp);
+			if (id < m_simulation2D.getSize())
+			{
+				m_simulation2D.Fix(id);
+				std::cout << id << std::endl;
+			}else
+			{
+				std::cout << "Miss" << std::endl;
+			}
+		}
+
+
 	}
 
 	if (Input::GetMouseButtonUp(Input::LeftClick))
@@ -182,7 +199,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	size_t circles = scene["Circles"].get<int>();
 	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
 
-	
+
 
 
 

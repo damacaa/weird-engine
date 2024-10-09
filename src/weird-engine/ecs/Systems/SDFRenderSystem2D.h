@@ -55,7 +55,7 @@ public:
 		for (size_t i = 0; i < size; i++)
 		{
 			auto& mr = componentArray[i];
-			auto& t = transformArray.getData(mr.Owner);
+			auto& t = transformArray.getDataFromEntity(mr.Owner);
 
 			data[i].position = t.position;
 			data[i].material = mr.materialId;

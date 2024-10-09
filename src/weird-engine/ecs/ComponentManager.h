@@ -36,8 +36,12 @@ public:
 		--size;
 	}
 
-	T& getData(Entity entity) {
+	T& getDataFromEntity(Entity entity) {
 		return values[entityToIndexMap[entity]];
+	}
+
+	T& getDataAtIdx(size_t idx) {
+		return values[idx];
 	}
 
 	bool hasData(Entity entity) {
@@ -101,7 +105,7 @@ public:
 
 	template <typename T>
 	T& getComponent(Entity entity) {
-		return getComponentArray<T>()->getData(entity);
+		return getComponentArray<T>()->getDataFromEntity(entity);
 	}
 
 	template <typename T>

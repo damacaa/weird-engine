@@ -39,19 +39,20 @@ public:
 
 		auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
-		for (size_t i = simulation.getSize(); i < componentArray.size; i++)
-		{
-			RigidBody2D& rb = componentArray[i];
-			rb.simulationId = simulation.generateSimulationID();
-			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
-			simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-		}
+		//for (size_t i = simulation.getSize(); i < componentArray.size; i++)
+		//{
+		//	RigidBody2D& rb = componentArray[i];
+		//	//rb.simulationId = simulation.generateSimulationID();
+		//	Transform& transform = ecs.getComponent<Transform>(rb.Owner);
+		//	simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
+		//}
 
 		for (size_t i = 0; i < componentArray.size; i++)
 		{
 			auto& rb = componentArray[i];
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
-			if (transform.isDirty) {
+			if (transform.isDirty) 
+			{
 				// Override simulation transform
 				simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
 				transform.isDirty = false; // TODO: move somewhere else

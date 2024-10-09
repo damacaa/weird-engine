@@ -84,19 +84,25 @@ void Scene::update(double delta, double time)
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 	m_simulation2D.update(delta);
 
-	m_weirdSystem.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
+	m_weirdSandBox.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
 
 	if (Input::GetKeyDown(Input::Q))
 	{
 		SceneManager::getInstance().loadNextScene();
 	}
 
-	m_weirdSystem.throwBalls(m_ecs, m_simulation2D);
+	if (Input::GetKey(Input::E))
+		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
 
 	if (Input::GetKey(Input::T))
 	{
-		auto v = vec2(15, 30) - m_simulation2D.getPosition(0);
-		m_simulation2D.addForce(0, 10.0f * normalize(v));
+		SimulationID lastInSimulation = m_simulation2D.getSize() - 1;
+
+		int last = m_ecs.getComponentArray<RigidBody2D>()->getSize() - 1;
+		SimulationID target = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(last).simulationId;
+
+		auto v = vec2(15, 30) - m_simulation2D.getPosition(target);
+		m_simulation2D.addForce(target, 50.0f * normalize(v));
 	}
 
 
@@ -110,7 +116,7 @@ void Scene::update(double delta, double time)
 
 		vec2 pp = Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-		std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
+		//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
 
 		Transform t;
 		//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
@@ -153,23 +159,6 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
 
-	size_t circles = scene["Circles"].get<int>();
-	m_weirdSystem.spawnEntities(m_ecs,m_simulation2D, circles, 0);
-
-	float stiffness = 10000000000.0f;
-	
-	/*for (size_t i = 0; i < 29; i += 1)
-	{
-		m_simulation2D.addSpring(i, i + 30, stiffness);
-		m_simulation2D.addSpring(i + 1, i + 31, stiffness);
-		m_simulation2D.addSpring(i, i + 1, stiffness);
-		m_simulation2D.addSpring(i + 30, i + 31, stiffness);
-
-		m_simulation2D.addSpring(i, i + 31, stiffness);
-		m_simulation2D.addSpring(i + 1, i + 30, stiffness);
-	}*/
-
-	
 
 	// Create camera object
 	m_mainCamera = m_ecs.createEntity();
@@ -188,6 +177,16 @@ void Scene::loadScene(std::string sceneFileContent)
 	WeirdRenderer::Light light;
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
+
+
+	size_t circles = scene["Circles"].get<int>();
+	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
+
+	
+
+
+
+
 
 
 }

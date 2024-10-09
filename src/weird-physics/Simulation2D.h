@@ -88,6 +88,8 @@ public:
 	void setPosition(SimulationID entity, vec2 pos);
 	void updateTransform(Transform& transform, SimulationID entity);
 
+	SimulationID raycast(vec2 pos);
+
 private:
 
 	void process();

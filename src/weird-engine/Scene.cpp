@@ -71,6 +71,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 int g_currentMaterial = 0;
+SimulationID g_lastId = -1;
 void Scene::update(double delta, double time)
 {
 	// Update systems
@@ -118,7 +119,7 @@ void Scene::update(double delta, double time)
 
 		//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
 
-		if (false)
+		if (!Input::GetKey(Input::Z))
 		{
 			Transform t;
 			//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
@@ -131,27 +132,51 @@ void Scene::update(double delta, double time)
 			RigidBody2D rb(m_simulation2D);
 			m_ecs.addComponent(entity, rb);
 			m_simulation2D.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+
+			g_lastId = -1;
 		}
 		else
 		{
 			SimulationID id = m_simulation2D.raycast(pp);
 			if (id < m_simulation2D.getSize())
 			{
-				m_simulation2D.Fix(id);
+				//m_simulation2D.Fix(id);
+				if (g_lastId < m_simulation2D.getSize())
+				{
+					m_simulation2D.addSpring(id, g_lastId, 10000000000.0f);
+					g_lastId = -1;
+				}
+				else
+				{
+					g_lastId = id;
+				}
+
 				std::cout << id << std::endl;
-			}else
+			}
+			else
 			{
 				std::cout << "Miss" << std::endl;
+				g_lastId = -1;
 			}
 		}
 
 
 	}
 
+	if (Input::GetKeyDown(Input::X))
+	{
+		std::cout << "Reset spring" << std::endl;
+		g_lastId = -1;
+	}
+
+
+
 	if (Input::GetMouseButtonUp(Input::LeftClick))
 	{
 		g_currentMaterial = (g_currentMaterial + 1) % 12;
 	}
+
+
 
 }
 

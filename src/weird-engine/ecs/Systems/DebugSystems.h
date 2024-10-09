@@ -141,7 +141,12 @@ public:
 
 				simulation.addSpring(i, i + 31, stiffness);
 				simulation.addSpring(i + 1, i + 30, stiffness);
+
 			}
+
+			simulation.Fix(0);
+			simulation.Fix(29);
+
 			break;
 		}
 		case 1:

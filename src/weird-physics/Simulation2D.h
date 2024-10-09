@@ -80,6 +80,8 @@ public:
 	void addForce(SimulationID id, vec2 force);
 	void addSpring(SimulationID a, SimulationID b, float stiffness);
 
+	void Fix(SimulationID id);
+	void UnFix(SimulationID id);
 
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);
@@ -199,6 +201,7 @@ private:
 
 
 	std::vector<Spring> m_springs;
+	std::vector<SimulationID> m_fixedObjects;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

@@ -203,6 +203,7 @@ void Simulation2D::checkCollisions()
 
 		//std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
 
+		// Add new objects
 		for (size_t i = m_tree.count; i < m_size; i++)
 		{
 			AABB boundinBox(0, 0, 0, 0);
@@ -215,7 +216,7 @@ void Simulation2D::checkCollisions()
 
 		float scale = 1.5f;
 		const float speedThreshold = 0.5f;
-		// Update the objects' positions (example movement)
+		// Update the objects' positions
 		for (size_t i = 0; i < m_treeIDs.size(); ++i)
 		{
 			auto& p = m_positions[i];
@@ -392,7 +393,7 @@ void Simulation2D::applyForces()
 	{
 		Collision col = *it;
 
-		float lengthSquared = length2(col.AB);
+			float lengthSquared = length2(col.AB);
 		vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
@@ -625,34 +626,40 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 
 SimulationID Simulation2D::raycast(vec2 pos)
 {
-	for (size_t i = 0; i < m_size; i++)
+	if (m_collisionDetectionMethod == None || m_collisionDetectionMethod == MethodNaive)
 	{
 
-		vec2 ij = pos - m_positions[i];
-
-		float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-		if (distanceSquared < m_radious * m_radious)
+		for (size_t i = 0; i < m_size; i++)
 		{
-			return i;
+
+			vec2 ij = pos - m_positions[i];
+
+			float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+			if (distanceSquared < m_radious * m_radious)
+			{
+				return i;
+			}
+
+
 		}
 
-
+		return -1;
 	}
+	else
+	{
+		float size = 0.001f;
+		std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+		AABB boundinBox(pos.x - size, pos.y - size, pos.x + size, pos.y + size);
+		std::vector<int> possibleCollisions;
+		//possibleCollisions.reserve(3);
+		m_tree.query(boundinBox, possibleCollisions);
 
-	return -1;
+		if (possibleCollisions.size() == 0)
+			return -1;
 
-
-	//std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
-	//AABB boundinBox(pos.x - 1.0, pos.y - 1.0, pos.x + 1.0, pos.y + 1.0);
-	//std::vector<int> possibleCollisions;
-	////possibleCollisions.reserve(3);
-	//m_tree.query(boundinBox, possibleCollisions);
-
-	//if (possibleCollisions.size() == 0)
-	//	return 0;
-
-	//return m_treeIDs[possibleCollisions[0]];
+		return m_treeIdToSimulationID[possibleCollisions[0]];
+	}
 }
 
 

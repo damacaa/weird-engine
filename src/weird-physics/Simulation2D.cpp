@@ -386,6 +386,11 @@ void Simulation2D::applyForces()
 		}
 	}
 
+	if (Input::GetKeyDown(Input::H))
+	{
+		m_gravity = -1.f * (m_gravity + 10.0f);
+	}
+
 
 
 	// Sphere collisions

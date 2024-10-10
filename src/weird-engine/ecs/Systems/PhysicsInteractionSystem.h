@@ -8,46 +8,62 @@ class PhysicsInteractionSystem : public System
 {
 private:
 
-	bool m_holdingMouse;
-	vec2 m_position;
+	bool m_loadingImpulse;
+	vec2 m_loadStartPosition;
+
 	SimulationID m_dragId = -1;
 
 	int m_currentMaterial = 0;
-	SimulationID m_lastId = -1;
+
+	SimulationID m_firstIdInSpring = -1;
+
 	SimulationID m_selectedId = -1;
-public:
 
-	PhysicsInteractionSystem(ECSManager& ecs) : m_holdingMouse(false)
+	enum class InteractionMode
 	{
+		Drag = 0,
+		Impulse = 1,
+		Fix = 2,
+		Spring = 3,
+	};
 
+	std::string m_interactionModeToString[4]
+	{
+		"Drag",
+		"Impulse",
+		"Fix",
+		"Spring",
+	};
+
+	InteractionMode m_currentInteractionMode = InteractionMode::Spring;
+
+	vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation)
+	{
+		// Get mouse coordinates
+		auto& cameraTransform = ecs.getComponent<Transform>(0);// m_mainCamera
+		float x = Input::GetMouseX();
+		float y = Input::GetMouseY();
+
+		// Transform mouse coordinates to world space
+		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
+
+		return mousePositionInWorld;
 	}
 
-	void update(ECSManager& ecs, Simulation2D& simulation)
+
+
+	void drag(ECSManager& ecs, Simulation2D& simulation)
 	{
-
-		if (Input::GetMouseButton(Input::RightClick))
+		if (Input::GetMouseButtonDown(Input::RightClick))
 		{
-			// Test screen coordinates to 2D world coordinates
-			auto& cameraTransform = ecs.getComponent<Transform>(0);// m_mainCamera
+			// Find new target
+			SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 
-			float x = Input::GetMouseX();
-			float y = Input::GetMouseY();
-
-			vec2 pp = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
-
-			//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
-
-			SimulationID id = simulation.raycast(pp);
-			if (m_dragId >= simulation.getSize() && id < simulation.getSize())
+			// No prior target and new target is good
+			if (!m_dragId < simulation.getSize() && id < simulation.getSize())
+			{
 				m_dragId = id;
-
-			if (m_dragId < simulation.getSize())
-			{
-				drag(ecs, simulation, m_dragId, pp);
-			}
-			else
-			{
-				push(ecs, simulation);
+				simulation.fix(m_dragId);
 			}
 		}
 
@@ -59,9 +75,145 @@ public:
 				simulation.addForce(m_dragId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 				m_dragId = -1;
 			}
-
-			release(ecs, simulation);
 		}
+
+		if (m_dragId < simulation.getSize())
+		{
+			vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
+			simulation.setPosition(m_dragId, mousePositionInWorld);
+		}
+	}
+
+
+	void impulse(ECSManager& ecs, Simulation2D& simulation)
+	{
+		if (Input::GetMouseButtonDown(Input::RightClick))
+		{
+			if (m_loadingImpulse)
+				return;
+
+			m_loadingImpulse = true;
+			m_loadStartPosition = getMousePositionInWorld(ecs, simulation);
+		}
+
+
+		if (Input::GetMouseButtonUp(Input::RightClick))
+		{
+			if (!m_loadingImpulse)
+				return;
+
+			m_loadingImpulse = false;
+
+			auto& m_rbManager = *ecs.getComponentManager<RigidBody2D>();
+			auto& componentArray = *m_rbManager.getComponentArray<RigidBody2D>();
+
+			vec2 direction = (getMousePositionInWorld(ecs, simulation) - m_loadStartPosition);
+
+			for (size_t i = 0; i < componentArray.size; i++)
+			{
+				auto& rb = componentArray[i];
+				simulation.addForce(rb.simulationId, direction);
+			}
+		}
+	}
+
+
+	void fix(ECSManager& ecs, Simulation2D& simulation)
+	{
+		if (Input::GetMouseButtonDown(Input::RightClick))
+		{
+			SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+			if (id < simulation.getSize())
+			{
+				simulation.fix(id);
+			}
+		}
+	}
+
+
+	void spring(ECSManager& ecs, Simulation2D& simulation)
+	{
+
+		if (Input::GetMouseButtonDown(Input::RightClick))
+		{
+			SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+			if (id < simulation.getSize())
+			{
+				m_firstIdInSpring = id;
+			}
+			else
+			{
+				m_firstIdInSpring = -1;
+			}
+		}
+
+
+		if (Input::GetMouseButtonUp(Input::RightClick))
+		{
+			if (m_firstIdInSpring < simulation.getSize())
+			{
+				// Check 
+				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+				if (id < simulation.getSize())
+				{
+					simulation.addSpring(id, m_firstIdInSpring, 10000000000.0f);
+				}
+			}
+
+			m_firstIdInSpring = -1;
+		}
+	}
+
+public:
+
+	PhysicsInteractionSystem(ECSManager& ecs) : m_loadingImpulse(false)
+	{
+
+	}
+
+	void update(ECSManager& ecs, Simulation2D& simulation)
+	{
+
+		// Spawn ball
+		if (Input::GetMouseButtonDown(Input::LeftClick))
+		{
+			// Get mouse coordinates world space
+			vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
+
+			Transform t;
+			//t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
+			t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
+			Entity entity = ecs.createEntity();
+			ecs.addComponent(entity, t);
+
+			ecs.addComponent(entity, SDFRenderer(m_currentMaterial + 4));
+
+			RigidBody2D rb(simulation);
+			ecs.addComponent(entity, rb);
+			simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+
+			m_firstIdInSpring = -1;
+		}
+
+		switch (m_currentInteractionMode)
+		{
+		case PhysicsInteractionSystem::InteractionMode::Drag:
+			drag(ecs, simulation);
+			break;
+		case PhysicsInteractionSystem::InteractionMode::Impulse:
+			impulse(ecs, simulation);
+			break;
+		case PhysicsInteractionSystem::InteractionMode::Fix:
+			fix(ecs, simulation);
+			break;
+		case PhysicsInteractionSystem::InteractionMode::Spring:
+			spring(ecs, simulation);
+			break;
+		default:
+			break;
+		}
+
+		
 
 		// Add force to last ball
 		if (Input::GetKey(Input::T))
@@ -77,68 +229,30 @@ public:
 
 
 
-		if (Input::GetMouseButtonDown(Input::LeftClick))
-		{
-			// Test screen coordinates to 2D world coordinates
-			auto& cameraTransform = ecs.getComponent<Transform>(0);
-
-			float x = Input::GetMouseX();
-			float y = Input::GetMouseY();
-
-			vec2 pp = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
-
-			//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
-
-
-			if (!Input::GetKey(Input::Z))
-			{
-				Transform t;
-				//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
-				t.position = vec3(pp.x, pp.y, 0.0);
-				Entity entity = ecs.createEntity();
-				ecs.addComponent(entity, t);
-
-				ecs.addComponent(entity, SDFRenderer(m_currentMaterial + 4));
-
-				RigidBody2D rb(simulation);
-				ecs.addComponent(entity, rb);
-				simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
-
-				m_lastId = -1;
-			}
-			else
-			{
-				SimulationID id = simulation.raycast(pp);
-				if (id < simulation.getSize())
-				{
-					//simulation.fix(id);
-					if (m_lastId < simulation.getSize())
-					{
-						simulation.addSpring(id, m_lastId, 10000000000.0f);
-						m_lastId = -1;
-					}
-					else
-					{
-						m_lastId = id;
-					}
-				}
-				else
-				{
-					std::cout << "Miss" << std::endl;
-					m_lastId = -1;
-				}
-			}
-		}
-
 		if (Input::GetMouseButtonUp(Input::LeftClick))
 		{
 			m_currentMaterial = (m_currentMaterial + 1) % 12;
 		}
 
-		if (Input::GetKeyDown(Input::X))
+
+		if (Input::GetKeyDown(Input::M))
 		{
-			std::cout << "Reset spring" << std::endl;
-			m_lastId = -1;
+
+			std::cout << "Choose interaction" << std::endl;
+
+			for (size_t i = 0; i < m_interactionModeToString->size(); i++)
+			{
+				std::cout << i << "-->" << m_interactionModeToString[i] << std::endl;
+			}
+
+			std::string input;
+			std::cin >> input;
+			int32_t newMode = stoi(input);
+			if (newMode >= 0 && newMode < m_interactionModeToString->size())
+			{
+				m_currentInteractionMode = (InteractionMode)newMode;
+				std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			}
 		}
 
 
@@ -179,60 +293,7 @@ private:
 		}
 	}
 
-	void push(ECSManager& ecs, Simulation2D& simulation)
-	{
-		if (m_holdingMouse && Input::GetMouseButtonUp(Input::RightClick))
-		{
-			m_holdingMouse = false;
 
-			auto& m_rbManager = *ecs.getComponentManager<RigidBody2D>();
-			auto& componentArray = *m_rbManager.getComponentArray<RigidBody2D>();
 
-			float x = Input::GetMouseX() / 40.0f;
-			float y = (800 - Input::GetMouseY()) / 40.0f;
-			vec2 direction = (vec2(x, y) - m_position);
 
-			for (size_t i = 0; i < componentArray.size; i++)
-			{
-				auto& rb = componentArray[i];
-				simulation.addForce(rb.simulationId, 3.f * direction);
-			}
-		}
-		else if (Input::GetMouseButtonDown(Input::RightClick))
-		{
-			m_holdingMouse = true;
-
-			float x = Input::GetMouseX() / 40.0f;
-			float y = (800 - Input::GetMouseY()) / 40.0f;
-			m_position = vec2(x, y);
-		}
-	}
-
-	void release(ECSManager& ecs, Simulation2D& simulation)
-	{
-		if (!m_holdingMouse)
-			return;
-
-		m_holdingMouse = false;
-
-		auto& m_rbManager = *ecs.getComponentManager<RigidBody2D>();
-		auto& componentArray = *m_rbManager.getComponentArray<RigidBody2D>();
-
-		float x = Input::GetMouseX() / 40.0f;
-		float y = (800 - Input::GetMouseY()) / 40.0f;
-		vec2 direction = (vec2(x, y) - m_position);
-
-		for (size_t i = 0; i < componentArray.size; i++)
-		{
-			auto& rb = componentArray[i];
-			simulation.addForce(rb.simulationId, 3.f * direction);
-		}
-
-	}
-
-	void drag(ECSManager& ecs, Simulation2D& simulation, SimulationID id, vec2 pp) {
-
-		simulation.setPosition(id, pp);
-		simulation.fix(id);
-	}
 };

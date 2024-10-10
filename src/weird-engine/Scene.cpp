@@ -70,8 +70,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 }
 
 
-int g_currentMaterial = 0;
-SimulationID g_lastId = -1;
+
 void Scene::update(double delta, double time)
 {
 	// Update systems
@@ -87,98 +86,21 @@ void Scene::update(double delta, double time)
 
 	m_weirdSandBox.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
 
+	// Load next scene
 	if (Input::GetKeyDown(Input::Q))
 	{
 		SceneManager::getInstance().loadNextScene();
 	}
 
+	// Add balls
 	if (Input::GetKey(Input::E))
+	{
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
-
-	if (Input::GetKey(Input::T))
-	{
-		SimulationID lastInSimulation = m_simulation2D.getSize() - 1;
-
-		int last = m_ecs.getComponentArray<RigidBody2D>()->getSize() - 1;
-		SimulationID target = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(last).simulationId;
-
-		auto v = vec2(15, 30) - m_simulation2D.getPosition(target);
-		m_simulation2D.addForce(target, 50.0f * normalize(v));
 	}
 
-
-	if (Input::GetMouseButtonDown(Input::LeftClick))
-	{
-		// Test screen coordinates to 2D world coordinates
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
-
-		float x = Input::GetMouseX();
-		float y = Input::GetMouseY();
-
-		vec2 pp = Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
-
-		//std::cout << "Click: " << pp.x << ", " << pp.y << std::endl;
-
-		if (!Input::GetKey(Input::Z))
-		{
-			Transform t;
-			//t.position = vec3(pp.x + sin(time), pp.y + cos(time), 0.0);
-			t.position = vec3(pp.x, pp.y, 0.0);
-			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
-
-			m_ecs.addComponent(entity, SDFRenderer(g_currentMaterial + 4));
-
-			RigidBody2D rb(m_simulation2D);
-			m_ecs.addComponent(entity, rb);
-			m_simulation2D.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
-
-			g_lastId = -1;
-		}
-		else
-		{
-			SimulationID id = m_simulation2D.raycast(pp);
-			if (id < m_simulation2D.getSize())
-			{
-				//m_simulation2D.fix(id);
-				if (g_lastId < m_simulation2D.getSize())
-				{
-					m_simulation2D.addSpring(id, g_lastId, 10000000000.0f);
-					g_lastId = -1;
-				}
-				else
-				{
-					g_lastId = id;
-				}
-			}
-			else
-			{
-				std::cout << "Miss" << std::endl;
-				g_lastId = -1;
-			}
-		}
-
-
-	}
-
-	if (Input::GetKeyDown(Input::X))
-	{
-		std::cout << "Reset spring" << std::endl;
-		g_lastId = -1;
-	}
-
-
-
-	if (Input::GetMouseButtonUp(Input::LeftClick))
-	{
-		g_currentMaterial = (g_currentMaterial + 1) % 12;
-	}
-
-
+	
 
 }
-
-
 
 
 WeirdRenderer::Camera& Scene::getCamera()
@@ -186,11 +108,11 @@ WeirdRenderer::Camera& Scene::getCamera()
 	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
 
+
 float Scene::getTime()
 {
 	return m_simulation2D.getSimulationTime();
 }
-
 
 
 void Scene::loadScene(std::string sceneFileContent)
@@ -198,7 +120,6 @@ void Scene::loadScene(std::string sceneFileContent)
 	json scene = json::parse(sceneFileContent);
 
 	std::string projectDir = fs::current_path().string() + "/SampleProject";
-
 
 	// Create camera object
 	m_mainCamera = m_ecs.createEntity();
@@ -218,15 +139,6 @@ void Scene::loadScene(std::string sceneFileContent)
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 
-
 	size_t circles = scene["Circles"].get<int>();
 	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
-
-
-
-
-
-
-
-
 }

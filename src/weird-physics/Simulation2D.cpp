@@ -22,10 +22,12 @@ constexpr size_t MAX_STEPS = 10;
 
 std::mutex g_simulationTimeMutex;
 std::mutex g_externalForcesMutex;
+std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
+	m_isPaused(false),
 	m_positions(new vec2[size]),
 	m_previousPositions(new vec2[size]),
 	m_velocities(new vec2[size]),
@@ -71,6 +73,21 @@ Simulation2D::~Simulation2D()
 	delete[] m_invMass;
 }
 
+void Simulation2D::pause()
+{
+	m_isPaused = true;
+}
+
+void Simulation2D::resume()
+{
+	m_isPaused = false;
+}
+
+bool Simulation2D::isPaused()
+{
+	return m_isPaused;
+}
+
 
 #pragma region MyRegion
 
@@ -104,18 +121,20 @@ void Simulation2D::process()
 #endif
 		checkCollisions();
 
+		if (!m_isPaused)
 		{
 			std::lock_guard<std::mutex> lock(g_externalForcesMutex);
 			applyForces();
 			step((float)FIXED_DELTA_TIME);
+			++steps;
+			{
+				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+				m_simulationTime += FIXED_DELTA_TIME;
+			}
 		}
-		++steps;
 
-		{
-			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-			m_simulationDelay -= FIXED_DELTA_TIME;
-			m_simulationTime += FIXED_DELTA_TIME;
-		}
+		m_simulationDelay -= FIXED_DELTA_TIME;
+
 
 #if MEASURE_PERFORMANCE
 		// Get the ending time
@@ -309,6 +328,7 @@ void Simulation2D::checkCollisions()
 #endif
 }
 
+
 void Simulation2D::solveCollisionsPositionBased()
 {
 	// Calculate forces
@@ -322,9 +342,7 @@ void Simulation2D::solveCollisionsPositionBased()
 }
 
 
-
-float EPSILON = 0.01f;
-
+const float EPSILON = 0.01f;
 void Simulation2D::applyForces()
 {
 	// External forces
@@ -339,9 +357,11 @@ void Simulation2D::applyForces()
 		}
 	}
 
+
+
 	// Attraction force
-	bool attracttionEnabled = Input::GetKey(Input::G);
-	if (attracttionEnabled) {
+	if (m_attracttionEnabled)
+	{
 		for (size_t i = 0; i < m_size; i++)
 		{
 			for (size_t j = i + 1; j < m_size; j++)
@@ -359,8 +379,8 @@ void Simulation2D::applyForces()
 		}
 	}
 
-	bool repulsionEnabled = Input::GetKey(Input::H);
-	if (repulsionEnabled) {
+	if (m_repulsionEnabled)
+	{
 		for (size_t i = 0; i < m_size; i++)
 		{
 			for (size_t j = i + 1; j < m_size; j++)
@@ -378,19 +398,13 @@ void Simulation2D::applyForces()
 		}
 	}
 
-	bool liftEnabled = Input::GetKey(Input::F);
-	if (liftEnabled) {
+	if (m_liftEnabled)
+	{
 		for (size_t i = 0; i < m_size / 2; i++)
 		{
 			m_forces[i] += vec2(0, 100000.0f);
 		}
 	}
-
-	if (Input::GetKeyDown(Input::H))
-	{
-		m_gravity = -1.f * (m_gravity + 10.0f);
-	}
-
 
 
 	// Sphere collisions
@@ -398,7 +412,7 @@ void Simulation2D::applyForces()
 	{
 		Collision col = *it;
 
-			float lengthSquared = length2(col.AB);
+		float lengthSquared = length2(col.AB);
 		vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
@@ -440,7 +454,10 @@ void Simulation2D::applyForces()
 		//vec2& force = m_forces[i];
 
 		// Gravity
-		m_forces[i].y += m_mass[i] * m_gravity;
+		if (!m_attracttionEnabled)
+		{
+			m_forces[i].y += m_mass[i] * m_gravity;
+		}
 
 		// Bounds collisions
 		// Wavy floor
@@ -503,6 +520,7 @@ void Simulation2D::applyForces()
 		vec2 v = m_positions[spring.B] - m_positions[spring.A];
 		vec2 n = normalize(v);
 		float d = 1.0f - length(v);
+		d = std::min(d, 0.1f);
 
 		vec2 f = -0.5f * spring.K * d * (float)FIXED_DELTA_TIME * n;
 		m_forces[spring.A] += f;
@@ -556,13 +574,16 @@ void Simulation2D::step(float timeStep)
 	m_velocities[30] = vec2(0.0f);
 	m_positions[59] = vec2(30.0f, 15.0f);
 	m_velocities[59] = vec2(0.0f);*/
-
-	for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+	
 	{
-		SimulationID id = *it;
+		std::lock_guard<std::mutex> lock(g_fixMutex);
+		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+		{
+			SimulationID id = *it;
 
-		m_positions[id] -= timeStep * m_velocities[id];
-		m_velocities[id] = vec2(0.0f);
+			m_positions[id] -= timeStep * m_velocities[id];
+			m_velocities[id] = vec2(0.0f);
+		}
 	}
 }
 
@@ -599,12 +620,14 @@ void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
 
 void Simulation2D::fix(SimulationID id)
 {
+	std::lock_guard<std::mutex> lock(g_fixMutex);
 	m_fixedObjects.emplace_back(id);
 }
 
 void Simulation2D::unFix(SimulationID id)
 {
-
+	std::lock_guard<std::mutex> lock(g_fixMutex);
+	m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
 }
 
 
@@ -618,7 +641,7 @@ void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 
 	m_positions[entity] = pos;
 	m_previousPositions[entity] = pos;
-	//m_velocities[entity] = vec2(0.0f);
+	m_velocities[entity] = vec2(0.0f);
 	//m_forces[entity] = vec2(0.0f);
 	m_size = std::max((uint32_t)m_size, entity + 1);
 }

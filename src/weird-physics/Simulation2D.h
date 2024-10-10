@@ -192,7 +192,7 @@ private:
 	const float m_push;
 	const float m_damping;
 
-	const float m_gravity;
+	float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
 

@@ -64,6 +64,10 @@ public:
 	~Simulation2D();
 
 	// Manage simulation
+	void pause();
+	void resume();
+	bool isPaused();
+
 	void startSimulationThread();
 	void stopSimulationThread();
 
@@ -76,15 +80,19 @@ public:
 	SimulationID generateSimulationID();
 	size_t getSize();
 
-	// Add external forces
-	void shake(float f);
-	void push(vec2 v);
+	// Interaction
 	void addForce(SimulationID id, vec2 force);
+	void addSpring(SimulationID a, SimulationID b, float stiffness);
+
+	void fix(SimulationID id);
+	void unFix(SimulationID id);
 
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);
 	void setPosition(SimulationID entity, vec2 pos);
 	void updateTransform(Transform& transform, SimulationID entity);
+
+	SimulationID raycast(vec2 pos);
 
 private:
 
@@ -121,6 +129,29 @@ private:
 		vec2 AB;
 	};
 
+	struct Spring
+	{
+	public:
+		Spring()
+		{
+			A = -1;
+			B = -1;
+			K = 0;
+		}
+
+
+		Spring(int a, int b, float k)
+		{
+			A = a;
+			B = b;
+			K = k;
+		}
+
+		int A;
+		int B;
+		float K;
+	};
+
 	struct CollisionHash {
 		std::size_t operator()(const Collision& s) const {
 			bool flip = s.A < s.B;
@@ -137,6 +168,7 @@ private:
 		MethodTree
 	};
 
+	bool m_isPaused;
 	bool m_simulating;
 	double m_simulationDelay;
 	double m_simulationTime;
@@ -153,18 +185,19 @@ private:
 
 	size_t m_maxSize;
 	size_t m_size;
+	size_t m_lastIdGiven;
 
 	float* m_mass;
 	float* m_invMass;
 
 	const float m_diameter;
-	const float m_diameterSquared; 
+	const float m_diameterSquared;
 	const float m_radious;
 
 	const float m_push;
 	const float m_damping;
 
-	const float m_gravity;
+	float m_gravity;
 
 	CollisionDetectionMethod m_collisionDetectionMethod;
 
@@ -173,7 +206,16 @@ private:
 	std::vector<int> m_treeIDs;
 	std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 
+
+	std::vector<Spring> m_springs;
+	std::vector<SimulationID> m_fixedObjects;
+
 	std::thread m_simulationThread;
 	void runSimulationThread();
+
+	// Extra
+	bool m_attracttionEnabled = false;
+	bool m_repulsionEnabled = false;
+	bool m_liftEnabled = false;
 };
 

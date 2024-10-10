@@ -27,7 +27,7 @@ public:
 		{
 			auto& mr = componentArray[i];
 			//auto& t = ecs.getComponent<Transform>(mr.Owner);
-			auto& t = transformArray.getData(mr.Owner);
+			auto& t = transformArray.getDataFromEntity(mr.Owner);
 
 			data[i].position = t.position;// +glm::vec3(0, mr.Owner, 0);
 			//data[i].size = t.scale.x;

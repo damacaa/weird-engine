@@ -73,6 +73,9 @@ void Simulation::startSimulationThread()
 
 void Simulation::stopSimulationThread()
 {
+	if (!m_simulating)
+		return;
+
 	m_simulating = false;
 	m_simulationThread.join();
 }

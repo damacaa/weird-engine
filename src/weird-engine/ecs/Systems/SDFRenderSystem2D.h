@@ -39,6 +39,7 @@ public:
 
 	void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
 	{
+		m_materialsAreDirty = true;
 		if (m_materialsAreDirty) 
 		{
 			shader.setUniform("u_staticColors", m_colorPalette, 16);

@@ -1,12 +1,9 @@
 #version 330 core
 
-
 #define BLEND_SHAPES 1
 #define MOTION_BLUR 1
 
 uniform float k = 0.1;
-
-
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -23,7 +20,6 @@ uniform float u_time;
 uniform mat4 u_cameraMatrix;
 uniform vec3 u_staticColors[16];
 uniform vec3 directionalLightDirection;
-
 
 uniform int u_blendIterations;
 
@@ -134,12 +130,24 @@ vec4 getColor(vec2 p)
 #endif
   }
 
+  // Wavy floor
   float floorDist = 0.1 * (p.y - 1.0 * sin(0.5 * p.x + u_time));
   d = min(d, floorDist);
   col = d == floorDist ? getMaterial(p, 0) : col;
 
-  vec3 background = mix(u_staticColors[2],u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+  // Domain repetition balls
+  float scale = 1.0 / 10.0;
+  vec2 roundPos = ((scale * p) - round(scale * p)) * 10.0;
+  roundPos.x += cos(u_time);
+  roundPos.y += sin(u_time);
+  float infiniteShere = shape_circle((roundPos - vec2(0.0)) );
+  d = min(d, infiniteShere);
 
+  //d = fOpUnionSoft(infiniteShere, d, k);
+  col = d == infiniteShere ? getMaterial(p, 0) : col;
+
+  // Set background color
+  vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
   col = d > 0.0 ? background : col;
 
   return vec4(col, d);
@@ -156,7 +164,7 @@ void main()
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;
 
-  #if MOTION_BLUR
+#if MOTION_BLUR
 
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
   vec4 previousColor = texture(u_colorTexture, screenUV.xy);
@@ -164,20 +172,19 @@ void main()
 
   previousDistance += u_blendIterations * 0.00035;
   previousDistance = mix(finalDistance, previousDistance, 0.95);
-  //previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
-
+  // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
   FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
-  if(FragColor.w > 0.0)
+  if (FragColor.w > 0.0)
     FragColor = vec4(color.xyz, FragColor.w);
 
-   //FragColor = previousColor;
+    // FragColor = previousColor;
 
-  //FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
+    // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
 
-  #else
+#else
 
   FragColor = vec4(color.xyz, finalDistance);
 
-  #endif
+#endif
 }

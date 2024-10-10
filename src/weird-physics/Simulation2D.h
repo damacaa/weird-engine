@@ -64,6 +64,10 @@ public:
 	~Simulation2D();
 
 	// Manage simulation
+	void pause();
+	void resume();
+	bool isPaused();
+
 	void startSimulationThread();
 	void stopSimulationThread();
 
@@ -164,6 +168,7 @@ private:
 		MethodTree
 	};
 
+	bool m_isPaused;
 	bool m_simulating;
 	double m_simulationDelay;
 	double m_simulationTime;
@@ -207,5 +212,10 @@ private:
 
 	std::thread m_simulationThread;
 	void runSimulationThread();
+
+	// Extra
+	bool m_attracttionEnabled = false;
+	bool m_repulsionEnabled = false;
+	bool m_liftEnabled = false;
 };
 

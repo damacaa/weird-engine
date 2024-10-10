@@ -77,7 +77,7 @@ public:
 			case 0:
 			{
 				x = i % 30;
-				y = (int)(i / 30) + 5;
+				y = (int)(i / 30) + 15;
 
 				material = 4 + (i % 12);
 

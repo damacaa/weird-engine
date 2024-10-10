@@ -123,7 +123,6 @@ void Simulation2D::process()
 
 		if (!m_isPaused)
 		{
-			std::lock_guard<std::mutex> lock(g_externalForcesMutex);
 			applyForces();
 			step((float)FIXED_DELTA_TIME);
 			++steps;
@@ -133,7 +132,10 @@ void Simulation2D::process()
 			}
 		}
 
-		m_simulationDelay -= FIXED_DELTA_TIME;
+		{
+			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+			m_simulationDelay -= FIXED_DELTA_TIME;
+		}
 
 
 #if MEASURE_PERFORMANCE
@@ -158,6 +160,7 @@ void Simulation2D::process()
 
 double Simulation2D::getSimulationTime()
 {
+	std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 	return m_simulationTime;
 }
 

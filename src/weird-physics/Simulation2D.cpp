@@ -18,12 +18,16 @@ using namespace std::chrono;
 constexpr float SIMULATION_FREQUENCY = 500;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
-constexpr size_t MAX_STEPS = 100;
+constexpr size_t MAX_STEPS = 10;
 
 std::mutex g_simulationTimeMutex;
+std::mutex g_externalForcesMutex;
+std::mutex g_fixMutex;
+std::mutex g_collisionTreeUpdateMutex;
 
 
 Simulation2D::Simulation2D(size_t size) :
+	m_isPaused(false),
 	m_positions(new vec2[size]),
 	m_previousPositions(new vec2[size]),
 	m_velocities(new vec2[size]),
@@ -34,11 +38,12 @@ Simulation2D::Simulation2D(size_t size) :
 	m_invMass(new float[size]),
 	m_maxSize(size),
 	m_size(0),
+	m_lastIdGiven(-1),
 	m_simulationDelay(0),
 	m_simulationTime(0),
 	m_gravity(-10),
 	m_push(50.0f * SIMULATION_FREQUENCY),
-	m_damping(0.001f),
+	m_damping(0.002f),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodTree),
 	m_useSimdOperations(false),
@@ -68,6 +73,24 @@ Simulation2D::~Simulation2D()
 	delete[] m_invMass;
 }
 
+void Simulation2D::pause()
+{
+	m_isPaused = true;
+}
+
+void Simulation2D::resume()
+{
+	m_isPaused = false;
+}
+
+bool Simulation2D::isPaused()
+{
+	return m_isPaused;
+}
+
+
+#pragma region MyRegion
+
 void Simulation2D::update(double delta)
 {
 	{
@@ -91,21 +114,29 @@ void Simulation2D::process()
 {
 	int steps = 0;
 
-
-
 	while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
 	{
 #if MEASURE_PERFORMANCE
 		auto start = std::chrono::high_resolution_clock::now();
 #endif
 		checkCollisions();
-		applyForces();
-		step((float)FIXED_DELTA_TIME);
-		++steps;
 
-		std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-		m_simulationDelay -= FIXED_DELTA_TIME;
-		m_simulationTime += FIXED_DELTA_TIME;
+		if (!m_isPaused)
+		{
+			applyForces();
+			step((float)FIXED_DELTA_TIME);
+			++steps;
+			{
+				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+				m_simulationTime += FIXED_DELTA_TIME;
+			}
+		}
+
+		{
+			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+			m_simulationDelay -= FIXED_DELTA_TIME;
+		}
+
 
 #if MEASURE_PERFORMANCE
 		// Get the ending time
@@ -129,6 +160,7 @@ void Simulation2D::process()
 
 double Simulation2D::getSimulationTime()
 {
+	std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 	return m_simulationTime;
 }
 
@@ -141,6 +173,9 @@ void Simulation2D::startSimulationThread()
 
 void Simulation2D::stopSimulationThread()
 {
+	if (!m_simulating)
+		return;
+
 	m_simulating = false;
 	m_simulationThread.join();
 }
@@ -187,6 +222,10 @@ void Simulation2D::checkCollisions()
 	}
 	case  Simulation2D::MethodTree:
 	{
+
+		//std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+
+		// Add new objects
 		for (size_t i = m_tree.count; i < m_size; i++)
 		{
 			AABB boundinBox(0, 0, 0, 0);
@@ -199,7 +238,7 @@ void Simulation2D::checkCollisions()
 
 		float scale = 1.5f;
 		const float speedThreshold = 0.5f;
-		// Update the objects' positions (example movement)
+		// Update the objects' positions
 		for (size_t i = 0; i < m_treeIDs.size(); ++i)
 		{
 			auto& p = m_positions[i];
@@ -242,15 +281,19 @@ void Simulation2D::checkCollisions()
 			}*/
 		}
 
+
 		std::vector<int> possibleCollisions;
 		// Perform collision queries
-		for (size_t i = 0; i < m_treeIDs.size(); ++i) {
+		for (size_t i = 0; i < m_treeIDs.size(); ++i)
+		{
 			possibleCollisions.clear();
 			m_tree.query(m_tree.nodes[m_treeIDs[i]].box, possibleCollisions);
 
 			// Check actual collisions
-			for (int id : possibleCollisions) {
-				if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box)) {
+			for (int id : possibleCollisions)
+			{
+				if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box))
+				{
 					//std::cout << "Object " << m_treeIDs[i] << " is colliding with object " << id << std::endl;
 
 					int a = i;
@@ -288,6 +331,7 @@ void Simulation2D::checkCollisions()
 #endif
 }
 
+
 void Simulation2D::solveCollisionsPositionBased()
 {
 	// Calculate forces
@@ -301,24 +345,26 @@ void Simulation2D::solveCollisionsPositionBased()
 }
 
 
-
-float EPSILON = 0.01f;
-
+const float EPSILON = 0.01f;
 void Simulation2D::applyForces()
 {
 	// External forces
-	if (m_externalForcesSinceLastUpdate) {
+	if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
+	{
 		m_externalForcesSinceLastUpdate = false;
 		for (size_t i = 0; i < m_size; i++)
 		{
-			m_forces[i] = m_externalForces[i];
+			vec2& f = m_externalForces[i];
+			m_forces[i] = f;
 			m_externalForces[i] = vec2(0);
 		}
 	}
 
+
+
 	// Attraction force
-	bool attracttionEnabled = Input::GetKey(Input::G);
-	if (attracttionEnabled) {
+	if (m_attracttionEnabled)
+	{
 		for (size_t i = 0; i < m_size; i++)
 		{
 			for (size_t j = i + 1; j < m_size; j++)
@@ -336,8 +382,8 @@ void Simulation2D::applyForces()
 		}
 	}
 
-	bool repulsionEnabled = Input::GetKey(Input::H);
-	if (repulsionEnabled) {
+	if (m_repulsionEnabled)
+	{
 		for (size_t i = 0; i < m_size; i++)
 		{
 			for (size_t j = i + 1; j < m_size; j++)
@@ -355,14 +401,13 @@ void Simulation2D::applyForces()
 		}
 	}
 
-	bool liftEnabled = Input::GetKey(Input::F);
-	if (liftEnabled) {
+	if (m_liftEnabled)
+	{
 		for (size_t i = 0; i < m_size / 2; i++)
 		{
 			m_forces[i] += vec2(0, 100000.0f);
 		}
 	}
-
 
 
 	// Sphere collisions
@@ -412,7 +457,10 @@ void Simulation2D::applyForces()
 		//vec2& force = m_forces[i];
 
 		// Gravity
-		m_forces[i].y += m_mass[i] * m_gravity;
+		if (!m_attracttionEnabled)
+		{
+			m_forces[i].y += m_mass[i] * m_gravity;
+		}
 
 		// Bounds collisions
 		// Wavy floor
@@ -466,6 +514,23 @@ void Simulation2D::applyForces()
 			}
 		}
 	}
+
+
+	for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
+	{
+		Spring spring = *it;
+
+		vec2 v = m_positions[spring.B] - m_positions[spring.A];
+		vec2 n = normalize(v);
+		float d = 1.0f - length(v);
+		d = std::min(d, 0.1f);
+
+		vec2 f = -0.5f * spring.K * d * (float)FIXED_DELTA_TIME * n;
+		m_forces[spring.A] += f;
+		m_forces[spring.B] -= f;
+	}
+
+
 }
 
 
@@ -487,7 +552,7 @@ void Simulation2D::step(float timeStep)
 		m_positions[i] = newPosition;
 
 		// Update the previous position
-		m_previousPositions[i] = currentPosition;
+		//m_previousPositions[i] = currentPosition;
 
 		// Reset forces
 		m_forces[i] = vec2(0.0f);
@@ -507,11 +572,31 @@ void Simulation2D::step(float timeStep)
 	//	m_forces[i] = vec2(0.0f);
 
 	//}
+
+	/*m_positions[30] = vec2(0.0f, 15.0f);
+	m_velocities[30] = vec2(0.0f);
+	m_positions[59] = vec2(30.0f, 15.0f);
+	m_velocities[59] = vec2(0.0f);*/
+	
+	{
+		std::lock_guard<std::mutex> lock(g_fixMutex);
+		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+		{
+			SimulationID id = *it;
+
+			m_positions[id] -= timeStep * m_velocities[id];
+			m_velocities[id] = vec2(0.0f);
+		}
+	}
 }
+
+#pragma endregion
+
 
 SimulationID Simulation2D::generateSimulationID()
 {
-	return m_size++;
+	//std::cout << (m_lastIdGiven + 1) << std::endl;
+	return ++m_lastIdGiven;
 }
 
 size_t Simulation2D::getSize()
@@ -520,26 +605,32 @@ size_t Simulation2D::getSize()
 }
 
 
-
-void Simulation2D::shake(float f)
-{
-	for (size_t i = 0; i < m_size; i++)
-	{
-		vec2 p = 0.123456f * m_positions[i];
-		m_forces[i] = -(m_mass[i] * f) * p + vec2(0.f, m_mass[i] * f);
-		//m_forces[i] += 50.0f * vec3(sin(p.x + i), cos(p.y + i), 1 * cos(3.14 * sin(p.z + i)));
-	}
-}
-
-void Simulation2D::push(vec2 v)
-{
-	m_forces[0] = v;
-}
-
 void Simulation2D::addForce(SimulationID id, vec2 force)
 {
+	std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
 	m_externalForcesSinceLastUpdate = true;
 	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
+}
+
+void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
+{
+	if (a == b)
+		return;
+
+	m_springs.emplace_back(a, b, stiffness);
+}
+
+void Simulation2D::fix(SimulationID id)
+{
+	std::lock_guard<std::mutex> lock(g_fixMutex);
+	m_fixedObjects.emplace_back(id);
+}
+
+void Simulation2D::unFix(SimulationID id)
+{
+	std::lock_guard<std::mutex> lock(g_fixMutex);
+	m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
 }
 
 
@@ -550,16 +641,56 @@ vec2 Simulation2D::getPosition(SimulationID entity)
 
 void Simulation2D::setPosition(SimulationID entity, vec2 pos)
 {
+
 	m_positions[entity] = pos;
 	m_previousPositions[entity] = pos;
 	m_velocities[entity] = vec2(0.0f);
-	m_forces[entity] = vec2(0.0f);
+	//m_forces[entity] = vec2(0.0f);
+	m_size = std::max((uint32_t)m_size, entity + 1);
 }
 
 void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 {
 	transform.position.x = m_positions[entity].x;
 	transform.position.y = m_positions[entity].y;
+}
+
+SimulationID Simulation2D::raycast(vec2 pos)
+{
+	if (m_collisionDetectionMethod == None || m_collisionDetectionMethod == MethodNaive)
+	{
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+
+			vec2 ij = pos - m_positions[i];
+
+			float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+			if (distanceSquared < m_radious * m_radious)
+			{
+				return i;
+			}
+
+
+		}
+
+		return -1;
+	}
+	else
+	{
+		float size = 0.001f;
+		std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+		AABB boundinBox(pos.x - size, pos.y - size, pos.x + size, pos.y + size);
+		std::vector<int> possibleCollisions;
+		//possibleCollisions.reserve(3);
+		m_tree.query(boundinBox, possibleCollisions);
+
+		if (possibleCollisions.size() == 0)
+			return -1;
+
+		return m_treeIdToSimulationID[possibleCollisions[0]];
+	}
 }
 
 

@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 #include "../weird-renderer/Shape.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
@@ -54,7 +55,7 @@ private:
 	PlayerMovementSystem m_playerMovementSystem;
 	CameraSystem m_cameraSystem;
 
-	ProceduralSpawnerSystem m_weirdSystem;
+	WeirdSandBox m_weirdSandBox;
 
 	vector<WeirdRenderer::Light> m_lights;
 

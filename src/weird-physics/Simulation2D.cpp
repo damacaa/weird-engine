@@ -344,6 +344,20 @@ void Simulation2D::solveCollisionsPositionBased()
 	}
 }
 
+float shape_circle(vec2 p)
+{
+	return length(p) - 0.5;
+}
+
+float map(vec2 p, float u_time)
+{
+	float a = 1.f;
+	float floorDist = p.y - a * sinf(0.5f * p.x + u_time);
+
+	float d = floorDist;
+
+	return d;
+}
 
 const float EPSILON = 0.01f;
 void Simulation2D::applyForces()
@@ -463,16 +477,15 @@ void Simulation2D::applyForces()
 		}
 
 		// Bounds collisions
-		// Wavy floor
-		float a = 1.f;
-		float d = p.y - a * sinf(0.5f * p.x + m_simulationTime);
+		float d = map(p, m_simulationTime);
 		if (d < m_radious)
 		{
 			float penetration = (m_radious - d);
 
 			// Collision normal calculation
-			float d1 = p.y - a * sinf(0.5f * (p.x - EPSILON) + m_simulationTime);
-			float d2 = (p.y - EPSILON) - a * sinf(0.5f * p.x + m_simulationTime);
+
+			float d1 = map(vec2(p.x - EPSILON, p.y), m_simulationTime);
+			float d2 = map(vec2(p.x, p.y - EPSILON), m_simulationTime);
 
 			vec2 normal = vec2(d - d1, d - d2);
 			normal = normalize(normal);
@@ -500,6 +513,8 @@ void Simulation2D::applyForces()
 			m_forces[i] += force;
 
 		}
+
+
 
 		// Old walls
 		if (Input::GetKey(Input::R))
@@ -577,7 +592,7 @@ void Simulation2D::step(float timeStep)
 	m_velocities[30] = vec2(0.0f);
 	m_positions[59] = vec2(30.0f, 15.0f);
 	m_velocities[59] = vec2(0.0f);*/
-	
+
 	{
 		std::lock_guard<std::mutex> lock(g_fixMutex);
 		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)

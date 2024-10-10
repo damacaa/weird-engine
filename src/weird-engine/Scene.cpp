@@ -150,8 +150,6 @@ void Scene::update(double delta, double time)
 				{
 					g_lastId = id;
 				}
-
-				std::cout << id << std::endl;
 			}
 			else
 			{

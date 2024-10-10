@@ -80,8 +80,8 @@ public:
 	void addForce(SimulationID id, vec2 force);
 	void addSpring(SimulationID a, SimulationID b, float stiffness);
 
-	void Fix(SimulationID id);
-	void UnFix(SimulationID id);
+	void fix(SimulationID id);
+	void unFix(SimulationID id);
 
 	// Retrieve results
 	vec2 getPosition(SimulationID entity);

@@ -144,8 +144,8 @@ public:
 
 			}
 
-			simulation.Fix(0);
-			simulation.Fix(29);
+			simulation.fix(0);
+			simulation.fix(29);
 
 			break;
 		}

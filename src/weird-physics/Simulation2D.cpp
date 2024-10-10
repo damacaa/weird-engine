@@ -591,12 +591,12 @@ void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
 	m_springs.emplace_back(a, b, stiffness);
 }
 
-void Simulation2D::Fix(SimulationID id)
+void Simulation2D::fix(SimulationID id)
 {
 	m_fixedObjects.emplace_back(id);
 }
 
-void Simulation2D::UnFix(SimulationID id)
+void Simulation2D::unFix(SimulationID id)
 {
 
 }

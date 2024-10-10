@@ -140,7 +140,7 @@ void Scene::update(double delta, double time)
 			SimulationID id = m_simulation2D.raycast(pp);
 			if (id < m_simulation2D.getSize())
 			{
-				//m_simulation2D.Fix(id);
+				//m_simulation2D.fix(id);
 				if (g_lastId < m_simulation2D.getSize())
 				{
 					m_simulation2D.addSpring(id, g_lastId, 10000000000.0f);

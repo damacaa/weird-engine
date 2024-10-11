@@ -9,6 +9,7 @@
 #include <mutex>
 #include <set>
 #include <glm/gtx/norm.hpp>
+#include "../weird-engine/MathExpressions.h"
 
 #define MEASURE_PERFORMANCE false			
 
@@ -24,6 +25,9 @@ std::mutex g_simulationTimeMutex;
 std::mutex g_externalForcesMutex;
 std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
+
+// Circle sdf
+std::shared_ptr<IMathExpression> lengthFormula;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -61,6 +65,10 @@ Simulation2D::Simulation2D(size_t size) :
 		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.001f;
 	}
+
+	//auto xExpression = std::make_shared<Substraction>(0, 3);
+	//auto yExpression = std::make_shared<Substraction>(1, 4);
+	lengthFormula = std::make_shared<Substraction>(std::make_shared<Length>(0, 1), 2);
 }
 
 Simulation2D::~Simulation2D()
@@ -346,7 +354,14 @@ void Simulation2D::solveCollisionsPositionBased()
 
 float shape_circle(vec2 p)
 {
-	return length(p) - 0.5;
+	 return length(p) - 0.5;
+
+	float* variables = new float[3] {p.x, p.y, 0.5f };
+	lengthFormula->propagateValues(variables);
+	float result = lengthFormula->getValue();
+	delete[] variables;
+
+	return result;
 }
 
 float map(vec2 p, float u_time)

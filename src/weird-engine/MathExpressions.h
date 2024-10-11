@@ -5,95 +5,101 @@
 // Base
 struct IMathExpression
 {
-	virtual void propagateValues(float* values) = 0;
-	virtual float getValue() const = 0;
-	virtual ~IMathExpression() = default;
+    virtual void propagateValues(float* values) = 0;
+    virtual float getValue() const = 0;
+    virtual ~IMathExpression() = default;
 };
 
 // Variables
 struct FloatVariable : IMathExpression
 {
 private:
-	std::ptrdiff_t m_offset;
-	float* m_value = nullptr;
+    std::ptrdiff_t m_offset;
+    float* m_value = nullptr;
 
 public:
-	explicit FloatVariable(std::ptrdiff_t offset) : m_offset(offset) {}
+    explicit FloatVariable(std::ptrdiff_t offset) : m_offset(offset) {}
 
-	void propagateValues(float* values) override
-	{
-		m_value = values + m_offset;
-	}
+    void propagateValues(float* values) override
+    {
+        m_value = values + m_offset;
+    }
 
-	float getValue() const override
-	{
-		return *m_value;
-	}
+    float getValue() const override
+    {
+        return *m_value;
+    }
 };
 
 // Two float operation
 struct TwoFloatOperation : IMathExpression
 {
 protected:
-	std::shared_ptr<IMathExpression> valueA;
-	std::shared_ptr<IMathExpression> valueB;
+    IMathExpression* valueA;
+    IMathExpression* valueB;
 
 public:
-	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
-		: valueA(std::move(a)), valueB(std::move(b)) {}
+    TwoFloatOperation(IMathExpression* a, IMathExpression* b)
+        : valueA(a), valueB(b) {}
 
-	TwoFloatOperation(std::ptrdiff_t i, std::shared_ptr<IMathExpression> b)
-		: valueA(std::make_shared<FloatVariable>(i)), valueB(std::move(b)) {}
+    TwoFloatOperation(std::ptrdiff_t i, IMathExpression* b)
+        : valueA(new FloatVariable(i)), valueB(b) {}
 
-	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::ptrdiff_t i)
-		: valueA(std::move(a)), valueB(std::make_shared<FloatVariable>(i)) {}
+    TwoFloatOperation(IMathExpression* a, std::ptrdiff_t i)
+        : valueA(a), valueB(new FloatVariable(i)) {}
 
-	TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
-		: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
+    TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
+        : valueA(new FloatVariable(i)), valueB(new FloatVariable(j)) {}
 
-	void propagateValues(float* values) override
-	{
-		valueA->propagateValues(values);
-		valueB->propagateValues(values);
-	}
+    ~TwoFloatOperation()
+    {
+        delete valueA;
+        delete valueB;
+    }
 
-	virtual float getValue() const override = 0;
+    void propagateValues(float* values) override
+    {
+        valueA->propagateValues(values);
+        valueB->propagateValues(values);
+    }
+
+    virtual float getValue() const override = 0;
 };
 
 // Add
 struct Addition : TwoFloatOperation
 {
-	using TwoFloatOperation::TwoFloatOperation;
+    using TwoFloatOperation::TwoFloatOperation;
 
-	float getValue() const override
-	{
-		return valueA->getValue() + valueB->getValue();
-	}
+    float getValue() const override
+    {
+        return valueA->getValue() + valueB->getValue();
+    }
 };
 
-// Substract
-struct Substraction : TwoFloatOperation
+// Subtract
+struct Subtraction : TwoFloatOperation
 {
-	using TwoFloatOperation::TwoFloatOperation;
+    using TwoFloatOperation::TwoFloatOperation;
 
-	float getValue() const override
-	{
-		return valueA->getValue() - valueB->getValue();
-	}
+    float getValue() const override
+    {
+        return valueA->getValue() - valueB->getValue();
+    }
 };
 
-
+// Length
 struct Length : TwoFloatOperation
 {
-	using TwoFloatOperation::TwoFloatOperation;
+    using TwoFloatOperation::TwoFloatOperation;
 
-	float getValue() const override
-	{
-		float a = valueA->getValue();
-		float b = valueB->getValue();
+    float getValue() const override
+    {
+        float a = valueA->getValue();
+        float b = valueB->getValue();
 
-		return length(glm::vec2(a, b));
-	}
+        return length(glm::vec2(a, b));
+    }
 };
 
 

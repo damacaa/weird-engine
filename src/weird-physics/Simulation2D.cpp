@@ -27,7 +27,7 @@ std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
 
 // Circle sdf
-std::shared_ptr<IMathExpression> lengthFormula;
+IMathExpression* lengthFormula;
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -68,7 +68,7 @@ Simulation2D::Simulation2D(size_t size) :
 
 	//auto xExpression = std::make_shared<Substraction>(0, 3);
 	//auto yExpression = std::make_shared<Substraction>(1, 4);
-	lengthFormula = std::make_shared<Substraction>(std::make_shared<Length>(0, 1), 2);
+	lengthFormula = new Subtraction(new Length((std::ptrdiff_t)0, (std::ptrdiff_t)1), (std::ptrdiff_t)2);
 }
 
 Simulation2D::~Simulation2D()
@@ -132,10 +132,10 @@ void Simulation2D::process()
 		{
 			for (size_t i = 0; i < 100000000; i++)
 			{
-				float sphereDist = shape_circle(vec2(i, 0) - 30.0f);
+				volatile float sphereDist = shape_circle(vec2(i, 0) - 30.0f);
 			}
 		}
-		else 
+		else
 		{
 
 			checkCollisions();

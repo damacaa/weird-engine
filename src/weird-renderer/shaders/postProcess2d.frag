@@ -91,8 +91,8 @@ float rayMarch(vec2 ro, vec2 rd)
       return FAR;
 
     //traveled += 0.01;
-    traveled += d;
-
+    //traveled += d;
+    traveled += min(d, 0.01);
   }
 
   return traveled;

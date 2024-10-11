@@ -137,9 +137,10 @@ vec4 getColor(vec2 p)
 
   // Domain repetition balls
   float scale = 1.0 / 10.0;
-  vec2 roundPos = ((scale * p) - round(scale * p)) * 10.0;
-  roundPos.x += cos(u_time);
-  roundPos.y += sin(u_time);
+  vec2 pp = p + 5.0;
+  vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
+  roundPos.x += cos(u_time + round(0.1 * pp.x));
+  roundPos.y += sin(u_time + round(0.1 * pp.x));
   float infiniteShere = shape_circle((roundPos - vec2(0.0)) );
   d = min(d, infiniteShere);
 

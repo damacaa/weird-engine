@@ -7,6 +7,7 @@ struct IMathExpression
 {
 	virtual void propagateValues(float* values) = 0;
 	virtual float getValue() const = 0;
+	virtual std::string print() = 0;
 	virtual ~IMathExpression() = default;
 };
 
@@ -28,6 +29,11 @@ public:
 	float getValue() const override
 	{
 		return *m_value;
+	}
+
+	std::string print()
+	{
+		return "var" + std::to_string(m_offset);
 	}
 };
 
@@ -58,6 +64,8 @@ public:
 	}
 
 	virtual float getValue() const override = 0;
+
+	virtual std::string print() = 0;
 };
 
 // Add
@@ -69,6 +77,11 @@ struct Addition : TwoFloatOperation
 	{
 		return valueA->getValue() + valueB->getValue();
 	}
+
+	std::string print()
+	{
+		return "(" + valueA->print() + " + " + valueB->print() + ")";
+	}
 };
 
 // Substract
@@ -79,6 +92,11 @@ struct Substraction : TwoFloatOperation
 	float getValue() const override
 	{
 		return valueA->getValue() - valueB->getValue();
+	}
+
+	std::string print()
+	{
+		return "(" + valueA->print() + " - " + valueB->print() + ")";
 	}
 };
 
@@ -93,6 +111,11 @@ struct Length : TwoFloatOperation
 		float b = valueB->getValue();
 
 		return length(glm::vec2(a, b));
+	}
+
+	std::string print()
+	{
+		return "length(vec2(" + valueA->print() + ", " + valueB->print() + "))";
 	}
 };
 

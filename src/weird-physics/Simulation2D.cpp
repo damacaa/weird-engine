@@ -69,6 +69,8 @@ Simulation2D::Simulation2D(size_t size) :
 	//auto xExpression = std::make_shared<Substraction>(0, 3);
 	//auto yExpression = std::make_shared<Substraction>(1, 4);
 	lengthFormula = std::make_shared<Substraction>(std::make_shared<Length>(0, 1), 2);
+
+	std::cout << lengthFormula->print();
 }
 
 Simulation2D::~Simulation2D()

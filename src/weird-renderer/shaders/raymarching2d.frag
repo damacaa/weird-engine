@@ -141,7 +141,8 @@ vec4 getColor(vec2 p)
   vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
   roundPos.x += cos(u_time + round(0.1 * pp.x));
   roundPos.y += sin(u_time + round(0.1 * pp.x));
-  float infiniteShere = shape_circle((roundPos - vec2(0.0)) );
+  //float infiniteShere = shape_circle((roundPos - vec2(0.0)) );
+  float infiniteShere = shape_circle(p - 30.0f);
   d = min(d, infiniteShere);
 
   //d = fOpUnionSoft(infiniteShere, d, k);

@@ -219,3 +219,4 @@ private:
 	bool m_liftEnabled = false;
 };
 
+float shape_circle(vec2 p);

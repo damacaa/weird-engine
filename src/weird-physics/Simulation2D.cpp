@@ -11,7 +11,7 @@
 #include <glm/gtx/norm.hpp>
 #include "../weird-engine/MathExpressions.h"
 
-#define MEASURE_PERFORMANCE false			
+#define MEASURE_PERFORMANCE true			
 
 
 using namespace std::chrono;
@@ -127,22 +127,34 @@ void Simulation2D::process()
 #if MEASURE_PERFORMANCE
 		auto start = std::chrono::high_resolution_clock::now();
 #endif
-		checkCollisions();
 
-		if (!m_isPaused)
+		if (g_simulationSteps == 0)
 		{
-			applyForces();
-			step((float)FIXED_DELTA_TIME);
-			++steps;
+			for (size_t i = 0; i < 100000000; i++)
 			{
-				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-				m_simulationTime += FIXED_DELTA_TIME;
+				float sphereDist = shape_circle(vec2(i, 0) - 30.0f);
 			}
 		}
-
+		else 
 		{
-			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-			m_simulationDelay -= FIXED_DELTA_TIME;
+
+			checkCollisions();
+
+			if (!m_isPaused)
+			{
+				applyForces();
+				step((float)FIXED_DELTA_TIME);
+				++steps;
+				{
+					std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+					m_simulationTime += FIXED_DELTA_TIME;
+				}
+			}
+
+			{
+				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+				m_simulationDelay -= FIXED_DELTA_TIME;
+			}
 		}
 
 
@@ -156,7 +168,7 @@ void Simulation2D::process()
 		g_simulationSteps++;
 		g_time += 1000 * duration.count();
 
-		if (g_simulationSteps == 20 * SIMULATION_FREQUENCY)
+		if (g_simulationSteps == 1)
 		{
 			auto average = g_time / g_simulationSteps;
 			std::cout << average << "ms" << std::endl;
@@ -354,7 +366,7 @@ void Simulation2D::solveCollisionsPositionBased()
 
 float shape_circle(vec2 p)
 {
-	 return length(p) - 0.5;
+	return length(p) - 0.5;
 
 	float* variables = new float[3] {p.x, p.y, 0.5f };
 	lengthFormula->propagateValues(variables);
@@ -376,7 +388,7 @@ float map(vec2 p, float u_time)
 	//roundPos.x += cos(u_time + round(0.1f * p.x));
 	//roundPos.y += sin(u_time + round(0.1f * p.x));
 	//float infiniteShereDist = shape_circle((roundPos - vec2(0.0)));
-	
+
 	float infiniteShereDist = shape_circle(p - 30.0f);
 
 	float d = std::min(floorDist, infiniteShereDist);

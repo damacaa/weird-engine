@@ -354,10 +354,12 @@ float map(vec2 p, float u_time)
 	float a = 1.f;
 	float floorDist = p.y - a * sinf(0.5f * p.x + u_time);
 
+	p += 5.0f;
+
 	float scale = 1.0f / 10.0f;
 	vec2 roundPos = ((scale * p) - round(scale * p)) * 10.0f;
-	roundPos.x += cos(u_time);
-	roundPos.y += sin(u_time);
+	roundPos.x += cos(u_time + round(0.1f * p.x));
+	roundPos.y += sin(u_time + round(0.1f * p.x));
 	float infiniteShereDist = shape_circle((roundPos - vec2(0.0)));
 
 	float d = std::min(floorDist, infiniteShereDist);

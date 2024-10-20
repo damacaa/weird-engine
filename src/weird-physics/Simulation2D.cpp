@@ -354,11 +354,11 @@ void Simulation2D::solveCollisionsPositionBased()
 	}
 }
 
-float shape_circle(vec2 p)
+float shape_circle(vec2 p, float r)
 {
-	 return length(p) - 0.5;
+	return length(p) - r;
 
-	float* variables = new float[3] {p.x, p.y, 0.5f };
+	float* variables = new float[3] {p.x, p.y, r };
 	lengthFormula->propagateValues(variables);
 	float result = lengthFormula->getValue();
 	delete[] variables;
@@ -378,10 +378,12 @@ float map(vec2 p, float u_time)
 	//roundPos.x += cos(u_time + round(0.1f * p.x));
 	//roundPos.y += sin(u_time + round(0.1f * p.x));
 	//float infiniteShereDist = shape_circle((roundPos - vec2(0.0)));
-	
-	float infiniteShereDist = shape_circle(p - 30.0f);
 
-	float d = std::min(floorDist, infiniteShereDist);
+	vec2 starPosition = p - vec2(25.0f, 30.0f);
+	float infiniteShereDist = shape_circle(starPosition, 5.0f);
+	float displacement = 1.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
+
+	float d = std::min(floorDist, infiniteShereDist + displacement);
 
 	return d;
 }

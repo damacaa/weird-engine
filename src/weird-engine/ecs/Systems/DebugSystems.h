@@ -130,6 +130,9 @@ public:
 		{
 		case 0:
 		{
+			if (circles < 60)
+				break;
+
 			float stiffness = 10000000000.0f;
 
 			for (size_t i = 0; i < 29; i += 1)

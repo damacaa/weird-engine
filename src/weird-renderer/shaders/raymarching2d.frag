@@ -131,7 +131,7 @@ vec4 getColor(vec2 p)
   }
 
   // Wavy floor
-  float floorDist = 0.1 * (p.y - 1.0 * sin(0.5 * p.x + u_time));
+  float floorDist = 1.0 * (p.y - 1.0 * sin(0.5 * p.x + 1.0f * u_time));
   d = min(d, floorDist);
   col = d == floorDist ? getMaterial(p, 0) : col;
 
@@ -141,12 +141,22 @@ vec4 getColor(vec2 p)
   vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
   roundPos.x += cos(u_time + round(0.1 * pp.x));
   roundPos.y += sin(u_time + round(0.1 * pp.x));
-  //float infiniteShere = shape_circle((roundPos - vec2(0.0)) );
-  float infiniteShere = shape_circle(p - 30.0f);
-  d = min(d, infiniteShere);
 
+  // Remove repetition
+  roundPos = p - vec2(25.0f, 30.0f);
+
+  float infiniteShere = length(roundPos) - 5.0f;
+  float displacement = 1.0 * sin(5.0f * atan(roundPos.y, roundPos.x) - 5.0f * u_time);
+
+
+  d = min(d, infiniteShere + displacement);
+  
+
+  float d2 = 0.1f * sin(10.0*p.x) * sin(10.0 * p.y);
+  //d += d2;
+  
   //d = fOpUnionSoft(infiniteShere, d, k);
-  col = d == infiniteShere ? getMaterial(p, 0) : col;
+  col = d == (infiniteShere + displacement) ? getMaterial(p, 11) : col;
 
   // Set background color
   vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));

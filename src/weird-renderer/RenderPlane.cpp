@@ -1,6 +1,5 @@
 #include "RenderPlane.h"
 
-
 namespace WeirdRenderer
 {
 	RenderPlane::RenderPlane(bool shapeRenderer)
@@ -117,14 +116,14 @@ namespace WeirdRenderer
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	}
 
-	void RenderPlane::Draw(Shader& shader, Shape2D* shapes, size_t size) const
+	void RenderPlane::Draw(Shader& shader, Dot2D* shapes, size_t size) const
 	{
 	
 
 
 		glBindBuffer(GL_TEXTURE_BUFFER, m_shapeBuffer);
-		glBufferData(GL_TEXTURE_BUFFER, sizeof(Shape2D) * size, shapes, GL_STREAM_DRAW);
-		//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Shape2D) * size, shapes);
+		glBufferData(GL_TEXTURE_BUFFER, sizeof(Dot2D) * size, shapes, GL_STREAM_DRAW);
+		//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Dot2D) * size, shapes);
 
 		// Bind the buffer to the buffer texture
 		glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);

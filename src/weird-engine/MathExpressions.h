@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <memory>
+#include <string>
 
 // Base
 struct IMathExpression
@@ -37,6 +38,72 @@ public:
 	}
 };
 
+struct StaticVariable : IMathExpression
+{
+private:
+	float m_value;
+
+public:
+	explicit StaticVariable(float value) : m_value(value) {}
+
+	void propagateValues(float* values) override
+	{
+
+	}
+
+	float getValue() const override
+	{
+		return m_value;
+	}
+
+	std::string print()
+	{
+		return std::to_string(m_value) + "f";
+	}
+};
+
+// One float operation
+struct OneFloatOperation : IMathExpression
+{
+protected:
+	std::shared_ptr<IMathExpression> valueA;
+
+
+public:
+	OneFloatOperation(std::shared_ptr<IMathExpression> a)
+		: valueA(std::move(a)) {}
+
+	OneFloatOperation(std::ptrdiff_t i)
+		: valueA(std::make_shared<FloatVariable>(i)) {}
+
+
+	void propagateValues(float* values) override
+	{
+		valueA->propagateValues(values);
+	}
+
+	virtual float getValue() const override = 0;
+
+	virtual std::string print() = 0;
+};
+
+// Sine
+struct Sine : OneFloatOperation
+{
+	using OneFloatOperation::OneFloatOperation;
+
+	float getValue() const override
+	{
+		return sinf(valueA->getValue());
+	}
+
+	std::string print()
+	{
+		return "sin(" + valueA->print() + ")";
+	}
+};
+
+
 // Two float operation
 struct TwoFloatOperation : IMathExpression
 {
@@ -47,6 +114,9 @@ protected:
 public:
 	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
 		: valueA(std::move(a)), valueB(std::move(b)) {}
+
+	TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> a)
+		: valueA(std::move(a)), valueB(std::make_shared<StaticVariable>(constant)) {}
 
 	TwoFloatOperation(std::ptrdiff_t i, std::shared_ptr<IMathExpression> b)
 		: valueA(std::make_shared<FloatVariable>(i)), valueB(std::move(b)) {}
@@ -100,6 +170,38 @@ struct Substraction : TwoFloatOperation
 	}
 };
 
+// Multiplication
+struct Multiplication : TwoFloatOperation
+{
+	using TwoFloatOperation::TwoFloatOperation;
+
+	float getValue() const override
+	{
+		return valueA->getValue() * valueB->getValue();
+	}
+
+	std::string print()
+	{
+		return "(" + valueA->print() + " * " + valueB->print() + ")";
+	}
+};
+
+// Atan2
+struct Atan2 : TwoFloatOperation
+{
+	using TwoFloatOperation::TwoFloatOperation;
+
+	float getValue() const override
+	{
+		return atan2f(valueA->getValue(), valueB->getValue());
+	}
+
+	std::string print()
+	{
+		return "atan2(" + valueA->print() + ", " + valueB->print() + ")";
+	}
+};
+
 
 struct Length : TwoFloatOperation
 {
@@ -120,74 +222,7 @@ struct Length : TwoFloatOperation
 };
 
 
-//// One float operation
-//struct OneFloatOperation : IMathExpression
-//{
-//	FloatVariable value;
-//
-//	OneFloatOperation(FloatVariable v) : value(v) {}
-//
-//	void propagateValues(float* values)
-//	{
-//		value.propagateValues(values);
-//	}
-//
-//	virtual float getValue() = 0;
-//};
 
-//// Two vector operation
-//struct TwoVectorOperation : IMathExpression
-//{
-//	FloatVariable valueAx, valueAy, valueBx, valueBY;
-//
-//	TwoVectorOperation(FloatVariable aX, FloatVariable aY, FloatVariable bX, FloatVariable bY) :
-//		valueAx(aX), valueAy(aY), valueBx(bX), valueBY(bY) {}
-//
-//	void propagateValues(float* values)
-//	{
-//		valueAx.propagateValues(values);
-//		valueAy.propagateValues(values);
-//		valueBx.propagateValues(values);
-//		valueBY.propagateValues(values);
-//	}
-//
-//	virtual float getValue() = 0;
-//};
-
-
-
-//// Subtract
-//struct Substraction : TwoFloatOperation
-//{
-//	using TwoFloatOperation::TwoFloatOperation;
-//
-//	float getValue() override
-//	{
-//		return valueA.getValue() - valueB.getValue();
-//	}
-//};
-//
-//// Subtract
-//struct Multiplication : TwoFloatOperation
-//{
-//	using TwoFloatOperation::TwoFloatOperation;
-//
-//	float getValue() override
-//	{
-//		return valueA.getValue() * valueB.getValue();
-//	}
-//};
-//
-//// Subtract
-//struct Division : TwoFloatOperation
-//{
-//	using TwoFloatOperation::TwoFloatOperation;
-//
-//	float getValue() override
-//	{
-//		return valueA.getValue() / valueB.getValue();
-//	}
-//};
 
 
 

@@ -51,7 +51,7 @@ public:
 		{
 			auto& rb = componentArray[i];
 			Transform& transform = ecs.getComponent<Transform>(rb.Owner);
-			if (transform.isDirty) 
+			if (transform.isDirty)
 			{
 				// Override simulation transform
 				simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
@@ -59,6 +59,19 @@ public:
 			}
 
 			simulation.updateTransform(transform, rb.simulationId);
+		}
+
+		auto& shapeArray = *ecs.getComponentArray<CustomShape>();
+
+		for (size_t i = 0; i < shapeArray.size; i++)
+		{
+			auto& shape = shapeArray[i];
+			if (shape.m_isDirty) 
+			{
+				shape.m_isDirty = false;
+				simulation.updateShape(shape);
+			}
+
 		}
 	}
 

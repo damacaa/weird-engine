@@ -3,7 +3,7 @@
 #define BLEND_SHAPES 1
 #define MOTION_BLUR 1
 
-uniform float k = 0.1;
+uniform float k = 0.5;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -108,13 +108,13 @@ vec4 getColor(vec2 p)
 
   vec3 col = vec3(0.0);
 
-  for (int i = 0; i < u_loadedObjects; i++)
+  for (int i = 0; i < u_loadedObjects - 2; i++)
   {
-    vec4 positionAndMaterial = texelFetch(u_shapeBuffer, 2 * i);
-    int materialId = int(positionAndMaterial.w);
-    vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
+    vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
+    int materialId = int(positionSizeMaterial.w);
+    // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
-    float objectDist = shape_circle((p - positionAndMaterial.xy) / (extraParameters.x));
+    float objectDist = shape_circle((p - positionSizeMaterial.xy) / (positionSizeMaterial.z));
 
 #if BLEND_SHAPES
 
@@ -125,38 +125,58 @@ vec4 getColor(vec2 p)
 #else
 
     d = min(d, objectDist);
-    col = d == objectDist ? getMaterial(positionAndMaterial.xy, materialId) : col;
+    col = d == objectDist ? getMaterial(positionSizeMaterial.xy, materialId) : col;
 
 #endif
   }
 
   // Wavy floor
-  float floorDist = 1.0 * (p.y - 1.0 * sin(0.5 * p.x + 1.0f * u_time));
-  d = min(d, floorDist);
-  col = d == floorDist ? getMaterial(p, 0) : col;
+  {
+    float var8 = u_time; // time
+    float var9 = p.x;    // x
+    float var10 = p.y;   // y
 
-  // Domain repetition balls
-  float scale = 1.0 / 10.0;
-  vec2 pp = p + 5.0;
-  vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
-  roundPos.x += cos(u_time + round(0.1 * pp.x));
-  roundPos.y += sin(u_time + round(0.1 * pp.x));
+    vec4 parameters0 = texelFetch(u_shapeBuffer, u_loadedObjects - 4);
+    vec4 parameters1 = texelFetch(u_shapeBuffer, u_loadedObjects - 3);
 
-  // Remove repetition
-  roundPos = p - vec2(25.0f, 30.0f);
+    float var0 = parameters0.x; // amplitude
+    float var1 = parameters0.y; // period
 
-  float infiniteShere = length(roundPos) - 5.0f;
-  float displacement = 1.0 * sin(5.0f * atan(roundPos.y, roundPos.x) - 5.0f * u_time);
+    float floorDist = (var10 - (var0 * sin(((var1 * var9) + var8))));
+    d = min(d, floorDist);
+    col = d == floorDist ? getMaterial(p, 0) : col;
+  }
+
+  // Star
+  {
+    float var8 = u_time; // time
+    float var9 = p.x;    // x
+    float var10 = p.y;   // y
+
+    vec4 parameters0 = texelFetch(u_shapeBuffer, u_loadedObjects - 2);
+    vec4 parameters1 = texelFetch(u_shapeBuffer, u_loadedObjects - 1);
+
+    float var0 = parameters0.x; // offsetX				
+    float var1 = parameters0.y; // offsetY				
+    float var2 = parameters0.z; // radious				
+    float var3 = parameters0.w; // displacementStrength	
+    float var4 = parameters1.x; // starPoints				
+    float var5 = parameters1.y; // speed					
+                              
 
 
-  d = min(d, infiniteShere + displacement);
-  
+    float starDist = ((length(vec2((var9 - var0), (var10 - var1))) - var2) + (var3 * sin(((var4 * atan((var10 - var1), (var9 - var0))) - (var5 * var8)))));
 
-  float d2 = 0.1f * sin(10.0*p.x) * sin(10.0 * p.y);
-  //d += d2;
-  
-  //d = fOpUnionSoft(infiniteShere, d, k);
-  col = d == (infiniteShere + displacement) ? getMaterial(p, 11) : col;
+    d = min(d, starDist);
+    col = d == (starDist) ? getMaterial(p, 11) : col;
+  }
+
+  // Repetition
+  // float scale = 1.0 / 10.0;
+  // vec2 pp = p + 5.0;
+  // vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
+  // roundPos.x += cos(u_time + round(0.1 * pp.x));
+  // roundPos.y += sin(u_time + round(0.1 * pp.x));
 
   // Set background color
   vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));

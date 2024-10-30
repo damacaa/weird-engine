@@ -113,6 +113,7 @@ private:
 #include "Components/Camera.h"
 #include "Components/FlyMovement.h"
 #include "Components/FlyMovement2D.h"
+#include "Components/CustomShape.h"
 
 #include "Systems/RenderSystem.h"
 #include "Systems/InstancedRenderSystem.h"

@@ -149,7 +149,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\weird-engine\MathExpresions.cpp" />
     <ClCompile Include="src\weird-physics\Simulation2D.cpp" />
     <ClCompile Include="src\weird-engine\SceneManager.cpp" />
     <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
@@ -159,7 +158,6 @@
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
     <ClCompile Include="src\weird-renderer\Renderer.cpp" />
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp" />
-    <ClCompile Include="src\weird-renderer\Shape.cpp" />
     <ClCompile Include="src\weird-renderer\Camera.cpp" />
     <ClCompile Include="src\weird-renderer\EBO.cpp" />
     <ClCompile Include="src\weird-renderer\glad.c" />

@@ -4,6 +4,7 @@
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
 #include "../weird-renderer/RenderPlane.h"
+#include "../weird-renderer/Shape.h"
 
 
 
@@ -59,6 +60,6 @@ private:
 
 	vector<WeirdRenderer::Light> m_lights;
 
-
+	std::vector<std::shared_ptr<IMathExpression>>  m_sdfs;
 };
 

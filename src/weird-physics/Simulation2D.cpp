@@ -1,15 +1,7 @@
 #pragma once
 #include "Simulation2D.h"
-#include "CollisionDetection/SpatialHash.h"
-#include "../weird-engine/Input.h"
-#include "CollisionDetection/Octree.h"
 
-#include <chrono>
-#include <immintrin.h>
-#include <mutex>
-#include <set>
-#include <glm/gtx/norm.hpp>
-#include "../weird-engine/MathExpressions.h"
+
 
 #define MEASURE_PERFORMANCE false			
 
@@ -27,7 +19,9 @@ std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
 
 // Circle sdf
-std::shared_ptr<IMathExpression> lengthFormula;
+
+
+
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -66,11 +60,15 @@ Simulation2D::Simulation2D(size_t size) :
 		m_invMass[i] = 0.001f;
 	}
 
+	m_sdfs = std::make_shared < std::vector<std::shared_ptr<IMathExpression>>>();
+
 	//auto xExpression = std::make_shared<Substraction>(0, 3);
 	//auto yExpression = std::make_shared<Substraction>(1, 4);
-	lengthFormula = std::make_shared<Substraction>(std::make_shared<Length>(0, 1), 2);
 
-	std::cout << lengthFormula->print();
+
+
+	
+
 }
 
 Simulation2D::~Simulation2D()
@@ -354,41 +352,30 @@ void Simulation2D::solveCollisionsPositionBased()
 	}
 }
 
-float shape_circle(vec2 p, float r)
+
+
+float  Simulation2D::map(vec2 p)
 {
-	return length(p) - r;
+	float d = 1.0f;
 
-	float* variables = new float[3] {p.x, p.y, r };
-	lengthFormula->propagateValues(variables);
-	float result = lengthFormula->getValue();
-	delete[] variables;
+	for (DistanceFieldObject2D& obj : m_objects)
+	{
+		obj.parameters[8] = m_simulationTime;
+		obj.parameters[9] = p.x;
+		obj.parameters[10] = p.y;
 
-	return result;
-}
+		(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
-float map(vec2 p, float u_time)
-{
-	float a = 1.f;
-	float floorDist = p.y - a * sinf(0.5f * p.x + u_time);
+		float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-	//p += 5.0f;
+		d = std::min(d, dist);
+	}
 
-	//float scale = 1.0f / 10.0f;
-	//vec2 roundPos = ((scale * p) - round(scale * p)) * 10.0f;
-	//roundPos.x += cos(u_time + round(0.1f * p.x));
-	//roundPos.y += sin(u_time + round(0.1f * p.x));
-	//float infiniteShereDist = shape_circle((roundPos - vec2(0.0)));
-
-	vec2 starPosition = p - vec2(25.0f, 30.0f);
-	float infiniteShereDist = shape_circle(starPosition, 5.0f);
-	float displacement = 1.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
-
-	float d = std::min(floorDist, infiniteShereDist + displacement);
 
 	return d;
 }
 
-const float EPSILON = 0.01f;
+const float EPSILON = 0.0001f;
 void Simulation2D::applyForces()
 {
 	// External forces
@@ -505,16 +492,16 @@ void Simulation2D::applyForces()
 			m_forces[i].y += m_mass[i] * m_gravity;
 		}
 
-		// Bounds collisions
-		float d = map(p, m_simulationTime);
+		// Static shapes
+		float d = map(p);
 		if (d < m_radious)
 		{
 			float penetration = (m_radious - d);
 
 			// Collision normal calculation
 
-			float d1 = map(vec2(p.x - EPSILON, p.y), m_simulationTime);
-			float d2 = map(vec2(p.x, p.y - EPSILON), m_simulationTime);
+			float d1 = map(vec2(p.x - EPSILON, p.y));
+			float d2 = map(vec2(p.x, p.y - EPSILON));
 
 			vec2 normal = vec2(d - d1, d - d2);
 			normal = normalize(normal);
@@ -530,7 +517,7 @@ void Simulation2D::applyForces()
 			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later 
 			vec2 impulse = impulseMagnitude * normal;
 
-			m_velocities[i] -= impulse; // * m_invMass[i]
+			//m_velocities[i] -= impulse; // * m_invMass[i]
 
 
 			// Penalty
@@ -698,6 +685,19 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 	transform.position.x = m_positions[entity].x;
 	transform.position.y = m_positions[entity].y;
 }
+
+void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
+{
+	m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
+}
+
+
+void Simulation2D::updateShape(CustomShape& shape)
+{
+	DistanceFieldObject2D sdf(shape.m_distanceFieldId, shape.m_parameters);
+	m_objects.push_back(sdf);
+}
+
 
 SimulationID Simulation2D::raycast(vec2 pos)
 {

@@ -8,7 +8,7 @@ class PhysicsInteractionSystem : public System
 {
 private:
 
-	bool m_loadingImpulse;
+	bool m_loadingImpulse = false;
 	vec2 m_loadStartPosition;
 
 	SimulationID m_dragId = -1;
@@ -35,7 +35,7 @@ private:
 		"Spring",
 	};
 
-	InteractionMode m_currentInteractionMode = InteractionMode::Spring;
+	InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
 
 public:
@@ -43,6 +43,19 @@ public:
 	PhysicsInteractionSystem(ECSManager& ecs) : m_loadingImpulse(false)
 	{
 
+	}
+
+	void reset() 
+	{
+		m_loadingImpulse = false;
+
+		m_dragId = -1;
+
+		m_currentMaterial = 0;
+
+		m_firstIdInSpring = -1;
+
+		m_selectedId = -1;
 	}
 
 
@@ -96,24 +109,28 @@ public:
 		{
 			m_currentInteractionMode = InteractionMode::Drag;
 			std::cout << m_interactionModeToString[(int)InteractionMode::Drag] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num2))
 		{
 			m_currentInteractionMode = InteractionMode::Impulse;
 			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num3))
 		{
 			m_currentInteractionMode = InteractionMode::Fix;
 			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num4))
 		{
 			m_currentInteractionMode = InteractionMode::Spring;
 			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
 		}
 
 		// Add force to last ball

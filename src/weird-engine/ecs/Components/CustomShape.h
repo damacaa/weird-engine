@@ -7,6 +7,7 @@ struct CustomShape : public Component
 {
 public:
 
+	uint16_t id = -1;
 	uint16_t m_distanceFieldId;
 	float m_parameters[8];
 	bool m_isDirty;

@@ -25,7 +25,7 @@ Scene::Scene(const char* filePath) :
 	, m_physicsInteractionSystem(m_ecs)
 	, m_playerMovementSystem(m_ecs)
 	, m_cameraSystem(m_ecs)
-	, m_runSimulationInThread(false)
+	, m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents(filePath);
@@ -106,8 +106,10 @@ void Scene::update(double delta, double time)
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
 	}
 
-
-
+	CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
+	cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
+	cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
+	cs.m_isDirty = true;
 }
 
 
@@ -236,7 +238,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	{
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 1.0f };
+		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 5.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 	}

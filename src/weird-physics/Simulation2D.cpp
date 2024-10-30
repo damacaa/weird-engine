@@ -67,7 +67,7 @@ Simulation2D::Simulation2D(size_t size) :
 
 
 
-	
+
 
 }
 
@@ -692,10 +692,20 @@ void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 }
 
 
+
 void Simulation2D::updateShape(CustomShape& shape)
 {
 	DistanceFieldObject2D sdf(shape.m_distanceFieldId, shape.m_parameters);
-	m_objects.push_back(sdf);
+
+	if (shape.id > m_objects.size()) {
+		// New shape
+		shape.id = m_objects.size();
+		m_objects.push_back(sdf);
+	}
+	else {
+		m_objects[shape.id] = sdf;
+	}
+
 }
 
 

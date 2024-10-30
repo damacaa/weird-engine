@@ -1,7 +1,11 @@
 #pragma once
-#include "../weird-renderer/Shape.h" // TODO: replace with components
+
+#include<glm/glm.hpp>
+
 #include "../weird-engine/ecs/Entity.h"
 #include "../weird-engine/ecs/Components/Transform.h"
+#include "../weird-engine/ecs/Components/CustomShape.h"
+
 #include <vector>
 #include <thread>
 #include <unordered_set>
@@ -11,6 +15,20 @@
 
 #include "CollisionDetection/UniformGrid2D.h"
 #include "CollisionDetection/DynamicAABBTree2D.h"
+
+#include "CollisionDetection/SpatialHash.h"
+#include "../weird-engine/Input.h"
+#include "CollisionDetection/Octree.h"
+
+#include <chrono>
+#include <immintrin.h>
+#include <mutex>
+#include <set>
+#include <glm/gtx/norm.hpp>
+
+#include "../weird-engine/MathExpressions.h"
+
+
 
 using SimulationID = std::uint32_t;
 
@@ -92,6 +110,10 @@ public:
 	void setPosition(SimulationID entity, vec2 pos);
 	void updateTransform(Transform& transform, SimulationID entity);
 
+	void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
+
+	void updateShape(CustomShape& shape);
+
 	SimulationID raycast(vec2 pos);
 
 private:
@@ -168,6 +190,20 @@ private:
 		MethodTree
 	};
 
+
+	struct DistanceFieldObject2D
+	{
+		uint16_t distanceFieldId;
+		float parameters[11];
+
+		DistanceFieldObject2D(uint16_t id, float* params) : distanceFieldId(id)
+		{
+			std::copy(params, params + 8, parameters); // Copy params into parameters
+		}
+	};
+
+
+
 	bool m_isPaused;
 	bool m_simulating;
 	double m_simulationDelay;
@@ -199,6 +235,13 @@ private:
 
 	float m_gravity;
 
+	// Shapes
+	std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
+	std::vector<DistanceFieldObject2D> m_objects;
+
+	float map(vec2 p);
+
+	// Collision
 	CollisionDetectionMethod m_collisionDetectionMethod;
 
 	std::vector<Collision> m_collisions;
@@ -206,9 +249,9 @@ private:
 	std::vector<int> m_treeIDs;
 	std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 
-
-	std::vector<Spring> m_springs;
+	// Constraints
 	std::vector<SimulationID> m_fixedObjects;
+	std::vector<Spring> m_springs;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

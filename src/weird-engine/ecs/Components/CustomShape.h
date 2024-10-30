@@ -1,15 +1,23 @@
 #pragma once
-#include "../ECS.h"
-#include "../../../weird-physics/Simulation.h"
-#include "../../MathExpression.h"
+#include "../Component.h"
+#include "../../MathExpressions.h"
 
-struct RigidBody : public Component {
-private:
-	std::shared_ptr<IMathExpression> m_sdf;
+
+struct CustomShape : public Component 
+{
 public:
 
-	RigidBody() : simulationId(-1) {};
+	uint16_t m_distanceFieldId;
+	float m_parameters[8];
+	bool m_isDirty;
 
-	unsigned int simulationId;
+	CustomShape() : m_distanceFieldId(0), m_isDirty(true)
+	{
+	}
+
+	CustomShape(uint16_t id, float* params) : m_distanceFieldId(id), m_isDirty(true)
+	{
+		std::copy(params, params + 8, m_parameters);
+	}
 
 };

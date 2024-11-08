@@ -172,7 +172,7 @@ public:
 	{
 		if (simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
 		{
-			int amount = 1;
+			int amount = 10;
 			for (size_t i = 0; i < amount; i++)
 			{
 				float x = 0.f;

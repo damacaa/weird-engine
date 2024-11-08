@@ -107,8 +107,10 @@ void Scene::update(double delta, double time)
 	}
 
 	CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
-	cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
-	cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
+	//cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
+	cs.m_parameters[4] = (static_cast<int>(std::floor( m_simulation2D.getSimulationTime())) % 5) + 2;
+	cs.m_parameters[3] = sin(3.1416 * m_simulation2D.getSimulationTime());
+	//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
 	cs.m_isDirty = true;
 }
 

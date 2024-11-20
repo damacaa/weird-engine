@@ -103,8 +103,18 @@ float render(vec2 uv)
 
 #if SHADOWS_ENABLED
 
-  float d = rayMarch(uv, u_directionalLightDirection.xy);
-  return d < FAR ? 0.75: 1.0;
+    float d = 0;
+  vec2 offsetPosition = uv + (3.0/u_resolution) * u_directionalLightDirection.xy;
+  if(map(uv) <= 0.0 && map(offsetPosition) > 0.0)
+  {
+    d = rayMarch(offsetPosition, u_directionalLightDirection.xy);
+  return d < FAR ? 0.5: 1.0;
+  }
+
+    d = rayMarch(uv, u_directionalLightDirection.xy);
+  
+
+  return d < FAR ? 0.5: 1.0;
   //return d * background;
 
 #else
@@ -122,7 +132,7 @@ void main()
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 
-    float light = distance <= 0.0 ? 1.0 : render(screenUV);
+    float light = render(screenUV);
     vec3 col = light * color.xyz;
 
 #if (DITHERING == 1)

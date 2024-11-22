@@ -38,11 +38,6 @@ Scene::Scene(const char* filePath) :
 	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
 
 
-
-
-
-
-
 	// Start simulation if different thread
 	if (m_runSimulationInThread)
 	{
@@ -70,12 +65,34 @@ void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& i
 	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
+void test(std::string& str)
+{
+	std::string toReplace("/*ADD_SHAPES_HERE*/");
+	std::string replacement("return vec4(p, 0, 1);");
 
+	size_t pos = str.find(toReplace);
+	if (pos != std::string::npos) { // Check if the substring was found
+		// Replace the substring
+		str.replace(pos, toReplace.length(), replacement);
+	}
+}
+
+bool newShapeAdded = true;
 void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
+	if (newShapeAdded)
+	{
+		std::string fragCode = shader.getFragmentCode();
+		test(fragCode);
+		shader.setFragmentCode(fragCode);
+		newShapeAdded = false;
+	}
+
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
+
+
 
 
 
@@ -108,7 +125,7 @@ void Scene::update(double delta, double time)
 
 	CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
 	//cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
-	cs.m_parameters[4] = (static_cast<int>(std::floor( m_simulation2D.getSimulationTime())) % 5) + 2;
+	cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
 	cs.m_parameters[3] = sin(3.1416 * m_simulation2D.getSimulationTime());
 	//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
 	cs.m_isDirty = true;
@@ -153,11 +170,6 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	size_t circles = scene["Circles"].get<int>();
 	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
-
-
-
-
-
 
 
 	// Shapes
@@ -236,7 +248,6 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(floor, shape);
 	}
 
-
 	{
 		Entity star = m_ecs.createEntity();
 
@@ -245,5 +256,12 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(star, shape);
 	}
 
+	{
+		Entity star = m_ecs.createEntity();
+
+		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 5.0f };
+		CustomShape shape(1, variables);
+		m_ecs.addComponent(star, shape);
+	}
 
 }

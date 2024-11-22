@@ -1,9 +1,9 @@
 #version 330 core
 
-#define BLEND_SHAPES 1
+#define BLEND_SHAPES 0
 #define MOTION_BLUR 1
 
-uniform float k = 0.5;
+uniform float k = .25;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -147,6 +147,8 @@ vec4 getColor(vec2 p)
     col = d == floorDist ? getMaterial(p, 0) : col;
   }
 
+  /*ADD_SHAPES_HERE*/
+
   // Star
   {
     float var8 = u_time; // time
@@ -162,8 +164,6 @@ vec4 getColor(vec2 p)
     float var3 = parameters0.w; // displacementStrength	
     float var4 = parameters1.x; // starPoints				
     float var5 = parameters1.y; // speed					
-                              
-
 
     float starDist = ((length(vec2((var9 - var0), (var10 - var1))) - var2) + (var3 * sin(((var4 * atan((var10 - var1), (var9 - var0))) - (var5 * var8)))));
 

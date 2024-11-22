@@ -27,7 +27,9 @@ namespace WeirdRenderer
 		// Deletes the Shader Program
 		void Delete();
 
-		void Recompile();
+		std::string getVertexCode();
+		std::string getFragmentCode();
+		void setFragmentCode(std::string& code);
 
 		// Utility uniform functions
 		void setUniform(const std::string& name, float value) const {
@@ -72,32 +74,13 @@ namespace WeirdRenderer
 		const char* m_fragmentFile;
 		time_t m_lastModifiedTime;
 
+		void recompile();
+		void recompile(std::string& vertexCode, std::string& fragmentCode);
+
 		// Checks if the different Shaders have compiled properly
 		void compileErrors(unsigned int shader, const char* type);
 
-		char* InsertDependencies(const char* shaderCode) {
-			char* result = nullptr;
-
-			strcpy_s(result, sizeof(shaderCode), shaderCode);
-
-			replaceSubstring(result, "#include hg_sdf.glsl", " ");
-			return result;
-		}
-
-		void replaceSubstring(char* str, const char* oldStr, const char* newStr) {
-			char* ptr = strstr(str, oldStr); // Find the first occurrence of oldStr in str
-			if (ptr != nullptr) {
-				size_t oldLen = strlen(oldStr);
-				size_t newLen = strlen(newStr);
-				if (newLen > oldLen) {
-					memmove(ptr + newLen, ptr + oldLen, strlen(ptr + oldLen) + 1); // Move the rest of the string
-				}
-				else if (newLen < oldLen) {
-					memmove(ptr + newLen, ptr + oldLen, strlen(ptr + oldLen) + 1); // Make room for newStr
-				}
-				memcpy(ptr, newStr, newLen); // Copy newStr into the space left by oldStr
-			}
-		}
+		
 	};
 }
 

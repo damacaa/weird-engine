@@ -100,7 +100,8 @@ public:
 
 	// Interaction
 	void addForce(SimulationID id, vec2 force);
-	void addSpring(SimulationID a, SimulationID b, float stiffness);
+	void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
+	void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 
 	void fix(SimulationID id);
 	void unFix(SimulationID id);
@@ -122,6 +123,7 @@ private:
 	void checkCollisions();
 	void solveCollisionsPositionBased();
 	void applyForces();
+	void solveConstraints();
 	void step(float timeStep);
 
 
@@ -162,16 +164,41 @@ private:
 		}
 
 
-		Spring(int a, int b, float k)
+		Spring(int a, int b, float k, float distance)
 		{
 			A = a;
 			B = b;
 			K = k;
+			Distance = distance;
 		}
 
 		int A;
 		int B;
 		float K;
+		float Distance;
+	};
+
+	struct DistanceConstraint
+	{
+	public:
+		DistanceConstraint()
+		{
+			A = -1;
+			B = -1;
+			Distance = 1.0f;
+		}
+
+
+		DistanceConstraint(int a, int b, float distance)
+		{
+			A = a;
+			B = b;
+			Distance = distance;
+		}
+
+		int A;
+		int B;
+		float Distance;
 	};
 
 	struct CollisionHash {
@@ -252,6 +279,7 @@ private:
 	// Constraints
 	std::vector<SimulationID> m_fixedObjects;
 	std::vector<Spring> m_springs;
+	std::vector<DistanceConstraint> m_distanceConstraints;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

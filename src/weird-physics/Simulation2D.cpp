@@ -4,11 +4,12 @@
 
 
 #define MEASURE_PERFORMANCE false			
+#define INTEGRATION_METHOD 1
 
 
 using namespace std::chrono;
 
-constexpr float SIMULATION_FREQUENCY = 500;
+constexpr float SIMULATION_FREQUENCY = 250;
 constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 10;
@@ -17,10 +18,6 @@ std::mutex g_simulationTimeMutex;
 std::mutex g_externalForcesMutex;
 std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
-
-// Circle sdf
-
-
 
 
 
@@ -41,7 +38,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationTime(0),
 	m_gravity(-10),
 	m_push(50.0f * SIMULATION_FREQUENCY),
-	m_damping(0.002f),
+	m_damping(0.001f),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodTree),
 	m_useSimdOperations(false),
@@ -60,15 +57,7 @@ Simulation2D::Simulation2D(size_t size) :
 		m_invMass[i] = 0.001f;
 	}
 
-	m_sdfs = std::make_shared < std::vector<std::shared_ptr<IMathExpression>>>();
-
-	//auto xExpression = std::make_shared<Substraction>(0, 3);
-	//auto yExpression = std::make_shared<Substraction>(1, 4);
-
-
-
-
-
+	m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>();
 }
 
 Simulation2D::~Simulation2D()
@@ -97,7 +86,7 @@ bool Simulation2D::isPaused()
 }
 
 
-#pragma region MyRegion
+#pragma region PhysicsUpdate
 
 void Simulation2D::update(double delta)
 {
@@ -132,6 +121,7 @@ void Simulation2D::process()
 		if (!m_isPaused)
 		{
 			applyForces();
+			solveConstraints();
 			step((float)FIXED_DELTA_TIME);
 			++steps;
 			{
@@ -391,7 +381,6 @@ void Simulation2D::applyForces()
 	}
 
 
-
 	// Attraction force
 	if (m_attracttionEnabled)
 	{
@@ -449,10 +438,10 @@ void Simulation2D::applyForces()
 		vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
-		//// Position		
-		//vec2 translation = 0.5f * penetration * normal;
-		//m_positions[col.A] -= translation;
-		//m_positions[col.B] += translation;
+		// Position		
+		/*vec2 translation = 0.5f * penetration * normal;
+		m_positions[col.A] -= translation;
+		m_positions[col.B] += translation;*/
 
 
 
@@ -544,31 +533,82 @@ void Simulation2D::applyForces()
 				m_velocities[i].x = -0.5f * m_velocities[i].x;
 			}
 		}
-	}
+}
+}
 
-
+void Simulation2D::solveConstraints()
+{
 	for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
 	{
 		Spring spring = *it;
 
 		vec2 v = m_positions[spring.B] - m_positions[spring.A];
 		vec2 n = normalize(v);
-		float d = 1.0f - length(v);
-		d = std::min(d, 0.1f);
+		float distance = length(v);
+		float d = spring.Distance - distance;
+		//d = std::clamp(d, -10.0f, 10.0f);
 
-		vec2 f = -0.5f * spring.K * d * (float)FIXED_DELTA_TIME * n;
-		m_forces[spring.A] += f;
-		m_forces[spring.B] -= f;
+		vec2 springForce = 0.5f * spring.K * d * n;
+		vec2 damping = 10000.0f * (m_velocities[spring.B] - m_velocities[spring.A]);
+
+		vec2 f = springForce - damping;
+
+		m_forces[spring.A] -= f;
+		m_forces[spring.B] += f;
 	}
 
+	for (auto it = m_distanceConstraints.begin(); it != m_distanceConstraints.end(); ++it)
+	{
+		DistanceConstraint spring = *it;
 
+		vec2 v = m_positions[spring.B] - m_positions[spring.A];
+		vec2 n = normalize(v);
+		float distance = length(v);
+
+		float correction = (distance - spring.Distance);
+		vec2 correctionVector = -correction * 0.5f * n;
+
+		vec2 pA = m_positions[spring.A] - correctionVector;
+		vec2 pB = m_positions[spring.B] + correctionVector;
+
+		m_positions[spring.A] = pA;
+		m_positions[spring.B] = pB;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(g_fixMutex);
+		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+		{
+			SimulationID id = *it;
+
+			m_positions[id] = m_previousPositions[id];
+			m_velocities[id] = vec2(0.0f);
+			m_forces[id] = vec2(0.0f);
+		}
+	}
 }
+
 
 
 void Simulation2D::step(float timeStep)
 {
+#if INTEGRATION_METHOD == 0
 
-	// Integrate with verlet
+	//Integrate with euler
+	for (size_t i = 0; i < m_size; i++)
+	{
+		vec2 acc = m_forces[i] * m_invMass[i];
+		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+		m_positions[i] += timeStep * m_velocities[i];
+
+		// Reset forces
+		m_forces[i] = vec2(0.0f);
+
+	}
+
+#elif INTEGRATION_METHOD == 1
+
+	//Integrate with verlet
 	float invTimeStep = 1.0f / timeStep;
 	for (size_t i = 0; i < m_size; i++)
 	{
@@ -583,7 +623,7 @@ void Simulation2D::step(float timeStep)
 		m_positions[i] = newPosition;
 
 		// Update the previous position
-		//m_previousPositions[i] = currentPosition;
+		m_previousPositions[i] = currentPosition;
 
 		// Reset forces
 		m_forces[i] = vec2(0.0f);
@@ -592,33 +632,8 @@ void Simulation2D::step(float timeStep)
 		m_velocities[i] = newVelocity;
 	}
 
-	//Integrate with euler
-	//for (size_t i = 0; i < m_size; i++)
-	//{
-	//	vec2 acc = m_forces[i] * m_invMass[i];
-	//	m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-	//	m_positions[i] += timeStep * m_velocities[i];
+#endif
 
-	//	// Reset forces
-	//	m_forces[i] = vec2(0.0f);
-
-	//}
-
-	/*m_positions[30] = vec2(0.0f, 15.0f);
-	m_velocities[30] = vec2(0.0f);
-	m_positions[59] = vec2(30.0f, 15.0f);
-	m_velocities[59] = vec2(0.0f);*/
-
-	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
-		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
-		{
-			SimulationID id = *it;
-
-			m_positions[id] -= timeStep * m_velocities[id];
-			m_velocities[id] = vec2(0.0f);
-		}
-	}
 }
 
 #pragma endregion
@@ -644,12 +659,20 @@ void Simulation2D::addForce(SimulationID id, vec2 force)
 	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 }
 
-void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
+void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
 {
 	if (a == b)
 		return;
 
-	m_springs.emplace_back(a, b, stiffness);
+	m_springs.emplace_back(a, b, stiffness, distance);
+}
+
+void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
+{
+	if (a == b)
+		return;
+
+	m_distanceConstraints.emplace_back(a, b, distance);
 }
 
 void Simulation2D::fix(SimulationID id)

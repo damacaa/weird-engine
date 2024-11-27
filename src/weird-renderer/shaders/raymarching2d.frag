@@ -144,7 +144,7 @@ vec4 getColor(vec2 p)
 
     float floorDist = (var10 - (var0 * sin(((var1 * var9) + var8))));
     d = min(d, floorDist);
-    col = d == floorDist ? getMaterial(p, 0) : col;
+    col = d == floorDist ? getMaterial(p, 6) : col;
   }
 
   /*ADD_SHAPES_HERE*/

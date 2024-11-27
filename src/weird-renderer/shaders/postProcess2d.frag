@@ -72,9 +72,10 @@ float map(vec2 p)
   return texture(u_colorTexture, p).w;
 }
 
-float rayMarch(vec2 ro, vec2 rd)
+float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 {
   float d;
+  minDistance = 10000.0;
 
   float traveled = 0.0;
 
@@ -87,12 +88,14 @@ float rayMarch(vec2 ro, vec2 rd)
     if (d <= EPSILON)
       break;
 
+    minDistance = min(d, minDistance);
+
     if(p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
       return FAR;
 
     //traveled += 0.01;
-    //traveled += d;
-    traveled += min(d, 0.01);
+    traveled += d;
+    //traveled += min(d, 0.01);
   }
 
   return traveled;
@@ -103,18 +106,27 @@ float render(vec2 uv)
 
 #if SHADOWS_ENABLED
 
-    float d = 0;
-  vec2 offsetPosition = uv + (3.0/u_resolution) * u_directionalLightDirection.xy;
-  if(map(uv) <= 0.0 && map(offsetPosition) > 0.0)
+  vec2 rd = normalize(vec2(1.0) - uv);
+  //vec2 rd = u_directionalLightDirection.xy;
+  
+  float d = map(uv);
+  float minD;
+  vec2 offsetPosition = uv + (2.0/u_resolution) * rd;
+  if(d <= 0.0 )
   {
-    d = rayMarch(offsetPosition, u_directionalLightDirection.xy);
-  return d < FAR ? 0.5: 1.0;
+    float dd = max(0.0, -d - 0.01);
+    //return 1.0 + (-.5f * sqrt(dd));
+
+    d = rayMarch(offsetPosition, rd, minD);
+    return d < FAR ? 1.0 + (-.5f *sqrt(dd)): 2.0; // * dot(n,  rd);
   }
 
-    d = rayMarch(uv, u_directionalLightDirection.xy);
+    d = rayMarch(uv, rd, minD);
   
-
-  return d < FAR ? 0.5: 1.0;
+  //minD = minD >= 0.005 ? 0.0 : minD;
+  //return 100.0 * minD;
+  //return d < FAR ? 0.85: 1.0 - (100.0 * minD);
+  return d < FAR ? 0.85: 1.0 ;
   //return d * background;
 
 #else
@@ -147,5 +159,7 @@ void main()
 
 #endif
 
+  //FragColor = vec4(vec3(light), 1.0);
   FragColor = vec4(col.xyz, 1.0);
+  //FragColor = vec4(vec3(5.0*map(screenUV)), 1.0);
 }

@@ -114,11 +114,11 @@ float render(vec2 uv)
   vec2 offsetPosition = uv + (2.0/u_resolution) * rd;
   if(d <= 0.0 )
   {
-    float dd = max(0.0, -d - 0.01);
+    float dd = max(0.0, -max(-0.05, d) - 0.01);
     //return 1.0 + (-.5f * sqrt(dd));
 
     d = rayMarch(offsetPosition, rd, minD);
-    return d < FAR ? 1.0 + (-.5f *sqrt(dd)): 2.0; // * dot(n,  rd);
+    return d < FAR ? 1.0 + (-1.5f * dd): 2.0; // * dot(n,  rd);
   }
 
     d = rayMarch(uv, rd, minD);

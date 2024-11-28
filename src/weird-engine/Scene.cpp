@@ -77,7 +77,7 @@ void test(std::string& str)
 	}
 }
 
-bool newShapeAdded = true;
+bool newShapeAdded = false;
 void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
 	if (newShapeAdded)
@@ -251,17 +251,17 @@ void Scene::loadScene(std::string sceneFileContent)
 	{
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 5.0f };
+		float variables[8]{ 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 	}
 
-	{
+	/*{
 		Entity star = m_ecs.createEntity();
 
 		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 5.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
-	}
+	}*/
 
 }

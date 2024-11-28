@@ -10,7 +10,7 @@
 using namespace std::chrono;
 
 constexpr float SIMULATION_FREQUENCY = 250;
-constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
+constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 10;
 
@@ -37,10 +37,10 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationDelay(0),
 	m_simulationTime(0),
 	m_gravity(-10),
-	m_push(50.0f * SIMULATION_FREQUENCY),
-	m_damping(0.001f),
+	m_push(20.0f * SIMULATION_FREQUENCY),
+	m_damping(0.01f),
 	m_simulating(false),
-	m_collisionDetectionMethod(MethodTree),
+	m_collisionDetectionMethod(MethodNaive),
 	m_useSimdOperations(false),
 	m_diameter(1.0f),
 	m_diameterSquared(m_diameter* m_diameter),

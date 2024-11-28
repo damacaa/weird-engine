@@ -149,11 +149,11 @@ public:
 				simulation.addSpring(i, i + 1, stiffness);
 
 
-				if (i + 30 < circles)
+				/*if (i + 30 < circles)
 				{
 					simulation.addSpring(i, i + 31, stiffness, 1.42f);
 					simulation.addSpring(i + 1, i + 30, stiffness, 1.42f);
-				}
+				}*/
 			}
 
 			if (circles >= 30)

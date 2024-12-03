@@ -76,8 +76,10 @@ public:
 			{
 			case 0:
 			{
+				float startY = 20 + (circles / 30);
+
 				x = i % 30;
-				y = 50 - (int)(i / 30);
+				y = startY - (int)(i / 30);
 
 				material = 4 + (i % 12);
 

@@ -122,7 +122,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 	if (newShapeAdded)
 	{
 		test(shader);
-		//newShapeAdded = false;
+		newShapeAdded = false;
 	}
 
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
@@ -131,16 +131,16 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 
-
+float direction = 1;
 
 void Scene::update(double delta, double time)
 {
 	// Update systems
 	m_playerMovementSystem.update(m_ecs, delta);
-	//m_cameraSystem.follow(m_ecs, m_mainCamera, 680);
+	//m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 
 	m_cameraSystem.update(m_ecs);
-	//g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
+	g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
@@ -158,6 +158,33 @@ void Scene::update(double delta, double time)
 	if (Input::GetKey(Input::E))
 	{
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
+		newShapeAdded = true;
+	}
+
+	if (Input::GetKeyDown(Input::M))
+	{
+
+		// Get mouse coordinates
+		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		float x = Input::GetMouseX();
+		float y = Input::GetMouseY();
+
+		// Transform mouse coordinates to world space
+		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
+
+		Entity star = m_ecs.createEntity();
+
+		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, direction * 5.0f };
+		direction = -direction;
+		CustomShape shape(1, variables);
+		m_ecs.addComponent(star, shape);
+
+		newShapeAdded = true;
+	}
+
+	if (Input::GetKeyDown(Input::U))
+	{
+		newShapeAdded = true;
 	}
 
 	{
@@ -168,6 +195,9 @@ void Scene::update(double delta, double time)
 		//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
 		cs.m_isDirty = true;
 	}
+
+
+
 
 }
 
@@ -276,6 +306,38 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		// Store function
 		m_sdfs.push_back(starDistance);
+	}
+
+	// Circle
+	{
+
+		//vec2 starPosition = p - vec2(25.0f, 30.0f);
+		//float infiniteShereDist = length(starPosition) - 5.0f;
+		//float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
+
+		// Define variables
+		auto offsetX = std::make_shared<FloatVariable>(0);
+		auto offsetY = std::make_shared<FloatVariable>(1);
+		auto radious = std::make_shared<FloatVariable>(2);
+		auto displacementStrength = std::make_shared<FloatVariable>(3);
+		auto starPoints = std::make_shared<FloatVariable>(4);
+		auto speed = std::make_shared<FloatVariable>(5);
+
+		auto time = std::make_shared<FloatVariable>(8);
+		auto x = std::make_shared<FloatVariable>(9);
+		auto y = std::make_shared<FloatVariable>(10);
+
+
+		// Define function
+		std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
+		std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
+
+		// Circle
+		std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(std::make_shared<Length>(positionX, positionY), radious);
+
+
+		// Store function
+		m_sdfs.push_back(circleDistance);
 	}
 
 	m_simulation2D.setSDFs(m_sdfs);

@@ -22,6 +22,7 @@ public:
 	Scene(const char* filePath);
 	~Scene();
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+	void test(WeirdRenderer::Shader& shader);
 	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
 	void update(double delta, double time);
 

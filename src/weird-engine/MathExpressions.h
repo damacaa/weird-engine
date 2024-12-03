@@ -198,7 +198,7 @@ struct Atan2 : TwoFloatOperation
 
 	std::string print()
 	{
-		return "atan2(" + valueA->print() + ", " + valueB->print() + ")";
+		return "atan(" + valueA->print() + ", " + valueB->print() + ")";
 	}
 };
 

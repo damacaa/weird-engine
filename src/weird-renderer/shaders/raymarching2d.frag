@@ -130,46 +130,11 @@ vec4 getColor(vec2 p)
 #endif
   }
 
-  // Wavy floor
-  {
-    float var8 = u_time; // time
-    float var9 = p.x;    // x
-    float var10 = p.y;   // y
 
-    vec4 parameters0 = texelFetch(u_shapeBuffer, u_loadedObjects - 4);
-    vec4 parameters1 = texelFetch(u_shapeBuffer, u_loadedObjects - 3);
-
-    float var0 = parameters0.x; // amplitude
-    float var1 = parameters0.y; // period
-
-    float floorDist = (var10 - (var0 * sin(((var1 * var9) + var8))));
-    d = min(d, floorDist);
-    col = d == floorDist ? getMaterial(p, 6) : col;
-  }
 
   /*ADD_SHAPES_HERE*/
 
-  // Star
-  {
-    float var8 = u_time; // time
-    float var9 = p.x;    // x
-    float var10 = p.y;   // y
 
-    vec4 parameters0 = texelFetch(u_shapeBuffer, u_loadedObjects - 2);
-    vec4 parameters1 = texelFetch(u_shapeBuffer, u_loadedObjects - 1);
-
-    float var0 = parameters0.x; // offsetX				
-    float var1 = parameters0.y; // offsetY				
-    float var2 = parameters0.z; // radious				
-    float var3 = parameters0.w; // displacementStrength	
-    float var4 = parameters1.x; // starPoints				
-    float var5 = parameters1.y; // speed					
-
-    float starDist = ((length(vec2((var9 - var0), (var10 - var1))) - var2) + (var3 * sin(((var4 * atan((var10 - var1), (var9 - var0))) - (var5 * var8)))));
-
-    d = min(d, starDist);
-    col = d == (starDist) ? getMaterial(p, 11) : col;
-  }
 
   // Repetition
   // float scale = 1.0 / 10.0;

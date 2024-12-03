@@ -65,16 +65,55 @@ void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& i
 	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
-void test(std::string& str)
+void Scene::test(WeirdRenderer::Shader& shader)
 {
+	std::string str = shader.getFragmentCode();
+
+
+
 	std::string toReplace("/*ADD_SHAPES_HERE*/");
-	std::string replacement("return vec4(p, 0, 1);");
+
+	std::ostringstream oss;
+
+
+
+	auto atomArray = *m_ecs.getComponentManager<SDFRenderer>()->getComponentArray<SDFRenderer>();
+	auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+
+	for (size_t i = 0; i < componentArray.size; i++)
+	{
+		auto& shape = componentArray[i];
+
+		oss << "{";
+
+		int idx = (2 * i) + atomArray.getSize();
+
+		oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, " << idx << ");";
+		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, " << idx + 1 << ");";
+
+		oss << "float var8 = u_time; float var9 = p.x; float var10 = p.y; float var0 = parameters0.x; float var1 = parameters0.y; float var2 = parameters0.z; float var3 = parameters0.w; float var4 = parameters1.x; float var5 = parameters1.y; float var6 = parameters1.z; float var7 = parameters1.w;";
+
+		auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
+
+		oss << "float dist = " << fragmentCode << ";" << std::endl;
+		oss << "d = min(d, dist);";
+		oss << "col = d == (dist) ? getMaterial(p," << (idx % 12) + 4 << ") : col; ";
+		oss << "}" << std::endl;
+
+	}
+
+
+	std::string replacement = oss.str();
+
+	//std::cout << replacement << std::endl;
 
 	size_t pos = str.find(toReplace);
 	if (pos != std::string::npos) { // Check if the substring was found
 		// Replace the substring
 		str.replace(pos, toReplace.length(), replacement);
 	}
+
+	shader.setFragmentCode(str);
 }
 
 bool newShapeAdded = false;
@@ -82,10 +121,8 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 {
 	if (newShapeAdded)
 	{
-		std::string fragCode = shader.getFragmentCode();
-		test(fragCode);
-		shader.setFragmentCode(fragCode);
-		newShapeAdded = false;
+		test(shader);
+		//newShapeAdded = false;
 	}
 
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
@@ -103,7 +140,7 @@ void Scene::update(double delta, double time)
 	//m_cameraSystem.follow(m_ecs, m_mainCamera, 680);
 
 	m_cameraSystem.update(m_ecs);
-	g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
+	//g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
 	m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
@@ -123,12 +160,15 @@ void Scene::update(double delta, double time)
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
 	}
 
-	CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
-	//cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
-	cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
-	cs.m_parameters[3] = sin(3.1416 * m_simulation2D.getSimulationTime());
-	//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
-	cs.m_isDirty = true;
+	{
+		CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
+		//cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
+		cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
+		cs.m_parameters[3] = sin(3.1416 * m_simulation2D.getSimulationTime());
+		//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
+		cs.m_isDirty = true;
+	}
+
 }
 
 
@@ -256,12 +296,14 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(star, shape);
 	}
 
-	/*{
+	{
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ 25.0f, 30.0f, 5.0f, 0.5f, 13.0f, 5.0f };
+		float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
-	}*/
+	}
+
+	newShapeAdded = true;
 
 }

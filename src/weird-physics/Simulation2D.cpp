@@ -38,7 +38,7 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationTime(0),
 	m_gravity(-10),
 	m_push(20.0f * SIMULATION_FREQUENCY),
-	m_damping(0.01f),
+	m_damping(0.001f),
 	m_simulating(false),
 	m_collisionDetectionMethod(MethodNaive),
 	m_useSimdOperations(false),

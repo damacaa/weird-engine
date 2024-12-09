@@ -131,7 +131,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 
-float direction = 1;
+float nextGearDirection = 1;
 
 void Scene::update(double delta, double time)
 {
@@ -174,15 +174,15 @@ void Scene::update(double delta, double time)
 
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, direction * 5.0f };
-		direction = -direction;
+		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, nextGearDirection * 5.0f };
+		nextGearDirection = -nextGearDirection;
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 
 		newShapeAdded = true;
 	}
 
-	if (Input::GetKeyDown(Input::U))
+	if (Input::GetKeyDown(Input::U) || Input::GetMouseButtonDown(Input::LeftClick))
 	{
 		newShapeAdded = true;
 	}

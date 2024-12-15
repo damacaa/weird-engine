@@ -103,6 +103,22 @@ struct Sine : OneFloatOperation
 	}
 };
 
+// Abs
+struct Abs : OneFloatOperation
+{
+	using OneFloatOperation::OneFloatOperation;
+
+	float getValue() const override
+	{
+		return abs(valueA->getValue());
+	}
+
+	std::string print()
+	{
+		return "abs(" + valueA->print() + ")";
+	}
+};
+
 
 // Two float operation
 struct TwoFloatOperation : IMathExpression
@@ -221,8 +237,41 @@ struct Length : TwoFloatOperation
 	}
 };
 
+struct Max : TwoFloatOperation
+{
+	using TwoFloatOperation::TwoFloatOperation;
 
+	float getValue() const override
+	{
+		float a = valueA->getValue();
+		float b = valueB->getValue();
 
+		return std::max(a, b);
+	}
+
+	std::string print()
+	{
+		return "max(" + valueA->print() + ", " + valueB->print() + ")";
+	}
+};
+
+struct Min : TwoFloatOperation
+{
+	using TwoFloatOperation::TwoFloatOperation;
+
+	float getValue() const override
+	{
+		float a = valueA->getValue();
+		float b = valueB->getValue();
+
+		return std::min(a, b);
+	}
+
+	std::string print()
+	{
+		return "min(" + valueA->print() + ", " + valueB->print() + ")";
+	}
+};
 
 
 

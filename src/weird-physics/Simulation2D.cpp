@@ -350,6 +350,10 @@ float  Simulation2D::map(vec2 p)
 
 	for (DistanceFieldObject2D& obj : m_objects)
 	{
+		if (obj.distanceFieldId >= m_sdfs->size()) {
+			continue;
+		}
+
 		obj.parameters[8] = m_simulationTime;
 		obj.parameters[9] = p.x;
 		obj.parameters[10] = p.y;

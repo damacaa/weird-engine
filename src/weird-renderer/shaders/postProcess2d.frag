@@ -2,13 +2,15 @@
 
 #define DITHERING 1
 #define SHADOWS_ENABLED 1
+#define SOFT_SHADOWS 0
+
 
 
 // Constants
 const int MAX_STEPS = 1000;
 const float EPSILON = 0.0;
 const float NEAR = 0.1f;
-const float FAR = 100.0f;
+const float FAR = 1.0f;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -85,10 +87,11 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 
     d = map(p);
 
+    minDistance = min(d, minDistance);
+
     if (d <= EPSILON)
       break;
 
-    minDistance = min(d, minDistance);
 
     if(p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
       return FAR;
@@ -96,6 +99,10 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     //traveled += 0.01;
     traveled += d;
     //traveled += min(d, 0.01);
+    
+    if(traveled >= FAR){
+      return FAR;
+    }
   }
 
   return traveled;
@@ -106,7 +113,10 @@ float render(vec2 uv)
 
 #if SHADOWS_ENABLED
 
+  // Point light
   vec2 rd = normalize(vec2(1.0) - uv);
+
+  // Directional light
   //vec2 rd = u_directionalLightDirection.xy;
   
   float d = map(uv);
@@ -114,20 +124,23 @@ float render(vec2 uv)
   vec2 offsetPosition = uv + (2.0/u_resolution) * rd;
   if(d <= 0.0 )
   {
-    float dd = max(0.0, -max(-0.05, d) - 0.01);
-    //return 1.0 + (-.5f * sqrt(dd));
 
+    float dd = max(0.0, -max(-0.05, d) - 0.01);
+
+    // Get distance at offset position
     d = rayMarch(offsetPosition, rd, minD);
     return d < FAR ? 1.0 + (-1.5f * dd): 2.0; // * dot(n,  rd);
   }
 
     d = rayMarch(uv, rd, minD);
   
-  //minD = minD >= 0.005 ? 0.0 : minD;
-  //return 100.0 * minD;
-  //return d < FAR ? 0.85: 1.0 - (100.0 * minD);
+  //return (10.0 * minD)+0.5;
+
+#if SOFT_SHADOWS
+  return mix( 0.85, 1.0, d / FAR);
+#else
   return d < FAR ? 0.85: 1.0 ;
-  //return d * background;
+#endif
 
 #else
 

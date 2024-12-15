@@ -176,8 +176,7 @@ void Scene::update(double delta, double time)
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
 	}
 
-	if (Input::GetKeyDown(Input::M))
-	{
+	if (Input::GetKeyDown(Input::M)) {
 
 		// Get mouse coordinates
 		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
@@ -196,6 +195,68 @@ void Scene::update(double delta, double time)
 
 		newShapeAdded = true;
 	}
+
+	if (Input::GetKeyDown(Input::N))
+	{
+		// Test
+		{
+			// Define variables
+			auto offsetX = std::make_shared<FloatVariable>(0);
+			auto offsetY = std::make_shared<FloatVariable>(1);
+			auto bX = std::make_shared<FloatVariable>(2);
+			auto bY = std::make_shared<FloatVariable>(3);
+			auto r = std::make_shared<FloatVariable>(4);
+
+
+			auto time = std::make_shared<FloatVariable>(8);
+			auto x = std::make_shared<FloatVariable>(9);
+			auto y = std::make_shared<FloatVariable>(10);
+
+
+			// Define function
+			std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
+			std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
+
+			std::shared_ptr<IMathExpression> dX = std::make_shared<Substraction>(std::make_shared<Abs>(positionX), bX);
+			std::shared_ptr<IMathExpression> dY = std::make_shared<Substraction>(std::make_shared<Abs>(positionY), bY);
+
+			std::shared_ptr<IMathExpression> aX = std::make_shared<Max>(0.0f, dX);
+			std::shared_ptr<IMathExpression> aY = std::make_shared<Max>(0.0f, dY);
+
+			std::shared_ptr<IMathExpression> length = std::make_shared<Length>(aX, aY);
+
+			std::shared_ptr<IMathExpression> minMax = std::make_shared<Min>(0.0f, std::make_shared<Max>(dX, dY));
+
+			// Circle
+			std::shared_ptr<IMathExpression> boxDistance = std::make_shared<Addition>(length, minMax);
+
+
+			// Store function
+			m_sdfs.push_back(boxDistance);
+		}
+
+		m_simulation2D.setSDFs(m_sdfs);
+
+
+		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		float x = Input::GetMouseX();
+		float y = Input::GetMouseY();
+
+		// Transform mouse coordinates to world space
+		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
+
+
+		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 7.5f, 1.0f };
+
+		Entity test = m_ecs.createEntity();
+
+		CustomShape shape(m_sdfs.size() - 1, variables);
+		m_ecs.addComponent(test, shape);
+
+		newShapeAdded = true;
+
+	}
+
 
 
 	{

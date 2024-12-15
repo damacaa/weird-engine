@@ -78,29 +78,37 @@ void Scene::test(WeirdRenderer::Shader& shader)
 
 
 	auto atomArray = *m_ecs.getComponentManager<SDFRenderer>()->getComponentArray<SDFRenderer>();
+	int32_t atomCount = atomArray.getSize();
 	auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
 
-	for (size_t i = 0; i < componentArray.size; i++)
+	oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
+
+	for (size_t i = 0; i < componentArray.getSize(); i++)
 	{
 		auto& shape = componentArray[i];
 
 		oss << "{";
 
-		int idx = (2 * i) + atomArray.getSize();
+		oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
-		oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, " << idx << ");";
-		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, " << idx + 1 << ");";
+		/*oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, " << idx << ");";
+		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, " << idx + 1 << ");";*/
 
-		oss << "float var8 = u_time; float var9 = p.x; float var10 = p.y; float var0 = parameters0.x; float var1 = parameters0.y; float var2 = parameters0.z; float var3 = parameters0.w; float var4 = parameters1.x; float var5 = parameters1.y; float var6 = parameters1.z; float var7 = parameters1.w;";
+		oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, idx);";
+		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, idx + 1);";
+
+		oss << "float var8 = u_time; float var9 = p.x; float var10 = p.y; float var0 = parameters0.x; float var1 = parameters0.y; float var2 = parameters0.z; float var3 = parameters0.w; float var4 = parameters1.x; float var5 = parameters1.y; float var6 = parameters1.z; float var7 = parameters1.w;\n";
 
 		auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
 		oss << "float dist = " << fragmentCode << ";" << std::endl;
-		oss << "d = min(d, dist);";
-		oss << "col = d == (dist) ? getMaterial(p," << (idx % 12) + 4 << ") : col; ";
-		oss << "}" << std::endl;
+		oss << "d = min(d, dist);\n";
+		oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+		oss << "}\n" << std::endl;
 
 	}
+
+
 
 
 	std::string replacement = oss.str();
@@ -119,11 +127,19 @@ void Scene::test(WeirdRenderer::Shader& shader)
 bool newShapeAdded = false;
 void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
+	{
+		std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+		shader.setUniform("u_customShapeCount", componentArray->getSize());
+	}
+
+
 	if (newShapeAdded)
 	{
 		test(shader);
 		newShapeAdded = false;
+
 	}
+
 
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
@@ -158,7 +174,6 @@ void Scene::update(double delta, double time)
 	if (Input::GetKey(Input::E))
 	{
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
-		newShapeAdded = true;
 	}
 
 	if (Input::GetKeyDown(Input::M))
@@ -182,10 +197,6 @@ void Scene::update(double delta, double time)
 		newShapeAdded = true;
 	}
 
-	if (Input::GetKeyDown(Input::U) || Input::GetMouseButtonDown(Input::LeftClick))
-	{
-		newShapeAdded = true;
-	}
 
 	{
 		CustomShape& cs = m_ecs.getComponent<CustomShape>(62);

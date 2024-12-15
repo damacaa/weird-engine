@@ -1,9 +1,9 @@
 #version 330 core
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 1
+#define MOTION_BLUR 0
 
-uniform float k = .25;
+uniform float k = 0.25;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -22,6 +22,8 @@ uniform vec3 u_staticColors[16];
 uniform vec3 directionalLightDirection;
 
 uniform int u_blendIterations;
+
+uniform int u_customShapeCount;
 
 // Constants
 const int MAX_STEPS = 100;
@@ -108,13 +110,13 @@ vec4 getColor(vec2 p)
 
   vec3 col = vec3(0.0);
 
-  for (int i = 0; i < u_loadedObjects - 2; i++)
+  for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
     vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
     int materialId = int(positionSizeMaterial.w);
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
-    float objectDist = shape_circle((p - positionSizeMaterial.xy) / (positionSizeMaterial.z));
+    float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
 #if BLEND_SHAPES
 
@@ -152,6 +154,9 @@ vec4 getColor(vec2 p)
 
 void main()
 {
+  // FragColor = vec4(u_customShapeCount);
+  // return;
+
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
   float zoom = -u_cameraMatrix[3].z;
   vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;

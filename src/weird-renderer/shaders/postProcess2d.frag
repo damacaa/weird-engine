@@ -4,6 +4,7 @@
 #define SHADOWS_ENABLED 1
 #define SOFT_SHADOWS 0
 
+#define DEBUG_SHOW_DISTANCE 0
 
 
 // Constants
@@ -157,8 +158,30 @@ void main()
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 
+#if DEBUG_SHOW_DISTANCE
+
+  if(abs(distance) < (0.5 / u_resolution.x))
+  {
+    FragColor = vec4(vec3(0.0),1.0);
+  }
+  else
+  {
+    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    value = value * value * value;
+    vec3 debugColor = distance > 0 ? 
+    mix(vec3(1),vec3(0.2), value) : // outside
+    (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value); // inside
+
+    FragColor = vec4(debugColor, 1.0);
+  }
+
+    return;
+  #endif
+
     float light = render(screenUV);
     vec3 col = light * color.xyz;
+
+    //col = vec3(light);
 
 #if (DITHERING == 1)
 

@@ -11,7 +11,7 @@
 const int MAX_STEPS = 1000;
 const float EPSILON = 0.0;
 const float NEAR = 0.1f;
-const float FAR = 1.0f;
+const float FAR = 1.2f;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -29,8 +29,8 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
 
 #if (DITHERING == 1)
 
-uniform float _Spread = .1f;
-uniform int _ColorCount = 10;
+uniform float _Spread = .025;
+uniform int _ColorCount = 16;
 
 // Dithering and posterizing
 uniform int bayer2[2 * 2] = int[2 * 2](
@@ -126,7 +126,13 @@ float render(vec2 uv)
   if(d <= 0.0 )
   {
 
-    float dd = max(0.0, -max(-0.05, d) - 0.01);
+    //float dd =  -max(-0.05, d) - 0.01;
+    //dd = max(0.0, dd);
+    float distanceFallof = 1.25;
+    float maxDistance = 0.05;
+
+    float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+    dd = min(maxDistance, dd);
 
     // Get distance at offset position
     d = rayMarch(offsetPosition, rd, minD);

@@ -14,7 +14,7 @@ namespace WeirdRenderer
 	private:
 		GLFWwindow* m_window;
 		unsigned int m_windowWidth, m_windowHeight;
-		double m_renderScale = .33333f;
+		double m_renderScale = 0.2f;
 		unsigned int m_renderWidth, m_renderHeight;
 
 		bool m_vSyncEnabled = true;

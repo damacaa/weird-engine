@@ -158,7 +158,7 @@ void main()
   // return;
 
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
-  float zoom = -u_cameraMatrix[3].z;
+  float zoom = -1.0 * u_cameraMatrix[3].z;
   vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;
 
   vec4 color = getColor(pos);

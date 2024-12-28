@@ -161,6 +161,8 @@ float render(vec2 uv)
 void main()
 {
     vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+    screenUV = 0.5 * (screenUV + 0.5);
+    
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 

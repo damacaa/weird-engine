@@ -74,7 +74,7 @@ namespace WeirdRenderer
 
 
 		// Bind textures to render planes fbo outputs
-		m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+		m_distanceTexture = Texture(2 * m_renderWidth, 2 * m_renderHeight, GL_LINEAR);
 		m_sdfRenderPlane = RenderPlane(true);
 		m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
 
@@ -124,7 +124,7 @@ namespace WeirdRenderer
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		// Enable depth test
 
-		glViewport(0, 0, m_renderWidth, m_renderHeight);
+		glViewport(0, 0, 2 * m_renderWidth, 2 * m_renderHeight);
 
 		auto& sceneCamera = scene.getCamera();
 		// Updates and exports the camera matrix to the Vertex Shader
@@ -152,7 +152,7 @@ namespace WeirdRenderer
 				m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
 				m_sdfShaderProgram.setUniform("u_fov", shaderFov);
 				m_sdfShaderProgram.setUniform("u_time", scene.getTime());
-				m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+				m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(2 * m_renderWidth, 2 * m_renderHeight));
 
 				m_sdfShaderProgram.setUniform("u_blendIterations", 1);
 
@@ -167,7 +167,7 @@ namespace WeirdRenderer
 			}
 
 
-
+			glViewport(0, 0, m_renderWidth, m_renderHeight);
 			// Post process
 			{
 				glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());

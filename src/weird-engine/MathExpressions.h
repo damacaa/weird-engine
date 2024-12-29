@@ -76,6 +76,9 @@ public:
 	OneFloatOperation(std::ptrdiff_t i)
 		: valueA(std::make_shared<FloatVariable>(i)) {}
 
+	OneFloatOperation(float constant)
+		: valueA(std::make_shared<StaticVariable>(constant)) {}
+
 
 	void propagateValues(float* values) override
 	{
@@ -131,17 +134,14 @@ public:
 	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
 		: valueA(std::move(a)), valueB(std::move(b)) {}
 
-	TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> a)
+	TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> b)
+		: valueA(std::make_shared<StaticVariable>(constant)), valueB(std::move(b)) {}
+
+	TwoFloatOperation(std::shared_ptr<IMathExpression> a, float constant)
 		: valueA(std::move(a)), valueB(std::make_shared<StaticVariable>(constant)) {}
 
-	TwoFloatOperation(std::ptrdiff_t i, std::shared_ptr<IMathExpression> b)
-		: valueA(std::make_shared<FloatVariable>(i)), valueB(std::move(b)) {}
-
-	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::ptrdiff_t i)
-		: valueA(std::move(a)), valueB(std::make_shared<FloatVariable>(i)) {}
-
-	TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
-		: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
+	//TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
+	//	: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
 
 	void propagateValues(float* values) override
 	{

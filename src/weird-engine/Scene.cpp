@@ -5,6 +5,68 @@
 #include <random>
 
 
+bool compareVectorWithCharArray(const std::vector<char>& vec, const char* charArray)
+{
+	size_t arrayLength = std::strlen(charArray);
+
+	// Check if sizes match
+	if (vec.size() != arrayLength)
+	{
+		return false;
+	}
+	// Compare element by element
+	return std::equal(vec.begin(), vec.end(), charArray);
+}
+
+
+std::shared_ptr<IMathExpression> deserialize()
+{
+	std::shared_ptr<IMathExpression> result;
+
+	const std::string text = "(var10 - (var0 * sin(((var1 * var9) + var8))))";
+
+	std::vector<char> letters { 's', 't', 'a', 'r', 't' };
+
+
+	for (const char c : text)
+	{
+		switch (c)
+		{
+		case '(':
+		{
+			// Interpret letters as a function
+
+			if (compareVectorWithCharArray(letters, "start"))
+			{
+				// First node
+			}
+
+			break;
+		}
+		case ',':
+		{
+			// Interpret letters as a first parameter
+
+			break;
+		}
+		case ')':
+		{
+			// Interpret letters as second parameter
+
+			break;
+		}
+		case ' ':
+		{
+			break;
+		}
+		default:
+			letters.push_back(c);
+			break;
+		}
+	}
+
+	return result;
+}
 
 
 bool g_runSimulation = true;
@@ -44,6 +106,8 @@ Scene::Scene(const char* filePath) :
 		m_simulation.startSimulationThread();
 		m_simulation2D.startSimulationThread();
 	}
+
+	auto a = deserialize();
 }
 
 

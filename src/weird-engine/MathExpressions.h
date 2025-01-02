@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Base
 struct IMathExpression
@@ -70,6 +71,11 @@ protected:
 
 
 public:
+	OneFloatOperation()
+		: valueA()
+	{
+	}
+
 	OneFloatOperation(std::shared_ptr<IMathExpression> a)
 		: valueA(std::move(a)) {}
 
@@ -79,6 +85,10 @@ public:
 	OneFloatOperation(float constant)
 		: valueA(std::make_shared<StaticVariable>(constant)) {}
 
+	void setValue(std::shared_ptr<IMathExpression> a)
+	{
+		valueA = (std::move(a));
+	}
 
 	void propagateValues(float* values) override
 	{
@@ -131,6 +141,13 @@ protected:
 	std::shared_ptr<IMathExpression> valueB;
 
 public:
+
+	TwoFloatOperation()
+		: valueA()
+		, valueB()
+	{
+	}
+
 	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
 		: valueA(std::move(a)), valueB(std::move(b)) {}
 
@@ -147,6 +164,12 @@ public:
 	{
 		valueA->propagateValues(values);
 		valueB->propagateValues(values);
+	}
+
+	void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
+	{
+		valueA = (std::move(a));
+		valueB = (std::move(b));
 	}
 
 	virtual float getValue() const override = 0;

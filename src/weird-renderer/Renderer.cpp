@@ -56,20 +56,20 @@ namespace WeirdRenderer
 		glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
 
 		// Load shaders
-		m_geometryShaderProgram = Shader("src/weird-renderer/shaders/default.vert", "src/weird-renderer/shaders/default.frag");
+		m_geometryShaderProgram = Shader("../weird-engine/src/weird-renderer/shaders/default.vert", "../weird-engine/src/weird-renderer/shaders/default.frag");
 		m_geometryShaderProgram.activate();
 
-		m_instancedGeometryShaderProgram = Shader("src/weird-renderer/shaders/default_instancing.vert", "src/weird-renderer/shaders/default.frag");
+		m_instancedGeometryShaderProgram = Shader("../weird-engine/src/weird-renderer/shaders/default_instancing.vert", "../weird-engine/src/weird-renderer/shaders/default.frag");
 		m_instancedGeometryShaderProgram.activate();
 
 
-		m_sdfShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/raymarching2d.frag");
+		m_sdfShaderProgram = Shader("../weird-engine/src/weird-renderer/shaders/raymarching.vert", "../weird-engine/src/weird-renderer/shaders/raymarching2d.frag");
 		m_sdfShaderProgram.activate();
 
-		m_postProcessShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/postProcess2d.frag");
+		m_postProcessShaderProgram = Shader("../weird-engine/src/weird-renderer/shaders/raymarching.vert", "../weird-engine/src/weird-renderer/shaders/postProcess2d.frag");
 		m_postProcessShaderProgram.activate();
 
-		m_outputShaderProgram = Shader("src/weird-renderer/shaders/raymarching.vert", "src/weird-renderer/shaders/output.frag");
+		m_outputShaderProgram = Shader("../weird-engine/src/weird-renderer/shaders/raymarching.vert", "../weird-engine/src/weird-renderer/shaders/output.frag");
 		m_outputShaderProgram.activate();
 
 

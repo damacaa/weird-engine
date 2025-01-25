@@ -19,7 +19,7 @@ class Scene
 {
 public:
 
-	Scene(const char* filePath);
+	Scene();
 	~Scene();
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 	void test(WeirdRenderer::Shader& shader);
@@ -34,17 +34,24 @@ public:
 	WeirdRenderer::Camera& getCamera();
 	float getTime();
 
+	virtual void onStart() = 0;
+	virtual void onUpdate() = 0;
+	virtual void onRender() = 0;
 
-private:
+protected:
 	Entity m_mainCamera;
+	ECSManager m_ecs;
+	ResourceManager m_resourceManager;
+	Simulation m_simulation;
+	Simulation2D m_simulation2D;
+
+	std::vector<std::shared_ptr<IMathExpression>>  m_sdfs;
+private:
 
 	void loadScene(std::string sceneFileContent);
 
-	ECSManager m_ecs;
-	ResourceManager m_resourceManager;
 
-	Simulation m_simulation;
-	Simulation2D m_simulation2D;
+
 	bool m_runSimulationInThread;
 
 	SDFRenderSystem m_sdfRenderSystem;
@@ -61,6 +68,6 @@ private:
 
 	vector<WeirdRenderer::Light> m_lights;
 
-	std::vector<std::shared_ptr<IMathExpression>>  m_sdfs;
+	
 };
 

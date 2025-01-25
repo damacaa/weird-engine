@@ -8,13 +8,14 @@
 using namespace WeirdRenderer;
 
 
+
 //int start(const char* projectPath);
 //int main() {
 //	const char* projectPath = "SampleProject/";
 //	start(projectPath);
 //}
 
-int start(const char* projectPath)
+int start(SceneManager& sceneManager)
 {
 
 
@@ -25,8 +26,7 @@ int start(const char* projectPath)
 	Renderer renderer(width, height);
 
 	// Scenes
-	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.loadProject(projectPath);
+	sceneManager.loadScene(0);
 
 
 	// Time
@@ -62,16 +62,16 @@ int start(const char* projectPath)
 		// Capture window input
 		Input::update(renderer.getWindow(), width, height);
 
-		auto& scene = sceneManager.getCurrentScene();
+		auto scene = sceneManager.getCurrentScene();
 
 		// Update scene logic and physics
-		scene.update(delta, time);
+		scene->update(delta, time);
 
 		// Clear input
 		Input::clear();
 
 		// Render scene
-		renderer.render(scene, time);
+		renderer.render(*scene, time);
 	}
 
 	return 0;

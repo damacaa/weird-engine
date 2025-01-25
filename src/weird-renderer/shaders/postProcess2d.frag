@@ -2,13 +2,16 @@
 
 #define DITHERING 1
 #define SHADOWS_ENABLED 1
+#define SOFT_SHADOWS 0
+
+#define DEBUG_SHOW_DISTANCE 0
 
 
 // Constants
 const int MAX_STEPS = 1000;
 const float EPSILON = 0.0;
 const float NEAR = 0.1f;
-const float FAR = 100.0f;
+const float FAR = 1.2f;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -26,8 +29,8 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
 
 #if (DITHERING == 1)
 
-uniform float _Spread = .1f;
-uniform int _ColorCount = 10;
+uniform float _Spread = .025;
+uniform int _ColorCount = 16;
 
 // Dithering and posterizing
 uniform int bayer2[2 * 2] = int[2 * 2](
@@ -72,9 +75,10 @@ float map(vec2 p)
   return texture(u_colorTexture, p).w;
 }
 
-float rayMarch(vec2 ro, vec2 rd)
+float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 {
   float d;
+  minDistance = 10000.0;
 
   float traveled = 0.0;
 
@@ -84,15 +88,22 @@ float rayMarch(vec2 ro, vec2 rd)
 
     d = map(p);
 
+    minDistance = min(d, minDistance);
+
     if (d <= EPSILON)
       break;
+
 
     if(p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
       return FAR;
 
     //traveled += 0.01;
     traveled += d;
-
+    //traveled += min(d, 0.01);
+    
+    if(traveled >= FAR){
+      return FAR;
+    }
   }
 
   return traveled;
@@ -103,9 +114,40 @@ float render(vec2 uv)
 
 #if SHADOWS_ENABLED
 
-  float d = rayMarch(uv, u_directionalLightDirection.xy);
-  return d < FAR ? 0.75: 1.0;
-  //return d * background;
+  // Point light
+  vec2 rd = normalize(vec2(1.0) - uv);
+
+  // Directional light
+  //vec2 rd = u_directionalLightDirection.xy;
+  
+  float d = map(uv);
+  float minD;
+  vec2 offsetPosition = uv + (2.0/u_resolution) * rd;
+  if(d <= 0.0 )
+  {
+
+    //float dd =  -max(-0.05, d) - 0.01;
+    //dd = max(0.0, dd);
+    float distanceFallof = 1.25;
+    float maxDistance = 0.05;
+
+    float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+    dd = min(maxDistance, dd);
+
+    // Get distance at offset position
+    d = rayMarch(offsetPosition, rd, minD);
+    return d < FAR ? 1.0 + (-1.5f * dd): 2.0; // * dot(n,  rd);
+  }
+
+    d = rayMarch(uv, rd, minD);
+  
+  //return (10.0 * minD)+0.5;
+
+#if SOFT_SHADOWS
+  return mix( 0.85, 1.0, d / FAR);
+#else
+  return d < FAR ? 0.85: 1.0 ;
+#endif
 
 #else
 
@@ -122,8 +164,30 @@ void main()
     vec4 color = texture(u_colorTexture, screenUV);
     float distance = color.w;
 
-    float light = distance <= 0.0 ? 1.0 : render(screenUV);
+#if DEBUG_SHOW_DISTANCE
+
+  if(abs(distance) < (0.5 / u_resolution.x))
+  {
+    FragColor = vec4(vec3(0.0),1.0);
+  }
+  else
+  {
+    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    value = value * value * value;
+    vec3 debugColor = distance > 0 ? 
+    mix(vec3(1),vec3(0.2), value) : // outside
+    (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value); // inside
+
+    FragColor = vec4(debugColor, 1.0);
+  }
+
+    return;
+  #endif
+
+    float light = render(screenUV);
     vec3 col = light * color.xyz;
+
+    //col = vec3(light);
 
 #if (DITHERING == 1)
 
@@ -137,5 +201,7 @@ void main()
 
 #endif
 
+  //FragColor = vec4(vec3(light), 1.0);
   FragColor = vec4(col.xyz, 1.0);
+  //FragColor = vec4(vec3(5.0*map(screenUV)), 1.0);
 }

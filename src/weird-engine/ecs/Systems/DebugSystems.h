@@ -76,8 +76,10 @@ public:
 			{
 			case 0:
 			{
+				float startY = 20 + (circles / 30);
+
 				x = i % 30;
-				y = (int)(i / 30) + 15;
+				y = startY - (int)(i / 30);
 
 				material = 4 + (i % 12);
 
@@ -130,22 +132,37 @@ public:
 		{
 		case 0:
 		{
-			float stiffness = 10000000000.0f;
+			float stiffness = 20000000.0f;
 
-			for (size_t i = 0; i < 29; i += 1)
+			for (size_t i = 0; i < circles; i++)
 			{
-				simulation.addSpring(i, i + 30, stiffness);
-				simulation.addSpring(i + 1, i + 31, stiffness);
+				// Check it's not last row
+				if (i + 30 < circles)
+				{
+					// Connect down
+					simulation.addSpring(i, i + 30, stiffness);
+				}
+
+				// Last column
+				if ((i + 1) % 30 == 0)
+				{
+					continue;
+				}
 				simulation.addSpring(i, i + 1, stiffness);
-				simulation.addSpring(i + 30, i + 31, stiffness);
 
-				simulation.addSpring(i, i + 31, stiffness);
-				simulation.addSpring(i + 1, i + 30, stiffness);
 
+				/*if (i + 30 < circles)
+				{
+					simulation.addSpring(i, i + 31, stiffness, 1.42f);
+					simulation.addSpring(i + 1, i + 30, stiffness, 1.42f);
+				}*/
 			}
 
-			simulation.fix(0);
-			simulation.fix(29);
+			if (circles >= 30)
+			{
+				simulation.fix(0);
+				simulation.fix(29);
+			}
 
 			break;
 		}
@@ -169,7 +186,7 @@ public:
 	{
 		if (simulation2D.getSimulationTime() > m_lastSpawnTime + 0.1)
 		{
-			int amount = 1;
+			int amount = 10;
 			for (size_t i = 0; i < amount; i++)
 			{
 				float x = 0.f;

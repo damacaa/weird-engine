@@ -1,7 +1,11 @@
 #pragma once
-#include "../weird-renderer/Shape.h" // TODO: replace with components
+
+#include<glm/glm.hpp>
+
 #include "../weird-engine/ecs/Entity.h"
 #include "../weird-engine/ecs/Components/Transform.h"
+#include "../weird-engine/ecs/Components/CustomShape.h"
+
 #include <vector>
 #include <thread>
 #include <unordered_set>
@@ -11,6 +15,20 @@
 
 #include "CollisionDetection/UniformGrid2D.h"
 #include "CollisionDetection/DynamicAABBTree2D.h"
+
+#include "CollisionDetection/SpatialHash.h"
+#include "../weird-engine/Input.h"
+#include "CollisionDetection/Octree.h"
+
+#include <chrono>
+#include <immintrin.h>
+#include <mutex>
+#include <set>
+#include <glm/gtx/norm.hpp>
+
+#include "../weird-engine/math/MathExpressions.h"
+
+
 
 using SimulationID = std::uint32_t;
 
@@ -82,7 +100,8 @@ public:
 
 	// Interaction
 	void addForce(SimulationID id, vec2 force);
-	void addSpring(SimulationID a, SimulationID b, float stiffness);
+	void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
+	void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 
 	void fix(SimulationID id);
 	void unFix(SimulationID id);
@@ -92,6 +111,11 @@ public:
 	void setPosition(SimulationID entity, vec2 pos);
 	void updateTransform(Transform& transform, SimulationID entity);
 
+	void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
+
+	void updateShape(CustomShape& shape);
+	void removeShape(CustomShape& shape);
+
 	SimulationID raycast(vec2 pos);
 
 private:
@@ -100,6 +124,7 @@ private:
 	void checkCollisions();
 	void solveCollisionsPositionBased();
 	void applyForces();
+	void solveConstraints();
 	void step(float timeStep);
 
 
@@ -140,16 +165,41 @@ private:
 		}
 
 
-		Spring(int a, int b, float k)
+		Spring(int a, int b, float k, float distance)
 		{
 			A = a;
 			B = b;
 			K = k;
+			Distance = distance;
 		}
 
 		int A;
 		int B;
 		float K;
+		float Distance;
+	};
+
+	struct DistanceConstraint
+	{
+	public:
+		DistanceConstraint()
+		{
+			A = -1;
+			B = -1;
+			Distance = 1.0f;
+		}
+
+
+		DistanceConstraint(int a, int b, float distance)
+		{
+			A = a;
+			B = b;
+			Distance = distance;
+		}
+
+		int A;
+		int B;
+		float Distance;
 	};
 
 	struct CollisionHash {
@@ -167,6 +217,21 @@ private:
 		MethodNaive,
 		MethodTree
 	};
+
+
+	struct DistanceFieldObject2D
+	{
+		Entity owner;
+		uint16_t distanceFieldId;
+		float parameters[11];
+
+		DistanceFieldObject2D(Entity owner, uint16_t id, float* params) : distanceFieldId(id), owner(owner)
+		{
+			std::copy(params, params + 8, parameters); // Copy params into parameters
+		}
+	};
+
+
 
 	bool m_isPaused;
 	bool m_simulating;
@@ -199,6 +264,14 @@ private:
 
 	float m_gravity;
 
+	// Shapes
+	std::unordered_map<Entity, uint16_t> m_entityToObjectsIdx;
+	std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
+	std::vector<DistanceFieldObject2D> m_objects;
+
+	float map(vec2 p);
+
+	// Collision
 	CollisionDetectionMethod m_collisionDetectionMethod;
 
 	std::vector<Collision> m_collisions;
@@ -206,9 +279,10 @@ private:
 	std::vector<int> m_treeIDs;
 	std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 
-
-	std::vector<Spring> m_springs;
+	// Constraints
 	std::vector<SimulationID> m_fixedObjects;
+	std::vector<Spring> m_springs;
+	std::vector<DistanceConstraint> m_distanceConstraints;
 
 	std::thread m_simulationThread;
 	void runSimulationThread();

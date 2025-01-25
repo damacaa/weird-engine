@@ -3,11 +3,13 @@
 
 namespace WeirdRenderer
 {
-	struct Shape2D {
-		glm::vec3 position;
-		//glm::vec3 parameters;
+	struct Dot2D
+	{
+		glm::vec2 position;
+		float size;
 		float material;
-		glm::vec4 parameters;
 	};
+
+	
 }
 

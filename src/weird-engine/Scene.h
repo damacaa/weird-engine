@@ -21,8 +21,9 @@ public:
 
 	Scene(const char* filePath);
 	~Scene();
+
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
-	void test(WeirdRenderer::Shader& shader);
+	void updateCustomShapesShader(WeirdRenderer::Shader& shader);
 	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
 	void update(double delta, double time);
 
@@ -34,6 +35,11 @@ public:
 	WeirdRenderer::Camera& getCamera();
 	float getTime();
 
+protected:
+
+	/*virtual void onStart() = 0;
+	virtual void onUpdate() = 0;
+	virtual void onRender() = 0;*/
 
 private:
 	Entity m_mainCamera;

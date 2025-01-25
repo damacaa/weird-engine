@@ -537,7 +537,7 @@ void Simulation2D::applyForces()
 				m_velocities[i].x = -0.5f * m_velocities[i].x;
 			}
 		}
-}
+	}
 }
 
 void Simulation2D::solveConstraints()
@@ -722,17 +722,49 @@ void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 
 void Simulation2D::updateShape(CustomShape& shape)
 {
-	DistanceFieldObject2D sdf(shape.m_distanceFieldId, shape.m_parameters);
+	DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_parameters);
 
-	if (shape.id > m_objects.size()) {
-		// New shape
-		shape.id = m_objects.size();
-		m_objects.push_back(sdf);
+	// Check if the key exists
+	auto it = m_entityToObjectsIdx.find(shape.Owner);
+	if (it != m_entityToObjectsIdx.end()) {
+		// Key exists, get the value
+		auto id = it->second;
+		m_objects[id] = sdf;
 	}
 	else {
-		m_objects[shape.id] = sdf;
+		// Key does not exist
+		m_objects.push_back(sdf);
+		m_entityToObjectsIdx[shape.Owner] = m_objects.size() - 1;
+	}
+}
+
+void Simulation2D::removeShape(CustomShape& shape)
+{
+	if (m_objects.size() == 0)
+	{
+		return;
 	}
 
+	auto it = m_entityToObjectsIdx.find(shape.Owner);
+	if (it == m_entityToObjectsIdx.end()) 
+	{
+		return;
+	}
+
+	// Get delete idx
+	auto idx = it->second;
+
+	// Replace the element at idx with the last element
+	m_objects[idx] = m_objects.back();
+
+	// Point last objects entity to the new vector position
+	m_entityToObjectsIdx[m_objects[idx].owner] = idx;
+
+	// Remove the last element
+	m_objects.pop_back();
+
+	// Remove from map
+	m_entityToObjectsIdx.erase(shape.Owner);
 }
 
 

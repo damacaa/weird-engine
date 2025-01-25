@@ -114,6 +114,7 @@ public:
 	void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
 	void updateShape(CustomShape& shape);
+	void removeShape(CustomShape& shape);
 
 	SimulationID raycast(vec2 pos);
 
@@ -220,10 +221,11 @@ private:
 
 	struct DistanceFieldObject2D
 	{
+		Entity owner;
 		uint16_t distanceFieldId;
 		float parameters[11];
 
-		DistanceFieldObject2D(uint16_t id, float* params) : distanceFieldId(id)
+		DistanceFieldObject2D(Entity owner, uint16_t id, float* params) : distanceFieldId(id), owner(owner)
 		{
 			std::copy(params, params + 8, parameters); // Copy params into parameters
 		}
@@ -263,6 +265,7 @@ private:
 	float m_gravity;
 
 	// Shapes
+	std::unordered_map<Entity, uint16_t> m_entityToObjectsIdx;
 	std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 	std::vector<DistanceFieldObject2D> m_objects;
 

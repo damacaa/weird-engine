@@ -10,20 +10,7 @@ double g_lastSpawnTime = 0;
 
 vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
-
-Scene::Scene() :
-	m_simulation(MAX_ENTITIES)
-	, m_simulation2D(MAX_ENTITIES)
-	, m_sdfRenderSystem(m_ecs)
-	, m_sdfRenderSystem2D(m_ecs)
-	, m_renderSystem(m_ecs)
-	, m_instancedRenderSystem(m_ecs)
-	, m_rbPhysicsSystem(m_ecs)
-	, m_rbPhysicsSystem2D(m_ecs)
-	, m_physicsInteractionSystem(m_ecs)
-	, m_playerMovementSystem(m_ecs)
-	, m_cameraSystem(m_ecs)
-	, m_runSimulationInThread(true)
+Scene::Scene() : m_simulation(MAX_ENTITIES), m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents("../weird-engine/SampleProject/Scenes/SampleScene.scene");
@@ -35,7 +22,6 @@ Scene::Scene() :
 	m_rbPhysicsSystem.init(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
 
-
 	// Start simulation if different thread
 	if (m_runSimulationInThread)
 	{
@@ -43,7 +29,6 @@ Scene::Scene() :
 		m_simulation2D.startSimulationThread();
 	}
 }
-
 
 Scene::~Scene()
 {
@@ -58,27 +43,22 @@ void Scene::start()
 	onStart();
 }
 
-
-void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
+void Scene::renderModels(WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
 {
-	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+	WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 
 	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
 	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
-void Scene::test(WeirdRenderer::Shader& shader)
+void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 {
 	std::string str = shader.getFragmentCode();
-
-
 
 	std::string toReplace("/*ADD_SHAPES_HERE*/");
 
 	std::ostringstream oss;
-
-
 
 	auto atomArray = *m_ecs.getComponentManager<SDFRenderer>()->getComponentArray<SDFRenderer>();
 	int32_t atomCount = atomArray.getSize();
@@ -88,7 +68,7 @@ void Scene::test(WeirdRenderer::Shader& shader)
 
 	for (size_t i = 0; i < componentArray.getSize(); i++)
 	{
-		auto& shape = componentArray[i];
+		auto &shape = componentArray[i];
 
 		oss << "{";
 
@@ -107,19 +87,17 @@ void Scene::test(WeirdRenderer::Shader& shader)
 		oss << "float dist = " << fragmentCode << ";" << std::endl;
 		oss << "d = min(d, dist);\n";
 		oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
-		oss << "}\n" << std::endl;
-
+		oss << "}\n"
+			<< std::endl;
 	}
-
-
-
 
 	std::string replacement = oss.str();
 
-	//std::cout << replacement << std::endl;
+	// std::cout << replacement << std::endl;
 
 	size_t pos = str.find(toReplace);
-	if (pos != std::string::npos) { // Check if the substring was found
+	if (pos != std::string::npos)
+	{ // Check if the substring was found
 		// Replace the substring
 		str.replace(pos, toReplace.length(), replacement);
 	}
@@ -127,8 +105,7 @@ void Scene::test(WeirdRenderer::Shader& shader)
 	shader.setFragmentCode(str);
 }
 
-
-void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
+void Scene::renderShapes(WeirdRenderer::Shader &shader, WeirdRenderer::RenderPlane &rp)
 {
 	onRender();
 
@@ -139,22 +116,19 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 	if (newShapeAdded)
 	{
-		test(shader);
+		updateCustomShapesShader(shader);
 		newShapeAdded = false;
-
 	}
 
-	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
+	// m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
-
-
 
 void Scene::update(double delta, double time)
 {
 	// Update systems
 	m_playerMovementSystem.update(m_ecs, delta);
-	//m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
+	// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 
 	m_cameraSystem.update(m_ecs);
 	g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
@@ -178,10 +152,11 @@ void Scene::update(double delta, double time)
 		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
 	}
 
-	if (Input::GetKeyDown(Input::M)) {
+	if (Input::GetKeyDown(Input::M))
+	{
 
 		// Get mouse coordinates
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 		float x = Input::GetMouseX();
 		float y = Input::GetMouseY();
 
@@ -190,7 +165,7 @@ void Scene::update(double delta, double time)
 
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, 5.0f };
+		float variables[8]{mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 0.5f, 13.0f, 5.0f};
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 
@@ -206,15 +181,14 @@ void Scene::update(double delta, double time)
 
 		m_simulation2D.setSDFs(m_sdfs);
 
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 		float x = Input::GetMouseX();
 		float y = Input::GetMouseY();
 
 		// Transform mouse coordinates to world space
 		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-
-		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 7.5f, 1.0f };
+		float variables[8]{mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 7.5f, 1.0f};
 
 		Entity test = m_ecs.createEntity();
 
@@ -224,21 +198,29 @@ void Scene::update(double delta, double time)
 		newShapeAdded = true;
 	}
 
+	if (Input::GetKeyDown(Input::K))
+	{
+		auto components = m_ecs.getComponentArray<CustomShape>();
+		auto id = components->getSize() - 1;
+
+		m_simulation2D.removeShape(components->getDataAtIdx(id));
+		m_ecs.destroyEntity(components->getDataAtIdx(id).Owner);
+
+		newShapeAdded = true;
+	}
+
 	onUpdate();
 }
 
-
-WeirdRenderer::Camera& Scene::getCamera()
+WeirdRenderer::Camera &Scene::getCamera()
 {
 	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
-
 
 float Scene::getTime()
 {
 	return m_simulation2D.getSimulationTime();
 }
-
 
 void Scene::loadScene(std::string sceneFileContent)
 {
@@ -258,7 +240,6 @@ void Scene::loadScene(std::string sceneFileContent)
 	m_ecs.addComponent(m_mainCamera, c);
 	m_ecs.addComponent(m_mainCamera, FlyMovement2D());
 
-
 	// Add a light
 	WeirdRenderer::Light light;
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
@@ -266,7 +247,6 @@ void Scene::loadScene(std::string sceneFileContent)
 
 	size_t circles = scene["Circles"].get<int>();
 	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
-
 
 	// Shapes
 
@@ -295,9 +275,9 @@ void Scene::loadScene(std::string sceneFileContent)
 	// Star
 	{
 
-		//vec2 starPosition = p - vec2(25.0f, 30.0f);
-		//float infiniteShereDist = length(starPosition) - 5.0f;
-		//float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
+		// vec2 starPosition = p - vec2(25.0f, 30.0f);
+		// float infiniteShereDist = length(starPosition) - 5.0f;
+		// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
 
 		// Define variables
 		auto offsetX = std::make_shared<FloatVariable>(0);
@@ -311,14 +291,12 @@ void Scene::loadScene(std::string sceneFileContent)
 		auto x = std::make_shared<FloatVariable>(9);
 		auto y = std::make_shared<FloatVariable>(10);
 
-
 		// Define function
 		std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
 		std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
 
 		// Circle
 		std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(std::make_shared<Length>(positionX, positionY), radious);
-
 
 		std::shared_ptr<IMathExpression> angularDisplacement = std::make_shared<Multiplication>(starPoints, std::make_shared<Atan2>(positionY, positionX));
 		std::shared_ptr<IMathExpression> animationTime = std::make_shared<Multiplication>(speed, time);
@@ -337,9 +315,9 @@ void Scene::loadScene(std::string sceneFileContent)
 	// Circle
 	{
 
-		//vec2 starPosition = p - vec2(25.0f, 30.0f);
-		//float infiniteShereDist = length(starPosition) - 5.0f;
-		//float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
+		// vec2 starPosition = p - vec2(25.0f, 30.0f);
+		// float infiniteShereDist = length(starPosition) - 5.0f;
+		// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
 
 		// Define variables
 		auto offsetX = std::make_shared<FloatVariable>(0);
@@ -353,7 +331,6 @@ void Scene::loadScene(std::string sceneFileContent)
 		auto x = std::make_shared<FloatVariable>(9);
 		auto y = std::make_shared<FloatVariable>(10);
 
-
 		// Define function
 		std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
 		std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
@@ -361,11 +338,9 @@ void Scene::loadScene(std::string sceneFileContent)
 		// Circle
 		std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(std::make_shared<Length>(positionX, positionY), radious);
 
-
 		// Store function
 		m_sdfs.push_back(circleDistance);
 	}
-
 
 	// Box
 	{
@@ -376,11 +351,9 @@ void Scene::loadScene(std::string sceneFileContent)
 		auto bY = std::make_shared<FloatVariable>(3);
 		auto r = std::make_shared<FloatVariable>(4);
 
-
 		auto time = std::make_shared<FloatVariable>(8);
 		auto x = std::make_shared<FloatVariable>(9);
 		auto y = std::make_shared<FloatVariable>(10);
-
 
 		// Define function
 		std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
@@ -407,7 +380,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	{
 		Entity floor = m_ecs.createEntity();
 
-		float variables[8]{ 1.0f, 0.5f };
+		float variables[8]{1.0f, 0.5f};
 		CustomShape shape(0, variables);
 		m_ecs.addComponent(floor, shape);
 	}
@@ -415,19 +388,18 @@ void Scene::loadScene(std::string sceneFileContent)
 	{
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f };
+		float variables[8]{25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f};
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 	}
 
-	{
+	/*{
 		Entity star = m_ecs.createEntity();
 
 		float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
-	}
+	}*/
 
 	newShapeAdded = true;
-
 }

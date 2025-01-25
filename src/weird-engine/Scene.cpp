@@ -11,7 +11,7 @@ double g_lastSpawnTime = 0;
 vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
 
-Scene::Scene(const char* filePath) :
+Scene::Scene() :
 	m_simulation(MAX_ENTITIES)
 	, m_simulation2D(MAX_ENTITIES)
 	, m_sdfRenderSystem(m_ecs)
@@ -26,7 +26,7 @@ Scene::Scene(const char* filePath) :
 	, m_runSimulationInThread(true)
 {
 	// Read content from file
-	std::string content = get_file_contents(filePath);
+	std::string content = get_file_contents("../weird-engine/SampleProject/Scenes/SampleScene.scene");
 
 	// Read scene file and load everything
 	loadScene(content);
@@ -164,6 +164,7 @@ void Scene::update(double delta, double time)
 	if (Input::GetKeyDown(Input::Q))
 	{
 		SceneManager::getInstance().loadNextScene();
+		return;
 	}
 
 	// Add balls
@@ -218,14 +219,7 @@ void Scene::update(double delta, double time)
 		newShapeAdded = true;
 	}
 
-	{
-		CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
-		//cs.m_parameters[0] = 15.0f + (5.0f * sin(m_simulation2D.getSimulationTime()));
-		cs.m_parameters[4] = (static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5) + 2;
-		cs.m_parameters[3] = sin(3.1416 * m_simulation2D.getSimulationTime());
-		//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
-		cs.m_isDirty = true;
-	}
+	onUpdate();
 }
 
 

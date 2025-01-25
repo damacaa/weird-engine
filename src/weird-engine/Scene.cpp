@@ -53,6 +53,11 @@ Scene::~Scene()
 	m_resourceManager.freeResources(0);
 }
 
+void Scene::start()
+{
+	onStart();
+}
+
 
 void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
@@ -122,14 +127,15 @@ void Scene::test(WeirdRenderer::Shader& shader)
 	shader.setFragmentCode(str);
 }
 
-bool newShapeAdded = false;
+
 void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
+	onRender();
+
 	{
 		std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
 		shader.setUniform("u_customShapeCount", componentArray->getSize());
 	}
-
 
 	if (newShapeAdded)
 	{
@@ -137,7 +143,6 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 		newShapeAdded = false;
 
 	}
-
 
 	//m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);

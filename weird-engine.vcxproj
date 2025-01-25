@@ -182,7 +182,8 @@
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\DebugSystems.h" />
-    <ClInclude Include="src\weird-engine\MathExpressions.h" />
+    <ClInclude Include="src\weird-engine\math\MathExpressions.h" />
+    <ClInclude Include="src\weird-engine\math\MathExpressionSerialzation.h" />
     <ClInclude Include="src\weird-physics\CollisionDetection\DynamicAABBTree2D.h" />
     <ClInclude Include="src\weird-physics\CollisionDetection\UniformGrid2D.h" />
     <ClInclude Include="src\weird-physics\Simulation2D.h" />

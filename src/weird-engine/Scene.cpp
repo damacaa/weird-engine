@@ -63,7 +63,7 @@ void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& i
 	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
-void Scene::test(WeirdRenderer::Shader& shader)
+void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 {
 	std::string str = shader.getFragmentCode();
 
@@ -133,7 +133,7 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 	if (newShapeAdded)
 	{
-		test(shader);
+		updateCustomShapesShader(shader);
 		newShapeAdded = false;
 
 	}
@@ -214,6 +214,17 @@ void Scene::update(double delta, double time)
 
 		CustomShape shape(m_sdfs.size() - 1, variables);
 		m_ecs.addComponent(test, shape);
+
+		newShapeAdded = true;
+	}
+
+	if (Input::GetKeyDown(Input::K))
+	{
+		auto components = m_ecs.getComponentArray<CustomShape>();
+		auto id = components->getSize() - 1;
+
+		m_simulation2D.removeShape(components->getDataAtIdx(id));
+		m_ecs.destroyEntity(components->getDataAtIdx(id).Owner);
 
 		newShapeAdded = true;
 	}
@@ -421,13 +432,14 @@ void Scene::loadScene(std::string sceneFileContent)
 		m_ecs.addComponent(star, shape);
 	}
 
-	{
+
+	/*{
 		Entity star = m_ecs.createEntity();
 
 		float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
-	}
+	}*/
 
 	newShapeAdded = true;
 

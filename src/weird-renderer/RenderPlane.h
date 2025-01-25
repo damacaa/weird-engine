@@ -13,7 +13,7 @@ namespace WeirdRenderer
 
 		void Draw(Shader& shader) const;
 		void Draw(Shader& shader, Shape* shapes, size_t size) const;
-		void Draw(Shader& shader, Shape2D* shapes, size_t size) const;
+		void Draw(Shader& shader, Dot2D* shapes, size_t size) const;
 		void Delete();
 
 		void BindTextureToFrameBuffer(Texture texture, GLenum attachment);

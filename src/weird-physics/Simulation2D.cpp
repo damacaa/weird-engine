@@ -1,22 +1,16 @@
 #pragma once
 #include "Simulation2D.h"
-#include "CollisionDetection/SpatialHash.h"
-#include "../weird-engine/Input.h"
-#include "CollisionDetection/Octree.h"
 
-#include <chrono>
-#include <immintrin.h>
-#include <mutex>
-#include <set>
-#include <glm/gtx/norm.hpp>
+
 
 #define MEASURE_PERFORMANCE false			
+#define INTEGRATION_METHOD 1
 
 
 using namespace std::chrono;
 
-constexpr float SIMULATION_FREQUENCY = 500;
-constexpr double FIXED_DELTA_TIME = 1 / SIMULATION_FREQUENCY;
+constexpr float SIMULATION_FREQUENCY = 250;
+constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
 
 constexpr size_t MAX_STEPS = 10;
 
@@ -24,6 +18,7 @@ std::mutex g_simulationTimeMutex;
 std::mutex g_externalForcesMutex;
 std::mutex g_fixMutex;
 std::mutex g_collisionTreeUpdateMutex;
+
 
 
 Simulation2D::Simulation2D(size_t size) :
@@ -42,10 +37,10 @@ Simulation2D::Simulation2D(size_t size) :
 	m_simulationDelay(0),
 	m_simulationTime(0),
 	m_gravity(-10),
-	m_push(50.0f * SIMULATION_FREQUENCY),
-	m_damping(0.002f),
+	m_push(20.0f * SIMULATION_FREQUENCY),
+	m_damping(0.001f),
 	m_simulating(false),
-	m_collisionDetectionMethod(MethodTree),
+	m_collisionDetectionMethod(MethodNaive),
 	m_useSimdOperations(false),
 	m_diameter(1.0f),
 	m_diameterSquared(m_diameter* m_diameter),
@@ -61,6 +56,8 @@ Simulation2D::Simulation2D(size_t size) :
 		m_mass[i] = 1000.0f;
 		m_invMass[i] = 0.001f;
 	}
+
+	m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>();
 }
 
 Simulation2D::~Simulation2D()
@@ -89,7 +86,7 @@ bool Simulation2D::isPaused()
 }
 
 
-#pragma region MyRegion
+#pragma region PhysicsUpdate
 
 void Simulation2D::update(double delta)
 {
@@ -124,6 +121,7 @@ void Simulation2D::process()
 		if (!m_isPaused)
 		{
 			applyForces();
+			solveConstraints();
 			step((float)FIXED_DELTA_TIME);
 			++steps;
 			{
@@ -344,22 +342,34 @@ void Simulation2D::solveCollisionsPositionBased()
 	}
 }
 
-float shape_circle(vec2 p)
-{
-	return length(p) - 0.5;
-}
 
-float map(vec2 p, float u_time)
-{
-	float a = 1.f;
-	float floorDist = p.y - a * sinf(0.5f * p.x + u_time);
 
-	float d = floorDist;
+float  Simulation2D::map(vec2 p)
+{
+	float d = 1.0f;
+
+	for (DistanceFieldObject2D& obj : m_objects)
+	{
+		if (obj.distanceFieldId >= m_sdfs->size()) {
+			continue;
+		}
+
+		obj.parameters[8] = m_simulationTime;
+		obj.parameters[9] = p.x;
+		obj.parameters[10] = p.y;
+
+		(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
+
+		float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
+
+		d = std::min(d, dist);
+	}
+
 
 	return d;
 }
 
-const float EPSILON = 0.01f;
+const float EPSILON = 0.0001f;
 void Simulation2D::applyForces()
 {
 	// External forces
@@ -373,7 +383,6 @@ void Simulation2D::applyForces()
 			m_externalForces[i] = vec2(0);
 		}
 	}
-
 
 
 	// Attraction force
@@ -433,10 +442,10 @@ void Simulation2D::applyForces()
 		vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 		float penetration = (m_radious + m_radious) - length(col.AB);
 
-		//// Position		
-		//vec2 translation = 0.5f * penetration * normal;
-		//m_positions[col.A] -= translation;
-		//m_positions[col.B] += translation;
+		// Position		
+		/*vec2 translation = 0.5f * penetration * normal;
+		m_positions[col.A] -= translation;
+		m_positions[col.B] += translation;*/
 
 
 
@@ -476,16 +485,16 @@ void Simulation2D::applyForces()
 			m_forces[i].y += m_mass[i] * m_gravity;
 		}
 
-		// Bounds collisions
-		float d = map(p, m_simulationTime);
+		// Static shapes
+		float d = map(p);
 		if (d < m_radious)
 		{
 			float penetration = (m_radious - d);
 
 			// Collision normal calculation
 
-			float d1 = map(vec2(p.x - EPSILON, p.y), m_simulationTime);
-			float d2 = map(vec2(p.x, p.y - EPSILON), m_simulationTime);
+			float d1 = map(vec2(p.x - EPSILON, p.y));
+			float d2 = map(vec2(p.x, p.y - EPSILON));
 
 			vec2 normal = vec2(d - d1, d - d2);
 			normal = normalize(normal);
@@ -501,7 +510,7 @@ void Simulation2D::applyForces()
 			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later 
 			vec2 impulse = impulseMagnitude * normal;
 
-			m_velocities[i] -= impulse; // * m_invMass[i]
+			//m_velocities[i] -= impulse; // * m_invMass[i]
 
 
 			// Penalty
@@ -528,31 +537,82 @@ void Simulation2D::applyForces()
 				m_velocities[i].x = -0.5f * m_velocities[i].x;
 			}
 		}
-	}
+}
+}
 
-
+void Simulation2D::solveConstraints()
+{
 	for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
 	{
 		Spring spring = *it;
 
 		vec2 v = m_positions[spring.B] - m_positions[spring.A];
 		vec2 n = normalize(v);
-		float d = 1.0f - length(v);
-		d = std::min(d, 0.1f);
+		float distance = length(v);
+		float d = spring.Distance - distance;
+		//d = std::clamp(d, -10.0f, 10.0f);
 
-		vec2 f = -0.5f * spring.K * d * (float)FIXED_DELTA_TIME * n;
-		m_forces[spring.A] += f;
-		m_forces[spring.B] -= f;
+		vec2 springForce = 0.5f * spring.K * d * n;
+		vec2 damping = 10000.0f * (m_velocities[spring.B] - m_velocities[spring.A]);
+
+		vec2 f = springForce - damping;
+
+		m_forces[spring.A] -= f;
+		m_forces[spring.B] += f;
 	}
 
+	for (auto it = m_distanceConstraints.begin(); it != m_distanceConstraints.end(); ++it)
+	{
+		DistanceConstraint spring = *it;
 
+		vec2 v = m_positions[spring.B] - m_positions[spring.A];
+		vec2 n = normalize(v);
+		float distance = length(v);
+
+		float correction = (distance - spring.Distance);
+		vec2 correctionVector = -correction * 0.5f * n;
+
+		vec2 pA = m_positions[spring.A] - correctionVector;
+		vec2 pB = m_positions[spring.B] + correctionVector;
+
+		m_positions[spring.A] = pA;
+		m_positions[spring.B] = pB;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(g_fixMutex);
+		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
+		{
+			SimulationID id = *it;
+
+			m_positions[id] = m_previousPositions[id];
+			m_velocities[id] = vec2(0.0f);
+			m_forces[id] = vec2(0.0f);
+		}
+	}
 }
+
 
 
 void Simulation2D::step(float timeStep)
 {
+#if INTEGRATION_METHOD == 0
 
-	// Integrate with verlet
+	//Integrate with euler
+	for (size_t i = 0; i < m_size; i++)
+	{
+		vec2 acc = m_forces[i] * m_invMass[i];
+		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+		m_positions[i] += timeStep * m_velocities[i];
+
+		// Reset forces
+		m_forces[i] = vec2(0.0f);
+
+	}
+
+#elif INTEGRATION_METHOD == 1
+
+	//Integrate with verlet
 	float invTimeStep = 1.0f / timeStep;
 	for (size_t i = 0; i < m_size; i++)
 	{
@@ -567,7 +627,7 @@ void Simulation2D::step(float timeStep)
 		m_positions[i] = newPosition;
 
 		// Update the previous position
-		//m_previousPositions[i] = currentPosition;
+		m_previousPositions[i] = currentPosition;
 
 		// Reset forces
 		m_forces[i] = vec2(0.0f);
@@ -576,33 +636,8 @@ void Simulation2D::step(float timeStep)
 		m_velocities[i] = newVelocity;
 	}
 
-	//Integrate with euler
-	//for (size_t i = 0; i < m_size; i++)
-	//{
-	//	vec2 acc = m_forces[i] * m_invMass[i];
-	//	m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-	//	m_positions[i] += timeStep * m_velocities[i];
+#endif
 
-	//	// Reset forces
-	//	m_forces[i] = vec2(0.0f);
-
-	//}
-
-	/*m_positions[30] = vec2(0.0f, 15.0f);
-	m_velocities[30] = vec2(0.0f);
-	m_positions[59] = vec2(30.0f, 15.0f);
-	m_velocities[59] = vec2(0.0f);*/
-
-	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
-		for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
-		{
-			SimulationID id = *it;
-
-			m_positions[id] -= timeStep * m_velocities[id];
-			m_velocities[id] = vec2(0.0f);
-		}
-	}
 }
 
 #pragma endregion
@@ -628,12 +663,20 @@ void Simulation2D::addForce(SimulationID id, vec2 force)
 	m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 }
 
-void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness)
+void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
 {
 	if (a == b)
 		return;
 
-	m_springs.emplace_back(a, b, stiffness);
+	m_springs.emplace_back(a, b, stiffness, distance);
+}
+
+void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
+{
+	if (a == b)
+		return;
+
+	m_distanceConstraints.emplace_back(a, b, distance);
 }
 
 void Simulation2D::fix(SimulationID id)
@@ -669,6 +712,29 @@ void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
 	transform.position.x = m_positions[entity].x;
 	transform.position.y = m_positions[entity].y;
 }
+
+void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
+{
+	m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
+}
+
+
+
+void Simulation2D::updateShape(CustomShape& shape)
+{
+	DistanceFieldObject2D sdf(shape.m_distanceFieldId, shape.m_parameters);
+
+	if (shape.id > m_objects.size()) {
+		// New shape
+		shape.id = m_objects.size();
+		m_objects.push_back(sdf);
+	}
+	else {
+		m_objects[shape.id] = sdf;
+	}
+
+}
+
 
 SimulationID Simulation2D::raycast(vec2 pos)
 {

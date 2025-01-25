@@ -4,6 +4,7 @@
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
 #include "../weird-renderer/RenderPlane.h"
+#include "../weird-renderer/Shape.h"
 
 
 
@@ -21,6 +22,7 @@ public:
 	Scene(const char* filePath);
 	~Scene();
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+	void test(WeirdRenderer::Shader& shader);
 	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
 	void update(double delta, double time);
 
@@ -59,6 +61,6 @@ private:
 
 	vector<WeirdRenderer::Light> m_lights;
 
-
+	std::vector<std::shared_ptr<IMathExpression>>  m_sdfs;
 };
 

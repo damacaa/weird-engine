@@ -10,7 +10,7 @@ namespace WeirdRenderer
 		m_fragmentFile = fragmentFile;
 
 
-		Recompile();
+		recompile();
 	}
 
 	static bool isFileModified(const char* filename, time_t& lastModifiedTime) {
@@ -29,7 +29,7 @@ namespace WeirdRenderer
 	void Shader::activate()
 	{
 		if (isFileModified(m_fragmentFile, m_lastModifiedTime)) {
-			Recompile();
+			recompile();
 		}
 
 		glUseProgram(ID);
@@ -41,16 +41,38 @@ namespace WeirdRenderer
 		glDeleteProgram(ID);
 	}
 
-	void Shader::Recompile()
+	std::string Shader::getVertexCode()
+	{
+		std::string v = get_file_contents(m_vertexFile);
+		return v;
+	}
+
+	std::string Shader::getFragmentCode()
+	{
+		return get_file_contents(m_fragmentFile);
+	}
+
+	void Shader::setFragmentCode(std::string& code)
+	{
+		std::string v = getVertexCode();
+		recompile(v, code);
+	}
+
+	void Shader::recompile()
+	{
+		auto root = fs::current_path().string(); // TODO
+
+		std::string v = getVertexCode();
+		std::string f = getFragmentCode();
+
+		// Read vertexFile and fragmentFile and store the strings
+		recompile(v, f);
+	}
+
+	void Shader::recompile(std::string& vertexCode, std::string& fragmentCode)
 	{
 		if (ID != -1)
 			Delete();
-
-		auto root = fs::current_path().string(); // TODO
-
-		// Read vertexFile and fragmentFile and store the strings
-		std::string vertexCode = get_file_contents(m_vertexFile);
-		std::string fragmentCode = get_file_contents(m_fragmentFile);
 
 		/*std::string INCLUDE = "#include";
 		size_t pos;

@@ -251,7 +251,10 @@
     <ClInclude Include="src\weird-engine\ecs\Components\CustomShape.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-engine\MathExpressions.h">
+    <ClInclude Include="src\weird-engine\math\MathExpressions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\weird-engine\math\MathExpressionSerialzation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

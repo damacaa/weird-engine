@@ -1,6 +1,6 @@
 #pragma once
 #include "../Component.h"
-#include "../../MathExpressions.h"
+#include "../../math/MathExpressions.h"
 
 
 struct CustomShape : public Component 

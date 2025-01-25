@@ -13,6 +13,7 @@ struct IMathExpression
 	virtual ~IMathExpression() = default;
 };
 
+#pragma region Variables
 // Variables
 struct FloatVariable : IMathExpression
 {
@@ -63,6 +64,9 @@ public:
 	}
 };
 
+#pragma endregion Variables
+
+#pragma region OneFloatOperations
 // One float operation
 struct OneFloatOperation : IMathExpression
 {
@@ -132,7 +136,9 @@ struct Abs : OneFloatOperation
 	}
 };
 
+#pragma endregion OneFloatOperations
 
+#pragma region TwoFloatOperations
 // Two float operation
 struct TwoFloatOperation : IMathExpression
 {
@@ -296,54 +302,4 @@ struct Min : TwoFloatOperation
 	}
 };
 
-
-
-
-
-//void testMath()
-//{
-//	{
-//		auto var0 = std::make_shared<FloatVariable>(1);
-//		auto addition1 = std::make_shared<Addition>(std::make_shared<FloatVariable>(0), var0);
-//		auto addition2 = std::make_shared<Addition>(addition1, std::make_shared<Addition>(std::make_shared<FloatVariable>(1), std::make_shared<FloatVariable>(1)));
-//		auto addition3 = std::make_shared<Addition>(addition2, 0);
-//
-//		IMathExpression* y = addition3.get();
-//
-//		float* variables = new float[2] {1, 2};
-//		float* variables2 = new float[2] {5, 6};
-//
-//		y->propagateValues(variables);
-//		float v = y->getValue();
-//		y->propagateValues(variables2);
-//		float v2 = y->getValue();
-//
-//		delete[] variables;
-//		delete[] variables2;
-//	}
-//
-//	{
-//		// Circle sdf
-//		float* variables = new float[5] {0, 0, 0.5f, 1.0f, 0.0f};
-//
-//		auto xExpression = std::make_shared<Substraction>(0, 3);
-//		auto yExpression = std::make_shared<Substraction>(1, 4);
-//		auto lengthExpression = std::make_shared<Substraction>(std::make_shared<Length>(xExpression, yExpression), 2);
-//
-//		IMathExpression* lengthFormula = lengthExpression.get();
-//		lengthFormula->propagateValues(variables);
-//		float result = lengthFormula->getValue();
-//
-//		auto x = xExpression.get()->getValue();
-//
-//	}
-//
-//
-//
-//
-//
-//
-//	/*vec2* vectors = new vec2[2]{ vec2(0,5),vec2(4,3) };
-//	float f = ((float*)vectors)[1];
-//	delete[] vectors;*/
-//}
+#pragma endregion TwoFloatOperations

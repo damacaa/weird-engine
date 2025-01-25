@@ -1,73 +1,9 @@
 #include "scene.h"
 #include "Input.h"
 #include "SceneManager.h"
+#include "math/MathExpressionSerialzation.h"
 
 #include <random>
-
-
-bool compareVectorWithCharArray(const std::vector<char>& vec, const char* charArray)
-{
-	size_t arrayLength = std::strlen(charArray);
-
-	// Check if sizes match
-	if (vec.size() != arrayLength)
-	{
-		return false;
-	}
-	// Compare element by element
-	return std::equal(vec.begin(), vec.end(), charArray);
-}
-
-
-std::shared_ptr<IMathExpression> deserialize()
-{
-	std::shared_ptr<IMathExpression> result;
-
-	const std::string text = "(var10 - (var0 * sin(((var1 * var9) + var8))))";
-
-	std::vector<char> letters { 's', 't', 'a', 'r', 't' };
-
-
-	for (const char c : text)
-	{
-		switch (c)
-		{
-		case '(':
-		{
-			// Interpret letters as a function
-
-			if (compareVectorWithCharArray(letters, "start"))
-			{
-				// First node
-			}
-
-			break;
-		}
-		case ',':
-		{
-			// Interpret letters as a first parameter
-
-			break;
-		}
-		case ')':
-		{
-			// Interpret letters as second parameter
-
-			break;
-		}
-		case ' ':
-		{
-			break;
-		}
-		default:
-			letters.push_back(c);
-			break;
-		}
-	}
-
-	return result;
-}
-
 
 bool g_runSimulation = true;
 double g_lastSpawnTime = 0;
@@ -106,8 +42,6 @@ Scene::Scene(const char* filePath) :
 		m_simulation.startSimulationThread();
 		m_simulation2D.startSimulationThread();
 	}
-
-	auto a = deserialize();
 }
 
 
@@ -211,8 +145,6 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 
 
 
-float nextGearDirection = 1;
-
 void Scene::update(double delta, double time)
 {
 	// Update systems
@@ -252,8 +184,7 @@ void Scene::update(double delta, double time)
 
 		Entity star = m_ecs.createEntity();
 
-		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, nextGearDirection * 5.0f };
-		nextGearDirection = -nextGearDirection;
+		float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y,  5.0f, 0.5f, 13.0f, 5.0f };
 		CustomShape shape(1, variables);
 		m_ecs.addComponent(star, shape);
 
@@ -264,43 +195,10 @@ void Scene::update(double delta, double time)
 	{
 		// Test
 		{
-			// Define variables
-			auto offsetX = std::make_shared<FloatVariable>(0);
-			auto offsetY = std::make_shared<FloatVariable>(1);
-			auto bX = std::make_shared<FloatVariable>(2);
-			auto bY = std::make_shared<FloatVariable>(3);
-			auto r = std::make_shared<FloatVariable>(4);
-
-
-			auto time = std::make_shared<FloatVariable>(8);
-			auto x = std::make_shared<FloatVariable>(9);
-			auto y = std::make_shared<FloatVariable>(10);
-
-
-			// Define function
-			std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-			std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-			std::shared_ptr<IMathExpression> dX = std::make_shared<Substraction>(std::make_shared<Abs>(positionX), bX);
-			std::shared_ptr<IMathExpression> dY = std::make_shared<Substraction>(std::make_shared<Abs>(positionY), bY);
-
-			std::shared_ptr<IMathExpression> aX = std::make_shared<Max>(0.0f, dX);
-			std::shared_ptr<IMathExpression> aY = std::make_shared<Max>(0.0f, dY);
-
-			std::shared_ptr<IMathExpression> length = std::make_shared<Length>(aX, aY);
-
-			std::shared_ptr<IMathExpression> minMax = std::make_shared<Min>(0.0f, std::make_shared<Max>(dX, dY));
-
-			// Circle
-			std::shared_ptr<IMathExpression> boxDistance = std::make_shared<Addition>(length, minMax);
-
-
-			// Store function
-			m_sdfs.push_back(boxDistance);
+			m_sdfs.push_back(m_sdfs[m_sdfs.size() - 1]);
 		}
 
 		m_simulation2D.setSDFs(m_sdfs);
-
 
 		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 		float x = Input::GetMouseX();
@@ -318,10 +216,7 @@ void Scene::update(double delta, double time)
 		m_ecs.addComponent(test, shape);
 
 		newShapeAdded = true;
-
 	}
-
-
 
 	{
 		CustomShape& cs = m_ecs.getComponent<CustomShape>(62);
@@ -331,10 +226,6 @@ void Scene::update(double delta, double time)
 		//cs.m_parameters[3] = Input::GetMouseX() / 600.0;
 		cs.m_isDirty = true;
 	}
-
-
-
-
 }
 
 
@@ -474,6 +365,42 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		// Store function
 		m_sdfs.push_back(circleDistance);
+	}
+
+
+	// Box
+	{
+		// Define variables
+		auto offsetX = std::make_shared<FloatVariable>(0);
+		auto offsetY = std::make_shared<FloatVariable>(1);
+		auto bX = std::make_shared<FloatVariable>(2);
+		auto bY = std::make_shared<FloatVariable>(3);
+		auto r = std::make_shared<FloatVariable>(4);
+
+
+		auto time = std::make_shared<FloatVariable>(8);
+		auto x = std::make_shared<FloatVariable>(9);
+		auto y = std::make_shared<FloatVariable>(10);
+
+
+		// Define function
+		std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
+		std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
+
+		std::shared_ptr<IMathExpression> dX = std::make_shared<Substraction>(std::make_shared<Abs>(positionX), bX);
+		std::shared_ptr<IMathExpression> dY = std::make_shared<Substraction>(std::make_shared<Abs>(positionY), bY);
+
+		std::shared_ptr<IMathExpression> aX = std::make_shared<Max>(0.0f, dX);
+		std::shared_ptr<IMathExpression> aY = std::make_shared<Max>(0.0f, dY);
+
+		std::shared_ptr<IMathExpression> length = std::make_shared<Length>(aX, aY);
+
+		std::shared_ptr<IMathExpression> minMax = std::make_shared<Min>(0.0f, std::make_shared<Max>(dX, dY));
+
+		std::shared_ptr<IMathExpression> boxDistance = std::make_shared<Addition>(length, minMax);
+
+		// Store function
+		m_sdfs.push_back(boxDistance);
 	}
 
 	m_simulation2D.setSDFs(m_sdfs);

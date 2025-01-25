@@ -26,7 +26,7 @@
 #include <set>
 #include <glm/gtx/norm.hpp>
 
-#include "../weird-engine/MathExpressions.h"
+#include "../weird-engine/math/MathExpressions.h"
 
 
 

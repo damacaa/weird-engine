@@ -7,9 +7,16 @@
 
 using namespace WeirdRenderer;
 
-int main()
+
+//int start(const char* projectPath);
+//int main() {
+//	const char* projectPath = "SampleProject/";
+//	start(projectPath);
+//}
+
+int start(const char* projectPath)
 {
-	const char* projectPath = "SampleProject/";
+
 
 	// Window resolution
 	const unsigned int width = 1200;
@@ -66,5 +73,7 @@ int main()
 		// Render scene
 		renderer.render(scene, time);
 	}
+
+	return 0;
 }
 

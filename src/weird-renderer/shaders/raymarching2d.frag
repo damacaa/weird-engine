@@ -1,12 +1,9 @@
 #version 330 core
 
+#define BLEND_SHAPES 0
+#define MOTION_BLUR 0
 
-#define BLEND_SHAPES 1
-#define MOTION_BLUR 1
-
-uniform float k = 0.1;
-
-
+uniform float k = 0.25;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -24,8 +21,9 @@ uniform mat4 u_cameraMatrix;
 uniform vec3 u_staticColors[16];
 uniform vec3 directionalLightDirection;
 
-
 uniform int u_blendIterations;
+
+uniform int u_customShapeCount;
 
 // Constants
 const int MAX_STEPS = 100;
@@ -112,13 +110,13 @@ vec4 getColor(vec2 p)
 
   vec3 col = vec3(0.0);
 
-  for (int i = 0; i < u_loadedObjects; i++)
+  for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
-    vec4 positionAndMaterial = texelFetch(u_shapeBuffer, 2 * i);
-    int materialId = int(positionAndMaterial.w);
-    vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
+    vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
+    int materialId = int(positionSizeMaterial.w);
+    // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
-    float objectDist = shape_circle((p - positionAndMaterial.xy) / (extraParameters.x));
+    float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
 #if BLEND_SHAPES
 
@@ -129,17 +127,26 @@ vec4 getColor(vec2 p)
 #else
 
     d = min(d, objectDist);
-    col = d == objectDist ? getMaterial(positionAndMaterial.xy, materialId) : col;
+    col = d == objectDist ? getMaterial(positionSizeMaterial.xy, materialId) : col;
 
 #endif
   }
 
-  float floorDist = 0.1 * (p.y - 1.0 * sin(0.5 * p.x + u_time));
-  d = min(d, floorDist);
-  col = d == floorDist ? getMaterial(p, 0) : col;
 
-  vec3 background = mix(u_staticColors[2],u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
 
+  /*ADD_SHAPES_HERE*/
+
+
+
+  // Repetition
+  // float scale = 1.0 / 10.0;
+  // vec2 pp = p + 5.0;
+  // vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
+  // roundPos.x += cos(u_time + round(0.1 * pp.x));
+  // roundPos.y += sin(u_time + round(0.1 * pp.x));
+
+  // Set background color
+  vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
   col = d > 0.0 ? background : col;
 
   return vec4(col, d);
@@ -147,6 +154,9 @@ vec4 getColor(vec2 p)
 
 void main()
 {
+  // FragColor = vec4(u_customShapeCount);
+  // return;
+
   vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
   float zoom = -u_cameraMatrix[3].z;
   vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;
@@ -156,7 +166,7 @@ void main()
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;
 
-  #if MOTION_BLUR
+#if MOTION_BLUR
 
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
   vec4 previousColor = texture(u_colorTexture, screenUV.xy);
@@ -164,20 +174,19 @@ void main()
 
   previousDistance += u_blendIterations * 0.00035;
   previousDistance = mix(finalDistance, previousDistance, 0.95);
-  //previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
-
+  // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
   FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
-  if(FragColor.w > 0.0)
+  if (FragColor.w > 0.0)
     FragColor = vec4(color.xyz, FragColor.w);
 
-   //FragColor = previousColor;
+    // FragColor = previousColor;
 
-  //FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
+    // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
 
-  #else
+#else
 
   FragColor = vec4(color.xyz, finalDistance);
 
-  #endif
+#endif
 }

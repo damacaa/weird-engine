@@ -8,7 +8,7 @@ class PhysicsInteractionSystem : public System
 {
 private:
 
-	bool m_loadingImpulse;
+	bool m_loadingImpulse = false;
 	vec2 m_loadStartPosition;
 
 	SimulationID m_dragId = -1;
@@ -25,17 +25,19 @@ private:
 		Impulse = 1,
 		Fix = 2,
 		Spring = 3,
+		DistanceConstraint = 4,
 	};
 
-	std::string m_interactionModeToString[4]
+	std::string m_interactionModeToString[5]
 	{
 		"Drag",
 		"Impulse",
 		"Fix",
 		"Spring",
+		"DistanceConstraint"
 	};
 
-	InteractionMode m_currentInteractionMode = InteractionMode::Spring;
+	InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
 
 public:
@@ -43,6 +45,21 @@ public:
 	PhysicsInteractionSystem(ECSManager& ecs) : m_loadingImpulse(false)
 	{
 
+	}
+
+	void reset() 
+	{
+		std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+
+		m_loadingImpulse = false;
+
+		m_dragId = -1;
+
+		m_currentMaterial = 0;
+
+		m_firstIdInSpring = -1;
+
+		m_selectedId = -1;
 	}
 
 
@@ -69,7 +86,7 @@ public:
 			m_firstIdInSpring = -1;
 		}
 
-		if (Input::GetMouseButtonUp(Input::LeftClick))
+		if (Input::GetKeyDown(Input::C))
 		{
 			m_currentMaterial = (m_currentMaterial + 1) % 12;
 		}
@@ -88,6 +105,9 @@ public:
 		case PhysicsInteractionSystem::InteractionMode::Spring:
 			spring(ecs, simulation);
 			break;
+		case PhysicsInteractionSystem::InteractionMode::DistanceConstraint:
+			positionConstraint(ecs, simulation);
+			break;
 		default:
 			break;
 		}
@@ -95,25 +115,31 @@ public:
 		if (Input::GetKeyDown(Input::Num1))
 		{
 			m_currentInteractionMode = InteractionMode::Drag;
-			std::cout << m_interactionModeToString[(int)InteractionMode::Drag] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num2))
 		{
 			m_currentInteractionMode = InteractionMode::Impulse;
-			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num3))
 		{
 			m_currentInteractionMode = InteractionMode::Fix;
-			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
 		}
-		
+
 		if (Input::GetKeyDown(Input::Num4))
 		{
 			m_currentInteractionMode = InteractionMode::Spring;
-			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			reset();
+		}
+
+		if (Input::GetKeyDown(Input::Num5))
+		{
+			m_currentInteractionMode = InteractionMode::DistanceConstraint;
+			reset();
 		}
 
 		// Add force to last ball
@@ -264,7 +290,40 @@ private:
 				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 				if (id < simulation.getSize())
 				{
-					simulation.addSpring(id, m_firstIdInSpring, 10000000000.0f);
+					simulation.addSpring(id, m_firstIdInSpring, 1000000.0f);
+				}
+			}
+
+			m_firstIdInSpring = -1;
+		}
+	}
+
+	void positionConstraint(ECSManager& ecs, Simulation2D& simulation)
+	{
+
+		if (Input::GetMouseButtonDown(Input::RightClick))
+		{
+			SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+			if (id < simulation.getSize())
+			{
+				m_firstIdInSpring = id;
+			}
+			else
+			{
+				m_firstIdInSpring = -1;
+			}
+		}
+
+
+		if (Input::GetMouseButtonUp(Input::RightClick))
+		{
+			if (m_firstIdInSpring < simulation.getSize())
+			{
+				// Check 
+				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+				if (id < simulation.getSize())
+				{
+					simulation.addPositionConstraint(id, m_firstIdInSpring);
 				}
 			}
 

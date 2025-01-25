@@ -158,7 +158,6 @@
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
     <ClCompile Include="src\weird-renderer\Renderer.cpp" />
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp" />
-    <ClCompile Include="src\weird-renderer\Shape.cpp" />
     <ClCompile Include="src\weird-renderer\Camera.cpp" />
     <ClCompile Include="src\weird-renderer\EBO.cpp" />
     <ClCompile Include="src\weird-renderer\glad.c" />
@@ -174,6 +173,7 @@
   <ItemGroup>
     <ClInclude Include="Libraries\include\stb\stb_image_write.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\Camera.h" />
+    <ClInclude Include="src\weird-engine\ecs\Components\CustomShape.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\CameraSystem.h" />
@@ -182,6 +182,8 @@
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\DebugSystems.h" />
+    <ClInclude Include="src\weird-engine\math\MathExpressions.h" />
+    <ClInclude Include="src\weird-engine\math\MathExpressionSerialzation.h" />
     <ClInclude Include="src\weird-physics\CollisionDetection\DynamicAABBTree2D.h" />
     <ClInclude Include="src\weird-physics\CollisionDetection\UniformGrid2D.h" />
     <ClInclude Include="src\weird-physics\Simulation2D.h" />

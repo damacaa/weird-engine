@@ -7,6 +7,7 @@ class SDFRenderSystem2D : public System
 {
 private:
 	std::shared_ptr<ComponentManager> m_sdfRendererManager;
+	std::shared_ptr<ComponentManager> m_customShapeManager;
 	std::shared_ptr<ComponentManager> m_transformManager;
 
 	glm::vec3 m_colorPalette[16] = {
@@ -34,34 +35,55 @@ public:
 	SDFRenderSystem2D(ECSManager& ecs)
 	{
 		m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
+		m_customShapeManager = ecs.getComponentManager<CustomShape>();
 		m_transformManager = ecs.getComponentManager<Transform>();
 	}
 
 	void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
 	{
 		m_materialsAreDirty = true;
-		if (m_materialsAreDirty) 
+		if (m_materialsAreDirty)
 		{
 			shader.setUniform("u_staticColors", m_colorPalette, 16);
 			m_materialsAreDirty = false;
 		}
 
 		auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
+		auto& customShapeArray = *m_customShapeManager->getComponentArray<CustomShape>();
 		auto& transformArray = *m_transformManager->getComponentArray<Transform>();
 
-		unsigned int size = componentArray.getSize();
+		uint32_t ballCount = componentArray.getSize();
+		uint32_t customShapeCount = customShapeArray.getSize();
+		uint32_t totalCount = ballCount + customShapeCount;
 
-		WeirdRenderer::Shape2D* data = new  WeirdRenderer::Shape2D[size];
+		uint32_t size = ballCount + (2 * customShapeCount);
 
-		for (size_t i = 0; i < size; i++)
+		WeirdRenderer::Dot2D* data = new  WeirdRenderer::Dot2D[size];
+
+		for (size_t i = 0; i < ballCount; i++)
 		{
 			auto& mr = componentArray[i];
 			auto& t = transformArray.getDataFromEntity(mr.Owner);
 
-			data[i].position = t.position;
+			data[i].position = (vec2)t.position;
+			data[i].size = 1.0f;
 			data[i].material = mr.materialId;
-			data[i].parameters = glm::vec4(1.0f);
 		}
+
+		// 2 vec4s per customShape
+		for (size_t i = 0; i < customShapeCount; i++)
+		{
+			auto& shape = customShapeArray[i];
+
+			data[ballCount + (2 * i)].position = vec2(shape.m_parameters[0], shape.m_parameters[1]);
+			data[ballCount + (2 * i)].size = shape.m_parameters[2];
+			data[ballCount + (2 * i)].material = shape.m_parameters[3];
+
+			data[ballCount + (2 * i) + 1].position = vec2(shape.m_parameters[4], shape.m_parameters[5]);
+			data[ballCount + (2 * i) + 1].size = shape.m_parameters[6];
+			data[ballCount + (2 * i) + 1].material = shape.m_parameters[7];
+		}
+
 
 		//shader.setUniform("directionalLightDirection", lights[0].rotation);
 		rp.Draw(shader, data, size);

@@ -21,6 +21,7 @@ public:
 
 	Scene();
 	~Scene();
+	void start();
 	void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 	void test(WeirdRenderer::Shader& shader);
 	void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
@@ -34,11 +35,12 @@ public:
 	WeirdRenderer::Camera& getCamera();
 	float getTime();
 
+
+protected:
 	virtual void onStart() = 0;
 	virtual void onUpdate() = 0;
 	virtual void onRender() = 0;
 
-protected:
 	Entity m_mainCamera;
 	ECSManager m_ecs;
 	ResourceManager m_resourceManager;
@@ -46,6 +48,8 @@ protected:
 	Simulation2D m_simulation2D;
 
 	std::vector<std::shared_ptr<IMathExpression>>  m_sdfs;
+
+	bool newShapeAdded = false; // should be private
 private:
 
 	void loadScene(std::string sceneFileContent);

@@ -24,14 +24,9 @@ public:
 		return *_instance;
 	};
 
-	 void loadNextScene();
+	void loadNextScene();
 
-
-
-
-
-public:
-    template <typename T>
+	template <typename T>
 	void registerScene(const std::string& sceneName);
 
 	void loadScene(const std::string& sceneName);
@@ -40,7 +35,7 @@ public:
 private:
 	std::map<std::string, std::function<std::unique_ptr<Scene>()>> sceneFactories;
 	std::vector<std::string> names;
-    std::unique_ptr<Scene> currentScene;
+	std::unique_ptr<Scene> currentScene;
 
 	int currentSceneIdx = 0;
 	int targetSceneIdx = 0;

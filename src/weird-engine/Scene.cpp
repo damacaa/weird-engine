@@ -196,8 +196,6 @@ void Scene::loadScene(std::string sceneFileContent)
 
 		// Store function
 		m_sdfs.push_back(waveFormula);
-
-		std::cout << waveFormula->print() << std::endl;
 	}
 
 	// Star
@@ -233,8 +231,6 @@ void Scene::loadScene(std::string sceneFileContent)
 		std::shared_ptr<IMathExpression> displacement = std::make_shared<Multiplication>(displacementStrength, sinContent);
 
 		std::shared_ptr<IMathExpression> starDistance = std::make_shared<Addition>(circleDistance, displacement);
-
-		std::cout << starDistance->print() << std::endl;
 
 		// Store function
 		m_sdfs.push_back(starDistance);

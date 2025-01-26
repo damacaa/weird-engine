@@ -13,7 +13,7 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 Scene::Scene() : m_simulation(MAX_ENTITIES), m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 {
 	// Read content from file
-	std::string content = get_file_contents("../weird-engine/SampleProject/Scenes/SampleScene.scene");
+	std::string content = get_file_contents("SampleProject/Scenes/SampleScene.scene");
 
 	// Read scene file and load everything
 	loadScene(content);

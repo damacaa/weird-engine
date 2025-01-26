@@ -146,7 +146,10 @@ vec4 getColor(vec2 p)
   // roundPos.y += sin(u_time + round(0.1 * pp.x));
 
   // Set background color
-  vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+  // vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+  float pixel = 0.2 / u_resolution.y;
+  float zoom = -u_cameraMatrix[3].z;
+  vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom);
   col = d > 0.0 ? background : col;
 
   return vec4(col, d);

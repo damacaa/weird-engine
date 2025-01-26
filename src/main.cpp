@@ -15,7 +15,7 @@ using namespace WeirdRenderer;
 //	start(projectPath);
 //}
 
-int start(SceneManager& sceneManager)
+void start(SceneManager& sceneManager)
 {
 
 
@@ -62,6 +62,12 @@ int start(SceneManager& sceneManager)
 		// Capture window input
 		Input::update(renderer.getWindow(), width, height);
 
+		// Load next scene
+		if (Input::GetKeyDown(Input::Q))
+		{
+			sceneManager.loadNextScene();
+		}
+
 		auto scene = sceneManager.getCurrentScene();
 
 		// Update scene logic and physics
@@ -73,7 +79,5 @@ int start(SceneManager& sceneManager)
 		// Render scene
 		renderer.render(*scene, time);
 	}
-
-	return 0;
 }
 

@@ -86,7 +86,8 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 
 		oss << "float dist = " << fragmentCode << ";" << std::endl;
 		oss << "d = min(d, dist);\n";
-		oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+		//oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+		oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 		oss << "}\n"
 			<< std::endl;
 	}
@@ -139,75 +140,7 @@ void Scene::update(double delta, double time)
 
 	m_weirdSandBox.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
 
-	// Load next scene
-	if (Input::GetKeyDown(Input::Q))
-	{
-		SceneManager::getInstance().loadNextScene();
-		return;
-	}
 
-	// Add balls
-	if (Input::GetKey(Input::E))
-	{
-		m_weirdSandBox.throwBalls(m_ecs, m_simulation2D);
-	}
-
-	if (Input::GetKeyDown(Input::M))
-	{
-
-		// Get mouse coordinates
-		auto &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
-		float x = Input::GetMouseX();
-		float y = Input::GetMouseY();
-
-		// Transform mouse coordinates to world space
-		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
-
-		Entity star = m_ecs.createEntity();
-
-		float variables[8]{mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 0.5f, 13.0f, 5.0f};
-		CustomShape shape(1, variables);
-		m_ecs.addComponent(star, shape);
-
-		newShapeAdded = true;
-	}
-
-	if (Input::GetKeyDown(Input::N))
-	{
-		// Test
-		{
-			m_sdfs.push_back(m_sdfs[m_sdfs.size() - 1]);
-		}
-
-		m_simulation2D.setSDFs(m_sdfs);
-
-		auto &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
-		float x = Input::GetMouseX();
-		float y = Input::GetMouseY();
-
-		// Transform mouse coordinates to world space
-		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
-
-		float variables[8]{mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 7.5f, 1.0f};
-
-		Entity test = m_ecs.createEntity();
-
-		CustomShape shape(m_sdfs.size() - 1, variables);
-		m_ecs.addComponent(test, shape);
-
-		newShapeAdded = true;
-	}
-
-	if (Input::GetKeyDown(Input::K))
-	{
-		auto components = m_ecs.getComponentArray<CustomShape>();
-		auto id = components->getSize() - 1;
-
-		m_simulation2D.removeShape(components->getDataAtIdx(id));
-		m_ecs.destroyEntity(components->getDataAtIdx(id).Owner);
-
-		newShapeAdded = true;
-	}
 
 	onUpdate();
 }
@@ -245,8 +178,7 @@ void Scene::loadScene(std::string sceneFileContent)
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
 
-	size_t circles = scene["Circles"].get<int>();
-	m_weirdSandBox.spawnEntities(m_ecs, m_simulation2D, circles, 0);
+
 
 	// Shapes
 
@@ -376,30 +308,6 @@ void Scene::loadScene(std::string sceneFileContent)
 	}
 
 	m_simulation2D.setSDFs(m_sdfs);
-
-	{
-		Entity floor = m_ecs.createEntity();
-
-		float variables[8]{1.0f, 0.5f};
-		CustomShape shape(0, variables);
-		m_ecs.addComponent(floor, shape);
-	}
-
-	{
-		Entity star = m_ecs.createEntity();
-
-		float variables[8]{25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f};
-		CustomShape shape(1, variables);
-		m_ecs.addComponent(star, shape);
-	}
-
-	/*{
-		Entity star = m_ecs.createEntity();
-
-		float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
-		CustomShape shape(1, variables);
-		m_ecs.addComponent(star, shape);
-	}*/
 
 	newShapeAdded = true;
 }

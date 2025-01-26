@@ -62,7 +62,6 @@ protected:
 	PhysicsInteractionSystem m_physicsInteractionSystem;
 	PlayerMovementSystem m_playerMovementSystem;
 	CameraSystem m_cameraSystem;
-	WeirdSandBox m_weirdSandBox;
 
 private:
 	void loadScene(std::string sceneFileContent);

@@ -233,9 +233,6 @@
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-engine\ecs\Systems\DebugSystems.h">
-      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
-    </ClInclude>
     <ClInclude Include="src\weird-physics\CollisionDetection\DynamicAABBTree2D.h">
       <Filter>Header Files\weird-physics</Filter>
     </ClInclude>

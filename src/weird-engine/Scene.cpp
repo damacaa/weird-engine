@@ -138,10 +138,6 @@ void Scene::update(double delta, double time)
 	m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 	m_simulation2D.update(delta);
 
-	m_weirdSandBox.update(m_ecs, m_simulation2D, m_sdfRenderSystem2D);
-
-
-
 	onUpdate();
 }
 

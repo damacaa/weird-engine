@@ -51,12 +51,8 @@ protected:
 
 	std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
-	bool newShapeAdded = false; // should be private
-private:
-	void loadScene(std::string sceneFileContent);
-
-	bool m_runSimulationInThread;
-
+	// Should be private
+	bool newShapeAdded = false; 
 	SDFRenderSystem m_sdfRenderSystem;
 	SDFRenderSystem2D m_sdfRenderSystem2D;
 	RenderSystem m_renderSystem;
@@ -66,8 +62,14 @@ private:
 	PhysicsInteractionSystem m_physicsInteractionSystem;
 	PlayerMovementSystem m_playerMovementSystem;
 	CameraSystem m_cameraSystem;
-
 	WeirdSandBox m_weirdSandBox;
+
+private:
+	void loadScene(std::string sceneFileContent);
+
+	bool m_runSimulationInThread;
+
+	
 
 	vector<WeirdRenderer::Light> m_lights;
 };

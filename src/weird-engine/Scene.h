@@ -33,23 +33,21 @@ public:
 	WeirdRenderer::Camera &getCamera();
 	float getTime();
 
-protected:
-	/*virtual void onStart() = 0;
-	virtual void onUpdate() = 0;
-	virtual void onRender() = 0;*/
 
 protected:
 	virtual void onStart() = 0;
 	virtual void onUpdate() = 0;
 	virtual void onRender() = 0;
 
-	Entity m_mainCamera;
 	ECSManager m_ecs;
+	Entity m_mainCamera;
 	ResourceManager m_resourceManager;
 	Simulation m_simulation;
 	Simulation2D m_simulation2D;
 
 	std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
+
+	Entity addShape(int shapeId, float* variables);
 
 	// Should be private
 	bool newShapeAdded = false; 
@@ -64,9 +62,11 @@ protected:
 	CameraSystem m_cameraSystem;
 
 private:
-	void loadScene(std::string sceneFileContent);
 
+	void loadScene(std::string& sceneFileContent);
+	
 	bool m_runSimulationInThread;
+
 
 	
 

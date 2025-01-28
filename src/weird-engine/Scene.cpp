@@ -10,7 +10,19 @@ double g_lastSpawnTime = 0;
 
 vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
-Scene::Scene() : m_simulation(MAX_ENTITIES), m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+Scene::Scene() :
+	m_simulation(MAX_ENTITIES),
+	m_simulation2D(MAX_ENTITIES),
+	m_sdfRenderSystem(m_ecs),
+	m_sdfRenderSystem2D(m_ecs),
+	m_renderSystem(m_ecs),
+	m_instancedRenderSystem(m_ecs),
+	m_rbPhysicsSystem(m_ecs),
+	m_rbPhysicsSystem2D(m_ecs),
+	m_physicsInteractionSystem(m_ecs),
+	m_playerMovementSystem(m_ecs),
+	m_cameraSystem(m_ecs),
+	m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents("SampleProject/Scenes/SampleScene.scene");
@@ -43,16 +55,16 @@ void Scene::start()
 	onStart();
 }
 
-void Scene::renderModels(WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
+void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
-	WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 
 	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
 	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
-void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
+void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 {
 	std::string str = shader.getFragmentCode();
 
@@ -68,7 +80,7 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 
 	for (size_t i = 0; i < componentArray.getSize(); i++)
 	{
-		auto &shape = componentArray[i];
+		auto& shape = componentArray[i];
 
 		oss << "{";
 
@@ -106,7 +118,7 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	shader.setFragmentCode(str);
 }
 
-void Scene::renderShapes(WeirdRenderer::Shader &shader, WeirdRenderer::RenderPlane &rp)
+void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
 {
 	onRender();
 
@@ -141,7 +153,7 @@ void Scene::update(double delta, double time)
 	onUpdate();
 }
 
-WeirdRenderer::Camera &Scene::getCamera()
+WeirdRenderer::Camera& Scene::getCamera()
 {
 	return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 }
@@ -151,7 +163,16 @@ float Scene::getTime()
 	return m_simulation2D.getSimulationTime();
 }
 
-void Scene::loadScene(std::string sceneFileContent)
+Entity Scene::addShape(int shapeId, float* variables)
+{
+	Entity entity = m_ecs.createEntity();
+	CustomShape shape(shapeId, variables);
+	m_ecs.addComponent(entity, shape);
+	newShapeAdded = true;
+	return entity;
+}
+
+void Scene::loadScene(std::string& sceneFileContent)
 {
 	json scene = json::parse(sceneFileContent);
 

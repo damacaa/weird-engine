@@ -99,7 +99,7 @@ public:
 	}
 
 private:
-	std::unordered_map<const char*, std::shared_ptr<ComponentManager>> m_componentManagers;
+	std::unordered_map<std::string, std::shared_ptr<ComponentManager>> m_componentManagers;
 	std::vector<std::shared_ptr<System>> m_systems;
 	Entity m_entityCount = 0;
 

@@ -4,6 +4,9 @@
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
 
+extern "C" {
+	_declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+}
 
 using namespace WeirdRenderer;
 

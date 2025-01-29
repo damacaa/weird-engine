@@ -92,8 +92,6 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 		oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, idx);";
 		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, idx + 1);";
 
-		oss << "float var8 = u_time; float var9 = p.x; float var10 = p.y; float var0 = parameters0.x; float var1 = parameters0.y; float var2 = parameters0.z; float var3 = parameters0.w; float var4 = parameters1.x; float var5 = parameters1.y; float var6 = parameters1.z; float var7 = parameters1.w;\n";
-
 		auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
 		oss << "float dist = " << fragmentCode << ";" << std::endl;

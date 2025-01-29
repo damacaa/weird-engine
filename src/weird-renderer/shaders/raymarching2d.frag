@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 0
+#define MOTION_BLUR 1
 
 uniform float k = 0.25;
 
@@ -30,6 +30,19 @@ const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
+
+// Custom shape variables
+#define var8 u_time
+#define var9 p.x
+#define var10 p.y
+#define var0 parameters0.x
+#define var1 parameters0.y
+#define var2 parameters0.z
+#define var3 parameters0.w
+#define var4 parameters1.x
+#define var5 parameters1.y
+#define var6 parameters1.z
+#define var7 parameters1.w
 
 // Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -117,6 +130,10 @@ vec4 getColor(vec2 p)
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
     float objectDist = shape_circle(p - positionSizeMaterial.xy);
+    if(objectDist < 0.0f)
+    {
+        objectDist *= 3;
+    }
 
 #if BLEND_SHAPES
 

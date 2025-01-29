@@ -1,5 +1,5 @@
-#include"Camera.h"
-#include "../weird-engine/Input.h"
+#include "weird-renderer/Camera.h"
+#include "weird-engine/Input.h"
 #include <iomanip>
 
 namespace WeirdRenderer

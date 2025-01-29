@@ -1,4 +1,4 @@
-#include"VBO.h"
+#include "weird-renderer/VBO.h"
 
 namespace WeirdRenderer
 {

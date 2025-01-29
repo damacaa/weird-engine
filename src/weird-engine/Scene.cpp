@@ -1,7 +1,7 @@
-#include "scene.h"
-#include "Input.h"
-#include "SceneManager.h"
-#include "math/MathExpressionSerialzation.h"
+#include "weird-engine/scene.h"
+#include "weird-engine/Input.h"
+#include "weird-engine/SceneManager.h"
+#include "weird-engine/math/MathExpressionSerialzation.h"
 
 #include <random>
 

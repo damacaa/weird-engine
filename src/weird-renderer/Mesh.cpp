@@ -1,4 +1,4 @@
-#include "Mesh.h"
+#include "weird-renderer/Mesh.h"
 
 namespace WeirdRenderer
 {

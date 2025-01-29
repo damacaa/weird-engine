@@ -9,6 +9,8 @@
 #include<cerrno>
 #include <glm/glm.hpp>
 
+#include "weird-engine/Utils.h"
+
 namespace WeirdRenderer
 {
 	using ShaderID = std::uint32_t;

@@ -51,7 +51,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\weird.h">
+    <ClCompile Include="include\weird-engine.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-renderer\Camera.cpp">
@@ -384,9 +384,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\weird-engine\Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\WeirdEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

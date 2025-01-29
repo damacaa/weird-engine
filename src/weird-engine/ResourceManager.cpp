@@ -1,4 +1,4 @@
-#include "ResourceManager.h"
+#include "weird-engine/ResourceManager.h"
 
 
 ResourceManager::ResourceManager()

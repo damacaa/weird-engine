@@ -1,7 +1,7 @@
-#include "Simulation.h"
-#include "CollisionDetection/SpatialHash.h"
-#include "../weird-engine/Input.h"
-#include "CollisionDetection/Octree.h"
+#include "weird-physics/Simulation.h"
+#include "weird-physics/CollisionDetection/SpatialHash.h"
+#include "weird-engine/Input.h"
+#include "weird-physics/CollisionDetection/Octree.h"
 
 #include <chrono>
 #include <immintrin.h>

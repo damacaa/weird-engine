@@ -1,6 +1,6 @@
 #pragma once
-#include "../weird-renderer/Mesh.h"
-#include "../Utils.h"
+#include "weird-renderer/Mesh.h"
+#include "weird-engine/Utils.h"
 #include "ecs/Entity.h"
 #include <json/json.h>
 #include <set>

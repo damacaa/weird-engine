@@ -1,5 +1,4 @@
-#include "Shader.h"
-#include "../Utils.h"
+#include "weird-renderer/Shader.h"
 
 namespace WeirdRenderer
 {

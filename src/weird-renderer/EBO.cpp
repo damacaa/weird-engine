@@ -1,4 +1,4 @@
-#include"EBO.h"
+#include "weird-renderer/EBO.h"
 
 namespace WeirdRenderer
 {

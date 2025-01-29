@@ -5,24 +5,19 @@
 
 #include <random>
 
-bool g_runSimulation = true;
-double g_lastSpawnTime = 0;
-
 vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
-Scene::Scene() :
-	m_simulation(MAX_ENTITIES),
-	m_simulation2D(MAX_ENTITIES),
-	m_sdfRenderSystem(m_ecs),
-	m_sdfRenderSystem2D(m_ecs),
-	m_renderSystem(m_ecs),
-	m_instancedRenderSystem(m_ecs),
-	m_rbPhysicsSystem(m_ecs),
-	m_rbPhysicsSystem2D(m_ecs),
-	m_physicsInteractionSystem(m_ecs),
-	m_playerMovementSystem(m_ecs),
-	m_cameraSystem(m_ecs),
-	m_runSimulationInThread(true)
+Scene::Scene()
+	: m_simulation2D(MAX_ENTITIES)
+	, m_sdfRenderSystem(m_ecs)
+	, m_sdfRenderSystem2D(m_ecs)
+	, m_renderSystem(m_ecs)
+	, m_instancedRenderSystem(m_ecs)
+	, m_rbPhysicsSystem2D(m_ecs)
+	, m_physicsInteractionSystem(m_ecs)
+	, m_playerMovementSystem(m_ecs)
+	, m_cameraSystem(m_ecs)
+	, m_runSimulationInThread(true)
 {
 	// Read content from file
 	std::string content = get_file_contents("SampleProject/Scenes/SampleScene.scene");
@@ -31,22 +26,20 @@ Scene::Scene() :
 	loadScene(content);
 
 	// Initialize simulation
-	m_rbPhysicsSystem.init(m_ecs, m_simulation);
 	m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
 
 	// Start simulation if different thread
 	if (m_runSimulationInThread)
 	{
-		m_simulation.startSimulationThread();
 		m_simulation2D.startSimulationThread();
 	}
 }
 
 Scene::~Scene()
 {
-	m_simulation.stopSimulationThread();
 	m_simulation2D.stopSimulationThread();
 
+	// TODO: Free resources from all entities
 	m_resourceManager.freeResources(0);
 }
 
@@ -57,11 +50,11 @@ void Scene::start()
 
 void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 {
-	WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+	// WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 
-	m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
+	// m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
-	m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
+	// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 }
 
 void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
@@ -86,9 +79,7 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 
 		oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
-		/*oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, " << idx << ");";
-		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, " << idx + 1 << ");";*/
-
+		// Fetch parameters
 		oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, idx);";
 		oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, idx + 1);";
 
@@ -96,15 +87,13 @@ void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 
 		oss << "float dist = " << fragmentCode << ";" << std::endl;
 		oss << "d = min(d, dist);\n";
-		//oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+		// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
 		oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 		oss << "}\n"
 			<< std::endl;
 	}
 
 	std::string replacement = oss.str();
-
-	// std::cout << replacement << std::endl;
 
 	size_t pos = str.find(toReplace);
 	if (pos != std::string::npos)
@@ -125,13 +114,11 @@ void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPla
 		shader.setUniform("u_customShapeCount", componentArray->getSize());
 	}
 
-	if (newShapeAdded)
+	if (m_sdfRenderSystem2D.shaderNeedsUpdate())
 	{
 		updateCustomShapesShader(shader);
-		newShapeAdded = false;
 	}
 
-	// m_sdfRenderSystem.render(m_ecs, shader, rp, m_lights);
 	m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
 }
 
@@ -166,7 +153,7 @@ Entity Scene::addShape(int shapeId, float* variables)
 	Entity entity = m_ecs.createEntity();
 	CustomShape shape(shapeId, variables);
 	m_ecs.addComponent(entity, shape);
-	newShapeAdded = true;
+
 	return entity;
 }
 
@@ -192,8 +179,6 @@ void Scene::loadScene(std::string& sceneFileContent)
 	WeirdRenderer::Light light;
 	light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
 	m_lights.push_back(light);
-
-
 
 	// Shapes
 
@@ -319,6 +304,4 @@ void Scene::loadScene(std::string& sceneFileContent)
 	}
 
 	m_simulation2D.setSDFs(m_sdfs);
-
-	newShapeAdded = true;
 }

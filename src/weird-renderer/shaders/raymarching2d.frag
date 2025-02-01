@@ -130,9 +130,9 @@ vec4 getColor(vec2 p)
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
     float objectDist = shape_circle(p - positionSizeMaterial.xy);
-    if(objectDist < 0.0f)
+    if (objectDist < 0.0f)
     {
-        objectDist *= 3;
+      objectDist *= 3;
     }
 
 #if BLEND_SHAPES
@@ -149,11 +149,7 @@ vec4 getColor(vec2 p)
 #endif
   }
 
-
-
   /*ADD_SHAPES_HERE*/
-
-
 
   // Repetition
   // float scale = 1.0 / 10.0;
@@ -200,9 +196,9 @@ void main()
   if (FragColor.w > 0.0)
     FragColor = vec4(color.xyz, FragColor.w);
 
-    // FragColor = previousColor;
+  // FragColor = previousColor;
 
-    // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
+  // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
 
 #else
 

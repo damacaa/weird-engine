@@ -1,7 +1,10 @@
 #pragma once
 #include "../Component.h"
 
-struct LogicComponent : public Component 
+namespace WeirdEngine
 {
+	struct LogicComponent : public Component
+	{
 
-};
+	};
+}

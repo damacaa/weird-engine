@@ -10,62 +10,64 @@
 
 #include "ResourceManager.h"
 
-using namespace ECS;
-using namespace std;
-
-class Scene
+namespace WeirdEngine
 {
-public:
-	Scene();
-	~Scene();
-	void start();
+	using namespace ECS;
 
-	void renderModels(WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader);
-	void updateCustomShapesShader(WeirdRenderer::Shader &shader);
-	void renderShapes(WeirdRenderer::Shader &shader, WeirdRenderer::RenderPlane &rp);
-	void update(double delta, double time);
+	class Scene
+	{
+	public:
+		Scene();
+		~Scene();
+		void start();
 
-	Scene(const Scene &) = default;			   // Deleted copy constructor
-	Scene &operator=(const Scene &) = default; // Deleted copy assignment operator
-	Scene(Scene &&) = default;				   // Defaulted move constructor
-	Scene &operator=(Scene &&) = default;	   // Defaulted move assignment operator
+		void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
+		void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
+		void update(double delta, double time);
 
-	WeirdRenderer::Camera &getCamera();
-	float getTime();
+		Scene(const Scene&) = default;			   // Deleted copy constructor
+		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
+		Scene(Scene&&) = default;				   // Defaulted move constructor
+		Scene& operator=(Scene&&) = default;	   // Defaulted move assignment operator
 
-
-protected:
-	virtual void onStart() = 0;
-	virtual void onUpdate() = 0;
-	virtual void onRender() = 0;
-
-	ECSManager m_ecs;
-	Entity m_mainCamera;
-	ResourceManager m_resourceManager;
-	Simulation2D m_simulation2D;
-
-	std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
-
-	Entity addShape(int shapeId, float* variables);
+		WeirdRenderer::Camera& getCamera();
+		float getTime();
 
 
-	SDFRenderSystem m_sdfRenderSystem;
-	SDFRenderSystem2D m_sdfRenderSystem2D;
-	RenderSystem m_renderSystem;
-	InstancedRenderSystem m_instancedRenderSystem;
-	PhysicsSystem2D m_rbPhysicsSystem2D;
-	PhysicsInteractionSystem m_physicsInteractionSystem;
-	PlayerMovementSystem m_playerMovementSystem;
-	CameraSystem m_cameraSystem;
+	protected:
+		virtual void onStart() = 0;
+		virtual void onUpdate() = 0;
+		virtual void onRender() = 0;
 
-private:
+		ECSManager m_ecs;
+		Entity m_mainCamera;
+		ResourceManager m_resourceManager;
+		Simulation2D m_simulation2D;
 
-	void loadScene(std::string& sceneFileContent);
-	
-	bool m_runSimulationInThread;
+		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
+
+		Entity addShape(int shapeId, float* variables);
 
 
-	
+		SDFRenderSystem m_sdfRenderSystem;
+		SDFRenderSystem2D m_sdfRenderSystem2D;
+		RenderSystem m_renderSystem;
+		InstancedRenderSystem m_instancedRenderSystem;
+		PhysicsSystem2D m_rbPhysicsSystem2D;
+		PhysicsInteractionSystem m_physicsInteractionSystem;
+		PlayerMovementSystem m_playerMovementSystem;
+		CameraSystem m_cameraSystem;
 
-	vector<WeirdRenderer::Light> m_lights;
-};
+	private:
+
+		void loadScene(std::string& sceneFileContent);
+
+		bool m_runSimulationInThread;
+
+
+
+
+		std::vector<WeirdRenderer::Light> m_lights;
+	};
+}

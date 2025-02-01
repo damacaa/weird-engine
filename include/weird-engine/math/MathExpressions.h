@@ -4,302 +4,305 @@
 #include <string>
 #include <vector>
 
-// Base
-struct IMathExpression
+namespace WeirdEngine
 {
-	virtual void propagateValues(float* values) = 0;
-	virtual float getValue() const = 0;
-	virtual std::string print() = 0;
-	virtual ~IMathExpression() = default;
-};
+	// Base
+	struct IMathExpression
+	{
+		virtual void propagateValues(float* values) = 0;
+		virtual float getValue() const = 0;
+		virtual std::string print() = 0;
+		virtual ~IMathExpression() = default;
+	};
 
 #pragma region Variables
-// Variables
-struct FloatVariable : IMathExpression
-{
-private:
-	std::ptrdiff_t m_offset;
-	float* m_value = nullptr;
-
-public:
-	explicit FloatVariable(std::ptrdiff_t offset) : m_offset(offset) {}
-
-	void propagateValues(float* values) override
+	// Variables
+	struct FloatVariable : IMathExpression
 	{
-		m_value = values + m_offset;
-	}
+	private:
+		std::ptrdiff_t m_offset;
+		float* m_value = nullptr;
 
-	float getValue() const override
+	public:
+		explicit FloatVariable(std::ptrdiff_t offset) : m_offset(offset) {}
+
+		void propagateValues(float* values) override
+		{
+			m_value = values + m_offset;
+		}
+
+		float getValue() const override
+		{
+			return *m_value;
+		}
+
+		std::string print()
+		{
+			return "var" + std::to_string(m_offset);
+		}
+	};
+
+	struct StaticVariable : IMathExpression
 	{
-		return *m_value;
-	}
+	private:
+		float m_value;
 
-	std::string print()
-	{
-		return "var" + std::to_string(m_offset);
-	}
-};
+	public:
+		explicit StaticVariable(float value) : m_value(value) {}
 
-struct StaticVariable : IMathExpression
-{
-private:
-	float m_value;
+		void propagateValues(float* values) override
+		{
 
-public:
-	explicit StaticVariable(float value) : m_value(value) {}
+		}
 
-	void propagateValues(float* values) override
-	{
+		float getValue() const override
+		{
+			return m_value;
+		}
 
-	}
-
-	float getValue() const override
-	{
-		return m_value;
-	}
-
-	std::string print()
-	{
-		return std::to_string(m_value) + "f";
-	}
-};
+		std::string print()
+		{
+			return std::to_string(m_value) + "f";
+		}
+	};
 
 #pragma endregion Variables
 
 #pragma region OneFloatOperations
-// One float operation
-struct OneFloatOperation : IMathExpression
-{
-protected:
-	std::shared_ptr<IMathExpression> valueA;
-
-
-public:
-	OneFloatOperation()
-		: valueA()
+	// One float operation
+	struct OneFloatOperation : IMathExpression
 	{
-	}
+	protected:
+		std::shared_ptr<IMathExpression> valueA;
 
-	OneFloatOperation(std::shared_ptr<IMathExpression> a)
-		: valueA(std::move(a)) {}
 
-	OneFloatOperation(std::ptrdiff_t i)
-		: valueA(std::make_shared<FloatVariable>(i)) {}
+	public:
+		OneFloatOperation()
+			: valueA()
+		{
+		}
 
-	OneFloatOperation(float constant)
-		: valueA(std::make_shared<StaticVariable>(constant)) {}
+		OneFloatOperation(std::shared_ptr<IMathExpression> a)
+			: valueA(std::move(a)) {}
 
-	void setValue(std::shared_ptr<IMathExpression> a)
+		OneFloatOperation(std::ptrdiff_t i)
+			: valueA(std::make_shared<FloatVariable>(i)) {}
+
+		OneFloatOperation(float constant)
+			: valueA(std::make_shared<StaticVariable>(constant)) {}
+
+		void setValue(std::shared_ptr<IMathExpression> a)
+		{
+			valueA = (std::move(a));
+		}
+
+		void propagateValues(float* values) override
+		{
+			valueA->propagateValues(values);
+		}
+
+		virtual float getValue() const override = 0;
+
+		virtual std::string print() = 0;
+	};
+
+	// Sine
+	struct Sine : OneFloatOperation
 	{
-		valueA = (std::move(a));
-	}
+		using OneFloatOperation::OneFloatOperation;
 
-	void propagateValues(float* values) override
+		float getValue() const override
+		{
+			return sinf(valueA->getValue());
+		}
+
+		std::string print()
+		{
+			return "sin(" + valueA->print() + ")";
+		}
+	};
+
+	// Abs
+	struct Abs : OneFloatOperation
 	{
-		valueA->propagateValues(values);
-	}
+		using OneFloatOperation::OneFloatOperation;
 
-	virtual float getValue() const override = 0;
+		float getValue() const override
+		{
+			return abs(valueA->getValue());
+		}
 
-	virtual std::string print() = 0;
-};
-
-// Sine
-struct Sine : OneFloatOperation
-{
-	using OneFloatOperation::OneFloatOperation;
-
-	float getValue() const override
-	{
-		return sinf(valueA->getValue());
-	}
-
-	std::string print()
-	{
-		return "sin(" + valueA->print() + ")";
-	}
-};
-
-// Abs
-struct Abs : OneFloatOperation
-{
-	using OneFloatOperation::OneFloatOperation;
-
-	float getValue() const override
-	{
-		return abs(valueA->getValue());
-	}
-
-	std::string print()
-	{
-		return "abs(" + valueA->print() + ")";
-	}
-};
+		std::string print()
+		{
+			return "abs(" + valueA->print() + ")";
+		}
+	};
 
 #pragma endregion OneFloatOperations
 
 #pragma region TwoFloatOperations
-// Two float operation
-struct TwoFloatOperation : IMathExpression
-{
-protected:
-	std::shared_ptr<IMathExpression> valueA;
-	std::shared_ptr<IMathExpression> valueB;
-
-public:
-
-	TwoFloatOperation()
-		: valueA()
-		, valueB()
+	// Two float operation
+	struct TwoFloatOperation : IMathExpression
 	{
-	}
+	protected:
+		std::shared_ptr<IMathExpression> valueA;
+		std::shared_ptr<IMathExpression> valueB;
 
-	TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
-		: valueA(std::move(a)), valueB(std::move(b)) {}
+	public:
 
-	TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> b)
-		: valueA(std::make_shared<StaticVariable>(constant)), valueB(std::move(b)) {}
+		TwoFloatOperation()
+			: valueA()
+			, valueB()
+		{
+		}
 
-	TwoFloatOperation(std::shared_ptr<IMathExpression> a, float constant)
-		: valueA(std::move(a)), valueB(std::make_shared<StaticVariable>(constant)) {}
+		TwoFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
+			: valueA(std::move(a)), valueB(std::move(b)) {}
 
-	//TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
-	//	: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
+		TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> b)
+			: valueA(std::make_shared<StaticVariable>(constant)), valueB(std::move(b)) {}
 
-	void propagateValues(float* values) override
+		TwoFloatOperation(std::shared_ptr<IMathExpression> a, float constant)
+			: valueA(std::move(a)), valueB(std::make_shared<StaticVariable>(constant)) {}
+
+		//TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
+		//	: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
+
+		void propagateValues(float* values) override
+		{
+			valueA->propagateValues(values);
+			valueB->propagateValues(values);
+		}
+
+		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
+		{
+			valueA = (std::move(a));
+			valueB = (std::move(b));
+		}
+
+		virtual float getValue() const override = 0;
+
+		virtual std::string print() = 0;
+	};
+
+	// Add
+	struct Addition : TwoFloatOperation
 	{
-		valueA->propagateValues(values);
-		valueB->propagateValues(values);
-	}
+		using TwoFloatOperation::TwoFloatOperation;
 
-	void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
+		float getValue() const override
+		{
+			return valueA->getValue() + valueB->getValue();
+		}
+
+		std::string print()
+		{
+			return "(" + valueA->print() + " + " + valueB->print() + ")";
+		}
+	};
+
+	// Substract
+	struct Substraction : TwoFloatOperation
 	{
-		valueA = (std::move(a));
-		valueB = (std::move(b));
-	}
+		using TwoFloatOperation::TwoFloatOperation;
 
-	virtual float getValue() const override = 0;
+		float getValue() const override
+		{
+			return valueA->getValue() - valueB->getValue();
+		}
 
-	virtual std::string print() = 0;
-};
+		std::string print()
+		{
+			return "(" + valueA->print() + " - " + valueB->print() + ")";
+		}
+	};
 
-// Add
-struct Addition : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
-
-	float getValue() const override
+	// Multiplication
+	struct Multiplication : TwoFloatOperation
 	{
-		return valueA->getValue() + valueB->getValue();
-	}
+		using TwoFloatOperation::TwoFloatOperation;
 
-	std::string print()
+		float getValue() const override
+		{
+			return valueA->getValue() * valueB->getValue();
+		}
+
+		std::string print()
+		{
+			return "(" + valueA->print() + " * " + valueB->print() + ")";
+		}
+	};
+
+	// Atan2
+	struct Atan2 : TwoFloatOperation
 	{
-		return "(" + valueA->print() + " + " + valueB->print() + ")";
-	}
-};
+		using TwoFloatOperation::TwoFloatOperation;
 
-// Substract
-struct Substraction : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
+		float getValue() const override
+		{
+			return atan2f(valueA->getValue(), valueB->getValue());
+		}
 
-	float getValue() const override
+		std::string print()
+		{
+			return "atan(" + valueA->print() + ", " + valueB->print() + ")";
+		}
+	};
+
+
+	struct Length : TwoFloatOperation
 	{
-		return valueA->getValue() - valueB->getValue();
-	}
+		using TwoFloatOperation::TwoFloatOperation;
 
-	std::string print()
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+
+			return length(glm::vec2(a, b));
+		}
+
+		std::string print()
+		{
+			return "length(vec2(" + valueA->print() + ", " + valueB->print() + "))";
+		}
+	};
+
+	struct Max : TwoFloatOperation
 	{
-		return "(" + valueA->print() + " - " + valueB->print() + ")";
-	}
-};
+		using TwoFloatOperation::TwoFloatOperation;
 
-// Multiplication
-struct Multiplication : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
 
-	float getValue() const override
+			return std::max(a, b);
+		}
+
+		std::string print()
+		{
+			return "max(" + valueA->print() + ", " + valueB->print() + ")";
+		}
+	};
+
+	struct Min : TwoFloatOperation
 	{
-		return valueA->getValue() * valueB->getValue();
-	}
+		using TwoFloatOperation::TwoFloatOperation;
 
-	std::string print()
-	{
-		return "(" + valueA->print() + " * " + valueB->print() + ")";
-	}
-};
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
 
-// Atan2
-struct Atan2 : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
+			return std::min(a, b);
+		}
 
-	float getValue() const override
-	{
-		return atan2f(valueA->getValue(), valueB->getValue());
-	}
-
-	std::string print()
-	{
-		return "atan(" + valueA->print() + ", " + valueB->print() + ")";
-	}
-};
-
-
-struct Length : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
-
-	float getValue() const override
-	{
-		float a = valueA->getValue();
-		float b = valueB->getValue();
-
-		return length(glm::vec2(a, b));
-	}
-
-	std::string print()
-	{
-		return "length(vec2(" + valueA->print() + ", " + valueB->print() + "))";
-	}
-};
-
-struct Max : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
-
-	float getValue() const override
-	{
-		float a = valueA->getValue();
-		float b = valueB->getValue();
-
-		return std::max(a, b);
-	}
-
-	std::string print()
-	{
-		return "max(" + valueA->print() + ", " + valueB->print() + ")";
-	}
-};
-
-struct Min : TwoFloatOperation
-{
-	using TwoFloatOperation::TwoFloatOperation;
-
-	float getValue() const override
-	{
-		float a = valueA->getValue();
-		float b = valueB->getValue();
-
-		return std::min(a, b);
-	}
-
-	std::string print()
-	{
-		return "min(" + valueA->print() + ", " + valueB->print() + ")";
-	}
-};
+		std::string print()
+		{
+			return "min(" + valueA->print() + ", " + valueB->print() + ")";
+		}
+	};
 
 #pragma endregion TwoFloatOperations
+}

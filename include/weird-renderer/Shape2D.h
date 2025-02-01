@@ -1,15 +1,18 @@
 #pragma once
 #include<glm/glm.hpp>
 
-namespace WeirdRenderer
+namespace WeirdEngine
 {
-	struct Dot2D
+	namespace WeirdRenderer
 	{
-		glm::vec2 position;
-		float size;
-		float material;
-	};
+		struct Dot2D
+		{
+			glm::vec2 position;
+			float size;
+			float material;
+		};
 
-	
+
+	}
 }
 

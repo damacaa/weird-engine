@@ -1,19 +1,21 @@
 #pragma once
 #include "../Component.h"
 
-struct SDFRenderer : public Component 
+namespace WeirdEngine
 {
-	bool isStatic = false;
-	unsigned int materialId;
-
-	SDFRenderer(unsigned int materialId)
+	struct SDFRenderer : public Component
 	{
-		this->materialId = materialId;
-	}
+		bool isStatic = false;
+		unsigned int materialId;
 
-	SDFRenderer()
-	{
-		this->materialId = 0;
-	}
-};
+		SDFRenderer(unsigned int materialId)
+		{
+			this->materialId = materialId;
+		}
 
+		SDFRenderer()
+		{
+			this->materialId = 0;
+		}
+	};
+}

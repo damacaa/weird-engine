@@ -2,16 +2,18 @@
 #include "../Component.h"
 #include"../../../weird-renderer/Mesh.h"
 
-constexpr size_t MAX_PATH_LENGTH = 4096;
-using WeirdRenderer::MeshID;
-
-struct MeshRenderer : public Component
+namespace WeirdEngine
 {
-public:
-	MeshID mesh;
+	constexpr size_t MAX_PATH_LENGTH = 4096;
+	using WeirdRenderer::MeshID;
 
-	MeshRenderer() {};
+	struct MeshRenderer : public Component
+	{
+	public:
+		MeshID mesh;
 
-	MeshRenderer(MeshID mesh) : mesh(mesh) {};
-};
+		MeshRenderer() {};
 
+		MeshRenderer(MeshID mesh) : mesh(mesh) {};
+	};
+}

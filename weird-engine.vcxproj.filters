@@ -103,7 +103,7 @@
       <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-physics\Simulation2D.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\weird-physics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

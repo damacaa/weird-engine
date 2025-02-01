@@ -8,39 +8,42 @@
 
 #include <glm/vec4.hpp>
 
-namespace WeirdRenderer
+namespace WeirdEngine
 {
-	using TextureID = std::uint32_t;
-
-	class Texture
+	namespace WeirdRenderer
 	{
-	public:
+		using TextureID = std::uint32_t;
 
-		GLuint ID = -1;
-		std::string type = "";
+		class Texture
+		{
+		public:
 
-		Texture() {}; // I shouldn't neet this :S
+			GLuint ID = -1;
+			std::string type = "";
 
-		Texture(const char* image, std::string texType, GLuint slot);
+			Texture() {}; // I shouldn't neet this :S
 
-		Texture(glm::vec4 color, std::string texType, GLuint slot);
+			Texture(const char* image, std::string texType, GLuint slot);
 
-		Texture(int width, int height, GLuint filterMode);
+			Texture(glm::vec4 color, std::string texType, GLuint slot);
 
-		// Assigns a texture unit to a texture
-		void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
+			Texture(int width, int height, GLuint filterMode);
 
-		// Binds a texture
-		void bind() const;
-		void bind(GLuint unit) const;
+			// Assigns a texture unit to a texture
+			void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
 
-		// Unbinds a texture
-		void unbind() const;
-		// Deletes a texture
-		void dispose() const;
+			// Binds a texture
+			void bind() const;
+			void bind(GLuint unit) const;
 
-		void saveToDisk(const char* fileName);
-	};
+			// Unbinds a texture
+			void unbind() const;
+			// Deletes a texture
+			void dispose() const;
+
+			void saveToDisk(const char* fileName);
+		};
+	}
 }
 
 #endif

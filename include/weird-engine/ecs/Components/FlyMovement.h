@@ -2,21 +2,23 @@
 #pragma once
 #include "../Component.h"
 
-
-namespace ECS
+namespace WeirdEngine
 {
-	struct FlyMovement : public Component
+	namespace ECS
 	{
-
-		float speed;
-		float sensitivity = 50000.0f;
-
-		FlyMovement() : speed(10.0f)
+		struct FlyMovement : public Component
 		{
 
-		}
+			float speed;
+			float sensitivity = 50000.0f;
+
+			FlyMovement() : speed(10.0f)
+			{
+
+			}
 
 
 
-	};
+		};
+	}
 }

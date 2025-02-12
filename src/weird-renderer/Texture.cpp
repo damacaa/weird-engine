@@ -1,9 +1,16 @@
 #include "weird-renderer/Texture.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
 
 namespace WeirdEngine
 {
+
+#ifndef STB_IMAGE_WRITE_IMPLEMENTATION
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
+
+#endif // STB_IMAGE_WRITE_IMPLEMENTATION
+
 	namespace WeirdRenderer
 	{
 		const char* DIFFUSE = "diffuse";

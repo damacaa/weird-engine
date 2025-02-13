@@ -554,7 +554,7 @@ namespace WeirdEngine
 			//d = std::clamp(d, -10.0f, 10.0f);
 
 			vec2 springForce = 0.5f * spring.K * d * n;
-			vec2 damping = 10000.0f * (m_velocities[spring.B] - m_velocities[spring.A]);
+			vec2 damping = spring.Damping * (m_velocities[spring.B] - m_velocities[spring.A]);
 
 			vec2 f = springForce - damping;
 
@@ -664,12 +664,12 @@ namespace WeirdEngine
 		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 	}
 
-	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
+	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance, float damping)
 	{
 		if (a == b)
 			return;
 
-		m_springs.emplace_back(a, b, stiffness, distance);
+		m_springs.emplace_back(a, b, stiffness, distance, damping);
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)

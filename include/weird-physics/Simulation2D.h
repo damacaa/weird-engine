@@ -97,13 +97,13 @@ namespace WeirdEngine
 
 		double getSimulationTime();
 
-		//void setSize(unsigned int size);
+		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
 		size_t getSize();
 
 		// Interaction
 		void addForce(SimulationID id, vec2 force);
-		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
+		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float daping = 1000.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 
 		void fix(SimulationID id);
@@ -121,8 +121,10 @@ namespace WeirdEngine
 
 		SimulationID raycast(vec2 pos);
 
-	private:
+		void setGravity(float gravity) { m_gravity = gravity; }
+		void setDamping(float damping) { m_damping = damping; }
 
+	private:
 		void process();
 		void checkCollisions();
 		void solveCollisionsPositionBased();
@@ -167,19 +169,20 @@ namespace WeirdEngine
 				K = 0;
 			}
 
-
-			Spring(int a, int b, float k, float distance)
+			Spring(int a, int b, float k, float distance, float damping)
 			{
 				A = a;
 				B = b;
 				K = k;
 				Distance = distance;
+				Damping = damping;
 			}
 
 			int A;
 			int B;
 			float K;
 			float Distance;
+			float Damping;
 		};
 
 		struct DistanceConstraint
@@ -262,8 +265,8 @@ namespace WeirdEngine
 		const float m_diameterSquared;
 		const float m_radious;
 
-		const float m_push;
-		const float m_damping;
+		float m_push;
+		float m_damping;
 
 		float m_gravity;
 

@@ -1,5 +1,5 @@
 #include "weird-renderer/Texture.h"
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+
 
 namespace WeirdEngine
 {
@@ -178,7 +178,7 @@ namespace WeirdEngine
 			}
 
 			// Save the image using stb_image_write. This will write it as a PNG.
-			// stbi_write_png(fileName, width, height, 4, pixels_uchar, width * 4);
+			stbi_write_png(fileName, width, height, 4, pixels_uchar, width * 4);
 
 			// Free the allocated memory.
 			delete[] pixels;

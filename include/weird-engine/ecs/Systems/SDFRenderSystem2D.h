@@ -17,32 +17,17 @@ namespace WeirdEngine
 			m_transformManager = ecs.getComponentManager<Transform>();
 		}
 
-		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
-		{
-			m_materialsAreDirty = true;
-			if (m_materialsAreDirty)
-			{
-				shader.setUniform("u_staticColors", m_colorPalette, 16);
-				m_materialsAreDirty = false;
-			}
-
+		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size) 
+		{ 
 			auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
 			auto& customShapeArray = *m_customShapeManager->getComponentArray<CustomShape>();
 			auto& transformArray = *m_transformManager->getComponentArray<Transform>();
 
-			if (customShapeArray.getSize() != m_lastCustomShapeCount)
-			{
-				m_customShapesNeedUpdate = true;
-				m_lastCustomShapeCount = customShapeArray.getSize();
-			}
-
 			uint32_t ballCount = componentArray.getSize();
 			uint32_t customShapeCount = customShapeArray.getSize();
-			uint32_t totalCount = ballCount + customShapeCount;
 
-			uint32_t size = ballCount + (2 * customShapeCount);
-
-			WeirdRenderer::Dot2D* data = new  WeirdRenderer::Dot2D[size];
+			size = ballCount + (2 * customShapeCount);
+			data = new WeirdRenderer::Dot2D[size];
 
 			for (size_t i = 0; i < ballCount; i++)
 			{
@@ -67,12 +52,27 @@ namespace WeirdEngine
 				data[ballCount + (2 * i) + 1].size = shape.m_parameters[6];
 				data[ballCount + (2 * i) + 1].material = shape.m_parameters[7];
 			}
+		}
 
+		// lights are still not used
+		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
+		{
+			m_materialsAreDirty = true;
+			if (m_materialsAreDirty)
+			{
+				shader.setUniform("u_staticColors", m_colorPalette, 16);
+				m_materialsAreDirty = false;
+			}
+
+			WeirdRenderer::Dot2D* data;
+			uint32_t size;
+
+			fillDataBuffer(data, size);
 
 			//shader.setUniform("directionalLightDirection", lights[0].rotation);
 			rp.Draw(shader, data, size);
 
-			delete[] data;
+			delete[] data; // TODO: reuse data buffer
 		}
 
 		// Function to find the closest color in the palette

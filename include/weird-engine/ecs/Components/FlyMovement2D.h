@@ -10,7 +10,7 @@ namespace WeirdEngine
 		{
 
 			float speed;
-			float scrollSpeed = 5.0f;
+			float scrollSpeed = 3.0f;
 
 			FlyMovement2D() : speed(1.0f)
 			{

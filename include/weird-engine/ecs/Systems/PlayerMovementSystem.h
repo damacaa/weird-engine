@@ -34,6 +34,9 @@ namespace WeirdEngine
 
 		private:
 
+			vec3 v;
+			vec3 targetPosition;
+
 			void updateMovement2D(ECSManager& ecs, float delta)
 			{
 				auto& componentArray = *ecs.getComponentManager<FlyMovement2D>()->getComponentArray<FlyMovement2D>();
@@ -50,6 +53,12 @@ namespace WeirdEngine
 
 					uint32_t m_width = 1200; // Todo get real screen size
 					uint32_t m_height = 800;
+
+					vec3 a = targetPosition - t.position;
+					v += (500.0f * delta * a) - (0.1f * v);
+					t.position += delta * v;
+
+					targetPosition = t.position;
 
 
 					if (Input::GetMouseButtonDown(Input::MiddleClick))
@@ -70,9 +79,8 @@ namespace WeirdEngine
 					}
 					else if (m_locked)
 					{
-						t.position += 100.0f * t.position.z * delta * flyComponent.speed * vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
+						targetPosition += 10.0f * targetPosition.z * delta * flyComponent.speed * vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
 						Input::SetMousePosition((m_width / 2), (m_height / 2));
-						continue;
 					}
 
 					if (Input::GetMouseButtonDown(Input::LeftClick))
@@ -83,37 +91,41 @@ namespace WeirdEngine
 					// Handles key inputs
 					if (Input::GetKey(Input::W))
 					{
-						t.position += t.position.z * delta * flyComponent.speed * c.camera.Up;
+						targetPosition += targetPosition.z * delta * flyComponent.speed * c.camera.Up;
 					}
 					if (Input::GetKey(Input::A))
 					{
-						t.position += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						targetPosition += targetPosition.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
 					}
 					if (Input::GetKey(Input::S))
 					{
-						t.position += t.position.z * delta * flyComponent.speed * -c.camera.Up;
+						targetPosition += targetPosition.z * delta * flyComponent.speed * -c.camera.Up;
 					}
 					if (Input::GetKey(Input::D))
 					{
-						t.position += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						targetPosition += targetPosition.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
 					}
 
 
 					if (Input::GetMouseButton(Input::WheelDown))
 					{
-						t.position += flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
+						// Move camera backwards
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
 
+						// Move camera towards the cursor
 						vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
-						vec2 travel = cursorPosition - (vec2)t.position;
-						t.position -= flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+						vec2 travel = cursorPosition - (vec2)targetPosition;
+						targetPosition -= flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(targetPosition.z), travel.y / abs(targetPosition.z), 0);
 					}
-					else if (Input::GetMouseButton(Input::WheelUp) && t.position.z > 10.0f)
+					else if (Input::GetMouseButton(Input::WheelUp) && targetPosition.z > 10.0f)
 					{
-						t.position += flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
+						// Move camera forwards
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
 
+						// Move camera towards the cursor
 						vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
-						vec2 travel = cursorPosition - (vec2)t.position;
-						t.position += flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+						vec2 travel = cursorPosition - (vec2)targetPosition;
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(targetPosition.z), travel.y / abs(targetPosition.z), 0);
 					}
 
 

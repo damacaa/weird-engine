@@ -23,9 +23,9 @@ namespace WeirdEngine
 			// Stores the width, height, and the number of color channels of the image
 			int widthImg = 0, heightImg = 0, numColCh = 0;
 			// Flips the image so it appears right side up
-			//TODO: fix this in cmake file stbi_set_flip_vertically_on_load(true);
+			//TODO: fix this in cmake file wstbi_set_flip_vertically_on_load(true);
 			// Reads the image from a file and stores it in bytes
-			unsigned char* bytes = nullptr; //TODO: fix this in cmake file stbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+			unsigned char* bytes = nullptr; //TODO: fix this in cmake file wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
@@ -92,7 +92,7 @@ namespace WeirdEngine
 			glGenerateMipmap(GL_TEXTURE_2D);
 
 			// Deletes the image data as it is already in the OpenGL Texture object
-			//TODO: fix this in cmake file stbi_image_free(bytes);
+			//TODO: fix this in cmake file wstbi_image_free(bytes);
 
 			// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -151,7 +151,7 @@ namespace WeirdEngine
 			//	data[idx + 3] = 255;
 			//}
 			//
-			//stbi_write_png("output_texture.png", width, height, 4, data, width * 4);
+			//wstbi_write_png("output_texture.png", width, height, 4, data, width * 4);
 
 			//delete[] data;
 
@@ -178,7 +178,7 @@ namespace WeirdEngine
 			}
 
 			// Save the image using stb_image_write. This will write it as a PNG.
-			stbi_write_png(fileName, width, height, 4, pixels_uchar, width * 4);
+			wstbi_write_png(fileName, width, height, 4, pixels_uchar, width * 4);
 
 			// Free the allocated memory.
 			delete[] pixels;

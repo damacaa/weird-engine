@@ -722,20 +722,26 @@ namespace WeirdEngine
 		return  m_positions[entity];
 	}
 
-	void Simulation2D::setPosition(SimulationID entity, vec2 pos)
+	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
 
-		m_positions[entity] = pos;
-		m_previousPositions[entity] = pos;
-		m_velocities[entity] = vec2(0.0f);
+		m_positions[id] = pos;
+		m_previousPositions[id] = pos;
+		m_velocities[id] = vec2(0.0f);
 		//m_forces[entity] = vec2(0.0f);
-		m_size = std::max((uint32_t)m_size, entity + 1);
+		m_size = std::max((uint32_t)m_size, id + 1);
 	}
 
-	void Simulation2D::updateTransform(Transform& transform, SimulationID entity)
+	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
 	{
-		transform.position.x = m_positions[entity].x;
-		transform.position.y = m_positions[entity].y;
+		transform.position.x = m_positions[id].x;
+		transform.position.y = m_positions[id].y;
+	}
+
+	void Simulation2D::setMass(SimulationID id, float mass)
+	{
+		m_mass[id] = mass;
+		m_invMass[id] = 1.0f / mass;
 	}
 
 	void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)

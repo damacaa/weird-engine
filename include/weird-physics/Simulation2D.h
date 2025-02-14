@@ -111,9 +111,10 @@ namespace WeirdEngine
 		void unFix(SimulationID id);
 
 		// Retrieve results
-		vec2 getPosition(SimulationID entity);
-		void setPosition(SimulationID entity, vec2 pos);
-		void updateTransform(Transform& transform, SimulationID entity);
+		vec2 getPosition(SimulationID id);
+		void setPosition(SimulationID id, vec2 pos);
+		void updateTransform(Transform& transform, SimulationID id);
+		void setMass(SimulationID id, float mass);
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 

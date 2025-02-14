@@ -49,6 +49,7 @@ namespace WeirdEngine
 
 		Entity addShape(int shapeId, float* variables);
 
+		void lookAt(Entity entity);
 
 		SDFRenderSystem m_sdfRenderSystem;
 		SDFRenderSystem2D m_sdfRenderSystem2D;
@@ -58,6 +59,8 @@ namespace WeirdEngine
 		PhysicsInteractionSystem m_physicsInteractionSystem;
 		PlayerMovementSystem m_playerMovementSystem;
 		CameraSystem m_cameraSystem;
+
+		bool m_debugFly = true;
 
 	private:
 

@@ -31,21 +31,6 @@ namespace WeirdEngine
 					c.camera.Orientation = t.rotation;
 				}
 			}
-
-			void follow(ECSManager& ecs, Entity camera, Entity target)
-			{
-				Transform& t = ecs.getComponent<Transform>(camera);
-				Transform& tTarget = ecs.getComponent<Transform>(target);
-				float oldZ = t.position.z;
-
-				t.position = tTarget.position;
-				t.position.z = oldZ;
-				//t.rotation = tTarget.rotation;
-			}
-
-		private:
-
-
 		};
 	}
 }

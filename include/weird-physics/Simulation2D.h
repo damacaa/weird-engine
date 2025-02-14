@@ -105,6 +105,7 @@ namespace WeirdEngine
 		void addForce(SimulationID id, vec2 force);
 		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float daping = 1000.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
+		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
@@ -208,6 +209,29 @@ namespace WeirdEngine
 			float Distance;
 		};
 
+		struct GravitationalConstraint
+		{
+		public:
+			GravitationalConstraint()
+			{
+				A = -1;
+				B = -1;
+				g = 1.0f;
+			}
+
+
+			GravitationalConstraint(int a, int b, float gravity)
+			{
+				A = a;
+				B = b;
+				g = gravity;
+			}
+
+			int A;
+			int B;
+			float g;
+		};
+
 		struct CollisionHash {
 			std::size_t operator()(const Collision& s) const {
 				bool flip = s.A < s.B;
@@ -289,6 +313,7 @@ namespace WeirdEngine
 		std::vector<SimulationID> m_fixedObjects;
 		std::vector<Spring> m_springs;
 		std::vector<DistanceConstraint> m_distanceConstraints;
+		std::vector<GravitationalConstraint> m_gravitationalConstraints;
 
 		std::thread m_simulationThread;
 		void runSimulationThread();

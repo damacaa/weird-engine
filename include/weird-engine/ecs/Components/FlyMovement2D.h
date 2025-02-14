@@ -13,6 +13,7 @@ namespace WeirdEngine
 			float scrollSpeed = 5.0f;
 			vec3 v;
 			float speed;
+			bool isSmooth = true;
 
 			FlyMovement2D() : speed(1.0f)
 			{

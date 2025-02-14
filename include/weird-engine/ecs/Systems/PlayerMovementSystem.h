@@ -138,9 +138,16 @@ namespace WeirdEngine
 
 					flyComponent.targetPosition = targetPosition;
 
-					vec3 a = flyComponent.targetPosition - t.position;
-					flyComponent.v += (500.0f * delta * a) - (0.5f * flyComponent.v);
-					t.position += delta * flyComponent.v;
+					if (flyComponent.isSmooth) 
+					{
+						vec3 a = flyComponent.targetPosition - t.position;
+						flyComponent.v += (500.0f * delta * a) - (0.5f * flyComponent.v);
+						t.position += delta * flyComponent.v;
+					} 
+					else
+					{
+						t.position = targetPosition;
+					}
 				}
 			}
 

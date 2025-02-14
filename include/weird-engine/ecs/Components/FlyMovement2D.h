@@ -9,8 +9,10 @@ namespace WeirdEngine
 		struct FlyMovement2D : public Component
 		{
 
+			vec3 targetPosition;
+			float scrollSpeed = 5.0f;
+			vec3 v;
 			float speed;
-			float scrollSpeed = 3.0f;
 
 			FlyMovement2D() : speed(1.0f)
 			{

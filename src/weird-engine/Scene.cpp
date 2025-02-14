@@ -130,7 +130,10 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 	void Scene::update(double delta, double time)
 	{
 		// Update systems
-		m_playerMovementSystem.update(m_ecs, delta);
+		if(m_debugFly)
+		{
+			m_playerMovementSystem.update(m_ecs, delta);
+		}
 		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 
 		m_cameraSystem.update(m_ecs);
@@ -161,6 +164,16 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
 		return entity;
 	}
+
+	void Scene::lookAt(Entity entity) 
+	{
+		FlyMovement2D& fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
+		Transform& target = m_ecs.getComponent<Transform>(entity);
+		float oldZ = fly.targetPosition.z;
+
+		fly.targetPosition = target.position;
+		fly.targetPosition.z = oldZ;
+	};
 
 	void Scene::loadScene(std::string& sceneFileContent)
 	{

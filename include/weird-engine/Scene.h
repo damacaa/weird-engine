@@ -34,6 +34,8 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& getCamera();
 		float getTime();
 
+		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
+
 
 	protected:
 		virtual void onStart() = 0;

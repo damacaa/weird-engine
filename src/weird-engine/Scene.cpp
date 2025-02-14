@@ -156,6 +156,11 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		return m_simulation2D.getSimulationTime();
 	}
 
+	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	{
+		m_sdfRenderSystem2D.fillDataBuffer(data, size);
+	}
+
 	Entity Scene::addShape(int shapeId, float* variables)
 	{
 		Entity entity = m_ecs.createEntity();

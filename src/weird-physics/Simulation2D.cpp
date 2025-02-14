@@ -580,6 +580,22 @@ namespace WeirdEngine
 			m_positions[spring.B] = pB;
 		}
 
+		for (auto it = m_gravitationalConstraints.begin(); it != m_gravitationalConstraints.end(); ++it)
+		{
+			GravitationalConstraint constraint = *it;
+
+			vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
+			vec2 n = normalize(v);
+			float distance = length(v);
+
+			float f = constraint.g * (m_mass[constraint.A] * m_mass[constraint.B]) / (distance * distance);
+
+			
+
+			m_forces[constraint.A] += f * n;
+			m_forces[constraint.B] -= f * n;
+		}
+
 		{
 			std::lock_guard<std::mutex> lock(g_fixMutex);
 			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
@@ -678,6 +694,14 @@ namespace WeirdEngine
 			return;
 
 		m_distanceConstraints.emplace_back(a, b, distance);
+	}
+
+	void Simulation2D::addGravitationalConstraint(SimulationID a, SimulationID b, float gravity)
+	{
+		if (a == b)
+			return;
+
+		m_gravitationalConstraints.emplace_back(a, b, gravity);
 	}
 
 	void Simulation2D::fix(SimulationID id)

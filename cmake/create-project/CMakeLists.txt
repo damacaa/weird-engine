@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Option to switch between local and online version of WeirdEngine
-option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" OFF)
+option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
 
 # Set paths for the local WeirdEngine
 set(WEIRD_ENGINE_LOCAL_PATH "C:/Projects/weird-games/weird-engine")

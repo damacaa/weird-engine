@@ -27,26 +27,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -75,15 +75,15 @@
     <LibraryPath>$(SolutionDir)Libraries\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Libraries\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)Libraries\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)include;$(ProjectDir)third-party\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)third-party\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(SolutionDir)Libraries\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Libraries\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)Libraries\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)include;$(ProjectDir)third-party\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)third-party\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -92,6 +92,8 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,6 +110,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,6 +126,8 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,6 +144,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,23 +160,68 @@
     <ClCompile Include="src\weird-engine\ResourceManager.cpp" />
     <ClCompile Include="src\weird-engine\Input.cpp" />
     <ClCompile Include="src\weird-engine\Scene.cpp" />
-    <ClCompile Include="src\weird-physics\CollisionDetection\SpatialHash.h" />
     <ClCompile Include="src\weird-physics\Simulation.cpp" />
     <ClCompile Include="src\weird-renderer\Renderer.cpp" />
     <ClCompile Include="src\weird-renderer\RenderPlane.cpp" />
     <ClCompile Include="src\weird-renderer\Camera.cpp" />
     <ClCompile Include="src\weird-renderer\EBO.cpp" />
     <ClCompile Include="src\weird-renderer\glad.c" />
-    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="include\weird-engine.h" />
     <ClCompile Include="src\weird-renderer\Mesh.cpp" />
     <ClCompile Include="src\weird-renderer\Shader.cpp" />
     <ClCompile Include="src\weird-renderer\stb.cpp" />
     <ClCompile Include="src\weird-renderer\Texture.cpp" />
-    <ClCompile Include="src\Utils.h" />
     <ClCompile Include="src\weird-renderer\VAO.cpp" />
     <ClCompile Include="src\weird-renderer\VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\weird-engine\Utils.h" />
+    <ClInclude Include="include\weird-engine\ecs\Component.h" />
+    <ClInclude Include="include\weird-engine\ecs\ComponentManager.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\Camera.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\CustomShape.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\FlyMovement.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\FlyMovement2D.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\InstancedMeshRenderer.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\LogicComponent.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\MeshRenderer.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\RigidBody.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\SDFRenderer.h" />
+    <ClInclude Include="include\weird-engine\ecs\Components\Transform.h" />
+    <ClInclude Include="include\weird-engine\ecs\ECS.h" />
+    <ClInclude Include="include\weird-engine\ecs\Entity.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\CameraSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\InstancedRenderSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\PhysicsInteractionSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\PlayerMovementSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\RenderSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\SDFRenderSystem.h" />
+    <ClInclude Include="include\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />
+    <ClInclude Include="include\weird-engine\Input.h" />
+    <ClInclude Include="include\weird-engine\math\MathExpressions.h" />
+    <ClInclude Include="include\weird-engine\math\MathExpressionSerialzation.h" />
+    <ClInclude Include="include\weird-engine\ResourceManager.h" />
+    <ClInclude Include="include\weird-engine\Scene.h" />
+    <ClInclude Include="include\weird-engine\SceneManager.h" />
+    <ClInclude Include="include\weird-physics\CollisionDetection\DynamicAABBTree2D.h" />
+    <ClInclude Include="include\weird-physics\CollisionDetection\Octree.h" />
+    <ClInclude Include="include\weird-physics\CollisionDetection\SpatialHash.h" />
+    <ClInclude Include="include\weird-physics\CollisionDetection\UniformGrid2D.h" />
+    <ClInclude Include="include\weird-physics\Simulation.h" />
+    <ClInclude Include="include\weird-physics\Simulation2D.h" />
+    <ClInclude Include="include\weird-renderer\Camera.h" />
+    <ClInclude Include="include\weird-renderer\EBO.h" />
+    <ClInclude Include="include\weird-renderer\Light.h" />
+    <ClInclude Include="include\weird-renderer\Mesh.h" />
+    <ClInclude Include="include\weird-renderer\Renderer.h" />
+    <ClInclude Include="include\weird-renderer\RenderPlane.h" />
+    <ClInclude Include="include\weird-renderer\Shader.h" />
+    <ClInclude Include="include\weird-renderer\Shape.h" />
+    <ClInclude Include="include\weird-renderer\Shape2D.h" />
+    <ClInclude Include="include\weird-renderer\Texture.h" />
+    <ClInclude Include="include\weird-renderer\VAO.h" />
+    <ClInclude Include="include\weird-renderer\VBO.h" />
     <ClInclude Include="Libraries\include\stb\stb_image_write.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\Camera.h" />
     <ClInclude Include="src\weird-engine\ecs\Components\CustomShape.h" />
@@ -181,7 +232,6 @@
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsInteractionSystem.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\PhysicsSystem2D.h" />
     <ClInclude Include="src\weird-engine\ecs\Systems\SDFRenderSystem2D.h" />
-    <ClInclude Include="src\weird-engine\ecs\Systems\DebugSystems.h" />
     <ClInclude Include="src\weird-engine\math\MathExpressions.h" />
     <ClInclude Include="src\weird-engine\math\MathExpressionSerialzation.h" />
     <ClInclude Include="src\weird-physics\CollisionDetection\DynamicAABBTree2D.h" />
@@ -211,7 +261,6 @@
     <ClInclude Include="src\weird-renderer\RenderPlane.h" />
     <ClInclude Include="src\weird-renderer\Shape.h" />
     <ClInclude Include="src\weird-renderer\Camera.h" />
-    <ClInclude Include="src\weird-renderer\EBO.h" />
     <ClInclude Include="src\weird-renderer\Mesh.h" />
     <ClInclude Include="src\weird-renderer\Shader.h" />
     <ClInclude Include="src\weird-renderer\Shape2D.h" />

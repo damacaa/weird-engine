@@ -51,11 +51,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
+    <ClCompile Include="include\weird-engine.h">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Utils.h">
-      <Filter>Header Files\weird-renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\weird-renderer\Camera.cpp">
       <Filter>Source Files\weird-renderer</Filter>
@@ -105,11 +102,8 @@
     <ClCompile Include="src\weird-engine\SceneManager.cpp">
       <Filter>Source Files\weird-engine</Filter>
     </ClCompile>
-    <ClCompile Include="src\weird-physics\CollisionDetection\SpatialHash.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\weird-physics\Simulation2D.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\weird-physics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -120,9 +114,6 @@
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\Camera.h">
-      <Filter>Header Files\weird-renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\weird-renderer\EBO.h">
       <Filter>Header Files\weird-renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-renderer\Mesh.h">
@@ -233,9 +224,6 @@
     <ClInclude Include="src\weird-engine\ecs\Components\FlyMovement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\weird-engine\ecs\Systems\DebugSystems.h">
-      <Filter>Header Files\weird-engine\ECS\Systems</Filter>
-    </ClInclude>
     <ClInclude Include="src\weird-physics\CollisionDetection\DynamicAABBTree2D.h">
       <Filter>Header Files\weird-physics</Filter>
     </ClInclude>
@@ -255,6 +243,147 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\weird-engine\math\MathExpressionSerialzation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Component.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\ComponentManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\CustomShape.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\FlyMovement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\FlyMovement2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\InstancedMeshRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\LogicComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\MeshRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\RigidBody.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\SDFRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Components\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\ECS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Entity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\CameraSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\InstancedRenderSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\PhysicsInteractionSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\PhysicsSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\PlayerMovementSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\RenderSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\SDFRenderSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ecs\Systems\SDFRenderSystem2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\Input.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\math\MathExpressions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\math\MathExpressionSerialzation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\ResourceManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\SceneManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\CollisionDetection\DynamicAABBTree2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\CollisionDetection\Octree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\CollisionDetection\SpatialHash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\CollisionDetection\UniformGrid2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\Simulation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-physics\Simulation2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\EBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Light.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\RenderPlane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Shape.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Shape2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\VAO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-renderer\VBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weird-engine\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

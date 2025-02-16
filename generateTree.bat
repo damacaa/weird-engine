@@ -1,1 +1,1 @@
-tree /F src/ > project_tree.txt
+tree /F | findstr /I /V "\.obj \.tlog \.log \.recipe" > project_tree.txt

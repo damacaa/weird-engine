@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 0
+#define MOTION_BLUR 1
 
 uniform float k = 0.25;
 
@@ -30,6 +30,19 @@ const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
 const float NEAR = 0.1f;
 const float FAR = 100.0f;
+
+// Custom shape variables
+#define var8 u_time
+#define var9 p.x
+#define var10 p.y
+#define var0 parameters0.x
+#define var1 parameters0.y
+#define var2 parameters0.z
+#define var3 parameters0.w
+#define var4 parameters1.x
+#define var5 parameters1.y
+#define var6 parameters1.z
+#define var7 parameters1.w
 
 // Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -117,6 +130,10 @@ vec4 getColor(vec2 p)
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
     float objectDist = shape_circle(p - positionSizeMaterial.xy);
+    if (objectDist < 0.0f)
+    {
+      objectDist *= 3;
+    }
 
 #if BLEND_SHAPES
 
@@ -132,11 +149,7 @@ vec4 getColor(vec2 p)
 #endif
   }
 
-
-
   /*ADD_SHAPES_HERE*/
-
-
 
   // Repetition
   // float scale = 1.0 / 10.0;
@@ -146,7 +159,10 @@ vec4 getColor(vec2 p)
   // roundPos.y += sin(u_time + round(0.1 * pp.x));
 
   // Set background color
-  vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+  // vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+  float pixel = 0.2 / u_resolution.y;
+  float zoom = -u_cameraMatrix[3].z;
+  vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom);
   col = d > 0.0 ? background : col;
 
   return vec4(col, d);
@@ -180,9 +196,9 @@ void main()
   if (FragColor.w > 0.0)
     FragColor = vec4(color.xyz, FragColor.w);
 
-    // FragColor = previousColor;
+  // FragColor = previousColor;
 
-    // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
+  // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
 
 #else
 

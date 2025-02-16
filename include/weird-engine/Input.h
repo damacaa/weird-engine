@@ -225,7 +225,7 @@ namespace WeirdEngine
 			m_width = width;
 			m_height = height;
 
-			if (m_window == nullptr) {
+			if (m_window != window) {
 				m_window = window;
 
 				// Set the scroll callback

@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Ensure we use the Multi-threaded DLL runtime library
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
+# Collect source files
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 # Create a static library
@@ -22,17 +23,39 @@ add_library(glad STATIC src/weird-renderer/glad.c)
 # Ensure glad is visible when linking WeirdEngine
 target_link_libraries(${PROJECT_NAME} PUBLIC glad)
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/third-party/include
+# Include directories for the library and glad
+target_include_directories(${PROJECT_NAME} 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>  # Fixed path
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>  # Fixed path
 )
 
-target_include_directories(glad PRIVATE ${CMAKE_SOURCE_DIR}/third-party/include)
-
-# Link dependencies (since this is a static library, linking is usually handled by the final executable)
-target_link_libraries(${PROJECT_NAME} PUBLIC glad)
+target_include_directories(glad 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>  # Fixed path
+)
 
 # Optional: Specify the output directory for the static library
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
+
+# Exporting both targets: WeirdEngine and glad
+export(TARGETS ${PROJECT_NAME} glad FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
+
+# Optional: Install the library (useful for external projects)
+install(TARGETS ${PROJECT_NAME} glad EXPORT WeirdEngineConfig
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(DIRECTORY include/ DESTINATION include)
+install(EXPORT WeirdEngineConfig
+    FILE WeirdEngineConfig.cmake
+    NAMESPACE WeirdEngine::
+    DESTINATION lib/cmake/WeirdEngine
+)
+
+message(STATUS "WeirdEngine include dirs: ${CMAKE_CURRENT_SOURCE_DIR}/include")
+message(STATUS "WeirdEngine third-party dirs: ${CMAKE_CURRENT_SOURCE_DIR}/third-party/include")

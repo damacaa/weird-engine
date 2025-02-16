@@ -19,6 +19,9 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES})
 add_library(glad STATIC src/weird-renderer/glad.c)
 
 # Include directories
+# Ensure glad is visible when linking WeirdEngine
+target_link_libraries(${PROJECT_NAME} PUBLIC glad)
+
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/third-party/include

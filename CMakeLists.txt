@@ -19,38 +19,49 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES})
 # Add glad library as static
 add_library(glad STATIC src/weird-renderer/glad.c)
 
-# Include directories
-# Ensure glad is visible when linking WeirdEngine
-target_link_libraries(${PROJECT_NAME} PUBLIC glad)
-
-# Include directories for the library and glad
-target_include_directories(${PROJECT_NAME} 
+# Public interface include directories
+target_include_directories(${PROJECT_NAME}
     PUBLIC 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>  # Fixed path
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>  # Fixed path
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>
+        $<INSTALL_INTERFACE:third-party/include>
 )
 
+# For glad, expose its include directory similarly
 target_include_directories(glad 
     PUBLIC 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>  # Fixed path
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>
+        $<INSTALL_INTERFACE:third-party/include>
 )
+
+# Link glad into WeirdEngine
+target_link_libraries(${PROJECT_NAME} PUBLIC glad)
+
+# Manually link the precompiled GLFW library (adjust the filename if needed)
+set(GLFW_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/third-party/bin")
+target_link_libraries(${PROJECT_NAME} PUBLIC "${GLFW_LIB_DIR}/glfw3.lib")
 
 # Optional: Specify the output directory for the static library
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
-# Exporting both targets: WeirdEngine and glad
+# Export both targets: WeirdEngine and glad
 export(TARGETS ${PROJECT_NAME} glad FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
 
-# Optional: Install the library (useful for external projects)
+# Install targets
 install(TARGETS ${PROJECT_NAME} glad EXPORT WeirdEngineConfig
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
 
+# Install public header directories
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY third-party/include/ DESTINATION third-party/include)
+
+# Export the CMake configuration for consumers
 install(EXPORT WeirdEngineConfig
     FILE WeirdEngineConfig.cmake
     NAMESPACE WeirdEngine::
@@ -58,4 +69,4 @@ install(EXPORT WeirdEngineConfig
 )
 
 message(STATUS "WeirdEngine include dirs: ${CMAKE_CURRENT_SOURCE_DIR}/include")
-message(STATUS "WeirdEngine third-party dirs: ${CMAKE_CURRENT_SOURCE_DIR}/third-party/include")
+message(STATUS "WeirdEngine third-party dirs: ${CMAKE_CURRENT_LIST_DIR}/third-party/include")

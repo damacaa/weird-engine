@@ -7,6 +7,9 @@ project(WeirdEngine)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Define ENGINE_PATH to the local path
+add_definitions(-DENGINE_PATH="${WEIRD_ENGINE_LOCAL_PATH}")
+
 # Ensure we use the Multi-threaded DLL runtime library
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 

@@ -1,4 +1,10 @@
 #pragma once
+
+#ifndef ENGINE_PATH
+#define ENGINE_PATH "../weird-engine"
+#endif // !ENGINE_PATH
+
+
 #include "weird-engine/Utils.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
@@ -7,8 +13,6 @@
 extern "C" {
 	_declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 }
-
-
 
 
 //int start(const char* projectPath);

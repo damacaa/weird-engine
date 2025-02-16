@@ -39,7 +39,7 @@ target_include_directories(glad
 target_link_libraries(${PROJECT_NAME} PUBLIC glad)
 
 # Manually link the precompiled GLFW library (adjust the filename if needed)
-set(GLFW_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/third-party/bin")
+set(GLFW_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/third-party/lib")
 target_link_libraries(${PROJECT_NAME} PUBLIC "${GLFW_LIB_DIR}/glfw3.lib")
 
 # Optional: Specify the output directory for the static library

@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" OFF)
 
 # Set paths for the local WeirdEngine
-set(WEIRD_ENGINE_LOCAL_PATH "C:/Projects/weird-games/weird-engine")
+set(WEIRD_ENGINE_LOCAL_PATH "")
 
 if(USE_LOCAL_WEIRD_ENGINE)
     # Use the local version of WeirdEngine

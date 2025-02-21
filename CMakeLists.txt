@@ -16,8 +16,11 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 # Collect source files
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-# Create a static library
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+# Collect header files
+file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
+
+# Create a static library (Explicitly add headers)
+add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 
 # Add glad library as static
 add_library(glad STATIC src/weird-renderer/glad.c)

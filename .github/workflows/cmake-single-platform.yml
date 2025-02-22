@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]  # Add Linux to the matrix
+        os: [windows-latest, ubuntu-latest]  # Testing on both Windows and Linux
 
     runs-on: ${{ matrix.os }}
 
@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt update && sudo apt install -y cmake g++ make  # Adjust as needed
+        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure CMake
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}

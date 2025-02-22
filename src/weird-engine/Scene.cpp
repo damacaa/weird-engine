@@ -1,4 +1,4 @@
-#include "weird-engine/scene.h"
+#include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-engine/math/MathExpressionSerialzation.h"

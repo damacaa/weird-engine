@@ -54,12 +54,12 @@ namespace WeirdEngine
 
 		template <typename T>
 		T& getComponent(Entity entity) {
-			return getComponentManager<T>()->getComponent<T>(entity);
+			return getComponentManager<T>()->template getComponent<T>(entity);
 		}
 
 		template <typename T>
 		bool hasComponent(Entity entity) const {
-			return getComponentManager<T>()->hasComponent<T>(entity);
+			return getComponentManager<T>()->template hasComponent<T>(entity);
 		}
 
 		template <typename T>
@@ -96,7 +96,7 @@ namespace WeirdEngine
 		template <typename T>
 		std::shared_ptr<ComponentArray<T>> getComponentArray()
 		{
-			return getComponentManager<T>()->getComponentArray<T>();
+			return getComponentManager<T>()->template getComponentArray<T>();
 		}
 
 	private:

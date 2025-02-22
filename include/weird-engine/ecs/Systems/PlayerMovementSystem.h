@@ -192,11 +192,11 @@ namespace WeirdEngine
 						t.position += delta * flyComponent.speed * -c.camera.Up;
 					}
 
-					if (Input::GetKeyDown(Input::LeftShift))
+					if (Input::GetKeyDown(Input::Space))
 					{
 						flyComponent.speed *= 4.0f;
 					}
-					else if (Input::GetKeyUp(Input::LeftShift))
+					else if (Input::GetKeyUp(Input::Space))
 					{
 						flyComponent.speed *= 0.25f;
 					}

@@ -1,7 +1,6 @@
 #pragma once
 #include "../ECS.h"
 #include "../../ResourceManager.h"
-#define min(a, b) a < b ? a : b
 
 
 namespace WeirdEngine

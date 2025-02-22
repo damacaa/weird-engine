@@ -25,7 +25,7 @@ namespace WeirdEngine
 		const std::string DIFFUSE = "diffuse";
 		const std::string SPECULAR = "specular";
 
-		const std::list<std::string> m_diffuseNames{
+		const std::vector<std::string> m_diffuseNames{
 			"diffuse",
 			"Diffuse",
 			"Albedo",

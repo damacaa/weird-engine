@@ -255,64 +255,64 @@ namespace WeirdEngine
 			m_forces[i] = force;
 		}
 
-		if (m_useSimdOperations)
-		{
-			const __m256 vec_timeStep = _mm256_set1_ps(timeStep);
-			const __m256 vec_damping = _mm256_set1_ps(m_damping);
-			const __m256 vec_zero = _mm256_setzero_ps();
+		//if (m_useSimdOperations)
+		//{
+		//	const __m256 vec_timeStep = _mm256_set1_ps(timeStep);
+		//	const __m256 vec_damping = _mm256_set1_ps(m_damping);
+		//	const __m256 vec_zero = _mm256_setzero_ps();
 
-			size_t i = 0;
-			for (; i + 2 <= m_size; i += 2) {  // Processing two vec3 elements (6 floats) at a time
+		//	size_t i = 0;
+		//	for (; i + 2 <= m_size; i += 2) {  // Processing two vec3 elements (6 floats) at a time
 
-				// Load forces and inverse masses
-				__m256 force1 = _mm256_loadu_ps(&m_forces[i].x);
-				__m256 force2 = _mm256_loadu_ps(&m_forces[i + 1].x);
-				__m256 invMass = _mm256_set_ps(m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1],
-					m_invMass[i], m_invMass[i], m_invMass[i], m_invMass[i]);
+		//		// Load forces and inverse masses
+		//		__m256 force1 = _mm256_loadu_ps(&m_forces[i].x);
+		//		__m256 force2 = _mm256_loadu_ps(&m_forces[i + 1].x);
+		//		__m256 invMass = _mm256_set_ps(m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1], m_invMass[i + 1],
+		//			m_invMass[i], m_invMass[i], m_invMass[i], m_invMass[i]);
 
 
-				// Calculate accelerations
-				__m256 acc1 = _mm256_mul_ps(force1, invMass);
-				__m256 acc2 = _mm256_mul_ps(force2, invMass);
+		//		// Calculate accelerations
+		//		__m256 acc1 = _mm256_mul_ps(force1, invMass);
+		//		__m256 acc2 = _mm256_mul_ps(force2, invMass);
 
-				// Load velocities
-				__m256 vel1 = _mm256_loadu_ps(&m_velocities[i].x);
-				__m256 vel2 = _mm256_loadu_ps(&m_velocities[i + 1].x);
+		//		// Load velocities
+		//		__m256 vel1 = _mm256_loadu_ps(&m_velocities[i].x);
+		//		__m256 vel2 = _mm256_loadu_ps(&m_velocities[i + 1].x);
 
-				// Calculate new velocities
-				__m256 dampingVel1 = _mm256_mul_ps(vec_damping, vel1);
-				__m256 dampingVel2 = _mm256_mul_ps(vec_damping, vel2);
+		//		// Calculate new velocities
+		//		__m256 dampingVel1 = _mm256_mul_ps(vec_damping, vel1);
+		//		__m256 dampingVel2 = _mm256_mul_ps(vec_damping, vel2);
 
-				__m256 newVel1 = _mm256_add_ps(vel1, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc1, dampingVel1)));
-				__m256 newVel2 = _mm256_add_ps(vel2, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc2, dampingVel2)));
+		//		__m256 newVel1 = _mm256_add_ps(vel1, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc1, dampingVel1)));
+		//		__m256 newVel2 = _mm256_add_ps(vel2, _mm256_mul_ps(vec_timeStep, _mm256_sub_ps(acc2, dampingVel2)));
 
-				// Store new velocities
-				_mm256_storeu_ps(&m_velocities[i].x, newVel1);
-				_mm256_storeu_ps(&m_velocities[i + 1].x, newVel2);
+		//		// Store new velocities
+		//		_mm256_storeu_ps(&m_velocities[i].x, newVel1);
+		//		_mm256_storeu_ps(&m_velocities[i + 1].x, newVel2);
 
-				// Calculate new positions
-				__m256 newPos1 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i].x), _mm256_mul_ps(vec_timeStep, newVel1));
-				__m256 newPos2 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i + 1].x), _mm256_mul_ps(vec_timeStep, newVel2));
+		//		// Calculate new positions
+		//		__m256 newPos1 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i].x), _mm256_mul_ps(vec_timeStep, newVel1));
+		//		__m256 newPos2 = _mm256_add_ps(_mm256_loadu_ps(&m_positions[i + 1].x), _mm256_mul_ps(vec_timeStep, newVel2));
 
-				// Store new positions
-				_mm256_storeu_ps(&m_positions[i].x, newPos1);
-				_mm256_storeu_ps(&m_positions[i + 1].x, newPos2);
+		//		// Store new positions
+		//		_mm256_storeu_ps(&m_positions[i].x, newPos1);
+		//		_mm256_storeu_ps(&m_positions[i + 1].x, newPos2);
 
-				// Reset forces
-				_mm256_storeu_ps(&m_forces[i].x, vec_zero);
-				_mm256_storeu_ps(&m_forces[i + 1].x, vec_zero);
-			}
+		//		// Reset forces
+		//		_mm256_storeu_ps(&m_forces[i].x, vec_zero);
+		//		_mm256_storeu_ps(&m_forces[i + 1].x, vec_zero);
+		//	}
 
-			// Handle remaining elements
-			for (; i < m_size; ++i) {
-				vec3 acc = m_forces[i] * m_invMass[i];
-				m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-				m_positions[i] += timeStep * m_velocities[i];
-				m_forces[i] = vec3{ 0.0f, 0.0f, 0.0f };
-			}
+		//	// Handle remaining elements
+		//	for (; i < m_size; ++i) {
+		//		vec3 acc = m_forces[i] * m_invMass[i];
+		//		m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
+		//		m_positions[i] += timeStep * m_velocities[i];
+		//		m_forces[i] = vec3{ 0.0f, 0.0f, 0.0f };
+		//	}
 
-		}
-		else {
+		//}
+		//else {
 			// Integrate
 			for (size_t i = 0; i < m_size; i++)
 			{
@@ -323,7 +323,7 @@ namespace WeirdEngine
 				// Reset forces
 				m_forces[i] = vec3(0.0f);
 			}
-		}
+		//}
 	}
 
 	SimulationID Simulation::generateSimulationID()

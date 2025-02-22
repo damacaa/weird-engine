@@ -405,7 +405,7 @@ namespace WeirdEngine
 
 	void ResourceManager::addDefaultTextures(std::vector<Texture>& textures)
 	{
-		Texture diffuse();
+		Texture diffuse;
 
 		// Generate a texture object
 		GLuint texture;

@@ -10,9 +10,16 @@
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/Renderer.h"
 
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
 extern "C" {
-	_declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
 }
+
 
 
 //int start(const char* projectPath);

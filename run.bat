@@ -1,1 +1,0 @@
-start x64/Release/weird-engine.exe

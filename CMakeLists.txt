@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Define ENGINE_PATH to the local path
 add_definitions(-DENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
 
+message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
+
 # Ensure we use the Multi-threaded DLL runtime library
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
@@ -34,7 +36,6 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:third-party/include>
 )
 
-# For glad, expose its include directory similarly
 target_include_directories(glad 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>
@@ -44,17 +45,27 @@ target_include_directories(glad
 # Link glad into WeirdEngine
 target_link_libraries(${PROJECT_NAME} PUBLIC glad)
 
-# Manually link the precompiled GLFW library (adjust the filename if needed)
-set(GLFW_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/third-party/lib")
-target_link_libraries(${PROJECT_NAME} PUBLIC "${GLFW_LIB_DIR}/glfw3.lib")
+# Fetch and build GLFW
+include(FetchContent)
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.3.8  # Change to the latest stable version if needed
+)
+FetchContent_MakeAvailable(glfw)
+set_target_properties(glfw PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# Link GLFW dynamically into WeirdEngine
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
 
 # Optional: Specify the output directory for the static library
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
-# Export both targets: WeirdEngine and glad
-export(TARGETS ${PROJECT_NAME} glad FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
+# Export both targets: WeirdEngine, glad, and glfw
+export(TARGETS ${PROJECT_NAME} glad glfw FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
+
 
 # Install targets
 install(TARGETS ${PROJECT_NAME} glad EXPORT WeirdEngineConfig
@@ -74,5 +85,3 @@ install(EXPORT WeirdEngineConfig
     DESTINATION lib/cmake/WeirdEngine
 )
 
-message(STATUS "WeirdEngine include dirs: ${CMAKE_CURRENT_SOURCE_DIR}/include")
-message(STATUS "WeirdEngine third-party dirs: ${CMAKE_CURRENT_LIST_DIR}/third-party/include")

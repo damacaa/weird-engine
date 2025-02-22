@@ -308,7 +308,7 @@ namespace WeirdEngine
 			// Store it in map
 			m_textureMap[path] = t;
 			// Add it to mesh textures
-			return t;
+			return m_textureMap[path];
 		}
 		catch (const std::exception& ex)
 		{
@@ -405,7 +405,7 @@ namespace WeirdEngine
 
 	void ResourceManager::addDefaultTextures(std::vector<Texture>& textures)
 	{
-		Texture diffuse();
+		Texture diffuse;
 
 		// Generate a texture object
 		GLuint texture;

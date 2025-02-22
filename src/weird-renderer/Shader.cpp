@@ -1,5 +1,8 @@
 #include "weird-renderer/Shader.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer

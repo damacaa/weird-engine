@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "../weird-renderer/Shape.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"

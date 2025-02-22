@@ -1,4 +1,3 @@
-#pragma once
 #include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine

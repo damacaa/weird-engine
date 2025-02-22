@@ -308,7 +308,7 @@ namespace WeirdEngine
 			// Store it in map
 			m_textureMap[path] = t;
 			// Add it to mesh textures
-			return t;
+			return m_textureMap[path];
 		}
 		catch (const std::exception& ex)
 		{

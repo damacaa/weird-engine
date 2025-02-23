@@ -16,7 +16,7 @@ message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 # Collect source files
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.vert" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.frag")
 
 # Collect header files
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")

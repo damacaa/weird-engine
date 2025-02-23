@@ -85,3 +85,25 @@ install(EXPORT WeirdEngineConfig
     DESTINATION lib/cmake/WeirdEngine
 )
 
+# ----------------------------------------------------------
+# Helper function to assign source groups based on folder structure.
+function(assign_source_groups TARGET)
+    foreach(source_file IN LISTS ARGN)
+        # Get the full path to the file's directory.
+        get_filename_component(FILE_PATH "${source_file}" PATH)
+        # Compute the path relative to the project's root.
+        file(RELATIVE_PATH REL_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${FILE_PATH}")
+        # Replace forward slashes with backslashes for Visual Studio filter naming.
+        string(REPLACE "/" "\\" FILTER_PATH "${REL_PATH}")
+       
+        if(FILTER_PATH STREQUAL "")
+            set(FILTER_PATH "Root")
+        endif()
+
+        # Assign the file to the computed filter.
+        source_group("${FILTER_PATH}" FILES "${source_file}")
+    endforeach()
+endfunction()
+
+# Assign source groups for all your files.
+assign_source_groups(${PROJECT_NAME} ${SOURCES} ${HEADERS})

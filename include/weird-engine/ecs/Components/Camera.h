@@ -22,6 +22,7 @@ namespace WeirdEngine
 
 			static glm::vec2 screenPositionToWorldPosition2D(Transform cameraTransform, vec2 screenPosition)
 			{
+				// TODO: fix this
 				vec2 resolution(1200, 800);
 				vec2 halfResolution(600, 400);
 

@@ -3,7 +3,9 @@
 #include<glm/glm.hpp>
 
 #include "../weird-engine/ecs/Entity.h"
+// #include "../weird-engine/ecs/ComponentArray.h"
 #include "../weird-engine/ecs/Components/Transform.h"
+
 #include "../weird-engine/ecs/Components/CustomShape.h"
 
 #include <vector>
@@ -36,8 +38,6 @@ namespace WeirdEngine
 	using SimulationID = std::uint32_t;
 
 	using vec2 = glm::vec2;
-
-
 
 
 	class CustomBitset

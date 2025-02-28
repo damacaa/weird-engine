@@ -37,17 +37,28 @@ file(GLOB_RECURSE WEIRDGAME_HEADERS
 set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 # Add executable including both sources and headers.
-add_executable(WeirdGame ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})
+add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})
 
 # Set include directories.
-target_include_directories(WeirdGame PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_include_directories(WeirdGame PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_BINARY_DIR}/weird-engine/include
     ${CMAKE_BINARY_DIR}/weird-engine/third-party/include
 )
 
 # Link to WeirdEngine.
-target_link_libraries(WeirdGame PRIVATE WeirdEngine)
+target_link_libraries(${PROJECT_NAME} PRIVATE WeirdEngine)
+
+# Set Asset Path Macro
+# Define the assets path variable
+set(ASSETS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+# set(ASSETS_PATH "./assets") # Set the asset path macro in release mode to a relative path that assumes the assets folder is in the same directory as the game executable
+
+# Print the assets path for debugging or confirmation
+message(STATUS "Assets path: ${ASSETS_PATH}")
+
+# Use the variable in target_compile_definitions
+target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${ASSETS_PATH}")
 
 # ----------------------------------------------------------
 # Helper function to assign source groups based on folder structure.
@@ -68,4 +79,4 @@ function(assign_source_groups TARGET)
 endfunction()
 
 # Assign source groups for all your files.
-assign_source_groups(WeirdGame ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})
+assign_source_groups(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})

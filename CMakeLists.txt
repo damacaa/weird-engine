@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Define ENGINE_PATH to the local path
-add_definitions(-DENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
+# add_definitions(-DENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
 
 message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -57,6 +57,12 @@ set_target_properties(glfw PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Link GLFW dynamically into WeirdEngine
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
+
+# Define ENGINE_PATH
+target_compile_definitions(${PROJECT_NAME} PUBLIC ENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Define SHADERS_PATH
+target_compile_definitions(${PROJECT_NAME} PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/")
 
 # Optional: Specify the output directory for the static library
 set_target_properties(${PROJECT_NAME} PROPERTIES

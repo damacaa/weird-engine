@@ -58,20 +58,20 @@ namespace WeirdEngine
 			glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
 
 			// Load shaders
-			m_geometryShaderProgram = Shader(ENGINE_PATH "/src/weird-renderer/shaders/default.vert", ENGINE_PATH "/src/weird-renderer/shaders/default.frag");
+			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
 			m_geometryShaderProgram.activate();
 
-			m_instancedGeometryShaderProgram = Shader(ENGINE_PATH "/src/weird-renderer/shaders/default_instancing.vert", ENGINE_PATH "/src/weird-renderer/shaders/default.frag");
+			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
 			m_instancedGeometryShaderProgram.activate();
 
 
-			m_sdfShaderProgram = Shader(ENGINE_PATH "/src/weird-renderer/shaders/raymarching.vert", ENGINE_PATH "/src/weird-renderer/shaders/raymarching2d.frag");
+			m_sdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
 			m_sdfShaderProgram.activate();
 
-			m_postProcessShaderProgram = Shader(ENGINE_PATH "/src/weird-renderer/shaders/raymarching.vert", ENGINE_PATH "/src/weird-renderer/shaders/postProcess2d.frag");
+			m_postProcessShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "postProcess2d.frag");
 			m_postProcessShaderProgram.activate();
 
-			m_outputShaderProgram = Shader(ENGINE_PATH "/src/weird-renderer/shaders/raymarching.vert", ENGINE_PATH "/src/weird-renderer/shaders/output.frag");
+			m_outputShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "output.frag");
 			m_outputShaderProgram.activate();
 
 

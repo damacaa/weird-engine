@@ -22,6 +22,12 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		, m_cameraSystem(m_ecs)
 		, m_runSimulationInThread(true)
 	{
+
+		// Custom component managers
+		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
+		m_ecs.registerComponent<RigidBody2D>(rbManager);
+
+
 		// Read content from file
 		std::string content = "";
 

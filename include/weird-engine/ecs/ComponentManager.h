@@ -1,24 +1,25 @@
 #pragma once
 
+#include <queue>
+
 #include "ComponentArray.h"
 #include "Entity.h"
 #include "Component.h"
 
 
-#include <queue>
 
 namespace WeirdEngine
 {
-	
 
+	class ComponentManager 
+	{
 
-
-
-	class ComponentManager {
-	private:
+	protected:
 
 		std::shared_ptr<void> m_componentArray;
 		std::queue<Entity> m_removedEntities;
+
+		virtual void HandleDestroyedComponent(Entity entity) {}
 
 	public:
 
@@ -52,7 +53,10 @@ namespace WeirdEngine
 			return getComponentArray<T>()->hasData(entity);
 		}
 
-		void removeData(Entity entity) {
+		
+
+		void removeData(Entity entity) 
+		{
 			m_removedEntities.push(entity);
 		}
 
@@ -62,19 +66,32 @@ namespace WeirdEngine
 
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
 
+			freeRemovedComponents<T>();
+
+			return componentArray;
+
+		}
+
+
+		template <typename T>
+		void freeRemovedComponents() 
+		{
+
+			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
+
 			while (m_removedEntities.size() > 0)
 			{
 				Entity e = m_removedEntities.front();
 
-				if (componentArray->hasData(e)) {
+				if (componentArray->hasData(e))
+				{
+					HandleDestroyedComponent(e);
 					componentArray->removeData(e);
 				}
 
 				m_removedEntities.pop();
 			}
-
-			return componentArray;
-
 		}
+
 	};
 }

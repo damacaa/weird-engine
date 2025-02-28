@@ -78,6 +78,13 @@ namespace WeirdEngine
 		}
 
 		template <typename T>
+		void registerComponent(std::shared_ptr<ComponentManager> manager) 
+		{
+			manager->registerComponent<T>();
+			m_componentManagers[typeid(T).name()] = manager;
+		}
+
+		template <typename T>
 		std::shared_ptr<ComponentManager> getComponentManager() {
 
 			auto key = typeid(T).name();
@@ -122,11 +129,12 @@ namespace WeirdEngine
 #include "Systems/SDFRenderSystem.h"
 
 
+#include "Components/RigidBodyManager.h"
+
 
 #include "Systems/SDFRenderSystem2D.h"
 #include "Systems/PhysicsSystem2D.h"
 #include "Systems/PhysicsInteractionSystem.h"
 #include "Systems/PlayerMovementSystem.h"
 #include "Systems/CameraSystem.h"
-
 

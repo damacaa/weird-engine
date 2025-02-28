@@ -19,17 +19,18 @@ namespace WeirdEngine
 		public:
 
 			PhysicsSystem2D(ECSManager& ecs) {
-				m_rbManager = ecs.getComponentManager<RigidBody2D>();
 			}
 
 			void init(ECSManager& ecs, Simulation2D& simulation) {
 
+				m_rbManager = ecs.getComponentManager<RigidBody2D>();
 				auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 
 
 			}
 
 			void update(ECSManager& ecs, Simulation2D& simulation) {
+
 
 				auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
 

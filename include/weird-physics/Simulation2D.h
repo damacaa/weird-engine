@@ -99,6 +99,7 @@ namespace WeirdEngine
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
+		void removeObject(SimulationID id);
 		size_t getSize();
 
 		// Interaction
@@ -115,6 +116,7 @@ namespace WeirdEngine
 		void setPosition(SimulationID id, vec2 pos);
 		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
+
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 

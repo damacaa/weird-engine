@@ -665,6 +665,12 @@ namespace WeirdEngine
 		return ++m_lastIdGiven;
 	}
 
+	void Simulation2D::removeObject(SimulationID id)
+	{
+		m_lastIdGiven--;
+		m_size--;
+	}
+
 	size_t Simulation2D::getSize()
 	{
 		return m_size;

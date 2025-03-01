@@ -35,6 +35,7 @@ namespace WeirdEngine
 				size_t indexOfRemovedEntity = entityToIndexMap[entity];
 				size_t indexOfLastElement = size - 1;
 				values[indexOfRemovedEntity] = values[indexOfLastElement];
+				values[indexOfLastElement] = T(); // This might be a mistake...
 
 				Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
 				entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;

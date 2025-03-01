@@ -44,12 +44,15 @@ namespace WeirdEngine
 		}
 
 
-		void addComponent(Entity entity, T& component) 
+		T& getNewComponent(Entity entity)
 		{
-			HandleNewComponent(entity, component);
 
 			auto castedComponentArray = getComponentArray();
-			castedComponentArray->insertData(entity, component);
+			T& component = castedComponentArray->getNewComponent(entity);
+
+			HandleNewComponent(entity, component);
+
+			return component;
 		}
 
 

@@ -74,16 +74,17 @@ namespace WeirdEngine
 				// Get mouse coordinates world space
 				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
 
-				Transform t;
+				
 				//t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
-				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
 				Entity entity = ecs.createEntity();
-				ecs.addComponent(entity, t);
+				Transform& t = ecs.addComponent<Transform>(entity);
+				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
 
-				ecs.addComponent(entity, SDFRenderer(m_currentMaterial + 4));
+				auto& sdfRenderer = ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = m_currentMaterial + 4;
 
-				RigidBody2D rb;
-				ecs.addComponent(entity, rb);
+				
+				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 				simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 
 				m_firstIdInSpring = -1;

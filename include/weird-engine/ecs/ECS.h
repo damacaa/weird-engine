@@ -50,23 +50,14 @@ namespace WeirdEngine
 		}
 
 		template <typename T>
-		T& addComponent(Entity entity) {
-
+		T& addComponent(Entity entity)
+		{
 			static_assert(std::is_base_of<Component, T>::value, "T must derive from Component");
-
-
-			
 
 			auto cm = getComponentManager<T>();
 			auto& component = cm->getNewComponent(entity);
-			component.Owner = entity;
 
 			return component;
-		}
-
-		template <typename T>
-		void removeComponent(Entity entity) {
-			getComponentManager<T>()->removeComponent(entity);
 		}
 
 		template <typename T>

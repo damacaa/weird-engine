@@ -29,6 +29,7 @@ namespace WeirdEngine
 
 		virtual void HandleNewComponent(Entity entity, T& component) {}
 		virtual void HandleDestroyedComponent(Entity entity) {}
+		virtual void HandlePostDestroyedComponent(Entity entity) {}
 
 	public:
 
@@ -49,6 +50,8 @@ namespace WeirdEngine
 
 			auto castedComponentArray = getComponentArray();
 			T& component = castedComponentArray->getNewComponent(entity);
+
+			component.Owner = entity;
 
 			HandleNewComponent(entity, component);
 
@@ -93,6 +96,7 @@ namespace WeirdEngine
 				{
 					HandleDestroyedComponent(e);
 					componentArray->removeData(e);
+					HandlePostDestroyedComponent(e);
 				}
 
 				m_removedEntities.pop();

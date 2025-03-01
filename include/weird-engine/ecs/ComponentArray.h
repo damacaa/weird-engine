@@ -33,6 +33,9 @@ namespace WeirdEngine
 				// Update maps
 				entityToIndexMap[entity] = idx;
 				indexToEntityMap[idx] = entity;
+
+				entityToIndexMap[target] = size - 1;
+				indexToEntityMap[size - 1] = target;
 			}
 
 			T& getNewComponent(Entity entity)

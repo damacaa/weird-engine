@@ -19,20 +19,20 @@ namespace WeirdEngine
 
 		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size) 
 		{ 
-			auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
-			auto& customShapeArray = *m_customShapeManager->getComponentArray<CustomShape>();
-			auto& transformArray = *m_transformManager->getComponentArray<Transform>();
+			auto componentArray = m_sdfRendererManager->getComponentArray();
+			auto customShapeArray = m_customShapeManager->getComponentArray();
+			auto transformArray = m_transformManager->getComponentArray();
 
-			uint32_t ballCount = componentArray.getSize();
-			uint32_t customShapeCount = customShapeArray.getSize();
+			uint32_t ballCount = componentArray->getSize();
+			uint32_t customShapeCount = customShapeArray->getSize();
 
 			size = ballCount + (2 * customShapeCount);
 			data = new WeirdRenderer::Dot2D[size];
 
 			for (size_t i = 0; i < ballCount; i++)
 			{
-				auto& mr = componentArray[i];
-				auto& t = transformArray.getDataFromEntity(mr.Owner);
+				auto& mr = componentArray->getDataAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(mr.Owner);
 
 				data[i].position = (vec2)t.position;
 				data[i].size = 1.0f;
@@ -42,7 +42,7 @@ namespace WeirdEngine
 			// 2 vec4s per customShape
 			for (size_t i = 0; i < customShapeCount; i++)
 			{
-				auto& shape = customShapeArray[i];
+				auto& shape = customShapeArray->getDataAtIdx(i);
 
 				data[ballCount + (2 * i)].position = vec2(shape.m_parameters[0], shape.m_parameters[1]);
 				data[ballCount + (2 * i)].size = shape.m_parameters[2];
@@ -99,9 +99,9 @@ namespace WeirdEngine
 		}
 
 	private:
-		std::shared_ptr<ComponentManager> m_sdfRendererManager;
-		std::shared_ptr<ComponentManager> m_customShapeManager;
-		std::shared_ptr<ComponentManager> m_transformManager;
+		std::shared_ptr<ComponentManager<SDFRenderer>> m_sdfRendererManager;
+		std::shared_ptr<ComponentManager<CustomShape>> m_customShapeManager;
+		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 		glm::vec3 m_colorPalette[16] = {
 			vec3(0.025f, 0.025f, 0.05f), // Black

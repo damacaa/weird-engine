@@ -5,7 +5,7 @@
 
 namespace WeirdEngine
 {
-	class RigidBodyManager : public ComponentManager
+	class RigidBodyManager : public ComponentManager<RigidBody2D>
 	{
 	private:
 		Simulation2D* m_simulation;

@@ -10,10 +10,18 @@
 
 namespace WeirdEngine
 {
-
-	class ComponentManager 
+	class IComponentManager 
 	{
+	public:
+		virtual ~IComponentManager() = default;
+		virtual void freeRemovedComponents() = 0;
+		virtual void removeData(Entity entity) = 0;
+	};
 
+
+	template <typename T>
+	class ComponentManager : public IComponentManager
+	{
 	protected:
 
 		std::shared_ptr<void> m_componentArray;
@@ -23,60 +31,52 @@ namespace WeirdEngine
 
 	public:
 
-		ComponentManager() {
+		ComponentManager()
+		{
 
 		}
 
-		template <typename T>
-		void registerComponent() {
+
+		void registerComponent() 
+		{
 			m_componentArray = std::make_shared<ComponentArray<T>>();
 		}
 
-		template <typename T>
-		void addComponent(Entity entity, T component) {
-			auto castedComponentArray = getComponentArray<T>();
+
+		void addComponent(Entity entity, T component) 
+		{
+			auto castedComponentArray = getComponentArray();
 			castedComponentArray->insertData(entity, component);
 		}
 
-		template <typename T>
-		void removeComponent(Entity entity) {
-			getComponentArray<T>()->removeData(entity);
+
+		T& getComponent(Entity entity) 
+		{
+			return getComponentArray()->getDataFromEntity(entity);
 		}
 
-		template <typename T>
-		T& getComponent(Entity entity) {
-			return getComponentArray<T>()->getDataFromEntity(entity);
+
+		bool hasComponent(Entity entity) 
+		{
+			return getComponentArray()->hasData(entity);
 		}
 
-		template <typename T>
-		bool hasComponent(Entity entity) {
-			return getComponentArray<T>()->hasData(entity);
-		}
 
-		
-
-		void removeData(Entity entity) 
+		void removeData(Entity entity) override
 		{
 			m_removedEntities.push(entity);
 		}
 
 
-		template <typename T>
-		std::shared_ptr<ComponentArray<T>> getComponentArray() {
-
+		std::shared_ptr<ComponentArray<T>> getComponentArray() 
+		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
-
-			freeRemovedComponents<T>();
-
 			return componentArray;
-
 		}
 
 
-		template <typename T>
-		void freeRemovedComponents() 
+		void freeRemovedComponents()
 		{
-
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
 
 			while (m_removedEntities.size() > 0)
@@ -92,6 +92,5 @@ namespace WeirdEngine
 				m_removedEntities.pop();
 			}
 		}
-
 	};
 }

@@ -14,7 +14,7 @@ namespace WeirdEngine
 		class PhysicsSystem2D : public System
 		{
 		private:
-			std::shared_ptr<ComponentManager> m_rbManager;
+			std::shared_ptr<ComponentManager<RigidBody2D>> m_rbManager;
 
 		public:
 
@@ -24,7 +24,7 @@ namespace WeirdEngine
 			void init(ECSManager& ecs, Simulation2D& simulation) {
 
 				m_rbManager = ecs.getComponentManager<RigidBody2D>();
-				auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
+				auto componentArray = m_rbManager->getComponentArray();
 
 
 			}
@@ -32,7 +32,7 @@ namespace WeirdEngine
 			void update(ECSManager& ecs, Simulation2D& simulation) {
 
 
-				auto& componentArray = *m_rbManager->getComponentArray<RigidBody2D>();
+				auto componentArray = m_rbManager->getComponentArray();
 
 				//for (size_t i = simulation.getSize(); i < componentArray.size; i++)
 				//{
@@ -42,9 +42,9 @@ namespace WeirdEngine
 				//	simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
 				//}
 
-				for (size_t i = 0; i < componentArray.size; i++)
+				for (size_t i = 0; i < componentArray->getSize(); i++)
 				{
-					auto& rb = componentArray[i];
+					auto& rb = componentArray->getDataAtIdx(i);
 					Transform& transform = ecs.getComponent<Transform>(rb.Owner);
 					if (transform.isDirty)
 					{

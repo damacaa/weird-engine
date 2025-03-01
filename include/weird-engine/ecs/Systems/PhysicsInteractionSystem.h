@@ -241,14 +241,14 @@ namespace WeirdEngine
 
 				m_loadingImpulse = false;
 
-				auto& m_rbManager = *ecs.getComponentManager<RigidBody2D>();
-				auto& componentArray = *m_rbManager.getComponentArray<RigidBody2D>();
+				auto& m_rbManager = ecs.getComponentManager<RigidBody2D>();
+				auto& componentArray = m_rbManager->getComponentArray();
 
 				vec2 direction = (getMousePositionInWorld(ecs, simulation) - m_loadStartPosition);
 
-				for (size_t i = 0; i < componentArray.size; i++)
+				for (size_t i = 0; i < componentArray->getSize(); i++)
 				{
-					auto& rb = componentArray[i];
+					auto& rb = componentArray->getDataAtIdx(i);
 					simulation.addForce(rb.simulationId, direction);
 				}
 			}

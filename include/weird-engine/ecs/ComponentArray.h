@@ -22,6 +22,27 @@ namespace WeirdEngine
 				++size;
 			}
 
+			void replaceData(Entity entity, Entity target)
+			{
+				// Find target position
+				size_t idx = entityToIndexMap[target];
+
+				// Move origin values to target
+				values[idx] = values[entityToIndexMap[entity]];
+
+				// Update maps
+				entityToIndexMap[entity] = idx;
+				indexToEntityMap[idx] = entity;
+			}
+
+			T& getNewComponent(Entity entity)
+			{
+				entityToIndexMap[entity] = size;
+				indexToEntityMap[size] = entity;
+
+				return values[size++];
+			}
+
 			void removeData(Entity entity)
 			{
 				size_t indexOfRemovedEntity = entityToIndexMap[entity];

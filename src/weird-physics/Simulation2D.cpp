@@ -667,6 +667,16 @@ namespace WeirdEngine
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
+		m_positions[id] = m_positions[m_lastIdGiven];
+		m_previousPositions[id] = m_previousPositions[m_lastIdGiven];
+		m_velocities[id] = m_velocities[m_lastIdGiven];
+		m_mass[id] = m_mass[m_lastIdGiven];
+		m_invMass[id] = m_invMass[m_lastIdGiven];
+		m_forces[id] = m_forces[m_lastIdGiven];
+		m_externalForces[id] = m_externalForces[m_lastIdGiven];
+
+		// TODO: fix constraints :S
+
 		m_lastIdGiven--;
 		m_size--;
 	}

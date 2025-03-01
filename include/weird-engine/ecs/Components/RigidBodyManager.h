@@ -23,8 +23,18 @@ namespace WeirdEngine
 		void HandleDestroyedComponent(Entity entity) override
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
-			RigidBody2D rb = componentArray->getDataFromEntity(entity);
-			m_simulation->removeObject(rb.simulationId);
+
+			// Get removed component
+			RigidBody2D& removedRb = componentArray->getDataFromEntity(entity);
+			// Get its simulationId
+			auto removedId = removedRb.simulationId;
+
+			// Get last component in array, which will be moved to removedRb position
+			RigidBody2D& lastRb = componentArray->getDataAtIdx(componentArray->getSize() - 1);
+
+			componentArray->replaceData(lastRb.Owner, removedRb.Owner);
+
+			m_simulation->removeObject(removedId);
 		}
 	};
 }

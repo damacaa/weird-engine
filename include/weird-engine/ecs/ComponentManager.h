@@ -27,6 +27,7 @@ namespace WeirdEngine
 		std::shared_ptr<void> m_componentArray;
 		std::queue<Entity> m_removedEntities;
 
+		virtual void HandleNewComponent(Entity entity, T& component) {}
 		virtual void HandleDestroyedComponent(Entity entity) {}
 
 	public:
@@ -43,8 +44,10 @@ namespace WeirdEngine
 		}
 
 
-		void addComponent(Entity entity, T component) 
+		void addComponent(Entity entity, T& component) 
 		{
+			HandleNewComponent(entity, component);
+
 			auto castedComponentArray = getComponentArray();
 			castedComponentArray->insertData(entity, component);
 		}

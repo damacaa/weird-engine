@@ -23,8 +23,8 @@ namespace WeirdEngine
 	public:
 		RigidBody2D()
 			: simulationId(-1) {};
-		RigidBody2D(Simulation2D& simulation)
-			: simulationId(simulation.generateSimulationID()) {}; // simulation.generateSimulationID()
+		//RigidBody2D(Simulation2D& simulation)
+		//	: simulationId(simulation.generateSimulationID()) {}; // simulation.generateSimulationID()
 
 		unsigned int simulationId;
 	};

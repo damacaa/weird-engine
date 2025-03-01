@@ -1,4 +1,5 @@
 
+#pragma region ClaudePhysicsSystem
 // Claude's code
 
 #include <algorithm>
@@ -820,12 +821,58 @@ void testSimulator()
 }
 
 ////////
+#pragma endregion
 
 #include <iostream>
 
 #include "weird-engine.h"
 
 using namespace WeirdEngine;
+
+class EmptyScene : public Scene 
+{
+public:
+	EmptyScene()
+		: Scene() {};
+
+private:
+
+	Entity m_testEntity;
+	bool m_testEntityCreated = false;
+
+	void onUpdate() override
+	{
+		if (m_testEntityCreated)
+		{
+			m_ecs.destroyEntity(m_testEntity);
+			m_testEntityCreated = false;
+		}
+		else
+		{
+			Transform t;
+			t.position = vec3(15.0f, 30.0f, 0.0f);
+			Entity entity = m_ecs.createEntity();
+			m_ecs.addComponent(entity, t);
+
+			m_ecs.addComponent(entity, SDFRenderer(4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12));
+
+			RigidBody2D rb;
+			m_ecs.addComponent(entity, rb);
+			m_simulation2D.addForce(rb.simulationId, vec2(0, -50));
+
+			m_testEntity = entity;
+			m_testEntityCreated = true;
+		}
+	}
+
+	// Inherited via Scene
+	void onStart() override
+	{
+	}
+	void onRender() override
+	{
+	}
+};
 
 class RopeScene : public Scene
 {
@@ -860,7 +907,7 @@ private:
 
 			m_ecs.addComponent(entity, SDFRenderer(material));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_ecs.addComponent(entity, rb);
 		}
 
@@ -926,7 +973,7 @@ private:
 
 				ecs.addComponent(entity, SDFRenderer(4 + ecs.getComponentArray<SDFRenderer>()->getSize() % 12));
 
-				RigidBody2D rb(simulation2D);
+				RigidBody2D rb;
 				ecs.addComponent(entity, rb);
 				simulation2D.addForce(rb.simulationId, vec2(20, 0));
 
@@ -936,6 +983,8 @@ private:
 			m_lastSpawnTime = simulation2D.getSimulationTime();
 		}
 	}
+
+
 
 	void onUpdate() override
 	{
@@ -1049,7 +1098,7 @@ private:
 			}
 			m_ecs.addComponent(entity, SDFRenderer(material));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_ecs.addComponent(entity, rb);
 		}
 
@@ -1155,7 +1204,7 @@ private:
 
 			m_ecs.addComponent(entity, SDFRenderer(material));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_ecs.addComponent(entity, rb);
 		}
 
@@ -1320,7 +1369,7 @@ private:
 			}
 			m_ecs.addComponent(entity, SDFRenderer(material));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_ecs.addComponent(entity, rb);
 		}
 
@@ -1342,7 +1391,6 @@ private:
 	{
 	}
 };
-
 
 class SpaceScene : public Scene
 {
@@ -1385,7 +1433,7 @@ private:
 
 			m_ecs.addComponent(body, SDFRenderer(4 + (i % 3)));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 1.0f);
 			m_ecs.addComponent(body, rb);
 
@@ -1420,7 +1468,7 @@ private:
 
 			m_ecs.addComponent(sun, SDFRenderer(8));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 1000.f);
 			m_ecs.addComponent(sun, rb);
 		}
@@ -1432,7 +1480,7 @@ private:
 
 			m_ecs.addComponent(earth, SDFRenderer(6));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 1.0f);
 			m_ecs.addComponent(earth, rb);
 		}
@@ -1452,7 +1500,7 @@ private:
 
 			m_ecs.addComponent(moon, SDFRenderer(2));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 0.001f);
 			m_ecs.addComponent(moon, rb);
 		}
@@ -1512,7 +1560,8 @@ private:
 			m_ecs.addComponent(entity, t);
 
 			m_ecs.addComponent(entity, SDFRenderer(i % 16));
-			m_ecs.addComponent(entity, RigidBody2D(m_simulation2D));
+			RigidBody2D rb;
+			m_ecs.addComponent(entity, rb);
 
 			m_circles.push_back(entity);
 
@@ -1544,13 +1593,9 @@ private:
 
 int main()
 {
-	testSimulator();
-	return 0;
-
-
-	const char* projectPath = "weird-engine/SampleProject/";
 
 	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.registerScene<EmptyScene>("empty");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<ImageScene>("image");

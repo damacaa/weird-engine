@@ -15,6 +15,11 @@ namespace WeirdEngine
 		RigidBodyManager(Simulation2D& simulation)
 			: m_simulation(&simulation) {}
 
+		void HandleNewComponent(Entity entity, RigidBody2D& component) override
+		{
+			component.simulationId = m_simulation->generateSimulationID();
+		}
+
 		void HandleDestroyedComponent(Entity entity) override
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);

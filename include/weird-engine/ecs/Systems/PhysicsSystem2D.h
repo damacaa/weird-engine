@@ -56,15 +56,15 @@ namespace WeirdEngine
 					simulation.updateTransform(transform, rb.simulationId);
 				}
 
-				auto& shapeArray = *ecs.getComponentArray<CustomShape>();
+				auto shapeArray = ecs.getComponentArray<CustomShape>();
 
-				for (size_t i = 0; i < shapeArray.size; i++)
+				for (size_t i = 0; i < shapeArray->size; i++)
 				{
-					auto& shape = shapeArray[i];
+					auto& shape = shapeArray->getDataAtIdx(i);
 					if (shape.m_isDirty)
 					{
-						shape.m_isDirty = false;
 						simulation.updateShape(shape);
+						shape.m_isDirty = false;
 					}
 
 				}

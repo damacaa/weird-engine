@@ -74,9 +74,9 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
 		std::ostringstream oss;
 
-		auto atomArray = *m_ecs.getComponentManager<SDFRenderer>()->getComponentArray<SDFRenderer>();
-		int32_t atomCount = atomArray.getSize();
-		auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
+		int32_t atomCount = atomArray->getSize();
+		auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 
 		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
 
@@ -121,7 +121,7 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		onRender();
 
 		{
-			std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+			std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 			shader.setUniform("u_customShapeCount", componentArray->getSize());
 		}
 
@@ -150,6 +150,8 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		m_simulation2D.update(delta);
 
 		onUpdate();
+
+		m_ecs.freeRemovedComponents();
 	}
 
 	WeirdRenderer::Camera& Scene::getCamera()

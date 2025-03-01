@@ -9,7 +9,7 @@ using namespace ECS;
 	class InstancedRenderSystem : public System {
 	private:
 		const size_t MAX_INSTANCES = 255;
-		std::shared_ptr<ComponentManager> m_iRendererManager;
+		std::shared_ptr<ComponentManager<InstancedMeshRenderer>> m_iRendererManager;
 
 	public:
 
@@ -24,15 +24,15 @@ using namespace ECS;
 			shader.setUniform("lightColor", lights[0].color);
 			shader.setUniform("lightPos", lights[0].position);
 
-			auto& componentArray = *m_iRendererManager->getComponentArray<InstancedMeshRenderer>();
+			auto componentArray = m_iRendererManager->getComponentArray();
 
-			if (componentArray.getSize() == 0)
+			if (componentArray->getSize() == 0)
 				return;
 
-			auto& meshRenderer = componentArray[0];
+			auto& meshRenderer = componentArray->getDataAtIdx(0);
 
 
-			int arraySize = componentArray.getSize();
+			int arraySize = componentArray->getSize();
 
 
 			std::unordered_map<MeshID, std::vector<Transform>> transformMap;
@@ -40,7 +40,7 @@ using namespace ECS;
 			for (size_t i = 0; i < arraySize; i++)
 			{
 
-				auto& mr = componentArray[i];
+				auto& mr = componentArray->getDataAtIdx(i);
 				auto& t = ecs.getComponent<Transform>(mr.Owner);
 
 				auto id = mr.meshID;

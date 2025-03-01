@@ -31,12 +31,21 @@ namespace WeirdEngine
 
 		void destroyEntity(Entity entity) {
 			for (auto const& pair : m_componentManagers) {
-				const std::shared_ptr<ComponentManager>& manager = pair.second;
+				const auto& manager = pair.second;
 				manager->removeData(entity);
 			}
 
 			for (auto sys : m_systems) {
 
+			}
+		}
+
+		void freeRemovedComponents() 
+		{
+			for (auto const& pair : m_componentManagers) 
+			{
+				const auto manager = pair.second;
+				manager->freeRemovedComponents();
 			}
 		}
 
@@ -53,8 +62,9 @@ namespace WeirdEngine
 		}
 
 		template <typename T>
-		T& getComponent(Entity entity) {
-			return getComponentManager<T>()->template getComponent<T>(entity);
+		T& getComponent(Entity entity) 
+		{
+			return getComponentManager<T>()->getComponent(entity);
 		}
 
 		template <typename T>
@@ -70,22 +80,22 @@ namespace WeirdEngine
 		template <typename T>
 		void registerComponent() {
 
-			ComponentManager manager;
-			manager.registerComponent<T>();
-			auto pointerToManager = std::make_shared<ComponentManager>(manager);
+			ComponentManager<T> manager;
+			manager.registerComponent();
+			auto pointerToManager = std::make_shared<ComponentManager<T>>(manager);
 
 			m_componentManagers[typeid(T).name()] = pointerToManager;
 		}
 
 		template <typename T>
-		void registerComponent(std::shared_ptr<ComponentManager> manager) 
+		void registerComponent(std::shared_ptr<ComponentManager<T>> manager) 
 		{
-			manager->registerComponent<T>();
+			manager->registerComponent();
 			m_componentManagers[typeid(T).name()] = manager;
 		}
 
 		template <typename T>
-		std::shared_ptr<ComponentManager> getComponentManager() {
+		std::shared_ptr<ComponentManager<T>> getComponentManager() {
 
 			auto key = typeid(T).name();
 
@@ -97,17 +107,21 @@ namespace WeirdEngine
 				registerComponent<T>();
 			}
 
-			return m_componentManagers[key];
+			
+
+			auto result = std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[key]);
+
+			return result;
 		}
 
 		template <typename T>
 		std::shared_ptr<ComponentArray<T>> getComponentArray()
 		{
-			return getComponentManager<T>()->template getComponentArray<T>();
+			return getComponentManager<T>()->getComponentArray();
 		}
 
 	private:
-		std::unordered_map<std::string, std::shared_ptr<ComponentManager>> m_componentManagers;
+		std::unordered_map<std::string, std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::vector<std::shared_ptr<System>> m_systems;
 		Entity m_entityCount = 0;
 

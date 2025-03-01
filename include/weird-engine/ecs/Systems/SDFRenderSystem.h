@@ -8,8 +8,8 @@ namespace WeirdEngine
 
 	class SDFRenderSystem : public System {
 	private:
-		std::shared_ptr<ComponentManager> m_sdfRendererManager;
-		std::shared_ptr<ComponentManager> m_transformManager;
+		std::shared_ptr<ComponentManager<SDFRenderer>> m_sdfRendererManager;
+		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 	public:
 
@@ -20,18 +20,18 @@ namespace WeirdEngine
 
 		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights) {
 
-			auto& componentArray = *m_sdfRendererManager->getComponentArray<SDFRenderer>();
-			auto& transformArray = *m_transformManager->getComponentArray<Transform>();
+			auto componentArray = m_sdfRendererManager->getComponentArray();
+			auto transformArray = m_transformManager->getComponentArray();
 
-			unsigned int size = componentArray.getSize();
+			unsigned int size = componentArray->getSize();
 
 			WeirdRenderer::Shape* data = new WeirdRenderer::Shape[size];
 
 			for (size_t i = 0; i < size; i++)
 			{
-				auto& mr = componentArray[i];
+				auto& mr = componentArray->getDataAtIdx(i);
 				//auto& t = ecs.getComponent<Transform>(mr.Owner);
-				auto& t = transformArray.getDataFromEntity(mr.Owner);
+				auto& t = transformArray->getDataFromEntity(mr.Owner);
 
 				data[i].position = t.position;// +glm::vec3(0, mr.Owner, 0);
 				//data[i].size = t.scale.x;

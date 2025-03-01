@@ -22,7 +22,7 @@ namespace WeirdEngine
 			shader.setUniform("lightColor", lights[0].color);
 			shader.setUniform("lightPos", lights[0].position);
 
-			auto& componentArray = m_meshRendererManager->getComponentArray();
+			auto componentArray = m_meshRendererManager->getComponentArray();
 
 
 			for (size_t i = 0; i < componentArray->getSize(); i++)

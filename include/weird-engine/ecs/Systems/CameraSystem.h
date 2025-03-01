@@ -20,7 +20,7 @@ namespace WeirdEngine
 
 			void update(ECSManager& ecs)
 			{
-				auto& componentArray = *ecs.getComponentManager<Camera>()->getComponentArray<Camera>();
+				auto& componentArray = *ecs.getComponentManager<Camera>()->getComponentArray();
 				unsigned int size = componentArray.getSize();
 				for (size_t i = 0; i < size; i++)
 				{

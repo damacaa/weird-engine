@@ -8,7 +8,7 @@
 
 namespace WeirdEngine
 {
-vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
+	vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES)
@@ -22,6 +22,12 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		, m_cameraSystem(m_ecs)
 		, m_runSimulationInThread(true)
 	{
+
+		// Custom component managers
+		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
+		m_ecs.registerComponent<RigidBody2D>(rbManager);
+
+
 		// Read content from file
 		std::string content = "";
 
@@ -68,9 +74,9 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 
 		std::ostringstream oss;
 
-		auto atomArray = *m_ecs.getComponentManager<SDFRenderer>()->getComponentArray<SDFRenderer>();
-		int32_t atomCount = atomArray.getSize();
-		auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
+		int32_t atomCount = atomArray->getSize();
+		auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 
 		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
 
@@ -115,7 +121,7 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		onRender();
 
 		{
-			std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray<CustomShape>();
+			std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 			shader.setUniform("u_customShapeCount", componentArray->getSize());
 		}
 
@@ -130,7 +136,7 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 	void Scene::update(double delta, double time)
 	{
 		// Update systems
-		if(m_debugFly)
+		if (m_debugFly)
 		{
 			m_playerMovementSystem.update(m_ecs, delta);
 		}
@@ -144,6 +150,8 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		m_simulation2D.update(delta);
 
 		onUpdate();
+
+		m_ecs.freeRemovedComponents();
 	}
 
 	WeirdRenderer::Camera& Scene::getCamera()
@@ -164,13 +172,16 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 	Entity Scene::addShape(int shapeId, float* variables)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape shape(shapeId, variables);
-		m_ecs.addComponent(entity, shape);
+		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.m_distanceFieldId = shapeId;
+		std::copy(variables, variables + 8, shape.m_parameters);
+
+		// CustomShape shape(shapeId, variables); // check old constructor for references
 
 		return entity;
 	}
 
-	void Scene::lookAt(Entity entity) 
+	void Scene::lookAt(Entity entity)
 	{
 		FlyMovement2D& fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
 		Transform& target = m_ecs.getComponent<Transform>(entity);
@@ -189,16 +200,14 @@ vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 		// Create camera object
 		m_mainCamera = m_ecs.createEntity();
 
-		Transform t;
+
+		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.position = g_cameraPosition;
 		t.rotation = vec3(0, 0, -1.0f);
-		m_ecs.addComponent(m_mainCamera, t);
 
-		ECS::Camera c;
-		m_ecs.addComponent(m_mainCamera, c);
-		FlyMovement2D fly;
+		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
 		fly.targetPosition = g_cameraPosition;
-		m_ecs.addComponent(m_mainCamera, fly);
 
 		// Add a light
 		WeirdRenderer::Light light;

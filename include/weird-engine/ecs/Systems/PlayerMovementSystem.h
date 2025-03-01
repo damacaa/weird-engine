@@ -38,13 +38,13 @@ namespace WeirdEngine
 
 			void updateMovement2D(ECSManager& ecs, float delta)
 			{
-				auto& componentArray = *ecs.getComponentManager<FlyMovement2D>()->getComponentArray<FlyMovement2D>();
-				unsigned int size = componentArray.getSize();
+				auto componentArray = ecs.getComponentManager<FlyMovement2D>()->getComponentArray();
+				unsigned int size = componentArray->getSize();
 				for (size_t i = 0; i < size; i++)
 				{
 
 
-					auto& flyComponent = componentArray[i];
+					auto& flyComponent = componentArray->getDataAtIdx(i);
 					Entity target = flyComponent.Owner;
 
 					Transform& t = ecs.getComponent<Transform>(target);
@@ -153,7 +153,7 @@ namespace WeirdEngine
 
 			void updateFly(ECSManager& ecs, float delta)
 			{
-				auto& componentArray = *ecs.getComponentManager<FlyMovement>()->getComponentArray<FlyMovement>();
+				auto& componentArray = *ecs.getComponentManager<FlyMovement>()->getComponentArray();
 				unsigned int size = componentArray.getSize();
 				for (size_t i = 0; i < size; i++)
 				{
@@ -163,6 +163,7 @@ namespace WeirdEngine
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);
 
+					// TODO: fix this!!!
 					uint32_t m_width = 1200;
 					uint32_t m_height = 800;
 

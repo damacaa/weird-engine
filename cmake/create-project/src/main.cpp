@@ -1,8 +1,90 @@
+
 #include <iostream>
 
 #include "weird-engine.h"
 
 using namespace WeirdEngine;
+
+class EmptyScene : public Scene 
+{
+public:
+	EmptyScene()
+		: Scene() {};
+
+private:
+
+	std::array<Entity, 10> m_testEntity;
+	bool m_testEntityCreated = false;
+
+	float m_lastSpawnTime = 0.0f;
+
+	void onUpdate() override
+	{
+		if (m_testEntityCreated && (getTime() - m_lastSpawnTime) > 0.5f && Input::GetKeyDown(Input::U))
+		{
+			for (size_t i = 0; i < m_testEntity.size(); i++)
+			{
+				m_ecs.destroyEntity(m_testEntity[i]);
+			}
+
+			m_testEntityCreated = false;
+		}
+		else if(!m_testEntityCreated )
+		{			
+			for (size_t i = 0; i < m_testEntity.size(); i++)
+			{
+				Entity entity = m_ecs.createEntity();
+				Transform& t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(15.0f + (i % 10), 30.0f + (i / 10), 0.0f);
+				t.isDirty = true;
+
+				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+
+				RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
+				m_simulation2D.addForce(rb.simulationId, vec2(0, -50));
+
+				m_testEntity[i] = entity;
+				m_testEntityCreated = true;
+			}
+			
+
+			m_lastSpawnTime = getTime();
+		}
+
+		if (m_testEntityCreated && Input::GetKeyDown(Input::I)) 
+		{
+			for (size_t i = 0; i < m_testEntity.size(); i++)
+			{
+				RigidBody2D& rb = m_ecs.getComponent<RigidBody2D>(m_testEntity[i]);
+
+				if (i > 0)
+				{
+					m_simulation2D.addSpring(rb.simulationId, rb.simulationId - 1, 1000000.0f);
+				}
+				else
+				{
+					m_simulation2D.setPosition(rb.simulationId, vec2(0, 15));
+					m_simulation2D.fix(rb.simulationId);
+				}
+			}
+		}
+
+
+	}
+
+	// Inherited via Scene
+	void onStart() override
+	{
+		{
+			float variables[8]{ 0.0f, 0.0f };
+			addShape(0, variables);
+		}
+	}
+	void onRender() override
+	{
+	}
+};
 
 class RopeScene : public Scene
 {
@@ -29,16 +111,16 @@ private:
 
 			int material = 4 + (i % 12);
 
-			Transform t;
-			t.position = vec3(x + 0.5f, y + 0.5f, 0);
+			
 
 			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			m_ecs.addComponent(entity, SDFRenderer(material));
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = material;
 
-			RigidBody2D rb(m_simulation2D);
-			m_ecs.addComponent(entity, rb);
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		constexpr float stiffness = 20000000.0f;
@@ -96,15 +178,15 @@ private:
 				float y = 60 + (1.2 * i);
 				float z = 0;
 
-				Transform t;
-				t.position = vec3(x + 0.5f, y + 0.5f, z);
+				
 				Entity entity = ecs.createEntity();
-				ecs.addComponent(entity, t);
+				Transform& t = ecs.addComponent<Transform>(entity);
+				t.position = vec3(x + 0.5f, y + 0.5f, z);
 
-				ecs.addComponent(entity, SDFRenderer(4 + ecs.getComponentArray<SDFRenderer>()->getSize() % 12));
+				SDFRenderer& sdfRenderer = ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
 
-				RigidBody2D rb(simulation2D);
-				ecs.addComponent(entity, rb);
+				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 				simulation2D.addForce(rb.simulationId, vec2(20, 0));
 
 				// std::cout << rb.simulationId << std::endl;
@@ -113,6 +195,8 @@ private:
 			m_lastSpawnTime = simulation2D.getSimulationTime();
 		}
 	}
+
+
 
 	void onUpdate() override
 	{
@@ -141,11 +225,10 @@ private:
 			// Transform mouse coordinates to world space
 			vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-			Entity star = m_ecs.createEntity();
+
 
 			float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 0.5f, 13.0f, 5.0f };
-			CustomShape shape(1, variables);
-			m_ecs.addComponent(star, shape);
+			addShape(1, variables);
 
 
 		}
@@ -168,10 +251,7 @@ private:
 
 			float variables[8]{ mousePositionInWorld.x, mousePositionInWorld.y, 5.0f, 7.5f, 1.0f };
 
-			Entity test = m_ecs.createEntity();
-
-			CustomShape shape(m_sdfs.size() - 1, variables);
-			m_ecs.addComponent(test, shape);
+			addShape(m_sdfs.size() - 1, variables);
 
 			//newShapeAdded = true;
 		}
@@ -215,36 +295,31 @@ private:
 
 			float z = 0;
 
-			Transform t;
-			t.position = vec3(x + 0.5f, y + 0.5f, z);
+			
 
 			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 			if (i < 100)
 			{
 			}
-			m_ecs.addComponent(entity, SDFRenderer(material));
 
-			RigidBody2D rb(m_simulation2D);
-			m_ecs.addComponent(entity, rb);
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = material;
+
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
 		{
-			Entity floor = m_ecs.createEntity();
-
 			float variables[8]{ 0.5f, 1.5f, -1.0f };
-			CustomShape shape(0, variables);
-			m_ecs.addComponent(floor, shape);
+			addShape(0, variables);
 		}
 
 		{
-			Entity star = m_ecs.createEntity();
-
 			float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
-			CustomShape shape(1, variables);
-			m_ecs.addComponent(star, shape);
+			Entity star = addShape(1, variables);
 
 			m_cursorShape = star;
 		}
@@ -324,52 +399,34 @@ private:
 
 			material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			Transform t;
-			t.position = vec3(x + 0.5f, y + 0.5f, 0);
+			
 
 			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			m_ecs.addComponent(entity, SDFRenderer(material));
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity); 
+			sdfRenderer.materialId = material;
 
-			RigidBody2D rb(m_simulation2D);
-			m_ecs.addComponent(entity, rb);
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
 		{
 			float variables[8]{ 15, -5, 25.0f, 5.0f, 0.0f };
-
-			Entity floor = m_ecs.createEntity();
-
-			CustomShape shape(m_sdfs.size() - 1, variables);
-			m_ecs.addComponent(floor, shape);
-
-
+			addShape(m_sdfs.size() - 1, variables);
 		}
 
 		// Wall right
 		{
 			float variables[8]{ 30 + 5, 20, 5.0f, 30.0f, 0.0f };
-
-			Entity floor = m_ecs.createEntity();
-
-			CustomShape shape(m_sdfs.size() - 1, variables);
-			m_ecs.addComponent(floor, shape);
-
-
+			addShape(m_sdfs.size() - 1, variables);
 		}
 
 		// Wall left
 		{
 			float variables[8]{ 0 - 5, 20, 5.0f, 30.0f, 0.0f };
-
-			Entity floor = m_ecs.createEntity();
-
-			CustomShape shape(m_sdfs.size() - 1, variables);
-			m_ecs.addComponent(floor, shape);
-
-
+			addShape(m_sdfs.size() - 1, variables);
 		}
 	}
 
@@ -486,28 +543,25 @@ private:
 
 			float z = 0;
 
-			Transform t;
-			t.position = vec3(x + 0.5f, y + 0.5f, z);
+			
 
 			Entity entity = m_ecs.createEntity();
-			m_ecs.addComponent(entity, t);
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 			if (i < 100)
 			{
 			}
-			m_ecs.addComponent(entity, SDFRenderer(material));
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = material;
 
-			RigidBody2D rb(m_simulation2D);
-			m_ecs.addComponent(entity, rb);
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
 		{
-			Entity floor = m_ecs.createEntity();
-
 			float variables[8]{ 0.5f, 1.5f, -1.0f };
-			CustomShape shape(0, variables);
-			m_ecs.addComponent(floor, shape);
+			addShape(0, variables);
 		}
 	}
 
@@ -519,7 +573,6 @@ private:
 	{
 	}
 };
-
 
 class SpaceScene : public Scene
 {
@@ -555,16 +608,17 @@ private:
 
 			Entity body = m_ecs.createEntity();
 
-			Transform t;
+			
 			vec2 pos(floatDistrib(gen), floatDistrib(gen));
+			Transform& t = m_ecs.addComponent<Transform>(body);
 			t.position = 500.0f * vec3(pos.x, pos.y, 0);
-			m_ecs.addComponent(body, t);
 
-			m_ecs.addComponent(body, SDFRenderer(4 + (i % 3)));
 
-			RigidBody2D rb(m_simulation2D);
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(body);
+			sdfRenderer.materialId = 4 + (i % 3);
+
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(body);
 			m_simulation2D.setMass(rb.simulationId, 1.0f);
-			m_ecs.addComponent(body, rb);
 
 
 			for (auto b : m_celestialBodies)
@@ -586,30 +640,30 @@ private:
 
 	void loadSolarSystem()
 	{
-		Entity sun = m_ecs.createEntity();
+		/*Entity sun = m_ecs.createEntity();
 		Entity earth = m_ecs.createEntity();
 		Entity moon = m_ecs.createEntity();
 
 		{
-			Transform t;
+			
 			t.position = vec3(15, 35, 0);
 			m_ecs.addComponent(sun, t);
 
 			m_ecs.addComponent(sun, SDFRenderer(8));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 1000.f);
 			m_ecs.addComponent(sun, rb);
 		}
 
 		{
-			Transform t;
+			
 			t.position = vec3(45, 35, 0);
 			m_ecs.addComponent(earth, t);
 
 			m_ecs.addComponent(earth, SDFRenderer(6));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 1.0f);
 			m_ecs.addComponent(earth, rb);
 		}
@@ -623,13 +677,13 @@ private:
 		m_simulation2D.addForce(m_ecs.getComponent<RigidBody2D>(earth).simulationId, vec2(0, 5));
 
 		{
-			Transform t;
+			
 			t.position = vec3(55, 35, 0);
 			m_ecs.addComponent(moon, t);
 
 			m_ecs.addComponent(moon, SDFRenderer(2));
 
-			RigidBody2D rb(m_simulation2D);
+			RigidBody2D rb;
 			m_simulation2D.setMass(rb.simulationId, 0.001f);
 			m_ecs.addComponent(moon, rb);
 		}
@@ -644,7 +698,7 @@ private:
 		m_celestialBodies.resize(3);
 		m_celestialBodies[0] = sun;
 		m_celestialBodies[1] = earth;
-		m_celestialBodies[2] = moon;
+		m_celestialBodies[2] = moon;*/
 	}
 
 
@@ -684,12 +738,13 @@ private:
 		{
 			Entity entity = m_ecs.createEntity();
 
-			Transform t;
+			
+			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(0, 0, 0);
-			m_ecs.addComponent(entity, t);
 
-			m_ecs.addComponent(entity, SDFRenderer(i % 16));
-			m_ecs.addComponent(entity, RigidBody2D(m_simulation2D));
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = i % 16;
+			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 
 			m_circles.push_back(entity);
 
@@ -721,9 +776,9 @@ private:
 
 int main()
 {
-	const char* projectPath = "weird-engine/SampleProject/";
 
 	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.registerScene<EmptyScene>("empty");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<ImageScene>("image");

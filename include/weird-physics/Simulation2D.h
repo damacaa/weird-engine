@@ -3,7 +3,9 @@
 #include<glm/glm.hpp>
 
 #include "../weird-engine/ecs/Entity.h"
+// #include "../weird-engine/ecs/ComponentArray.h"
 #include "../weird-engine/ecs/Components/Transform.h"
+
 #include "../weird-engine/ecs/Components/CustomShape.h"
 
 #include <vector>
@@ -36,8 +38,6 @@ namespace WeirdEngine
 	using SimulationID = std::uint32_t;
 
 	using vec2 = glm::vec2;
-
-
 
 
 	class CustomBitset
@@ -99,6 +99,7 @@ namespace WeirdEngine
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
+		void removeObject(SimulationID id);
 		size_t getSize();
 
 		// Interaction
@@ -115,6 +116,7 @@ namespace WeirdEngine
 		void setPosition(SimulationID id, vec2 pos);
 		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
+
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 

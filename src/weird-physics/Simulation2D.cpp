@@ -667,16 +667,81 @@ namespace WeirdEngine
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		m_positions[id] = m_positions[m_lastIdGiven];
-		m_previousPositions[id] = m_previousPositions[m_lastIdGiven];
-		m_velocities[id] = m_velocities[m_lastIdGiven];
-		m_mass[id] = m_mass[m_lastIdGiven];
-		m_invMass[id] = m_invMass[m_lastIdGiven];
-		m_forces[id] = m_forces[m_lastIdGiven];
-		m_externalForces[id] = m_externalForces[m_lastIdGiven];
+		auto toId = id;
+		auto fromId = m_lastIdGiven;
 
-		// TODO: fix constraints :S
+		m_positions[toId] = m_positions[fromId];
+		m_previousPositions[toId] = m_previousPositions[fromId];
+		m_velocities[toId] = m_velocities[fromId];
+		m_mass[toId] = m_mass[fromId];
+		m_invMass[toId] = m_invMass[fromId];
+		m_forces[toId] = m_forces[fromId];
+		m_externalForces[toId] = m_externalForces[fromId];
 
+
+		// Fix constraints (potentially slow...)
+
+		// Remove constraints that affect deleted object
+		auto RemoveByID = [toId](auto& container)
+			{
+				container.erase(
+					std::remove_if(container.begin(), container.end(), [toId](const auto& constraint)
+						{
+							if (constraint.A == toId || constraint.B == toId)
+							{
+								return true;
+							}
+							return false;
+						}),
+					container.end()
+				);
+			};
+
+		RemoveByID(m_springs);
+		RemoveByID(m_distanceConstraints);
+		RemoveByID(m_gravitationalConstraints);
+
+		// Remove all occurrences deleted id
+		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), toId), m_fixedObjects.end());
+
+
+		// If a constraint targeted the moved object, change it to its new id
+		auto ChangeByID = [fromId, toId](auto& container)
+			{
+				for (auto& constraint : container)
+				{
+					if (constraint.A == fromId)
+					{
+						// Extra code goes here for when A is updated.
+						// For example, logging or updating related state.
+						constraint.A = toId;
+					}
+					if (constraint.B == fromId)
+					{
+						// Extra code goes here for when B is updated.
+						// For example, logging or updating related state.
+						constraint.B = toId;
+					}
+				}
+			};
+
+		ChangeByID(m_springs);
+		ChangeByID(m_distanceConstraints);
+		ChangeByID(m_gravitationalConstraints);
+
+
+		// Find if moved object is fixed
+		auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), fromId);
+
+		// If it is, fix it at its new id
+		if (it != m_fixedObjects.end()) {
+			// Compute the index by subtracting the beginning iterator
+			int index = it - m_fixedObjects.begin();
+			m_fixedObjects[index] = toId;
+		}
+
+
+		// Adjust size
 		m_lastIdGiven--;
 		m_size--;
 	}

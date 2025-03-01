@@ -82,7 +82,7 @@ namespace WeirdEngine
 
 				ecs.addComponent(entity, SDFRenderer(m_currentMaterial + 4));
 
-				RigidBody2D rb(simulation);
+				RigidBody2D rb;
 				ecs.addComponent(entity, rb);
 				simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 

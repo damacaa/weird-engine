@@ -38,7 +38,7 @@ namespace WeirdEngine
 
 			void updateMovement2D(ECSManager& ecs, float delta)
 			{
-				auto& componentArray = ecs.getComponentManager<FlyMovement2D>()->getComponentArray();
+				auto componentArray = ecs.getComponentManager<FlyMovement2D>()->getComponentArray();
 				unsigned int size = componentArray->getSize();
 				for (size_t i = 0; i < size; i++)
 				{

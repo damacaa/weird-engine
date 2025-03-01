@@ -242,8 +242,8 @@ namespace WeirdEngine
 
 				m_loadingImpulse = false;
 
-				auto& m_rbManager = ecs.getComponentManager<RigidBody2D>();
-				auto& componentArray = m_rbManager->getComponentArray();
+				auto m_rbManager = ecs.getComponentManager<RigidBody2D>();
+				auto componentArray = m_rbManager->getComponentArray();
 
 				vec2 direction = (getMousePositionInWorld(ecs, simulation) - m_loadStartPosition);
 

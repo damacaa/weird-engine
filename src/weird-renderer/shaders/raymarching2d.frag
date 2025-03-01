@@ -122,6 +122,7 @@ vec4 getColor(vec2 p)
   float d = 100000.0;
 
   vec3 col = vec3(0.0);
+  float minZ = 1000.0f;
 
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
@@ -135,6 +136,10 @@ vec4 getColor(vec2 p)
       objectDist *= 3;
     }
 
+    float z = positionSizeMaterial.z;
+    if(z < minZ)
+    {
+
 #if BLEND_SHAPES
 
     d = fOpUnionSoft(objectDist, d, k);
@@ -142,11 +147,25 @@ vec4 getColor(vec2 p)
     col = mix(getMaterial(p, materialId), col, delta);
 
 #else
-
+    
+    float objectDist = shape_circle(p - positionSizeMaterial.xy);
+    
     d = min(d, objectDist);
-    col = d == objectDist ? getMaterial(positionSizeMaterial.xy, materialId) : col;
+
+    if(objectDist < 0)
+    {
+        col = getMaterial(positionSizeMaterial.xy, materialId);
+        minZ = z;
+    }
+
+    
+    
+
+
 
 #endif
+
+    }
   }
 
   /*ADD_SHAPES_HERE*/

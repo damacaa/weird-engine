@@ -18,6 +18,7 @@ namespace WeirdEngine
 		void HandleNewComponent(Entity entity, RigidBody2D& component) override
 		{
 			component.simulationId = m_simulation->generateSimulationID();
+			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
 		}
 
 		void HandleDestroyedComponent(Entity entity) override
@@ -30,11 +31,30 @@ namespace WeirdEngine
 			auto removedId = removedRb.simulationId;
 
 			// Get last component in array, which will be moved to removedRb position
-			RigidBody2D& lastRb = componentArray->getDataAtIdx(componentArray->getSize() - 1);
-
-			componentArray->replaceData(lastRb.Owner, removedRb.Owner);
+			RigidBody2D& lastRb = componentArray->getLastData();
 
 			m_simulation->removeObject(removedId);
+
+			lastRb.simulationId = removedId;
+
+			// TODO: lastRb.simulationId might not match the lastId used in m_simulation->removeObject !!!!
+		}
+
+		void HandlePostDestroyedComponent(Entity entity) override
+		{
+		
+			/*std::cout << "After destroy: " << std::endl;
+
+			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
+
+		
+			for (size_t i = 0; i < componentArray->getSize(); i++)
+			{
+				auto& c = componentArray->getDataAtIdx(i);
+				std::cout << "  -" << i << " Entity: " << c.Owner << " Id:" << c.simulationId << std::endl;
+			}
+
+			std::cout << "------------------" << std::endl;*/
 		}
 	};
 }

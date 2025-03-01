@@ -22,22 +22,6 @@ namespace WeirdEngine
 				++size;
 			}
 
-			void replaceData(Entity entity, Entity target)
-			{
-				// Find target position
-				size_t idx = entityToIndexMap[target];
-
-				// Move origin values to target
-				values[idx] = values[entityToIndexMap[entity]];
-
-				// Update maps
-				entityToIndexMap[entity] = idx;
-				indexToEntityMap[idx] = entity;
-
-				entityToIndexMap[target] = size - 1;
-				indexToEntityMap[size - 1] = target;
-			}
-
 			T& getNewComponent(Entity entity)
 			{
 				entityToIndexMap[entity] = size;
@@ -70,6 +54,11 @@ namespace WeirdEngine
 			T& getDataAtIdx(size_t idx)
 			{
 				return values[idx];
+			}
+
+			T& getLastData()
+			{
+				return values[size - 1];
 			}
 
 			bool hasData(Entity entity)

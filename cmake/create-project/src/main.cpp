@@ -18,7 +18,8 @@ constexpr std::array<int, 256> createLookupTable() {
 		val = INVALID_INDEX;
 	}
 
-	auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+	//auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() "); // default
+	auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>0123456789!\" "); // small
 
 	for (size_t i = 0; letters[i] != '\0'; ++i) 
 	{
@@ -40,7 +41,9 @@ class TextScene : public Scene
 {
 private:
 
-	std::string imagePath = ENGINE_PATH "/src/weird-renderer/fonts/default.bmp";
+	std::string imagePath = ENGINE_PATH "/src/weird-renderer/fonts/small.bmp";
+	int charWidth = 4;
+	int charHeight = 5;
 
 	std::vector<std::vector<vec2>> m_letters;
 
@@ -59,8 +62,8 @@ private:
 			return;
 		}
 
-		int charWidth = 7;
-		int charHeight = 7;
+		
+		
 
 		int columns = width / charWidth;
 		int rows = height / charHeight;
@@ -96,9 +99,9 @@ private:
 					unsigned char b = img[index + 2];
 					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
 
-					if (r < 10)
+					if (r < 50)
 					{
-						float localX = offsetX - 1;
+						float localX = offsetX;
 						float localY = charHeight - offsetY;
 
 						m_letters[i].emplace_back(localX, localY);
@@ -107,8 +110,9 @@ private:
 			}
 		}
 
+		//std::string example("B");
 		// std::vector example{ 'H', 'E', 'L', 'L', 'O'};
-		// std::string example("HELLOWORLD");
+		//std::string example("HELLOWORLD");
 		std::string example("Hello World!");
 		//std::string example("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
 
@@ -133,7 +137,7 @@ private:
 				sdfRenderer.materialId = 1;
 			}
 
-			offset += charWidth - 2;
+			offset += charWidth;
 		}
 
 

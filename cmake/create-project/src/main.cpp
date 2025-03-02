@@ -5,6 +5,37 @@
 
 using namespace WeirdEngine;
 
+
+
+constexpr int INVALID_INDEX = -1;
+
+// Proper constexpr function for table creation
+constexpr std::array<int, 256> createLookupTable() {
+	std::array<int, 256> table{};
+
+	// Set all to INVALID_INDEX initially
+	for (int& val : table) {
+		val = INVALID_INDEX;
+	}
+
+	auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+
+	for (size_t i = 0; letters[i] != '\0'; ++i) 
+	{
+		table[letters[i]] = i;
+	}
+
+	return table;
+}
+
+// Declare the constexpr lookup table
+constexpr std::array<int, 256> lookup = createLookupTable();
+
+// Lookup function
+constexpr int getIndex(char c) {
+	return lookup[static_cast<unsigned char>(c)];
+}
+
 class TextScene : public Scene
 {
 private:
@@ -13,10 +44,11 @@ private:
 
 	std::vector<std::vector<vec2>> m_letters;
 
+
+
 	// Inherited via Scene
 	void onStart() override
 	{
-
 		// Load the image
 		int width, height, channels;
 		unsigned char* img = wstbi_load(imagePath.c_str(), &width, &height, &channels, 0);
@@ -40,7 +72,7 @@ private:
 		for (size_t i = 0; i < charCount; i++)
 		{
 			int startX = charWidth * (i % columns);
-			int startY = (charHeight * (i / rows));
+			int startY = (charHeight * (i / columns));
 
 			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
 			{
@@ -66,10 +98,10 @@ private:
 
 					if (r < 10)
 					{
-						float worldX = offsetX - 1;
-						float worldY = charHeight - offsetY;
+						float localX = offsetX - 1;
+						float localY = charHeight - offsetY;
 
-						m_letters[i].emplace_back(worldX, worldY);
+						m_letters[i].emplace_back(localX, localY);
 					}
 				}
 			}
@@ -77,12 +109,15 @@ private:
 
 		// std::vector example{ 'H', 'E', 'L', 'L', 'O'};
 		// std::string example("HELLOWORLD");
-		std::string example("HelloWorld");
+		std::string example("Hello World!");
+		//std::string example("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
 
 		float offset = 0;
 		for (auto i : example)
 		{
-			int idx = i - 'A';
+			int idx = getIndex(i);
+
+			std::cout << idx << std::endl;
 
 			for (auto vec2 : m_letters[idx])
 			{

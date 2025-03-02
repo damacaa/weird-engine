@@ -5,10 +5,210 @@
 
 using namespace WeirdEngine;
 
-class EmptyScene : public Scene 
+class TextScene : public Scene
+{
+private:
+
+	std::string imagePath = ENGINE_PATH "/src/weird-renderer/fonts/default.bmp";
+
+	std::vector<std::vector<vec2>> m_letters;
+
+	// Inherited via Scene
+	void onStart() override
+	{
+
+		// Load the image
+		int width, height, channels;
+		unsigned char* img = wstbi_load(imagePath.c_str(), &width, &height, &channels, 0);
+
+		if (img == nullptr)
+		{
+			std::cerr << "Error: could not load image." << std::endl;
+			return;
+		}
+
+		int charWidth = 7;
+		int charHeight = 7;
+
+		int columns = width / charWidth;
+		int rows = height / charHeight;
+
+		int charCount = columns * rows;
+
+		m_letters.resize(charCount);
+
+		for (size_t i = 0; i < charCount; i++)
+		{
+			int startX = charWidth * (i % columns);
+			int startY = (charHeight * (i / rows));
+
+			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
+			{
+				for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
+				{
+
+					int x = startX + offsetX;
+					int y = startY + offsetY;
+
+					// Calculate the index of the pixel in the image data
+					int index = (y * width + x) * channels;
+
+					if (index < 0 || index >= width * height * channels)
+					{
+						continue;
+					}
+
+					// Get the color values
+					unsigned char r = img[index];
+					unsigned char g = img[index + 1];
+					unsigned char b = img[index + 2];
+					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+					if (r < 10)
+					{
+						float worldX = offsetX - 1;
+						float worldY = charHeight - offsetY;
+
+						m_letters[i].emplace_back(worldX, worldY);
+					}
+				}
+			}
+		}
+
+		// std::vector example{ 'H', 'E', 'L', 'L', 'O'};
+		// std::string example("HELLOWORLD");
+		std::string example("HelloWorld");
+
+		float offset = 0;
+		for (auto i : example)
+		{
+			int idx = i - 'A';
+
+			for (auto vec2 : m_letters[idx])
+			{
+				float x = vec2.x + offset;
+				float y = vec2.y;
+
+				Entity entity = m_ecs.createEntity();
+				Transform& t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(x, y, -10.0f);
+
+				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				// sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+				sdfRenderer.materialId = 1;
+			}
+
+			offset += charWidth - 2;
+		}
+
+
+
+		//for (size_t x = 0; x < width; x++)
+		//{
+		//	for (size_t y = 0; y < height; y++)
+		//	{
+
+
+		//		if (x < 0)
+		//		{
+		//			x = 0;
+		//		}
+		//		else if (x >= width)
+		//		{
+		//			x = width - 1;
+		//		}
+
+		//		if (y < 0)
+		//		{
+		//			y = 0;
+		//		}
+		//		else if (y >= height)
+		//		{
+		//			y = height - 1;
+		//		}
+
+		//		// Calculate the index of the pixel in the image data
+		//		int index = (y * width + x) * channels;
+
+		//		if (index < 0 || index >= width * height * channels)
+		//		{
+		//			continue;
+		//		}
+
+		//		// Get the color values
+		//		unsigned char r = img[index];
+		//		unsigned char g = img[index + 1];
+		//		unsigned char b = img[index + 2];
+		//		unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+		//		if (a > 1)
+		//		{
+		//			Entity entity = m_ecs.createEntity();
+		//			Transform& t = m_ecs.addComponent<Transform>(entity);
+		//			t.position = vec3(x, height - y, -10.0f);
+
+		//			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+		//			// sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+		//			sdfRenderer.materialId = 0;
+		//		}
+
+		//	}
+		//}
+
+		// Free the image memory
+		wstbi_image_free(img);
+
+
+	}
+	void onUpdate() override
+	{
+	}
+	void onRender() override
+	{
+	}
+};
+
+class RenderOrderScene : public Scene
+{
+private:
+	// Inherited via Scene
+	void onStart() override
+	{
+		for (size_t i = 0; i < 10; i++)
+		{
+			Entity entity = m_ecs.createEntity();
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(15.0f + (0.25f * i), 30.0f, i);
+
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+
+			/*RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
+			m_simulation2D.fix(rb.simulationId);*/
+		}
+
+		{
+			Entity entity = m_ecs.createEntity();
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(15.0f + (0.25f * 3), 30.25f, 1.5f);
+
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+			sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+		}
+	}
+	void onUpdate() override
+	{
+	}
+	void onRender() override
+	{
+	}
+};
+
+
+class DestroyScene : public Scene
 {
 public:
-	EmptyScene()
+	DestroyScene()
 		: Scene() {};
 
 private:
@@ -29,8 +229,8 @@ private:
 
 			m_testEntityCreated = false;
 		}
-		else if(!m_testEntityCreated )
-		{			
+		else if (!m_testEntityCreated)
+		{
 			for (size_t i = 0; i < m_testEntity.size(); i++)
 			{
 				Entity entity = m_ecs.createEntity();
@@ -47,12 +247,12 @@ private:
 				m_testEntity[i] = entity;
 				m_testEntityCreated = true;
 			}
-			
+
 
 			m_lastSpawnTime = getTime();
 		}
 
-		if (m_testEntityCreated && Input::GetKeyDown(Input::I)) 
+		if (m_testEntityCreated && Input::GetKeyDown(Input::I))
 		{
 			for (size_t i = 0; i < m_testEntity.size(); i++)
 			{
@@ -111,7 +311,7 @@ private:
 
 			int material = 4 + (i % 12);
 
-			
+
 
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -178,7 +378,7 @@ private:
 				float y = 60 + (1.2 * i);
 				float z = 0;
 
-				
+
 				Entity entity = ecs.createEntity();
 				Transform& t = ecs.addComponent<Transform>(entity);
 				t.position = vec3(x + 0.5f, y + 0.5f, z);
@@ -295,7 +495,7 @@ private:
 
 			float z = 0;
 
-			
+
 
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -399,13 +599,13 @@ private:
 
 			material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			
+
 
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity); 
+			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
 			sdfRenderer.materialId = material;
 
 			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
@@ -543,7 +743,7 @@ private:
 
 			float z = 0;
 
-			
+
 
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -608,7 +808,7 @@ private:
 
 			Entity body = m_ecs.createEntity();
 
-			
+
 			vec2 pos(floatDistrib(gen), floatDistrib(gen));
 			Transform& t = m_ecs.addComponent<Transform>(body);
 			t.position = 500.0f * vec3(pos.x, pos.y, 0);
@@ -634,7 +834,7 @@ private:
 
 			m_celestialBodies.push_back(body);
 		}
-		
+
 		lookAt(m_celestialBodies[0]);
 	}
 
@@ -645,7 +845,7 @@ private:
 		Entity moon = m_ecs.createEntity();
 
 		{
-			
+
 			t.position = vec3(15, 35, 0);
 			m_ecs.addComponent(sun, t);
 
@@ -657,7 +857,7 @@ private:
 		}
 
 		{
-			
+
 			t.position = vec3(45, 35, 0);
 			m_ecs.addComponent(earth, t);
 
@@ -677,7 +877,7 @@ private:
 		m_simulation2D.addForce(m_ecs.getComponent<RigidBody2D>(earth).simulationId, vec2(0, 5));
 
 		{
-			
+
 			t.position = vec3(55, 35, 0);
 			m_ecs.addComponent(moon, t);
 
@@ -708,7 +908,7 @@ private:
 		if (Input::GetKeyDown(Input::E)) {
 			m_current = (m_current + 1) % m_celestialBodies.size();
 		}
-		
+
 		if (Input::GetKeyDown(Input::F)) {
 			m_lookAtBody = !m_lookAtBody;
 		}
@@ -738,7 +938,7 @@ private:
 		{
 			Entity entity = m_ecs.createEntity();
 
-			
+
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(0, 0, 0);
 
@@ -778,13 +978,15 @@ int main()
 {
 
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<EmptyScene>("empty");
+	sceneManager.registerScene<TextScene>("text");
+	sceneManager.registerScene<RenderOrderScene>("order");
+	sceneManager.registerScene<DestroyScene>("empty");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<FireworksScene>("fireworks");
 	sceneManager.registerScene<ApparentCircularMotionScene>("circle");
-	sceneManager.registerScene<SpaceScene>("space");
+	// sceneManager.registerScene<SpaceScene>("space");
 
 	start(sceneManager);
 }

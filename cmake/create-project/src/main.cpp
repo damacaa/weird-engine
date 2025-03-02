@@ -18,10 +18,10 @@ constexpr std::array<int, 256> createLookupTable() {
 		val = INVALID_INDEX;
 	}
 
-	//auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() "); // default
-	auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>0123456789!\" "); // small
+	auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() "); // default
+	//auto letters("ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>0123456789!\" "); // small
 
-	for (size_t i = 0; letters[i] != '\0'; ++i) 
+	for (size_t i = 0; letters[i] != '\0'; ++i)
 	{
 		table[letters[i]] = i;
 	}
@@ -41,29 +41,51 @@ class TextScene : public Scene
 {
 private:
 
-	std::string imagePath = ENGINE_PATH "/src/weird-renderer/fonts/small.bmp";
-	int charWidth = 4;
-	int charHeight = 5;
+	int m_charWidth;
+	int m_charHeight;
 
 	std::vector<std::vector<vec2>> m_letters;
 
-
-
-	// Inherited via Scene
-	void onStart() override
+	void print(std::string& text)
 	{
+		float offset = 0;
+		for (auto i : text)
+		{
+			int idx = getIndex(i);
+
+			std::cout << idx << std::endl;
+
+			for (auto vec2 : m_letters[idx])
+			{
+				float x = vec2.x + offset;
+				float y = vec2.y;
+
+				Entity entity = m_ecs.createEntity();
+				Transform& t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(x, y, -10.0f);
+
+				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + idx % 12;
+			}
+
+			offset += m_charWidth;
+		}
+	}
+
+	void loadChars(std::string m_imagePath, int charWidth, int charHeight)
+	{
+		m_charWidth = charWidth;
+		m_charHeight = charHeight;
+
 		// Load the image
 		int width, height, channels;
-		unsigned char* img = wstbi_load(imagePath.c_str(), &width, &height, &channels, 0);
+		unsigned char* img = wstbi_load(m_imagePath.c_str(), &width, &height, &channels, 0);
 
 		if (img == nullptr)
 		{
 			std::cerr << "Error: could not load image." << std::endl;
 			return;
 		}
-
-		
-		
 
 		int columns = width / charWidth;
 		int rows = height / charHeight;
@@ -110,93 +132,24 @@ private:
 			}
 		}
 
+		// Free the image memory
+		wstbi_image_free(img);
+	}
+
+	// Inherited via Scene
+	void onStart() override
+	{
+		// TODO: load chars updates lookup table
+		loadChars(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7);
+		// loadChars(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5);
+
 		//std::string example("B");
 		// std::vector example{ 'H', 'E', 'L', 'L', 'O'};
 		//std::string example("HELLOWORLD");
 		std::string example("Hello World!");
 		//std::string example("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
 
-		float offset = 0;
-		for (auto i : example)
-		{
-			int idx = getIndex(i);
-
-			std::cout << idx << std::endl;
-
-			for (auto vec2 : m_letters[idx])
-			{
-				float x = vec2.x + offset;
-				float y = vec2.y;
-
-				Entity entity = m_ecs.createEntity();
-				Transform& t = m_ecs.addComponent<Transform>(entity);
-				t.position = vec3(x, y, -10.0f);
-
-				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-				// sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
-				sdfRenderer.materialId = 1;
-			}
-
-			offset += charWidth;
-		}
-
-
-
-		//for (size_t x = 0; x < width; x++)
-		//{
-		//	for (size_t y = 0; y < height; y++)
-		//	{
-
-
-		//		if (x < 0)
-		//		{
-		//			x = 0;
-		//		}
-		//		else if (x >= width)
-		//		{
-		//			x = width - 1;
-		//		}
-
-		//		if (y < 0)
-		//		{
-		//			y = 0;
-		//		}
-		//		else if (y >= height)
-		//		{
-		//			y = height - 1;
-		//		}
-
-		//		// Calculate the index of the pixel in the image data
-		//		int index = (y * width + x) * channels;
-
-		//		if (index < 0 || index >= width * height * channels)
-		//		{
-		//			continue;
-		//		}
-
-		//		// Get the color values
-		//		unsigned char r = img[index];
-		//		unsigned char g = img[index + 1];
-		//		unsigned char b = img[index + 2];
-		//		unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
-
-		//		if (a > 1)
-		//		{
-		//			Entity entity = m_ecs.createEntity();
-		//			Transform& t = m_ecs.addComponent<Transform>(entity);
-		//			t.position = vec3(x, height - y, -10.0f);
-
-		//			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-		//			// sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
-		//			sdfRenderer.materialId = 0;
-		//		}
-
-		//	}
-		//}
-
-		// Free the image memory
-		wstbi_image_free(img);
-
+		print(example);
 
 	}
 	void onUpdate() override

@@ -126,6 +126,9 @@ vec4 getColor(vec2 p)
 
   float zoom = -u_cameraMatrix[3].z;
 
+  float aspectRatio = u_resolution.x / u_resolution.y;
+  vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
+
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
     vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
@@ -135,7 +138,9 @@ vec4 getColor(vec2 p)
     float z = positionSizeMaterial.z;
     float screenSpace = z < 0.0f ? 1.0f : 0.0f;
 
-    float objectDist = shape_circle(p - positionSizeMaterial.xy + (screenSpace * (u_cameraMatrix[3].xy + zoom)));
+  
+
+    float objectDist = shape_circle(p - positionSizeMaterial.xy + (screenSpace * (u_cameraMatrix[3].xy + zoomVec)));
 
     if(z < minZ)
     {

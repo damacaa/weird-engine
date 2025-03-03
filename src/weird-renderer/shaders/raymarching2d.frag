@@ -124,19 +124,19 @@ vec4 getColor(vec2 p)
   vec3 col = vec3(0.0);
   float minZ = 1000.0f;
 
+  float zoom = -u_cameraMatrix[3].z;
+
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
     vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
     int materialId = int(positionSizeMaterial.w);
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
-    float objectDist = shape_circle(p - positionSizeMaterial.xy);
-    if (objectDist < 0.0f)
-    {
-      objectDist *= 3;
-    }
-
     float z = positionSizeMaterial.z;
+    float screenSpace = z < 0.0f ? 1.0f : 0.0f;
+
+    float objectDist = shape_circle(p - positionSizeMaterial.xy + (screenSpace * (u_cameraMatrix[3].xy + zoom)));
+
     if(z < minZ)
     {
 
@@ -147,9 +147,7 @@ vec4 getColor(vec2 p)
     col = mix(getMaterial(p, materialId), col, delta);
 
 #else
-    
-    float objectDist = shape_circle(p - positionSizeMaterial.xy);
-    
+
     d = min(d, objectDist);
 
     if(objectDist < 0)
@@ -157,11 +155,6 @@ vec4 getColor(vec2 p)
         col = getMaterial(positionSizeMaterial.xy, materialId);
         minZ = z;
     }
-
-    
-    
-
-
 
 #endif
 
@@ -180,7 +173,6 @@ vec4 getColor(vec2 p)
   // Set background color
   // vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
   float pixel = 0.2 / u_resolution.y;
-  float zoom = -u_cameraMatrix[3].z;
   vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
   col = d > 0.0 ? background : col;
 

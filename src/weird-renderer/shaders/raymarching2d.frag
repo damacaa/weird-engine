@@ -25,6 +25,8 @@ uniform int u_blendIterations;
 
 uniform int u_customShapeCount;
 
+uniform float u_uiScale = 50.0f;
+
 // Constants
 const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
@@ -35,6 +37,9 @@ const float FAR = 100.0f;
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
+#define var11 u_uiScale * uv.x
+#define var12 u_uiScale * uv.y
+
 #define var0 parameters0.x
 #define var1 parameters0.y
 #define var2 parameters0.z
@@ -140,7 +145,7 @@ vec4 getColor(vec2 p, vec2 uv)
 
   
 
-    float objectDist = shape_circle((screenSpace ? 50.0f * uv : p) - positionSizeMaterial.xy);
+    float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
 
     if(z < minZ)
     {

@@ -117,7 +117,7 @@ vec3 getMaterial(vec2 p, int materialId)
   return u_staticColors[materialId];
 }
 
-vec4 getColor(vec2 p)
+vec4 getColor(vec2 p, vec2 uv)
 {
   float d = 100000.0;
 
@@ -136,11 +136,11 @@ vec4 getColor(vec2 p)
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
     float z = positionSizeMaterial.z;
-    float screenSpace = z < 0.0f ? 1.0f : 0.0f;
+    bool screenSpace = z < 0.0f;
 
   
 
-    float objectDist = shape_circle(p - positionSizeMaterial.xy + (screenSpace * (u_cameraMatrix[3].xy + zoomVec)));
+    float objectDist = shape_circle((screenSpace ? 50.0f * uv : p) - positionSizeMaterial.xy);
 
     if(z < minZ)
     {
@@ -188,12 +188,13 @@ void main()
 {
   // FragColor = vec4(u_customShapeCount);
   // return;
-
-  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
+  
+  float invResY = 1.0 / u_resolution.y;
+  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) * invResY;
   float zoom = -u_cameraMatrix[3].z;
   vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;
 
-  vec4 color = getColor(pos);
+  vec4 color = getColor(pos, 2.0 * gl_FragCoord.xy * invResY); // Same as uv but (0, 0) is bottom left corner
   float distance = color.w;
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;

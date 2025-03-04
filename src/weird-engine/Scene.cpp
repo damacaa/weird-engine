@@ -66,6 +66,15 @@ namespace WeirdEngine
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
+	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
+	{
+		size_t start_pos = str.find(from);
+		if (start_pos != std::string::npos)
+		{
+			str.replace(start_pos, from.length(), to);
+		}
+	}
+
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 	{
 		std::string str = shader.getFragmentCode();
@@ -93,6 +102,9 @@ namespace WeirdEngine
 			oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, idx + 1);";
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
+
+			replaceSubstring(fragmentCode, "var9", "var11");
+			replaceSubstring(fragmentCode, "var10", "var12");
 
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;

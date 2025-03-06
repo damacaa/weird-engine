@@ -134,6 +134,8 @@ vec4 getColor(vec2 p, vec2 uv)
   float aspectRatio = u_resolution.x / u_resolution.y;
   vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
 
+  bool bestIsScreenSpace = false;
+
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
     vec4 positionSizeMaterial = texelFetch(u_shapeBuffer, i);
@@ -164,12 +166,16 @@ vec4 getColor(vec2 p, vec2 uv)
     {
         col = getMaterial(positionSizeMaterial.xy, materialId);
         minZ = z;
+        bestIsScreenSpace = screenSpace;
     }
 
 #endif
 
     }
   }
+
+  if(bestIsScreenSpace)
+    return vec4(col, d);
 
   /*ADD_SHAPES_HERE*/
 

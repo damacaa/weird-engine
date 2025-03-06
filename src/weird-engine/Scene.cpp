@@ -206,6 +206,10 @@ namespace WeirdEngine
 	void Scene::loadScene(std::string& sceneFileContent)
 	{
 		//json scene = json::parse(sceneFileContent);
+		
+		// load font
+		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+
 
 		std::string projectDir = fs::current_path().string() + "/SampleProject";
 
@@ -350,5 +354,115 @@ namespace WeirdEngine
 		}
 
 		m_simulation2D.setSDFs(m_sdfs);
+	}
+
+	constexpr int INVALID_INDEX = -1;
+
+
+
+
+
+	void Scene::print(std::string& text)
+	{
+		float offset = 0;
+		for (auto i : text)
+		{
+			int idx = getIndex(i);
+
+			std::cout << idx << std::endl;
+
+			for (auto vec2 : m_letters[idx])
+			{
+				float x = vec2.x + offset;
+				float y = vec2.y;
+
+				Entity entity = m_ecs.createEntity();
+				Transform& t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(x, y, -10.0f);
+
+				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + idx % 12;
+			}
+
+			offset += m_charWidth;
+		}
+	}
+
+	void Scene::loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters)
+	{
+		// Set all to INVALID_INDEX initially
+		for (int& val : m_CharLookUpTable) 
+		{
+			val = INVALID_INDEX;
+		}
+
+		// Fill look up table
+		for (size_t i = 0; characters[i] != '\0'; ++i)
+		{
+			m_CharLookUpTable[characters[i]] = i;
+		}
+
+		// Store char dimensions
+		m_charWidth = charWidth;
+		m_charHeight = charHeight;
+
+		// Load the image
+		int width, height, channels;
+		unsigned char* img = wstbi_load(imagePath, &width, &height, &channels, 0);
+
+		if (img == nullptr)
+		{
+			std::cerr << "Error: could not load image." << std::endl;
+			return;
+		}
+
+		int columns = width / charWidth;
+		int rows = height / charHeight;
+
+		int charCount = columns * rows;
+
+		m_letters.clear();
+		m_letters.resize(charCount);
+
+		for (size_t i = 0; i < charCount; i++)
+		{
+			int startX = charWidth * (i % columns);
+			int startY = (charHeight * (i / columns));
+
+			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
+			{
+				for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
+				{
+
+					int x = startX + offsetX;
+					int y = startY + offsetY;
+
+					// Calculate the index of the pixel in the image data
+					int index = (y * width + x) * channels;
+
+					if (index < 0 || index >= width * height * channels)
+					{
+						continue;
+					}
+
+					// Get the color values
+					unsigned char r = img[index];
+					unsigned char g = img[index + 1];
+					unsigned char b = img[index + 2];
+					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+					if (r < 50)
+					{
+						float localX = offsetX;
+						float localY = charHeight - offsetY;
+
+						m_letters[i].emplace_back(localX, localY);
+					}
+				}
+			}
+		}
+
+		// Free the image memory
+		wstbi_image_free(img);
 	}
 }

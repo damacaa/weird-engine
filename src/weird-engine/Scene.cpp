@@ -373,7 +373,7 @@ namespace WeirdEngine
 
 			for (auto vec2 : m_letters[idx])
 			{
-				float x = vec2.x + offset;
+				float x = 2 + vec2.x + offset;
 				float y = vec2.y;
 
 				Entity entity = m_ecs.createEntity();

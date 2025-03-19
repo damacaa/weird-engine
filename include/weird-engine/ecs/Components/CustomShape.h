@@ -11,8 +11,9 @@ namespace WeirdEngine
 		uint16_t m_distanceFieldId;
 		float m_parameters[8];
 		bool m_isDirty;
+		bool m_screenSpace;
 
-		CustomShape() : m_distanceFieldId(0), m_isDirty(true)
+		CustomShape() : m_distanceFieldId(0), m_isDirty(true), m_screenSpace(false)
 		{
 		}
 

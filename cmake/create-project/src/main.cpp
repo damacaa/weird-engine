@@ -234,6 +234,11 @@ private:
 			float variables[8]{ 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f };
 			m_star = addShape(1, variables);
 		}
+
+		{
+			float variables[8]{ 30.5f, 3.5f, 30.0f, 3.0f };
+			addScreenSpaceShape(3, variables);
+		}
 	}
 
 	void throwBalls(ECSManager& ecs, Simulation2D& simulation2D)

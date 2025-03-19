@@ -103,10 +103,19 @@ namespace WeirdEngine
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
-			replaceSubstring(fragmentCode, "var9", "var11");
-			replaceSubstring(fragmentCode, "var10", "var12");
+			if (shape.m_screenSpace) 
+			{
+				replaceSubstring(fragmentCode, "var9", "var11");
+				replaceSubstring(fragmentCode, "var10", "var12");
+			}
 
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
+
+			/*if (shape.m_screenSpace)
+			{
+				oss << "dist = dist * u_uiScale;" << std::endl;
+			}*/
+
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
 			oss << "d = min(d, dist);\n";
@@ -185,6 +194,19 @@ namespace WeirdEngine
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.m_distanceFieldId = shapeId;
+		std::copy(variables, variables + 8, shape.m_parameters);
+
+		// CustomShape shape(shapeId, variables); // check old constructor for references
+
+		return entity;
+	}
+
+	Entity Scene::addScreenSpaceShape(int shapeId, float* variables)
+	{
+		Entity entity = m_ecs.createEntity();
+		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.m_screenSpace = true;
 		shape.m_distanceFieldId = shapeId;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
@@ -369,7 +391,7 @@ namespace WeirdEngine
 		{
 			int idx = getIndex(i);
 
-			std::cout << idx << std::endl;
+			// std::cout << idx << std::endl;
 
 			for (auto vec2 : m_letters[idx])
 			{

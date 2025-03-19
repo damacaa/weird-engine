@@ -49,6 +49,7 @@ namespace WeirdEngine
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(int shapeId, float* variables);
+		Entity addScreenSpaceShape(int shapeId, float* variables);
 
 		void lookAt(Entity entity);
 

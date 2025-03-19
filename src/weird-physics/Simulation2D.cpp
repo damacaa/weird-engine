@@ -833,6 +833,9 @@ namespace WeirdEngine
 
 	void Simulation2D::updateShape(CustomShape& shape)
 	{
+		if (shape.m_screenSpace)
+			return;
+
 		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_parameters);
 
 		// Check if the key exists

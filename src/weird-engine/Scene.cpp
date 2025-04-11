@@ -384,7 +384,7 @@ namespace WeirdEngine
 
 
 
-	void Scene::print(std::string& text)
+	void Scene::print(const std::string& text)
 	{
 		float offset = 0;
 		for (auto i : text)

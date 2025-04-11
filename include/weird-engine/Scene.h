@@ -70,7 +70,7 @@ namespace WeirdEngine
 
 		std::vector<std::vector<vec2>> m_letters;
 
-		void print(std::string& text);
+		void print(const std::string& text);
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 

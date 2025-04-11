@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 1
+#define MOTION_BLUR 0
 
 uniform float k = 0.25;
 
@@ -25,6 +25,8 @@ uniform int u_blendIterations;
 
 uniform int u_customShapeCount;
 
+uniform float u_uiScale = 50.0f;
+
 // Constants
 const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
@@ -35,6 +37,9 @@ const float FAR = 100.0f;
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
+#define var11 u_uiScale * uv.x
+#define var12 u_uiScale * uv.y
+
 #define var0 parameters0.x
 #define var1 parameters0.y
 #define var2 parameters0.z
@@ -117,11 +122,19 @@ vec3 getMaterial(vec2 p, int materialId)
   return u_staticColors[materialId];
 }
 
-vec4 getColor(vec2 p)
+vec4 getColor(vec2 p, vec2 uv)
 {
   float d = 100000.0;
 
   vec3 col = vec3(0.0);
+  float minZ = 1000.0f;
+
+  float zoom = -u_cameraMatrix[3].z;
+
+  float aspectRatio = u_resolution.x / u_resolution.y;
+  vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
+
+  bool bestIsScreenSpace = false;
 
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
@@ -129,11 +142,15 @@ vec4 getColor(vec2 p)
     int materialId = int(positionSizeMaterial.w);
     // vec4 extraParameters = texelFetch(u_shapeBuffer, (2 * i) + 1);
 
-    float objectDist = shape_circle(p - positionSizeMaterial.xy);
-    if (objectDist < 0.0f)
+    float z = positionSizeMaterial.z;
+    bool screenSpace = z < 0.0f;
+
+  
+
+    float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
+
+    if(z < minZ)
     {
-      objectDist *= 3;
-    }
 
 #if BLEND_SHAPES
 
@@ -144,10 +161,21 @@ vec4 getColor(vec2 p)
 #else
 
     d = min(d, objectDist);
-    col = d == objectDist ? getMaterial(positionSizeMaterial.xy, materialId) : col;
+
+    if(objectDist < 0)
+    {
+        col = getMaterial(positionSizeMaterial.xy, materialId);
+        minZ = z;
+        bestIsScreenSpace = screenSpace;
+    }
 
 #endif
+
+    }
   }
+
+  if(bestIsScreenSpace)
+    return vec4(col, d);
 
   /*ADD_SHAPES_HERE*/
 
@@ -161,7 +189,6 @@ vec4 getColor(vec2 p)
   // Set background color
   // vec3 background = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
   float pixel = 0.2 / u_resolution.y;
-  float zoom = -u_cameraMatrix[3].z;
   vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
   col = d > 0.0 ? background : col;
 
@@ -172,12 +199,13 @@ void main()
 {
   // FragColor = vec4(u_customShapeCount);
   // return;
-
-  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
+  
+  float invResY = 1.0 / u_resolution.y;
+  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) * invResY;
   float zoom = -u_cameraMatrix[3].z;
   vec2 pos = (zoom * uv) - u_cameraMatrix[3].xy;
 
-  vec4 color = getColor(pos);
+  vec4 color = getColor(pos, 2.0 * gl_FragCoord.xy * invResY); // Same as uv but (0, 0) is bottom left corner
   float distance = color.w;
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;

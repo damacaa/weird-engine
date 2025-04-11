@@ -66,6 +66,15 @@ namespace WeirdEngine
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
+	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
+	{
+		size_t start_pos = str.find(from);
+		if (start_pos != std::string::npos)
+		{
+			str.replace(start_pos, from.length(), to);
+		}
+	}
+
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 	{
 		std::string str = shader.getFragmentCode();
@@ -94,7 +103,19 @@ namespace WeirdEngine
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
+			if (shape.m_screenSpace) 
+			{
+				replaceSubstring(fragmentCode, "var9", "var11");
+				replaceSubstring(fragmentCode, "var10", "var12");
+			}
+
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
+
+			/*if (shape.m_screenSpace)
+			{
+				oss << "dist = dist * u_uiScale;" << std::endl;
+			}*/
+
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
 			oss << "d = min(d, dist);\n";
@@ -181,6 +202,19 @@ namespace WeirdEngine
 		return entity;
 	}
 
+	Entity Scene::addScreenSpaceShape(int shapeId, float* variables)
+	{
+		Entity entity = m_ecs.createEntity();
+		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.m_screenSpace = true;
+		shape.m_distanceFieldId = shapeId;
+		std::copy(variables, variables + 8, shape.m_parameters);
+
+		// CustomShape shape(shapeId, variables); // check old constructor for references
+
+		return entity;
+	}
+
 	void Scene::lookAt(Entity entity)
 	{
 		FlyMovement2D& fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
@@ -194,6 +228,10 @@ namespace WeirdEngine
 	void Scene::loadScene(std::string& sceneFileContent)
 	{
 		//json scene = json::parse(sceneFileContent);
+		
+		// load font
+		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+
 
 		std::string projectDir = fs::current_path().string() + "/SampleProject";
 
@@ -338,5 +376,115 @@ namespace WeirdEngine
 		}
 
 		m_simulation2D.setSDFs(m_sdfs);
+	}
+
+	constexpr int INVALID_INDEX = -1;
+
+
+
+
+
+	void Scene::print(const std::string& text)
+	{
+		float offset = 0;
+		for (auto i : text)
+		{
+			int idx = getIndex(i);
+
+			// std::cout << idx << std::endl;
+
+			for (auto vec2 : m_letters[idx])
+			{
+				float x = 2 + vec2.x + offset;
+				float y = vec2.y;
+
+				Entity entity = m_ecs.createEntity();
+				Transform& t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(x, y, -10.0f);
+
+				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + idx % 12;
+			}
+
+			offset += m_charWidth;
+		}
+	}
+
+	void Scene::loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters)
+	{
+		// Set all to INVALID_INDEX initially
+		for (int& val : m_CharLookUpTable) 
+		{
+			val = INVALID_INDEX;
+		}
+
+		// Fill look up table
+		for (size_t i = 0; characters[i] != '\0'; ++i)
+		{
+			m_CharLookUpTable[characters[i]] = i;
+		}
+
+		// Store char dimensions
+		m_charWidth = charWidth;
+		m_charHeight = charHeight;
+
+		// Load the image
+		int width, height, channels;
+		unsigned char* img = wstbi_load(imagePath, &width, &height, &channels, 0);
+
+		if (img == nullptr)
+		{
+			std::cerr << "Error: could not load image." << std::endl;
+			return;
+		}
+
+		int columns = width / charWidth;
+		int rows = height / charHeight;
+
+		int charCount = columns * rows;
+
+		m_letters.clear();
+		m_letters.resize(charCount);
+
+		for (size_t i = 0; i < charCount; i++)
+		{
+			int startX = charWidth * (i % columns);
+			int startY = (charHeight * (i / columns));
+
+			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
+			{
+				for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
+				{
+
+					int x = startX + offsetX;
+					int y = startY + offsetY;
+
+					// Calculate the index of the pixel in the image data
+					int index = (y * width + x) * channels;
+
+					if (index < 0 || index >= width * height * channels)
+					{
+						continue;
+					}
+
+					// Get the color values
+					unsigned char r = img[index];
+					unsigned char g = img[index + 1];
+					unsigned char b = img[index + 2];
+					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+					if (r < 50)
+					{
+						float localX = offsetX;
+						float localY = charHeight - offsetY;
+
+						m_letters[i].emplace_back(localX, localY);
+					}
+				}
+			}
+		}
+
+		// Free the image memory
+		wstbi_image_free(img);
 	}
 }

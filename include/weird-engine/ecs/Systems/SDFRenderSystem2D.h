@@ -35,7 +35,7 @@ namespace WeirdEngine
 				auto& t = transformArray->getDataFromEntity(mr.Owner);
 
 				data[i].position = (vec2)t.position;
-				data[i].size = 1.0f;
+				data[i].size = t.position.z;
 				data[i].material = mr.materialId;
 			}
 

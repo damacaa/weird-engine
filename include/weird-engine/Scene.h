@@ -49,6 +49,7 @@ namespace WeirdEngine
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(int shapeId, float* variables);
+		Entity addScreenSpaceShape(int shapeId, float* variables);
 
 		void lookAt(Entity entity);
 
@@ -63,7 +64,26 @@ namespace WeirdEngine
 
 		bool m_debugFly = true;
 
+
+		int m_charWidth;
+		int m_charHeight;
+
+		std::vector<std::vector<vec2>> m_letters;
+
+		void print(const std::string& text);
+		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
+
+
 	private:
+
+		// Char lookup table
+		std::array<int, 256> m_CharLookUpTable{};
+
+		// Lookup function
+		int getIndex(char c)
+		{
+			return m_CharLookUpTable[static_cast<unsigned char>(c)];
+		}
 
 		void loadScene(std::string& sceneFileContent);
 

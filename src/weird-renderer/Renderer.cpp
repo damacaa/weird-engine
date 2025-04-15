@@ -9,9 +9,11 @@ namespace WeirdEngine
 		Renderer::Renderer(const unsigned int width, const unsigned int height) :
 			m_windowWidth(width),
 			m_windowHeight(height),
+			m_renderScale(1.0f),
 			m_renderWidth(width* m_renderScale),
 			m_renderHeight(height* m_renderScale),
-			m_renderMeshesOnly(false)
+			m_renderMeshesOnly(false),
+			m_vSyncEnabled(true)
 		{
 			// Initialize GLFW
 			glfwInit();
@@ -39,23 +41,18 @@ namespace WeirdEngine
 			// Introduce the m_window into the current context
 			glfwMakeContextCurrent(m_window);
 
-			//Load GLAD so it configures OpenGL
+			// Load GLAD so it configures OpenGL
 			gladLoadGL();
 			// Specify the viewport of OpenGL in the Window
-			// In this case the viewport goes from x = 0, y = 0, to x = 800, y = 800
 			glViewport(0, 0, width, height);
 
-			// Enables the Depth Buffer and choses which depth function to use
+			// Enables the Depth Buffer and chooses which depth function to use
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LESS);
 
 			// Enable culling
-			//glEnable(GL_CULL_FACE);
 			glCullFace(GL_FRONT);
 			glFrontFace(GL_CCW);
-
-			glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-			glm::vec3 lightPos = glm::vec3(10.5f, 0.5f, 0.5f);
 
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -63,7 +60,6 @@ namespace WeirdEngine
 
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
 			m_instancedGeometryShaderProgram.activate();
-
 
 			m_sdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
 			m_sdfShaderProgram.activate();
@@ -74,11 +70,14 @@ namespace WeirdEngine
 			m_outputShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "output.frag");
 			m_outputShaderProgram.activate();
 
-
 			// Bind textures to render planes fbo outputs
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_sdfRenderPlane = RenderPlane(true);
 			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
+
+			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_geometryRenderPlane = RenderPlane(true);
+			m_geometryRenderPlane.BindColorTextureToFrameBuffer(m_geometryTexture);
 
 			m_outputTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_postProcessRenderPlane = RenderPlane(false);
@@ -98,17 +97,15 @@ namespace WeirdEngine
 			m_postProcessShaderProgram.Delete();
 			m_outputShaderProgram.Delete();
 
+			m_geometryTexture.dispose();
 			m_distanceTexture.dispose();
 			m_outputTexture.dispose();
-
-			//delete m_sdfRenderPlane;
 
 			// Delete m_window before ending the program
 			glfwDestroyWindow(m_window);
 			// Terminate GLFW before ending the program
 			glfwTerminate();
 		}
-
 
 		void Renderer::render(Scene& scene, const double time)
 		{
@@ -121,9 +118,9 @@ namespace WeirdEngine
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 			// Specify the color of the background
-			//glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+			glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 			// Clean the back buffer and depth buffer
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			// Enable depth test
 
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
@@ -133,9 +130,13 @@ namespace WeirdEngine
 			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 
-			glEnable(GL_DEPTH_TEST);
-			// Draw objects in scene
-			//scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+			if (m_renderMeshesOnly)
+			{
+				glEnable(GL_DEPTH_TEST);
+				// Draw objects in scene
+				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+			}
+
 			glDisable(GL_DEPTH_TEST);
 
 

@@ -59,11 +59,10 @@ namespace WeirdEngine
 
 	void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 	{
-		// WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
-		// m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
-
-		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
+		m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
 	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
@@ -376,6 +375,7 @@ namespace WeirdEngine
 		}
 
 		m_simulation2D.setSDFs(m_sdfs);
+
 	}
 
 	constexpr int INVALID_INDEX = -1;

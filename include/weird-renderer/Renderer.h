@@ -5,7 +5,6 @@
 #include "RenderPlane.h"
 #include "../weird-engine/Scene.h"
 
-
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -15,11 +14,11 @@ namespace WeirdEngine
 		private:
 			GLFWwindow* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
-			double m_renderScale = 0.5f;
+			double m_renderScale;
 			unsigned int m_renderWidth, m_renderHeight;
 
-			bool m_vSyncEnabled = true;
-			bool m_renderMeshesOnly = false;
+			bool m_vSyncEnabled;
+			bool m_renderMeshesOnly;
 
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
@@ -27,10 +26,12 @@ namespace WeirdEngine
 			Shader m_postProcessShaderProgram;
 			Shader m_outputShaderProgram;
 
+			RenderPlane m_geometryRenderPlane;
 			RenderPlane m_sdfRenderPlane;
 			RenderPlane m_postProcessRenderPlane;
 			RenderPlane m_outputRenderPlane;
 
+			Texture m_geometryTexture;
 			Texture m_distanceTexture;
 			Texture m_outputTexture;
 
@@ -44,5 +45,4 @@ namespace WeirdEngine
 			GLFWwindow* getWindow();
 		};
 	}
-
 }

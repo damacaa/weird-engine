@@ -62,7 +62,7 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
-		m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
+		//m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
 	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)

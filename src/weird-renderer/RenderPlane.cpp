@@ -121,8 +121,6 @@ namespace WeirdEngine
 		void RenderPlane::Draw(Shader& shader, Dot2D* shapes, size_t size) const
 		{
 
-
-
 			glBindBuffer(GL_TEXTURE_BUFFER, m_shapeBuffer);
 			glBufferData(GL_TEXTURE_BUFFER, sizeof(Dot2D) * size, shapes, GL_STREAM_DRAW);
 			//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Dot2D) * size, shapes);
@@ -147,7 +145,6 @@ namespace WeirdEngine
 			glBindVertexArray(VAO);
 			// Draw the triangle using the GL_TRIANGLES primitive
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
 
 		}
 
@@ -181,9 +178,6 @@ namespace WeirdEngine
 		{
 			BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
 		}
-
-
-
 
 		unsigned int RenderPlane::GetFrameBuffer() const
 		{

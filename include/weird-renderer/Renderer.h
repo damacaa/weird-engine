@@ -33,7 +33,7 @@ namespace WeirdEngine
 
 			Texture m_geometryTexture;
 			Texture m_distanceTexture;
-			Texture m_outputTexture;
+			Texture m_postProcessResultTexture;
 
 		public:
 			Renderer(const unsigned int width, const unsigned int height);

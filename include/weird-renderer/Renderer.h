@@ -35,6 +35,8 @@ namespace WeirdEngine
 			Texture m_distanceTexture;
 			Texture m_postProcessResultTexture;
 
+			Texture g_testTexture;
+
 		public:
 			Renderer(const unsigned int width, const unsigned int height);
 			~Renderer();

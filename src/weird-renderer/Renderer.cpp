@@ -16,6 +16,10 @@ namespace WeirdEngine
 #define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
 
 
+		GLuint VAO, VBO;
+
+		
+
 		Renderer::Renderer(const unsigned int width, const unsigned int height) :
 			m_windowWidth(width),
 			m_windowHeight(height),
@@ -94,8 +98,48 @@ namespace WeirdEngine
 			m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_postProcessResultTexture);
 
 			m_outputRenderPlane = RenderPlane(false);
+			g_testTexture = Texture(SHADERS_PATH "jimmy.jpg", "diffuse", 0);
+			// g_testTexture = Texture(m_windowWidth, m_windowHeight, GL_NEAREST);
+			// m_outputRenderPlane.BindColorTextureToFrameBuffer(g_testTexture);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+			float quadVertices[] = {
+				// pos         // normal       // color        // uv
+				-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f,
+				-0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f,
+				 0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+
+				-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f,
+				 0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
+				 0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f
+			};
+
+
+			glGenVertexArrays(1, &VAO);
+			glGenBuffers(1, &VBO);
+			glBindVertexArray(VAO);
+			glBindBuffer(GL_ARRAY_BUFFER, VBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+
+			int stride = 11 * sizeof(float);
+
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)(0));                  // aPos
+			glEnableVertexAttribArray(0);
+
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));  // aNormal
+			glEnableVertexAttribArray(1);
+
+			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));  // aColor
+			glEnableVertexAttribArray(2);
+
+			glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (void*)(9 * sizeof(float)));  // aTex
+			glEnableVertexAttribArray(3);
+
+
+
+			
 		}
 
 
@@ -136,7 +180,7 @@ namespace WeirdEngine
 
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
 
-			GL_CHECK_ERROR();
+			
 
 			auto& sceneCamera = scene.getCamera();
 
@@ -148,6 +192,11 @@ namespace WeirdEngine
 
 			// Draw objects in scene
 			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+
+			m_geometryShaderProgram.activate();
+
+			glBindVertexArray(VAO);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
 
 			glDisable(GL_DEPTH_TEST);
 
@@ -221,6 +270,17 @@ namespace WeirdEngine
 			}
 
 			m_outputRenderPlane.Draw(m_outputShaderProgram);
+
+			// Test draw mesh on top of render
+			m_geometryShaderProgram.activate();
+
+			glBindVertexArray(VAO);
+
+			GLuint diffuseLocation = glGetUniformLocation(m_outputShaderProgram.ID, "diffuse0");
+			glUniform1i(diffuseLocation, 0);
+			g_testTexture.bind(0);
+			
+			glDrawArrays(GL_TRIANGLES, 0, 6);
 
 			// Screenshot
 			if (Input::GetKeyDown(Input::O)) {

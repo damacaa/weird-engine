@@ -23,9 +23,9 @@ namespace WeirdEngine
 			// Stores the width, height, and the number of color channels of the image
 			int widthImg = 0, heightImg = 0, numColCh = 0;
 			// Flips the image so it appears right side up
-			//TODO: fix this in cmake file wstbi_set_flip_vertically_on_load(true);
+			wstbi_set_flip_vertically_on_load(true);
 			// Reads the image from a file and stores it in bytes
-			unsigned char* bytes = nullptr; //TODO: fix this in cmake file wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+			unsigned char* bytes = wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);

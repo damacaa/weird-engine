@@ -35,7 +35,7 @@ namespace WeirdEngine
 			Texture m_distanceTexture;
 			Texture m_postProcessResultTexture;
 
-			Texture g_testTexture;
+			void renderGeometry(Scene& scene, Camera& camera);
 
 		public:
 			Renderer(const unsigned int width, const unsigned int height);

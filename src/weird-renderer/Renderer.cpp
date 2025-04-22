@@ -1,38 +1,35 @@
 #include "weird-renderer/Renderer.h"
 
-
-
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		inline void CheckOpenGLError(const char* file, int line) {
+		inline void CheckOpenGLError(const char* file, int line)
+		{
 			GLenum err;
-			while ((err = glGetError()) != GL_NO_ERROR) {
+			while ((err = glGetError()) != GL_NO_ERROR)
+			{
 				std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
 				// Optionally, map err to a string representation
 			}
 		}
 #define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
 
-
 		GLuint VAO, VBO;
 
-		
-
-		Renderer::Renderer(const unsigned int width, const unsigned int height) :
-			m_windowWidth(width),
-			m_windowHeight(height),
-			m_renderScale(0.5f),
-			m_renderWidth(width* m_renderScale),
-			m_renderHeight(height* m_renderScale),
-			m_renderMeshesOnly(false),
-			m_vSyncEnabled(true)
+		Renderer::Renderer(const unsigned int width, const unsigned int height)
+			: m_windowWidth(width)
+			, m_windowHeight(height)
+			, m_renderScale(0.5f)
+			, m_renderWidth(width * m_renderScale)
+			, m_renderHeight(height * m_renderScale)
+			, m_renderMeshesOnly(true)
+			, m_vSyncEnabled(true)
 		{
 			// Initialize GLFW
 			glfwInit();
 
-			// Tell GLFW what version of OpenGL we are using 
+			// Tell GLFW what version of OpenGL we are using
 			// In this case we are using OpenGL 3.3
 			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -98,50 +95,7 @@ namespace WeirdEngine
 			m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_postProcessResultTexture);
 
 			m_outputRenderPlane = RenderPlane(false);
-			g_testTexture = Texture(SHADERS_PATH "jimmy.jpg", "diffuse", 0);
-			// g_testTexture = Texture(m_windowWidth, m_windowHeight, GL_NEAREST);
-			// m_outputRenderPlane.BindColorTextureToFrameBuffer(g_testTexture);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
-			float quadVertices[] = {
-				// pos         // normal       // color        // uv
-				-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f,
-				-0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 0.0f,
-				 0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
-
-				-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f,
-				 0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 0.0f,
-				 0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f, 1.0f
-			};
-
-
-			glGenVertexArrays(1, &VAO);
-			glGenBuffers(1, &VBO);
-			glBindVertexArray(VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-
-			int stride = 11 * sizeof(float);
-
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)(0));                  // aPos
-			glEnableVertexAttribArray(0);
-
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));  // aNormal
-			glEnableVertexAttribArray(1);
-
-			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));  // aColor
-			glEnableVertexAttribArray(2);
-
-			glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, stride, (void*)(9 * sizeof(float)));  // aTex
-			glEnableVertexAttribArray(3);
-
-
-
-			
 		}
-
 
 		Renderer::~Renderer()
 		{
@@ -162,13 +116,16 @@ namespace WeirdEngine
 			glfwTerminate();
 		}
 
-
 		void Renderer::render(Scene& scene, const double time)
 		{
 			if (m_vSyncEnabled)
+			{
 				glfwSwapInterval(1);
+			}
 			else
+			{
 				glfwSwapInterval(0);
+			}
 
 			auto fbo = m_geometryRenderPlane.GetFrameBuffer();
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -180,33 +137,17 @@ namespace WeirdEngine
 
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
 
-			
-
+			// Get camera
 			auto& sceneCamera = scene.getCamera();
 
-			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
-
-
-			glEnable(GL_DEPTH_TEST);
-
-			// Draw objects in scene
-			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-
-			m_geometryShaderProgram.activate();
-
-			glBindVertexArray(VAO);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
-			glDisable(GL_DEPTH_TEST);
-
+			renderGeometry(scene, sceneCamera);
 
 			if (!m_renderMeshesOnly)
 			{
 				// Ray maching
 				{
 					// Bind the framebuffer you want to render to
-					glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); //m_sdfRenderPlane.GetFrameBuffer()
+					glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
 
 					// Draw ray marching stuff
 					m_sdfShaderProgram.activate();
@@ -224,13 +165,11 @@ namespace WeirdEngine
 					GLuint u_colorTextureLocation = glGetUniformLocation(m_sdfShaderProgram.ID, "u_colorTexture");
 					glUniform1i(u_colorTextureLocation, 0);
 
-					// Draw render plane with sdf shader
-					m_distanceTexture.bind(0);
-					m_postProcessResultTexture.bind(1);
+					m_geometryTexture.bind(0);
 
+					// Draw render plane with sdf shader
 					scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
 				}
-
 
 				// Post process
 				{
@@ -248,7 +187,6 @@ namespace WeirdEngine
 				}
 			}
 
-
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
 
@@ -260,31 +198,20 @@ namespace WeirdEngine
 			GLuint u_colorTextureLocation = glGetUniformLocation(m_outputShaderProgram.ID, "u_colorTexture");
 			glUniform1i(u_colorTextureLocation, 0);
 
-			if (m_renderMeshesOnly) 
+			if (m_renderMeshesOnly)
 			{
 				m_geometryTexture.bind(0);
 			}
-			else 
+			else
 			{
 				m_postProcessResultTexture.bind(0);
 			}
 
 			m_outputRenderPlane.Draw(m_outputShaderProgram);
 
-			// Test draw mesh on top of render
-			m_geometryShaderProgram.activate();
-
-			glBindVertexArray(VAO);
-
-			GLuint diffuseLocation = glGetUniformLocation(m_outputShaderProgram.ID, "diffuse0");
-			glUniform1i(diffuseLocation, 0);
-			g_testTexture.bind(0);
-			
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-
 			// Screenshot
-			if (Input::GetKeyDown(Input::O)) {
-
+			if (Input::GetKeyDown(Input::O))
+			{
 				m_geometryTexture.saveToDisk("output_texture.png");
 			}
 
@@ -292,6 +219,19 @@ namespace WeirdEngine
 			glfwSwapBuffers(m_window);
 			// Take care of all GLFW events
 			glfwPollEvents();
+		}
+
+		void Renderer::renderGeometry(Scene& scene, Camera& camera)
+		{
+			// Updates and exports the camera matrix to the Vertex Shader
+			camera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+
+			glEnable(GL_DEPTH_TEST);
+
+			// Draw objects in scene
+			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+
+			glDisable(GL_DEPTH_TEST);
 		}
 
 		bool Renderer::checkWindowClosed() const

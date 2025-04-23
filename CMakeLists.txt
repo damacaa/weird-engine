@@ -32,14 +32,14 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>
-        $<INSTALL_INTERFACE:third-party/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
+        $<INSTALL_INTERFACE:third-party>
 )
 
 target_include_directories(glad 
     PUBLIC 
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party/include>
-        $<INSTALL_INTERFACE:third-party/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/third-party>
+        $<INSTALL_INTERFACE:third-party>
 )
 
 # Link glad into WeirdEngine
@@ -82,7 +82,7 @@ install(TARGETS ${PROJECT_NAME} glad EXPORT WeirdEngineConfig
 
 # Install public header directories
 install(DIRECTORY include/ DESTINATION include)
-install(DIRECTORY third-party/include/ DESTINATION third-party/include)
+install(DIRECTORY third-party DESTINATION third-party)
 
 # Export the CMake configuration for consumers
 install(EXPORT WeirdEngineConfig

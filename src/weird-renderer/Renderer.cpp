@@ -4,6 +4,7 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
+
 		inline void CheckOpenGLError(const char* file, int line)
 		{
 			GLenum err;
@@ -13,9 +14,8 @@ namespace WeirdEngine
 				// Optionally, map err to a string representation
 			}
 		}
-#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
 
-		GLuint VAO, VBO;
+#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_windowWidth(width)
@@ -153,7 +153,7 @@ namespace WeirdEngine
 					m_sdfShaderProgram.activate();
 
 					// Magical math to calculate ray marching shader FOV
-					float shaderFov = 1.0 / tan(sceneCamera.fov * 0.01745 * 0.5);
+					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 					// Set uniforms
 					m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
 					m_sdfShaderProgram.setUniform("u_fov", shaderFov);
@@ -209,6 +209,11 @@ namespace WeirdEngine
 
 			m_outputRenderPlane.Draw(m_outputShaderProgram);
 
+			if (!m_renderMeshesOnly)
+			{
+				renderGeometry(scene, sceneCamera);
+			}
+
 			// Screenshot
 			if (Input::GetKeyDown(Input::O))
 			{
@@ -227,11 +232,17 @@ namespace WeirdEngine
 			camera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_CULL_FACE);
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LESS);
 
 			// Draw objects in scene
 			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
-			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_DEPTH_TEST); // No depth test
+			glDepthMask(GL_TRUE); // Still write to depth buffer
+			glClearDepth(1.0f); // Make sure depth buffer is initialized
+			glClear(GL_DEPTH_BUFFER_BIT); // Clear depth
 		}
 
 		bool Renderer::checkWindowClosed() const

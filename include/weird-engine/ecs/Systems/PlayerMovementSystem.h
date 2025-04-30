@@ -127,6 +127,11 @@ namespace WeirdEngine
 						targetPosition.z = 20.0f;
 					}
 
+					if (targetPosition.y < 0.1f)
+					{
+						targetPosition.y = 0.1f;
+					}
+
 					if (Input::GetKeyDown(Input::Space))
 					{
 						flyComponent.speed *= 4.0f;

@@ -7,7 +7,7 @@
 #if (DITHERING == 1)
 
 uniform float _Spread = 0.15f;
-uniform int _ColorCount = 5;
+uniform int _ColorCount = 10;
 
 // Dithering and posterizing
 uniform int bayer2[2 * 2] = int[2 * 2](
@@ -272,7 +272,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 }
 
 
-vec3 render(in vec2 uv, in vec3 originalColor, in float depth)
+vec4 render(in vec2 uv, in vec3 originalColor, in float depth)
 {
 
     // Ray origin
@@ -323,9 +323,11 @@ vec3 render(in vec2 uv, in vec3 originalColor, in float depth)
         //alpha = max(0.0, 0.001 * a * a *a );
     }
 
-    col = mix(col, background, alpha);
+    return vec4(col, 1.0f - alpha);
 
-    return col;
+    // col = mix(col, background, alpha);
+
+    // return col;
 }
 
 float rand(vec2 co){
@@ -348,11 +350,11 @@ void main()
     float z_n = 2.0 * depth - 1.0;
     float z_e = 2.0 * NEAR * FAR / (FAR + NEAR - z_n * (FAR - NEAR));
 
-    vec3 originalColor = texture(u_colorTexture, screenUV).xyz;
+    vec4 originalColor = texture(u_colorTexture, screenUV);
 
-    vec3 col = render(uv, originalColor, z_e);
+    vec4 col = render(uv, originalColor.xyz, z_e);
 
-    col = pow(col, vec3(0.4545));
+    // col = pow(col, vec3(0.4545));
 
 #if (DITHERING == 1)
     int x = int(gl_FragCoord.x);
@@ -365,4 +367,10 @@ void main()
 #endif 
 
     FragColor = vec4(col.xyz, 1.0);
+
+
+    FragColor = vec4(vec3(0.1f * depth), 1.0);
+    FragColor = vec4(0.5f * originalColor.xyz, 1.0);
+
+    FragColor = max( originalColor, col);
 }

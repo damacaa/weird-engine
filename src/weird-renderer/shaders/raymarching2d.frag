@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 0
+#define MOTION_BLUR 1
 
 uniform float k = 0.25;
 

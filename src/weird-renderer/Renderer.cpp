@@ -72,6 +72,9 @@ namespace WeirdEngine
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
 			m_instancedGeometryShaderProgram.activate();
 
+			m_3DsdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching.frag");
+			m_3DsdfShaderProgram.activate();
+
 			m_2DsdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
 			m_2DsdfShaderProgram.activate();
 
@@ -91,6 +94,10 @@ namespace WeirdEngine
 			m_geometryRenderPlane.BindColorTextureToFrameBuffer(m_geometryTexture);
 			m_geometryRenderPlane.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
+			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_3DRenderPlane = RenderPlane(false);
+			m_3DRenderPlane.BindColorTextureToFrameBuffer(m_3DSceneTexture);
+			
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_sdfRenderPlane = RenderPlane(true);
 			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
@@ -167,32 +174,37 @@ namespace WeirdEngine
 			}
 
 			// 3D Ray marching
-			//{
-			//	// Bind the framebuffer you want to render to
-			//	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+			{
+				// Bind the framebuffer you want to render to
+				glBindFramebuffer(GL_FRAMEBUFFER, m_3DRenderPlane.GetFrameBuffer());
 
-			//	// Draw ray marching stuff
-			//	m_sdfShaderProgram.activate();
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			//	// Magical math to calculate ray marching shader FOV
-			//	float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
+				// Draw ray marching stuff
+				m_3DsdfShaderProgram.activate();
 
-			//	// Set uniforms
-			//	m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
-			//	m_sdfShaderProgram.setUniform("u_fov", shaderFov);
-			//	m_sdfShaderProgram.setUniform("u_time", scene.getTime());
-			//	m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+				// Magical math to calculate ray marching shader FOV
+				float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 
-			//	m_sdfShaderProgram.setUniform("u_blendIterations", 1);
+				// Set uniforms
+				m_3DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+				m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
+				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
+				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			//	GLuint u_colorTextureLocation = glGetUniformLocation(m_sdfShaderProgram.ID, "u_colorTexture");
-			//	glUniform1i(u_colorTextureLocation, 0);
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_colorTexture");
+				glUniform1i(u_colorTextureLocation, 0);
+				m_geometryTexture.bind(0);
 
-			//	m_geometryTexture.bind(0);
+				GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_depthTexture");
+				glUniform1i(u_depthTextureLocation, 1);
+				m_geometryDepthTexture.bind(1);
 
-			//	// Draw render plane with sdf shader
-			//	scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
-			//}
+				// Draw render plane with sdf shader
+				//scene.renderShapes(m_3DsdfShaderProgram, m_sdfRenderPlane);
+
+				m_3DRenderPlane.Draw(m_3DsdfShaderProgram);
+			}
 
 			// 2D Ray marching
 			{
@@ -212,7 +224,7 @@ namespace WeirdEngine
 				GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "u_colorTexture");
 				glUniform1i(u_colorTextureLocation, 0);
 
-				m_geometryTexture.bind(0);
+				m_distanceTexture.bind(0);
 
 				// Draw render plane with sdf shader
 				scene.renderShapes(m_2DsdfShaderProgram, m_sdfRenderPlane);
@@ -246,7 +258,7 @@ namespace WeirdEngine
 
 				GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_3DSceneTexture");
 				glUniform1i(u_colorTextureLocation3d, 1);
-				m_geometryTexture.bind(1);
+				m_3DSceneTexture.bind(1);
 
 				m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
 			}

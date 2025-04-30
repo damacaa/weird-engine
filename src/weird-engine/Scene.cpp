@@ -9,7 +9,7 @@
 namespace WeirdEngine
 {
 	//vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0,0,20);
+	vec3 g_cameraPosition(0,1,20);
 
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES)

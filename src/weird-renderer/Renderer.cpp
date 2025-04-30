@@ -21,9 +21,9 @@ namespace WeirdEngine
 			: m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_renderScale(0.5f)
-			, m_renderWidth(width * m_renderScale)
-			, m_renderHeight(height * m_renderScale)
-			, m_renderMeshesOnly(true)
+			, m_renderWidth(width* m_renderScale)
+			, m_renderHeight(height* m_renderScale)
+			, m_renderMeshesOnly(false)
 			, m_vSyncEnabled(true)
 		{
 			// Initialize GLFW
@@ -72,27 +72,36 @@ namespace WeirdEngine
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
 			m_instancedGeometryShaderProgram.activate();
 
-			m_sdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
-			m_sdfShaderProgram.activate();
+			m_2DsdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
+			m_2DsdfShaderProgram.activate();
 
 			m_postProcessShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "postProcess2d.frag");
 			m_postProcessShaderProgram.activate();
+
+			m_combineScenesShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "combineScenes.frag");
+			m_combineScenesShaderProgram.activate();
 
 			m_outputShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "output.frag");
 			m_outputShaderProgram.activate();
 
 			// Bind textures to render planes fbo outputs
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST, true);
 			m_geometryRenderPlane = RenderPlane(false);
 			m_geometryRenderPlane.BindColorTextureToFrameBuffer(m_geometryTexture);
+			m_geometryRenderPlane.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
-			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_sdfRenderPlane = RenderPlane(true);
 			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
 
-			m_postProcessResultTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_postProcessRenderPlane = RenderPlane(false);
-			m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_postProcessResultTexture);
+			m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_lit2DSceneTexture);
+
+			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_combinationRenderPlane = RenderPlane(false);
+			m_combinationRenderPlane.BindColorTextureToFrameBuffer(m_combineResultTexture);
 
 			m_outputRenderPlane = RenderPlane(false);
 		}
@@ -102,13 +111,13 @@ namespace WeirdEngine
 			// Delete all the objects we've created
 			m_geometryShaderProgram.Delete();
 			m_instancedGeometryShaderProgram.Delete();
-			m_sdfShaderProgram.Delete();
+			m_2DsdfShaderProgram.Delete();
 			m_postProcessShaderProgram.Delete();
 			m_outputShaderProgram.Delete();
 
 			m_geometryTexture.dispose();
 			m_distanceTexture.dispose();
-			m_postProcessResultTexture.dispose();
+			m_lit2DSceneTexture.dispose();
 
 			// Delete m_window before ending the program
 			glfwDestroyWindow(m_window);
@@ -127,65 +136,121 @@ namespace WeirdEngine
 				glfwSwapInterval(0);
 			}
 
-			auto fbo = m_geometryRenderPlane.GetFrameBuffer();
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-			// Specify the color of the background
-			glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-			// Clean the back buffer and depth buffer
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			glViewport(0, 0, m_renderWidth, m_renderHeight);
-
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
 
-			renderGeometry(scene, sceneCamera);
-
-			if (!m_renderMeshesOnly)
+			// Render viewport
+			glViewport(0, 0, m_renderWidth, m_renderHeight);
+			
+			// Render geometry
 			{
-				// Ray maching
-				{
-					// Bind the framebuffer you want to render to
-					glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRenderPlane.GetFrameBuffer());
 
-					// Draw ray marching stuff
-					m_sdfShaderProgram.activate();
+				// Enable depth test
+				glEnable(GL_CULL_FACE);
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_LESS);
+				glDepthMask(GL_TRUE);
 
-					// Magical math to calculate ray marching shader FOV
-					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
-					// Set uniforms
-					m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
-					m_sdfShaderProgram.setUniform("u_fov", shaderFov);
-					m_sdfShaderProgram.setUniform("u_time", scene.getTime());
-					m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
 
-					m_sdfShaderProgram.setUniform("u_blendIterations", 1);
+				// Updates and exports the camera matrix to the Vertex Shader
+				sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
-					GLuint u_colorTextureLocation = glGetUniformLocation(m_sdfShaderProgram.ID, "u_colorTexture");
-					glUniform1i(u_colorTextureLocation, 0);
+				// Draw objects in scene
+				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
-					m_geometryTexture.bind(0);
-
-					// Draw render plane with sdf shader
-					scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
-				}
-
-				// Post process
-				{
-					glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
-
-					m_postProcessShaderProgram.activate();
-					m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
-					m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-					GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "u_colorTexture");
-					glUniform1i(u_colorTextureLocation, 0);
-
-					m_distanceTexture.bind(0);
-					m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
-				}
+				glDisable(GL_DEPTH_TEST); // No depth test
+				glDepthMask(GL_TRUE); // Still write to depth buffer
+				glClearDepth(1.0f); // Make sure depth buffer is initialized
+				glClear(GL_DEPTH_BUFFER_BIT); // Clear depth
 			}
+
+			// 3D Ray marching
+			//{
+			//	// Bind the framebuffer you want to render to
+			//	glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+
+			//	// Draw ray marching stuff
+			//	m_sdfShaderProgram.activate();
+
+			//	// Magical math to calculate ray marching shader FOV
+			//	float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
+
+			//	// Set uniforms
+			//	m_sdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+			//	m_sdfShaderProgram.setUniform("u_fov", shaderFov);
+			//	m_sdfShaderProgram.setUniform("u_time", scene.getTime());
+			//	m_sdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+			//	m_sdfShaderProgram.setUniform("u_blendIterations", 1);
+
+			//	GLuint u_colorTextureLocation = glGetUniformLocation(m_sdfShaderProgram.ID, "u_colorTexture");
+			//	glUniform1i(u_colorTextureLocation, 0);
+
+			//	m_geometryTexture.bind(0);
+
+			//	// Draw render plane with sdf shader
+			//	scene.renderShapes(m_sdfShaderProgram, m_sdfRenderPlane);
+			//}
+
+			// 2D Ray marching
+			{
+				// Bind the framebuffer you want to render to
+				glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+
+				// Draw ray marching stuff
+				m_2DsdfShaderProgram.activate();
+
+				// Set uniforms
+				m_2DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+				m_2DsdfShaderProgram.setUniform("u_time", scene.getTime());
+				m_2DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+				m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
+
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "u_colorTexture");
+				glUniform1i(u_colorTextureLocation, 0);
+
+				m_geometryTexture.bind(0);
+
+				// Draw render plane with sdf shader
+				scene.renderShapes(m_2DsdfShaderProgram, m_sdfRenderPlane);
+			}
+
+			// 2D Lighting
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
+
+				m_postProcessShaderProgram.activate();
+				m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
+				m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "u_colorTexture");
+				glUniform1i(u_colorTextureLocation, 0);
+
+				m_distanceTexture.bind(0);
+				m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+			}
+
+			// Combine 2D and 3D
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, m_combinationRenderPlane.GetFrameBuffer());
+
+				m_combineScenesShaderProgram.activate();
+				m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+				GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_2DSceneTexture");
+				glUniform1i(u_colorTextureLocation2d, 0);
+				m_lit2DSceneTexture.bind(0);
+
+				GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_3DSceneTexture");
+				glUniform1i(u_colorTextureLocation3d, 1);
+				m_geometryTexture.bind(1);
+
+				m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+			}
+
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
@@ -204,15 +269,14 @@ namespace WeirdEngine
 			}
 			else
 			{
-				m_postProcessResultTexture.bind(0);
+				m_combineResultTexture.bind(0);
 			}
 
 			m_outputRenderPlane.Draw(m_outputShaderProgram);
 
-			if (!m_renderMeshesOnly)
-			{
-				renderGeometry(scene, sceneCamera);
-			}
+
+			// renderGeometry(scene, sceneCamera);
+
 
 			// Screenshot
 			if (Input::GetKeyDown(Input::O))
@@ -228,13 +292,13 @@ namespace WeirdEngine
 
 		void Renderer::renderGeometry(Scene& scene, Camera& camera)
 		{
-			// Updates and exports the camera matrix to the Vertex Shader
-			camera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
-
-			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_CULL_FACE);
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LESS);
+
+			// Updates and exports the camera matrix to the Vertex Shader
+			camera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+
 
 			// Draw objects in scene
 			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);

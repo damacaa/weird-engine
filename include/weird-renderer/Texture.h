@@ -28,7 +28,7 @@ namespace WeirdEngine
 
 			Texture(glm::vec4 color, std::string texType, GLuint slot);
 
-			Texture(int width, int height, GLuint filterMode);
+			Texture(int width, int height, GLuint filterMode, bool isDepth = false);
 
 			// Assigns a texture unit to a texture
 			void texUnit(Shader& shader, const char* uniform, GLuint unit) const;

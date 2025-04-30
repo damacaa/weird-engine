@@ -85,13 +85,13 @@ namespace WeirdEngine
 
 		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
 		int32_t atomCount = atomArray->getSize();
-		auto componentArray = *m_ecs.getComponentManager<CustomShape>()->getComponentArray();
+		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 
 		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
 
-		for (size_t i = 0; i < componentArray.getSize(); i++)
+		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
-			auto& shape = componentArray[i];
+			auto& shape = componentArray->getDataAtIdx(i);
 
 			oss << "{";
 
@@ -159,7 +159,7 @@ namespace WeirdEngine
 		// Update systems
 		if (m_debugFly)
 		{
-			// m_playerMovementSystem.update(m_ecs, delta);
+			m_playerMovementSystem.update(m_ecs, delta);
 		}
 		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 

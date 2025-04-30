@@ -125,4 +125,6 @@ void main()
 	//FragColor = vec4(vec3(depth * depth * depth), 1);
 	//FragColor = vec4(texture(diffuse0, texCoord).xyz,1);
 	//FragColor = vec4(vec3(texCoord.xy, 0) ,1);
+
+	FragColor.a = 1.0f;
 }

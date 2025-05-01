@@ -9,7 +9,7 @@
 namespace WeirdEngine
 {
 	//vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0,1,20);
+	vec3 g_cameraPosition(0, 1, 20);
 
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES)
@@ -77,6 +77,13 @@ namespace WeirdEngine
 
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
 	{
+		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
+		{
+			return;
+		}
+
+
+
 		std::string str = shader.getFragmentCode();
 
 		std::string toReplace("/*ADD_SHAPES_HERE*/");
@@ -86,6 +93,7 @@ namespace WeirdEngine
 		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
 		int32_t atomCount = atomArray->getSize();
 		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
+		shader.setUniform("u_customShapeCount", componentArray->getSize());
 
 		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
 
@@ -103,7 +111,7 @@ namespace WeirdEngine
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
-			if (shape.m_screenSpace) 
+			if (shape.m_screenSpace)
 			{
 				replaceSubstring(fragmentCode, "var9", "var11");
 				replaceSubstring(fragmentCode, "var10", "var12");
@@ -137,21 +145,18 @@ namespace WeirdEngine
 		shader.setFragmentCode(str);
 	}
 
-	void Scene::renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp)
+	void Scene::updateRayMarchingShader(WeirdRenderer::Shader& shader)
 	{
 		onRender();
 
-		{
-			std::shared_ptr<ComponentArray<CustomShape>> componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-			shader.setUniform("u_customShapeCount", componentArray->getSize());
-		}
+		m_sdfRenderSystem2D.updatePalette(shader);
 
-		if (m_sdfRenderSystem2D.shaderNeedsUpdate())
-		{
-			updateCustomShapesShader(shader);
-		}
+		updateCustomShapesShader(shader);
+	}
 
-		m_sdfRenderSystem2D.render(m_ecs, shader, rp, m_lights);
+	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	{
+		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
 	void Scene::update(double delta, double time)
@@ -174,6 +179,8 @@ namespace WeirdEngine
 
 		m_ecs.freeRemovedComponents();
 	}
+
+
 
 	WeirdRenderer::Camera& Scene::getCamera()
 	{
@@ -233,7 +240,7 @@ namespace WeirdEngine
 	void Scene::loadScene(std::string& sceneFileContent)
 	{
 		//json scene = json::parse(sceneFileContent);
-		
+
 		// load font
 		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
 
@@ -419,7 +426,7 @@ namespace WeirdEngine
 	void Scene::loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters)
 	{
 		// Set all to INVALID_INDEX initially
-		for (int& val : m_CharLookUpTable) 
+		for (int& val : m_CharLookUpTable)
 		{
 			val = INVALID_INDEX;
 		}

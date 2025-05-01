@@ -3,6 +3,8 @@
 #include <vector>
 
 #include "RenderPlane.h"
+#include "DataBuffer.h"
+
 #include "../weird-engine/Scene.h"
 
 namespace WeirdEngine
@@ -36,6 +38,8 @@ namespace WeirdEngine
 
 			RenderPlane m_combinationRenderPlane;
 			RenderPlane m_outputRenderPlane;
+
+			DataBuffer m_shapes2D;
 
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;

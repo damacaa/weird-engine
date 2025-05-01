@@ -11,9 +11,29 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
+		class GLInitializer {
+		public:
+			GLInitializer(const unsigned int width, const unsigned int height, GLFWwindow*& m_window);
+		};
+
 		class Renderer
 		{
+		
+
+		public:
+			Renderer(const unsigned int width, const unsigned int height);
+			~Renderer();
+			void render(Scene& scene, const double time);
+			bool checkWindowClosed() const;
+			void setWindowTitle(const char* name);
+
+			
+
+			GLFWwindow* getWindow();
+
 		private:
+			GLInitializer m_initializer;
+
 			GLFWwindow* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
 			double m_renderScale;
@@ -51,15 +71,9 @@ namespace WeirdEngine
 			Texture m_combineResultTexture;
 
 			void renderGeometry(Scene& scene, Camera& camera);
-
-		public:
-			Renderer(const unsigned int width, const unsigned int height);
-			~Renderer();
-			void render(Scene& scene, const double time);
-			bool checkWindowClosed() const;
-			void setWindowTitle(const char* name);
-
-			GLFWwindow* getWindow();
+			void output(Scene& scene, Texture& texture);
 		};
+
+
 	}
 }

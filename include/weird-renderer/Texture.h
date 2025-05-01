@@ -22,7 +22,7 @@ namespace WeirdEngine
 			GLuint ID = -1;
 			std::string type = "";
 
-			Texture() {}; // I shouldn't neet this :S
+			Texture() {};
 
 			Texture(const char* image, std::string texType, GLuint slot);
 

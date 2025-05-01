@@ -30,12 +30,20 @@ namespace WeirdEngine
 
 			if (size != newSize)
 			{
-				if (data != nullptr)
+				if (data)
+				{
 					delete[] data;
+					data = nullptr;
+				}
 
 				size = newSize;
+			}
+
+			if (!data && size > 0)
+			{
 				data = new WeirdRenderer::Dot2D[size];
 			}
+
 
 			for (size_t i = 0; i < ballCount; i++)
 			{
@@ -60,27 +68,6 @@ namespace WeirdEngine
 				data[ballCount + (2 * i) + 1].size = shape.m_parameters[6];
 				data[ballCount + (2 * i) + 1].material = shape.m_parameters[7];
 			}
-		}
-
-		// lights are still not used
-		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
-		{
-			m_materialsAreDirty = true;
-			if (m_materialsAreDirty)
-			{
-				shader.setUniform("u_staticColors", m_colorPalette, 16);
-				m_materialsAreDirty = false;
-			}
-
-			WeirdRenderer::Dot2D* data;
-			uint32_t size;
-
-			fillDataBuffer(data, size);
-
-			//shader.setUniform("directionalLightDirection", lights[0].rotation);
-			rp.Draw(shader, data, size);
-
-			delete[] data; // TODO: reuse data buffer
 		}
 
 		void updatePalette(WeirdRenderer::Shader& shader)

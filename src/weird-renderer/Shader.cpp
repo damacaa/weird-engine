@@ -78,54 +78,6 @@ namespace WeirdEngine
 			if (ID != -1)
 				Delete();
 
-			/*std::string INCLUDE = "#include";
-			size_t pos;
-			while (true) {
-
-				pos = fragmentCode.find(INCLUDE);
-
-				if (pos == std::string::npos)
-					break;
-
-				//TODO: find if INCLUDE is in a comment
-
-				// Length of the substring to be replaced
-				size_t len = INCLUDE.length() + 1; // Length of "brown"
-
-				std::string fileName;
-				size_t i = pos + len;
-				while (true)
-				{
-					char c = fragmentCode[i];
-
-					if (c == ' ' || c == '\r' || c == '\n')
-						break;
-
-					fileName += fragmentCode[i];
-					len++;
-					i++;
-				}
-
-				len += 2;
-
-				std::string filePath = "src/shaders/" + fileName;
-
-				// Try to read included code
-				std::string includedCode;
-				try {
-					includedCode = get_file_contents(filePath.c_str());
-				}
-				catch (...) {
-					break;
-				}
-
-				// Replace the substring starting at position 'pos' with the new substring
-				fragmentCode.replace(pos, len, includedCode);
-
-				break;
-			}*/
-
-
 			// Convert the shader source strings into character arrays
 			const char* vertexSource = vertexCode.c_str();
 			const char* fragmentSource = fragmentCode.c_str();
@@ -146,7 +98,7 @@ namespace WeirdEngine
 			GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 			// Attach Fragment Shader source to the Fragment Shader Object
 			glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-			// Compile the Vertex Shader into machine code
+			// Compile the Fragment Shader into machine code
 			glCompileShader(fragmentShader);
 			// Checks if Shader compiled succesfully
 			compileErrors(fragmentShader, "FRAGMENT");
@@ -167,7 +119,7 @@ namespace WeirdEngine
 		}
 
 		// Checks if the different Shaders have compiled properly
-		void Shader::compileErrors(unsigned int shader, const char* type)
+		void Shader::compileErrors(unsigned int shader, const std::string& type)
 		{
 			// Stores status of compilation
 			GLint hasCompiled;

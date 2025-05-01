@@ -72,19 +72,19 @@ namespace WeirdEngine
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
 			m_instancedGeometryShaderProgram.activate();
 
-			m_3DsdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching.frag");
+			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
 			m_3DsdfShaderProgram.activate();
 
-			m_2DsdfShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "raymarching2d.frag");
+			m_2DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching2d.frag");
 			m_2DsdfShaderProgram.activate();
 
-			m_postProcessShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "postProcess2d.frag");
+			m_postProcessShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "postProcess2d.frag");
 			m_postProcessShaderProgram.activate();
 
-			m_combineScenesShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "combineScenes.frag");
+			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
 			m_combineScenesShaderProgram.activate();
 
-			m_outputShaderProgram = Shader(SHADERS_PATH "raymarching.vert", SHADERS_PATH "output.frag");
+			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
 			m_outputShaderProgram.activate();
 
 			// Bind textures to render planes fbo outputs

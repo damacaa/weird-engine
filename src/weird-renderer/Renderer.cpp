@@ -99,7 +99,7 @@ namespace WeirdEngine
 			m_3DRenderPlane.BindColorTextureToFrameBuffer(m_3DSceneTexture);
 
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_sdfRenderPlane = RenderPlane(true);
+			m_sdfRenderPlane = RenderPlane(false);
 			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
 
 			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
@@ -111,6 +111,8 @@ namespace WeirdEngine
 			m_combinationRenderPlane.BindColorTextureToFrameBuffer(m_combineResultTexture);
 
 			m_outputRenderPlane = RenderPlane(false);
+
+			m_shapes2D = DataBuffer(0);
 		}
 
 		Renderer::~Renderer()
@@ -143,6 +145,9 @@ namespace WeirdEngine
 			// Terminate GLFW before ending the program
 			glfwTerminate();
 		}
+
+		WeirdRenderer::Dot2D* data;
+		uint32_t size;
 
 		void Renderer::render(Scene& scene, const double time)
 		{
@@ -243,9 +248,18 @@ namespace WeirdEngine
 				glUniform1i(u_colorTextureLocation, 0);
 
 				m_distanceTexture.bind(0);
+					
+				scene.updateRayMarchingShader(m_2DsdfShaderProgram);
 
-				// Draw render plane with sdf shader
-				scene.renderShapes(m_2DsdfShaderProgram, m_sdfRenderPlane);
+				// m_2DsdfShaderProgram.setUniform("u_shapeBuffer", 1);
+
+				scene.get2DShapesData(data, size);
+
+				m_shapes2D.sendData(data, size);
+
+				m_shapes2D.bind();
+
+				m_sdfRenderPlane.Draw(m_2DsdfShaderProgram, data, size);
 			}
 
 			// 2D Lighting

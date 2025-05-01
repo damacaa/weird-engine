@@ -21,9 +21,11 @@ namespace WeirdEngine
 		void start();
 
 		void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
-		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
-		void renderShapes(WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp);
+
+		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
 		void update(double delta, double time);
+
+		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
 		Scene(const Scene&) = default;			   // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
@@ -91,7 +93,7 @@ namespace WeirdEngine
 		bool m_runSimulationInThread;
 
 
-
+		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
 
 		std::vector<WeirdRenderer::Light> m_lights;
 	};

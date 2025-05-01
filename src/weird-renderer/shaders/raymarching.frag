@@ -95,20 +95,11 @@ float fCylinder(vec3 p, float r, float height)
     return d;
 }
 
-struct Shape
-{
-    vec3 position;
-    float size;
-};
-
 // Outputs colors in RGBA
 layout(location = 0) out vec4 FragColor;
 
-uniform int u_loadedObjects = 1;
-layout(std140) uniform u_shapes
-{ // "preferably std430" ?
-    Shape data[10];
-};
+uniform int u_loadedObjects;
+uniform samplerBuffer u_shapeBuffer;
 
 uniform mat4 u_cameraMatrix;
 
@@ -139,8 +130,10 @@ float map(vec3 p)
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
+        vec4 positionSize = texelFetch(u_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
-        float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
+        //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
+        float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
         
 
         res = fOpUnionSoft(objectDist, res, 0.5);
@@ -175,8 +168,10 @@ vec3 getColor(vec3 p)
     {
         int id = i % 2 == 0 ? 1 : 2;
 
+        vec4 positionSize = texelFetch(u_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
-        float objectDist = fSphere(p - vec3(sin(-u_time), 1.0f, cos(-u_time)), 0.5f);
+        //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
+        float objectDist = fSphere(p - positionSize.xyz, 0.5f);
         
         //float delta = objectDist / (objectDist + d); // Calculate using old d
         d = fOpUnionSoft(objectDist, d, k);

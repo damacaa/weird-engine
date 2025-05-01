@@ -59,12 +59,19 @@ namespace WeirdEngine
 			// Introduce the m_window into the current context
 			glfwMakeContextCurrent(m_window);
 
-
-			// Clear any GL errors caused during init
-			//while (glGetError() != GL_NO_ERROR) {}
-
 			// Load GLAD so it configures OpenGL
 			gladLoadGL();
+
+			// Clear any GL errors caused during init
+			while (glGetError() != GL_NO_ERROR) {}
+
+			// Debug-specific code
+			//glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
+			//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
+
+			// Set the debug callback function
+			//glDebugMessageCallback(OpenGLDebugCallback, nullptr);
+
 		}
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
@@ -77,12 +84,6 @@ namespace WeirdEngine
 			, m_renderMeshesOnly(false)
 			, m_vSyncEnabled(true)
 		{
-
-			// Specify the viewport of OpenGL in the Window
-			glViewport(0, 0, width, height);
-
-			GL_CHECK_ERROR();
-
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
 
@@ -125,8 +126,6 @@ namespace WeirdEngine
 
 			m_outputRenderPlane = RenderPlane(false);
 
-			//m_shapes2D = DataBuffer(1);
-
 			GL_CHECK_ERROR();
 
 			// Enables the Depth Buffer and chooses which depth function to use
@@ -138,12 +137,7 @@ namespace WeirdEngine
 			glFrontFace(GL_CCW);
 
 
-			// Debug-specific code
-			//glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
-			//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
 
-			//// Set the debug callback function
-			//glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 
 		}
 
@@ -172,14 +166,15 @@ namespace WeirdEngine
 			m_lit2DSceneTexture.dispose();
 			m_combineResultTexture.dispose();
 
+			delete[] m_2DData;
+
 			// Delete m_window before ending the program
 			glfwDestroyWindow(m_window);
 			// Terminate GLFW before ending the program
 			glfwTerminate();
 		}
 
-		WeirdRenderer::Dot2D* data = nullptr;
-		uint32_t size = 0;
+
 
 		void Renderer::render(Scene& scene, const double time)
 		{
@@ -212,7 +207,6 @@ namespace WeirdEngine
 				// Bind the framebuffer you want to render to
 				glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
 
-
 				// Draw ray marching stuff
 				m_2DsdfShaderProgram.activate();
 
@@ -230,13 +224,13 @@ namespace WeirdEngine
 
 				m_distanceTexture.bind(0);
 
-				scene.get2DShapesData(data, size);
-				m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)size);
+				scene.get2DShapesData(m_2DData, m_2DDataSize);
+				m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
 				m_sdfRenderPlane.Bind();
 
 				m_2DsdfShaderProgram.setUniform("u_shapeBuffer", 1);
-				m_shapes2D.uploadData<Dot2D>(data, size);
+				m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 				m_shapes2D.bind(1);
 
 				m_sdfRenderPlane.Draw(m_2DsdfShaderProgram);
@@ -326,10 +320,18 @@ namespace WeirdEngine
 				//scene.renderShapes(m_3DsdfShaderProgram, m_sdfRenderPlane);
 
 				m_3DRenderPlane.Bind();
+
+				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+
+				m_3DsdfShaderProgram.setUniform("u_shapeBuffer", 2);
+				//m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
+				m_shapes2D.bind(2);
+
 				m_3DRenderPlane.Draw(m_3DsdfShaderProgram);
 
 				m_geometryTexture.unbind();
 				m_geometryDepthTexture.unbind();
+				m_shapes2D.unbind();
 			}
 
 

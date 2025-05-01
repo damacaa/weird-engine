@@ -27,8 +27,6 @@ namespace WeirdEngine
 			bool checkWindowClosed() const;
 			void setWindowTitle(const char* name);
 
-			
-
 			GLFWwindow* getWindow();
 
 		private:
@@ -69,6 +67,9 @@ namespace WeirdEngine
 			Texture m_lit2DSceneTexture;
 
 			Texture m_combineResultTexture;
+
+			WeirdRenderer::Dot2D* m_2DData = nullptr;
+			uint32_t m_2DDataSize = 0;
 
 			void renderGeometry(Scene& scene, Camera& camera);
 			void output(Scene& scene, Texture& texture);

@@ -120,11 +120,23 @@ namespace WeirdEngine
 			m_instancedGeometryShaderProgram.Delete();
 			m_2DsdfShaderProgram.Delete();
 			m_postProcessShaderProgram.Delete();
+			m_3DsdfShaderProgram.Delete();
+			m_combineScenesShaderProgram.Delete();
 			m_outputShaderProgram.Delete();
 
+			m_geometryRenderPlane.Delete();
+			m_3DRenderPlane.Delete();
+			m_sdfRenderPlane.Delete();
+			m_postProcessRenderPlane.Delete();
+			m_combinationRenderPlane.Delete();
+			m_outputRenderPlane.Delete();
+
 			m_geometryTexture.dispose();
+			m_geometryDepthTexture.dispose();
+			m_3DSceneTexture.dispose();
 			m_distanceTexture.dispose();
 			m_lit2DSceneTexture.dispose();
+			m_combineResultTexture.dispose();
 
 			// Delete m_window before ending the program
 			glfwDestroyWindow(m_window);

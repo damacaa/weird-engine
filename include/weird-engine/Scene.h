@@ -35,6 +35,7 @@ namespace WeirdEngine
 
 		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
+		bool requires3DRendering();
 
 	protected:
 		virtual void onStart() = 0;

@@ -104,7 +104,7 @@ struct Shape
 // Outputs colors in RGBA
 layout(location = 0) out vec4 FragColor;
 
-uniform int u_loadedObjects;
+uniform int u_loadedObjects = 1;
 layout(std140) uniform u_shapes
 { // "preferably std430" ?
     Shape data[10];
@@ -129,7 +129,7 @@ const vec3 background = vec3(0.0);
 uniform sampler2D u_colorTexture;
 uniform sampler2D u_depthTexture;
 
-uniform vec3 directionalLightDirection;
+uniform vec3 directionalLightDirection = vec3(0,1,0);
 
 
 
@@ -139,8 +139,8 @@ float map(vec3 p)
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
-        //float objectDist = fSphere(p - data[i].position, data[i].size);
-        float objectDist = fSphere(p - data[i].position, data[i].size);
+        // float objectDist = fSphere(p - data[i].position, data[i].size);
+        float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
         
 
         res = fOpUnionSoft(objectDist, res, 0.5);
@@ -175,7 +175,8 @@ vec3 getColor(vec3 p)
     {
         int id = i % 2 == 0 ? 1 : 2;
 
-        float objectDist = fSphere(p - data[i].position, data[i].size);
+        // float objectDist = fSphere(p - data[i].position, data[i].size);
+        float objectDist = fSphere(p - vec3(sin(-u_time), 1.0f, cos(-u_time)), 0.5f);
         
         //float delta = objectDist / (objectDist + d); // Calculate using old d
         d = fOpUnionSoft(objectDist, d, k);
@@ -299,7 +300,7 @@ vec4 render(in vec2 uv, in vec3 originalColor, in float depth)
     vec3 col;
 
     // Scene alpha over background
-    float alpha = 1.0;
+    float alpha = 0.0;
     if (minDepth < FAR)
     {
 
@@ -319,11 +320,15 @@ vec4 render(in vec2 uv, in vec3 originalColor, in float depth)
         minDepth -= 0.85;
         alpha = 1.0 - exp(-0.001 * minDepth * minDepth);
 
+        col = mix(col, background, alpha);
+
         //float a = minDepth - (FAR - 980);
         //alpha = max(0.0, 0.001 * a * a *a );
+
+        alpha = 1.0f;
     }
 
-    return vec4(col, 1.0f - alpha);
+    return vec4(col, alpha);
 
     // col = mix(col, background, alpha);
 
@@ -366,11 +371,12 @@ void main()
     col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
 #endif 
 
-    FragColor = vec4(col.xyz, 1.0);
 
 
-    FragColor = vec4(vec3(0.1f * depth), 1.0);
-    FragColor = vec4(0.5f * originalColor.xyz, 1.0);
+//    FragColor = vec4(0.5f * originalColor.xyz, 1.0);
+//
+//    FragColor = max( originalColor, col);
+//    FragColor = vec4(vec3(1.0f * depth), 1.0);
 
-    FragColor = max( originalColor, col);
+    FragColor = vec4(col.xyz, col.w);
 }

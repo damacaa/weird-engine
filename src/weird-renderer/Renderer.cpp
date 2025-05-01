@@ -97,7 +97,7 @@ namespace WeirdEngine
 			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_3DRenderPlane = RenderPlane(false);
 			m_3DRenderPlane.BindColorTextureToFrameBuffer(m_3DSceneTexture);
-			
+
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_sdfRenderPlane = RenderPlane(true);
 			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
@@ -145,65 +145,71 @@ namespace WeirdEngine
 
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
+			// Updates and exports the camera matrix to the Vertex Shader
+			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+
+			bool enable3D = scene.requires3DRendering();
+
+			//
+			glDisable(GL_DEPTH_TEST);
 
 			// Render viewport
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
-			
-			// Render geometry
+
+			if (enable3D)
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRenderPlane.GetFrameBuffer());
+				// Render geometry
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRenderPlane.GetFrameBuffer());
 
-				// Enable depth test
-				glEnable(GL_CULL_FACE);
-				glEnable(GL_DEPTH_TEST);
-				glDepthFunc(GL_LESS);
-				glDepthMask(GL_TRUE);
+					// Enable depth test
+					glEnable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LESS);
+					glDepthMask(GL_TRUE);
 
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
+					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
 
-				// Updates and exports the camera matrix to the Vertex Shader
-				sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+					// Draw objects in scene
+					scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
-				// Draw objects in scene
-				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+					glDisable(GL_DEPTH_TEST); // No depth test
+					glDepthMask(GL_TRUE); // Still write to depth buffer
+					glClearDepth(1.0f); // Make sure depth buffer is initialized
+				}
 
-				glDisable(GL_DEPTH_TEST); // No depth test
-				glDepthMask(GL_TRUE); // Still write to depth buffer
-				glClearDepth(1.0f); // Make sure depth buffer is initialized
-				glClear(GL_DEPTH_BUFFER_BIT); // Clear depth
-			}
+				// 3D Ray marching
+				{
+					// Bind the framebuffer you want to render to
+					glBindFramebuffer(GL_FRAMEBUFFER, m_3DRenderPlane.GetFrameBuffer());
 
-			// 3D Ray marching
-			{
-				// Bind the framebuffer you want to render to
-				glBindFramebuffer(GL_FRAMEBUFFER, m_3DRenderPlane.GetFrameBuffer());
+					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+					// Draw ray marching stuff
+					m_3DsdfShaderProgram.activate();
 
-				// Draw ray marching stuff
-				m_3DsdfShaderProgram.activate();
+					// Magical math to calculate ray marching shader FOV
+					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 
-				// Magical math to calculate ray marching shader FOV
-				float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
+					// Set uniforms
+					m_3DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
+					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
+					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				// Set uniforms
-				m_3DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
-				m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
-				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
-				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_colorTexture");
+					glUniform1i(u_colorTextureLocation, 0);
+					m_geometryTexture.bind(0);
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_colorTexture");
-				glUniform1i(u_colorTextureLocation, 0);
-				m_geometryTexture.bind(0);
+					GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_depthTexture");
+					glUniform1i(u_depthTextureLocation, 1);
+					m_geometryDepthTexture.bind(1);
 
-				GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_depthTexture");
-				glUniform1i(u_depthTextureLocation, 1);
-				m_geometryDepthTexture.bind(1);
+					// Draw render plane with sdf shader
+					//scene.renderShapes(m_3DsdfShaderProgram, m_sdfRenderPlane);
 
-				// Draw render plane with sdf shader
-				//scene.renderShapes(m_3DsdfShaderProgram, m_sdfRenderPlane);
-
-				m_3DRenderPlane.Draw(m_3DsdfShaderProgram);
+					m_3DRenderPlane.Draw(m_3DsdfShaderProgram);
+				}
 			}
 
 			// 2D Ray marching
@@ -246,7 +252,10 @@ namespace WeirdEngine
 			}
 
 			// Combine 2D and 3D
+			if (enable3D)
 			{
+				bool used2DAsBackground = false;
+
 				glBindFramebuffer(GL_FRAMEBUFFER, m_combinationRenderPlane.GetFrameBuffer());
 
 				m_combineScenesShaderProgram.activate();
@@ -254,7 +263,14 @@ namespace WeirdEngine
 
 				GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_2DSceneTexture");
 				glUniform1i(u_colorTextureLocation2d, 0);
-				m_lit2DSceneTexture.bind(0);
+				if (used2DAsBackground)
+				{
+					m_lit2DSceneTexture.bind(0);
+				}
+				else
+				{
+					m_3DSceneTexture.bind(0);
+				}
 
 				GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_3DSceneTexture");
 				glUniform1i(u_colorTextureLocation3d, 1);
@@ -277,11 +293,19 @@ namespace WeirdEngine
 
 			if (m_renderMeshesOnly)
 			{
-				m_geometryTexture.bind(0);
+				//m_geometryTexture.bind(0);
+				m_geometryDepthTexture.bind(0);
 			}
 			else
 			{
-				m_combineResultTexture.bind(0);
+				if (enable3D)
+				{
+					m_combineResultTexture.bind(0);
+				}
+				else
+				{
+					m_lit2DSceneTexture.bind(0);
+				}
 			}
 
 			m_outputRenderPlane.Draw(m_outputShaderProgram);

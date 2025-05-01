@@ -23,9 +23,9 @@ namespace WeirdEngine
 			// Stores the width, height, and the number of color channels of the image
 			int widthImg = 0, heightImg = 0, numColCh = 0;
 			// Flips the image so it appears right side up
-			//TODO: fix this in cmake file wstbi_set_flip_vertically_on_load(true);
+			wstbi_set_flip_vertically_on_load(true);
 			// Reads the image from a file and stores it in bytes
-			unsigned char* bytes = nullptr; //TODO: fix this in cmake file wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+			unsigned char* bytes = wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
 
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
@@ -215,26 +215,34 @@ namespace WeirdEngine
 			glBindTexture(GL_TEXTURE_2D, 0); // Unbind texture
 		}
 
-		Texture::Texture(int width, int height, GLuint filterMode)
+		Texture::Texture(int width, int height, GLuint filterMode, bool isDepth)
 		{
 			glGenTextures(1, &ID);
 			glBindTexture(GL_TEXTURE_2D, ID);
 
-			float* textureData = new float[width * height * 4];
-
-			for (size_t i = 0; i < width * height * 4; i++)
+			if (isDepth)
 			{
-				textureData[i] = 1.0f;
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			}
+			else
+			{
+				float* textureData = new float[width * height * 4];
+				for (size_t i = 0; i < width * height * 4; i++) textureData[i] = 1.0f;
+
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, textureData);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+				delete[] textureData;
 			}
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, textureData);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-
-			delete[] textureData;
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 	}
 }

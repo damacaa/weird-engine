@@ -17,8 +17,8 @@ namespace WeirdEngine
 			m_transformManager = ecs.getComponentManager<Transform>();
 		}
 
-		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size) 
-		{ 
+		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
+		{
 			auto componentArray = m_sdfRendererManager->getComponentArray();
 			auto customShapeArray = m_customShapeManager->getComponentArray();
 			auto transformArray = m_transformManager->getComponentArray();
@@ -26,8 +26,24 @@ namespace WeirdEngine
 			uint32_t ballCount = componentArray->getSize();
 			uint32_t customShapeCount = customShapeArray->getSize();
 
-			size = ballCount + (2 * customShapeCount);
-			data = new WeirdRenderer::Dot2D[size];
+			uint32_t newSize = ballCount + (2 * customShapeCount);
+
+			if (size != newSize)
+			{
+				if (data)
+				{
+					delete[] data;
+					data = nullptr;
+				}
+
+				size = newSize;
+			}
+
+			if (!data && size > 0)
+			{
+				data = new WeirdRenderer::Dot2D[size];
+			}
+
 
 			for (size_t i = 0; i < ballCount; i++)
 			{
@@ -54,8 +70,7 @@ namespace WeirdEngine
 			}
 		}
 
-		// lights are still not used
-		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights)
+		void updatePalette(WeirdRenderer::Shader& shader)
 		{
 			m_materialsAreDirty = true;
 			if (m_materialsAreDirty)
@@ -63,16 +78,6 @@ namespace WeirdEngine
 				shader.setUniform("u_staticColors", m_colorPalette, 16);
 				m_materialsAreDirty = false;
 			}
-
-			WeirdRenderer::Dot2D* data;
-			uint32_t size;
-
-			fillDataBuffer(data, size);
-
-			//shader.setUniform("directionalLightDirection", lights[0].rotation);
-			rp.Draw(shader, data, size);
-
-			delete[] data; // TODO: reuse data buffer
 		}
 
 		// Function to find the closest color in the palette

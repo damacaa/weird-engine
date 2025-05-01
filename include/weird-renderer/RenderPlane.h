@@ -10,12 +10,11 @@ namespace WeirdEngine
 		class RenderPlane
 		{
 		public:
-			RenderPlane() {};
+			RenderPlane() = default;
 			RenderPlane(bool shapeRenderer);
 
+			void Bind() const;
 			void Draw(Shader& shader) const;
-			void Draw(Shader& shader, Shape* shapes, size_t size) const;
-			void Draw(Shader& shader, Dot2D* shapes, size_t size) const;
 			void Delete();
 
 			void BindTextureToFrameBuffer(Texture texture, GLenum attachment);
@@ -25,11 +24,7 @@ namespace WeirdEngine
 			unsigned int GetFrameBuffer() const;
 
 		private:
-			GLuint VAO, VBO, EBO, UBO, FBO;
-
-			GLuint m_shapeBuffer;
-			GLuint m_shapeTexture;
-			unsigned int  m_shapeTextureLocation;
+			GLuint VAO, VBO, EBO, FBO;
 		};
 	}
 }

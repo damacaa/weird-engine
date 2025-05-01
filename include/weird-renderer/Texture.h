@@ -22,13 +22,13 @@ namespace WeirdEngine
 			GLuint ID = -1;
 			std::string type = "";
 
-			Texture() {}; // I shouldn't neet this :S
+			Texture() {};
 
 			Texture(const char* image, std::string texType, GLuint slot);
 
 			Texture(glm::vec4 color, std::string texType, GLuint slot);
 
-			Texture(int width, int height, GLuint filterMode);
+			Texture(int width, int height, GLuint filterMode, bool isDepth = false);
 
 			// Assigns a texture unit to a texture
 			void texUnit(Shader& shader, const char* uniform, GLuint unit) const;

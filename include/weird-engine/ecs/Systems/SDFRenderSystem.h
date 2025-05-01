@@ -38,7 +38,7 @@ namespace WeirdEngine
 			}
 
 			shader.setUniform("directionalLightDirection", lights[0].rotation);
-			rp.Draw(shader, data, size);
+			//rp.Draw(shader, data, size);
 
 			delete[] data;
 

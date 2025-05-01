@@ -82,7 +82,7 @@ namespace WeirdEngine
 			void recompile(std::string& vertexCode, std::string& fragmentCode);
 
 			// Checks if the different Shaders have compiled properly
-			void compileErrors(unsigned int shader, const char* type);
+			void compileErrors(unsigned int shader, const std::string& type);
 
 
 		};

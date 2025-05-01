@@ -25,7 +25,7 @@ file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CUR
 add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 
 # Add glad library as static
-add_library(glad STATIC src/weird-renderer/glad.c)
+add_library(glad STATIC third-party/glad/glad.c)
 
 # Public interface include directories
 target_include_directories(${PROJECT_NAME}

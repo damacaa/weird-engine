@@ -30,6 +30,7 @@ namespace WeirdEngine
 	void SceneManager::loadScene(const std::string& sceneName)
 	{
 		if (sceneFactories.find(sceneName) != sceneFactories.end()) {
+			currentScene = nullptr;
 			currentScene = sceneFactories[sceneName](); // Instantiate the scene
 			currentScene->start();
 			std::cout << "Changed to " << sceneName << " scene\n";

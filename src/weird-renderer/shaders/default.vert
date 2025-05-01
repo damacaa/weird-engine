@@ -37,7 +37,7 @@ void main()
 	// Assigns the colors from the Vertex Data to "color"
 	color = aColor;
 	// Assigns the texture coordinates from the Vertex Data to "texCoord"
-	texCoord = mat2(0.0, -1.0, 1.0, 0.0) * aTex;
+	texCoord = aTex;
 	
 	// Outputs the positions/coordinates of all vertices
 	gl_Position = camMatrix * vec4(crntPos, 1.0);

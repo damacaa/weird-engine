@@ -56,106 +56,32 @@ namespace WeirdEngine
 			// This does not apply to the VBO because the VBO is already linked to the VAO during glVertexAttribPointer
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-			if (shapeRenderer)
-			{
-
-				// Uniform buffer to store shapes
-				glGenBuffers(1, &UBO);
-				glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-				// Bind UBO to shader program (assuming location 0 for UBO)
-				glBindBufferBase(GL_UNIFORM_BUFFER, 0, UBO);
-				glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-
-				// Generate shape buffer and texture
-				glGenBuffers(1, &m_shapeBuffer);
-				glGenTextures(1, &m_shapeTexture);
-
-			}
-
 			// Frame buffer to store render output
 			glGenFramebuffers(1, &FBO);
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-
-
 		}
 
 
+		void RenderPlane::Bind() const
+		{
+			// Bind the VAO so OpenGL knows to use it
+			glBindVertexArray(VAO);
+		}
 
 		void RenderPlane::Draw(Shader& shader) const
 		{
 
-			// Bind the VAO so OpenGL knows to use it
-			glBindVertexArray(VAO);
-
-
-			//// Read color texture
-			//glActiveTexture(GL_TEXTURE0);
-			//glBindTexture(GL_TEXTURE_2D, m_colorTexture);
-			//glUniform1i(m_colorTextureLocation, 0);
-
-			//// Read depth texture
-			//glActiveTexture(GL_TEXTURE1);
-			//glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-			//glUniform1i(m_depthTextureLocation, 1);
-
-
-
-
-
-
-			// Draw the triangle using the GL_TRIANGLES primitive
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		}
-
-		void RenderPlane::Draw(Shader& shader, Shape* shapes, size_t size) const
-		{
-			// Bind the VAO so OpenGL knows to use it
-			glBindVertexArray(VAO);
-
 			// Draw the triangle using the GL_TRIANGLES primitive
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
 
-		void RenderPlane::Draw(Shader& shader, Dot2D* shapes, size_t size) const
-		{
-
-
-
-			glBindBuffer(GL_TEXTURE_BUFFER, m_shapeBuffer);
-			glBufferData(GL_TEXTURE_BUFFER, sizeof(Dot2D) * size, shapes, GL_STREAM_DRAW);
-			//glBufferSubData(GL_TEXTURE_BUFFER, 0, sizeof(Dot2D) * size, shapes);
-
-			// Bind the buffer to the buffer texture
-			glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);
-			glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_shapeBuffer);
-
-			// Bind texture to slot 1
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_BUFFER, m_shapeTexture);
-
-			// Set uniforms
-			GLuint myBufferTextureLocation = glGetUniformLocation(shader.ID, "u_shapeBuffer");
-			glUniform1i(myBufferTextureLocation, 1); // Tell the shader the texture is in slot 1
-
-			GLuint loadedObjectsLocation = glGetUniformLocation(shader.ID, "u_loadedObjects");
-			glUniform1i(loadedObjectsLocation, size);
-
-
-			// Bind the VAO so OpenGL knows to use it
-			glBindVertexArray(VAO);
-			// Draw the triangle using the GL_TRIANGLES primitive
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-
-		}
 
 		void RenderPlane::Delete()
 		{
 			glDeleteVertexArrays(1, &VAO);
 			glDeleteBuffers(1, &VBO);
 		}
+
 
 		void RenderPlane::BindTextureToFrameBuffer(Texture texture, GLenum attachment)
 		{
@@ -172,17 +98,17 @@ namespace WeirdEngine
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 
+
 		void RenderPlane::BindColorTextureToFrameBuffer(Texture texture)
 		{
 			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0);
 		}
 
+
 		void RenderPlane::BindDepthTextureToFrameBuffer(Texture texture)
 		{
 			BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
 		}
-
-
 
 
 		unsigned int RenderPlane::GetFrameBuffer() const

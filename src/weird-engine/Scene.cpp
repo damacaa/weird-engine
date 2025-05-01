@@ -190,6 +190,11 @@ namespace WeirdEngine
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
+	bool Scene::requires3DRendering()
+	{
+		return m_ecs.getComponentArray<MeshRenderer>()->getSize() > 0;
+	}
+
 	Entity Scene::addShape(int shapeId, float* variables)
 	{
 		Entity entity = m_ecs.createEntity();

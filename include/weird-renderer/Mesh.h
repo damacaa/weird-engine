@@ -59,6 +59,17 @@ using namespace ECS;
 				Shader& shader,
 				Camera& camera,
 				unsigned int instances,
+				glm::vec3 translation,
+				glm::vec3 rotation,
+				glm::vec3 scale,
+				const std::vector<Light>& lights
+			) const;
+
+			void DrawInstance
+			(
+				Shader& shader,
+				Camera& camera,
+				unsigned int instances,
 				std::vector<glm::vec3> translations,
 				std::vector<glm::vec3> rotations,
 				std::vector<glm::vec3> scales,

@@ -89,8 +89,8 @@ void main()
 	FragColor = vec4(getGradientColor(alpha), alpha);
 	// FragColor = vec4(vec3(alpha), 1.0f);
 
-    if(alpha < 0.1f)
-        discard;
+//    if(alpha < 0.1f)
+//        discard;
 
 	//	FragColor = vec4(fract(texCoord + vec2(0, u_time)),0,1);
 	//FragColor = vec4(vec3(sin(100*crntPos.x)),1);

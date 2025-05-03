@@ -35,10 +35,10 @@ vec4 pointLight()
 	float dist = length(lightVec);
 	float a = 3.0;
 	float b = 0.7;
-	float inten = 1.0f / (a * dist * dist + b * dist + 1.0f);
+	float inten = 10.0f / (a * dist * dist + b * dist + 1.0f);
 
 	// ambient lighting
-	float ambient = 0.20f;
+	float ambient = 0.01f;
 
 	// diffuse lighting
 	vec3 normal = normalize(Normal);
@@ -52,7 +52,8 @@ vec4 pointLight()
 	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 16);
 	float specular = specAmount * specularLight;
 
-	return (texture(diffuse0, texCoord) * (diffuse * inten + ambient) + texture(specular0, texCoord).r * specular * inten) * lightColor;
+	//return (texture(diffuse0, texCoord) * (diffuse * inten + ambient) + texture(specular0, texCoord).r * specular * inten) * lightColor;
+	return vec4(vec3(diffuse * inten + ambient), 1.0f);
 }
 
 vec4 direcLight()
@@ -121,10 +122,13 @@ void main()
 {
 	// outputs final color
 	float depth = logisticDepth(gl_FragCoord.z, 0.5f, 5.0f);
-	FragColor = direcLight();// * (1.0f - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
+	//FragColor = direcLight();// * (1.0f - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
+	FragColor = pointLight();// * (1.0f - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
 	//FragColor = vec4(vec3(depth * depth * depth), 1);
 	//FragColor = vec4(texture(diffuse0, texCoord).xyz,1);
 	//FragColor = vec4(vec3(texCoord.xy, 0) ,1);
 
 	FragColor.a = 1.0f;
+
+	// FragColor = vec4(texCoord.x,texCoord.y,0,1);
 }

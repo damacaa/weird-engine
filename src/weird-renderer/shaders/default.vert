@@ -23,8 +23,10 @@ out vec2 texCoord;
 
 // Imports the camera matrix
 uniform mat4 camMatrix;
-// Imports the transformation matrices
+// Imports the transformation matrix
 uniform mat4 model;
+// Imports the invers model matrix
+uniform mat3 normalMatrix;
 
 
 
@@ -33,7 +35,7 @@ void main()
 	// calculates current position
 	crntPos = vec3(model  * vec4(aPos, 1.0f));
 	// Assigns the normal from the Vertex Data to "Normal"
-	Normal = aNormal;
+	Normal = normalMatrix * aNormal;
 	// Assigns the colors from the Vertex Data to "color"
 	color = aColor;
 	// Assigns the texture coordinates from the Vertex Data to "texCoord"

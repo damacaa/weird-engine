@@ -549,7 +549,7 @@ namespace WeirdEngine
 		{
 			g_particlesShader.activate();
 			g_particlesShader.setUniform("u_time", time);
-			g_quad->DrawInstance(g_particlesShader, camera,
+			g_quad->DrawInstances(g_particlesShader, camera,
 				10,
 				vec3(0, 0.5f, 0),
 				vec3(0, 0, time),
@@ -563,7 +563,7 @@ namespace WeirdEngine
 			glDisable(GL_DEPTH_TEST);
 			g_smokeShader.activate();
 			g_smokeShader.setUniform("u_time", time);
-			g_quad->DrawInstance(g_smokeShader, camera,
+			g_quad->DrawInstances(g_smokeShader, camera,
 				50,
 				vec3(0, 1.0f, -0.1f),
 				vec3(0, 0, time),

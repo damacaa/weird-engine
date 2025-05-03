@@ -36,11 +36,11 @@ float plateauFunction(float x, float maxValue, float growthRate) {
 void main()
 {
 	float y = 3.0f * fract((10.0f * gl_InstanceID * 3.14f) + (1.1f * u_time));
-	float distanceToCenterXZ = 0.75f * smoothstep(0,1,1.5f * y);
+	float distanceToCenterXZ = 0.3f + (0.4f * smoothstep(0, 1, sqrt(1.5f * y))); // TODO: find an alternative to sqrt
 
 	vec3 offset = vec3(
 	distanceToCenterXZ * sin(u_time + gl_InstanceID), 
-	plateauFunction(y, 2.0f + (fract(gl_InstanceID * 123.45678f) - 0.5f), 0.8f), 
+	plateauFunction(y, 1.5f + (fract(gl_InstanceID * 123.45678f) - 0.5f), 0.8f), 
 	distanceToCenterXZ * cos(u_time + gl_InstanceID)
 	);
 

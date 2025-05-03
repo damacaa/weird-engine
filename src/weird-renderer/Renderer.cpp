@@ -483,8 +483,8 @@ namespace WeirdEngine
 			g_particlesShader.setUniform("u_time", time);
 			g_quad->DrawInstance(g_particlesShader, camera,
 				10,
-				vec3(0, 0.4f, 0),
-				vec3(0),
+				vec3(0, 0.5f, 0),
+				vec3(0, 0, time),
 				vec3(0.01f),
 				g_lights);
 
@@ -496,9 +496,9 @@ namespace WeirdEngine
 			g_smokeShader.activate();
 			g_smokeShader.setUniform("u_time", time);
 			g_quad->DrawInstance(g_smokeShader, camera,
-				20,
+				50,
 				vec3(0, 1.0f, -0.1f),
-				vec3(0),
+				vec3(0, 0, time),
 				vec3(1.0f),
 				g_lights);
 			glEnable(GL_DEPTH_TEST);
@@ -517,7 +517,10 @@ namespace WeirdEngine
 			g_flameShape->bind(1);
 
 			// Draw flame
+			glDisable(GL_CULL_FACE);
 			g_quad->Draw(g_flameShader, camera, vec3(0, 2, 0), vec3(0, 0, 0), vec3(4), g_lights);
+			glEnable(GL_CULL_FACE);
+
 
 			g_noiseTexture0->unbind();
 			glDisable(GL_BLEND);

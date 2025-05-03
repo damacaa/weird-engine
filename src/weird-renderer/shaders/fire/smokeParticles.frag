@@ -22,5 +22,5 @@ void main()
 	alpha = clamp(alpha, 0, 1);
 	// alpha = alpha * alpha * alpha;
 	// FragColor = vec4(vec3(1.0f), alpha);
-	FragColor = vec4(vec3(0.12f), alpha * 0.5f);
+	FragColor = vec4(vec3(0.12f), alpha * 0.25f);
 }

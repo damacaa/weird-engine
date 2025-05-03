@@ -26,7 +26,7 @@ vec3 getGradientColor(float t) {
         vec3(0.9, 0.7, 0.2), // Blue at 0.7
         vec3(1.0, 1.0, 1.0)  // White at 1.0
     );
-    float stops[NUM_STOPS] = float[](0.0, 0.6, 0.9, 1.0);
+    float stops[NUM_STOPS] = float[](0.0, 0.8, 0.9, 1.0);
 
     for (int i = 0; i < NUM_STOPS - 1; ++i) {
         if (t >= stops[i] && t <= stops[i+1]) {
@@ -49,7 +49,7 @@ float getGradient(float x, float y)
 
 void main()
 {
-    vec2 uv = (texCoord);
+    vec2 uv = texCoord;
 
     // Noise0
 	float noise0 = texture(u_noise0, fract((1.2f * uv) - vec2(0.0f, u_time))).x - 0.5f;
@@ -60,7 +60,9 @@ void main()
 
     // Combine all noise
     float sumNoise = noise0 + noise1;
-    sumNoise *= 0.05f;
+    float noiseIntensity = 0.1f;
+    float noiseMask = clamp(3.0f * (uv.y - 0.1f), 0, 1);
+    sumNoise *= noiseIntensity * noiseMask;
 
 
 
@@ -87,7 +89,7 @@ void main()
 
 
 	FragColor = vec4(getGradientColor(alpha), alpha);
-	// FragColor = vec4(vec3(alpha), 1.0f);
+	//FragColor = vec4(vec3(), 1.0f);
 
 //    if(alpha < 0.1f)
 //        discard;

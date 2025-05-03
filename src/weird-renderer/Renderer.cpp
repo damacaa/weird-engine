@@ -74,6 +74,7 @@ namespace WeirdEngine
 
 		}
 
+		bool g_fire = true;
 		ResourceManager g_resourceManager;
 		std::vector<WeirdRenderer::Light> g_lights;
 		Shader g_flameShader;
@@ -157,7 +158,7 @@ namespace WeirdEngine
 
 			g_lights.push_back(Light());
 
-			float size = 2.0f;
+			float size = 0.5f;
 
 			std::vector<Vertex> vertices = {
 				// positions           // normals        // colors         // UVs
@@ -177,7 +178,7 @@ namespace WeirdEngine
 			g_quad = new Mesh(1, vertices, indices, textures);
 			g_noiseTexture0 = new Texture("../assets/fire.jpg");
 			// g_noiseTexture1 = new Texture("../assets/noise1.png");
-			g_flameShape = new Texture("../assets/flame.jpg");
+			g_flameShape = new Texture("../assets/flame.png");
 
 		}
 
@@ -214,7 +215,7 @@ namespace WeirdEngine
 			glfwTerminate();
 		}
 
-		bool g_fire = true;
+	
 
 		void Renderer::render(Scene& scene, const double time)
 		{
@@ -247,14 +248,14 @@ namespace WeirdEngine
 
 				// Clear
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				glClearColor(0.2, 0.2, 0.2, 1);
+				glClearColor(0., 0., 0., 1);
 
 				// Blending
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 				m_geometryShaderProgram.activate();
-				g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 0, -2), vec3(0, -3.14f / 2.0f, 0), vec3(1), g_lights);
+				g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 1, -2), vec3(0, -3.14f / 2.0f, 0), vec3(1), g_lights);
 
 
 				renderFire(scene, sceneCamera, static_cast<float>(time));
@@ -364,8 +365,10 @@ namespace WeirdEngine
 				// Draw objects in scene
 				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				renderFire(scene, sceneCamera, (float)time);
-
+				glDisable(GL_BLEND);
 				
 
 				glDisable(GL_DEPTH_TEST); // No depth test
@@ -473,7 +476,7 @@ namespace WeirdEngine
 
 			//g_resourceManager.getMesh(0).Draw(g_flameShader, sceneCamera, vec3(0), vec3(0,-3.14f / 2.0f,0), vec3(1), g_lights);
 			//g_quad->Draw(g_flameShader, sceneCamera, vec3(0), vec3(0, -3.14f / 1.0f, 0), vec3(1), g_lights);
-			g_quad->Draw(g_flameShader, camera, vec3(0, 0, 0), vec3(0, 0, 0), vec3(1), g_lights);
+			g_quad->Draw(g_flameShader, camera, vec3(0, 2, 0), vec3(0, 0, 0), vec3(4), g_lights);
 
 			g_noiseTexture0->unbind();
 

@@ -26,7 +26,7 @@ vec3 getGradientColor(float t) {
         vec3(0.9, 0.7, 0.2), // Blue at 0.7
         vec3(1.0, 1.0, 1.0)  // White at 1.0
     );
-    float stops[NUM_STOPS] = float[](0.0, 0.7, 0.8, 1.0);
+    float stops[NUM_STOPS] = float[](0.0, 0.6, 0.9, 1.0);
 
     for (int i = 0; i < NUM_STOPS - 1; ++i) {
         if (t >= stops[i] && t <= stops[i+1]) {
@@ -49,35 +49,33 @@ float getGradient(float x, float y)
 
 void main()
 {
-    vec2 uv = (2.0f * texCoord) - 0.5f;
+    vec2 uv = (texCoord);
 
     // Noise0
 	float noise0 = texture(u_noise0, fract((1.2f * uv) - vec2(0.0f, u_time))).x - 0.5f;
 
     // Noise1
-	float noise1 = texture(u_noise0, fract(uv - vec2(0.5f, 1.2f * u_time))).x - 0.5f;
+	float noise1 = texture(u_noise0, fract(uv - vec2(0.0f, 1.2f * u_time))).x - 0.5f;
 
 
     // Combine all noise
     float sumNoise = noise0 + noise1;
-    sumNoise *= 0.5f;
+    sumNoise *= 0.05f;
 
-    // Mask noise
-	float noiseMask = sin(uv.x * 3.14f);
-    //noiseMask = noiseMask * noiseMask;
-    sumNoise *= noiseMask;
 
-    // Flame shape
-    float verticalGradient =  (2.0f * (1.0f - uv.y)) * noiseMask;
-    float shapeMask = 1.0f - length(uv - vec2(0.5f, 0.5f)) * 2.0f;
-    shapeMask = smoothstep(0.0f, 0.5f, shapeMask);
 
-    float shape = verticalGradient * shapeMask;
+
+    float shapeMask = texture(u_flameShape, clamp(uv + sumNoise, 0, 1)).x;
+
+
 
 
     // Add noise
-    float alpha = shape + sumNoise;
-    alpha = clamp(alpha, 0.0f, 1.0f);
+
+
+    float alpha = shapeMask;
+    // alpha = clamp(alpha, 0.0f, 1.0f);
+    alpha = smoothstep(0,1,alpha);
 
     //shapeMask = shapeMask * sh * shapeMask;
 
@@ -89,10 +87,10 @@ void main()
 
 
 	FragColor = vec4(getGradientColor(alpha), alpha);
-	// FragColor = vec4(vec3(shape), 1.0f);
+	// FragColor = vec4(vec3(alpha), 1.0f);
 
-//    if(alpha < 0.1f)
-//        discard;
+    if(alpha < 0.1f)
+        discard;
 
 	//	FragColor = vec4(fract(texCoord + vec2(0, u_time)),0,1);
 	//FragColor = vec4(vec3(sin(100*crntPos.x)),1);

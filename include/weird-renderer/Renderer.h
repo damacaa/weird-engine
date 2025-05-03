@@ -71,6 +71,7 @@ namespace WeirdEngine
 			WeirdRenderer::Dot2D* m_2DData = nullptr;
 			uint32_t m_2DDataSize = 0;
 
+			void renderFire(Scene& scene, Camera& camera, float time);
 			void renderGeometry(Scene& scene, Camera& camera);
 			void output(Scene& scene, Texture& texture);
 		};

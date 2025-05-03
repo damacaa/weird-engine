@@ -24,6 +24,8 @@ namespace WeirdEngine
 
 			Texture() {};
 
+			Texture(const char* image);
+
 			Texture(const char* image, std::string texType, GLuint slot);
 
 			Texture(glm::vec4 color, std::string texType, GLuint slot);

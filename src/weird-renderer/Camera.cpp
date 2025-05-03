@@ -20,8 +20,8 @@ namespace WeirdEngine
 			m_height = height;
 
 			// Initializes matrices since otherwise they will be the null matrix
-			view = glm::mat4(1.0f);
-			projection = glm::mat4(1.0f);
+			/*view = glm::mat4(1.0f);
+			projection = glm::mat4(1.0f);*/
 
 			// Makes camera look in the right direction from the right position
 			view = glm::lookAt(Position, Position + Orientation, Up);

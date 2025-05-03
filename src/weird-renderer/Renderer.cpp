@@ -66,13 +66,23 @@ namespace WeirdEngine
 			while (glGetError() != GL_NO_ERROR) {}
 
 			// Debug-specific code
-			//glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
-			//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
+			glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
 
 			// Set the debug callback function
-			//glDebugMessageCallback(OpenGLDebugCallback, nullptr);
+			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 
 		}
+
+		ResourceManager g_resourceManager;
+		std::vector<WeirdRenderer::Light> g_lights;
+		Shader g_flameShader;
+		Mesh* g_monkey = nullptr;
+		Mesh* g_quad = nullptr;
+		Texture* g_noiseTexture0 = nullptr;
+		// Texture* g_noiseTexture1 = nullptr;
+		Texture* g_flameShape = nullptr;
+
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)
@@ -138,6 +148,36 @@ namespace WeirdEngine
 
 
 
+			auto id = g_resourceManager.getMeshId("../assets/monkey/demo.gltf", true);
+			g_monkey = &g_resourceManager.getMesh(id);
+
+			// Fire
+			g_flameShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "flame.frag");
+
+
+			g_lights.push_back(Light());
+
+			float size = 2.0f;
+
+			std::vector<Vertex> vertices = {
+				// positions           // normals        // colors         // UVs
+				{{-size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}}, // bottom left
+				{{ size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}}, // bottom right
+				{{ size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}}, // top right
+				{{-size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}}  // top left
+			};
+
+			std::vector<GLuint> indices = {
+				0, 2, 1, // first triangle
+				3, 2, 0  // second triangle
+			};
+
+			std::vector <Texture> textures = {};
+
+			g_quad = new Mesh(1, vertices, indices, textures);
+			g_noiseTexture0 = new Texture("../assets/fire.jpg");
+			// g_noiseTexture1 = new Texture("../assets/noise1.png");
+			g_flameShape = new Texture("../assets/flame.jpg");
 
 		}
 
@@ -174,7 +214,7 @@ namespace WeirdEngine
 			glfwTerminate();
 		}
 
-
+		bool g_fire = true;
 
 		void Renderer::render(Scene& scene, const double time)
 		{
@@ -192,8 +232,52 @@ namespace WeirdEngine
 			// Updates and exports the camera matrix to the Vertex Shader
 			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
+
+			if (g_fire)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, m_windowWidth, m_windowHeight);
+
+				// Enable depth test
+				glEnable(GL_CULL_FACE);
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_LESS);
+				glDepthMask(GL_TRUE);
+
+
+				// Clear
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				glClearColor(0.2, 0.2, 0.2, 1);
+
+				// Blending
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+				m_geometryShaderProgram.activate();
+				g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 0, -2), vec3(0, -3.14f / 2.0f, 0), vec3(1), g_lights);
+
+
+				renderFire(scene, sceneCamera, static_cast<float>(time));
+
+				glDisable(GL_DEPTH_TEST); // No depth test
+				glDepthMask(GL_TRUE); // Still write to depth buffer
+				glClearDepth(1.0f); // Make sure depth buffer is initialized
+				glDisable(GL_BLEND);
+
+				// Swap the back buffer with the front buffer
+				glfwSwapBuffers(m_window);
+				// Take care of all GLFW events
+				glfwPollEvents();
+
+				GL_CHECK_ERROR();
+
+				return;
+			}
+
+
+			// 
 			bool enable3D = scene.requires3DRendering();
-			bool used2DAsBackground = true;
+			bool used2DAsBackground = false;
 
 			//
 			glDisable(GL_DEPTH_TEST);
@@ -274,9 +358,15 @@ namespace WeirdEngine
 				glDepthMask(GL_TRUE);
 
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
+				glClearColor(0, 0, 0, 1);
 
+				
 				// Draw objects in scene
 				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+
+				renderFire(scene, sceneCamera, (float)time);
+
+				
 
 				glDisable(GL_DEPTH_TEST); // No depth test
 				glDepthMask(GL_TRUE); // Still write to depth buffer
@@ -364,6 +454,29 @@ namespace WeirdEngine
 			m_3DSceneTexture.unbind();
 
 			output(scene, m_combineResultTexture);
+		}
+
+		void Renderer::renderFire(Scene& scene, Camera& camera, float time)
+		{
+
+			g_flameShader.activate();
+			g_flameShader.setUniform("lightColor", g_lights[0].color);
+			g_flameShader.setUniform("lightPos", g_lights[0].position);
+			g_flameShader.setUniform("u_time", time);
+
+
+			g_flameShader.setUniform("u_noise0", 0);
+			g_noiseTexture0->bind(0);
+
+			g_flameShader.setUniform("u_flameShape", 1);
+			g_flameShape->bind(1);
+
+			//g_resourceManager.getMesh(0).Draw(g_flameShader, sceneCamera, vec3(0), vec3(0,-3.14f / 2.0f,0), vec3(1), g_lights);
+			//g_quad->Draw(g_flameShader, sceneCamera, vec3(0), vec3(0, -3.14f / 1.0f, 0), vec3(1), g_lights);
+			g_quad->Draw(g_flameShader, camera, vec3(0, 0, 0), vec3(0, 0, 0), vec3(1), g_lights);
+
+			g_noiseTexture0->unbind();
+
 		}
 
 		void Renderer::renderGeometry(Scene& scene, Camera& camera)

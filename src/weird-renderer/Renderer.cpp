@@ -76,12 +76,15 @@ namespace WeirdEngine
 
 		bool g_fire = true;
 		ResourceManager g_resourceManager;
-		std::vector<WeirdRenderer::Light> g_lights;
+		std::vector<WeirdRenderer::Light> g_lights = {
+			Light()		
+		};
 		Shader g_flameShader;
 		Shader g_particlesShader;
 		Shader g_smokeShader;
 		Mesh* g_monkey = nullptr;
 		Mesh* g_quad = nullptr;
+		Mesh* g_cube = nullptr;
 
 		Texture* g_noiseTexture0 = nullptr;
 		// Texture* g_noiseTexture1 = nullptr;
@@ -166,24 +169,89 @@ namespace WeirdEngine
 
 
 			// Quad geom
-			float size = 0.5f;
-			std::vector<Vertex> vertices = {
-				// positions           // normals        // colors         // UVs
-				{{-size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}}, // bottom left
-				{{ size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}}, // bottom right
-				{{ size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}}, // top right
-				{{-size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}}  // top left
-			};
+			{
+				float size = 0.5f;
+				std::vector<Vertex> vertices = {
+					// positions           // normals        // colors         // UVs
+					{{-size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}}, // bottom left
+					{{ size, -size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}}, // bottom right
+					{{ size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}}, // top right
+					{{-size,  size, 0.f},  {0.f, 0.f, 1.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}}  // top left
+				};
 
-			std::vector<GLuint> indices = {
-				0, 2, 1, // first triangle
-				3, 2, 0  // second triangle
-			};
+				std::vector<GLuint> indices = {
+					0, 2, 1, // first triangle
+					3, 2, 0  // second triangle
+				};
 
-			std::vector<Texture> textures = {};
+				std::vector<Texture> textures = {};
+				g_quad = new Mesh(1, vertices, indices, textures);
+			}
 
-			// Flame
-			g_quad = new Mesh(1, vertices, indices, textures);
+			// Cube geom
+			{
+				float size = 0.5f;
+				std::vector<Vertex> vertices = {
+					// positions               // normals           // colors         // UVs
+					// Front face
+					{{-size, -size,  size},  {0.f, 0.f, 1.f},   {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{ size, -size,  size},  {0.f, 0.f, 1.f},   {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{ size,  size,  size},  {0.f, 0.f, 1.f},   {1.f, 1.f, 1.f}, {1.f, 1.f}},
+					{{-size,  size,  size},  {0.f, 0.f, 1.f},   {1.f, 1.f, 1.f}, {0.f, 1.f}},
+
+					// Back face
+					{{-size, -size, -size},  {0.f, 0.f, -1.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{ size, -size, -size},  {0.f, 0.f, -1.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{ size,  size, -size},  {0.f, 0.f, -1.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}},
+					{{-size,  size, -size},  {0.f, 0.f, -1.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}},
+
+					// Left face
+					{{-size, -size, -size},  {-1.f, 0.f, 0.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{-size, -size,  size},  {-1.f, 0.f, 0.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{-size,  size,  size},  {-1.f, 0.f, 0.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}},
+					{{-size,  size, -size},  {-1.f, 0.f, 0.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}},
+
+					// Right face
+					{{ size, -size,  size},  {1.f, 0.f, 0.f},   {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{ size, -size, -size},  {1.f, 0.f, 0.f},   {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{ size,  size, -size},  {1.f, 0.f, 0.f},   {1.f, 1.f, 1.f}, {1.f, 1.f}},
+					{{ size,  size,  size},  {1.f, 0.f, 0.f},   {1.f, 1.f, 1.f}, {0.f, 1.f}},
+
+					// Top face
+					{{-size,  size,  size},  {0.f, 1.f, 0.f},   {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{ size,  size,  size},  {0.f, 1.f, 0.f},   {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{ size,  size, -size},  {0.f, 1.f, 0.f},   {1.f, 1.f, 1.f}, {1.f, 1.f}},
+					{{-size,  size, -size},  {0.f, 1.f, 0.f},   {1.f, 1.f, 1.f}, {0.f, 1.f}},
+
+					// Bottom face
+					{{-size, -size, -size},  {0.f, -1.f, 0.f},  {1.f, 1.f, 1.f}, {0.f, 0.f}},
+					{{ size, -size, -size},  {0.f, -1.f, 0.f},  {1.f, 1.f, 1.f}, {1.f, 0.f}},
+					{{ size, -size,  size},  {0.f, -1.f, 0.f},  {1.f, 1.f, 1.f}, {1.f, 1.f}},
+					{{-size, -size,  size},  {0.f, -1.f, 0.f},  {1.f, 1.f, 1.f}, {0.f, 1.f}},
+				};
+
+				std::vector<GLuint> indices = {
+					// Front face
+					0, 2, 1,  2, 0, 3,
+					// Back face
+					7, 5, 6,  5, 7, 4,
+					// Left face
+					11,10,9,  9,8,11,
+					// Right face
+					12,14,13, 15,14,12,
+					// Top face
+					19,18,17, 17,16,19,
+					// Bottom face
+					22,21,20,  20,23,22
+				};
+
+
+				std::vector<Texture> textures = {};
+				g_cube = new Mesh(2, vertices, indices, textures);
+			}
+
+
+			// Fire textures
 			g_noiseTexture0 = new Texture("../assets/fire.jpg");
 			g_flameShape = new Texture("../assets/flame.png");
 		}
@@ -258,9 +326,9 @@ namespace WeirdEngine
 
 
 
-				// m_geometryShaderProgram.activate();
-				// g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 1, -2), vec3(0, -3.14f / 2.0f, 0), vec3(1), g_lights);
-
+				m_geometryShaderProgram.activate();
+				g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 1, -2), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
+				g_cube->Draw(m_geometryShaderProgram, sceneCamera, vec3(0.5f, 1, 4), vec3(0, time, 0), vec3(1), g_lights);
 
 				renderFire(scene, sceneCamera, static_cast<float>(time));
 

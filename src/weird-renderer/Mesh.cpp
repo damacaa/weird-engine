@@ -122,9 +122,21 @@ namespace WeirdEngine
 
 			// Compute model matrix
 			glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
-			model = glm::rotate(model, rotation.x, RIGHT);
-			model = glm::rotate(model, rotation.y, UP);
-			model = glm::rotate(model, rotation.z, FORWARD);
+
+			if (m_isBillboard) 
+			{
+				// Remove rotation and make the model face the camera
+				glm::mat4 view = camera.view; // or however you access it
+				glm::mat3 billboardRotation = glm::mat3(view); // extract rotation
+				billboardRotation = glm::transpose(billboardRotation); // invert rotation
+				model *= glm::mat4(billboardRotation);
+			}
+			else {
+				model = glm::rotate(model, rotation.x, RIGHT);
+				model = glm::rotate(model, rotation.y, UP);
+				model = glm::rotate(model, rotation.z, FORWARD);
+			}
+			
 			model = glm::scale(model, scale);
 
 			// Send model matrix to shader

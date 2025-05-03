@@ -67,6 +67,8 @@ using namespace ECS;
 
 			void Delete();
 
+			bool m_isBillboard = false;
+
 		private:
 
 			void UploadUniforms
@@ -79,6 +81,8 @@ using namespace ECS;
 				const std::vector<Light>& lights
 			) const;
 
+
+			
 		};
 	}
 }

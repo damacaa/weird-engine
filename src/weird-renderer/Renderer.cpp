@@ -186,6 +186,7 @@ namespace WeirdEngine
 
 				std::vector<Texture> textures = {};
 				g_quad = new Mesh(1, vertices, indices, textures);
+				g_quad->m_isBillboard = true;
 			}
 
 			// Cube geom

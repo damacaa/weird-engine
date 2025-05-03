@@ -40,7 +40,7 @@ void main()
 	vec3 offset = vec3(
 		y * 0.3f * sin(gl_InstanceID * 987.654f), 
 		y, 
-		-0.01f * y
+		y * 0.3f * cos(gl_InstanceID * 987.654f)
 	);
 
 	// calculates current position

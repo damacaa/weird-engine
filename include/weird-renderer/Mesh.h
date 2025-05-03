@@ -54,7 +54,7 @@ using namespace ECS;
 			) const;
 
 			// Draws the mesh
-			void DrawInstance
+			void DrawInstances
 			(
 				Shader& shader,
 				Camera& camera,
@@ -65,29 +65,19 @@ using namespace ECS;
 				const std::vector<Light>& lights
 			) const;
 
-			void DrawInstance
-			(
-				Shader& shader,
-				Camera& camera,
-				unsigned int instances,
-				std::vector<glm::vec3> translations,
-				std::vector<glm::vec3> rotations,
-				std::vector<glm::vec3> scales,
-				const std::vector<Light>& lights
-			) const;
-
-			void DrawInstance
-			(
-				Shader& shader,
-				Camera& camera,
-				unsigned int instances,
-				std::vector<Transform>& transforms,
-				const std::vector<Light>& lights
-			) const;
-
 			void Delete();
 
 		private:
+
+			void UploadUniforms
+			(
+				Shader& shader,
+				Camera& camera,
+				glm::vec3 translation,
+				glm::vec3 rotation,
+				glm::vec3 scale,
+				const std::vector<Light>& lights
+			) const;
 
 		};
 	}

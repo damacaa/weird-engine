@@ -556,11 +556,15 @@ namespace WeirdEngine
 				vec3(0.01f),
 				g_lights);
 
-			// Blending
 			glEnable(GL_BLEND);
+
+			
+
+			// Smoke
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			glDisable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE); // Don't write to the depth buffer
+
 			g_smokeShader.activate();
 			g_smokeShader.setUniform("u_time", time);
 			g_quad->DrawInstances(g_smokeShader, camera,
@@ -569,14 +573,14 @@ namespace WeirdEngine
 				vec3(0, 0, time),
 				vec3(1.0f),
 				g_lights);
-			glEnable(GL_DEPTH_TEST);
+
+			glDepthMask(GL_TRUE);
 
 
-			// Blending
+			// Fire
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 			g_flameShader.activate();
 			g_flameShader.setUniform("u_time", time);
-
 
 			g_flameShader.setUniform("u_noise0", 0);
 			g_noiseTexture0->bind(0);
@@ -589,8 +593,9 @@ namespace WeirdEngine
 			g_quad->Draw(g_flameShader, camera, vec3(0, 2, 0), vec3(0, 0, 0), vec3(4), g_lights);
 			glEnable(GL_CULL_FACE);
 
-
 			g_noiseTexture0->unbind();
+
+			
 			glDisable(GL_BLEND);
 
 

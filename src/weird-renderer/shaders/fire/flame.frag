@@ -57,13 +57,13 @@ void main()
     // Combine all noise
     float sumNoise = noise0 + noise1;
     float noiseIntensity = 0.1f;
-    float noiseMask = clamp(3.0f * (uv.y - 0.1f), 0, 1);
+    float noiseMask = clamp(3.0f * (v_texCoord.y - 0.1f), 0, 1);
     sumNoise *= noiseIntensity * noiseMask;
 
 
 
 
-    float shapeMask = texture(t_flameShape, clamp(uv + sumNoise, 0, 1)).x;
+    float shapeMask = texture(t_flameShape, clamp(v_texCoord + sumNoise, 0, 1)).x;
 
 
 

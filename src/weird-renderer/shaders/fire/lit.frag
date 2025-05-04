@@ -9,8 +9,8 @@ in vec3 v_color;
 in vec2 v_texCoord;
 
 // Uniforms
-uniform sampler2D u_diffuse;
-uniform sampler2D u_specular;
+uniform sampler2D t_diffuse;
+uniform sampler2D t_specular;
 
 uniform vec3  u_lightPos;
 uniform vec4  u_lightColor;
@@ -24,6 +24,8 @@ uniform float u_time;
 uniform float u_near = 0.1f;
 uniform float u_far  = 100.0f;
 
+uniform float u_shininess = 100.0f;
+
 
 vec4 pointLight()
 {
@@ -31,7 +33,7 @@ vec4 pointLight()
 	float dist = length(lightVec);
 	float a = 3.0;
 	float b = 0.7;
-	float intensity = 1.0f/ (a * dist * dist + b * dist + 1.0f);
+	float intensity = u_lightColor.a * 1.0f / (a * dist * dist + b * dist + 1.0f);
 
 	vec3 normal = normalize(v_normal);
 	vec3 lightDir = normalize(lightVec);
@@ -39,13 +41,17 @@ vec4 pointLight()
 	vec3 reflectDir = reflect(-lightDir, normal);
 
 	float diffuse  = max(dot(normal, lightDir), 0.0);
-	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
+	float viewFactor = max(dot(viewDir, reflectDir), 0.0);
+	float specular = pow(viewFactor, u_shininess);
 
-	// vec4 texColor  = texture(u_diffuse, v_texCoord);
-	// float specVal  = texture(u_specular, v_texCoord).r;
+//	 vec4 texColor  = texture(t_diffuse, v_texCoord);
+//	 float specVal  = texture(t_specular, v_texCoord).r;
 
-	//return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
-	return (u_lightColor.a * diffuse * intensity + u_ambient) * u_lightColor;
+	vec4 texColor  = glm::vec4(1.0f);
+	float specVal  = 1.0f;
+
+	return (texColor * (diffuse * intensity + u_ambient) + specVal * specular * intensity) * u_lightColor;
+	//return (u_lightColor.a * diffuse * intensity + u_ambient) * u_lightColor;
 }
 
 float linearizeDepth(float depth)

@@ -107,7 +107,7 @@ namespace WeirdEngine
 				}
 
 				textures[i].bind(i);
-				textures[i].texUnit(shader,  ("u_" + type + num).c_str(), unit);
+				textures[i].texUnit(shader,  ("t_" + type + num).c_str(), unit);
 			}
 
 			// Take care of the camera Matrix

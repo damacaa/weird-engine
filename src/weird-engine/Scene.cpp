@@ -106,8 +106,8 @@ namespace WeirdEngine
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(u_shapeBuffer, idx);";
-			oss << "vec4 parameters1 = texelFetch(u_shapeBuffer, idx + 1);";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);";
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 

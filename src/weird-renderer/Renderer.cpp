@@ -66,11 +66,11 @@ namespace WeirdEngine
 			while (glGetError() != GL_NO_ERROR) {}
 
 			// Debug-specific code
-			glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
+			//glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
+			//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
 
-			// Set the debug callback function
-			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
+			//// Set the debug callback function
+			//glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 
 		}
 
@@ -82,6 +82,7 @@ namespace WeirdEngine
 		Shader g_flameShader;
 		Shader g_particlesShader;
 		Shader g_smokeShader;
+		Shader g_litShader;
 		Mesh* g_monkey = nullptr;
 		Mesh* g_quad = nullptr;
 		Mesh* g_cube = nullptr;
@@ -96,8 +97,8 @@ namespace WeirdEngine
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_renderScale(0.5f)
-			, m_renderWidth(width* m_renderScale)
-			, m_renderHeight(height* m_renderScale)
+			, m_renderWidth(width * m_renderScale)
+			, m_renderHeight(height * m_renderScale)
 			, m_renderMeshesOnly(false)
 			, m_vSyncEnabled(true)
 		{
@@ -163,6 +164,7 @@ namespace WeirdEngine
 			g_flameShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "fire/flame.frag");
 			g_particlesShader = Shader(SHADERS_PATH "fire/fireParticles.vert", SHADERS_PATH "fire/fireParticles.frag");
 			g_smokeShader = Shader(SHADERS_PATH "fire/smokeParticles.vert", SHADERS_PATH "fire/smokeParticles.frag");
+			g_litShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "fire/lit.frag");
 
 
 			g_lights.push_back(Light());
@@ -327,9 +329,10 @@ namespace WeirdEngine
 
 
 
-				m_geometryShaderProgram.activate();
-				g_monkey->Draw(m_geometryShaderProgram, sceneCamera, vec3(0, 1, -2), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
-				g_cube->Draw(m_geometryShaderProgram, sceneCamera, vec3(0.5f, 1, 4), vec3(0, time, 0), vec3(1), g_lights);
+				g_litShader.activate();
+				g_litShader.setUniform("u_time", (float)time);
+				g_monkey->Draw(g_litShader, sceneCamera, vec3(0, 1, -2), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
+				g_cube->Draw(g_litShader, sceneCamera, vec3(0.5f, 1, 4), vec3(0, time, 0), vec3(1), g_lights);
 
 				renderFire(scene, sceneCamera, static_cast<float>(time));
 
@@ -371,13 +374,13 @@ namespace WeirdEngine
 				scene.updateRayMarchingShader(m_2DsdfShaderProgram);
 
 				// Set uniforms
-				m_2DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+				m_2DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
 				m_2DsdfShaderProgram.setUniform("u_time", scene.getTime());
 				m_2DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 				m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "u_colorTexture");
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "t_colorTexture");
 				glUniform1i(u_colorTextureLocation, 0);
 
 				m_distanceTexture.bind(0);
@@ -387,7 +390,7 @@ namespace WeirdEngine
 
 				m_sdfRenderPlane.Bind();
 
-				m_2DsdfShaderProgram.setUniform("u_shapeBuffer", 1);
+				m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
 				m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 				m_shapes2D.bind(1);
 
@@ -405,7 +408,7 @@ namespace WeirdEngine
 				m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
 				m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "u_colorTexture");
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "t_colorTexture");
 				glUniform1i(u_colorTextureLocation, 0);
 
 				m_distanceTexture.bind(0);
@@ -465,16 +468,16 @@ namespace WeirdEngine
 				float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 
 				// Set uniforms
-				m_3DsdfShaderProgram.setUniform("u_cameraMatrix", sceneCamera.view);
+				m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
 				m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
 				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
 				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_colorTexture");
+				GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "t_colorTexture");
 				glUniform1i(u_colorTextureLocation, 0);
 				m_geometryTexture.bind(0);
 
-				GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "u_depthTexture");
+				GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "t_depthTexture");
 				glUniform1i(u_depthTextureLocation, 1);
 				m_geometryDepthTexture.bind(1);
 
@@ -485,7 +488,7 @@ namespace WeirdEngine
 
 				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
-				m_3DsdfShaderProgram.setUniform("u_shapeBuffer", 2);
+				m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
 				//m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 				m_shapes2D.bind(2);
 
@@ -503,7 +506,7 @@ namespace WeirdEngine
 			m_combineScenesShaderProgram.activate();
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_2DSceneTexture");
+			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_2DSceneTexture");
 			glUniform1i(u_colorTextureLocation2d, 0);
 			if (used2DAsBackground)
 			{
@@ -514,7 +517,7 @@ namespace WeirdEngine
 				m_3DSceneTexture.bind(0);
 			}
 
-			GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "u_3DSceneTexture");
+			GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_3DSceneTexture");
 			glUniform1i(u_colorTextureLocation3d, 1);
 			m_3DSceneTexture.bind(1);
 
@@ -583,10 +586,10 @@ namespace WeirdEngine
 			g_flameShader.activate();
 			g_flameShader.setUniform("u_time", time);
 
-			g_flameShader.setUniform("u_noise0", 0);
+			g_flameShader.setUniform("t_noise", 0);
 			g_noiseTexture0->bind(0);
 
-			g_flameShader.setUniform("u_flameShape", 1);
+			g_flameShader.setUniform("t_flameShape", 1);
 			g_flameShape->bind(1);
 
 			// Draw flame
@@ -644,7 +647,7 @@ namespace WeirdEngine
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 
-			GLuint u_colorTextureLocation = glGetUniformLocation(m_outputShaderProgram.ID, "u_colorTexture");
+			GLuint u_colorTextureLocation = glGetUniformLocation(m_outputShaderProgram.ID, "t_colorTexture");
 			glUniform1i(u_colorTextureLocation, 0);
 
 			texture.bind(0);

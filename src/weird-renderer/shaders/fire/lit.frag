@@ -20,13 +20,15 @@ uniform vec3  u_directionalLightDir;
 float u_near = 0.1f;
 float u_far  = 100.0f;
 
+uniform float u_time;
+
 vec4 pointLight()
 {
 	vec3 lightVec = u_lightPos - v_worldPos;
 	float dist = length(lightVec);
 	float a = 3.0;
 	float b = 0.7;
-	float intensity = 10.0 / (a * dist * dist + b * dist + 1.0);
+	float intensity = (10.0f + (1.0f * sin(50.0f * u_time))) / (a * dist * dist + b * dist + 1.0f);
 
 	vec3 normal = normalize(v_normal);
 	vec3 lightDir = normalize(lightVec);
@@ -40,7 +42,8 @@ vec4 pointLight()
 	vec4 texColor  = texture(u_diffuse0, v_texCoord);
 	float specVal  = texture(u_specular0, v_texCoord).r;
 
-	return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
+	//return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
+	return vec4(diffuse * intensity + ambient);
 }
 
 vec4 directionalLight()
@@ -100,6 +103,8 @@ void main()
 	// FragColor = directionalLight(); // <- switch here
 	FragColor = pointLight();         // <- default
 	// FragColor = vec4(vec3(depth * depth * depth), 1.0);
+
+	//FragColor = vec4(v_normal.x, v_normal.y,  v_normal.z, 1);
 
 	FragColor.a = 1.0;
 }

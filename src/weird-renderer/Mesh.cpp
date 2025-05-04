@@ -107,17 +107,17 @@ namespace WeirdEngine
 				}
 
 				textures[i].bind(i);
-				textures[i].texUnit(shader, (type + num).c_str(), unit);
+				textures[i].texUnit(shader,  ("u_" + type + num).c_str(), unit);
 			}
 
 
 			// Take care of the camera Matrix
-			glUniform3f(glGetUniformLocation(shader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
-			camera.Matrix(shader, "camMatrix");
+			glUniform3f(glGetUniformLocation(shader.ID, "u_camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+			camera.Matrix(shader, "u_camMatrix");
 
 			// Pass light rotation
 			glm::vec3 direction = lights[0].rotation;
-			glUniform3f(glGetUniformLocation(shader.ID, "directionalLightDirection"), direction.x, direction.y, direction.z);
+			glUniform3f(glGetUniformLocation(shader.ID, "u_directionalLightDir"), direction.x, direction.y, direction.z);
 
 
 			// Compute model matrix
@@ -140,11 +140,11 @@ namespace WeirdEngine
 			model = glm::scale(model, scale);
 
 			// Send model matrix to shader
-			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "u_model"), 1, GL_FALSE, glm::value_ptr(model));
 
 			// Compute and send normal matrix
 			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-			glUniformMatrix3fv(glGetUniformLocation(shader.ID, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+			glUniformMatrix3fv(glGetUniformLocation(shader.ID, "u_normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 		}
 	}

@@ -1,22 +1,18 @@
 #version 330 core
 
-// Outputs colors in RGBA
 out vec4 FragColor;
 
-// Imports the current position from the Vertex Shader
-in vec3 crntPos;
-// Imports the normal from the Vertex Shader
-in vec3 Normal;
-// Imports the color from the Vertex Shader
-in vec3 color;
-// Imports the texture coordinates from the Vertex Shader
-in vec2 texCoord;
+// Inputs from vertex shader
+in vec3 v_worldPos;
+in vec3 v_normal;
+in vec3 v_color;
+in vec2 v_texCoord;
 
 
 uniform float u_time;
 
-uniform sampler2D u_noise0;
-uniform sampler2D u_flameShape;
+uniform sampler2D t_noise;
+uniform sampler2D t_flameShape;
 
 vec3 getGradientColor(float t) {
     const int NUM_STOPS = 4;
@@ -49,13 +45,13 @@ float getGradient(float x, float y)
 
 void main()
 {
-    vec2 uv = texCoord;
+    vec2 uv = v_texCoord;
 
     // Noise0
-	float noise0 = texture(u_noise0, fract((1.2f * uv) - vec2(0.0f, u_time))).x - 0.5f;
+	float noise0 = texture(t_noise, fract((1.2f * uv) - vec2(0.0f, u_time))).x - 0.5f;
 
     // Noise1
-	float noise1 = texture(u_noise0, fract(uv - vec2(0.0f, 1.2f * u_time))).x - 0.5f;
+	float noise1 = texture(t_noise, fract(uv - vec2(0.0f, 1.2f * u_time))).x - 0.5f;
 
 
     // Combine all noise
@@ -67,7 +63,7 @@ void main()
 
 
 
-    float shapeMask = texture(u_flameShape, clamp(uv + sumNoise, 0, 1)).x;
+    float shapeMask = texture(t_flameShape, clamp(uv + sumNoise, 0, 1)).x;
 
 
 

@@ -76,13 +76,13 @@ namespace WeirdEngine
 
 		bool g_fire = true;
 		ResourceManager g_resourceManager;
-		std::vector<WeirdRenderer::Light> g_lights = {
-			Light()		
-		};
+		std::vector<WeirdRenderer::Light> g_lights;
+
 		Shader g_flameShader;
 		Shader g_particlesShader;
 		Shader g_smokeShader;
 		Shader g_litShader;
+
 		Mesh* g_monkey = nullptr;
 		Mesh* g_quad = nullptr;
 		Mesh* g_cube = nullptr;
@@ -167,7 +167,15 @@ namespace WeirdEngine
 			g_litShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "fire/lit.frag");
 
 
-			g_lights.push_back(Light());
+			g_lights.push_back(
+				Light
+				{ 
+					glm::vec3(0.0f, 1.0f, 0.0f), 
+					glm::vec3(0.0f), 
+					glm::vec4(1.0f, 0.95f, 0.9f, 1.0f)
+				}
+			);
+
 
 
 			// Quad geom
@@ -331,8 +339,12 @@ namespace WeirdEngine
 
 				g_litShader.activate();
 				g_litShader.setUniform("u_time", (float)time);
-				g_monkey->Draw(g_litShader, sceneCamera, vec3(0, 1, -2), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
-				g_cube->Draw(g_litShader, sceneCamera, vec3(0.5f, 1, 4), vec3(0, time, 0), vec3(1), g_lights);
+				g_litShader.setUniform("u_ambient", 0.05f);
+				
+
+				g_cube->Draw(g_litShader, sceneCamera, vec3(0, -5.0f, 0), vec3(0), vec3(10,10,10), g_lights);
+				g_monkey->Draw(g_litShader, sceneCamera, vec3(0, 1, -2.5f), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
+				g_cube->Draw(g_litShader, sceneCamera, vec3(0.5f, 0.5f, 3), vec3(0, 0.5f, 0), vec3(1), g_lights);
 
 				renderFire(scene, sceneCamera, static_cast<float>(time));
 
@@ -551,6 +563,7 @@ namespace WeirdEngine
 
 		void Renderer::renderFire(Scene& scene, Camera& camera, float time)
 		{
+			// Particles
 			g_particlesShader.activate();
 			g_particlesShader.setUniform("u_time", time);
 			g_quad->DrawInstances(g_particlesShader, camera,

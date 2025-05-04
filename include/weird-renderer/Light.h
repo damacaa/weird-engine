@@ -7,7 +7,7 @@ namespace WeirdEngine
 	{
 		struct Light
 		{
-			glm::vec3 position = glm::vec3(0.0f, 0.5f, 0.0f);
+			glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
 			glm::vec3 rotation = glm::vec3(0, 0.0f, 0);
 			glm::vec4 color = glm::vec4(1.0f);
 		};

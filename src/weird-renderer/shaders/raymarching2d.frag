@@ -1,13 +1,30 @@
 #version 330 core
 
+
+out vec4 FragColor;
+
+// Inputs from vertex shader
+in vec3 v_worldPos;
+in vec3 v_normal;
+in vec3 v_color;
+in vec2 v_texCoord;
+
+// Uniforms
+uniform sampler2D u_diffuse;
+uniform sampler2D u_specular;
+
+uniform vec4  u_lightColor;
+uniform vec3  u_lightPos;
+uniform vec3  u_camPos;
+
+uniform float u_time;
+
+// Custom
+
 #define BLEND_SHAPES 0
 #define MOTION_BLUR 1
 
 uniform float u_k = 0.25;
-
-// Outputs u_staticColors in RGBA
-layout(location = 0) out vec4 FragColor;
-
 // Uniforms
 uniform sampler2D t_colorTexture;
 
@@ -15,7 +32,6 @@ uniform int u_loadedObjects;
 uniform samplerBuffer t_shapeBuffer;
 
 uniform vec2 u_resolution;
-uniform float u_time;
 
 uniform mat4 u_camMatrix;
 uniform vec3 u_staticColors[16];

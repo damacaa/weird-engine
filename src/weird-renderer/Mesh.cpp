@@ -110,15 +110,17 @@ namespace WeirdEngine
 				textures[i].texUnit(shader,  ("u_" + type + num).c_str(), unit);
 			}
 
-
 			// Take care of the camera Matrix
-			glUniform3f(glGetUniformLocation(shader.ID, "u_camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+			shader.setUniform("u_camPos", camera.Position);
 			camera.Matrix(shader, "u_camMatrix");
 
 			// Pass light rotation
+			glm::vec3 position = lights[0].position;
+			shader.setUniform("u_lightPos", position);
 			glm::vec3 direction = lights[0].rotation;
-			glUniform3f(glGetUniformLocation(shader.ID, "u_directionalLightDir"), direction.x, direction.y, direction.z);
-
+			shader.setUniform("u_directionalLightDir", direction);
+			glm::vec4 color = lights[0].color;
+			shader.setUniform("u_lightColor", color);
 
 			// Compute model matrix
 			glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
@@ -126,12 +128,12 @@ namespace WeirdEngine
 			if (m_isBillboard) 
 			{
 				// Remove rotation and make the model face the camera
-				glm::mat4 view = camera.view; // or however you access it
-				glm::mat3 billboardRotation = glm::mat3(view); // extract rotation
+				glm::mat3 billboardRotation = glm::mat3(camera.view); // extract rotation
 				billboardRotation = glm::transpose(billboardRotation); // invert rotation
 				model *= glm::mat4(billboardRotation);
 			}
-			else {
+			else 
+			{
 				model = glm::rotate(model, rotation.x, RIGHT);
 				model = glm::rotate(model, rotation.y, UP);
 				model = glm::rotate(model, rotation.z, FORWARD);

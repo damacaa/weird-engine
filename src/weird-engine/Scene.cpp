@@ -256,8 +256,10 @@ namespace WeirdEngine
 		t.rotation = vec3(0, 0, -1.0f);
 
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
-		FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-		fly.targetPosition = g_cameraPosition;
+		/*FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+		fly.targetPosition = g_cameraPosition;*/
+
+		FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 
 		// Add a light
 		WeirdRenderer::Light light;

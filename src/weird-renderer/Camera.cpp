@@ -36,7 +36,8 @@ namespace WeirdEngine
 		void Camera::Matrix(Shader& shader, const char* uniform)
 		{
 			// Exports camera matrix
-			glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
+			shader.setUniform(uniform, cameraMatrix);
+			//glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 		}
 
 	}

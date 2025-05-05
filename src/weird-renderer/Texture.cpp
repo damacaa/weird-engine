@@ -17,12 +17,10 @@ namespace WeirdEngine
 
 		Texture::Texture(const char* image)
 		{
-			// Stores the width, height, and the number of color channels of the image
-			int widthImg = 0, heightImg = 0, numColCh = 0;
 			// Flips the image so it appears right side up
 			wstbi_set_flip_vertically_on_load(true);
 			// Reads the image from a file and stores it in bytes
-			unsigned char* bytes = wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+			unsigned char* bytes = wstbi_load(image, &width, &height, &numColCh, 0);
 
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
@@ -49,8 +47,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RGBA,
 					GL_UNSIGNED_BYTE,
@@ -62,8 +60,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RGB,
 					GL_UNSIGNED_BYTE,
@@ -75,8 +73,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RED,
 					GL_UNSIGNED_BYTE,
@@ -100,12 +98,10 @@ namespace WeirdEngine
 			// Assigns the type of the texture ot the texture object
 			type = texType;
 
-			// Stores the width, height, and the number of color channels of the image
-			int widthImg = 0, heightImg = 0, numColCh = 0;
 			// Flips the image so it appears right side up
 			wstbi_set_flip_vertically_on_load(true);
 			// Reads the image from a file and stores it in bytes
-			unsigned char* bytes = wstbi_load(image, &widthImg, &heightImg, &numColCh, 0);
+			unsigned char* bytes = wstbi_load(image, &width, &height, &numColCh, 0);
 
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
@@ -132,8 +128,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RGBA,
 					GL_UNSIGNED_BYTE,
@@ -145,8 +141,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RGB,
 					GL_UNSIGNED_BYTE,
@@ -158,8 +154,8 @@ namespace WeirdEngine
 					GL_TEXTURE_2D,
 					0,
 					GL_RGBA,
-					widthImg,
-					heightImg,
+					width,
+					height,
 					0,
 					GL_RED,
 					GL_UNSIGNED_BYTE,
@@ -213,9 +209,6 @@ namespace WeirdEngine
 		void Texture::saveToDisk(const char* fileName)
 		{
 			glBindTexture(GL_TEXTURE_2D, ID);
-			int width, height;
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
 			//float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
 			//
@@ -236,10 +229,10 @@ namespace WeirdEngine
 			//delete[] data;
 
 			 // Create a buffer to hold the pixel data.
-			float* pixels = new float[width * height * 4];  // 4 channels (RGBA) with float data type
+			float* pixels = new float[width * height * numColCh];  // 4 channels (RGBA) with float data type
 
 			// Read the pixels from the texture into the buffer.
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels);
+			glGetTexImage(GL_TEXTURE_2D, 0, numColCh == 3 ? GL_RGB : GL_RGBA, GL_FLOAT, pixels);
 
 			// Convert float data to unsigned char since stb_image_write expects that format.
 			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
@@ -266,6 +259,9 @@ namespace WeirdEngine
 		}
 
 		Texture::Texture(glm::vec4 color, std::string texType, GLuint slot)
+			: width(1)
+			, height(1)
+			, numColCh(3)
 		{
 			type = texType;
 
@@ -296,6 +292,9 @@ namespace WeirdEngine
 		}
 
 		Texture::Texture(int width, int height, GLuint filterMode, bool isDepth)
+			: width(width)
+			, height(height)
+			, numColCh(4)
 		{
 			glGenTextures(1, &ID);
 			glBindTexture(GL_TEXTURE_2D, ID);

@@ -17,9 +17,9 @@ namespace WeirdEngine
 			void Draw(Shader& shader) const;
 			void Delete();
 
-			void BindTextureToFrameBuffer(Texture texture, GLenum attachment);
-			void BindColorTextureToFrameBuffer(Texture texture);
-			void BindDepthTextureToFrameBuffer(Texture texture);
+			void BindTextureToFrameBuffer(const Texture& texture, GLenum attachment);
+			void BindColorTextureToFrameBuffer(const Texture& texture);
+			void BindDepthTextureToFrameBuffer(const Texture& texture);
 
 			unsigned int GetFrameBuffer() const;
 

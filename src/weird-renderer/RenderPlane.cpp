@@ -83,7 +83,7 @@ namespace WeirdEngine
 		}
 
 
-		void RenderPlane::BindTextureToFrameBuffer(Texture texture, GLenum attachment)
+		void RenderPlane::BindTextureToFrameBuffer(const Texture& texture, GLenum attachment)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
@@ -99,13 +99,13 @@ namespace WeirdEngine
 		}
 
 
-		void RenderPlane::BindColorTextureToFrameBuffer(Texture texture)
+		void RenderPlane::BindColorTextureToFrameBuffer(const Texture& texture)
 		{
 			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0);
 		}
 
 
-		void RenderPlane::BindDepthTextureToFrameBuffer(Texture texture)
+		void RenderPlane::BindDepthTextureToFrameBuffer(const Texture& texture)
 		{
 			BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
 		}

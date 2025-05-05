@@ -22,7 +22,7 @@ namespace WeirdEngine
 			GLuint ID = -1;
 			std::string type = "";
 
-			Texture() {};
+			Texture(): width(0), height(0) {};
 
 			Texture(const char* image);
 
@@ -45,6 +45,9 @@ namespace WeirdEngine
 			void dispose() const;
 
 			void saveToDisk(const char* fileName);
+
+		private:
+			int width, height, numColCh;
 		};
 	}
 }

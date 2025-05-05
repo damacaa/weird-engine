@@ -4,8 +4,8 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		Mesh::Mesh(MeshID id, std::vector <Vertex>& vertices, std::vector <GLuint>& indices, std::vector <Texture>& textures) :
-			id(id)
+		Mesh::Mesh(MeshID id, std::vector<Vertex>& vertices, std::vector<GLuint>& indices, std::vector<Texture>& textures)
+			: id(id)
 		{
 			Mesh::vertices = vertices;
 			Mesh::indices = indices;
@@ -26,7 +26,6 @@ namespace WeirdEngine
 			m_vao.Unbind();
 			m_vbo.Unbind();
 			m_ebo.Unbind();
-
 		}
 
 		Mesh::~Mesh()
@@ -34,40 +33,33 @@ namespace WeirdEngine
 			vertices.clear();
 		}
 
-
 		const auto RIGHT = glm::vec3(1.0f, 0.0f, 0.0f);
 		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
 		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		void Mesh::Draw
-		(
+		void Mesh::Draw(
 			Shader& shader,
 			Camera& camera,
 			glm::vec3 translation,
 			glm::vec3 rotation,
-			glm::vec3 scale,
-			const std::vector<Light>& lights
+			glm::vec3 scale
 		) const
 		{
-			UploadUniforms(shader, camera, translation, rotation, scale, lights);
+			UploadUniforms(shader, camera, translation, rotation, scale);
 
 			// Draw the actual mesh
 			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		}
 
-
-
 		void Mesh::DrawInstances(
-			Shader& shader, 
-			Camera& camera, 
-			unsigned int instances, 
-			glm::vec3 translation, 
-			glm::vec3 rotation, 
-			glm::vec3 scale, 
-			const std::vector<Light>& lights
-		) const
+			Shader& shader,
+			Camera& camera,
+			unsigned int instances,
+			glm::vec3 translation,
+			glm::vec3 rotation,
+			glm::vec3 scale) const
 		{
-			UploadUniforms(shader, camera, translation, rotation, scale, lights);
+			UploadUniforms(shader, camera, translation, rotation, scale);
 
 			// Draw the actual mesh
 			glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
@@ -80,7 +72,7 @@ namespace WeirdEngine
 			m_ebo.Delete();
 		}
 
-		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale, const std::vector<Light>& lights) const
+		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) const
 		{
 			// Bind shader to be able to access uniforms
 			shader.activate();
@@ -107,27 +99,26 @@ namespace WeirdEngine
 				}
 
 				textures[i].bind(i);
-				textures[i].texUnit(shader,  ("t_" + type + num).c_str(), unit);
+				textures[i].texUnit(shader, ("t_" + type + num).c_str(), unit);
 			}
-
 
 			// Compute model matrix
 			glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
 
-			if (m_isBillboard) 
+			if (m_isBillboard)
 			{
 				// Remove rotation and make the model face the camera
 				glm::mat3 billboardRotation = glm::mat3(camera.view); // extract rotation
 				billboardRotation = glm::transpose(billboardRotation); // invert rotation
 				model *= glm::mat4(billboardRotation);
 			}
-			else 
+			else
 			{
 				model = glm::rotate(model, rotation.x, RIGHT);
 				model = glm::rotate(model, rotation.y, UP);
 				model = glm::rotate(model, rotation.z, FORWARD);
 			}
-			
+
 			model = glm::scale(model, scale);
 
 			// Send model matrix to shader
@@ -136,7 +127,6 @@ namespace WeirdEngine
 			// Compute and send normal matrix
 			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 			glUniformMatrix3fv(glGetUniformLocation(shader.ID, "u_normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
 		}
 	}
 }

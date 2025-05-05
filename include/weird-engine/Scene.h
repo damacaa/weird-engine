@@ -37,12 +37,24 @@ namespace WeirdEngine
 
 		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
-		bool requires3DRendering();
+		enum  class RenderMode
+		{
+			Simple3D,
+			RayMarching3D,
+			RayMarching2D,
+			RayMarchingBoth
+		};
+
+
+
+		RenderMode getRenderMode() const;
 
 	protected:
+		virtual void onCreate() {};
 		virtual void onStart() = 0;
 		virtual void onUpdate() = 0;
-		virtual void onRender() = 0;
+		virtual void onRender() {};
+		virtual void onDestroy() {};
 
 		ECSManager m_ecs;
 		Entity m_mainCamera;
@@ -66,7 +78,7 @@ namespace WeirdEngine
 		CameraSystem m_cameraSystem;
 
 		bool m_debugFly = true;
-
+		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
 		int m_charWidth;
 		int m_charHeight;
@@ -76,8 +88,6 @@ namespace WeirdEngine
 		void print(const std::string& text);
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
-
-		bool m_force3D = false;
 	private:
 
 		// Char lookup table

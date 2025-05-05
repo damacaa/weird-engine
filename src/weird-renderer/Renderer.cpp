@@ -330,8 +330,10 @@ namespace WeirdEngine
 
 
 			// 
-			bool enable3D = scene.requires3DRendering();
-			bool used2DAsBackground = false;
+			auto renderMode = scene.getRenderMode();
+			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
+			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
+			bool used2DAsBackground = renderMode == Scene::RenderMode::RayMarchingBoth;
 
 			//
 			glDisable(GL_DEPTH_TEST);

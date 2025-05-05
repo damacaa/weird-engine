@@ -204,6 +204,7 @@ namespace WeirdEngine
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 
+
 			// 2D Ray marching
 			if (enable2D)
 			{
@@ -271,25 +272,7 @@ namespace WeirdEngine
 			// Render geometry
 			{
 				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRenderPlane.GetFrameBuffer());
-
-				// Enable depth test
-				glEnable(GL_CULL_FACE);
-				glEnable(GL_DEPTH_TEST);
-				glDepthFunc(GL_LESS);
-				glDepthMask(GL_TRUE);
-
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
-				glClearColor(0, 0, 0, 1);
-
-
-				// Draw objects in scene
-				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-
-				
-
-				glDisable(GL_DEPTH_TEST); // No depth test
-				glDepthMask(GL_TRUE); // Still write to depth buffer
-				glClearDepth(1.0f); // Make sure depth buffer is initialized
+				renderGeometry(scene, sceneCamera);
 			}
 
 			if (m_renderMeshesOnly)
@@ -343,8 +326,13 @@ namespace WeirdEngine
 				m_shapes2D.unbind();
 			}
 
-
-
+			if (!used2DAsBackground)
+			{
+				output(scene, m_3DSceneTexture);
+				return;
+			}
+			
+			// Combine 2D and 3D
 			glBindFramebuffer(GL_FRAMEBUFFER, m_combinationRenderPlane.GetFrameBuffer());
 
 			m_combineScenesShaderProgram.activate();
@@ -352,14 +340,7 @@ namespace WeirdEngine
 
 			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_2DSceneTexture");
 			glUniform1i(u_colorTextureLocation2d, 0);
-			if (used2DAsBackground)
-			{
-				m_lit2DSceneTexture.bind(0);
-			}
-			else
-			{
-				m_3DSceneTexture.bind(0);
-			}
+			m_3DSceneTexture.bind(0);
 
 			GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_3DSceneTexture");
 			glUniform1i(u_colorTextureLocation3d, 1);
@@ -402,13 +383,14 @@ namespace WeirdEngine
 
 		void Renderer::renderGeometry(Scene& scene, Camera& camera)
 		{
+			// Enable depth test
 			glEnable(GL_CULL_FACE);
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_LESS);
+			glDepthMask(GL_TRUE);
 
-			// Updates and exports the camera matrix to the Vertex Shader
-			camera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
-
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
+			glClearColor(0, 0, 0, 1);
 
 			// Draw objects in scene
 			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
@@ -416,7 +398,6 @@ namespace WeirdEngine
 			glDisable(GL_DEPTH_TEST); // No depth test
 			glDepthMask(GL_TRUE); // Still write to depth buffer
 			glClearDepth(1.0f); // Make sure depth buffer is initialized
-			glClear(GL_DEPTH_BUFFER_BIT); // Clear depth
 		}
 
 		bool Renderer::checkWindowClosed() const

@@ -49,8 +49,7 @@ using namespace ECS;
 				Camera& camera,
 				glm::vec3 translation,
 				glm::vec3 rotation,
-				glm::vec3 scale,
-				const std::vector<Light>& lights
+				glm::vec3 scale
 			) const;
 
 			// Draws the mesh
@@ -61,8 +60,7 @@ using namespace ECS;
 				unsigned int instances,
 				glm::vec3 translation,
 				glm::vec3 rotation,
-				glm::vec3 scale,
-				const std::vector<Light>& lights
+				glm::vec3 scale
 			) const;
 
 			void Delete();
@@ -71,15 +69,12 @@ using namespace ECS;
 
 		private:
 
-			void UploadUniforms
-			(
+			void UploadUniforms(
 				Shader& shader,
 				Camera& camera,
 				glm::vec3 translation,
 				glm::vec3 rotation,
-				glm::vec3 scale,
-				const std::vector<Light>& lights
-			) const;
+				glm::vec3 scale) const;  
 
 
 			

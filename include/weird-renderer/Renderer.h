@@ -38,7 +38,6 @@ namespace WeirdEngine
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;
-			bool m_renderMeshesOnly;
 
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;

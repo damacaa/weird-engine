@@ -34,7 +34,7 @@ namespace WeirdEngine
 
 			GLFWwindow* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
-			double m_renderScale;
+			float m_renderScale;
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;

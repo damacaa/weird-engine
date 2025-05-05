@@ -5,10 +5,9 @@
 
 #include <random>
 
-
 namespace WeirdEngine
 {
-	//vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
+	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 	vec3 g_cameraPosition(0, 1, 20);
 
 	Scene::Scene()
@@ -27,7 +26,6 @@ namespace WeirdEngine
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
-
 
 		// Read content from file
 		std::string content = "";
@@ -55,7 +53,30 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
+		onCreate();
 		onStart();
+
+		if (m_debugFly)
+		{
+			switch (m_renderMode)
+			{
+			case WeirdEngine::Scene::RenderMode::Simple3D:
+			case WeirdEngine::Scene::RenderMode::RayMarching3D:
+			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
+			{
+				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				break;
+			}
+			case WeirdEngine::Scene::RenderMode::RayMarching2D:
+			{
+				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+				fly.targetPosition = g_cameraPosition;
+				break;
+			}
+			default:
+				break;
+			}
+		}
 	}
 
 	void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
@@ -63,7 +84,9 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
-		//m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
+		onRender();
+
+		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
 	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
@@ -81,8 +104,6 @@ namespace WeirdEngine
 		{
 			return;
 		}
-
-
 
 		std::string str = shader.getFragmentCode();
 
@@ -127,7 +148,7 @@ namespace WeirdEngine
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
 			oss << "d = min(d, dist);\n";
-			//oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
 			oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 			oss << "}\n"
 				<< std::endl;
@@ -147,8 +168,6 @@ namespace WeirdEngine
 
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader& shader)
 	{
-		onRender();
-
 		m_sdfRenderSystem2D.updatePalette(shader);
 
 		updateCustomShapesShader(shader);
@@ -180,8 +199,6 @@ namespace WeirdEngine
 		m_ecs.freeRemovedComponents();
 	}
 
-
-
 	WeirdRenderer::Camera& Scene::getCamera()
 	{
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
@@ -197,9 +214,9 @@ namespace WeirdEngine
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
-	bool Scene::requires3DRendering()
+	Scene::RenderMode Scene::getRenderMode() const
 	{
-		return m_force3D || m_ecs.getComponentArray<MeshRenderer>()->getSize() > 0;
+		return m_renderMode;
 	}
 
 	Entity Scene::addShape(int shapeId, float* variables)
@@ -239,27 +256,21 @@ namespace WeirdEngine
 
 	void Scene::loadScene(std::string& sceneFileContent)
 	{
-		//json scene = json::parse(sceneFileContent);
+		// json scene = json::parse(sceneFileContent);
 
 		// load font
 		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
-
 
 		std::string projectDir = fs::current_path().string() + "/SampleProject";
 
 		// Create camera object
 		m_mainCamera = m_ecs.createEntity();
 
-
 		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.position = g_cameraPosition;
 		t.rotation = vec3(0, 0, -1.0f);
 
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
-		/*FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-		fly.targetPosition = g_cameraPosition;*/
-
-		FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 
 		// Add a light
 		WeirdRenderer::Light light;
@@ -390,14 +401,9 @@ namespace WeirdEngine
 		}
 
 		m_simulation2D.setSDFs(m_sdfs);
-
 	}
 
 	constexpr int INVALID_INDEX = -1;
-
-
-
-
 
 	void Scene::print(const std::string& text)
 	{

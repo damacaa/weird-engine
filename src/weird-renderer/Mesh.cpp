@@ -110,17 +110,6 @@ namespace WeirdEngine
 				textures[i].texUnit(shader,  ("t_" + type + num).c_str(), unit);
 			}
 
-			// Take care of the camera Matrix
-			shader.setUniform("u_camPos", camera.Position);
-			camera.Matrix(shader, "u_camMatrix");
-
-			// Pass light rotation
-			glm::vec3 position = lights[0].position;
-			shader.setUniform("u_lightPos", position);
-			glm::vec3 direction = lights[0].rotation;
-			shader.setUniform("u_directionalLightDir", direction);
-			glm::vec4 color = lights[0].color;
-			shader.setUniform("u_lightColor", color);
 
 			// Compute model matrix
 			glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);

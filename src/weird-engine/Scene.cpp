@@ -199,7 +199,7 @@ namespace WeirdEngine
 
 	bool Scene::requires3DRendering()
 	{
-		return m_ecs.getComponentArray<MeshRenderer>()->getSize() > 0;
+		return m_force3D || m_ecs.getComponentArray<MeshRenderer>()->getSize() > 0;
 	}
 
 	Entity Scene::addShape(int shapeId, float* variables)

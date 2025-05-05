@@ -77,6 +77,7 @@ namespace WeirdEngine
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 
+		bool m_force3D = false;
 	private:
 
 		// Char lookup table

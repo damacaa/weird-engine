@@ -75,22 +75,6 @@ namespace WeirdEngine
 		}
 
 
-		ResourceManager g_resourceManager;
-		std::vector<WeirdRenderer::Light> g_lights;
-
-		Shader g_flameShader;
-		Shader g_particlesShader;
-		Shader g_smokeShader;
-		Shader g_litShader;
-
-		Mesh* g_monkey = nullptr;
-		Mesh* g_quad = nullptr;
-		Mesh* g_cube = nullptr;
-
-		Texture* g_noiseTexture0 = nullptr;
-		// Texture* g_noiseTexture1 = nullptr;
-		Texture* g_flameShape = nullptr;
-
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
@@ -98,7 +82,7 @@ namespace WeirdEngine
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
-			, m_renderMeshesOnly(false)
+			, m_renderMeshesOnly(true)
 			, m_vSyncEnabled(true)
 		{
 			// Load shaders
@@ -153,109 +137,6 @@ namespace WeirdEngine
 			glCullFace(GL_FRONT);
 			glFrontFace(GL_CCW);
 
-
-			auto id = g_resourceManager.getMeshId("../assets/monkey/demo.gltf", true);
-			g_monkey = &g_resourceManager.getMesh(id);
-
-			///////////////////////////////////////////////////////////
-			// Fire
-			g_flameShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "fire/flame.frag");
-			g_particlesShader = Shader(SHADERS_PATH "fire/fireParticles.vert", SHADERS_PATH "fire/fireParticles.frag");
-			g_smokeShader = Shader(SHADERS_PATH "fire/smokeParticles.vert", SHADERS_PATH "fire/smokeParticles.frag");
-			g_litShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "fire/lit.frag");
-
-			g_lights.push_back(
-				Light {
-					glm::vec3(0.0f, 1.0f, 0.0f),
-					glm::vec3(0.0f),
-					glm::vec4(1.0f, 0.95f, 0.9f, 5.0f) });
-
-			// Quad geom
-			{
-				float size = 0.5f;
-				std::vector<Vertex> vertices = {
-					// positions           // normals        // colors         // UVs
-					{ { -size, -size, 0.f }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } }, // bottom left
-					{ { size, -size, 0.f }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } }, // bottom right
-					{ { size, size, 0.f }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } }, // top right
-					{ { -size, size, 0.f }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } } // top left
-				};
-
-				std::vector<GLuint> indices = {
-					0, 2, 1, // first triangle
-					3, 2, 0 // second triangle
-				};
-
-				std::vector<Texture> textures = {};
-				g_quad = new Mesh(1, vertices, indices, textures);
-				g_quad->m_isBillboard = true;
-			}
-
-			// Cube geom
-			{
-				float size = 0.5f;
-				std::vector<Vertex> vertices = {
-					// positions               // normals           // colors         // UVs
-					// Front face
-					{ { -size, -size, size }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { size, -size, size }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { size, size, size }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-					{ { -size, size, size }, { 0.f, 0.f, 1.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-
-					// Back face
-					{ { -size, -size, -size }, { 0.f, 0.f, -1.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { size, -size, -size }, { 0.f, 0.f, -1.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { size, size, -size }, { 0.f, 0.f, -1.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-					{ { -size, size, -size }, { 0.f, 0.f, -1.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-
-					// Left face
-					{ { -size, -size, -size }, { -1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { -size, -size, size }, { -1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { -size, size, size }, { -1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-					{ { -size, size, -size }, { -1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-
-					// Right face
-					{ { size, -size, size }, { 1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { size, -size, -size }, { 1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { size, size, -size }, { 1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-					{ { size, size, size }, { 1.f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-
-					// Top face
-					{ { -size, size, size }, { 0.f, 1.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { size, size, size }, { 0.f, 1.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { size, size, -size }, { 0.f, 1.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-					{ { -size, size, -size }, { 0.f, 1.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-
-					// Bottom face
-					{ { -size, -size, -size }, { 0.f, -1.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 0.f } },
-					{ { size, -size, -size }, { 0.f, -1.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 0.f } },
-					{ { size, -size, size }, { 0.f, -1.f, 0.f }, { 1.f, 1.f, 1.f }, { 1.f, 1.f } },
-					{ { -size, -size, size }, { 0.f, -1.f, 0.f }, { 1.f, 1.f, 1.f }, { 0.f, 1.f } },
-				};
-
-				std::vector<GLuint> indices = {
-					// Front face
-					0, 2, 1, 2, 0, 3,
-					// Back face
-					7, 5, 6, 5, 7, 4,
-					// Left face
-					11, 10, 9, 9, 8, 11,
-					// Right face
-					12, 14, 13, 15, 14, 12,
-					// Top face
-					19, 18, 17, 17, 16, 19,
-					// Bottom face
-					22, 21, 20, 20, 23, 22
-				};
-
-				std::vector<Texture> textures = {};
-				g_cube = new Mesh(2, vertices, indices, textures);
-			}
-
-			// Fire textures
-			g_noiseTexture0 = new Texture("../assets/fire.jpg");
-			g_flameShape = new Texture("../assets/flame.png");
-			
 		}
 
 		Renderer::~Renderer()
@@ -310,25 +191,6 @@ namespace WeirdEngine
 			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 
-			//if (g_fire)
-			//{
-			//	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			//	glViewport(0, 0, m_windowWidth, m_windowHeight);
-
-			//	
-
-
-			//	// Swap the back buffer with the front buffer
-			//	glfwSwapBuffers(m_window);
-			//	// Take care of all GLFW events
-			//	glfwPollEvents();
-
-			//	GL_CHECK_ERROR();
-
-			//	return;
-			//}
-
-
 			// 
 			auto renderMode = scene.getRenderMode();
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
@@ -343,57 +205,60 @@ namespace WeirdEngine
 
 
 			// 2D Ray marching
+			if (enable2D)
 			{
-				// Bind the framebuffer you want to render to
-				glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+				{
+					// Bind the framebuffer you want to render to
+					glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
 
-				// Draw ray marching stuff
-				m_2DsdfShaderProgram.activate();
+					// Draw ray marching stuff
+					m_2DsdfShaderProgram.activate();
 
-				scene.updateRayMarchingShader(m_2DsdfShaderProgram);
+					scene.updateRayMarchingShader(m_2DsdfShaderProgram);
 
-				// Set uniforms
-				m_2DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
-				m_2DsdfShaderProgram.setUniform("u_time", scene.getTime());
-				m_2DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					// Set uniforms
+					m_2DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DsdfShaderProgram.setUniform("u_time", scene.getTime());
+					m_2DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
+					m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "t_colorTexture");
-				glUniform1i(u_colorTextureLocation, 0);
+					GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "t_colorTexture");
+					glUniform1i(u_colorTextureLocation, 0);
 
-				m_distanceTexture.bind(0);
+					m_distanceTexture.bind(0);
 
-				scene.get2DShapesData(m_2DData, m_2DDataSize);
-				m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+					scene.get2DShapesData(m_2DData, m_2DDataSize);
+					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
-				m_sdfRenderPlane.Bind();
+					m_sdfRenderPlane.Bind();
 
-				m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
-				m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
-				m_shapes2D.bind(1);
+					m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
+					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
+					m_shapes2D.bind(1);
 
-				m_sdfRenderPlane.Draw(m_2DsdfShaderProgram);
+					m_sdfRenderPlane.Draw(m_2DsdfShaderProgram);
 
-				m_distanceTexture.unbind();
-				m_shapes2D.unbind();
-			}
+					m_distanceTexture.unbind();
+					m_shapes2D.unbind();
+				}
 
-			// 2D Lighting
-			{
-				glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
+				// 2D Lighting
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
 
-				m_postProcessShaderProgram.activate();
-				m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
-				m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					m_postProcessShaderProgram.activate();
+					m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
+					m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "t_colorTexture");
-				glUniform1i(u_colorTextureLocation, 0);
+					GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "t_colorTexture");
+					glUniform1i(u_colorTextureLocation, 0);
 
-				m_distanceTexture.bind(0);
-				m_postProcessRenderPlane.Bind();
-				m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
-				m_distanceTexture.unbind();
+					m_distanceTexture.bind(0);
+					m_postProcessRenderPlane.Bind();
+					m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+					m_distanceTexture.unbind();
+				}
 			}
 
 			if (!enable3D)
@@ -420,27 +285,7 @@ namespace WeirdEngine
 				// Draw objects in scene
 				scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
-				g_litShader.activate();
-				g_litShader.setUniform("u_time", (float)time);
-				g_litShader.setUniform("u_ambient", 0.05f);
-
-				// Take care of the camera Matrix
-				g_litShader.setUniform("u_camPos", sceneCamera.Position);
-				sceneCamera.Matrix(g_litShader, "u_camMatrix");
-
-				// Pass light rotation
-				glm::vec3 position = g_lights[0].position;
-				g_litShader.setUniform("u_lightPos", position);
-				glm::vec3 direction = g_lights[0].rotation;
-				g_litShader.setUniform("u_directionalLightDir", direction);
-				glm::vec4 color = g_lights[0].color;
-				g_litShader.setUniform("u_lightColor", color);
-
-				g_cube->Draw(g_litShader, sceneCamera, vec3(0, -5.0f, 0), vec3(0), vec3(10, 10, 10), g_lights);
-				g_monkey->Draw(g_litShader, sceneCamera, vec3(0, 1, -2.5f), vec3(0, (-3.14f / 2.0f) + time, 0), vec3(1), g_lights);
-				g_cube->Draw(g_litShader, sceneCamera, vec3(0.5f, 0.5f, 3), vec3(0, 0.5f, 0), vec3(1), g_lights);
-
-				renderFire(scene, sceneCamera, time);
+				
 
 				glDisable(GL_DEPTH_TEST); // No depth test
 				glDepthMask(GL_TRUE); // Still write to depth buffer
@@ -552,59 +397,7 @@ namespace WeirdEngine
 
 		void Renderer::renderFire(Scene& scene, Camera& camera, float time)
 		{
-			// Particles
-			g_particlesShader.activate();
-			camera.Matrix(g_particlesShader, "u_camMatrix");
-			g_particlesShader.setUniform("u_camPos", camera.Position);
-			g_particlesShader.setUniform("u_time", time);
-			g_quad->DrawInstances(g_particlesShader, camera,
-				10,
-				vec3(0, 0.5f, 0),
-				vec3(0, 0, time),
-				vec3(0.01f),
-				g_lights);
-
-			glEnable(GL_BLEND);
-
-			// Smoke
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-			glDepthMask(GL_FALSE); // Don't write to the depth buffer
-
-			g_smokeShader.activate();
-			camera.Matrix(g_smokeShader, "u_camMatrix");
-			g_smokeShader.setUniform("u_camPos", camera.Position);
-			g_smokeShader.setUniform("u_time", time);
-			g_quad->DrawInstances(g_smokeShader, camera,
-				50,
-				vec3(0, 1.0f, -0.1f),
-				vec3(0, 0, time),
-				vec3(1.0f),
-				g_lights);
-
-			glDepthMask(GL_TRUE);
-
-			// Fire
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-			g_flameShader.activate();
-			camera.Matrix(g_flameShader, "u_camMatrix");
-			g_flameShader.setUniform("u_camPos", camera.Position);
-			g_flameShader.setUniform("u_time", time);
-
-			g_flameShader.setUniform("t_noise", 0);
-			g_noiseTexture0->bind(0);
-
-			g_flameShader.setUniform("t_flameShape", 1);
-			g_flameShape->bind(1);
-
-			// Draw flame
-			glDisable(GL_CULL_FACE);
-			g_quad->Draw(g_flameShader, camera, vec3(0, 2, 0), vec3(0, 0, 0), vec3(4), g_lights);
-			glEnable(GL_CULL_FACE);
-
-			g_noiseTexture0->unbind();
-
-			glDisable(GL_BLEND);
+			
 		}
 
 		void Renderer::renderGeometry(Scene& scene, Camera& camera)

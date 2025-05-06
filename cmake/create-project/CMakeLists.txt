@@ -37,12 +37,15 @@ file(GLOB_RECURSE WEIRDGAME_HEADERS
     "${CMAKE_SOURCE_DIR}/include/*.h"
     "${CMAKE_SOURCE_DIR}/include/*.hpp"
 )
+file(GLOB_RECURSE WEIRDGAME_ASSETS 
+    "${CMAKE_SOURCE_DIR}/assets/*.*"
+)
 
 # Mark headers as header-only so that Visual Studio treats them appropriately.
 set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 # Add executable including both sources and headers.
-add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})
+add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
 # Set include directories.
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -84,4 +87,4 @@ function(assign_source_groups TARGET)
 endfunction()
 
 # Assign source groups for all your files.
-assign_source_groups(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS})
+assign_source_groups(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})

@@ -1,5 +1,8 @@
 #include "weird-renderer/Renderer.h"
 
+
+
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -79,11 +82,16 @@ namespace WeirdEngine
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_renderScale(1.0f)
+			, m_renderScale(0.25f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
 		{
+			Screen::width = m_windowWidth;
+			Screen::height = m_windowHeight;
+			Screen::rWidth = m_renderWidth;
+			Screen::rHeight = m_renderHeight;
+
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
 
@@ -102,25 +110,25 @@ namespace WeirdEngine
 			GL_CHECK_ERROR();
 
 			// Bind textures to render planes fbo outputs
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST, true);
+			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR, true);
 			m_geometryRender = RenderTarget(false);
 			m_geometryRender.BindColorTextureToFrameBuffer(m_geometryTexture);
 			m_geometryRender.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
-			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_3DSceneRender = RenderTarget(false);
 			m_3DSceneRender.BindColorTextureToFrameBuffer(m_3DSceneTexture);
 
-			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.BindColorTextureToFrameBuffer(m_distanceTexture);
 
-			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_2DPostProcessRender = RenderTarget(false);
 			m_2DPostProcessRender.BindColorTextureToFrameBuffer(m_lit2DSceneTexture);
 
-			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
+			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_combinationRender = RenderTarget(false);
 			m_combinationRender.BindColorTextureToFrameBuffer(m_combineResultTexture);
 
@@ -223,15 +231,12 @@ namespace WeirdEngine
 
 					m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
 
-					GLuint u_colorTextureLocation = glGetUniformLocation(m_2DsdfShaderProgram.ID, "t_colorTexture");
-					glUniform1i(u_colorTextureLocation, 0);
-
+					m_2DsdfShaderProgram.setUniform("t_colorTexture", 0);
 					m_distanceTexture.bind(0);
 
+					// Shape data
 					scene.get2DShapesData(m_2DData, m_2DDataSize);
 					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
-
-
 
 					m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
@@ -301,27 +306,25 @@ namespace WeirdEngine
 				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
 				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-				GLuint u_colorTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "t_colorTexture");
-				glUniform1i(u_colorTextureLocation, 0);
+				// Geom color
+				m_3DsdfShaderProgram.setUniform("t_colorTexture", 0);
 				m_geometryTexture.bind(0);
 
-				GLuint u_depthTextureLocation = glGetUniformLocation(m_3DsdfShaderProgram.ID, "t_depthTexture");
-				glUniform1i(u_depthTextureLocation, 1);
+				// Geom depth
+				m_3DsdfShaderProgram.setUniform("t_depthTexture", 1);
 				m_geometryDepthTexture.bind(1);
 
-				// Draw render plane with sdf shader
-				//scene.renderShapes(m_3DsdfShaderProgram, m_2DSceneRender);
-
-				
-
-				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
-
+				// Shapes
 				m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
 				//m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 				m_shapes2D.bind(2);
 
+				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+
+				// Draw render plane with sdf shader
 				m_renderPlane.Draw(m_3DsdfShaderProgram);
 
+				// Unbind stuff
 				m_geometryTexture.unbind();
 				m_geometryDepthTexture.unbind();
 				m_shapes2D.unbind();
@@ -421,9 +424,7 @@ namespace WeirdEngine
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 
-			GLuint u_colorTextureLocation = glGetUniformLocation(m_outputShaderProgram.ID, "t_colorTexture");
-			glUniform1i(u_colorTextureLocation, 0);
-
+			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			texture.bind(0);
 
 			m_renderPlane.Draw(m_outputShaderProgram);

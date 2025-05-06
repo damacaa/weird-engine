@@ -1,5 +1,6 @@
 #pragma once
 #include "../Component.h"
+#include "weird-renderer/Screen.h"
 
 
 namespace WeirdEngine 
@@ -23,8 +24,8 @@ namespace WeirdEngine
 			static glm::vec2 screenPositionToWorldPosition2D(Transform cameraTransform, vec2 screenPosition)
 			{
 				// TODO: fix this
-				vec2 resolution(1200, 800);
-				vec2 halfResolution(600, 400);
+				vec2 resolution(WeirdRenderer::Screen::width, WeirdRenderer::Screen::height);
+				vec2 halfResolution(0.5f * resolution);
 
 				vec2 screenPositionCorrected(screenPosition.x, resolution.y - screenPosition.y);
 				vec2 uv = (2.0f * screenPositionCorrected - resolution) / resolution.y;

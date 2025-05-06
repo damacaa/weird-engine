@@ -37,7 +37,7 @@ namespace WeirdEngine
 
 
 		// Window resolution
-		const unsigned int width = 1200;
+		const unsigned int width = 800;
 		const unsigned int height = 800;
 
 		Renderer renderer(width, height);

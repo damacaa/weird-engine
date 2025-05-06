@@ -82,7 +82,7 @@ namespace WeirdEngine
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_renderScale(0.25f)
+			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)

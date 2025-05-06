@@ -66,11 +66,11 @@ namespace WeirdEngine
 			while (glGetError() != GL_NO_ERROR) {}
 
 			// Debug-specific code
-			//glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
-			//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
+			glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
 
-			//// Set the debug callback function
-			//glDebugMessageCallback(OpenGLDebugCallback, nullptr);
+			// Set the debug callback function
+			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 
 		}
 
@@ -82,7 +82,6 @@ namespace WeirdEngine
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
-			, m_renderMeshesOnly(true)
 			, m_vSyncEnabled(true)
 		{
 			// Load shaders
@@ -105,38 +104,36 @@ namespace WeirdEngine
 			// Bind textures to render planes fbo outputs
 			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
 			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST, true);
-			m_geometryRenderPlane = RenderPlane(false);
-			m_geometryRenderPlane.BindColorTextureToFrameBuffer(m_geometryTexture);
-			m_geometryRenderPlane.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
+			m_geometryRender = RenderTarget(false);
+			m_geometryRender.BindColorTextureToFrameBuffer(m_geometryTexture);
+			m_geometryRender.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
 			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_3DRenderPlane = RenderPlane(false);
-			m_3DRenderPlane.BindColorTextureToFrameBuffer(m_3DSceneTexture);
+			m_3DSceneRender = RenderTarget(false);
+			m_3DSceneRender.BindColorTextureToFrameBuffer(m_3DSceneTexture);
 
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_sdfRenderPlane = RenderPlane(false);
-			m_sdfRenderPlane.BindColorTextureToFrameBuffer(m_distanceTexture);
+			m_2DSceneRender = RenderTarget(false);
+			m_2DSceneRender.BindColorTextureToFrameBuffer(m_distanceTexture);
 
 			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_postProcessRenderPlane = RenderPlane(false);
-			m_postProcessRenderPlane.BindColorTextureToFrameBuffer(m_lit2DSceneTexture);
+			m_2DPostProcessRender = RenderTarget(false);
+			m_2DPostProcessRender.BindColorTextureToFrameBuffer(m_lit2DSceneTexture);
 
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_NEAREST);
-			m_combinationRenderPlane = RenderPlane(false);
-			m_combinationRenderPlane.BindColorTextureToFrameBuffer(m_combineResultTexture);
+			m_combinationRender = RenderTarget(false);
+			m_combinationRender.BindColorTextureToFrameBuffer(m_combineResultTexture);
 
-			m_outputRenderPlane = RenderPlane(false);
+			m_outputResolutionRender = RenderTarget(false);
+
+			m_renderPlane = RenderPlane();
 
 			GL_CHECK_ERROR();
 
-			// Enables the Depth Buffer and chooses which depth function to use
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LESS);
 
 			// Enable culling
 			glCullFace(GL_FRONT);
 			glFrontFace(GL_CCW);
-
 		}
 
 		Renderer::~Renderer()
@@ -150,12 +147,12 @@ namespace WeirdEngine
 			m_combineScenesShaderProgram.Delete();
 			m_outputShaderProgram.Delete();
 
-			m_geometryRenderPlane.Delete();
-			m_3DRenderPlane.Delete();
-			m_sdfRenderPlane.Delete();
-			m_postProcessRenderPlane.Delete();
-			m_combinationRenderPlane.Delete();
-			m_outputRenderPlane.Delete();
+			m_geometryRender.Delete();
+			m_3DSceneRender.Delete();
+			m_2DSceneRender.Delete();
+			m_2DPostProcessRender.Delete();
+			m_combinationRender.Delete();
+			m_outputResolutionRender.Delete();
 
 			m_geometryTexture.dispose();
 			m_geometryDepthTexture.dispose();
@@ -196,6 +193,8 @@ namespace WeirdEngine
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 			bool used2DAsBackground = renderMode == Scene::RenderMode::RayMarchingBoth;
+			bool renderMeshesOnly = renderMode == Scene::RenderMode::Simple3D;
+
 
 			//
 			glDisable(GL_DEPTH_TEST);
@@ -210,7 +209,7 @@ namespace WeirdEngine
 			{
 				{
 					// Bind the framebuffer you want to render to
-					glBindFramebuffer(GL_FRAMEBUFFER, m_sdfRenderPlane.GetFrameBuffer()); // m_sdfRenderPlane.GetFrameBuffer()
+					m_2DSceneRender.Bind();
 
 					// Draw ray marching stuff
 					m_2DsdfShaderProgram.activate();
@@ -232,13 +231,13 @@ namespace WeirdEngine
 					scene.get2DShapesData(m_2DData, m_2DDataSize);
 					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
-					m_sdfRenderPlane.Bind();
+
 
 					m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 					m_shapes2D.bind(1);
 
-					m_sdfRenderPlane.Draw(m_2DsdfShaderProgram);
+					m_renderPlane.Draw(m_2DsdfShaderProgram);
 
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
@@ -246,7 +245,7 @@ namespace WeirdEngine
 
 				// 2D Lighting
 				{
-					glBindFramebuffer(GL_FRAMEBUFFER, m_postProcessRenderPlane.GetFrameBuffer());
+					m_2DPostProcessRender.Bind();
 
 					m_postProcessShaderProgram.activate();
 					m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
@@ -256,8 +255,8 @@ namespace WeirdEngine
 					glUniform1i(u_colorTextureLocation, 0);
 
 					m_distanceTexture.bind(0);
-					m_postProcessRenderPlane.Bind();
-					m_postProcessRenderPlane.Draw(m_postProcessShaderProgram);
+					
+					m_renderPlane.Draw(m_postProcessShaderProgram);
 					m_distanceTexture.unbind();
 				}
 			}
@@ -271,11 +270,13 @@ namespace WeirdEngine
 
 			// Render geometry
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRenderPlane.GetFrameBuffer());
+				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRender.GetFrameBuffer());
+				GL_CHECK_ERROR();
 				renderGeometry(scene, sceneCamera);
+				GL_CHECK_ERROR();
 			}
 
-			if (m_renderMeshesOnly)
+			if (renderMeshesOnly)
 			{
 				output(scene, m_geometryTexture);
 				return;
@@ -284,7 +285,7 @@ namespace WeirdEngine
 			// 3D Ray marching
 			{
 				// Bind the framebuffer you want to render to
-				glBindFramebuffer(GL_FRAMEBUFFER, m_3DRenderPlane.GetFrameBuffer());
+				m_3DSceneRender.Bind();
 
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -309,9 +310,9 @@ namespace WeirdEngine
 				m_geometryDepthTexture.bind(1);
 
 				// Draw render plane with sdf shader
-				//scene.renderShapes(m_3DsdfShaderProgram, m_sdfRenderPlane);
+				//scene.renderShapes(m_3DsdfShaderProgram, m_2DSceneRender);
 
-				m_3DRenderPlane.Bind();
+				
 
 				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
@@ -319,7 +320,7 @@ namespace WeirdEngine
 				//m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 				m_shapes2D.bind(2);
 
-				m_3DRenderPlane.Draw(m_3DsdfShaderProgram);
+				m_renderPlane.Draw(m_3DsdfShaderProgram);
 
 				m_geometryTexture.unbind();
 				m_geometryDepthTexture.unbind();
@@ -333,7 +334,7 @@ namespace WeirdEngine
 			}
 			
 			// Combine 2D and 3D
-			glBindFramebuffer(GL_FRAMEBUFFER, m_combinationRenderPlane.GetFrameBuffer());
+			m_combinationRender.Bind();
 
 			m_combineScenesShaderProgram.activate();
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
@@ -346,8 +347,8 @@ namespace WeirdEngine
 			glUniform1i(u_colorTextureLocation3d, 1);
 			m_3DSceneTexture.bind(1);
 
-			m_combinationRenderPlane.Bind();
-			m_combinationRenderPlane.Draw(m_postProcessShaderProgram);
+			
+			m_renderPlane.Draw(m_postProcessShaderProgram);
 
 
 			m_lit2DSceneTexture.unbind();
@@ -425,8 +426,7 @@ namespace WeirdEngine
 
 			texture.bind(0);
 
-			m_outputRenderPlane.Bind();
-			m_outputRenderPlane.Draw(m_outputShaderProgram);
+			m_renderPlane.Draw(m_outputShaderProgram);
 
 			texture.unbind();
 

@@ -10,21 +10,13 @@ namespace WeirdEngine
 		class RenderPlane
 		{
 		public:
-			RenderPlane() = default;
-			RenderPlane(bool shapeRenderer);
+			RenderPlane();
 
-			void Bind() const;
 			void Draw(Shader& shader) const;
 			void Delete();
 
-			void BindTextureToFrameBuffer(const Texture& texture, GLenum attachment);
-			void BindColorTextureToFrameBuffer(const Texture& texture);
-			void BindDepthTextureToFrameBuffer(const Texture& texture);
-
-			unsigned int GetFrameBuffer() const;
-
 		private:
-			GLuint VAO, VBO, EBO, FBO;
+			GLuint VAO, VBO, EBO;
 		};
 	}
 }

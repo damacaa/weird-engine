@@ -2,7 +2,7 @@
 #include "../weird-renderer/Shape.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
-#include "../weird-renderer/RenderPlane.h"
+#include "../weird-renderer/RenderTarget.h"
 #include "../weird-renderer/Shape.h"
 
 #include "ecs/ECS.h"

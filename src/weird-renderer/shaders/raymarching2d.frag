@@ -114,7 +114,7 @@ float shape_segment(vec2 p, vec2 a, vec2 b)
   float d0 = dot(p - b, b - a);
   float d1 = dot(p - a, b - a);
   return d1 < 0.0 ? length(a - p) : d0 > 0.0 ? length(b - p)
-                                             : d;
+											 : d;
 }
 
 float shape_circles_smin(vec2 p, float t)
@@ -154,44 +154,44 @@ vec4 getColor(vec2 p, vec2 uv)
 
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
-    vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
-    int materialId = int(positionSizeMaterial.w);
-    // vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
+	vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
+	int materialId = int(positionSizeMaterial.w);
+	// vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
 
-    float z = positionSizeMaterial.z;
-    bool screenSpace = z < 0.0f;
+	float z = positionSizeMaterial.z;
+	bool screenSpace = z < 0.0f;
 
   
 
-    float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
+	float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
 
-    if(z < minZ)
-    {
+	if(z < minZ)
+	{
 
 #if BLEND_SHAPES
 
-    d = fOpUnionSoft(objectDist, d, u_k);
-    float delta = 1 - (max(u_k - abs(objectDist - d), 0.0) / u_k); // After new d is calculated
-    col = mix(getMaterial(p, materialId), col, delta);
+	d = fOpUnionSoft(objectDist, d, u_k);
+	float delta = 1 - (max(u_k - abs(objectDist - d), 0.0) / u_k); // After new d is calculated
+	col = mix(getMaterial(p, materialId), col, delta);
 
 #else
 
-    d = min(d, objectDist);
+	d = min(d, objectDist);
 
-    if(objectDist < 0)
-    {
-        col = getMaterial(positionSizeMaterial.xy, materialId);
-        minZ = z;
-        bestIsScreenSpace = screenSpace;
-    }
+	if(objectDist < 0)
+	{
+		col = getMaterial(positionSizeMaterial.xy, materialId);
+		minZ = z;
+		bestIsScreenSpace = screenSpace;
+	}
 
 #endif
 
-    }
+	}
   }
 
   if(bestIsScreenSpace)
-    return vec4(col, d);
+	return vec4(col, d);
 
   /*ADD_SHAPES_HERE*/
 
@@ -216,19 +216,19 @@ void main()
   // FragColor = vec4(u_customShapeCount);
   // return;
   
-  float invResY = 1.0 / u_resolution.y;
-  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) * invResY;
+  vec2 uv = (2.0f * v_texCoord) - 1.0f;
+
   float zoom = -u_camMatrix[3].z;
   vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-  vec4 color = getColor(pos, 2.0 * gl_FragCoord.xy * invResY); // Same as uv but (0, 0) is bottom left corner
+  vec4 color = getColor(pos, v_texCoord); // Same as uv but (0, 0) is bottom left corner
   float distance = color.w;
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;
 
 #if MOTION_BLUR
 
-  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+  vec2 screenUV = v_texCoord;
   vec4 previousColor = texture(t_colorTexture, screenUV.xy);
   float previousDistance = previousColor.w;
 
@@ -238,7 +238,7 @@ void main()
 
   FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
   if (FragColor.w > 0.0)
-    FragColor = vec4(color.xyz, FragColor.w);
+	FragColor = vec4(color.xyz, FragColor.w);
 
   // FragColor = previousColor;
 
@@ -249,4 +249,5 @@ void main()
   FragColor = vec4(color.xyz, finalDistance);
 
 #endif
+
 }

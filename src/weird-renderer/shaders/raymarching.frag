@@ -98,6 +98,8 @@ float fCylinder(vec3 p, float r, float height)
 // Outputs colors in RGBA
 layout(location = 0) out vec4 FragColor;
 
+in vec2 v_texCoord;
+
 uniform int u_loadedObjects;
 uniform samplerBuffer t_shapeBuffer;
 
@@ -353,9 +355,9 @@ void main()
     float aspectRatio = u_resolution.x / u_resolution.y;
     vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
 
-    vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+    vec2 screenUV = v_texCoord;
 
-    vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
+    vec2 uv = (2.0f * v_texCoord) - 1.0f;
 
     // Calculate true z value from the depth buffer: https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
     float depth = texture(t_depthTexture, screenUV).r;

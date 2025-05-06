@@ -4,7 +4,7 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		RenderPlane::RenderPlane(bool shapeRenderer)
+		RenderPlane::RenderPlane()
 		{
 			float f = 1.0f;
 			// Vertices coordinates
@@ -56,21 +56,13 @@ namespace WeirdEngine
 			// This does not apply to the VBO because the VBO is already linked to the VAO during glVertexAttribPointer
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-			// Frame buffer to store render output
-			glGenFramebuffers(1, &FBO);
-			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 		}
 
-
-		void RenderPlane::Bind() const
-		{
-			// Bind the VAO so OpenGL knows to use it
-			glBindVertexArray(VAO);
-		}
 
 		void RenderPlane::Draw(Shader& shader) const
 		{
-
+			// Bind the VAO so OpenGL knows to use it
+			glBindVertexArray(VAO);
 			// Draw the triangle using the GL_TRIANGLES primitive
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
@@ -80,40 +72,6 @@ namespace WeirdEngine
 		{
 			glDeleteVertexArrays(1, &VAO);
 			glDeleteBuffers(1, &VBO);
-		}
-
-
-		void RenderPlane::BindTextureToFrameBuffer(const Texture& texture, GLenum attachment)
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-
-			texture.bind();
-			glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture.ID, 0);
-
-			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-				std::cerr << "Framebuffer is not complete!" << std::endl;
-				throw;
-			}
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		}
-
-
-		void RenderPlane::BindColorTextureToFrameBuffer(const Texture& texture)
-		{
-			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0);
-		}
-
-
-		void RenderPlane::BindDepthTextureToFrameBuffer(const Texture& texture)
-		{
-			BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
-		}
-
-
-		unsigned int RenderPlane::GetFrameBuffer() const
-		{
-			return FBO;
 		}
 	}
 }

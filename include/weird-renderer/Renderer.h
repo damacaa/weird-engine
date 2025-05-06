@@ -2,10 +2,11 @@
 
 #include <vector>
 
-#include "RenderPlane.h"
+#include "RenderTarget.h"
 #include "DataBuffer.h"
 
 #include "../weird-engine/Scene.h"
+#include "RenderPlane.h"
 
 namespace WeirdEngine
 {
@@ -47,14 +48,16 @@ namespace WeirdEngine
 			Shader m_combineScenesShaderProgram;
 			Shader m_outputShaderProgram;
 
-			RenderPlane m_geometryRenderPlane;
-			RenderPlane m_3DRenderPlane;
+			RenderTarget m_geometryRender;
+			RenderTarget m_3DSceneRender;
 
-			RenderPlane m_sdfRenderPlane;
-			RenderPlane m_postProcessRenderPlane;
+			RenderTarget m_2DSceneRender;
+			RenderTarget m_2DPostProcessRender;
 
-			RenderPlane m_combinationRenderPlane;
-			RenderPlane m_outputRenderPlane;
+			RenderTarget m_combinationRender;
+			RenderTarget m_outputResolutionRender;
+
+			RenderPlane m_renderPlane;
 
 			DataBuffer m_shapes2D;
 

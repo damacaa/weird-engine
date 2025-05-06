@@ -264,7 +264,7 @@ namespace WeirdEngine
 			}
 		};
 
-
+		int m_substeps; // TODO: implement substeps
 
 		bool m_isPaused;
 		bool m_simulating;

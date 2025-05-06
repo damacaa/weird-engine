@@ -36,6 +36,7 @@ namespace WeirdEngine
 		m_lastIdGiven(-1),
 		m_simulationDelay(0),
 		m_simulationTime(0),
+		m_substeps(1),
 		m_gravity(-10),
 		m_push(20.0f * SIMULATION_FREQUENCY),
 		m_damping(0.001f),
@@ -755,6 +756,8 @@ namespace WeirdEngine
 	void Simulation2D::addForce(SimulationID id, vec2 force)
 	{
 		std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+
+		// TODO: create two buffers (contnious forces and impulses), depending on type multiply by mass imitating 4 unity types
 
 		m_externalForcesSinceLastUpdate = true;
 		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;

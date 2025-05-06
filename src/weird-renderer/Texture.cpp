@@ -87,7 +87,7 @@ namespace WeirdEngine
 			glGenerateMipmap(GL_TEXTURE_2D);
 
 			// Deletes the image data as it is already in the OpenGL Texture object
-			//TODO: fix this in cmake file wstbi_image_free(bytes);
+			wstbi_image_free(bytes);
 
 			// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -168,7 +168,7 @@ namespace WeirdEngine
 			glGenerateMipmap(GL_TEXTURE_2D);
 
 			// Deletes the image data as it is already in the OpenGL Texture object
-			//TODO: fix this in cmake file wstbi_image_free(bytes);
+			wstbi_image_free(bytes);
 
 			// Unbinds the OpenGL Texture object so that it can't accidentally be modified
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -301,16 +301,30 @@ namespace WeirdEngine
 
 			if (isDepth)
 			{
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
+				glTexImage2D(
+					GL_TEXTURE_2D,
+					0,
+					GL_DEPTH_COMPONENT24, // 24-bit depth
+					width,
+					height,
+					0,
+					GL_DEPTH_COMPONENT,
+					GL_FLOAT,
+					nullptr);
+
+				// Set texture parameters
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+				// Prevent sampling artifacts in shadow mapping
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE); // or GL_COMPARE_REF_TO_TEXTURE
 			}
 			else
 			{
-				float* textureData = new float[width * height * 4];
-				for (size_t i = 0; i < width * height * 4; i++) textureData[i] = 1.0f;
+				float* textureData = new float[width * height * numColCh];
+				for (size_t i = 0; i < width * height * numColCh; i++) textureData[i] = 1.0f;
 
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, textureData);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);

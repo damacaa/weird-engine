@@ -26,6 +26,14 @@ namespace WeirdEngine
 
 			}
 
+			~PlayerMovementSystem()
+			{
+				if (m_locked)
+				{
+					Input::ShowMouse();
+				}
+			}
+
 			void update(ECSManager& ecs, float delta)
 			{
 				updateMovement2D(ecs, delta);

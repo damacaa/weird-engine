@@ -79,12 +79,13 @@ namespace WeirdEngine
 		}
 	}
 
-	void Scene::renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
+	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
+	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 	{
 		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
-		onRender();
+		onRender(renderTarget);
 
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}

@@ -109,6 +109,7 @@ namespace WeirdEngine
 			{
 				// Remove rotation and make the model face the camera
 				glm::mat3 billboardRotation = glm::mat3(camera.view); // extract rotation
+				// TODO: buffer inverted view for every billboard
 				billboardRotation = glm::transpose(billboardRotation); // invert rotation
 				model *= glm::mat4(billboardRotation);
 			}

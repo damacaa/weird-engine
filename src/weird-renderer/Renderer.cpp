@@ -315,9 +315,17 @@ namespace WeirdEngine
 				m_geometryDepthTexture.bind(1);
 
 				// Shapes
-				m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-				//m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
-				m_shapes2D.bind(2);
+
+				if (!enable2D) // TODO: Replace this with a 3D data buffer??
+				{
+					// Shape data
+					scene.get2DShapesData(m_2DData, m_2DDataSize);
+					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+
+					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
+					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
+					m_shapes2D.bind(2);
+				}
 
 				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
@@ -396,8 +404,12 @@ namespace WeirdEngine
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
 			glClearColor(0, 0, 0, 1);
 
+			m_geometryShaderProgram.activate();
+			camera.Matrix(m_geometryShaderProgram, "u_camMatrix");
+			m_geometryShaderProgram.setUniform("u_camPos", camera.Position);
+
 			// Draw objects in scene
-			scene.renderModels(m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+			scene.renderModels(m_geometryRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 
 			glDisable(GL_DEPTH_TEST); // No depth test
 			glDepthMask(GL_TRUE); // Still write to depth buffer

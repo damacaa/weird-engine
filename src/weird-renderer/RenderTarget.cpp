@@ -40,9 +40,16 @@ namespace WeirdEngine
 		}
 
 
-		void RenderTarget::BindColorTextureToFrameBuffer(const Texture& texture)
+		void RenderTarget::BindColorTextureToFrameBuffer(const Texture& texture, int attachment)
 		{
-			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0);
+			if (attachment >= m_colorAttachments.size())
+			{
+				m_colorAttachments.resize(attachment + 1);
+			}
+
+			m_colorAttachments[attachment] = &texture;
+
+			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0 + attachment);
 		}
 
 
@@ -55,6 +62,17 @@ namespace WeirdEngine
 		unsigned int RenderTarget::GetFrameBuffer() const
 		{
 			return FBO;
+		}
+
+
+		const Texture* RenderTarget::getColorAttachment(int attachment)
+		{
+			if (attachment >= m_colorAttachments.size())
+			{
+				return nullptr;
+			}
+
+			return m_colorAttachments[attachment];
 		}
 	}
 }

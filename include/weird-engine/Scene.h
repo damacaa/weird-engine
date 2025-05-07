@@ -20,7 +20,7 @@ namespace WeirdEngine
 		~Scene();
 		void start();
 
-		void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
 		void update(double delta, double time);
@@ -53,7 +53,7 @@ namespace WeirdEngine
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
 		virtual void onUpdate() = 0;
-		virtual void onRender() {};
+		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onDestroy() {};
 
 		ECSManager m_ecs;

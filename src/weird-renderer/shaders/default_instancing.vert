@@ -14,25 +14,27 @@ out vec2 v_texCoord;
 
 // Uniforms
 //uniform mat4 u_model;
-//uniform mat4 u_camMatrix;
+uniform mat4 u_camMatrix;
 //uniform mat3 u_normalMatrix;
 
 
-// Imports the camera matrix
-uniform mat4 camMatrix;
-// Imports the transformation matrices
-uniform mat4 u_models[255];
-
-
+uniform samplerBuffer t_modelMatrices;
 
 void main()
 {
+	int index = gl_InstanceID;
+	vec4 r0 = texelFetch(t_modelMatrices, index + 0);
+	vec4 r1 = texelFetch(t_modelMatrices, index + 1);
+	vec4 r2 = texelFetch(t_modelMatrices, index + 2);
+	vec4 r3 = texelFetch(t_modelMatrices, index + 3);
+	mat4 model = mat4(r0, r1, r2, r3);
+
 	// calculates current position
-	v_worldPos = vec3(u_models[gl_InstanceID] * vec4(in_position, 1.0f));
+	v_worldPos = vec3(model * vec4(in_position, 1.0f));
 	v_normal = in_normal;
 	v_color = in_color;
 	v_texCoord = mat2(0.0, -1.0, 1.0, 0.0) * in_texCoord;
 	
 	// Outputs the positions/coordinates of all vertices
-	gl_Position = camMatrix * vec4(v_worldPos, 1.0);
+	gl_Position = u_camMatrix * vec4(v_worldPos, 1.0);
 }

@@ -77,6 +77,8 @@ namespace WeirdEngine
 				break;
 			}
 		}
+
+
 	}
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
@@ -192,7 +194,11 @@ namespace WeirdEngine
 		g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
 		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
-		m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+		if (m_debugInput)
+		{
+			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+		}
+
 		m_simulation2D.update(delta);
 
 		onUpdate();

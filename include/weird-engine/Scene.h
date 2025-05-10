@@ -73,11 +73,14 @@ namespace WeirdEngine
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;
-		PhysicsInteractionSystem m_physicsInteractionSystem;
 		PlayerMovementSystem m_playerMovementSystem;
 		CameraSystem m_cameraSystem;
 
+		PhysicsInteractionSystem m_physicsInteractionSystem;
+
 		bool m_debugFly = true;
+		bool m_debugInput = false;
+
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
 		int m_charWidth;

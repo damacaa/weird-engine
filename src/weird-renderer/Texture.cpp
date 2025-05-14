@@ -179,7 +179,7 @@ namespace WeirdEngine
 			// Gets the location of the uniform
 			GLuint texUni = glGetUniformLocation(shader.ID, uniform);
 			// Shader needs to be activated before changing the value of a uniform
-			shader.activate();
+			shader.use();
 			// Sets the value of the uniform
 			glUniform1i(texUni, unit);
 		}

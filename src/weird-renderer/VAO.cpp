@@ -13,14 +13,14 @@ namespace WeirdEngine
 		// Links a VBO Attribute such as a position or color to the quadVAO
 		void VAO::LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset)
 		{
-			VBO.Bind();
+			VBO.bind();
 			glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
 			glEnableVertexAttribArray(layout);
-			VBO.Unbind();
+			VBO.unbind();
 		}
 
 		// Binds the quadVAO
-		void VAO::Bind() const
+		void VAO::bind() const
 		{
 			glBindVertexArray(ID);
 		}
@@ -32,7 +32,7 @@ namespace WeirdEngine
 		}
 
 		// Deletes the quadVAO
-		void VAO::Delete() const
+		void VAO::free() const
 		{
 			glDeleteVertexArrays(1, &ID);
 		}

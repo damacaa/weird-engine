@@ -43,7 +43,7 @@ using namespace ECS;
 			~Mesh();
 
 			// Draws the mesh
-			void Draw
+			void draw
 			(
 				Shader& shader,
 				Camera& camera,
@@ -53,7 +53,7 @@ using namespace ECS;
 			) const;
 
 			// Draws the mesh
-			void DrawInstances
+			void drawInstances
 			(
 				Shader& shader,
 				Camera& camera,
@@ -63,7 +63,7 @@ using namespace ECS;
 				glm::vec3 scale
 			) const;
 
-			void Delete();
+			void free();
 
 			bool m_isBillboard = false;
 

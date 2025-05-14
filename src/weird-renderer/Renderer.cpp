@@ -113,24 +113,24 @@ namespace WeirdEngine
 			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR, true);
 			m_geometryRender = RenderTarget(false);
-			m_geometryRender.BindColorTextureToFrameBuffer(m_geometryTexture);
-			m_geometryRender.BindDepthTextureToFrameBuffer(m_geometryDepthTexture);
+			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
+			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
 			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_3DSceneRender = RenderTarget(false);
-			m_3DSceneRender.BindColorTextureToFrameBuffer(m_3DSceneTexture);
+			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
 
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_2DSceneRender = RenderTarget(false);
-			m_2DSceneRender.BindColorTextureToFrameBuffer(m_distanceTexture);
+			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
 
 			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_2DPostProcessRender = RenderTarget(false);
-			m_2DPostProcessRender.BindColorTextureToFrameBuffer(m_lit2DSceneTexture);
+			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
 
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_combinationRender = RenderTarget(false);
-			m_combinationRender.BindColorTextureToFrameBuffer(m_combineResultTexture);
+			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
 
 			m_outputResolutionRender = RenderTarget(false);
 
@@ -147,20 +147,20 @@ namespace WeirdEngine
 		Renderer::~Renderer()
 		{
 			// Delete all the objects we've created
-			m_geometryShaderProgram.Delete();
-			m_instancedGeometryShaderProgram.Delete();
-			m_2DsdfShaderProgram.Delete();
-			m_postProcessShaderProgram.Delete();
-			m_3DsdfShaderProgram.Delete();
-			m_combineScenesShaderProgram.Delete();
-			m_outputShaderProgram.Delete();
+			m_geometryShaderProgram.free();
+			m_instancedGeometryShaderProgram.free();
+			m_2DsdfShaderProgram.free();
+			m_postProcessShaderProgram.free();
+			m_3DsdfShaderProgram.free();
+			m_combineScenesShaderProgram.free();
+			m_outputShaderProgram.free();
 
-			m_geometryRender.Delete();
-			m_3DSceneRender.Delete();
-			m_2DSceneRender.Delete();
-			m_2DPostProcessRender.Delete();
-			m_combinationRender.Delete();
-			m_outputResolutionRender.Delete();
+			m_geometryRender.free();
+			m_3DSceneRender.free();
+			m_2DSceneRender.free();
+			m_2DPostProcessRender.free();
+			m_combinationRender.free();
+			m_outputResolutionRender.free();
 
 			m_geometryTexture.dispose();
 			m_geometryDepthTexture.dispose();
@@ -193,7 +193,7 @@ namespace WeirdEngine
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
 			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.UpdateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 
 			// 
@@ -217,10 +217,10 @@ namespace WeirdEngine
 			{
 				{
 					// Bind the framebuffer you want to render to
-					m_2DSceneRender.Bind();
+					m_2DSceneRender.bind();
 
 					// Draw ray marching stuff
-					m_2DsdfShaderProgram.activate();
+					m_2DsdfShaderProgram.use();
 
 					scene.updateRayMarchingShader(m_2DsdfShaderProgram);
 
@@ -242,7 +242,7 @@ namespace WeirdEngine
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 					m_shapes2D.bind(1);
 
-					m_renderPlane.Draw(m_2DsdfShaderProgram);
+					m_renderPlane.draw(m_2DsdfShaderProgram);
 
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
@@ -250,9 +250,9 @@ namespace WeirdEngine
 
 				// 2D Lighting
 				{
-					m_2DPostProcessRender.Bind();
+					m_2DPostProcessRender.bind();
 
-					m_postProcessShaderProgram.activate();
+					m_postProcessShaderProgram.use();
 					m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
 					m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
@@ -261,7 +261,7 @@ namespace WeirdEngine
 
 					m_distanceTexture.bind(0);
 					
-					m_renderPlane.Draw(m_postProcessShaderProgram);
+					m_renderPlane.draw(m_postProcessShaderProgram);
 					m_distanceTexture.unbind();
 				}
 			}
@@ -275,7 +275,7 @@ namespace WeirdEngine
 
 			// Render geometry
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRender.GetFrameBuffer());
+				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRender.getFrameBuffer());
 				GL_CHECK_ERROR();
 				renderGeometry(scene, sceneCamera);
 				GL_CHECK_ERROR();
@@ -290,12 +290,12 @@ namespace WeirdEngine
 			// 3D Ray marching
 			{
 				// Bind the framebuffer you want to render to
-				m_3DSceneRender.Bind();
+				m_3DSceneRender.bind();
 
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 				// Draw ray marching stuff
-				m_3DsdfShaderProgram.activate();
+				m_3DsdfShaderProgram.use();
 
 				// Magical math to calculate ray marching shader FOV
 				float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
@@ -338,7 +338,7 @@ namespace WeirdEngine
 
 
 				// Draw render plane with sdf shader
-				m_renderPlane.Draw(m_3DsdfShaderProgram);
+				m_renderPlane.draw(m_3DsdfShaderProgram);
 
 				// Unbind stuff
 				m_geometryTexture.unbind();
@@ -353,9 +353,9 @@ namespace WeirdEngine
 			}
 			
 			// Combine 2D and 3D
-			m_combinationRender.Bind();
+			m_combinationRender.bind();
 
-			m_combineScenesShaderProgram.activate();
+			m_combineScenesShaderProgram.use();
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_2DSceneTexture");
@@ -367,7 +367,7 @@ namespace WeirdEngine
 			m_3DSceneTexture.bind(1);
 
 			
-			m_renderPlane.Draw(m_postProcessShaderProgram);
+			m_renderPlane.draw(m_postProcessShaderProgram);
 
 
 			m_lit2DSceneTexture.unbind();
@@ -396,9 +396,9 @@ namespace WeirdEngine
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
 			glClearColor(0, 0, 0, 1);
 
-			m_geometryShaderProgram.activate();
-			camera.Matrix(m_geometryShaderProgram, "u_camMatrix");
-			m_geometryShaderProgram.setUniform("u_camPos", camera.Position);
+			m_geometryShaderProgram.use();
+			m_geometryShaderProgram.setUniform("u_camMatrix", camera.cameraMatrix);
+			m_geometryShaderProgram.setUniform("u_camPos", camera.position);
 
 			auto& lights = scene.getLigths();
 
@@ -429,7 +429,7 @@ namespace WeirdEngine
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
 
-			m_outputShaderProgram.activate();
+			m_outputShaderProgram.use();
 			m_outputShaderProgram.setUniform("u_time", scene.getTime());
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
@@ -437,7 +437,7 @@ namespace WeirdEngine
 			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			texture.bind(0);
 
-			m_renderPlane.Draw(m_outputShaderProgram);
+			m_renderPlane.draw(m_outputShaderProgram);
 
 			texture.unbind();
 

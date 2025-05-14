@@ -13,7 +13,7 @@ namespace WeirdEngine
 		}
 
 		// Binds the EBO
-		void EBO::Bind()
+		void EBO::bind()
 		{
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
 		}
@@ -25,7 +25,7 @@ namespace WeirdEngine
 		}
 
 		// Deletes the EBO
-		void EBO::Delete()
+		void EBO::free()
 		{
 			glDeleteBuffers(1, &ID);
 		}

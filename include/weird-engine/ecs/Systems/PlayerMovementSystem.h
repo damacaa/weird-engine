@@ -93,19 +93,19 @@ namespace WeirdEngine
 					// Handles key inputs
 					if (Input::GetKey(Input::W))
 					{
-						targetPosition += t.position.z * delta * flyComponent.speed * c.camera.Up;
+						targetPosition += t.position.z * delta * flyComponent.speed * c.camera.up;
 					}
 					if (Input::GetKey(Input::A))
 					{
-						targetPosition += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						targetPosition += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
 					}
 					if (Input::GetKey(Input::S))
 					{
-						targetPosition += t.position.z * delta * flyComponent.speed * -c.camera.Up;
+						targetPosition += t.position.z * delta * flyComponent.speed * -c.camera.up;
 					}
 					if (Input::GetKey(Input::D))
 					{
-						targetPosition += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						targetPosition += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
 					}
 
 
@@ -122,7 +122,7 @@ namespace WeirdEngine
 					else if (Input::GetMouseButton(Input::WheelUp))
 					{
 						// Move camera forwards
-						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * c.camera.Orientation;
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * c.camera.orientation;
 
 						// Move camera towards the cursor
 						vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
@@ -183,11 +183,11 @@ namespace WeirdEngine
 					// Handles key inputs
 					if (Input::GetKey(Input::W))
 					{
-						t.position += delta * flyComponent.speed * c.camera.Orientation;
+						t.position += delta * flyComponent.speed * c.camera.orientation;
 					}
 					if (Input::GetKey(Input::A))
 					{
-						t.position += delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						t.position += delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
 					}
 					if (Input::GetKey(Input::S))
 					{
@@ -195,15 +195,15 @@ namespace WeirdEngine
 					}
 					if (Input::GetKey(Input::D))
 					{
-						t.position += delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.Up));
+						t.position += delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
 					}
 					if (Input::GetKey(Input::Space))
 					{
-						t.position += delta * flyComponent.speed * c.camera.Up;
+						t.position += delta * flyComponent.speed * c.camera.up;
 					}
 					if (Input::GetKey(Input::LeftCrtl))
 					{
-						t.position += delta * flyComponent.speed * -c.camera.Up;
+						t.position += delta * flyComponent.speed * -c.camera.up;
 					}
 
 					if (Input::GetKeyDown(Input::Space))
@@ -262,10 +262,10 @@ namespace WeirdEngine
 						float rotY = delta * flyComponent.sensitivity * (float)(mouseX - (m_width / 2)) / m_width;
 
 						// Calculates upcoming vertical change in the Orientation
-						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), glm::normalize(glm::cross(t.rotation, c.camera.Up)));
+						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), glm::normalize(glm::cross(t.rotation, c.camera.up)));
 
 						// Decides whether or not the next vertical Orientation is legal or not
-						if (abs(glm::angle(newOrientation, c.camera.Up) - glm::radians(90.0f)) <= glm::radians(85.0f))
+						if (abs(glm::angle(newOrientation, c.camera.up) - glm::radians(90.0f)) <= glm::radians(85.0f))
 						{
 							t.rotation = newOrientation;
 						}
@@ -275,7 +275,7 @@ namespace WeirdEngine
 						}
 
 						// Rotates the Orientation left and right
-						t.rotation = glm::rotate(t.rotation, glm::radians(-rotY), c.camera.Up);
+						t.rotation = glm::rotate(t.rotation, glm::radians(-rotY), c.camera.up);
 
 						//std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " << std::endl;
 

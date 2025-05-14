@@ -18,7 +18,7 @@ namespace WeirdEngine
 
 		void render(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader, WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights) {
 
-			shader.activate();
+			shader.use();
 
 			auto componentArray = m_meshRendererManager->getComponentArray();
 
@@ -27,7 +27,7 @@ namespace WeirdEngine
 				MeshRenderer& mr = componentArray->getDataAtIdx(i);
 				auto& t = ecs.getComponent<Transform>(mr.Owner);
 
-				resourceManager.getMesh(mr.mesh).Draw(shader, camera, t.position, t.rotation, t.scale);
+				resourceManager.getMesh(mr.mesh).draw(shader, camera, t.position, t.rotation, t.scale);
 			}
 		}
 	};

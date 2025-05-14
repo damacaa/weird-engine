@@ -278,7 +278,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 }
 
 
-vec4 render(in vec2 uv, in vec4 originalColor, in float depth)
+vec4 render(in vec2 uv, in vec4 originalColor)
 {
 
     // Ray origin
@@ -298,9 +298,13 @@ vec4 render(in vec2 uv, in vec4 originalColor, in float depth)
     float object = rayMarch(ro, rd);
 
     // If ray marched distance is bigger than depth from zbuffer, set alpha to 1
-    float minDepth = min(object, depth);
+    float minDepth = object;
 
-    bool handleTransparency = minDepth == depth && originalColor.w < 1.0f;
+    float z_n = ((FAR + NEAR) * minDepth + 2.0 * FAR * NEAR) / (minDepth * (FAR - NEAR));
+    float depth = (z_n + 1.0) * 0.5;
+    
+    // gl_FragDepth = depth;
+
 
 //    if(handleTransparency)
 //        return vec4(1,0,0,1);
@@ -313,24 +317,11 @@ vec4 render(in vec2 uv, in vec4 originalColor, in float depth)
     if (minDepth < FAR)
     {
 
-        if (object < depth)
-        {
-            vec3 p = ro + object * rd;
-            vec3 material = getColor(p);
-            col = getDirectionalLight(p, rd, material);
-        }
-//        else if(handleTransparency)
-//        {
-//            vec3 p = ro + object * rd;
-//            vec3 material = getColor(p);
-//            col = mix(originalColor.xyz, getDirectionalLight(p, rd, material), 1.0f - originalColor.w);
-//            minDepth = object;
-//        }
-        else
-        {
-          col = originalColor.xyz;
-        }
-            
+        vec3 p = ro + object * rd;
+        vec3 material = getColor(p);
+        col = getDirectionalLight(p, rd, material);
+
+
 
         // fog
 
@@ -374,7 +365,7 @@ void main()
 
     vec4 originalColor = texture(t_colorTexture, screenUV);
 
-    vec4 col = render(uv, originalColor, z_e);
+    vec4 col = render(uv, originalColor);
 
     col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 

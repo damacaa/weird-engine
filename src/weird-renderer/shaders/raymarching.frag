@@ -1,10 +1,10 @@
 #version 330 core
 
-#define DITHERING 1
+// #define DITHERING
 
 
 
-#if (DITHERING == 1)
+#ifdef DITHERING
 
 uniform float u_spread = 0.15f;
 uniform int u_colorCount = 10;
@@ -100,15 +100,26 @@ layout(location = 0) out vec4 FragColor;
 
 in vec2 v_texCoord;
 
-uniform int u_loadedObjects;
+uniform sampler2D t_colorTexture;
+uniform sampler2D t_depthTexture;
 uniform samplerBuffer t_shapeBuffer;
+uniform int u_loadedObjects;
+
 
 uniform mat4 u_camMatrix;
-
+uniform float u_fov = 2.5;
 uniform vec2 u_resolution;
+
+uniform vec3 u_lightPos;
+uniform vec3 u_lightDirection;
+uniform vec4 u_lightColor;
+
 uniform float u_time;
 
-uniform float u_fov = 2.5;
+
+
+
+
 
 const int MAX_STEPS = 256;
 const float EPSILON = 0.01;
@@ -119,10 +130,7 @@ const float OVERSHOOT = 1.0;
 
 const vec3 background = vec3(0.0);
 
-uniform sampler2D t_colorTexture;
-uniform sampler2D t_depthTexture;
 
-uniform vec3 directionalLightDirection = vec3(0,1,0);
 
 
 
@@ -223,7 +231,7 @@ vec3 getNormal(vec3 p)
 vec3 getLight(vec3 p, vec3 rd, vec3 color)
 {
 
-    vec3 lightPos = directionalLightDirection;
+    vec3 lightPos = u_lightPos;
 
     vec3 L = normalize(lightPos - p);
     vec3 N = getNormal(p);
@@ -248,7 +256,7 @@ vec3 getLight(vec3 p, vec3 rd, vec3 color)
 
 vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 {
-    vec3 L = directionalLightDirection;
+    vec3 L = u_lightDirection;
     vec3 N = getNormal(p);
     vec3 V = -rd;
     vec3 R = reflect(-L, N);
@@ -370,7 +378,7 @@ void main()
 
     col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 
-#if (DITHERING == 1)
+#ifdef DITHERING
     int x = int(gl_FragCoord.x);
     int y = int(gl_FragCoord.y);
     col  = col + u_spread * GetBayer4(x, y);

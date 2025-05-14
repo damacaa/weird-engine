@@ -211,6 +211,11 @@ namespace WeirdEngine
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 	}
 
+	std::vector<WeirdRenderer::Light>& Scene::getLigths()
+	{
+		return m_lights;
+	}
+
 	float Scene::getTime()
 	{
 		return m_simulation2D.getSimulationTime();

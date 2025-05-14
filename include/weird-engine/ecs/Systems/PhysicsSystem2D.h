@@ -1,85 +1,48 @@
 #pragma once
-#pragma once
-#include "../ECS.h"
-#include "../../../weird-physics/Simulation2D.h"
+#include "weird-engine/ecs/Components/RigidBody.h"
+#include "weird-engine/ecs/Components/Transform.h"
+#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/System.h"
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {
-	namespace ECS
+	class PhysicsSystem2D : public System
 	{
+	private:
+		std::shared_ptr<ComponentManager<RigidBody2D>> m_rbManager;
+		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
+		Simulation2D* m_simulation = nullptr;
 
-
-
-		// Example Systems
-		class PhysicsSystem2D : public System
+	public:
+		PhysicsSystem2D(Simulation2D& sim)
+			: m_simulation(&sim)
 		{
-		private:
-			std::shared_ptr<ComponentManager<RigidBody2D>> m_rbManager;
+		}
 
-		public:
+		void cacheComponents(ECSManager& ecs) override
+		{
+			m_rbManager = ecs.getComponentManager<RigidBody2D>();
+			m_transformManager = ecs.getComponentManager<Transform>();
+		}
 
-			PhysicsSystem2D(ECSManager& ecs) {
-			}
+		void update(ECSManager& ecs, float dt) override
+		{
+			auto rbArray = m_rbManager->getComponentArray();
+			auto transformArray = m_transformManager->getComponentArray();
 
-			void init(ECSManager& ecs, Simulation2D& simulation) {
-
-				m_rbManager = ecs.getComponentManager<RigidBody2D>();
-				auto componentArray = m_rbManager->getComponentArray();
-
-
-			}
-
-			void update(ECSManager& ecs, Simulation2D& simulation) {
-
-
-				auto componentArray = m_rbManager->getComponentArray();
-
-				//for (size_t i = simulation.getSize(); i < componentArray.size; i++)
-				//{
-				//	RigidBody2D& rb = componentArray[i];
-				//	//rb.simulationId = simulation.generateSimulationID();
-				//	Transform& transform = ecs.getComponent<Transform>(rb.Owner);
-				//	simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-				//}
-
-				for (size_t i = 0; i < componentArray->getSize(); i++)
-				{
-					auto& rb = componentArray->getDataAtIdx(i);
-					Transform& transform = ecs.getComponent<Transform>(rb.Owner);
-					if (transform.isDirty)
-					{
-						// Override simulation transform
-						simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-						transform.isDirty = false; // TODO: move somewhere else
-					}
-
-					simulation.updateTransform(transform, rb.simulationId);
-				}
-
-				auto shapeArray = ecs.getComponentArray<CustomShape>();
-
-				for (size_t i = 0; i < shapeArray->size; i++)
-				{
-					auto& shape = shapeArray->getDataAtIdx(i);
-					if (shape.m_isDirty)
-					{
-						simulation.updateShape(shape);
-						shape.m_isDirty = false;
-					}
-
-				}
-			}
-
-		private:
-			void addForce(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 force)
+			for (size_t i = 0; i < rbArray->getSize(); i++)
 			{
-				simulation.addForce(ecs.getComponent<RigidBody2D>(entity).simulationId, force);
-			}
+				RigidBody2D& rb = rbArray->getDataAtIdx(i);
+				Transform& transform = transformArray->getDataFromEntity(rb.Owner);
 
-			// This shouldn't exist. Editing the transform and setting it dirty should be enough
-			void setPosition(ECSManager& ecs, Simulation2D& simulation, Entity entity, vec2 position) {
-				simulation.setPosition(ecs.getComponent<RigidBody2D>(entity).simulationId, position);
+				// Sync position
+				transform.position = rb.position;
+				transform.isDirty = false;
+
+				// Update simulation
+				m_simulation->updateTransform(rb.simulationId, transform.position);
 			}
-		};
-	}
+		}
+	};
 }

@@ -65,6 +65,8 @@ namespace WeirdEngine
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;
 			Texture m_3DSceneTexture;
+						Texture m_3DDepthSceneTexture;
+
 
 			Texture m_distanceTexture;
 			Texture m_lit2DSceneTexture;

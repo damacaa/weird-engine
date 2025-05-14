@@ -114,8 +114,11 @@ namespace WeirdEngine
 			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
 			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR, true);
 			m_3DSceneRender = RenderTarget(false);
 			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
+			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
+
 
 			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
 			m_2DSceneRender = RenderTarget(false);
@@ -266,19 +269,18 @@ namespace WeirdEngine
 			{
 				// Set up framebuffer for 3D scene rendering
 				glBindFramebuffer(GL_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
-				GL_CHECK_ERROR();
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
 				glEnable(GL_DEPTH_TEST);
 				glDepthFunc(GL_LESS); // Ensure depth comparison is 'less than'
 				glDepthMask(GL_TRUE); // Write to depth buffer
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 
 				// Render ray marching only for background (do not affect depth buffer)
 				if (!renderMeshesOnly)
 				{
-					glDepthMask(GL_FALSE); // Disable depth writing during ray marching
+					// glDepthMask(GL_FALSE); // Disable depth writing during ray marching
 
 					// Draw ray marching stuff
 					m_3DsdfShaderProgram.use();
@@ -320,7 +322,7 @@ namespace WeirdEngine
 					m_geometryDepthTexture.unbind();
 					m_shapes2D.unbind();
 
-					glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
+					// glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
 				}
 
 				// Render 3D geometry objects (with depth writing)

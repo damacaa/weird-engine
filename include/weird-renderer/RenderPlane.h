@@ -12,8 +12,8 @@ namespace WeirdEngine
 		public:
 			RenderPlane();
 
-			void Draw(Shader& shader) const;
-			void Delete();
+			void draw(Shader& shader) const;
+			void free();
 
 		private:
 			GLuint VAO, VBO, EBO;

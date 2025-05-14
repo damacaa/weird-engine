@@ -6,7 +6,7 @@
 #include "DataBuffer.h"
 #include "Screen.h"
 
-#include "../weird-engine/Scene.h"
+#include "weird-engine/Scene.h"
 #include "RenderPlane.h"
 
 namespace WeirdEngine

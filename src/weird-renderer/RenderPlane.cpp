@@ -48,7 +48,7 @@ namespace WeirdEngine
 		}
 
 
-		void RenderPlane::Draw(Shader& shader) const
+		void RenderPlane::draw(Shader& shader) const
 		{
 			// Bind the VAO so OpenGL knows to use it
 			glBindVertexArray(VAO);
@@ -57,7 +57,7 @@ namespace WeirdEngine
 		}
 
 
-		void RenderPlane::Delete()
+		void RenderPlane::free()
 		{
 			glDeleteVertexArrays(1, &VAO);
 			glDeleteBuffers(1, &VBO);

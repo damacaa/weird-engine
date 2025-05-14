@@ -13,19 +13,19 @@ namespace WeirdEngine
 		}
 
 		// Binds the VBO
-		void VBO::Bind()
+		void VBO::bind()
 		{
 			glBindBuffer(GL_ARRAY_BUFFER, ID);
 		}
 
 		// Unbinds the VBO
-		void VBO::Unbind()
+		void VBO::unbind()
 		{
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 
 		// Deletes the VBO
-		void VBO::Delete()
+		void VBO::free()
 		{
 			glDeleteBuffers(1, &ID);
 		}

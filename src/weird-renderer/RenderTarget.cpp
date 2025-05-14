@@ -12,19 +12,19 @@ namespace WeirdEngine
 		}
 
 
-		void RenderTarget::Bind() const
+		void RenderTarget::bind() const
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 		}
 
 
-		void RenderTarget::Delete()
+		void RenderTarget::free()
 		{
 			// glDeleteFramebuffers(FBO);
 		}
 
 
-		void RenderTarget::BindTextureToFrameBuffer(const Texture& texture, GLenum attachment)
+		void RenderTarget::bindTextureToFrameBuffer(const Texture& texture, GLenum attachment)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
@@ -40,7 +40,7 @@ namespace WeirdEngine
 		}
 
 
-		void RenderTarget::BindColorTextureToFrameBuffer(const Texture& texture, int attachment)
+		void RenderTarget::bindColorTextureToFrameBuffer(const Texture& texture, int attachment)
 		{
 			if (attachment >= m_colorAttachments.size())
 			{
@@ -49,17 +49,17 @@ namespace WeirdEngine
 
 			m_colorAttachments[attachment] = &texture;
 
-			BindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0 + attachment);
+			bindTextureToFrameBuffer(texture, GL_COLOR_ATTACHMENT0 + attachment);
 		}
 
 
-		void RenderTarget::BindDepthTextureToFrameBuffer(const Texture& texture)
+		void RenderTarget::bindDepthTextureToFrameBuffer(const Texture& texture)
 		{
-			BindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
+			bindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
 		}
 
 
-		unsigned int RenderTarget::GetFrameBuffer() const
+		unsigned int RenderTarget::getFrameBuffer() const
 		{
 			return FBO;
 		}

@@ -11,7 +11,7 @@ namespace WeirdEngine
 			Mesh::indices = indices;
 			Mesh::textures = textures;
 
-			m_vao.Bind();
+			m_vao.bind();
 			// Generates Vertex Buffer Object and links it to vertices
 			m_vbo = VBO(vertices);
 			// Generates Element Buffer Object and links it to indices
@@ -24,7 +24,7 @@ namespace WeirdEngine
 
 			// Unbind all to prevent accidentally modifying them
 			m_vao.Unbind();
-			m_vbo.Unbind();
+			m_vbo.unbind();
 			m_ebo.Unbind();
 		}
 
@@ -37,7 +37,7 @@ namespace WeirdEngine
 		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
 		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		void Mesh::Draw(
+		void Mesh::draw(
 			Shader& shader,
 			Camera& camera,
 			glm::vec3 translation,
@@ -51,7 +51,7 @@ namespace WeirdEngine
 			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		}
 
-		void Mesh::DrawInstances(
+		void Mesh::drawInstances(
 			Shader& shader,
 			Camera& camera,
 			unsigned int instances,
@@ -65,18 +65,18 @@ namespace WeirdEngine
 			glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
 		}
 
-		void Mesh::Delete()
+		void Mesh::free()
 		{
-			m_vao.Delete();
-			m_vbo.Delete();
-			m_ebo.Delete();
+			m_vao.free();
+			m_vbo.free();
+			m_ebo.free();
 		}
 
 		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) const
 		{
 			// Bind shader to be able to access uniforms
-			shader.activate();
-			m_vao.Bind();
+			shader.use();
+			m_vao.bind();
 
 			// Keep track of how many of each type of textures we have
 			unsigned int numDiffuse = 0;

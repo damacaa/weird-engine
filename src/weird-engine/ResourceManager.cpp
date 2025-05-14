@@ -76,7 +76,7 @@ namespace WeirdEngine
 			if (--m_resourceReferenceCount[resourceId] == 0) {
 				// Remove resource from memory
 
-				m_meshIdMap[resourceId]->Delete();
+				m_meshIdMap[resourceId]->free();
 				delete m_meshIdMap[resourceId];
 				m_meshIdMap.erase(resourceId);
 

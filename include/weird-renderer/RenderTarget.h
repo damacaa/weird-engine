@@ -13,14 +13,14 @@ namespace WeirdEngine
 			RenderTarget() = default;
 			RenderTarget(bool shapeRenderer);
 
-			void Bind() const;
-			void Delete();
+			void bind() const;
+			void free();
 
-			void BindTextureToFrameBuffer(const Texture& texture, GLenum attachment);
-			void BindColorTextureToFrameBuffer(const Texture& texture, int attachment = 0);
-			void BindDepthTextureToFrameBuffer(const Texture& texture);
+			void bindTextureToFrameBuffer(const Texture& texture, GLenum attachment);
+			void bindColorTextureToFrameBuffer(const Texture& texture, int attachment = 0);
+			void bindDepthTextureToFrameBuffer(const Texture& texture);
 
-			unsigned int GetFrameBuffer() const;
+			unsigned int getFrameBuffer() const;
 
 			const Texture* getColorAttachment(int attachment = 0);
 

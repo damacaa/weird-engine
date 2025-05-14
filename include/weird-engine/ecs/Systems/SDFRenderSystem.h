@@ -38,11 +38,11 @@ namespace WeirdEngine
 			}
 
 			shader.setUniform("directionalLightDirection", lights[0].rotation);
-			//rp.Draw(shader, data, size);
+			//rp.draw(shader, data, size);
 
 			delete[] data;
 
-			//rp->Draw(shader, m_data, m_shapes);
+			//rp->draw(shader, m_data, m_shapes);
 		}
 	};
 }

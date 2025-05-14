@@ -1,4 +1,9 @@
 #version 330 core
+#extension GL_ARB_conservative_depth : enable
+#extension GL_EXT_conservative_depth : enable
+
+layout (depth_greater) out float gl_FragDepth;
+
 
 // #define DITHERING
 
@@ -143,13 +148,14 @@ float map(vec3 p)
         vec4 positionSize = texelFetch(t_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
         //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
-        float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
+        float objectDist = fSphere(p - positionSize.xyz, 0.5f + (sin(u_time) + 1)); // positionSize.w);
         
 
         res = fOpUnionSoft(objectDist, res, 0.5);
     }
 
-    float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
+    float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
+    // float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
 
     res = min(res, planeDist);
 
@@ -300,10 +306,12 @@ vec4 render(in vec2 uv, in vec4 originalColor)
     // If ray marched distance is bigger than depth from zbuffer, set alpha to 1
     float minDepth = object;
 
-    float z_n = ((FAR + NEAR) * minDepth + 2.0 * FAR * NEAR) / (minDepth * (FAR - NEAR));
+    float z_e = object;
+    float z_n = (FAR + NEAR - (2.0 * NEAR * FAR) / z_e) / (FAR - NEAR);
     float depth = (z_n + 1.0) * 0.5;
+
     
-    // gl_FragDepth = depth;
+    gl_FragDepth = depth;
 
 
 //    if(handleTransparency)

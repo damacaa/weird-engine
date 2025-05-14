@@ -11,10 +11,10 @@ namespace WeirdEngine
 			// Vertices with positions (x, y, z) and texture coordinates (u, v)
 			GLfloat vertices[] = {
 				// positions        // UVs
-				-f, -f, 0.0f, 0.0f, 0.0f, // Lower left corner
-				-f, f, 0.0f, 0.0f, 1.0f, // Upper left corner
-				f, f, 0.0f, 1.0f, 1.0f, // Upper right corner
-				f, -f, 0.0f, 1.0f, 0.0f // Lower right corner
+				-f, -f, -1.0f, 0.0f, 0.0f, // Lower left corner
+				-f, f, -1.0f, 0.0f, 1.0f, // Upper left corner
+				f, f, -1.0f, 1.0f, 1.0f, // Upper right corner
+				f, -f, -1.0f, 1.0f, 0.0f // Lower right corner
 			};
 
 			GLuint indices[] = {

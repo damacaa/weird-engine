@@ -12,10 +12,10 @@ in vec2 v_texCoord;
 uniform sampler2D u_diffuse0;
 uniform sampler2D u_specular0;
 
-uniform vec4  u_lightColor;
-uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
-uniform vec3  u_directionalLightDir;
+uniform vec3  u_lightPos;
+uniform vec3  u_lightDirection;
+uniform vec4  u_lightColor;
 
 float u_near = 0.1f;
 float u_far  = 100.0f;
@@ -46,7 +46,7 @@ vec4 pointLight()
 vec4 directionalLight()
 {
 	vec3 normal = normalize(v_normal);
-	vec3 lightDir = normalize(u_directionalLightDir);
+	vec3 lightDir = normalize(u_lightDirection);
 	vec3 viewDir = normalize(u_camPos - v_worldPos);
 	vec3 reflectDir = reflect(-lightDir, normal);
 
@@ -95,11 +95,5 @@ float logisticDepth(float depth, float steepness, float offset)
 
 void main()
 {
-	// Optional depth visualization
-	float depth = logisticDepth(gl_FragCoord.z, 0.5, 5.0);
-	// FragColor = directionalLight(); // <- switch here
-	FragColor = pointLight();         // <- default
-	// FragColor = vec4(vec3(depth * depth * depth), 1.0);
-
-	FragColor.a = 1.0;
+	FragColor = directionalLight();
 }

@@ -33,6 +33,8 @@ namespace WeirdEngine
 		Scene& operator=(Scene&&) = default;	   // Defaulted move assignment operator
 
 		WeirdRenderer::Camera& getCamera();
+		std::vector<WeirdRenderer::Light>& getLigths();
+
 		float getTime();
 
 		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);

@@ -306,6 +306,12 @@ namespace WeirdEngine
 				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
 				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
+				auto& lights = scene.getLigths();
+
+				m_3DsdfShaderProgram.setUniform("u_lightPos", lights[0].position);
+				m_3DsdfShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
+				m_3DsdfShaderProgram.setUniform("u_lightColor", lights[0].color);
+
 				// Geom color
 				m_3DsdfShaderProgram.setUniform("t_colorTexture", 0);
 				m_geometryTexture.bind(0);
@@ -320,14 +326,16 @@ namespace WeirdEngine
 				{
 					// Shape data
 					scene.get2DShapesData(m_2DData, m_2DDataSize);
-					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 					m_shapes2D.bind(2);
+
+					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
 				}
 
-				m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+				GL_CHECK_ERROR();
+
 
 				// Draw render plane with sdf shader
 				m_renderPlane.Draw(m_3DsdfShaderProgram);
@@ -368,23 +376,7 @@ namespace WeirdEngine
 			output(scene, m_combineResultTexture);
 		}
 
-		std::vector<glm::vec3> g_particlesTranslations = {
-			vec3(2,0,0),
-			vec3(4,0,0),
-			vec3(6,0,0),
-		};
 
-		std::vector<glm::vec3> g_particlesRotations = {
-			vec3(0),
-			vec3(0),
-			vec3(0),
-		};
-
-		std::vector<glm::vec3> g_particlesScales{
-			vec3(0.02f),
-			vec3(0.02f),
-			vec3(0.02f),
-		};
 
 		
 
@@ -407,6 +399,12 @@ namespace WeirdEngine
 			m_geometryShaderProgram.activate();
 			camera.Matrix(m_geometryShaderProgram, "u_camMatrix");
 			m_geometryShaderProgram.setUniform("u_camPos", camera.Position);
+
+			auto& lights = scene.getLigths();
+
+			m_geometryShaderProgram.setUniform("u_lightPos", lights[0].position);
+			m_geometryShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
+			m_geometryShaderProgram.setUniform("u_lightColor", lights[0].color);
 
 			// Draw objects in scene
 			scene.renderModels(m_geometryRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);

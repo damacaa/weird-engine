@@ -1,8 +1,5 @@
 #include "weird-renderer/Renderer.h"
 
-
-
-
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -13,7 +10,7 @@ namespace WeirdEngine
 			GLenum err;
 			while ((err = glGetError()) != GL_NO_ERROR)
 			{
-				//int e = err;
+				// int e = err;
 				std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
 				// Optionally, map err to a string representation
 			}
@@ -66,17 +63,17 @@ namespace WeirdEngine
 			gladLoadGL();
 
 			// Clear any GL errors caused during init
-			while (glGetError() != GL_NO_ERROR) {}
+			while (glGetError() != GL_NO_ERROR)
+			{
+			}
 
 			// Debug-specific code
-			glEnable(GL_DEBUG_OUTPUT);              // Enable OpenGL debug output
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);  // Ensure synchronous reporting (optional but useful)
+			glEnable(GL_DEBUG_OUTPUT); // Enable OpenGL debug output
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Ensure synchronous reporting (optional but useful)
 
 			// Set the debug callback function
 			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
-
 		}
-
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)
@@ -138,7 +135,6 @@ namespace WeirdEngine
 
 			GL_CHECK_ERROR();
 
-
 			// Enable culling
 			glCullFace(GL_FRONT);
 			glFrontFace(GL_CCW);
@@ -177,8 +173,6 @@ namespace WeirdEngine
 			glfwTerminate();
 		}
 
-
-
 		void Renderer::render(Scene& scene, const double time)
 		{
 			if (m_vSyncEnabled)
@@ -195,22 +189,18 @@ namespace WeirdEngine
 			// Updates and exports the camera matrix to the Vertex Shader
 			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
-
-			// 
+			//
 			auto renderMode = scene.getRenderMode();
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 			bool used2DAsBackground = renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool renderMeshesOnly = renderMode == Scene::RenderMode::Simple3D;
 
-
 			//
 			glDisable(GL_DEPTH_TEST);
 
 			// Render viewport
 			glViewport(0, 0, m_renderWidth, m_renderHeight);
-
-
 
 			// 2D Ray marching
 			if (enable2D)
@@ -260,7 +250,7 @@ namespace WeirdEngine
 					glUniform1i(u_colorTextureLocation, 0);
 
 					m_distanceTexture.bind(0);
-					
+
 					m_renderPlane.draw(m_postProcessShaderProgram);
 					m_distanceTexture.unbind();
 				}
@@ -272,78 +262,85 @@ namespace WeirdEngine
 				return;
 			}
 
-
 			// Render geometry
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, m_geometryRender.getFrameBuffer());
+				// Set up framebuffer for 3D scene rendering
+				glBindFramebuffer(GL_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
 				GL_CHECK_ERROR();
-				renderGeometry(scene, sceneCamera);
-				GL_CHECK_ERROR();
-			}
 
-			if (renderMeshesOnly)
-			{
-				output(scene, m_geometryTexture);
-				return;
-			}
+				// Enable culling and depth testing for 3D meshes
+				glEnable(GL_CULL_FACE);
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_LESS); // Ensure depth comparison is 'less than'
+				glDepthMask(GL_TRUE); // Write to depth buffer
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 
-			// 3D Ray marching
-			{
-				// Bind the framebuffer you want to render to
-				m_3DSceneRender.bind();
-
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-				// Draw ray marching stuff
-				m_3DsdfShaderProgram.use();
-
-				// Magical math to calculate ray marching shader FOV
-				float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
-
-				// Set uniforms
-				m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
-				m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
-				m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
-				m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-				auto& lights = scene.getLigths();
-
-				m_3DsdfShaderProgram.setUniform("u_lightPos", lights[0].position);
-				m_3DsdfShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
-				m_3DsdfShaderProgram.setUniform("u_lightColor", lights[0].color);
-
-				// Geom color
-				m_3DsdfShaderProgram.setUniform("t_colorTexture", 0);
-				m_geometryTexture.bind(0);
-
-				// Geom depth
-				m_3DsdfShaderProgram.setUniform("t_depthTexture", 1);
-				m_geometryDepthTexture.bind(1);
-
-				// Shapes
-
-				if (!enable2D) // TODO: Replace this with a 3D data buffer??
+				// Render ray marching only for background (do not affect depth buffer)
+				if (!renderMeshesOnly)
 				{
-					// Shape data
-					scene.get2DShapesData(m_2DData, m_2DDataSize);
+					glDepthMask(GL_FALSE); // Disable depth writing during ray marching
 
+					// Draw ray marching stuff
+					m_3DsdfShaderProgram.use();
+
+					// Set uniforms and other ray marching settings
+					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
+					m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
+					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
+					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
+					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+					auto& lights = scene.getLigths();
+					m_3DsdfShaderProgram.setUniform("u_lightPos", lights[0].position);
+					m_3DsdfShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
+					m_3DsdfShaderProgram.setUniform("u_lightColor", lights[0].color);
+
+					// Geom color and depth textures for ray marching
+					m_3DsdfShaderProgram.setUniform("t_colorTexture", 0);
+					m_geometryTexture.bind(0);
+
+					m_3DsdfShaderProgram.setUniform("t_depthTexture", 1);
+					m_geometryDepthTexture.bind(1);
+
+					// Upload and bind shapes for ray marching
+					scene.get2DShapesData(m_2DData, m_2DDataSize);
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 					m_shapes2D.bind(2);
 
 					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+
+					GL_CHECK_ERROR();
+
+					// Draw the render plane with ray marching shader
+					m_renderPlane.draw(m_3DsdfShaderProgram);
+
+					// Unbind textures and buffers
+					m_geometryTexture.unbind();
+					m_geometryDepthTexture.unbind();
+					m_shapes2D.unbind();
+
+					glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
 				}
 
+				// Render 3D geometry objects (with depth writing)
+				m_geometryShaderProgram.use();
+				m_geometryShaderProgram.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
+				m_geometryShaderProgram.setUniform("u_camPos", sceneCamera.position);
+
+				auto& lights = scene.getLigths();
+				m_geometryShaderProgram.setUniform("u_lightPos", lights[0].position);
+				m_geometryShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
+				m_geometryShaderProgram.setUniform("u_lightColor", lights[0].color);
+
+				// Draw objects in the scene (3D models)
+				scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+
+				glDisable(GL_DEPTH_TEST); // No depth test for the final pass
+				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
+				glClearDepth(1.0f); // Make sure depth buffer is initialized correctly
+
 				GL_CHECK_ERROR();
-
-
-				// Draw render plane with sdf shader
-				m_renderPlane.draw(m_3DsdfShaderProgram);
-
-				// Unbind stuff
-				m_geometryTexture.unbind();
-				m_geometryDepthTexture.unbind();
-				m_shapes2D.unbind();
 			}
 
 			if (!used2DAsBackground)
@@ -351,7 +348,7 @@ namespace WeirdEngine
 				output(scene, m_3DSceneTexture);
 				return;
 			}
-			
+
 			// Combine 2D and 3D
 			m_combinationRender.bind();
 
@@ -366,9 +363,7 @@ namespace WeirdEngine
 			glUniform1i(u_colorTextureLocation3d, 1);
 			m_3DSceneTexture.bind(1);
 
-			
 			m_renderPlane.draw(m_postProcessShaderProgram);
-
 
 			m_lit2DSceneTexture.unbind();
 			m_3DSceneTexture.unbind();
@@ -376,42 +371,12 @@ namespace WeirdEngine
 			output(scene, m_combineResultTexture);
 		}
 
-
-
-		
-
 		void Renderer::renderFire(Scene& scene, Camera& camera, float time)
 		{
-			
 		}
 
 		void Renderer::renderGeometry(Scene& scene, Camera& camera)
 		{
-			// Enable depth test
-			glEnable(GL_CULL_FACE);
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LESS);
-			glDepthMask(GL_TRUE);
-
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear everything first
-			glClearColor(0, 0, 0, 1);
-
-			m_geometryShaderProgram.use();
-			m_geometryShaderProgram.setUniform("u_camMatrix", camera.cameraMatrix);
-			m_geometryShaderProgram.setUniform("u_camPos", camera.position);
-
-			auto& lights = scene.getLigths();
-
-			m_geometryShaderProgram.setUniform("u_lightPos", lights[0].position);
-			m_geometryShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
-			m_geometryShaderProgram.setUniform("u_lightColor", lights[0].color);
-
-			// Draw objects in scene
-			scene.renderModels(m_geometryRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-
-			glDisable(GL_DEPTH_TEST); // No depth test
-			glDepthMask(GL_TRUE); // Still write to depth buffer
-			glClearDepth(1.0f); // Make sure depth buffer is initialized
 		}
 
 		bool Renderer::checkWindowClosed() const
@@ -459,8 +424,6 @@ namespace WeirdEngine
 		{
 			return m_window;
 		}
-
-
 
 	}
 }

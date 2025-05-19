@@ -107,28 +107,28 @@ namespace WeirdEngine
 			GL_CHECK_ERROR();
 
 			// Bind textures to render planes fbo outputs
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
-			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR, true);
+			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
 			m_geometryRender = RenderTarget(false);
 			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
 			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
-			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
-			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR, true);
+			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
 			m_3DSceneRender = RenderTarget(false);
 			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
 			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
 
 
-			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
 
-			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DPostProcessRender = RenderTarget(false);
 			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
 
-			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, GL_LINEAR);
+			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
 			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
 

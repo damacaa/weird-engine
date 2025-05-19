@@ -85,7 +85,7 @@ namespace WeirdEngine
 			for (unsigned int i = 0; i < textures.size(); i++)
 			{
 				std::string num;
-				std::string type = textures[i].type;
+				std::string type = ""; // textures[i].type;
 				unsigned int unit;
 				if (type == "diffuse")
 				{
@@ -98,8 +98,8 @@ namespace WeirdEngine
 					unit = 1;
 				}
 
-				textures[i].bind(i);
-				textures[i].texUnit(shader, ("t_" + type + num).c_str(), unit);
+				// textures[i].bind(i);
+				// textures[i].texUnit(shader, ("t_" + type + num).c_str(), unit);
 			}
 
 			// Compute model matrix

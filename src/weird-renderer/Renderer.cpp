@@ -270,6 +270,7 @@ namespace WeirdEngine
 				// Set up framebuffer for 3D scene rendering
 				glBindFramebuffer(GL_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
+				glClearColor(0, 0, 0, 1);
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
@@ -281,6 +282,8 @@ namespace WeirdEngine
 				if (!renderMeshesOnly)
 				{
 					// glDepthMask(GL_FALSE); // Disable depth writing during ray marching
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 					// Draw ray marching stuff
 					m_3DsdfShaderProgram.use();
@@ -323,6 +326,7 @@ namespace WeirdEngine
 					m_shapes2D.unbind();
 
 					// glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
+					glDisable(GL_BLEND);
 				}
 
 				// Render 3D geometry objects (with depth writing)

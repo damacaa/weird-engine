@@ -2,7 +2,7 @@
 #extension GL_ARB_conservative_depth : enable
 #extension GL_EXT_conservative_depth : enable
 
-layout (depth_greater) out float gl_FragDepth;
+layout (depth_less) out float gl_FragDepth;
 
 
 // #define DITHERING
@@ -333,15 +333,18 @@ vec4 render(in vec2 uv, in vec4 originalColor)
 
         // fog
 
-        minDepth -= 0.85;
-        alpha = 1.0 - exp(-0.001 * minDepth * minDepth);
+        // minDepth -= 0.85;
+        // alpha = exp(-0.0004 * minDepth * minDepth);
 
-        col = mix(col, background, alpha);
+        //col = mix(col, background, alpha);
 
         //float a = minDepth - (FAR - 980);
         //alpha = max(0.0, 0.001 * a * a *a );
 
-        alpha = 1.0f;
+        // alpha = 1.0f;
+
+        alpha = 1.0f - smoothstep(FAR * 0.5, FAR, minDepth);
+
     }
 
     return vec4(col, alpha);

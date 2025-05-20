@@ -201,7 +201,7 @@ namespace WeirdEngine
 
 		m_simulation2D.update(delta);
 
-		onUpdate();
+		onUpdate(delta);
 
 		m_ecs.freeRemovedComponents();
 	}

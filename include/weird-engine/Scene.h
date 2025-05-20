@@ -54,7 +54,7 @@ namespace WeirdEngine
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
-		virtual void onUpdate() = 0;
+		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onDestroy() {};
 

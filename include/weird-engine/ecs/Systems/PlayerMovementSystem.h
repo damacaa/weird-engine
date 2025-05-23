@@ -258,8 +258,9 @@ namespace WeirdEngine
 
 						// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
 						// and then "transforms" them into degrees 
-						float rotX = delta * flyComponent.sensitivity * (float)(mouseY - (m_height / 2)) / m_height;
-						float rotY = delta * flyComponent.sensitivity * (float)(mouseX - (m_width / 2)) / m_width;
+						float fovMultiplier = c.camera.fov / 90.0f;
+						float rotX = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseY - (m_height / 2)) / m_height;
+						float rotY = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseX - (m_width / 2)) / m_width;
 
 						// Calculates upcoming vertical change in the Orientation
 						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), glm::normalize(glm::cross(t.rotation, c.camera.up)));

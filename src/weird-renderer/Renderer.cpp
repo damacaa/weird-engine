@@ -75,6 +75,13 @@ namespace WeirdEngine
 			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 		}
 
+		SSBODataBuffer* g_testSSBO;
+		Shader* g_shaderSSBO;
+		struct MyDataItem {
+			glm::vec4 itemColor;     // Example: a base color (RGBA)
+			float itemIntensity;
+		};
+
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
@@ -103,6 +110,8 @@ namespace WeirdEngine
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
 
 			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
+
+			g_shaderSSBO = new Shader(SHADERS_PATH "sample_buffer.vert", SHADERS_PATH "sample_buffer.frag");
 
 			GL_CHECK_ERROR();
 
@@ -141,6 +150,8 @@ namespace WeirdEngine
 			// Enable culling
 			glCullFace(GL_FRONT);
 			glFrontFace(GL_CCW);
+
+			g_testSSBO = new SSBODataBuffer();
 		}
 
 		Renderer::~Renderer()
@@ -417,6 +428,27 @@ namespace WeirdEngine
 			{
 				texture.saveToDisk("output_texture.png");
 			}
+
+
+			g_shaderSSBO->use();
+
+			MyDataItem data[16];
+
+			for (size_t i = 0; i < 16; i++)
+			{
+				data[i].itemColor = glm::vec4(1);
+				data[i].itemIntensity = (sinf(scene.getTime()) + 1.0f) / 2.0f;
+			}
+
+			data[0].itemColor = glm::vec4(1,0,0,1);
+			data[0].itemColor = glm::vec4(0,1,0,1);
+			data[0].itemColor = glm::vec4(0,0,1,1);
+
+			g_testSSBO->uploadData(data, 16);
+			g_testSSBO->bind(0);
+
+			m_renderPlane.draw(*g_shaderSSBO);
+
 
 			// Swap the back buffer with the front buffer
 			glfwSwapBuffers(m_window);

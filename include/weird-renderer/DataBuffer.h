@@ -1,7 +1,7 @@
 #ifndef WEIRD_RENDERER_DATABUFFER_H
 #define WEIRD_RENDERER_DATABUFFER_H
 
-#include <GL/glew.h> // Should be glad/glad.h as per new requirements
+#include <glad/glad.h> // Should be glad/glad.h as per new requirements
 #include <cstddef> // For size_t
 
 // Forward declaration for GLuint if glad/glad.h is not included here directly

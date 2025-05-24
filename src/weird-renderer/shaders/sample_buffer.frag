@@ -34,24 +34,24 @@ void main()
     // Fetch data from the TBO
     // texelFetch takes samplerBuffer and an integer index.
     // We'll fetch the first element (index 0) from the TBO.
-    vec4 tboColorContribution = texelFetch(tboDataSampler, 0);
+    // vec4 tboColorContribution = texelFetch(tboDataSampler, 0);
 
     // Fetch data from the SSBO
     // Access the first element (index 0) from the SSBO.
     // Ensure that the buffer bound to 'binding = 0' actually contains at least one MyDataItem.
-    MyDataItem ssboStructData = dataItems[0];
+    MyDataItem ssboStructData = dataItems[int(0.1 * gl_FragCoord.x) % 16];
 
     // Combine the data to determine the final fragment color.
     // Make the contributions distinct to easily verify functionality.
 
     // TBO contributes to Red and Green channels.
-    FragColor.r = tboColorContribution.r;
-    FragColor.g = tboColorContribution.g;
+    FragColor.r = ssboStructData.itemColor.r;
+    FragColor.g = ssboStructData.itemColor.g;
 
     // SSBO contributes to Blue and Alpha channels.
     // Use the intensity from the SSBO to modulate its color contribution.
     FragColor.b = ssboStructData.itemColor.b * ssboStructData.itemIntensity;
-    FragColor.a = ssboStructData.itemColor.a; // Use alpha from SSBO's color
+    FragColor.a = 1.0f; // Use alpha from SSBO's color
 
     // Example of using TexCoords if needed:
     // if (TexCoords.x < 0.5) {

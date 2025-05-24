@@ -5,6 +5,7 @@
 #include "RenderTarget.h"
 #include "DataBuffer.h" // Interface
 #include "TBODataBuffer.h" // Concrete TBO implementation
+#include "SSBODataBuffer.h" // Concrete SSBO implementation
 #include "Screen.h"
 
 #include "weird-engine/Scene.h"

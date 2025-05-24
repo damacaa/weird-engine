@@ -289,7 +289,7 @@ namespace WeirdEngine
 					m_3DsdfShaderProgram.use();
 
 					// Set uniforms and other ray marching settings
-					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
+					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.5f * 0.01745329f ); // PI / 180
 					m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
 					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
 					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());

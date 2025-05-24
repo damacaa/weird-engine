@@ -1,87 +1,67 @@
-#pragma once
-#include <glad/glad.h>
-#include <cassert>
+#ifndef WEIRD_RENDERER_DATABUFFER_H
+#define WEIRD_RENDERER_DATABUFFER_H
 
-namespace WeirdEngine {
-	namespace WeirdRenderer {
+#include <GL/glew.h> // Should be glad/glad.h as per new requirements
+#include <cstddef> // For size_t
 
-		class DataBuffer {
-		public:
-			DataBuffer() 
-			{
-				// Create buffer and texture for samplerBuffer
-				glGenBuffers(1, &m_buffer);
-				glGenTextures(1, &m_texture);
+// Forward declaration for GLuint if glad/glad.h is not included here directly
+// However, it's better to include what's needed.
+// The problem description for TBODataBuffer says to include <glad/glad.h>
+// So, it's better to use glad/glad.h here too for consistency.
 
-				// Bind texture and buffer to the correct targets
-				glBindTexture(GL_TEXTURE_BUFFER, m_texture);  // Bind the texture to the buffer type
-				glBindBuffer(GL_TEXTURE_BUFFER, m_buffer);   // Bind the buffer to the texture
-				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_buffer); // Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER, 0);          // Unbind texture
-				glBindBuffer(GL_TEXTURE_BUFFER, 0);           // Unbind buffer
-			}
+namespace WeirdEngine
+{
+namespace WeirdRenderer
+{
 
-			explicit DataBuffer(GLuint bindingPoint)
-				: m_bindingPoint(bindingPoint)
-			{
-				// Create buffer and texture for samplerBuffer
-				glGenBuffers(1, &m_buffer);
-				glGenTextures(1, &m_texture);
+/**
+ * @brief Base interface for OpenGL buffer objects like TBOs and SSBOs.
+ *
+ * This interface defines common functionality for managing and using buffer objects
+ * that store data for shaders.
+ */
+class DataBuffer
+{
+public:
+    /**
+     * @brief Virtual destructor.
+     */
+    virtual ~DataBuffer() = default;
 
-				// Bind texture and buffer to the correct targets
-				glBindTexture(GL_TEXTURE_BUFFER, m_texture);  // Bind the texture to the buffer type
-				glBindBuffer(GL_TEXTURE_BUFFER, m_buffer);   // Bind the buffer to the texture
-				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_buffer); // Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER, 0);          // Unbind texture
-				glBindBuffer(GL_TEXTURE_BUFFER, 0);           // Unbind buffer
-			}
+    /**
+     * @brief Binds the buffer to a specific binding point (unit).
+     *
+     * The interpretation of 'unit' depends on the buffer type (e.g., texture image unit for TBOs,
+     * shader storage block binding index for SSBOs).
+     *
+     * @param unit The binding point to bind the buffer to.
+     */
+    virtual void bind(GLuint unit) = 0; // GLuint will come from glad/glad.h
 
-			~DataBuffer() 
-			{
-				glDeleteBuffers(1, &m_buffer);
-				glDeleteTextures(1, &m_texture);
-			}
+    /**
+     * @brief Unbinds the buffer from its current target.
+     *
+     * This typically involves binding buffer ID 0 to the target the buffer was bound to.
+     */
+    virtual void unbind() = 0;
 
-			void bind(GLuint unit) const
-			{
-				glActiveTexture(GL_TEXTURE0 + unit);  // Use the unit passed into the function
-				glBindTexture(GL_TEXTURE_BUFFER, m_texture);  // Bind the texture for the specific unit
-			}
+    /**
+     * @brief Uploads raw data to the buffer.
+     *
+     * @param data Pointer to the data to be uploaded.
+     * @param byteSize The size of the data in bytes.
+     */
+    virtual void uploadRawData(const void* data, size_t byteSize) = 0;
 
-			void unbind()
-			{
-				glBindBuffer(GL_TEXTURE_BUFFER, 0);  // Unbind the buffer
-			}
+    /**
+     * @brief Gets the OpenGL buffer ID (handle) of this buffer.
+     *
+     * @return The OpenGL buffer ID.
+     */
+    virtual GLuint getBuffer() const = 0; // GLuint will come from glad/glad.h
+};
 
-			void uploadRawData(const void* data, size_t byteSize) const
-			{
-				if (byteSize == 0 || (byteSize % (4 * sizeof(float)) != 0)) {
-					// Avoid invalid upload (alignment check)
-					return;
-				}
+} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
-				glBindBuffer(GL_TEXTURE_BUFFER, m_buffer);  // Bind the buffer before uploading data
-				glBufferData(GL_TEXTURE_BUFFER, byteSize, data, GL_STREAM_DRAW);  // Upload the buffer data
-
-				// Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER, m_texture);  // Bind the texture
-				glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, m_buffer);  // Attach the buffer to the texture
-			}
-
-			template<typename T>
-			void uploadData(const T* data, size_t count) const
-			{
-				uploadRawData(data, count * sizeof(T));
-			}
-
-			GLuint getBuffer() const { return m_buffer; }
-			GLuint getTexture() const { return m_texture; }
-
-		private:
-			GLuint m_buffer = 0;
-			GLuint m_texture = 0;
-			GLuint m_bindingPoint = 0; // This is unused, so it can be removed if not needed
-		};
-
-	}
-}
+#endif // WEIRD_RENDERER_DATABUFFER_H

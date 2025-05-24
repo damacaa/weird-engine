@@ -3,7 +3,8 @@
 #include <vector>
 
 #include "RenderTarget.h"
-#include "DataBuffer.h"
+#include "DataBuffer.h" // Interface
+#include "TBODataBuffer.h" // Concrete TBO implementation
 #include "Screen.h"
 
 #include "weird-engine/Scene.h"
@@ -60,7 +61,7 @@ namespace WeirdEngine
 
 			RenderPlane m_renderPlane;
 
-			DataBuffer m_shapes2D;
+			TBODataBuffer m_shapes2D; // Changed from DataBuffer to TBODataBuffer
 
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;

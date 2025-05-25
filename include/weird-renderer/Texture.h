@@ -2,15 +2,12 @@
 #define TEXTURE_CLASS_H
 
 #include <glad/glad.h>
-
+#include <glm/vec4.hpp>
 
 #include "Shader.h"
 
-#include <glm/vec4.hpp>
-
 namespace WeirdEngine
 {
-#include <stb/stb_image.h>
 	namespace WeirdRenderer
 	{
 		using TextureID = std::uint32_t;

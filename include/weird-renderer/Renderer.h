@@ -9,6 +9,9 @@
 #include "weird-engine/Scene.h"
 #include "RenderPlane.h"
 
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer

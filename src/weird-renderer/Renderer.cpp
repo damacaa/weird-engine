@@ -4,20 +4,6 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-
-		inline void CheckOpenGLError(const char* file, int line)
-		{
-			GLenum err;
-			while ((err = glGetError()) != GL_NO_ERROR)
-			{
-				// int e = err;
-				std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
-				// Optionally, map err to a string representation
-			}
-		}
-
-#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
-
 		void GLAPIENTRY OpenGLDebugCallback(
 			GLenum source,
 			GLenum type,

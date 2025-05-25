@@ -4,6 +4,9 @@
 #include "weird-engine/math/MathExpressionSerialzation.h"
 
 #include <random>
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
+
 
 namespace WeirdEngine
 {

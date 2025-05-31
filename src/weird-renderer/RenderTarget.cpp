@@ -55,6 +55,7 @@ namespace WeirdEngine
 
 		void RenderTarget::bindDepthTextureToFrameBuffer(const Texture& texture)
 		{
+			m_depthAttachement = &texture;
 			bindTextureToFrameBuffer(texture, GL_DEPTH_ATTACHMENT);
 		}
 
@@ -73,6 +74,11 @@ namespace WeirdEngine
 			}
 
 			return m_colorAttachments[attachment];
+		}
+
+		const Texture* RenderTarget::getDepthAttachment()
+		{
+			return m_depthAttachement;
 		}
 	}
 }

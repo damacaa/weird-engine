@@ -23,11 +23,13 @@ namespace WeirdEngine
 			unsigned int getFrameBuffer() const;
 
 			const Texture* getColorAttachment(int attachment = 0);
+			const Texture* getDepthAttachment();
 
 		private:
 			GLuint FBO;
 
 			std::vector<const Texture*> m_colorAttachments;
+			const Texture* m_depthAttachement;
 		};
 	}
 }

@@ -136,6 +136,40 @@ const float OVERSHOOT = 1.0;
 const vec3 background = vec3(0.0);
 
 
+// Hash
+float hash(vec2 p) {
+    return fract(sin(dot(p ,vec2(127.1,311.7))) * 43758.5453);
+}
+
+// Interpolation
+float fade(float t) {
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+// Gradient noise
+float grad(vec2 p, vec2 ip) {
+    vec2 g = vec2(hash(ip), hash(ip + 1.0));
+    g = normalize(g * 2.0 - 1.0);
+    return dot(p - ip, g);
+}
+
+// Perlin Noise 2D
+float perlin(vec2 p) 
+{
+    vec2 ip = floor(p);
+    vec2 fp = fract(p);
+
+    float a = grad(p, ip);
+    float b = grad(p, ip + vec2(1.0, 0.0));
+    float c = grad(p, ip + vec2(0.0, 1.0));
+    float d = grad(p, ip + vec2(1.0, 1.0));
+
+    vec2 f = vec2(fade(fp.x), fade(fp.y));
+
+    float ab = mix(a, b, f.x);
+    float cd = mix(c, d, f.x);
+    return mix(ab, cd, f.y);
+}
 
 
 
@@ -148,14 +182,16 @@ float map(vec3 p)
         vec4 positionSize = texelFetch(t_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
         //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
-        float objectDist = fSphere(p - positionSize.xyz, 0.5f + (sin(u_time) + 1)); // positionSize.w);
+        float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
         
 
         res = fOpUnionSoft(objectDist, res, 0.5);
     }
 
-    float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
+    //float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
     // float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
+    float planeDist = fPlane(p, vec3(0, 1, 0), (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
+
 
     res = min(res, planeDist);
 

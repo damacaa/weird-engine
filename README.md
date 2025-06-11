@@ -20,3 +20,13 @@ Weird Engine is a simple yet unique game engine featuring:
 4. Run CMake to generate the build files.  
 5. Open the generated solution in the `/build` folder.  
 6. Build and run your project.  
+
+### Linux
+#### Ubuntu
+```
+sudo apt install build-essential libx11-dev libxcursor-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxrandr-dev libxxf86vm-devs libxinerama-dev
+```
+#### Fedora 
+```
+sudo dnf install libXext-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel
+```

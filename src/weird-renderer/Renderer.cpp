@@ -22,6 +22,9 @@ namespace WeirdEngine
 			// Initialize GLFW
 			glfwInit();
 
+			setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 1);
+
+
 			// Tell GLFW what version of OpenGL we are using
 			// In this case we are using OpenGL 3.3
 			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);

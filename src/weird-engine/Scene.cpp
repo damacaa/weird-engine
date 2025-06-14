@@ -7,12 +7,8 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
-
 namespace WeirdEngine
 {
-	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0, 1, 20);
-
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES)
 		, m_sdfRenderSystem(m_ecs)
@@ -73,15 +69,12 @@ namespace WeirdEngine
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			{
 				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				fly.targetPosition = g_cameraPosition;
 				break;
 			}
 			default:
 				break;
 			}
 		}
-
-
 	}
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
@@ -140,8 +133,8 @@ namespace WeirdEngine
 
 			if (shape.m_screenSpace)
 			{
-				replaceSubstring(fragmentCode, "var9", "var11");
-				replaceSubstring(fragmentCode, "var10", "var12");
+				// replaceSubstring(fragmentCode, "var9", "var11");
+				// replaceSubstring(fragmentCode, "var10", "var12");
 			}
 
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
@@ -153,9 +146,9 @@ namespace WeirdEngine
 
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
-			oss << "d = min(d, dist);\n";
-			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
-			oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
+			oss << "closestDist = min(closestDist, dist);\n";
+			// oss << "col = closestDist == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
+			oss << "col = closestDist == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 			oss << "}\n"
 				<< std::endl;
 		}
@@ -194,7 +187,6 @@ namespace WeirdEngine
 		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 
 		m_cameraSystem.update(m_ecs);
-		g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
 		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 		if (m_debugInput)
@@ -282,7 +274,7 @@ namespace WeirdEngine
 		m_mainCamera = m_ecs.createEntity();
 
 		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
-		t.position = g_cameraPosition;
+		t.position = vec3(15, 15, 20.0f);
 		t.rotation = vec3(0, 0, -1.0f);
 
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);

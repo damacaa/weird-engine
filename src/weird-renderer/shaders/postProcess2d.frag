@@ -174,10 +174,15 @@ void main()
   }
 
   return;
+
 #endif
 
   float light = render(screenUV);
-  vec3 col = light * color.xyz;
+
+  // Set background color
+  vec3 background = vec3(0.5);
+
+  vec3 col = light * (distance > 0.0 ? background : color.xyz);
 
   // col = vec3(light);
 

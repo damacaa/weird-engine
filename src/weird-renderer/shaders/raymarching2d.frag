@@ -22,7 +22,7 @@ uniform float u_time;
 // Custom
 
 #define BLEND_SHAPES 0
-#define MOTION_BLUR 1
+#define MOTION_BLUR 0
 
 uniform float u_k = 0.25;
 // Uniforms
@@ -140,7 +140,7 @@ vec3 getMaterial(vec2 p, int materialId)
 
 vec4 getColor(vec2 p, vec2 uv)
 {
-  float d = 100000.0;
+  float closestDist = 100000.0;
 
   vec3 col = vec3(0.0);
   float minZ = 1000.0f;
@@ -159,56 +159,41 @@ vec4 getColor(vec2 p, vec2 uv)
 	// vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
 
 	float z = positionSizeMaterial.z;
-	bool screenSpace = z < 0.0f;
 
-  
 
-	float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
+	float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
-	if(z < minZ)
-	{
+
 
 #if BLEND_SHAPES
 
-	d = fOpUnionSoft(objectDist, d, u_k);
-	float delta = 1 - (max(u_k - abs(objectDist - d), 0.0) / u_k); // After new d is calculated
+	closestDist = fOpUnionSoft(objectDist, closestDist, u_k);
+	float delta = 1 - (max(u_k - abs(objectDist - closestDist), 0.0) / u_k); // After new d is calculated
 	col = mix(getMaterial(p, materialId), col, delta);
 
 #else
 
-	d = min(d, objectDist);
+	
 
-	if(objectDist < 0)
+	if(objectDist < closestDist)
 	{
+    closestDist = objectDist;
 		col = getMaterial(positionSizeMaterial.xy, materialId);
 		minZ = z;
-		bestIsScreenSpace = screenSpace;
+
+    if(closestDist < EPSILON)
+    {
+      return vec4(col, closestDist);
+    }
 	}
 
 #endif
 
 	}
-  }
-
-  if(bestIsScreenSpace)
-	return vec4(col, d);
-
+  
   /*ADD_SHAPES_HERE*/
 
-  // Repetition
-  // float scale = 1.0 / 10.0;
-  // vec2 pp = p + 5.0;
-  // vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
-  // roundPos.x += cos(u_time + round(0.1 * pp.x));
-  // roundPos.y += sin(u_time + round(0.1 * pp.x));
-
-  // Set bacu_kground color
-  // vec3 bacu_kground = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
-  float pixel = 0.2 / u_resolution.y;
-  vec3 bacu_kground = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
-  col = d > 0.0 ? bacu_kground : col;
-
-  return vec4(col, d);
+  return vec4(col, closestDist);
 }
 
 void main()

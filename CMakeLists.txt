@@ -45,24 +45,9 @@ target_include_directories(glad
 # Link glad into WeirdEngine
 target_link_libraries(${PROJECT_NAME} PUBLIC glad)
 
-# Fetch and build GLFW
-include(FetchContent)
-FetchContent_Declare(
-    glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG 3.3.8  # Change to the latest stable version if needed
-)
-
-# Disable tests and examples before fetching
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-
-FetchContent_MakeAvailable(glfw)
-set_target_properties(glfw PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-# Link GLFW dynamically into WeirdEngine
-target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
+# Add SDL3 instead
+add_subdirectory(third-party/SDL)
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3)
 
 # Define ENGINE_PATH
 target_compile_definitions(${PROJECT_NAME} PUBLIC ENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -76,7 +61,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # Export both targets: WeirdEngine, glad, and glfw
-export(TARGETS ${PROJECT_NAME} glad glfw FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
+export(TARGETS ${PROJECT_NAME} glad FILE ${CMAKE_BINARY_DIR}/WeirdEngineConfig.cmake)
 
 
 # Install targets

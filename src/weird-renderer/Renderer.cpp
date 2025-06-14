@@ -22,7 +22,7 @@ namespace WeirdEngine
 			// Initialize GLFW
 			glfwInit();
 
-			setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 1);
+			// setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 1);
 
 
 			// Tell GLFW what version of OpenGL we are using

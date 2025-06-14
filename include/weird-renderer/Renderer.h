@@ -2,10 +2,28 @@
 
 #include <vector>
 
-#include "RenderPlane.h"
+#include "RenderTarget.h"
 #include "DataBuffer.h"
+#include "Screen.h"
 
-#include "../weird-engine/Scene.h"
+#include "weird-engine/Scene.h"
+#include "RenderPlane.h"
+
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
+
+inline void CheckOpenGLError(const char *file, int line)
+{
+	GLenum err;
+	while ((err = glGetError()) != GL_NO_ERROR)
+	{
+		// int e = err;
+		std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
+		// Optionally, map err to a string representation
+	}
+}
+
+#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
 
 namespace WeirdEngine
 {
@@ -34,11 +52,10 @@ namespace WeirdEngine
 
 			GLFWwindow* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
-			double m_renderScale;
+			float m_renderScale;
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;
-			bool m_renderMeshesOnly;
 
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
@@ -48,20 +65,24 @@ namespace WeirdEngine
 			Shader m_combineScenesShaderProgram;
 			Shader m_outputShaderProgram;
 
-			RenderPlane m_geometryRenderPlane;
-			RenderPlane m_3DRenderPlane;
+			RenderTarget m_geometryRender;
+			RenderTarget m_3DSceneRender;
 
-			RenderPlane m_sdfRenderPlane;
-			RenderPlane m_postProcessRenderPlane;
+			RenderTarget m_2DSceneRender;
+			RenderTarget m_2DPostProcessRender;
 
-			RenderPlane m_combinationRenderPlane;
-			RenderPlane m_outputRenderPlane;
+			RenderTarget m_combinationRender;
+			RenderTarget m_outputResolutionRender;
+
+			RenderPlane m_renderPlane;
 
 			DataBuffer m_shapes2D;
 
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;
 			Texture m_3DSceneTexture;
+						Texture m_3DDepthSceneTexture;
+
 
 			Texture m_distanceTexture;
 			Texture m_lit2DSceneTexture;
@@ -71,6 +92,7 @@ namespace WeirdEngine
 			WeirdRenderer::Dot2D* m_2DData = nullptr;
 			uint32_t m_2DDataSize = 0;
 
+			void renderFire(Scene& scene, Camera& camera, float time);
 			void renderGeometry(Scene& scene, Camera& camera);
 			void output(Scene& scene, Texture& texture);
 		};

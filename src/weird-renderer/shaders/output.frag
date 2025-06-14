@@ -1,6 +1,6 @@
 #version 330 core
 
-#define CRT 1
+// #define CRT
 
 // Outputs colors in RGBA
 out vec3 FragColor;
@@ -10,7 +10,7 @@ uniform float u_renderScale;
 
 uniform float u_time;
 
-uniform sampler2D u_colorTexture;
+uniform sampler2D t_colorTexture;
 
 float rand(vec2 co)
 {
@@ -26,7 +26,7 @@ void main()
 {
 	vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
 
-#if CRT
+#ifdef CRT
 
 	vec3 col = vec3(0.0);
 	float pixelSizedStep = 1.0 / (u_resolution.x);
@@ -48,7 +48,7 @@ void main()
 	{
 
 		float weight = 2.5;
-		vec3 colorValue = texture(u_colorTexture, screenUV + (0.0005 * vec2(i, 0))).xyz;
+		vec3 colorValue = texture(t_colorTexture, screenUV + (0.0005 * vec2(i, 0))).xyz;
 		col += weight * colorValue;
 
 		float value = 0.3333 * (colorValue.x + colorValue.y + colorValue.z);
@@ -57,7 +57,7 @@ void main()
 
 	col = col / 30.0;
 
-	col = mix(col, texture(u_colorTexture, screenUV).xyz, 1.0 - (0.5 * maxValue));
+	col = mix(col, texture(t_colorTexture, screenUV).xyz, 1.0 - (0.5 * maxValue));
 
 	// CRT Line effect
 	float lineOffset = 0;
@@ -84,7 +84,7 @@ void main()
 	// col = vec3(mask);
 
 #else
-	vec3 col = texture(u_colorTexture, screenUV).xyz;
+	vec3 col = texture(t_colorTexture, screenUV).xyz;
 #endif
 
 	// Dot effect

@@ -1,13 +1,13 @@
 #pragma once
 #include "../ECS.h"
-#include "../../Input.h"
-#include "../../../weird-physics/Simulation2D.h"
+#include "weird-engine/Input.h"
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {
 	using namespace ECS;
 
-	class PhysicsInteractionSystem : public System
+	class PhysicsInteractionSystem
 	{
 	private:
 
@@ -245,12 +245,25 @@ namespace WeirdEngine
 				auto m_rbManager = ecs.getComponentManager<RigidBody2D>();
 				auto componentArray = m_rbManager->getComponentArray();
 
-				vec2 direction = (getMousePositionInWorld(ecs, simulation) - m_loadStartPosition);
+				auto transforms = ecs.getComponentArray<Transform>();
+
+				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
+				vec2 direction = (mousePositionInWorld - m_loadStartPosition);
+				float dragDistance = length(direction);
+
 
 				for (size_t i = 0; i < componentArray->getSize(); i++)
 				{
+
 					auto& rb = componentArray->getDataAtIdx(i);
-					simulation.addForce(rb.simulationId, direction);
+					auto& t = transforms->getDataFromEntity(rb.Owner);
+
+					float distance = glm::length(static_cast<vec2>(t.position) - m_loadStartPosition);
+					// float maxDistance = (0.5f * dragDistance);
+					float maxDistance = 5.0f;
+					vec2 force = 1.0f * glm::clamp(maxDistance- distance, 0.0f, 1.0f) * direction;
+
+					simulation.addForce(rb.simulationId, force);
 				}
 			}
 		}

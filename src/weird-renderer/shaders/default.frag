@@ -1,130 +1,99 @@
 #version 330 core
 
-// Outputs colors in RGBA
 out vec4 FragColor;
 
-// Imports the current position from the Vertex Shader
-in vec3 crntPos;
-// Imports the normal from the Vertex Shader
-in vec3 Normal;
-// Imports the color from the Vertex Shader
-in vec3 color;
-// Imports the texture coordinates from the Vertex Shader
-in vec2 texCoord;
+// Inputs from vertex shader
+in vec3 v_worldPos;
+in vec3 v_normal;
+in vec3 v_color;
+in vec2 v_texCoord;
 
+// Uniforms
+uniform sampler2D u_diffuse0;
+uniform sampler2D u_specular0;
 
+uniform vec3  u_camPos;
+uniform vec3  u_lightPos;
+uniform vec3  u_lightDirection;
+uniform vec4  u_lightColor;
 
-// Gets the Texture Units from the main function
-uniform sampler2D diffuse0;
-uniform sampler2D specular0;
-// Gets the color of the light from the main function
-uniform vec4 lightColor;
-// Gets the position of the light from the main function
-uniform vec3 lightPos;
-// Gets the position of the camera from the main function
-uniform vec3 camPos;
-//
-uniform vec3 directionalLightDirection;
+float u_near = 0.1f;
+float u_far  = 100.0f;
 
 vec4 pointLight()
-{	
-	// used in two variables so I calculate it here to not have to do it twice
-	vec3 lightVec = lightPos - crntPos;
-
-	// intensity of light with respect to distance
+{
+	vec3 lightVec = u_lightPos - v_worldPos;
 	float dist = length(lightVec);
 	float a = 3.0;
 	float b = 0.7;
-	float inten = 1.0f / (a * dist * dist + b * dist + 1.0f);
+	float intensity = 10.0 / (a * dist * dist + b * dist + 1.0);
 
-	// ambient lighting
-	float ambient = 0.20f;
+	vec3 normal = normalize(v_normal);
+	vec3 lightDir = normalize(lightVec);
+	vec3 viewDir = normalize(u_camPos - v_worldPos);
+	vec3 reflectDir = reflect(-lightDir, normal);
 
-	// diffuse lighting
-	vec3 normal = normalize(Normal);
-	vec3 lightDirection = normalize(lightVec);
-	float diffuse = max(dot(normal, lightDirection), 0.0f);
+	float ambient  = 0.01;
+	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
 
-	// specular lighting
-	float specularLight = 0.50f;
-	vec3 viewDirection = normalize(camPos - crntPos);
-	vec3 reflectionDirection = reflect(-lightDirection, normal);
-	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 16);
-	float specular = specAmount * specularLight;
+	vec4 texColor  = texture(u_diffuse0, v_texCoord);
+	float specVal  = texture(u_specular0, v_texCoord).r;
 
-	return (texture(diffuse0, texCoord) * (diffuse * inten + ambient) + texture(specular0, texCoord).r * specular * inten) * lightColor;
+	return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
 }
 
-vec4 direcLight()
+vec4 directionalLight()
 {
-	// ambient lighting
-	float ambient = 0.0001f;
+	vec3 normal = normalize(v_normal);
+	vec3 lightDir = normalize(u_lightDirection);
+	vec3 viewDir = normalize(u_camPos - v_worldPos);
+	vec3 reflectDir = reflect(-lightDir, normal);
 
-	// diffuse lighting
-	vec3 normal = normalize(Normal);
-	float diffuse = max(dot(normal, directionalLightDirection), 0.0f);
+	float ambient  = 0.0001;
+	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
 
-	// specular lighting
-	float specularLight = 0.50f;
-	vec3 viewDirection = normalize(camPos - crntPos);
-	vec3 reflectionDirection = reflect(-directionalLightDirection, normal);
-	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 16);
-	float specular = specAmount * specularLight;
+	vec4 texColor = texture(u_diffuse0, v_texCoord);
+	float specVal = texture(u_specular0, v_texCoord).r;
 
-	return (texture(diffuse0, texCoord) * (diffuse + ambient) + texture(specular0, texCoord).r * specular) * lightColor;
-	//return texture(diffuse0, texCoord) + 0.1f;
+	return (texColor * (diffuse + ambient) + specVal * specular) * u_lightColor;
 }
 
 vec4 spotLight()
 {
-	// controls how big the area that is lit up is
-	float outerCone = 0.90f;
-	float innerCone = 0.95f;
+	float outerCone = 0.90;
+	float innerCone = 0.95;
 
-	// ambient lighting
-	float ambient = 0.20f;
+	vec3 normal = normalize(v_normal);
+	vec3 lightDir = normalize(u_lightPos - v_worldPos);
+	vec3 viewDir = normalize(u_camPos - v_worldPos);
+	vec3 reflectDir = reflect(-lightDir, normal);
 
-	// diffuse lighting
-	vec3 normal = normalize(Normal);
-	vec3 lightDirection = normalize(lightPos - crntPos);
-	float diffuse = max(dot(normal, lightDirection), 0.0f);
+	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
+	float angle    = dot(vec3(0.0, -1.0, 0.0), -lightDir);
+	float intensity = clamp((angle - outerCone) / (innerCone - outerCone), 0.0, 1.0);
+	float ambient   = 0.2;
 
-	// specular lighting
-	float specularLight = 0.50f;
-	vec3 viewDirection = normalize(camPos - crntPos);
-	vec3 reflectionDirection = reflect(-lightDirection, normal);
-	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 16);
-	float specular = specAmount * specularLight;
+	vec4 texColor = texture(u_diffuse0, v_texCoord);
+	float specVal = texture(u_specular0, v_texCoord).r;
 
-	// calculates the intensity of the crntPos based on its angle to the center of the light cone
-	float angle = dot(vec3(0.0f, -1.0f, 0.0f), -lightDirection);
-	float inten = clamp((angle - outerCone) / (innerCone - outerCone), 0.0f, 1.0f);
-
-	return (texture(diffuse0, texCoord) * (diffuse * inten + ambient) + texture(specular0, texCoord).r * specular * inten) * lightColor;
+	return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
 }
-
-float near = 0.1f;
-float far = 100.0f;
 
 float linearizeDepth(float depth)
 {
-	return (2.0 * near * far) / (far + near - (depth * 2.0 - 1.0) * (far - near));
+	return (2.0 * u_near * u_far) / (u_far + u_near - (depth * 2.0 - 1.0) * (u_far - u_near));
 }
 
-float logisticDepth(float depth, float steepness , float offset )
+float logisticDepth(float depth, float steepness, float offset)
 {
-	float zVal = linearizeDepth(depth);
-	return (1 / (1 + exp(-steepness * (zVal - offset))));
+	float z = linearizeDepth(depth);
+	return 1.0 / (1.0 + exp(-steepness * (z - offset)));
 }
 
 void main()
 {
-	// outputs final color
-	float depth = logisticDepth(gl_FragCoord.z, 0.5f, 5.0f);
-	FragColor = direcLight();// * (1.0f - depth) + vec4(depth * vec3(0.85f, 0.85f, 0.90f), 1.0f);
-	//FragColor = vec4(vec3(depth * depth * depth), 1);
-	//FragColor = vec4(texture(diffuse0, texCoord).xyz,1);
-	//FragColor = vec4(vec3(texCoord.xy, 0) ,1);
-
-	FragColor.a = 1.0f;
+	FragColor = directionalLight();
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "../ECS.h"
-#include "../../../weird-renderer/RenderPlane.h"
+#include "../../../weird-renderer/RenderTarget.h"
 
 namespace WeirdEngine
 {
@@ -18,7 +18,7 @@ namespace WeirdEngine
 			m_transformManager = ecs.getComponentManager<Transform>();
 		}
 
-		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderPlane& rp, const std::vector< WeirdRenderer::Light>& lights) {
+		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderTarget& rp, const std::vector< WeirdRenderer::Light>& lights) {
 
 			auto componentArray = m_sdfRendererManager->getComponentArray();
 			auto transformArray = m_transformManager->getComponentArray();
@@ -38,11 +38,11 @@ namespace WeirdEngine
 			}
 
 			shader.setUniform("directionalLightDirection", lights[0].rotation);
-			//rp.Draw(shader, data, size);
+			//rp.draw(shader, data, size);
 
 			delete[] data;
 
-			//rp->Draw(shader, m_data, m_shapes);
+			//rp->draw(shader, m_data, m_shapes);
 		}
 	};
 }

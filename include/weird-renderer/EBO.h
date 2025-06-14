@@ -17,11 +17,11 @@ namespace WeirdEngine
 			EBO(std::vector<GLuint>& indices);
 
 			// Binds the EBO
-			void Bind();
+			void bind();
 			// Unbinds the EBO
 			void Unbind();
 			// Deletes the EBO
-			void Delete();
+			void free();
 		};
 	}
 }

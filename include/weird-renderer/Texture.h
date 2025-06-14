@@ -2,15 +2,12 @@
 #define TEXTURE_CLASS_H
 
 #include <glad/glad.h>
-
+#include <glm/vec4.hpp>
 
 #include "Shader.h"
 
-#include <glm/vec4.hpp>
-
 namespace WeirdEngine
 {
-#include <stb/stb_image.h>
 	namespace WeirdRenderer
 	{
 		using TextureID = std::uint32_t;
@@ -19,23 +16,29 @@ namespace WeirdEngine
 		{
 		public:
 
+			enum class TextureType
+			{
+				Color,
+				ColorAlpha,
+				SingleChannel,
+				RetroColor,
+				Depth,
+				Data,
+				IntData
+			};
+
 			GLuint ID = -1;
-			std::string type = "";
 
-			Texture() {};
+			Texture(): width(0), height(0) {};
 
-			Texture(const char* image, std::string texType, GLuint slot);
+			Texture(const char* image);
 
-			Texture(glm::vec4 color, std::string texType, GLuint slot);
+			Texture(glm::vec4 color);
 
-			Texture(int width, int height, GLuint filterMode, bool isDepth = false);
-
-			// Assigns a texture unit to a texture
-			void texUnit(Shader& shader, const char* uniform, GLuint unit) const;
+			Texture(int width, int height, TextureType type);
 
 			// Binds a texture
-			void bind() const;
-			void bind(GLuint unit) const;
+			void bind(GLuint unit = 0) const;
 
 			// Unbinds a texture
 			void unbind() const;
@@ -43,6 +46,11 @@ namespace WeirdEngine
 			void dispose() const;
 
 			void saveToDisk(const char* fileName);
+
+		private:
+			int width, height, numColCh;
+
+			void createTexture(float* data, int width, int height, TextureType type);
 		};
 	}
 }

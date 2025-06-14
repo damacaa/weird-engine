@@ -76,7 +76,7 @@ namespace WeirdEngine
 			if (--m_resourceReferenceCount[resourceId] == 0) {
 				// Remove resource from memory
 
-				m_meshIdMap[resourceId]->Delete();
+				m_meshIdMap[resourceId]->free();
 				delete m_meshIdMap[resourceId];
 				m_meshIdMap.erase(resourceId);
 
@@ -304,7 +304,7 @@ namespace WeirdEngine
 		try
 		{
 			// Load texture
-			Texture t = Texture(path.c_str(), textureType, slot);
+			Texture t = Texture(path.c_str());
 			// Store it in map
 			m_textureMap[path] = t;
 			// Add it to mesh textures
@@ -332,7 +332,7 @@ namespace WeirdEngine
 				textures.push_back(m_textureMap[key]);
 			}
 			else {
-				Texture defaultDiffuse = Texture(glm::vec4(255), DIFFUSE, textures.size());
+				Texture defaultDiffuse = Texture(glm::vec4(255));
 				textures.push_back(defaultDiffuse);
 				m_textureMap[key] = defaultDiffuse;
 			}
@@ -344,7 +344,7 @@ namespace WeirdEngine
 				textures.push_back(m_textureMap[key]);
 			}
 			else {
-				Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
+				Texture defaultSpecular = Texture(glm::vec4(0));
 				textures.push_back(defaultSpecular);
 				m_textureMap[key] = defaultSpecular;
 			}
@@ -394,7 +394,7 @@ namespace WeirdEngine
 				textures.push_back(m_textureMap[key]);
 			}
 			else {
-				Texture defaultSpecular = Texture(glm::vec4(0), SPECULAR, textures.size());
+				Texture defaultSpecular = Texture(glm::vec4(0));
 				textures.push_back(defaultSpecular);
 				m_textureMap[key] = defaultSpecular;
 			}

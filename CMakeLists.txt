@@ -52,6 +52,12 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.3.8  # Change to the latest stable version if needed
 )
+
+# Disable tests and examples before fetching
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+
 FetchContent_MakeAvailable(glfw)
 set_target_properties(glfw PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

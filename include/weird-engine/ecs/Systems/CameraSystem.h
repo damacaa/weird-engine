@@ -27,8 +27,8 @@ namespace WeirdEngine
 					Camera& c = componentArray[i];
 					Transform& t = ecs.getComponent<Transform>(c.Owner);
 
-					c.camera.Position = t.position;
-					c.camera.Orientation = t.rotation;
+					c.camera.position = t.position;
+					c.camera.orientation = t.rotation;
 				}
 			}
 		};

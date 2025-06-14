@@ -30,11 +30,11 @@ namespace WeirdEngine
 			VBO(std::vector<Vertex>& vertices);
 
 			// Binds the VBO
-			void Bind();
+			void bind();
 			// Unbinds the VBO
-			void Unbind();
+			void unbind();
 			// Deletes the VBO
-			void Delete();
+			void free();
 		};
 
 	}

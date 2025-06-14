@@ -27,9 +27,9 @@ namespace WeirdEngine
 			Shader() {};
 
 			// Activates the Shader Program
-			void activate();
+			void use();
 			// Deletes the Shader Program
-			void Delete();
+			void free();
 
 			std::string getVertexCode();
 			std::string getFragmentCode();

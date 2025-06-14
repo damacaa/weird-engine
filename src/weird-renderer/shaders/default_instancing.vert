@@ -1,44 +1,40 @@
 #version 330 core
 
-// Positions/Coordinates
-layout (location = 0) in vec3 aPos;
-// Normals (not necessarily normalized)
-layout (location = 1) in vec3 aNormal;
-// Colors
-layout (location = 2) in vec3 aColor;
-// Texture Coordinates
-layout (location = 3) in vec2 aTex;
+// Vertex attributes
+layout (location = 0) in vec3 in_position;
+layout (location = 1) in vec3 in_normal;
+layout (location = 2) in vec3 in_color;
+layout (location = 3) in vec2 in_texCoord;
+
+// Outputs to fragment shader
+out vec3 v_worldPos;
+out vec3 v_normal;
+out vec3 v_color;
+out vec2 v_texCoord;
+
+// Uniforms
+//uniform mat4 u_model;
+uniform mat4 u_camMatrix;
+//uniform mat3 u_normalMatrix;
 
 
-// Outputs the current position for the Fragment Shader
-out vec3 crntPos;
-// Outputs the normal for the Fragment Shader
-out vec3 Normal;
-// Outputs the color for the Fragment Shader
-out vec3 color;
-// Outputs the texture coordinates to the Fragment Shader
-out vec2 texCoord;
-
-
-
-// Imports the camera matrix
-uniform mat4 camMatrix;
-// Imports the transformation matrices
-uniform mat4 u_models[255];
-
-
+uniform samplerBuffer t_modelMatrices;
 
 void main()
 {
+	int index = gl_InstanceID;
+	vec4 r0 = texelFetch(t_modelMatrices, index + 0);
+	vec4 r1 = texelFetch(t_modelMatrices, index + 1);
+	vec4 r2 = texelFetch(t_modelMatrices, index + 2);
+	vec4 r3 = texelFetch(t_modelMatrices, index + 3);
+	mat4 model = mat4(r0, r1, r2, r3);
+
 	// calculates current position
-	crntPos = vec3(u_models[gl_InstanceID] * vec4(aPos, 1.0f));
-	//crntPos = aPos + vec3(10.0*sin(0.01 * gl_InstanceID), 0.005*gl_InstanceID, 10.0*cos(0.01 * gl_InstanceID)); 
-	Normal = aNormal;
-	// Assigns the colors from the Vertex Data to "color"
-	color = aColor;
-	// Assigns the texture coordinates from the Vertex Data to "texCoord"
-	texCoord = mat2(0.0, -1.0, 1.0, 0.0) * aTex;
+	v_worldPos = vec3(model * vec4(in_position, 1.0f));
+	v_normal = in_normal;
+	v_color = in_color;
+	v_texCoord = mat2(0.0, -1.0, 1.0, 0.0) * in_texCoord;
 	
 	// Outputs the positions/coordinates of all vertices
-	gl_Position = camMatrix * vec4(crntPos, 1.0);
+	gl_Position = u_camMatrix * vec4(v_worldPos, 1.0);
 }

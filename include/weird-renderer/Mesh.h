@@ -43,41 +43,41 @@ using namespace ECS;
 			~Mesh();
 
 			// Draws the mesh
-			void Draw
+			void draw
 			(
 				Shader& shader,
 				Camera& camera,
 				glm::vec3 translation,
 				glm::vec3 rotation,
-				glm::vec3 scale,
-				const std::vector<Light>& lights
+				glm::vec3 scale
 			) const;
 
 			// Draws the mesh
-			void DrawInstance
+			void drawInstances
 			(
 				Shader& shader,
 				Camera& camera,
 				unsigned int instances,
-				std::vector<glm::vec3> translations,
-				std::vector<glm::vec3> rotations,
-				std::vector<glm::vec3> scales,
-				const std::vector<Light>& lights
+				glm::vec3 translation,
+				glm::vec3 rotation,
+				glm::vec3 scale
 			) const;
 
-			void DrawInstance
-			(
-				Shader& shader,
-				Camera& camera,
-				unsigned int instances,
-				std::vector<Transform>& transforms,
-				const std::vector<Light>& lights
-			) const;
+			void free();
 
-			void Delete();
+			bool m_isBillboard = false;
 
 		private:
 
+			void UploadUniforms(
+				Shader& shader,
+				Camera& camera,
+				glm::vec3 translation,
+				glm::vec3 rotation,
+				glm::vec3 scale) const;  
+
+
+			
 		};
 	}
 }

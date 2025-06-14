@@ -1,28 +1,33 @@
 #version 330 core
+#extension GL_ARB_conservative_depth : enable
+#extension GL_EXT_conservative_depth : enable
 
-#define DITHERING 1
+layout (depth_less) out float gl_FragDepth;
+
+
+// #define DITHERING
 
 
 
-#if (DITHERING == 1)
+#ifdef DITHERING
 
-uniform float _Spread = 0.15f;
-uniform int _ColorCount = 10;
+uniform float u_spread = 0.15f;
+uniform int u_colorCount = 10;
 
 // Dithering and posterizing
-uniform int bayer2[2 * 2] = int[2 * 2](
+uniform int u_bayer2[2 * 2] = int[2 * 2](
     0, 2,
     3, 1
 );
 
-uniform int bayer4[4 * 4] = int[4 * 4](
+uniform int u_bayer4[4 * 4] = int[4 * 4](
     0, 8, 2, 10,
     12, 4, 14, 6,
     3, 11, 1, 9,
     15, 7, 13, 5
 );
 
-uniform int bayer8[8 * 8] = int[8 * 8](
+uniform int u_bayer8[8 * 8] = int[8 * 8](
     0, 32, 8, 40, 2, 34, 10, 42,
     48, 16, 56, 24, 50, 18, 58, 26,  
     12, 44,  4, 36, 14, 46,  6, 38, 
@@ -34,15 +39,15 @@ uniform int bayer8[8 * 8] = int[8 * 8](
 );
 
 float GetBayer2(int x, int y) {
-    return float(bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
+    return float(u_bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
 }
 
 float GetBayer4(int x, int y) {
-    return float(bayer4[(x % 4) + (y % 4) * 4]) * (1.0f / 16.0f) - 0.5f;
+    return float(u_bayer4[(x % 4) + (y % 4) * 4]) * (1.0f / 16.0f) - 0.5f;
 }
 
 float GetBayer8(int x, int y) {
-    return float(bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
+    return float(u_bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
 }
 
 #endif
@@ -98,15 +103,28 @@ float fCylinder(vec3 p, float r, float height)
 // Outputs colors in RGBA
 layout(location = 0) out vec4 FragColor;
 
+in vec2 v_texCoord;
+
+uniform sampler2D t_colorTexture;
+uniform sampler2D t_depthTexture;
+uniform samplerBuffer t_shapeBuffer;
 uniform int u_loadedObjects;
-uniform samplerBuffer u_shapeBuffer;
 
-uniform mat4 u_cameraMatrix;
 
+uniform mat4 u_camMatrix;
+uniform float u_fov = 2.5;
 uniform vec2 u_resolution;
+
+uniform vec3 u_lightPos;
+uniform vec3 u_lightDirection;
+uniform vec4 u_lightColor;
+
 uniform float u_time;
 
-uniform float u_fov = 2.5;
+
+
+
+
 
 const int MAX_STEPS = 256;
 const float EPSILON = 0.01;
@@ -117,10 +135,41 @@ const float OVERSHOOT = 1.0;
 
 const vec3 background = vec3(0.0);
 
-uniform sampler2D u_colorTexture;
-uniform sampler2D u_depthTexture;
 
-uniform vec3 directionalLightDirection = vec3(0,1,0);
+// Hash
+float hash(vec2 p) {
+    return fract(sin(dot(p ,vec2(127.1,311.7))) * 43758.5453);
+}
+
+// Interpolation
+float fade(float t) {
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+// Gradient noise
+float grad(vec2 p, vec2 ip) {
+    vec2 g = vec2(hash(ip), hash(ip + 1.0));
+    g = normalize(g * 2.0 - 1.0);
+    return dot(p - ip, g);
+}
+
+// Perlin Noise 2D
+float perlin(vec2 p) 
+{
+    vec2 ip = floor(p);
+    vec2 fp = fract(p);
+
+    float a = grad(p, ip);
+    float b = grad(p, ip + vec2(1.0, 0.0));
+    float c = grad(p, ip + vec2(0.0, 1.0));
+    float d = grad(p, ip + vec2(1.0, 1.0));
+
+    vec2 f = vec2(fade(fp.x), fade(fp.y));
+
+    float ab = mix(a, b, f.x);
+    float cd = mix(c, d, f.x);
+    return mix(ab, cd, f.y);
+}
 
 
 
@@ -130,7 +179,7 @@ float map(vec3 p)
 
     for (int i = 0; i < u_loadedObjects; i++)
     {
-        vec4 positionSize = texelFetch(u_shapeBuffer, i);
+        vec4 positionSize = texelFetch(t_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
         //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
         float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
@@ -139,7 +188,10 @@ float map(vec3 p)
         res = fOpUnionSoft(objectDist, res, 0.5);
     }
 
-    float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
+    //float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
+    // float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
+    float planeDist = fPlane(p, vec3(0, 1, 0), (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
+
 
     res = min(res, planeDist);
 
@@ -168,7 +220,7 @@ vec3 getColor(vec3 p)
     {
         int id = i % 2 == 0 ? 1 : 2;
 
-        vec4 positionSize = texelFetch(u_shapeBuffer, i);
+        vec4 positionSize = texelFetch(t_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
         //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
         float objectDist = fSphere(p - positionSize.xyz, 0.5f);
@@ -221,7 +273,7 @@ vec3 getNormal(vec3 p)
 vec3 getLight(vec3 p, vec3 rd, vec3 color)
 {
 
-    vec3 lightPos = directionalLightDirection;
+    vec3 lightPos = u_lightPos;
 
     vec3 L = normalize(lightPos - p);
     vec3 N = getNormal(p);
@@ -246,7 +298,7 @@ vec3 getLight(vec3 p, vec3 rd, vec3 color)
 
 vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 {
-    vec3 L = directionalLightDirection;
+    vec3 L = u_lightDirection;
     vec3 N = getNormal(p);
     vec3 V = -rd;
     vec3 R = reflect(-L, N);
@@ -268,28 +320,38 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 }
 
 
-vec4 render(in vec2 uv, in vec3 originalColor, in float depth)
+vec4 render(in vec2 uv, in vec4 originalColor)
 {
 
     // Ray origin
-    vec3 ro = -u_cameraMatrix[3].xyz;
+    vec3 ro = -u_camMatrix[3].xyz;
     // Apply camera rotation
-    ro = vec3(dot(u_cameraMatrix[0].xyz, ro), dot(u_cameraMatrix[1].xyz, ro), dot(u_cameraMatrix[2].xyz, ro));
+    ro = vec3(dot(u_camMatrix[0].xyz, ro), dot(u_camMatrix[1].xyz, ro), dot(u_camMatrix[2].xyz, ro));
 
     // Ray direction
-    vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0) * u_cameraMatrix).xyz;
+    vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0) * u_camMatrix).xyz;
 
     // Fish eye
     // float z = pow(1.0 - (uv.x * uv.x) - (uv.y * uv.y), 0.5);
     // vec3 rd = vec3(uv, -z);
-    // rd = (vec4(rd, 0) * u_cameraMatrix).xyz;
+    // rd = (vec4(rd, 0) * u_camMatrix).xyz;
 
     // Ray march to find closest SDF
     float object = rayMarch(ro, rd);
 
     // If ray marched distance is bigger than depth from zbuffer, set alpha to 1
-    float minDepth = min(object, depth);
+    float minDepth = object;
 
+    float z_e = object;
+    float z_n = (FAR + NEAR - (2.0 * NEAR * FAR) / z_e) / (FAR - NEAR);
+    float depth = (z_n + 1.0) * 0.5;
+
+    
+    gl_FragDepth = depth;
+
+
+//    if(handleTransparency)
+//        return vec4(1,0,0,1);
 
     // Output color
     vec3 col;
@@ -299,28 +361,26 @@ vec4 render(in vec2 uv, in vec3 originalColor, in float depth)
     if (minDepth < FAR)
     {
 
-        if (object < depth)
-        {
-            vec3 p = ro + object * rd;
-            vec3 material = getColor(p);
-            col = getDirectionalLight(p, rd, material);
-        }
-        else
-        {
-            col = originalColor;
-        }
+        vec3 p = ro + object * rd;
+        vec3 material = getColor(p);
+        col = getDirectionalLight(p, rd, material);
+
+
 
         // fog
 
-        minDepth -= 0.85;
-        alpha = 1.0 - exp(-0.001 * minDepth * minDepth);
+        // minDepth -= 0.85;
+        // alpha = exp(-0.0004 * minDepth * minDepth);
 
-        col = mix(col, background, alpha);
+        //col = mix(col, background, alpha);
 
         //float a = minDepth - (FAR - 980);
         //alpha = max(0.0, 0.001 * a * a *a );
 
-        alpha = 1.0f;
+        // alpha = 1.0f;
+
+        alpha = 1.0f - smoothstep(FAR * 0.5, FAR, minDepth);
+
     }
 
     return vec4(col, alpha);
@@ -341,29 +401,29 @@ void main()
     float aspectRatio = u_resolution.x / u_resolution.y;
     vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
 
-    vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+    vec2 screenUV = v_texCoord;
 
-    vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
+    vec2 uv = (2.0f * v_texCoord) - 1.0f;
 
     // Calculate true z value from the depth buffer: https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
-    float depth = texture(u_depthTexture, screenUV).r;
+    float depth = texture(t_depthTexture, screenUV).r;
     float z_n = 2.0 * depth - 1.0;
     float z_e = 2.0 * NEAR * FAR / (FAR + NEAR - z_n * (FAR - NEAR));
 
-    vec4 originalColor = texture(u_colorTexture, screenUV);
+    vec4 originalColor = texture(t_colorTexture, screenUV);
 
-    vec4 col = render(uv, originalColor.xyz, z_e);
+    vec4 col = render(uv, originalColor);
 
-    // col = pow(col, vec3(0.4545));
+    col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 
-#if (DITHERING == 1)
+#ifdef DITHERING
     int x = int(gl_FragCoord.x);
     int y = int(gl_FragCoord.y);
-    col  = col + _Spread * GetBayer4(x, y);
+    col  = col + u_spread * GetBayer4(x, y);
 
-    col.r = floor((_ColorCount - 1.0f) * col.r + 0.5) / (_ColorCount - 1.0f);
-    col.g = floor((_ColorCount - 1.0f) * col.g + 0.5) / (_ColorCount - 1.0f);
-    col.b = floor((_ColorCount - 1.0f) * col.b + 0.5) / (_ColorCount - 1.0f);
+    col.r = floor((u_colorCount - 1.0f) * col.r + 0.5) / (u_colorCount - 1.0f);
+    col.g = floor((u_colorCount - 1.0f) * col.g + 0.5) / (u_colorCount - 1.0f);
+    col.b = floor((u_colorCount - 1.0f) * col.b + 0.5) / (u_colorCount - 1.0f);
 #endif 
 
 
@@ -374,4 +434,5 @@ void main()
 //    FragColor = vec4(vec3(1.0f * depth), 1.0);
 
     FragColor = vec4(col.xyz, col.w);
+    //FragColor = vec4(originalColor.www, 1);
 }

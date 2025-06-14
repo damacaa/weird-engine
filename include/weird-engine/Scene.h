@@ -2,7 +2,7 @@
 #include "../weird-renderer/Shape.h"
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
-#include "../weird-renderer/RenderPlane.h"
+#include "../weird-renderer/RenderTarget.h"
 #include "../weird-renderer/Shape.h"
 
 #include "ecs/ECS.h"
@@ -20,7 +20,7 @@ namespace WeirdEngine
 		~Scene();
 		void start();
 
-		void renderModels(WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
 		void update(double delta, double time);
@@ -33,16 +33,30 @@ namespace WeirdEngine
 		Scene& operator=(Scene&&) = default;	   // Defaulted move assignment operator
 
 		WeirdRenderer::Camera& getCamera();
+		std::vector<WeirdRenderer::Light>& getLigths();
+
 		float getTime();
 
 		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
-		bool requires3DRendering();
+		enum  class RenderMode
+		{
+			Simple3D,
+			RayMarching3D,
+			RayMarching2D,
+			RayMarchingBoth
+		};
+
+
+
+		RenderMode getRenderMode() const;
 
 	protected:
+		virtual void onCreate() {};
 		virtual void onStart() = 0;
-		virtual void onUpdate() = 0;
-		virtual void onRender() = 0;
+		virtual void onUpdate(float delta) = 0;
+		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
+		virtual void onDestroy() {};
 
 		ECSManager m_ecs;
 		Entity m_mainCamera;
@@ -61,12 +75,15 @@ namespace WeirdEngine
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;
-		PhysicsInteractionSystem m_physicsInteractionSystem;
 		PlayerMovementSystem m_playerMovementSystem;
 		CameraSystem m_cameraSystem;
 
-		bool m_debugFly = true;
+		PhysicsInteractionSystem m_physicsInteractionSystem;
 
+		bool m_debugFly = true;
+		bool m_debugInput = false;
+
+		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
 		int m_charWidth;
 		int m_charHeight;
@@ -75,7 +92,6 @@ namespace WeirdEngine
 
 		void print(const std::string& text);
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
-
 
 	private:
 

@@ -19,11 +19,11 @@ namespace WeirdEngine
 			// Links a VBO Attribute such as a position or color to the quadVAO
 			void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
 			// Binds the quadVAO
-			void Bind() const;
+			void bind() const;
 			// Unbinds the quadVAO
 			void Unbind() const;
 			// Deletes the quadVAO
-			void Delete() const;
+			void free() const;
 		};
 	}
 }

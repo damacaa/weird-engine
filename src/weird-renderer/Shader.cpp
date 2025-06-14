@@ -30,7 +30,7 @@ namespace WeirdEngine
 		}
 
 		// Activates the Shader Program
-		void Shader::activate()
+		void Shader::use()
 		{
 			if (isFileModified(m_fragmentFile, m_lastModifiedTime)) {
 				recompile();
@@ -40,7 +40,7 @@ namespace WeirdEngine
 		}
 
 		// Deletes the Shader Program
-		void Shader::Delete()
+		void Shader::free()
 		{
 			glDeleteProgram(ID);
 		}
@@ -76,7 +76,7 @@ namespace WeirdEngine
 		void Shader::recompile(std::string& vertexCode, std::string& fragmentCode)
 		{
 			if (ID != -1)
-				Delete();
+				free();
 
 			// Convert the shader source strings into character arrays
 			const char* vertexSource = vertexCode.c_str();

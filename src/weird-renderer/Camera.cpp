@@ -8,23 +8,28 @@ namespace WeirdEngine
 	{
 		Camera::Camera(glm::vec3 position)
 		{
-
-			Position = position;
-
-			//instance = this;
+			position = position;
 		}
 
-		void Camera::UpdateMatrix(float nearPlane, float farPlane, int width, int height)
+		const auto RIGHT = glm::vec3(1.0f, 0.0f, 0.0f);
+		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
+		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
+
+		void Camera::updateMatrix(float nearPlane, float farPlane, int width, int height)
 		{
-			m_width = width;
-			m_height = height;
+			if (lookAtMode)
+			{
+				// Makes camera look in the right direction from the right position
+				view = glm::lookAt(position, position + orientation, up);
+			}
+			else
+			{
+				view = glm::mat4(1.0f);
 
-			// Initializes matrices since otherwise they will be the null matrix
-			view = glm::mat4(1.0f);
-			projection = glm::mat4(1.0f);
-
-			// Makes camera look in the right direction from the right position
-			view = glm::lookAt(Position, Position + Orientation, Up);
+				view = glm::rotate(view, orientation.x, RIGHT);
+				view = glm::rotate(view, orientation.y, UP);
+				view = glm::rotate(view, orientation.z, FORWARD);
+			}
 
 			// Adds perspective to the Scene
 			projection = glm::perspective(glm::radians(fov), (float)width / height, nearPlane, farPlane);
@@ -32,12 +37,5 @@ namespace WeirdEngine
 			// Sets new camera matrix
 			cameraMatrix = projection * view;
 		}
-
-		void Camera::Matrix(Shader& shader, const char* uniform)
-		{
-			// Exports camera matrix
-			glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
-		}
-
 	}
 }

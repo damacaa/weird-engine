@@ -32,6 +32,8 @@ target_include_directories(glad
 
 # SDL3 setup
 # Add dependencies
+set(SDL_WINDOWS_GAMEINPUT OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL_image)
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL_mixer)

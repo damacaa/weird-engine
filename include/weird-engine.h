@@ -40,6 +40,8 @@ namespace WeirdEngine
 		const unsigned int width = 800;
 		const unsigned int height = 800;
 
+		
+
 		Renderer renderer(width, height);
 
 		// Scenes
@@ -47,17 +49,32 @@ namespace WeirdEngine
 
 
 		// Time
-		double time = glfwGetTime();
+		double time = SDL_GetTicks() / 1000.0;
 		double prevTime = time;
 		double delta = 0;
 		double timeDiff = 0;
 		unsigned int frameCounter = 0;
 
-		// Main while loop
-		while (!renderer.checkWindowClosed())
+
+		bool quit = false;
+		while (!quit)
 		{
-			// Meassure time
-			time = glfwGetTime();
+			// --- UNIFIED EVENT LOOP ---
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
+			{
+				if (event.type == SDL_EVENT_QUIT)
+				{
+					quit = true;
+				}
+				// You can pass the event to an input handler here
+				// e.g., Input::ProcessEvent(event);
+
+			}
+
+			// --- UPDATE ---
+			// // Meassure time
+			time = SDL_GetTicks() / 1000.0;
 			delta = time - prevTime;
 			timeDiff += delta;
 			prevTime = time;
@@ -77,7 +94,7 @@ namespace WeirdEngine
 			}
 
 			// Capture window input
-			Input::update(renderer.getWindow(), width, height);
+			// Input::update(renderer.getWindow());
 
 			// Load next scene
 			if (Input::GetKeyDown(Input::Q))
@@ -91,7 +108,7 @@ namespace WeirdEngine
 			scene->update(delta, time);
 
 			// Clear input
-			Input::clear();
+			// Input::clear();
 
 			// Render scene
 			renderer.render(*scene, time);

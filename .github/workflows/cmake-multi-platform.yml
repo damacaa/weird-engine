@@ -19,7 +19,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: true
+      
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev

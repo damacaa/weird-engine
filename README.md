@@ -28,7 +28,7 @@ sudo apt install build-essential libx11-dev libxcursor-dev libxi-dev libgl1-mesa
 ```
 #### Fedora 
 ```
-sudo dnf install libXext-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel
+sudo dnf builddep SDL3
 ```
 ### Issues downloading SDL submodule
 ```

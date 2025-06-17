@@ -30,3 +30,12 @@ sudo apt install build-essential libx11-dev libxcursor-dev libxi-dev libgl1-mesa
 ```
 sudo dnf install libXext-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel
 ```
+### Issues downloading SDL submodule
+```
+git rm --cached third-party/SDL
+rm -rf .git/modules/third-party/SDL
+rm -rf third-party/SDL
+
+git submodule add https://github.com/libsdl-org/SDL.git third-party/SDL
+git submodule update --init --recursive
+```

@@ -23,9 +23,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0  # Important for getting full submodule history
 
-      - name: Clean build folder
-        run: rm -rf ${{github.workspace}}/build
-
       - name: Ensure submodules are up-to-date
         run: git submodule update --init --recursive
       

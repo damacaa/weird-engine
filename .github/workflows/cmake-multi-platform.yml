@@ -13,13 +13,22 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]  # Testing on both Windows and Linux
+        os: [windows-2025, ubuntu-latest]  # Testing on both Windows and Linux
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0  # Important for getting full submodule history
 
+      - name: Ensure submodules are up-to-date
+        run: git submodule update --init --recursive
+
+      - name: Check submodulesversions
+        run: git submodule status
+      
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev

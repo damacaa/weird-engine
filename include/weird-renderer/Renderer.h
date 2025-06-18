@@ -31,7 +31,7 @@ namespace WeirdEngine
 	{
 		class GLInitializer {
 		public:
-			GLInitializer(const unsigned int width, const unsigned int height, GLFWwindow*& m_window);
+			GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window);
 		};
 
 		class Renderer
@@ -45,12 +45,12 @@ namespace WeirdEngine
 			bool checkWindowClosed() const;
 			void setWindowTitle(const char* name);
 
-			GLFWwindow* getWindow();
+			SDL_Window* getWindow();
 
 		private:
 			GLInitializer m_initializer;
 
-			GLFWwindow* m_window;
+			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
 			float m_renderScale;
 			unsigned int m_renderWidth, m_renderHeight;

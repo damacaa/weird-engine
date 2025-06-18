@@ -25,6 +25,9 @@ jobs:
 
       - name: Ensure submodules are up-to-date
         run: git submodule update --init --recursive
+
+      - name: Check submodulesversions
+        run: git submodule status
       
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'

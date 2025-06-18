@@ -22,13 +22,19 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0  # Important for getting full submodule history
+
+      - name: Clean build folder
+        run: rm -rf ${{github.workspace}}/build
+
+      - name: Ensure submodules are up-to-date
+        run: git submodule update --init --recursive
       
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DSDL_GAMEINPUT=OFF
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

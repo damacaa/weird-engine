@@ -1,5 +1,7 @@
 #include "weird-renderer/Renderer.h"
 
+#include <SDL3/SDL.h>
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -17,50 +19,61 @@ namespace WeirdEngine
 			std::cerr << "OpenGL Debug: " << message << std::endl;
 		}
 
-		GLInitializer::GLInitializer(const unsigned int width, const unsigned int height, GLFWwindow*& m_window)
+		GLInitializer::GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window)
 		{
-			// Initialize GLFW
-			glfwInit();
-
-			// setenv("__GLX_VENDOR_LIBRARY_NAME", "nvidia", 1);
-
-
-			// Tell GLFW what version of OpenGL we are using
-			// In this case we are using OpenGL 3.3
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-			// Tell GLFW we are using the CORE profile
-			// So that means we only have the modern functions
-			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-			glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-			// Create a GLFWwindow object
-			m_window = glfwCreateWindow(width, height, "Weird", NULL, NULL);
-			// Error check if the m_window fails to create
-			if (m_window == NULL)
+			// Initialize SDL
+			if (!SDL_Init(SDL_INIT_VIDEO))
 			{
-				std::cout << "Failed to create GLFW window" << std::endl;
-				glfwTerminate();
+				std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
 				throw;
 			}
 
-			// Introduce the m_window into the current context
-			glfwMakeContextCurrent(m_window);
+			// Set OpenGL attributes for a core profile
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-			// Load GLAD so it configures OpenGL
-			gladLoadGL();
+			// Create an SDL window that supports OpenGL
+			m_window = SDL_CreateWindow("SDL3 OpenGL Window", width, height, SDL_WINDOW_OPENGL);
 
-			// Clear any GL errors caused during init
-			while (glGetError() != GL_NO_ERROR)
+			if (m_window == NULL)
 			{
+				std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
+				SDL_Quit();
+				throw;
 			}
 
-			// Debug-specific code
-			glEnable(GL_DEBUG_OUTPUT); // Enable OpenGL debug output
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Ensure synchronous reporting (optional but useful)
+			// Create the OpenGL context
+			SDL_GLContext m_glContext = SDL_GL_CreateContext(m_window);
+			if (m_glContext == NULL)
+			{
+				std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << std::endl;
+				SDL_DestroyWindow(m_window);
+				SDL_Quit();
+				throw;
+			}
 
-			// Set the debug callback function
+			// Make the OpenGL context current
+			SDL_GL_MakeCurrent(m_window, m_glContext);
+
+			// Load GLAD so it configures OpenGL
+			if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+			{
+				std::cerr << "Failed to initialize GLAD" << std::endl;
+				SDL_GL_DestroyContext(m_glContext);
+				SDL_DestroyWindow(m_window);
+				SDL_Quit();
+				throw;
+			}
+
+			// Clear any GL errors that may have occurred during initialization
+			while (glGetError() != GL_NO_ERROR);
+
+			// Enable OpenGL debug output
+			glEnable(GL_DEBUG_OUTPUT);
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 		}
 
@@ -69,8 +82,8 @@ namespace WeirdEngine
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_renderScale(1.0f)
-			, m_renderWidth(width * m_renderScale)
-			, m_renderHeight(height * m_renderScale)
+			, m_renderWidth(width* m_renderScale)
+			, m_renderHeight(height* m_renderScale)
 			, m_vSyncEnabled(true)
 		{
 			Screen::width = m_windowWidth;
@@ -159,21 +172,20 @@ namespace WeirdEngine
 
 			delete[] m_2DData;
 
-			// Delete m_window before ending the program
-			glfwDestroyWindow(m_window);
-			// Terminate GLFW before ending the program
-			glfwTerminate();
+			// SDL_DestroyRenderer(renderer); // TODO
+			SDL_DestroyWindow(m_window);
+			SDL_Quit();
 		}
 
 		void Renderer::render(Scene& scene, const double time)
 		{
 			if (m_vSyncEnabled)
 			{
-				glfwSwapInterval(1);
+				SDL_GL_SetSwapInterval(1); // Enable VSync
 			}
 			else
 			{
-				glfwSwapInterval(0);
+				SDL_GL_SetSwapInterval(0); // Disable VSync
 			}
 
 			// Get camera
@@ -278,7 +290,7 @@ namespace WeirdEngine
 					m_3DsdfShaderProgram.use();
 
 					// Set uniforms and other ray marching settings
-					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.5f * 0.01745329f ); // PI / 180
+					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.5f * 0.01745329f); // PI / 180
 					m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
 					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
 					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
@@ -352,7 +364,7 @@ namespace WeirdEngine
 
 			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_2DSceneTexture");
 			glUniform1i(u_colorTextureLocation2d, 0);
-			m_3DSceneTexture.bind(0);
+			m_lit2DSceneTexture.bind(0);
 
 			GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_3DSceneTexture");
 			glUniform1i(u_colorTextureLocation3d, 1);
@@ -376,12 +388,16 @@ namespace WeirdEngine
 
 		bool Renderer::checkWindowClosed() const
 		{
-			return glfwWindowShouldClose(m_window);
+
+			return false;
 		}
 
 		void Renderer::setWindowTitle(const char* name)
 		{
-			glfwSetWindowTitle(m_window, name);
+			if (m_window)
+			{
+				SDL_SetWindowTitle(m_window, name);
+			}
 		}
 
 		void Renderer::output(Scene& scene, Texture& texture)
@@ -407,15 +423,13 @@ namespace WeirdEngine
 				texture.saveToDisk("output_texture.png");
 			}
 
-			// Swap the back buffer with the front buffer
-			glfwSwapBuffers(m_window);
-			// Take care of all GLFW events
-			glfwPollEvents();
+
+			SDL_GL_SwapWindow(m_window);
 
 			GL_CHECK_ERROR();
 		}
 
-		GLFWwindow* Renderer::getWindow()
+		SDL_Window* Renderer::getWindow()
 		{
 			return m_window;
 		}

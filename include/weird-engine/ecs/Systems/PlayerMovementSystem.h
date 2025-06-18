@@ -201,7 +201,7 @@ namespace WeirdEngine
 					{
 						t.position += delta * flyComponent.speed * c.camera.up;
 					}
-					if (Input::GetKey(Input::LeftCrtl))
+					if (Input::GetKey(Input::LeftCtrl))
 					{
 						t.position += delta * flyComponent.speed * -c.camera.up;
 					}

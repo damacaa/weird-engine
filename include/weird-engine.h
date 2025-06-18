@@ -4,10 +4,9 @@
 #define ENGINE_PATH "../weird-engine"
 #endif // !ENGINE_PATH
 
-
-#include "weird-engine/Utils.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
+#include "weird-engine/Utils.h"
 #include "weird-renderer/Renderer.h"
 
 #ifdef _WIN32
@@ -16,25 +15,23 @@
 #define EXPORT
 #endif
 
-extern "C" {
+extern "C"
+{
 	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
 }
 
-
-
-//int start(const char* projectPath);
-//int main() {
+// int start(const char* projectPath);
+// int main() {
 //	const char* projectPath = "SampleProject/";
 //	start(projectPath);
-//}
-// 
+// }
+//
 
 namespace WeirdEngine
 {
 	using namespace WeirdRenderer;
 	void start(SceneManager& sceneManager)
 	{
-
 
 		// Window resolution
 		const unsigned int width = 800;
@@ -45,19 +42,21 @@ namespace WeirdEngine
 		// Scenes
 		sceneManager.loadScene(0);
 
-
 		// Time
-		double time = glfwGetTime();
+		double time = SDL_GetTicks() / 1000.0;
 		double prevTime = time;
 		double delta = 0;
 		double timeDiff = 0;
 		unsigned int frameCounter = 0;
 
-		// Main while loop
-		while (!renderer.checkWindowClosed())
+		bool quit = false;
+		while (!quit)
 		{
-			// Meassure time
-			time = glfwGetTime();
+			// --- UNIFIED EVENT LOOP ---
+
+			// --- UPDATE ---
+			// // Meassure time
+			time = SDL_GetTicks() / 1000.0;
 			delta = time - prevTime;
 			timeDiff += delta;
 			prevTime = time;
@@ -77,7 +76,20 @@ namespace WeirdEngine
 			}
 
 			// Capture window input
-			Input::update(renderer.getWindow(), width, height);
+			Input::update(renderer.getWindow());
+
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
+			{
+				if (event.type == SDL_EVENT_QUIT)
+				{
+					quit = true;
+				}
+				else
+				{
+					Input::handleEvent(event);
+				}
+			}
 
 			// Load next scene
 			if (Input::GetKeyDown(Input::Q))
@@ -91,7 +103,7 @@ namespace WeirdEngine
 			scene->update(delta, time);
 
 			// Clear input
-			Input::clear();
+			// Input::clear();
 
 			// Render scene
 			renderer.render(*scene, time);

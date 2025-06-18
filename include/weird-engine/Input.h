@@ -3,41 +3,39 @@
 #include <iostream>
 #include <string>
 
-#include<glad/glad.h>
-#include<GLFW/glfw3.h>
-
-
-
+// Replaced glad and GLFW with SDL3.
+// Note: If you use OpenGL with SDL, you'll still need a GL loader like glad,
+// but it's not required for the input handling itself.
+#include <SDL/include/SDL3/SDL.h>
+// #include <SDL/src/events/SDL_mouse_c.h>
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
 /// States are:
-#define RELEASED_THIS_FRAME        -1	/// Button released this frame.
-#define NOT_PRESSED                 0	/// Button not pressed.
-#define IS_PRESSED                  1	/// Button has been pressed down for at least one previous frame. 
-#define FIRST_PRESSED               2	/// Started pressing the button in current frame.
+#define RELEASED_THIS_FRAME -1 /// Button released this frame.
+#define NOT_PRESSED 0 /// Button not pressed.
+#define IS_PRESSED 1 /// Button has been pressed down for at least one previous frame.
+#define FIRST_PRESSED 2 /// Started pressing the button in current frame.
 /// </summary>
 
-#define SUPPORTED_KEYS			  342
+// Replaced hardcoded key count with SDL's constant for the number of scancodes.
+#define SUPPORTED_KEYS SDL_NUM_SCANCODES
+
 namespace WeirdEngine
 {
 	class Input
 	{
 	private:
-
-		// Mouse position
-		double m_mouseX = 0;
-		double m_mouseY = 0;
+		// Mouse position (now float, as SDL3 provides float precision)
+		float m_mouseX = 0;
+		float m_mouseY = 0;
 
 		// Mouse position difference since last frame
-		double m_deltaX = 0;
-		double m_deltaY = 0;
+		float m_deltaX = 0;
+		float m_deltaY = 0;
 
-		// Mouse has been moved since last frame
-		bool m_mouseHasBeenMoved = false;
-
-		// OpenGL window
-		GLFWwindow* m_window;
+		// SDL window
+		SDL_Window* m_window;
 
 		// Window size
 		int m_width, m_height;
@@ -46,25 +44,33 @@ namespace WeirdEngine
 		int* m_keyTable;
 		int* m_mouseKeysTable;
 
-
-		Input() {
-			m_keyTable = new int[SUPPORTED_KEYS] { 0 };
+		Input()
+		{
+			// Use SDL_NUM_SCANCODES for the key table size
+			m_keyTable = new int[SDL_SCANCODE_COUNT] { 0 };
 			m_mouseKeysTable = new int[5] { 0 };
 		}
 
-		~Input() {
-			delete m_keyTable;
-			delete m_mouseKeysTable;
+		~Input()
+		{
+			delete[] m_keyTable;
+			delete[] m_mouseKeysTable;
 		}
 
-		static Input& getInstance() {
-			static Input* _instance = new Input();
-			return *_instance;
+		// Singleton pattern remains the same
+		static Input& getInstance()
+		{
+			static Input _instance; // Modern C++ handles static local initialization safely
+			return _instance;
 		};
 
-	public:
+		// Private update method, contains the core logic
+		void pollEventsAndUpdateTables();
+		void handleEventImpl(SDL_Event& event);
 
-		enum MouseButton {
+	public:
+		enum MouseButton
+		{
 			LeftClick = 0,
 			MiddleClick = 1,
 			RightClick = 2,
@@ -72,101 +78,105 @@ namespace WeirdEngine
 			WheelDown = 4
 		};
 
+		// The KeyCode enum is now mapped to SDL_Scancode values.
+		// This represents the physical key on the keyboard.
 		enum KeyCode
 		{
 			// Letters
-			A = 'A',
-			B = 'B',
-			C = 'C',
-			D = 'D',
-			E = 'E',
-			F = 'F',
-			G = 'G',
-			H = 'H',
-			I = 'I',
-			J = 'J',
-			K = 'K',
-			L = 'L',
-			M = 'M',
-			N = 'N',
-			O = 'O',
-			P = 'P',
-			Q = 'Q',
-			R = 'R',
-			S = 'S',
-			T = 'T',
-			U = 'U',
-			V = 'V',
-			W = 'W',
-			X = 'X',
-			Y = 'Y',
-			Z = 'Z',
+			A = SDL_SCANCODE_A,
+			B = SDL_SCANCODE_B,
+			C = SDL_SCANCODE_C,
+			D = SDL_SCANCODE_D,
+			E = SDL_SCANCODE_E,
+			F = SDL_SCANCODE_F,
+			G = SDL_SCANCODE_G,
+			H = SDL_SCANCODE_H,
+			I = SDL_SCANCODE_I,
+			J = SDL_SCANCODE_J,
+			K = SDL_SCANCODE_K,
+			L = SDL_SCANCODE_L,
+			M = SDL_SCANCODE_M,
+			N = SDL_SCANCODE_N,
+			O = SDL_SCANCODE_O,
+			P = SDL_SCANCODE_P,
+			Q = SDL_SCANCODE_Q,
+			R = SDL_SCANCODE_R,
+			S = SDL_SCANCODE_S,
+			T = SDL_SCANCODE_T,
+			U = SDL_SCANCODE_U,
+			V = SDL_SCANCODE_V,
+			W = SDL_SCANCODE_W,
+			X = SDL_SCANCODE_X,
+			Y = SDL_SCANCODE_Y,
+			Z = SDL_SCANCODE_Z,
 
 			// Digits
-			Num0 = '0',
-			Num1 = '1',
-			Num2 = '2',
-			Num3 = '3',
-			Num4 = '4',
-			Num5 = '5',
-			Num6 = '6',
-			Num7 = '7',
-			Num8 = '8',
-			Num9 = '9',
+			Num0 = SDL_SCANCODE_0,
+			Num1 = SDL_SCANCODE_1,
+			Num2 = SDL_SCANCODE_2,
+			Num3 = SDL_SCANCODE_3,
+			Num4 = SDL_SCANCODE_4,
+			Num5 = SDL_SCANCODE_5,
+			Num6 = SDL_SCANCODE_6,
+			Num7 = SDL_SCANCODE_7,
+			Num8 = SDL_SCANCODE_8,
+			Num9 = SDL_SCANCODE_9,
 
 			// Special keys
-			Space = ' ',
-			Enter = GLFW_KEY_ENTER,
-			Tab = 9,
-			Backspace = GLFW_KEY_BACKSPACE,
-			Esc = GLFW_KEY_ESCAPE,
-			Up = 128,
-			Down = 129,
-			Left = 130,
-			Right = 131,
-			F1 = 132,
-			F2 = 133,
-			F3 = 134,
-			F4 = 135,
-			F5 = 136,
-			F6 = 137,
-			F7 = 138,
-			F8 = 139,
-			F9 = 140,
-			F10 = 141,
-			F11 = 142,
-			F12 = 143,
+			Space = SDL_SCANCODE_SPACE,
+			Enter = SDL_SCANCODE_RETURN,
+			Tab = SDL_SCANCODE_TAB,
+			Backspace = SDL_SCANCODE_BACKSPACE,
+			Esc = SDL_SCANCODE_ESCAPE,
+			Up = SDL_SCANCODE_UP,
+			Down = SDL_SCANCODE_DOWN,
+			Left = SDL_SCANCODE_LEFT,
+			Right = SDL_SCANCODE_RIGHT,
+			F1 = SDL_SCANCODE_F1,
+			F2 = SDL_SCANCODE_F2,
+			F3 = SDL_SCANCODE_F3,
+			F4 = SDL_SCANCODE_F4,
+			F5 = SDL_SCANCODE_F5,
+			F6 = SDL_SCANCODE_F6,
+			F7 = SDL_SCANCODE_F7,
+			F8 = SDL_SCANCODE_F8,
+			F9 = SDL_SCANCODE_F9,
+			F10 = SDL_SCANCODE_F10,
+			F11 = SDL_SCANCODE_F11,
+			F12 = SDL_SCANCODE_F12,
 
-			LeftShift = GLFW_KEY_LEFT_SHIFT,
-			LeftCrtl = GLFW_KEY_LEFT_CONTROL,
-			LeftAlt = GLFW_KEY_LEFT_ALT
+			LeftShift = SDL_SCANCODE_LSHIFT,
+			LeftCtrl = SDL_SCANCODE_LCTRL,
+			LeftAlt = SDL_SCANCODE_LALT
 		};
 
 #pragma region MouseMovement
 
-		static int GetMouseX() { return getInstance().m_mouseX; };
-		static int GetMouseY() { return getInstance().m_mouseY; };
-		static float GetMouseDeltaX() { return (float)getInstance().m_deltaX / getInstance().m_width; };
-		static float GetMouseDeltaY() { return (float)getInstance().m_deltaY / getInstance().m_height; };
+		static float GetMouseX() { return getInstance().m_mouseX; };
+		static float GetMouseY() { return getInstance().m_mouseY; };
+		static float GetMouseDeltaX() { return getInstance().m_deltaX / getInstance().m_width; };
+		static float GetMouseDeltaY() { return getInstance().m_deltaY / getInstance().m_height; };
 
-		static void SetMousePosition(int x, int y) {
-
+		static void SetMousePosition(float x, float y)
+		{
+			SDL_WarpMouseInWindow(getInstance().m_window, x, y);
+			// After warping, update internal state to prevent a large delta on the next frame
 			auto& instance = getInstance();
-			instance.m_deltaX += x - instance.m_mouseX;
-			instance.m_deltaY += y - instance.m_mouseY;
-
 			instance.m_mouseX = x;
 			instance.m_mouseY = y;
-
-			glfwSetCursorPos(instance.m_window, x, y);
-
 		}
 
-		// Hides mouse cursor
-		static void ShowMouse() { glfwSetInputMode(getInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+		// Shows mouse cursor and allows it to leave the window.
+		static void ShowMouse()
+		{
+			// SDL_SetRelativeMouseMode(false);
+		}
 
-		// Hides mouse cursor
-		static void HideMouse() { glfwSetInputMode(getInstance().m_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN); }
+		// Hides mouse cursor and locks it to the window (ideal for 3D camera control).
+		static void HideMouse()
+		{
+			// SDL_SetRelativeMouseMode(true);
+		}
 
 #pragma endregion
 
@@ -189,7 +199,6 @@ namespace WeirdEngine
 
 #pragma endregion
 
-
 #pragma region Keyboard
 
 		static bool GetKey(KeyCode key)
@@ -197,124 +206,156 @@ namespace WeirdEngine
 			return getInstance().m_keyTable[key] >= IS_PRESSED;
 		}
 
-		static bool GetKeyDown(unsigned char key)
+		// NOTE: Signature changed from unsigned char to KeyCode for consistency and correctness.
+		// Use Input::W instead of 'W'.
+		static bool GetKeyDown(KeyCode key)
 		{
 			return getInstance().m_keyTable[key] == FIRST_PRESSED;
 		}
 
-		static bool GetKeyUp(unsigned char key)
+		// NOTE: Signature changed from unsigned char to KeyCode.
+		static bool GetKeyUp(KeyCode key)
 		{
 			return getInstance().m_keyTable[key] == RELEASED_THIS_FRAME;
 		}
 
-
-
 #pragma endregion
 
-	private:
-
-		static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-		{
-			auto& instance = getInstance();
-			instance.m_mouseKeysTable[(int)MouseButton::WheelUp] = yoffset > 0 ? FIRST_PRESSED : NOT_PRESSED;
-			instance.m_mouseKeysTable[(int)MouseButton::WheelDown] = yoffset < 0 ? FIRST_PRESSED : NOT_PRESSED;
-		}
-
-		void updateTables(GLFWwindow* window, int width, int height)
-		{
-			m_width = width;
-			m_height = height;
-
-			if (m_window != window) {
-				m_window = window;
-
-				// Set the scroll callback
-				glfwSetScrollCallback(window, scroll_callback);
-			}
-
-			// Fetches the coordinates of the cursor
-			double mouseX, mouseY;
-			glfwGetCursorPos(window, &mouseX, &mouseY);
-
-			m_deltaX = mouseX - m_mouseX;
-			m_deltaY = mouseY - m_mouseY;
-
-			m_mouseX = mouseX;
-			m_mouseY = mouseY;
-
-			// GLFW defined buttons transformed to my values
-			int b[3] = {
-				(int)MouseButton::LeftClick,
-				(int)MouseButton::RightClick,
-				(int)MouseButton::MiddleClick
-			};
-
-			int g[3] = {
-				GLFW_MOUSE_BUTTON_LEFT,
-				GLFW_MOUSE_BUTTON_RIGHT,
-				GLFW_MOUSE_BUTTON_MIDDLE
-			};
-
-			for (int i = 0; i < 3; i++) {
-
-				int current = glfwGetMouseButton(m_window, g[i]);
-				int previous = m_mouseKeysTable[b[i]];
-
-				if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
-				{
-					// If it wasn't pressed in previous frame, it's a first press
-					current = FIRST_PRESSED;
-
-				}
-				else if (current == NOT_PRESSED && (previous == FIRST_PRESSED || previous == IS_PRESSED))
-				{
-					// If it was pressed in previous frame, it's a first release
-					current = RELEASED_THIS_FRAME;
-				}
-
-				m_mouseKeysTable[b[i]] = current;
-			}
-
-
-			for (int i = 0; i < SUPPORTED_KEYS; i++) {
-
-				int current = glfwGetKey(m_window, i);
-				int previous = m_keyTable[i];
-
-				if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
-				{
-					// If it wasn't pressed in previous frame, it's a first press
-					current = FIRST_PRESSED;
-				}
-				else if (current == NOT_PRESSED && (previous == FIRST_PRESSED || previous == IS_PRESSED))
-				{
-					// If it was pressed in previous frame, it's a first release
-					current = RELEASED_THIS_FRAME;
-				}
-
-				m_keyTable[i] = current;
-			}
-		}
-
-		void clearTables() {
-			m_mouseKeysTable[(int)MouseButton::WheelUp] = NOT_PRESSED;
-			m_mouseKeysTable[(int)MouseButton::WheelDown] = NOT_PRESSED;
-		}
-
 	public:
-
-		static void update(GLFWwindow* window, int width, int height) {
+		// Main update function, to be called once per frame.
+		static void update(SDL_Window* window)
+		{
 			auto& instance = getInstance();
-			instance.updateTables(window, width, height);
+			instance.m_window = window;
+			SDL_GetWindowSize(window, &instance.m_width, &instance.m_height);
+			instance.pollEventsAndUpdateTables();
 		}
 
-		/// <summary>
-		/// Must be called after update but before render
-		/// </summary>
-		static void clear() {
+		// Main update function, to be called once per frame.
+		static void handleEvent(SDL_Event& event)
+		{
 			auto& instance = getInstance();
-			instance.clearTables();
+			// Handle specific events if needed, e.g., mouse wheel scrolling
+			instance.handleEventImpl(event);
 		}
-
 	};
+
+	inline void Input::handleEventImpl(SDL_Event& event)
+	{
+
+		switch (event.type)
+		{
+			// Handle mouse wheel separately as it's an event, not a persistent state.
+		case SDL_EVENT_MOUSE_WHEEL:
+			if (event.wheel.y > 0)
+			{
+				m_mouseKeysTable[(int)MouseButton::WheelUp] = FIRST_PRESSED;
+			}
+			else if (event.wheel.y < 0)
+			{
+				m_mouseKeysTable[(int)MouseButton::WheelDown] = FIRST_PRESSED;
+			}
+			break;
+			// We can also handle quit events here if desired, though that's typically
+			// done in the main application loop.
+			// case SDL_EVENT_QUIT:
+			//     ...
+			//     break;
+		}
+	}
+
+	// Implementation of the private update logic
+	inline void Input::pollEventsAndUpdateTables()
+	{
+		// Reset states that only last for one frame (e.g., released, first press, wheel)
+		// This loop transitions (FIRST_PRESSED -> IS_PRESSED) and (RELEASED_THIS_FRAME -> NOT_PRESSED)
+		for (int i = 0; i < SDL_SCANCODE_COUNT; ++i)
+		{
+			if (m_keyTable[i] == FIRST_PRESSED)
+			{
+				m_keyTable[i] = IS_PRESSED;
+			}
+			else if (m_keyTable[i] == RELEASED_THIS_FRAME)
+			{
+				m_keyTable[i] = NOT_PRESSED;
+			}
+		}
+		for (int i = 0; i < 5; ++i)
+		{
+			if (m_mouseKeysTable[i] == FIRST_PRESSED)
+			{
+				m_mouseKeysTable[i] = IS_PRESSED;
+			}
+			else if (m_mouseKeysTable[i] == RELEASED_THIS_FRAME)
+			{
+				m_mouseKeysTable[i] = NOT_PRESSED;
+			}
+		}
+		// Mouse wheel is event-driven, so reset its state each frame before polling.
+		m_mouseKeysTable[(int)MouseButton::WheelUp] = NOT_PRESSED;
+		m_mouseKeysTable[(int)MouseButton::WheelDown] = NOT_PRESSED;
+		m_deltaX = 0;
+		m_deltaY = 0;
+
+		// SDL's event loop. We need to process events to update states.
+
+		// Now, poll the current state of all keys and buttons for this frame.
+		// SDL_PumpEvents() is called inside SDL_PollEvent, so all states are up-to-date.
+
+		// --- MOUSE ---
+		SDL_GetMouseState(&m_mouseX, &m_mouseY);
+		SDL_GetRelativeMouseState(&m_deltaX, &m_deltaY);
+
+		const Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
+
+		// Map SDL mouse buttons to our table
+		int sdlButtons[3] = { SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, SDL_BUTTON_MMASK };
+		int ourButtons[3] = { (int)MouseButton::LeftClick, (int)MouseButton::RightClick, (int)MouseButton::MiddleClick };
+
+		for (int i = 0; i < 3; i++)
+		{
+			int current = (mouseState & sdlButtons[i]) ? IS_PRESSED : NOT_PRESSED;
+			int previous = m_mouseKeysTable[ourButtons[i]];
+
+			if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
+			{
+				m_mouseKeysTable[ourButtons[i]] = FIRST_PRESSED;
+			}
+			else if (current == NOT_PRESSED && (previous == IS_PRESSED || previous == FIRST_PRESSED))
+			{
+				m_mouseKeysTable[ourButtons[i]] = RELEASED_THIS_FRAME;
+			}
+		}
+
+		// --- KEYBOARD ---
+		// 1. Declare an integer to hold the number of keys.
+		int numScancodes = 0;
+
+		// 2. Declare a pointer to hold the returned keyboard state array.
+		//    It must be a `const Uint8*`.
+		const bool* keyboardState = SDL_GetKeyboardState(&numScancodes);
+
+		// It's good practice to check if the call succeeded, though it rarely fails.
+		if (!keyboardState)
+		{
+			// Handle error, maybe log it.
+			// SDL_GetError() might have more info.
+			return;
+		}
+
+		for (int i = 0; i < SDL_SCANCODE_COUNT; i++)
+		{
+			int current = keyboardState[i] ? IS_PRESSED : NOT_PRESSED;
+			int previous = m_keyTable[i];
+
+			if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
+			{
+				m_keyTable[i] = FIRST_PRESSED;
+			}
+			else if (current == NOT_PRESSED && (previous == IS_PRESSED || previous == FIRST_PRESSED))
+			{
+				m_keyTable[i] = RELEASED_THIS_FRAME;
+			}
+		}
+	}
 }

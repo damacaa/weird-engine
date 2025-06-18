@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]  # Testing on both Windows and Linux
+        os: [windows-2025, ubuntu-latest]  # Testing on both Windows and Linux
 
     runs-on: ${{ matrix.os }}
 
@@ -34,7 +34,7 @@ jobs:
         run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DSDL_JOYSTICK_GAMEINPUT=OFF -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

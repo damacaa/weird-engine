@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-2022, ubuntu-latest, fedora-latest]
+        os: [windows-2025, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -26,22 +26,12 @@ jobs:
       - name: Ensure submodules are up-to-date
         run: git submodule update --init --recursive
 
-      - name: Check submodule versions
+      - name: Check submodulesversions
         run: git submodule status
-
+      
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: |
-          source /etc/os-release
-          if [[ "$ID" == "ubuntu" || "$ID_LIKE" == *"debian"* ]]; then
-            sudo apt update
-            sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-          elif [[ "$ID" == "fedora" ]]; then
-            sudo dnf builddep SDL3
-          else
-            echo "Unsupported distribution: $ID"
-            exit 1
-          fi
+        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
       - name: Configure CMake
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}

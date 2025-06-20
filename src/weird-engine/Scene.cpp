@@ -13,7 +13,7 @@ namespace WeirdEngine
 	void Scene::handleCollision(CollisionEvent &event, void *userData)
 	{
 		// Unsafe cast! Prone to error.
-		Scene* self = static_cast<Scene*>(userData);
+		Scene *self = static_cast<Scene *>(userData);
 		self->onCollision(event);
 	}
 
@@ -21,7 +21,7 @@ namespace WeirdEngine
 	vec3 g_cameraPosition(0, 1, 20);
 
 	Scene::Scene()
-		: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
 
 		// Custom component managers
@@ -67,12 +67,12 @@ namespace WeirdEngine
 			case WeirdEngine::Scene::RenderMode::RayMarching3D:
 			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
 			{
-				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			{
-				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
 				// fly.targetPosition = g_cameraPosition;
 				break;
 			}
@@ -83,9 +83,9 @@ namespace WeirdEngine
 	}
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
-	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
+	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
 	{
-		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
 		onRender(renderTarget);
@@ -93,7 +93,7 @@ namespace WeirdEngine
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
-	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
+	void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
 	{
 		size_t start_pos = str.find(from);
 		if (start_pos != std::string::npos)
@@ -102,7 +102,7 @@ namespace WeirdEngine
 		}
 	}
 
-	void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
+	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	{
 		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
 		{
@@ -124,7 +124,7 @@ namespace WeirdEngine
 
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
-			auto& shape = componentArray->getDataAtIdx(i);
+			auto &shape = componentArray->getDataAtIdx(i);
 
 			oss << "{";
 
@@ -151,11 +151,19 @@ namespace WeirdEngine
 
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
-			oss << "d = min(d, dist);\n";
+			if (i == componentArray->getSize() - 1)
+			{
+				oss << "d = max(d, -dist);\n";
+			}
+			else
+			{
+				oss << "d = min(d, dist);\n";
+			}
+
 			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
 			oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 			oss << "}\n"
-				<< std::endl;
+					<< std::endl;
 		}
 
 		std::string replacement = oss.str();
@@ -170,14 +178,14 @@ namespace WeirdEngine
 		shader.setFragmentCode(str);
 	}
 
-	void Scene::updateRayMarchingShader(WeirdRenderer::Shader& shader)
+	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
 		m_sdfRenderSystem2D.updatePalette(shader);
 
 		updateCustomShapesShader(shader);
 	}
 
-	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
 	{
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
@@ -207,12 +215,12 @@ namespace WeirdEngine
 		m_ecs.freeRemovedComponents();
 	}
 
-	WeirdRenderer::Camera& Scene::getCamera()
+	WeirdRenderer::Camera &Scene::getCamera()
 	{
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 	}
 
-	std::vector<WeirdRenderer::Light>& Scene::getLigths()
+	std::vector<WeirdRenderer::Light> &Scene::getLigths()
 	{
 		return m_lights;
 	}
@@ -222,7 +230,7 @@ namespace WeirdEngine
 		return m_simulation2D.getSimulationTime();
 	}
 
-	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D *&data, uint32_t &size)
 	{
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
@@ -232,10 +240,10 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(int shapeId, float* variables)
+	Entity Scene::addShape(int shapeId, float *variables)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_distanceFieldId = shapeId;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
@@ -244,10 +252,10 @@ namespace WeirdEngine
 		return entity;
 	}
 
-	Entity Scene::addScreenSpaceShape(int shapeId, float* variables)
+	Entity Scene::addScreenSpaceShape(int shapeId, float *variables)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_screenSpace = true;
 		shape.m_distanceFieldId = shapeId;
 		std::copy(variables, variables + 8, shape.m_parameters);
@@ -259,15 +267,15 @@ namespace WeirdEngine
 
 	void Scene::lookAt(Entity entity)
 	{
-		FlyMovement2D& fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
-		Transform& target = m_ecs.getComponent<Transform>(entity);
+		FlyMovement2D &fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
+		Transform &target = m_ecs.getComponent<Transform>(entity);
 		float oldZ = fly.targetPosition.z;
 
 		fly.targetPosition = target.position;
 		fly.targetPosition.z = oldZ;
 	};
 
-	void Scene::loadScene(std::string& sceneFileContent)
+	void Scene::loadScene(std::string &sceneFileContent)
 	{
 		// json scene = json::parse(sceneFileContent);
 
@@ -279,11 +287,11 @@ namespace WeirdEngine
 		// Create camera object
 		m_mainCamera = m_ecs.createEntity();
 
-		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
+		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.position = g_cameraPosition;
 		t.rotation = vec3(0, 0, -1.0f);
 
-		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		// Add a light
 		WeirdRenderer::Light light;
@@ -418,7 +426,7 @@ namespace WeirdEngine
 
 	constexpr int INVALID_INDEX = -1;
 
-	void Scene::print(const std::string& text)
+	void Scene::print(const std::string &text)
 	{
 		float offset = 0;
 		for (auto i : text)
@@ -433,10 +441,10 @@ namespace WeirdEngine
 				float y = vec2.y;
 
 				Entity entity = m_ecs.createEntity();
-				Transform& t = m_ecs.addComponent<Transform>(entity);
+				Transform &t = m_ecs.addComponent<Transform>(entity);
 				t.position = vec3(x, y, -10.0f);
 
-				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
 				sdfRenderer.materialId = 4 + idx % 12;
 			}
 
@@ -444,10 +452,10 @@ namespace WeirdEngine
 		}
 	}
 
-	void Scene::loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters)
+	void Scene::loadFont(const char *imagePath, int charWidth, int charHeight, const char *characters)
 	{
 		// Set all to INVALID_INDEX initially
-		for (int& val : m_CharLookUpTable)
+		for (int &val : m_CharLookUpTable)
 		{
 			val = INVALID_INDEX;
 		}
@@ -464,7 +472,7 @@ namespace WeirdEngine
 
 		// Load the image
 		int width, height, channels;
-		unsigned char* img = wstbi_load(imagePath, &width, &height, &channels, 0);
+		unsigned char *img = wstbi_load(imagePath, &width, &height, &channels, 0);
 
 		if (img == nullptr)
 		{

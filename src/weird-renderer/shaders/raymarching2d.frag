@@ -152,6 +152,8 @@ vec4 getColor(vec2 p, vec2 uv)
 
   bool bestIsScreenSpace = false;
 
+  /*ADD_SHAPES_HERE*/
+
   for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
   {
 	vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
@@ -193,7 +195,7 @@ vec4 getColor(vec2 p, vec2 uv)
   if(bestIsScreenSpace)
 	return vec4(col, d);
 
-  /*ADD_SHAPES_HERE*/
+  
 
   // Repetition
   // float scale = 1.0 / 10.0;

@@ -337,8 +337,9 @@ namespace WeirdEngine
 	{
 		float d = 1.0f;
 
-		for (DistanceFieldObject2D& obj : m_objects)
+		for (int i = 0; i < m_objects.size(); i++)
 		{
+			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
@@ -352,7 +353,14 @@ namespace WeirdEngine
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			d = std::min(d, dist);
+			if (i == m_objects.size() - 1) // Last object
+			{
+				d = std::max(d, -dist);
+			}
+			else
+			{
+				d = std::min(d, dist);
+			}
 		}
 
 		return d;

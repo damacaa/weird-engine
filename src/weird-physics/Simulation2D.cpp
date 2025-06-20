@@ -452,8 +452,11 @@ namespace WeirdEngine
 			m_forces[col.B] += m_mass[col.B] * penalty;
 
 			// Notify collision callback
-			if (m_collisionCallback)
-				m_collisionCallback(CollisionEvent{ col.A, col.B }, m_callbackUserData);
+			if (m_collisionCallback) 
+			{
+				CollisionEvent event{ col.A, col.B };
+				m_collisionCallback(event, m_callbackUserData);
+			}
 
 #if MEASURE_PERFORMANCE
 			g_collisionCount++;

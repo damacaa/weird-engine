@@ -110,6 +110,6 @@ namespace WeirdEngine
 
 		std::vector<WeirdRenderer::Light> m_lights;
 
-		static void Scene::handleCollision(CollisionEvent& event, void* userData);
+		static void handleCollision(CollisionEvent& event, void* userData);
 	};
 }

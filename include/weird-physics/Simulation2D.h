@@ -1,34 +1,30 @@
 #pragma once
 
-#include<glm/glm.hpp>
-
-#include "../weird-engine/ecs/Entity.h"
-// #include "../weird-engine/ecs/ComponentArray.h"
-#include "../weird-engine/ecs/Components/Transform.h"
-
-#include "../weird-engine/ecs/Components/CustomShape.h"
-
 #include <vector>
 #include <thread>
 #include <unordered_set>
 #include <unordered_map>
 #include <cstdint>
 #include <bitset>
-
-#include "CollisionDetection/UniformGrid2D.h"
-#include "CollisionDetection/DynamicAABBTree2D.h"
-
-#include "CollisionDetection/SpatialHash.h"
-#include "../weird-engine/Input.h"
-#include "CollisionDetection/Octree.h"
-
 #include <chrono>
 #include <immintrin.h>
 #include <mutex>
 #include <set>
+
+#include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
-#include "../weird-engine/math/MathExpressions.h"
+#include "weird-engine/ecs/Entity.h"
+#include "weird-engine/ecs/Components/Transform.h"
+#include "weird-engine/ecs/Components/CustomShape.h"
+#include "weird-engine/Input.h"
+#include "weird-engine/math/MathExpressions.h"
+
+#include "CollisionDetection/UniformGrid2D.h"
+#include "CollisionDetection/DynamicAABBTree2D.h"
+#include "CollisionDetection/SpatialHash.h"
+#include "CollisionDetection/Octree.h"
+
 
 namespace WeirdEngine
 {
@@ -39,7 +35,6 @@ namespace WeirdEngine
 
 	using vec2 = glm::vec2;
 
-
 	class CustomBitset
 	{
 	public:
@@ -47,14 +42,16 @@ namespace WeirdEngine
 
 		void set(SimulationID pos)
 		{
-			if (pos < size) {
+			if (pos < size)
+			{
 				bits[pos / 64] |= (1ULL << (pos % 64));
 			}
 		}
 
 		void clear(SimulationID pos)
 		{
-			if (pos < size) {
+			if (pos < size)
+			{
 				bits[pos / 64] &= ~(1ULL << (pos % 64));
 			}
 		}
@@ -73,12 +70,18 @@ namespace WeirdEngine
 		size_t size;
 	};
 
+	struct CollisionEvent
+	{
+		SimulationID bodyA;
+		SimulationID bodyB;
+		// bool firstContact; TODO
+	};
 
-
+	// Define the function pointer type and include a user data pointer
+	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
 
 	class Simulation2D
 	{
-
 
 	public:
 		Simulation2D(size_t size);
@@ -91,7 +94,6 @@ namespace WeirdEngine
 
 		void startSimulationThread();
 		void stopSimulationThread();
-
 
 		void update(double delta);
 
@@ -117,7 +119,6 @@ namespace WeirdEngine
 		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
 
-
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
 		void updateShape(CustomShape& shape);
@@ -136,30 +137,30 @@ namespace WeirdEngine
 		void solveConstraints();
 		void step(float timeStep);
 
-
 		struct Collision
 		{
 		public:
-			Collision() {
+			Collision()
+			{
 				A = -1;
 				B = -1;
 				AB = vec2();
 			}
 
-
-			Collision(int a, int b, vec2 ab) {
+			Collision(SimulationID a, SimulationID b, vec2 ab)
+			{
 				A = a;
 				B = b;
 				AB = ab;
 			}
 
-
-			bool operator==(const Collision& other) const {
+			bool operator==(const Collision& other) const
+			{
 				return (A == other.A && B == other.B) || (A == other.B && B == other.A);
 			}
 
-			int A;
-			int B;
+			SimulationID A;
+			SimulationID B;
 			vec2 AB;
 		};
 
@@ -199,7 +200,6 @@ namespace WeirdEngine
 				Distance = 1.0f;
 			}
 
-
 			DistanceConstraint(int a, int b, float distance)
 			{
 				A = a;
@@ -222,7 +222,6 @@ namespace WeirdEngine
 				g = 1.0f;
 			}
 
-
 			GravitationalConstraint(int a, int b, float gravity)
 			{
 				A = a;
@@ -235,8 +234,10 @@ namespace WeirdEngine
 			float g;
 		};
 
-		struct CollisionHash {
-			std::size_t operator()(const Collision& s) const {
+		struct CollisionHash
+		{
+			std::size_t operator()(const Collision& s) const
+			{
 				bool flip = s.A < s.B;
 				int first = flip ? s.B : s.A;
 				int last = flip ? s.A : s.B;
@@ -250,7 +251,6 @@ namespace WeirdEngine
 			MethodNaive,
 			MethodTree
 		};
-
 
 		struct DistanceFieldObject2D
 		{
@@ -325,6 +325,17 @@ namespace WeirdEngine
 		bool m_attracttionEnabled = false;
 		bool m_repulsionEnabled = false;
 		bool m_liftEnabled = false;
+
+	private:
+		CollisionCallbackFn m_collisionCallback = nullptr;
+		void* m_callbackUserData = nullptr;
+
+	public:
+		void setCollisionCallback(CollisionCallbackFn callback, void* userData)
+		{
+			m_collisionCallback = callback;
+			m_callbackUserData = userData;
+		}
 	};
 
 }

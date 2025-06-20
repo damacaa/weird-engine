@@ -9,6 +9,7 @@ namespace WeirdEngine
 	public:
 
 		uint16_t m_distanceFieldId;
+		uint16_t m_combinationdId;
 		float m_parameters[8];
 		bool m_isDirty;
 		bool m_screenSpace;

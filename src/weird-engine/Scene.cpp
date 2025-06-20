@@ -151,13 +151,18 @@ namespace WeirdEngine
 
 			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 
-			if (i == componentArray->getSize() - 1)
+			switch (shape.m_combinationdId)
 			{
-				oss << "d = max(d, -dist);\n";
-			}
-			else
-			{
+			case 0: {
 				oss << "d = min(d, dist);\n";
+				break;
+			}
+			case 1: {
+				oss << "d = max(d, -dist);\n";
+				break;
+			}
+			default:
+				break;
 			}
 
 			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
@@ -240,11 +245,12 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(int shapeId, float *variables)
+	Entity Scene::addShape(int shapeId, float* variables, int combination)
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_distanceFieldId = shapeId;
+		shape.m_combinationdId = combination;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
 		// CustomShape shape(shapeId, variables); // check old constructor for references

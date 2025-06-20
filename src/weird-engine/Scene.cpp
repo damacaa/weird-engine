@@ -7,23 +7,21 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
-
 namespace WeirdEngine
 {
+
+	void Scene::handleCollision(WeirdEngine::CollisionEvent& event, void* userData)
+	{
+		// Unsafe cast! Prone to error.
+		Scene* self = static_cast<Scene*>(userData);
+		self->onCollision(event);
+	}
+
 	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
 	vec3 g_cameraPosition(0, 1, 20);
 
 	Scene::Scene()
-		: m_simulation2D(MAX_ENTITIES)
-		, m_sdfRenderSystem(m_ecs)
-		, m_sdfRenderSystem2D(m_ecs)
-		, m_renderSystem(m_ecs)
-		, m_instancedRenderSystem(m_ecs)
-		, m_rbPhysicsSystem2D(m_ecs)
-		, m_physicsInteractionSystem(m_ecs)
-		, m_playerMovementSystem(m_ecs)
-		, m_cameraSystem(m_ecs)
-		, m_runSimulationInThread(true)
+		: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
 
 		// Custom component managers
@@ -44,6 +42,8 @@ namespace WeirdEngine
 		{
 			m_simulation2D.startSimulationThread();
 		}
+
+		m_simulation2D.setCollisionCallback(&handleCollision, this);
 	}
 
 	Scene::~Scene()
@@ -73,15 +73,13 @@ namespace WeirdEngine
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			{
 				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				fly.targetPosition = g_cameraPosition;
+				// fly.targetPosition = g_cameraPosition;
 				break;
 			}
 			default:
 				break;
 			}
 		}
-
-
 	}
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager

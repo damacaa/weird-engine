@@ -27,10 +27,10 @@ namespace WeirdEngine
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
-		Scene(const Scene&) = default;			   // Deleted copy constructor
+		Scene(const Scene&) = default; // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
-		Scene(Scene&&) = default;				   // Defaulted move constructor
-		Scene& operator=(Scene&&) = default;	   // Defaulted move assignment operator
+		Scene(Scene&&) = default; // Defaulted move constructor
+		Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
@@ -39,15 +39,13 @@ namespace WeirdEngine
 
 		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
-		enum  class RenderMode
+		enum class RenderMode
 		{
 			Simple3D,
 			RayMarching3D,
 			RayMarching2D,
 			RayMarchingBoth
 		};
-
-
 
 		RenderMode getRenderMode() const;
 
@@ -56,6 +54,7 @@ namespace WeirdEngine
 		virtual void onStart() = 0;
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
+		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
 		virtual void onDestroy() {};
 
 		ECSManager m_ecs;
@@ -94,7 +93,6 @@ namespace WeirdEngine
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 	private:
-
 		// Char lookup table
 		std::array<int, 256> m_CharLookUpTable{};
 
@@ -108,9 +106,10 @@ namespace WeirdEngine
 
 		bool m_runSimulationInThread;
 
-
 		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
 
 		std::vector<WeirdRenderer::Light> m_lights;
+
+		static void Scene::handleCollision(WeirdEngine::CollisionEvent& event, void* userData);
 	};
 }

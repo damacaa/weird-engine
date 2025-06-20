@@ -336,6 +336,7 @@ namespace WeirdEngine
 	float Simulation2D::map(vec2 p)
 	{
 		float d = 1.0f;
+		float distances[2];
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
@@ -349,17 +350,24 @@ namespace WeirdEngine
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
+			// Distance
 			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			if (i == m_objects.size() - 1) // Last object
+			// Combination
+			switch (obj.combinationId)
 			{
-				d = std::max(d, -dist);
-			}
-			else
-			{
+			case 0: {
 				d = std::min(d, dist);
+				break;
+			}
+			case 1: {
+				d = std::max(d, -dist);
+				break;
+			}
+			default:
+				break;
 			}
 		}
 
@@ -460,7 +468,7 @@ namespace WeirdEngine
 			m_forces[col.B] += m_mass[col.B] * penalty;
 
 			// Notify collision callback
-			if (m_collisionCallback) 
+			if (m_collisionCallback)
 			{
 				CollisionEvent event{ col.A, col.B };
 				m_collisionCallback(event, m_callbackUserData);
@@ -817,7 +825,7 @@ namespace WeirdEngine
 		if (shape.m_screenSpace)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combinationdId, shape.m_parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);

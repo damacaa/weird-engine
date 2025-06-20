@@ -10,7 +10,7 @@
 namespace WeirdEngine
 {
 
-	void Scene::handleCollision(WeirdEngine::CollisionEvent& event, void* userData)
+	void Scene::handleCollision(CollisionEvent &event, void *userData)
 	{
 		// Unsafe cast! Prone to error.
 		Scene* self = static_cast<Scene*>(userData);

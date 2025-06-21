@@ -336,10 +336,14 @@ namespace WeirdEngine
 	float Simulation2D::map(vec2 p)
 	{
 		float d = 1.0f;
-		float distances[2];
+		float currentGroupMinDistance = 1.0f;
+
+		auto currentGroup = 0;
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
+
+
 			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
@@ -350,6 +354,13 @@ namespace WeirdEngine
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
+			if (obj.groupId != currentGroup)
+			{
+				currentGroup = obj.groupId;
+				d = std::min(d, currentGroupMinDistance);
+				currentGroupMinDistance = 100000.0f;
+			}
+
 			// Distance
 			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
@@ -359,17 +370,19 @@ namespace WeirdEngine
 			switch (obj.combinationId)
 			{
 			case 0: {
-				d = std::min(d, dist);
+				currentGroupMinDistance = std::min(currentGroupMinDistance, dist);
 				break;
 			}
 			case 1: {
-				d = std::max(d, -dist);
+				currentGroupMinDistance = std::max(currentGroupMinDistance, -dist);
 				break;
 			}
 			default:
 				break;
 			}
 		}
+
+		d = std::min(d, currentGroupMinDistance);
 
 		return d;
 	}
@@ -825,7 +838,7 @@ namespace WeirdEngine
 		if (shape.m_screenSpace || !shape.m_hasCollision)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combinationdId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combinationdId, shape.m_groupId, shape.m_parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);

@@ -4,9 +4,12 @@
 
 namespace WeirdEngine
 {
+	using ShapeId = std::uint16_t;
+
 	struct CustomShape : public Component
 	{
 	public:
+
 
 		uint16_t m_distanceFieldId;
 		uint16_t m_combinationdId;
@@ -25,5 +28,9 @@ namespace WeirdEngine
 			std::copy(params, params + 8, m_parameters);
 		}
 
+		static constexpr ShapeId CIRCLE = 2;
+		static constexpr ShapeId BOX = 3;
+		static constexpr ShapeId SINE = 0;
+		static constexpr ShapeId STAR = 1;
 	};
 }

@@ -23,7 +23,6 @@ namespace WeirdEngine
 	Scene::Scene()
 			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
-
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
@@ -105,7 +104,7 @@ namespace WeirdEngine
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	{
 		auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t atomCount = sdfBalls->getSize();
+		int32_t ballsCount = sdfBalls->getSize();
 		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 		shader.setUniform("u_customShapeCount", componentArray->getSize());
 
@@ -129,101 +128,100 @@ namespace WeirdEngine
 		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
 
 		int currentGroup = -1;
-
+		std::string groupDistanceVariable;
 
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
+			// Get shape
 			auto &shape = componentArray->getDataAtIdx(i);
 
+			// Get group
 			int group = shape.m_groupId;
 
+			// Start new group if necessary
 			if(group != currentGroup)
 			{
+				// If this is not the first group, combine current group distance with global minDistance
 				if(currentGroup != -1)
 				{
-					oss << "d = min(d" << currentGroup << ", d);\n";
+					oss << "minDist = min("<< groupDistanceVariable <<", minDist);\n";
 				}
 
-				oss << "float d" << group << "= 10000;\n";
+				// Next group
 				currentGroup = group;
+				groupDistanceVariable = "d" + std::to_string(currentGroup);
+
+				// Initialize distance with big value
+				oss << "float " << groupDistanceVariable << "= 10000;\n";
 			}
 
+			// Start shape
 			oss << "{\n";
 
+			// Calculate data position in array
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
 			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
 			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
 
+			// Get distance function
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
+			// Use screen space coords (DEPRECATED)
 			if (shape.m_screenSpace)
 			{
 				replaceSubstring(fragmentCode, "var9", "var11");
 				replaceSubstring(fragmentCode, "var10", "var12");
 			}
 
+			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
-			/*if (shape.m_screenSpace)
-			{
-				oss << "dist = dist * u_uiScale;" << std::endl;
-			}*/
 
-			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
-
+			// Combine shape distance
 			switch (shape.m_combinationdId)
 			{
-			case 0: {
-				oss << "d" << group << " = min(d" << group << ", dist);\n";
+			case 0:
+			{
+				// Scale negative distances
+				oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+				oss << groupDistanceVariable << " = min(" << groupDistanceVariable << ", dist);\n";
+				oss << "col = " << groupDistanceVariable << " == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 				break;
 			}
-			case 1: {
-				oss << "d" << group << " = max(d" << group << ", -dist);\n";
+			case 1:
+			{
+				oss << groupDistanceVariable << " = max(" << groupDistanceVariable << ", -dist);\n";
 				break;
 			}
 			default:
 				break;
 			}
 
-			/*switch (shape.m_combinationdId)
-			{
-				case 0: {
-					oss << "d = min(d, dist);\n";
-					break;
-				}
-				case 1: {
-					oss << "d = max(d, -dist);\n";
-					break;
-				}
-				default:
-					break;
-			}*/
-
-
-
-			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
-			oss << "col = d" << currentGroup << " == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 			oss << "}\n"
 					<< std::endl;
 		}
 
-		// oss << "d" << currentGroup << " = d" << currentGroup << " > 0 ? d" << currentGroup << " : 0.1 * d" << currentGroup << ";" << std::endl;
+		// Combine last group
+		oss << "minDist = min(" << groupDistanceVariable << ", minDist);\n";
 
-		oss << "d = min(d" << currentGroup << ", d);\n";
-
+		// Get string
 		std::string replacement = oss.str();
 
+		// Print
 		std::cout << replacement << std::endl;
 
+		// Replace in shader source code
 		size_t pos = str.find(toReplace);
+		// Check if the substring was found
 		if (pos != std::string::npos)
-		{ // Check if the substring was found
+		{
 			// Replace the substring
 			str.replace(pos, toReplace.length(), replacement);
 		}
 
+		// Set new source code and recompile shader
 		shader.setFragmentCode(str);
 	}
 
@@ -294,7 +292,7 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(int shapeId, float* variables, int combination, bool hasCollision, int group)
+	Entity Scene::addShape(ShapeId shapeId, float* variables, int combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
@@ -307,19 +305,6 @@ namespace WeirdEngine
 		// CustomShape shape(shapeId, variables); // check old constructor for references
 
 		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
-
-		return entity;
-	}
-
-	Entity Scene::addScreenSpaceShape(int shapeId, float *variables)
-	{
-		Entity entity = m_ecs.createEntity();
-		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.m_screenSpace = true;
-		shape.m_distanceFieldId = shapeId;
-		std::copy(variables, variables + 8, shape.m_parameters);
-
-		// CustomShape shape(shapeId, variables); // check old constructor for references
 
 		return entity;
 	}

@@ -104,10 +104,17 @@ namespace WeirdEngine
 
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	{
+		auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
+		int32_t atomCount = sdfBalls->getSize();
+		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
+		shader.setUniform("u_customShapeCount", componentArray->getSize());
+
 		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
 		{
 			return;
 		}
+
+		m_sdfRenderSystem2D.shaderNeedsUpdate() = false;
 
 		std::string str = shader.getFragmentCode();
 
@@ -115,24 +122,39 @@ namespace WeirdEngine
 
 		std::ostringstream oss;
 
-		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t atomCount = atomArray->getSize();
-		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-		shader.setUniform("u_customShapeCount", componentArray->getSize());
 
-		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
+
+		oss << "///////////////////////////////////////////\n";
+
+		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
+
+		int currentGroup = -1;
+
 
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
 			auto &shape = componentArray->getDataAtIdx(i);
 
-			oss << "{";
+			int group = shape.m_groupId;
+
+			if(group != currentGroup)
+			{
+				if(currentGroup != -1)
+				{
+					oss << "d = min(d" << currentGroup << ", d);\n";
+				}
+
+				oss << "float d" << group << "= 10000;\n";
+				currentGroup = group;
+			}
+
+			oss << "{\n";
 
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
 
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
@@ -154,24 +176,46 @@ namespace WeirdEngine
 			switch (shape.m_combinationdId)
 			{
 			case 0: {
-				oss << "d = min(d, dist);\n";
+				oss << "d" << group << " = min(d" << group << ", dist);\n";
 				break;
 			}
 			case 1: {
-				oss << "d = max(d, -dist);\n";
+				oss << "d" << group << " = max(d" << group << ", -dist);\n";
 				break;
 			}
 			default:
 				break;
 			}
 
+			/*switch (shape.m_combinationdId)
+			{
+				case 0: {
+					oss << "d = min(d, dist);\n";
+					break;
+				}
+				case 1: {
+					oss << "d = max(d, -dist);\n";
+					break;
+				}
+				default:
+					break;
+			}*/
+
+
+
 			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
-			oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
+			oss << "col = d" << currentGroup << " == (dist) ? getMaterial(p," << 3 << ") : col;\n";
 			oss << "}\n"
 					<< std::endl;
 		}
 
+		// oss << "d" << currentGroup << " = d" << currentGroup << " > 0 ? d" << currentGroup << " : 0.1 * d" << currentGroup << ";" << std::endl;
+
+		oss << "d = min(d" << currentGroup << ", d);\n";
+
 		std::string replacement = oss.str();
+
+		std::cout << replacement << std::endl;
 
 		size_t pos = str.find(toReplace);
 		if (pos != std::string::npos)
@@ -197,6 +241,11 @@ namespace WeirdEngine
 
 	void Scene::update(double delta, double time)
 	{
+		if (Input::GetKeyDown((Input::V)))
+		{
+			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+		}
+
 		// Update systems
 		if (m_debugFly)
 		{
@@ -245,15 +294,19 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(int shapeId, float* variables, int combination)
+	Entity Scene::addShape(int shapeId, float* variables, int combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_distanceFieldId = shapeId;
 		shape.m_combinationdId = combination;
+		shape.m_hasCollision = hasCollision;
+		shape.m_groupId = group;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
 		// CustomShape shape(shapeId, variables); // check old constructor for references
+
+		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
 
 		return entity;
 	}

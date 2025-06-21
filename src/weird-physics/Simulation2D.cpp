@@ -822,7 +822,7 @@ namespace WeirdEngine
 
 	void Simulation2D::updateShape(CustomShape& shape)
 	{
-		if (shape.m_screenSpace)
+		if (shape.m_screenSpace || !shape.m_hasCollision)
 			return;
 
 		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combinationdId, shape.m_parameters);

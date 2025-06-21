@@ -144,7 +144,8 @@ namespace WeirdEngine
 				// If this is not the first group, combine current group distance with global minDistance
 				if(currentGroup != -1)
 				{
-					oss << "minDist = min("<< groupDistanceVariable <<", minDist);\n";
+					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
+					oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
 				}
 
 				// Next group
@@ -187,7 +188,7 @@ namespace WeirdEngine
 				// Scale negative distances
 				oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 				oss << groupDistanceVariable << " = min(" << groupDistanceVariable << ", dist);\n";
-				oss << "col = " << groupDistanceVariable << " == (dist) ? getMaterial(p," << 3 << ") : col;\n";
+				// oss << "col = " << groupDistanceVariable << " == (dist) ? getMaterial(p," << (3 + currentGroup) % 16 << ") : col;\n";
 				break;
 			}
 			case 1:
@@ -204,7 +205,8 @@ namespace WeirdEngine
 		}
 
 		// Combine last group
-		oss << "minDist = min(" << groupDistanceVariable << ", minDist);\n";
+		oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
+		oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
 
 		// Get string
 		std::string replacement = oss.str();

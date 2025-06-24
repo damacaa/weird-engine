@@ -176,32 +176,36 @@ namespace WeirdEngine
 				replaceSubstring(fragmentCode, "var10", "var12");
 			}
 
+			bool globalEffect = group == 5;
+
 			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
+			// Apply globalEffect logic
+			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
 
 			// Combine shape distance
 			switch (shape.m_combinationdId)
 			{
-			case 0:
-			{
-				// Scale negative distances
-				oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
-				oss << groupDistanceVariable << " = min(" << groupDistanceVariable << ", dist);\n";
-				// oss << "col = " << groupDistanceVariable << " == (dist) ? getMaterial(p," << (3 + currentGroup) % 16 << ") : col;\n";
-				break;
-			}
-			case 1:
-			{
-				oss << groupDistanceVariable << " = max(" << groupDistanceVariable << ", -dist);\n";
-				break;
-			}
-			default:
-				break;
+				case 0:
+				{
+					// Scale negative distances
+					oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
+					break;
+				}
+				case 1:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
+					break;
+				}
+				default:
+					break;
 			}
 
-			oss << "}\n"
-					<< std::endl;
+			// Assign back to the correct target
+			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+			oss << "}\n\n";
 		}
 
 		// Combine last group

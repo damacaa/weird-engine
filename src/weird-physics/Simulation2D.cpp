@@ -366,19 +366,28 @@ namespace WeirdEngine
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
+			bool globalEffect = obj.groupId == 5;
+
+			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
+
 			// Combination
-			switch (obj.combinationId)
-			{
-			case 0: {
-				currentGroupMinDistance = std::min(currentGroupMinDistance, dist);
-				break;
+			switch (obj.combinationId) {
+				case 0: {
+					currentMinDistance = std::min(currentMinDistance, dist);
+					break;
+				}
+				case 1: {
+					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				}
+				default:
+					break;
 			}
-			case 1: {
-				currentGroupMinDistance = std::max(currentGroupMinDistance, -dist);
-				break;
-			}
-			default:
-				break;
+
+			if (globalEffect) {
+				d = currentMinDistance;
+			} else {
+				currentGroupMinDistance = currentMinDistance;
 			}
 		}
 

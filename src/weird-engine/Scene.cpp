@@ -209,8 +209,13 @@ namespace WeirdEngine
 		}
 
 		// Combine last group
-		oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
-		oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
+		if (componentArray->getSize() > 0) 
+		{
+			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";\n";
+			oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
+		}
+
+		// oss << "minDist -= 1.5;\n";
 
 		// Get string
 		std::string replacement = oss.str();

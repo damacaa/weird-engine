@@ -64,7 +64,7 @@ namespace WeirdEngine
 
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
-		Entity addShape(ShapeId shapeId, float* variables, int combination = 0, bool hasCollision = true, int group = 0);
+		Entity addShape(ShapeId shapeId, float* variables, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
 
 		void lookAt(Entity entity);
 

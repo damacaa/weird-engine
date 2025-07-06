@@ -6,13 +6,20 @@ namespace WeirdEngine
 {
 	using ShapeId = std::uint16_t;
 
+	enum class CombinationType : uint16_t
+	{
+		Addition,
+		Subtraction,
+		Intersection,
+		SmoothAddition
+	};
+
 	struct CustomShape : public Component
 	{
 	public:
 
-
 		uint16_t m_distanceFieldId;
-		uint16_t m_combinationdId;
+		CombinationType m_combination;
 		float m_parameters[8];
 		bool m_isDirty;
 		bool m_screenSpace;
@@ -32,5 +39,8 @@ namespace WeirdEngine
 		static constexpr ShapeId BOX = 3;
 		static constexpr ShapeId SINE = 0;
 		static constexpr ShapeId STAR = 1;
+
+		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
+
 	};
 }

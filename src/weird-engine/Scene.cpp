@@ -145,7 +145,7 @@ namespace WeirdEngine
 				if(currentGroup != -1)
 				{
 					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
-					oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
+					oss << "col = getMaterial(p," << 3 << ");}\n";
 				}
 
 				// Next group
@@ -176,7 +176,7 @@ namespace WeirdEngine
 				replaceSubstring(fragmentCode, "var10", "var12");
 			}
 
-			bool globalEffect = group == 5;
+			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
 			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
@@ -185,18 +185,28 @@ namespace WeirdEngine
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
 
 			// Combine shape distance
-			switch (shape.m_combinationdId)
+			switch (shape.m_combination)
 			{
-				case 0:
+				case CombinationType::Addition:
 				{
 					// Scale negative distances
 					oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
 					break;
 				}
-				case 1:
+				case CombinationType::Subtraction:
 				{
 					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+
 					break;
 				}
 				default:
@@ -212,7 +222,7 @@ namespace WeirdEngine
 		if (componentArray->getSize() > 0) 
 		{
 			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";\n";
-			oss << "col = getMaterial(p," << (4 + currentGroup) % 16 << ");}\n";
+			oss << "col = getMaterial(p," << 3 << ");}\n";
 		}
 
 		// oss << "minDist -= 1.5;\n";
@@ -303,12 +313,12 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(ShapeId shapeId, float* variables, int combination, bool hasCollision, int group)
+	Entity Scene::addShape(ShapeId shapeId, float* variables, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_distanceFieldId = shapeId;
-		shape.m_combinationdId = combination;
+		shape.m_combination = combination;
 		shape.m_hasCollision = hasCollision;
 		shape.m_groupId = group;
 		std::copy(variables, variables + 8, shape.m_parameters);

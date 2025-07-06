@@ -333,6 +333,12 @@ namespace WeirdEngine
 		}
 	}
 
+	static float fOpUnionSoft(float a, float b, float r)
+	{
+		float e = std::max(r - std::abs(a - b), 0.0f);
+		return std::min(a, b) - e * e * 0.25 / r;
+	}
+
 	float Simulation2D::map(vec2 p)
 	{
 		float d = 1.0f;
@@ -385,7 +391,7 @@ namespace WeirdEngine
 					break;
 				}
 				case CombinationType::SmoothAddition: {
-
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
 					break;
 				}
 				default:

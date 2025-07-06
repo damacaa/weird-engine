@@ -206,7 +206,7 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition:
 				{
-
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
 					break;
 				}
 				default:

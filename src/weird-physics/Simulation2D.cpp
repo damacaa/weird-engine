@@ -366,18 +366,26 @@ namespace WeirdEngine
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			bool globalEffect = obj.groupId == 5;
+			bool globalEffect = obj.groupId == CustomShape::GLOBAL_GROUP;
 
 			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
 
 			// Combination
 			switch (obj.combinationId) {
-				case 0: {
+				case CombinationType::Addition: {
 					currentMinDistance = std::min(currentMinDistance, dist);
 					break;
 				}
-				case 1: {
+				case CombinationType::Subtraction: {
 					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				}
+				case CombinationType::Intersection: {
+					currentMinDistance = std::max(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::SmoothAddition: {
+
 					break;
 				}
 				default:
@@ -847,7 +855,7 @@ namespace WeirdEngine
 		if (shape.m_screenSpace || !shape.m_hasCollision)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combinationdId, shape.m_groupId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combination, shape.m_groupId, shape.m_parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);

@@ -256,9 +256,11 @@ namespace WeirdEngine
 		{
 			Entity owner;
 			uint16_t distanceFieldId;
+			CombinationType combinationId;
+			uint16_t groupId;
 			float parameters[11];
 
-			DistanceFieldObject2D(Entity owner, uint16_t id, float* params) : distanceFieldId(id), owner(owner)
+			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId, float* params) : distanceFieldId(id), combinationId(combinationId), groupId(groupId), owner(owner)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
 			}

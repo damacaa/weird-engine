@@ -140,75 +140,66 @@ vec3 getMaterial(vec2 p, int materialId)
 
 vec4 getColor(vec2 p, vec2 uv)
 {
-  float d = 100000.0;
+    float minDist = 100000.0;
 
-  vec3 col = vec3(0.0);
-  float minZ = 1000.0f;
+    vec3 col = vec3(0.0);
+    float minZ = 1000.0f;
 
-  float zoom = -u_camMatrix[3].z;
+    float zoom = -u_camMatrix[3].z;
 
-  float aspectRatio = u_resolution.x / u_resolution.y;
-  vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
+    float aspectRatio = u_resolution.x / u_resolution.y;
+    vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
 
-  bool bestIsScreenSpace = false;
+    bool bestIsScreenSpace = false;
 
-  for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
-  {
-	vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
-	int materialId = int(positionSizeMaterial.w);
-	// vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
+    /*ADD_SHAPES_HERE*/
 
-	float z = positionSizeMaterial.z;
-	bool screenSpace = z < 0.0f;
+    if(minDist < EPSILON)
+    {
+        return vec4(col, minDist);
+    }
 
-  
+    for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
+    {
+        vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
+        int materialId = int(positionSizeMaterial.w);
+        // vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
 
-	float objectDist = shape_circle((screenSpace ? u_uiScale * uv : p) - positionSizeMaterial.xy);
+        float z = positionSizeMaterial.z;
 
-	if(z < minZ)
-	{
+        float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
-#if BLEND_SHAPES
+        #if BLEND_SHAPES
 
-	d = fOpUnionSoft(objectDist, d, u_k);
-	float delta = 1 - (max(u_k - abs(objectDist - d), 0.0) / u_k); // After new d is calculated
-	col = mix(getMaterial(p, materialId), col, delta);
+        minDist = fOpUnionSoft(objectDist, minDist, u_k);
+        float delta = 1 - (max(u_k - abs(objectDist - minDist), 0.0) / u_k); // After new d is calculated
+        col = mix(getMaterial(p, materialId), col, delta);
 
-#else
+        #else
 
-	d = min(d, objectDist);
+        if(objectDist < minDist)
+        {
+            minDist = objectDist;
+            col = getMaterial(positionSizeMaterial.xy, materialId);
+            minZ = z;
 
-	if(objectDist < 0)
-	{
-		col = getMaterial(positionSizeMaterial.xy, materialId);
-		minZ = z;
-		bestIsScreenSpace = screenSpace;
-	}
+            if(minDist < EPSILON)
+            {
+                break;
+            }
+        }
 
-#endif
+        #endif
 
-	}
-  }
+    }
 
-  if(bestIsScreenSpace)
-	return vec4(col, d);
+    // Set bacu_kground color
+    // vec3 bacu_kground = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
+    float pixel = 0.2 / u_resolution.y;
+    vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
+    col = minDist > 0.0 ? background : col;
 
-  /*ADD_SHAPES_HERE*/
-
-  // Repetition
-  // float scale = 1.0 / 10.0;
-  // vec2 pp = p + 5.0;
-  // vec2 roundPos = ((scale * pp) - round(scale * pp)) * 10.0;
-  // roundPos.x += cos(u_time + round(0.1 * pp.x));
-  // roundPos.y += sin(u_time + round(0.1 * pp.x));
-
-  // Set bacu_kground color
-  // vec3 bacu_kground = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
-  float pixel = 0.2 / u_resolution.y;
-  vec3 bacu_kground = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
-  col = d > 0.0 ? bacu_kground : col;
-
-  return vec4(col, d);
+    return vec4(col, minDist);
 }
 
 void main()

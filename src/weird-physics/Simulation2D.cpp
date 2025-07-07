@@ -333,12 +333,24 @@ namespace WeirdEngine
 		}
 	}
 
+	static float fOpUnionSoft(float a, float b, float r)
+	{
+		float e = std::max(r - std::abs(a - b), 0.0f);
+		return std::min(a, b) - e * e * 0.25 / r;
+	}
+
 	float Simulation2D::map(vec2 p)
 	{
 		float d = 1.0f;
+		float currentGroupMinDistance = 1.0f;
 
-		for (DistanceFieldObject2D& obj : m_objects)
+		auto currentGroup = 0;
+
+		for (int i = 0; i < m_objects.size(); i++)
 		{
+
+
+			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
@@ -348,12 +360,52 @@ namespace WeirdEngine
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
+			if (obj.groupId != currentGroup)
+			{
+				currentGroup = obj.groupId;
+				d = std::min(d, currentGroupMinDistance);
+				currentGroupMinDistance = 100000.0f;
+			}
+
+			// Distance
 			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			d = std::min(d, dist);
+			bool globalEffect = obj.groupId == CustomShape::GLOBAL_GROUP;
+
+			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
+
+			// Combination
+			switch (obj.combinationId) {
+				case CombinationType::Addition: {
+					currentMinDistance = std::min(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::Subtraction: {
+					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				}
+				case CombinationType::Intersection: {
+					currentMinDistance = std::max(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::SmoothAddition: {
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				default:
+					break;
+			}
+
+			if (globalEffect) {
+				d = currentMinDistance;
+			} else {
+				currentGroupMinDistance = currentMinDistance;
+			}
 		}
+
+		d = std::min(d, currentGroupMinDistance);
 
 		return d;
 	}
@@ -452,7 +504,7 @@ namespace WeirdEngine
 			m_forces[col.B] += m_mass[col.B] * penalty;
 
 			// Notify collision callback
-			if (m_collisionCallback) 
+			if (m_collisionCallback)
 			{
 				CollisionEvent event{ col.A, col.B };
 				m_collisionCallback(event, m_callbackUserData);
@@ -806,10 +858,10 @@ namespace WeirdEngine
 
 	void Simulation2D::updateShape(CustomShape& shape)
 	{
-		if (shape.m_screenSpace)
+		if (shape.m_screenSpace || !shape.m_hasCollision)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combination, shape.m_groupId, shape.m_parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);

@@ -181,6 +181,9 @@ namespace WeirdEngine
 			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
+			// Scale negative distances
+			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+
 			// Apply globalEffect logic
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
 
@@ -189,8 +192,6 @@ namespace WeirdEngine
 			{
 				case CombinationType::Addition:
 				{
-					// Scale negative distances
-					oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
 					break;
 				}

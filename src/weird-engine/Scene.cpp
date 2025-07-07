@@ -13,7 +13,7 @@ namespace WeirdEngine
 	void Scene::handleCollision(CollisionEvent &event, void *userData)
 	{
 		// Unsafe cast! Prone to error.
-		Scene* self = static_cast<Scene*>(userData);
+		Scene *self = static_cast<Scene *>(userData);
 		self->onCollision(event);
 	}
 
@@ -21,9 +21,8 @@ namespace WeirdEngine
 	vec3 g_cameraPosition(0, 1, 20);
 
 	Scene::Scene()
-		: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
-
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
@@ -67,12 +66,12 @@ namespace WeirdEngine
 			case WeirdEngine::Scene::RenderMode::RayMarching3D:
 			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
 			{
-				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			{
-				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
 				// fly.targetPosition = g_cameraPosition;
 				break;
 			}
@@ -83,9 +82,9 @@ namespace WeirdEngine
 	}
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
-	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
+	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
 	{
-		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
 		onRender(renderTarget);
@@ -93,7 +92,7 @@ namespace WeirdEngine
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
-	void replaceSubstring(std::string& str, const std::string& from, const std::string& to)
+	void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
 	{
 		size_t start_pos = str.find(from);
 		if (start_pos != std::string::npos)
@@ -102,12 +101,19 @@ namespace WeirdEngine
 		}
 	}
 
-	void Scene::updateCustomShapesShader(WeirdRenderer::Shader& shader)
+	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	{
+		auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
+		int32_t ballsCount = sdfBalls->getSize();
+		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
+		shader.setUniform("u_customShapeCount", componentArray->getSize());
+
 		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
 		{
 			return;
 		}
+
+		m_sdfRenderSystem2D.shaderNeedsUpdate() = false;
 
 		std::string str = shader.getFragmentCode();
 
@@ -115,75 +121,150 @@ namespace WeirdEngine
 
 		std::ostringstream oss;
 
-		auto atomArray = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t atomCount = atomArray->getSize();
-		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-		shader.setUniform("u_customShapeCount", componentArray->getSize());
 
-		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);";
+
+		oss << "///////////////////////////////////////////\n";
+
+		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
+
+		int currentGroup = -1;
+		std::string groupDistanceVariable;
 
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
-			auto& shape = componentArray->getDataAtIdx(i);
+			// Get shape
+			auto &shape = componentArray->getDataAtIdx(i);
 
-			oss << "{";
+			// Get group
+			int group = shape.m_groupId;
 
+			// Start new group if necessary
+			if(group != currentGroup)
+			{
+				// If this is not the first group, combine current group distance with global minDistance
+				if(currentGroup != -1)
+				{
+					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
+					oss << "col = getMaterial(p," << 3 << ");}\n";
+				}
+
+				// Next group
+				currentGroup = group;
+				groupDistanceVariable = "d" + std::to_string(currentGroup);
+
+				// Initialize distance with big value
+				oss << "float " << groupDistanceVariable << "= 10000;\n";
+			}
+
+			// Start shape
+			oss << "{\n";
+
+			// Calculate data position in array
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
 
+			// Get distance function
 			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
 
+			// Use screen space coords (DEPRECATED)
 			if (shape.m_screenSpace)
 			{
 				replaceSubstring(fragmentCode, "var9", "var11");
 				replaceSubstring(fragmentCode, "var10", "var12");
 			}
 
+			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
+
+			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
-			/*if (shape.m_screenSpace)
+			// Apply globalEffect logic
+			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
+
+			// Combine shape distance
+			switch (shape.m_combination)
 			{
-				oss << "dist = dist * u_uiScale;" << std::endl;
-			}*/
+				case CombinationType::Addition:
+				{
+					// Scale negative distances
+					oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
+					break;
+				}
+				case CombinationType::Subtraction:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
+					break;
+				}
+				default:
+					break;
+			}
 
-			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
-
-			oss << "d = min(d, dist);\n";
-			// oss << "col = d == (dist) ? getMaterial(p," << (i % 12) + 4 << ") : col;\n";
-			oss << "col = d == (dist) ? getMaterial(p," << 3 << ") : col;\n";
-			oss << "}\n"
-				<< std::endl;
+			// Assign back to the correct target
+			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+			oss << "}\n\n";
 		}
 
+		// Combine last group
+		if (componentArray->getSize() > 0) 
+		{
+			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";\n";
+			oss << "col = getMaterial(p," << 3 << ");}\n";
+		}
+
+		// oss << "minDist -= 1.5;\n";
+
+		// Get string
 		std::string replacement = oss.str();
 
+		// Print
+		std::cout << replacement << std::endl;
+
+		// Replace in shader source code
 		size_t pos = str.find(toReplace);
+		// Check if the substring was found
 		if (pos != std::string::npos)
-		{ // Check if the substring was found
+		{
 			// Replace the substring
 			str.replace(pos, toReplace.length(), replacement);
 		}
 
+		// Set new source code and recompile shader
 		shader.setFragmentCode(str);
 	}
 
-	void Scene::updateRayMarchingShader(WeirdRenderer::Shader& shader)
+	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
 		m_sdfRenderSystem2D.updatePalette(shader);
 
 		updateCustomShapesShader(shader);
 	}
 
-	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
 	{
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
 	void Scene::update(double delta, double time)
 	{
+		if (Input::GetKeyDown((Input::V)))
+		{
+			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+		}
+
 		// Update systems
 		if (m_debugFly)
 		{
@@ -207,12 +288,12 @@ namespace WeirdEngine
 		m_ecs.freeRemovedComponents();
 	}
 
-	WeirdRenderer::Camera& Scene::getCamera()
+	WeirdRenderer::Camera &Scene::getCamera()
 	{
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 	}
 
-	std::vector<WeirdRenderer::Light>& Scene::getLigths()
+	std::vector<WeirdRenderer::Light> &Scene::getLigths()
 	{
 		return m_lights;
 	}
@@ -222,7 +303,7 @@ namespace WeirdEngine
 		return m_simulation2D.getSimulationTime();
 	}
 
-	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
+	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D *&data, uint32_t &size)
 	{
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
@@ -232,42 +313,34 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(int shapeId, float* variables)
+	Entity Scene::addShape(ShapeId shapeId, float* variables, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.m_distanceFieldId = shapeId;
+		shape.m_combination = combination;
+		shape.m_hasCollision = hasCollision;
+		shape.m_groupId = group;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
 		// CustomShape shape(shapeId, variables); // check old constructor for references
 
-		return entity;
-	}
-
-	Entity Scene::addScreenSpaceShape(int shapeId, float* variables)
-	{
-		Entity entity = m_ecs.createEntity();
-		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.m_screenSpace = true;
-		shape.m_distanceFieldId = shapeId;
-		std::copy(variables, variables + 8, shape.m_parameters);
-
-		// CustomShape shape(shapeId, variables); // check old constructor for references
+		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
 
 		return entity;
 	}
 
 	void Scene::lookAt(Entity entity)
 	{
-		FlyMovement2D& fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
-		Transform& target = m_ecs.getComponent<Transform>(entity);
+		FlyMovement2D &fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
+		Transform &target = m_ecs.getComponent<Transform>(entity);
 		float oldZ = fly.targetPosition.z;
 
 		fly.targetPosition = target.position;
 		fly.targetPosition.z = oldZ;
 	};
 
-	void Scene::loadScene(std::string& sceneFileContent)
+	void Scene::loadScene(std::string &sceneFileContent)
 	{
 		// json scene = json::parse(sceneFileContent);
 
@@ -279,11 +352,11 @@ namespace WeirdEngine
 		// Create camera object
 		m_mainCamera = m_ecs.createEntity();
 
-		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
+		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.position = g_cameraPosition;
 		t.rotation = vec3(0, 0, -1.0f);
 
-		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		// Add a light
 		WeirdRenderer::Light light;
@@ -418,7 +491,7 @@ namespace WeirdEngine
 
 	constexpr int INVALID_INDEX = -1;
 
-	void Scene::print(const std::string& text)
+	void Scene::print(const std::string &text)
 	{
 		float offset = 0;
 		for (auto i : text)
@@ -433,10 +506,10 @@ namespace WeirdEngine
 				float y = vec2.y;
 
 				Entity entity = m_ecs.createEntity();
-				Transform& t = m_ecs.addComponent<Transform>(entity);
+				Transform &t = m_ecs.addComponent<Transform>(entity);
 				t.position = vec3(x, y, -10.0f);
 
-				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
 				sdfRenderer.materialId = 4 + idx % 12;
 			}
 
@@ -444,10 +517,10 @@ namespace WeirdEngine
 		}
 	}
 
-	void Scene::loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters)
+	void Scene::loadFont(const char *imagePath, int charWidth, int charHeight, const char *characters)
 	{
 		// Set all to INVALID_INDEX initially
-		for (int& val : m_CharLookUpTable)
+		for (int &val : m_CharLookUpTable)
 		{
 			val = INVALID_INDEX;
 		}
@@ -464,7 +537,7 @@ namespace WeirdEngine
 
 		// Load the image
 		int width, height, channels;
-		unsigned char* img = wstbi_load(imagePath, &width, &height, &channels, 0);
+		unsigned char *img = wstbi_load(imagePath, &width, &height, &channels, 0);
 
 		if (img == nullptr)
 		{

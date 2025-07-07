@@ -98,7 +98,7 @@ namespace WeirdEngine
 			return closestIndex;
 		}
 
-		bool shaderNeedsUpdate() const
+		bool& shaderNeedsUpdate()
 		{
 			return m_customShapesNeedUpdate;
 		}

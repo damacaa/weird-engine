@@ -27,10 +27,10 @@ namespace WeirdEngine
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
-		Scene(const Scene&) = default; // Deleted copy constructor
+		Scene(const Scene&) = default;						 // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
-		Scene(Scene&&) = default; // Defaulted move constructor
-		Scene& operator=(Scene&&) = default; // Defaulted move assignment operator
+		Scene(Scene&&) = default;								 // Defaulted move constructor
+		Scene& operator=(Scene&&) = default;			 // Defaulted move assignment operator
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
@@ -64,8 +64,7 @@ namespace WeirdEngine
 
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
-		Entity addShape(int shapeId, float* variables);
-		Entity addScreenSpaceShape(int shapeId, float* variables);
+		Entity addShape(ShapeId shapeId, float* variables, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
 
 		void lookAt(Entity entity);
 

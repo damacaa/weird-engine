@@ -181,8 +181,7 @@ namespace WeirdEngine
 			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
-			// Scale negative distances
-			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+
 
 			// Apply globalEffect logic
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
@@ -226,6 +225,11 @@ namespace WeirdEngine
 			oss << "col = getMaterial(p," << 3 << ");}\n";
 		}
 
+		// Scale negative distances
+		oss << "minDist = minDist > 0 ? minDist : 0.1 * minDist;" << std::endl;
+
+		oss << "col.x = minDist; col.y = 5;" << std::endl;
+
 		// oss << "minDist -= 1.5;\n";
 
 		// Get string
@@ -249,7 +253,7 @@ namespace WeirdEngine
 
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
-		m_sdfRenderSystem2D.updatePalette(shader);
+		// m_sdfRenderSystem2D.updatePalette(shader);
 
 		updateCustomShapesShader(shader);
 	}

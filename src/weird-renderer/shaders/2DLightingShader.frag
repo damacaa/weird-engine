@@ -1,10 +1,10 @@
 #version 330 core
 
-#define DITHERING 1
-#define SHADOWS_ENABLED 1
-#define SOFT_SHADOWS 0
+#define SHADOWS_ENABLED
+// #define SOFT_SHADOWS
+#define DITHERING
 
-#define DEBUG_SHOW_DISTANCE 0
+// #define DEBUG_SHOW_DISTANCE
 
 // Constants
 const int MAX_STEPS = 1000;
@@ -15,6 +15,13 @@ const float FAR = 1.2f;
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
+// Inputs from vertex shader
+in vec3 v_worldPos;
+in vec3 v_normal;
+in vec3 v_color;
+in vec2 v_texCoord;
+
+uniform mat4 u_camMatrix;
 uniform vec2 u_resolution;
 uniform float u_time;
 
@@ -22,31 +29,31 @@ uniform sampler2D t_colorTexture;
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 
-#if (DITHERING == 1)
+#ifdef DITHERING
 
 uniform float u_spread = .025;
 uniform int u_colorCount = 16;
 
 // Dithering and posterizing
 uniform int u_bayer2[2 * 2] = int[2 * 2](
-    0, 2,
-    3, 1);
+0, 2,
+3, 1);
 
 uniform int u_bayer4[4 * 4] = int[4 * 4](
-    0, 8, 2, 10,
-    12, 4, 14, 6,
-    3, 11, 1, 9,
-    15, 7, 13, 5);
+0, 8, 2, 10,
+12, 4, 14, 6,
+3, 11, 1, 9,
+15, 7, 13, 5);
 
 uniform int u_bayer8[8 * 8] = int[8 * 8](
-    0, 32, 8, 40, 2, 34, 10, 42,
-    48, 16, 56, 24, 50, 18, 58, 26,
-    12, 44, 4, 36, 14, 46, 6, 38,
-    60, 28, 52, 20, 62, 30, 54, 22,
-    3, 35, 11, 43, 1, 33, 9, 41,
-    51, 19, 59, 27, 49, 17, 57, 25,
-    15, 47, 7, 39, 13, 45, 5, 37,
-    63, 31, 55, 23, 61, 29, 53, 21);
+0, 32, 8, 40, 2, 34, 10, 42,
+48, 16, 56, 24, 50, 18, 58, 26,
+12, 44, 4, 36, 14, 46, 6, 38,
+60, 28, 52, 20, 62, 30, 54, 22,
+3, 35, 11, 43, 1, 33, 9, 41,
+51, 19, 59, 27, 49, 17, 57, 25,
+15, 47, 7, 39, 13, 45, 5, 37,
+63, 31, 55, 23, 61, 29, 53, 21);
 
 float Getu_bayer2(int x, int y)
 {
@@ -107,7 +114,7 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 float render(vec2 uv)
 {
 
-#if SHADOWS_ENABLED
+#ifdef SHADOWS_ENABLED
 
   // Point light
   vec2 rd = normalize(vec2(1.0) - uv);
@@ -138,7 +145,7 @@ float render(vec2 uv)
 
   // return (10.0 * minD)+0.5;
 
-#if SOFT_SHADOWS
+#ifdef SOFT_SHADOWS
   return mix(0.85, 1.0, d / FAR);
 #else
   return d < FAR ? 0.85 : 1.0;
@@ -157,7 +164,7 @@ void main()
   vec4 color = texture(t_colorTexture, screenUV);
   float distance = color.w;
 
-#if DEBUG_SHOW_DISTANCE
+#ifdef DEBUG_SHOW_DISTANCE
 
   if (abs(distance) < (0.5 / u_resolution.x))
   {
@@ -179,9 +186,7 @@ void main()
   float light = render(screenUV);
   vec3 col = light * color.xyz;
 
-  // col = vec3(light);
-
-#if (DITHERING == 1)
+  #ifdef DITHERING
 
   int x = int(gl_FragCoord.x);
   int y = int(gl_FragCoord.y);
@@ -191,9 +196,8 @@ void main()
   col.g = floor((u_colorCount - 1.0f) * col.g + 0.5) / (u_colorCount - 1.0f);
   col.b = floor((u_colorCount - 1.0f) * col.b + 0.5) / (u_colorCount - 1.0f);
 
-#endif
+  #endif
 
-  // FragColor = vec4(vec3(light), 1.0);
+
   FragColor = vec4(col.xyz, 1.0);
-  // FragColor = vec4(vec3(5.0*map(screenUV)), 1.0);
 }

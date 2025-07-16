@@ -21,10 +21,10 @@ uniform float u_time;
 
 // Custom
 
-#define BLEND_SHAPES 0
-#define MOTION_BLUR 1
+#define BLEND_SHAPES 1
+#define MOTION_BLUR 0
 
-uniform float u_k = 0.25;
+uniform float u_k = 1.0;
 // Uniforms
 uniform sampler2D t_colorTexture;
 
@@ -138,26 +138,23 @@ vec3 getMaterial(vec2 p, int materialId)
   return u_staticColors[materialId];
 }
 
-vec4 getColor(vec2 p, vec2 uv)
+vec3 getColor(vec2 p, vec2 uv)
 {
     float minDist = 100000.0;
+    int finalMaterialId = 3;
+    float mask = 1.0;
 
-    vec3 col = vec3(0.0);
-    float minZ = 1000.0f;
-
-    float zoom = -u_camMatrix[3].z;
-
-    float aspectRatio = u_resolution.x / u_resolution.y;
-    vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
-
-    bool bestIsScreenSpace = false;
+    vec3 col;
 
     /*ADD_SHAPES_HERE*/
 
     if(minDist < EPSILON)
     {
-        return vec4(col, minDist);
+        return vec3(minDist, finalMaterialId, 0.0);
     }
+
+    float shapeDist = minDist;
+    minDist = 100000.0;
 
     for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
     {
@@ -165,41 +162,33 @@ vec4 getColor(vec2 p, vec2 uv)
         int materialId = int(positionSizeMaterial.w);
         // vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
 
-        float z = positionSizeMaterial.z;
-
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
+
+        // Inside ball mask is set to 0
+        mask = objectDist <= 0 ? 0.0 : mask;
+
+        finalMaterialId = objectDist <= minDist || objectDist < 0.0 ? materialId : finalMaterialId;
 
         #if BLEND_SHAPES
 
         minDist = fOpUnionSoft(objectDist, minDist, u_k);
-        float delta = 1 - (max(u_k - abs(objectDist - minDist), 0.0) / u_k); // After new d is calculated
-        col = mix(getMaterial(p, materialId), col, delta);
 
         #else
 
-        if(objectDist < minDist)
-        {
-            minDist = objectDist;
-            col = getMaterial(positionSizeMaterial.xy, materialId);
-            minZ = z;
+        minDist = min(minDist, objectDist);
 
-            if(minDist < EPSILON)
-            {
-                break;
-            }
+        if(minDist < EPSILON)
+        {
+            break;
         }
 
         #endif
 
     }
 
-    // Set bacu_kground color
-    // vec3 bacu_kground = mix(u_staticColors[2], u_staticColors[3], mod(floor(.1 * p.x) + floor(.1 * p.y), 2.0));
-    float pixel = 0.2 / u_resolution.y;
-    vec3 background = mix(u_staticColors[3], u_staticColors[2], min(fract(0.1 * p.x), fract(0.1 * p.y)) > pixel * zoom ? 1.0 : 0.0);
-    col = minDist > 0.0 ? background : col;
+    minDist = min(minDist, shapeDist);
 
-    return vec4(col, minDist);
+    return vec3(minDist, finalMaterialId, mask);
 }
 
 void main()
@@ -212,24 +201,27 @@ void main()
   float zoom = -u_camMatrix[3].z;
   vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-  vec4 color = getColor(pos, v_texCoord); // Same as uv but (0, 0) is bottom left corner
-  float distance = color.w;
+  vec3 result = getColor(pos, v_texCoord); // Same as uv but (0, 0) is bottom left corner
+  float distance = result.x;
 
   float finalDistance = 0.6667 * 0.5 * distance / zoom;
+
+
 
 #if MOTION_BLUR
 
   vec2 screenUV = v_texCoord;
   vec4 previousColor = texture(t_colorTexture, screenUV.xy);
-  float previousDistance = previousColor.w;
+  float previousDistance = previousColor.x;
+    int previousMaterial = int(previousColor.y);
 
   previousDistance += u_blendIterations * 0.00035;
   previousDistance = mix(finalDistance, previousDistance, 0.95);
   // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
-  FragColor = previousDistance < finalDistance ? vec4(previousColor.xyz, previousDistance) : vec4(color.xyz, finalDistance);
-  if (FragColor.w > 0.0)
-	FragColor = vec4(color.xyz, FragColor.w);
+  FragColor = previousDistance < finalDistance ? vec4(previousDistance, previousMaterial, result.z, 0) : vec4(finalDistance, result.y, result.z, 0);
+  if (FragColor.x > 0.0) // Distance
+	FragColor = vec4(finalDistance, previousMaterial, result.z, 0);
 
   // FragColor = previousColor;
 
@@ -237,7 +229,7 @@ void main()
 
 #else
 
-  FragColor = vec4(color.xyz, finalDistance);
+    FragColor = vec4(finalDistance, result.y, result.z, 0);
 
 #endif
 

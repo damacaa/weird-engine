@@ -1,5 +1,7 @@
 #version 330 core
 
+#define BLEND_SHAPES 1
+#define MOTION_BLUR 1
 
 out vec4 FragColor;
 
@@ -18,14 +20,7 @@ uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
 
 uniform float u_time;
-
-// Custom
-
-#define BLEND_SHAPES 1
-#define MOTION_BLUR 0
-
 uniform float u_k = 1.0;
-// Uniforms
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
@@ -156,6 +151,8 @@ vec3 getColor(vec2 p, vec2 uv)
     float shapeDist = minDist;
     minDist = 100000.0;
 
+    float inv_k = 1.0 / u_k;
+
     for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
     {
         vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
@@ -171,7 +168,7 @@ vec3 getColor(vec2 p, vec2 uv)
 
         #if BLEND_SHAPES
 
-        minDist = fOpUnionSoft(objectDist, minDist, u_k);
+        minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
 
         #else
 
@@ -195,7 +192,7 @@ void main()
 {
   // FragColor = vec4(u_customShapeCount);
   // return;
-  
+
   vec2 uv = (2.0f * v_texCoord) - 1.0f;
 
   float zoom = -u_camMatrix[3].z;
@@ -212,6 +209,7 @@ void main()
 
   vec2 screenUV = v_texCoord;
   vec4 previousColor = texture(t_colorTexture, screenUV.xy);
+
   float previousDistance = previousColor.x;
     int previousMaterial = int(previousColor.y);
 
@@ -219,9 +217,9 @@ void main()
   previousDistance = mix(finalDistance, previousDistance, 0.95);
   // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
-  FragColor = previousDistance < finalDistance ? vec4(previousDistance, previousMaterial, result.z, 0) : vec4(finalDistance, result.y, result.z, 0);
-  if (FragColor.x > 0.0) // Distance
-	FragColor = vec4(finalDistance, previousMaterial, result.z, 0);
+    finalDistance = min(previousDistance, finalDistance);
+
+
 
   // FragColor = previousColor;
 
@@ -229,8 +227,10 @@ void main()
 
 #else
 
-    FragColor = vec4(finalDistance, result.y, result.z, 0);
+
 
 #endif
+
+    FragColor = vec4(finalDistance, result.y, result.z, 0);
 
 }

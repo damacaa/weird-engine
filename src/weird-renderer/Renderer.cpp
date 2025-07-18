@@ -102,6 +102,8 @@ namespace WeirdEngine
 
 			m_2DMaterialColorShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialColorShader.frag");
 
+			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
+
 			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLigh"
 																			 "tingShader.frag");
 			m_postProcessingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "PostProcessShader.frag");
@@ -133,6 +135,15 @@ namespace WeirdEngine
 			m_2dColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DColorRender = RenderTarget(false);
 			m_2DColorRender.bindColorTextureToFrameBuffer(m_2dColorTexture);
+
+			m_postProcessRenderFront = RenderTarget(false);
+			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
+
+			m_postProcessRenderBack = RenderTarget(false);
+			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
+
+			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
+			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
 
 			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DPostProcessRender = RenderTarget(false);
@@ -274,6 +285,40 @@ namespace WeirdEngine
 
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
+				}
+
+				{
+					m_bloomRenderTarget->bind();
+					m_brightFilterShader.use();
+					m_brightFilterShader.setUniform("t_colorTexture", 0);
+					renderTarget.getColorAttachment()->bind(0);
+
+					m_renderPlane.draw(m_brightFilterShader);
+
+					m_blurShader.use();
+					m_blurShader.setUniform("t_colorTexture", 0);
+
+					bool horizontal = true;
+					static int amount = 10;
+
+					for (unsigned int i = 0; i < amount; i++)
+					{
+						m_postProcessDoubleBuffer[horizontal]->bind();
+
+						m_blurShader.setUniform("u_horizontal", horizontal);
+						if (i == 0)
+						{
+							m_brightPassTexture->bind(0);
+						}
+						else
+						{
+							m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+						}
+
+						m_renderPlane.draw(m_blurShader);
+
+						horizontal = !horizontal;
+					}
 				}
 
 				// 2D Lighting

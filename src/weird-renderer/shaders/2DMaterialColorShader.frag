@@ -4,7 +4,6 @@
 
 // Constants
 
-
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
@@ -75,7 +74,7 @@ void main()
     blendedColor /= totalWeight;
 
     // Decide whether to use blended or background
-    c = distance <= 0.0 ? mix(c, blendedColor, mask) : background;
+    c = false || distance <= 0.0 ? mix(c, blendedColor, mask) : background;
 
     FragColor = vec4(c, distance);
 }

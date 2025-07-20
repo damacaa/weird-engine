@@ -26,6 +26,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 uniform sampler2D t_colorTexture;
+uniform sampler2D t_distanceTexture;
+uniform sampler2D t_backgroundTexture;
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 
@@ -74,7 +76,7 @@ float Getu_bayer8(int x, int y)
 
 float map(vec2 p)
 {
-  return texture(t_colorTexture, p).w;
+  return texture(t_distanceTexture, p).x;
 }
 
 float rayMarch(vec2 ro, vec2 rd, out float minDistance)
@@ -161,8 +163,11 @@ float render(vec2 uv)
 void main()
 {
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-  vec4 color = texture(t_colorTexture, screenUV);
-  float distance = color.w;
+  vec3 color = texture(t_colorTexture, screenUV).rgb;
+  vec4 data = texture(t_distanceTexture, screenUV);
+  float distance = data.x;
+
+  color = false || distance <= 0.0 ? color : vec3(0.3);
 
 #ifdef DEBUG_SHOW_DISTANCE
 

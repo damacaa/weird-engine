@@ -136,9 +136,11 @@ namespace WeirdEngine
 			m_2DColorRender = RenderTarget(false);
 			m_2DColorRender.bindColorTextureToFrameBuffer(m_2dColorTexture);
 
+			m_postProcessTextureFront = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderFront = RenderTarget(false);
 			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
 
+			m_postProcessTextureBack = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderBack = RenderTarget(false);
 			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
 
@@ -287,35 +289,31 @@ namespace WeirdEngine
 					m_shapes2D.unbind();
 				}
 
+				bool horizontal = true;
 				{
-					m_bloomRenderTarget->bind();
-					m_brightFilterShader.use();
-					m_brightFilterShader.setUniform("t_colorTexture", 0);
-					renderTarget.getColorAttachment()->bind(0);
+					m_2DMaterialBlendShader.use();
+					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
 
-					m_renderPlane.draw(m_brightFilterShader);
 
-					m_blurShader.use();
-					m_blurShader.setUniform("t_colorTexture", 0);
 
-					bool horizontal = true;
+
 					static int amount = 10;
 
 					for (unsigned int i = 0; i < amount; i++)
 					{
 						m_postProcessDoubleBuffer[horizontal]->bind();
 
-						m_blurShader.setUniform("u_horizontal", horizontal);
+						m_2DMaterialBlendShader.setUniform("u_horizontal", horizontal);
 						if (i == 0)
 						{
-							m_brightPassTexture->bind(0);
+							m_2dColorTexture.bind(0);
 						}
 						else
 						{
 							m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
 						}
 
-						m_renderPlane.draw(m_blurShader);
+						m_renderPlane.draw(m_2DMaterialBlendShader);
 
 						horizontal = !horizontal;
 					}
@@ -330,13 +328,17 @@ namespace WeirdEngine
 					m_2DLightingShader.setUniform("u_time", scene.getTime());
 					m_2DLightingShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-					GLuint u_colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
-					glUniform1i(u_colorTextureLocation, 0);
+					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
+					glUniform1i(colorTextureLocation, 0);
 
-					m_2dColorTexture.bind(0);
+					m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+
+					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
+					glUniform1i(distanceTextureLocation, 1);
+					m_distanceTexture.bind(1);
 
 					m_renderPlane.draw(m_2DLightingShader);
-					m_2dColorTexture.unbind();
+					m_postProcessTextureFront.unbind();
 				}
 			}
 

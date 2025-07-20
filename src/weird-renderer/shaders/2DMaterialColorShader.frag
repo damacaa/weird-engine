@@ -53,29 +53,12 @@ void main()
     vec3 background = mix(u_staticColors[3], u_staticColors[2],
     min(fract(0.1 * pos.x), fract(0.1 * pos.y)) > pixel * zoom ? 1.0 : 0.0);
 
-    // Accumulate colors of neighboring cells
-    vec3 blendedColor = vec3(0.0);
-    float totalWeight = 0.0;
 
-    for (int x = -10; x <= 10; ++x) {
-        for (int y = -10; y <= 10; ++y) {
-            vec2 offset = vec2(float(x), float(y)) / u_resolution;
-            vec4 neighbor = texture(t_colorTexture, screenUV + offset);
-            float w = 1.0;
-            if (x == 0 && y == 0) {
-                w = 2.0; // Weight center more if desired
-            }
-            vec3 neighborColor = u_staticColors[int(neighbor.y)];
-            blendedColor += neighborColor * w;
-            totalWeight += w;
-        }
-    }
-
-    blendedColor /= totalWeight;
 
     // Decide whether to use blended or background
-    c = false || distance <= 0.0 ? mix(c, blendedColor, mask) : background;
+    // c = distance <= 0.0 ? c : background;
 
-    FragColor = vec4(c, distance);
+    // FragColor = vec4(c, distance);
+    FragColor = vec4(c, mask);
 }
 

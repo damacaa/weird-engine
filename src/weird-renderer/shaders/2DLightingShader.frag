@@ -127,6 +127,7 @@ float render(vec2 uv)
   float d = map(uv);
   float minD;
   vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;
+
   if (d <= 0.0)
   {
 
@@ -147,13 +148,13 @@ float render(vec2 uv)
 
   // return (10.0 * minD)+0.5;
 
-#ifdef SOFT_SHADOWS
-  return mix(0.85, 1.0, d / FAR);
-#else
-  return d < FAR ? 0.85 : 1.0;
-#endif
+  #ifdef SOFT_SHADOWS
+    return mix(0.85, 1.0, d / FAR);
+  #else
+    return d < FAR ? 0.85 : 1.0;
+  #endif
 
-#else
+#else // No shadows
 
   return 1.0;
 
@@ -167,7 +168,11 @@ void main()
   vec4 data = texture(t_distanceTexture, screenUV);
   float distance = data.x;
 
-  color = false || distance <= 0.0 ? color : vec3(0.3);
+  vec3 backgroundColor = vec3(0.35);
+
+  float aaWidth = 0.001;
+  float edge = smoothstep(0.0, aaWidth, distance); // aaWidth controls softness
+  color = mix(color, backgroundColor, edge);
 
 #ifdef DEBUG_SHOW_DISTANCE
 

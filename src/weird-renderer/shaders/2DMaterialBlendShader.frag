@@ -68,29 +68,35 @@ vec3 hsl2rgb(vec3 hsl) {
     return vec3(r, g, b);
 }
 
+vec3 toLinear(vec3 srgb) {
+    return pow(srgb, vec3(2.2)); // or use inverse gamma
+}
+vec3 toSRGB(vec3 linear) {
+    return pow(linear, vec3(1.0 / 2.2));
+}
+
 
 // Taken form learnopengl.com and optimized it to reduce branching
 void main()
 {
     vec2 tex_offset = 1.0 / textureSize(t_colorTexture, 0);
     vec4 data = texture(t_colorTexture, v_texCoord);
-    float mask = data.x;
+    float mask = data.w;
 
-    vec3 baseHSL = rgb2hsl(data.rgb);
-    vec3 resultHSL = baseHSL * u_weight[0];
+    vec3 result = toLinear(data.rgb) * u_weight[0]; // TODO: precompute toLinear before this shader
 
     for (int i = 1; i < 5; ++i)
     {
-        vec2 offset = u_horizontal ? vec2(tex_offset.x * i, 0.0) : vec2(0.0, tex_offset.y * i);
+        vec2 offset = u_horizontal ?  vec2(tex_offset.x * i, 0.0) : vec2(0.0, tex_offset.y * i);
 
-        vec3 hsl1 = rgb2hsl(texture(t_colorTexture, v_texCoord + offset).rgb);
-        vec3 hsl2 = rgb2hsl(texture(t_colorTexture, v_texCoord - offset).rgb);
+        vec4 colRight = texture(t_colorTexture, v_texCoord + offset);
+        result += toLinear(colRight.rgb) * u_weight[i];
 
-        resultHSL += hsl1 * u_weight[i];
-        resultHSL += hsl2 * u_weight[i];
+        vec4 colLeft = texture(t_colorTexture, v_texCoord - offset);
+        result += toLinear(colLeft.rgb) * u_weight[i];
     }
 
-    vec3 finalRGB = hsl2rgb(resultHSL);
-    FragColor = vec4(mix(data.xyz, finalRGB, mask), data.a);
+    result = toSRGB(result);
+    FragColor = vec4(mix(data.xyz, result, mask), data.a);
     // FragColor = vec4(vec3(mask), data.w);
 }

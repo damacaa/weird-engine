@@ -297,7 +297,7 @@ namespace WeirdEngine
 
 
 
-					static int amount = 10;
+					static int amount = 5;
 
 					for (unsigned int i = 0; i < amount; i++)
 					{

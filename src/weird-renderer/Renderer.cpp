@@ -104,8 +104,10 @@ namespace WeirdEngine
 
 			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
 
-			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLigh"
-																			 "tingShader.frag");
+			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
+
+			m_2DGridShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DBackground.frag");
+
 			m_postProcessingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "PostProcessShader.frag");
 
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
@@ -150,6 +152,10 @@ namespace WeirdEngine
 			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DPostProcessRender = RenderTarget(false);
 			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
+
+			m_2DBackgroundTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_2DBackgroundRender = RenderTarget(false);
+			m_2DBackgroundRender.bindColorTextureToFrameBuffer(m_2DBackgroundTexture);
 
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
@@ -297,7 +303,7 @@ namespace WeirdEngine
 
 
 
-					static int amount = 5;
+					static int amount = 10;
 
 					for (unsigned int i = 0; i < amount; i++)
 					{
@@ -319,6 +325,17 @@ namespace WeirdEngine
 					}
 				}
 
+				{
+					m_2DBackgroundRender.bind();
+
+					m_2DGridShader.use();
+					m_2DGridShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DGridShader.setUniform("u_time", scene.getTime());
+					m_2DGridShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+					m_renderPlane.draw(m_2DLightingShader);
+				}
+
 				// 2D Lighting
 				{
 					m_2DPostProcessRender.bind();
@@ -336,6 +353,10 @@ namespace WeirdEngine
 					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
 					glUniform1i(distanceTextureLocation, 1);
 					m_distanceTexture.bind(1);
+
+					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");
+					glUniform1i(backgroundTextureLocation, 2);
+					m_2DBackgroundTexture.bind(2);
 
 					m_renderPlane.draw(m_2DLightingShader);
 					m_postProcessTextureFront.unbind();

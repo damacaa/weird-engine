@@ -49,9 +49,7 @@ void main()
     float aspectRatio = u_resolution.x / u_resolution.y;
     vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
 
-    float pixel = 0.2 / u_resolution.y;
-    vec3 background = mix(u_staticColors[3], u_staticColors[2],
-    min(fract(0.1 * pos.x), fract(0.1 * pos.y)) > pixel * zoom ? 1.0 : 0.0);
+
 
 
 

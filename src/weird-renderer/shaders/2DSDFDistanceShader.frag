@@ -20,7 +20,7 @@ uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
 
 uniform float u_time;
-uniform float u_k = 0.25;
+uniform float u_k = 1.25;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
@@ -136,16 +136,14 @@ vec3 getMaterial(vec2 p, int materialId)
 vec3 getColor(vec2 p, vec2 uv)
 {
     float minDist = 100000.0;
-    int finalMaterialId = 3;
+    int finalMaterialId = 0;
     float mask = 1.0;
-
-    vec3 col;
 
     /*ADD_SHAPES_HERE*/
 
     if(minDist < EPSILON)
     {
-        return vec3(minDist, finalMaterialId, 0.0);
+        return vec3(minDist, finalMaterialId, mask);
     }
 
     float shapeDist = minDist;
@@ -157,14 +155,13 @@ vec3 getColor(vec2 p, vec2 uv)
     {
         vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
         int materialId = int(positionSizeMaterial.w);
-        // vec4 extraParameters = texelFetch(t_shapeBuffer, (2 * i) + 1);
 
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
         // Inside ball mask is set to 0
-        mask = objectDist <= 0 ? 1.5 : mask;
+        mask = objectDist <= 0 ? 0.5 : mask;
 
-        finalMaterialId = objectDist <= minDist || objectDist < 0.0 ? materialId : finalMaterialId;
+        finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
 
         #if BLEND_SHAPES
 
@@ -176,6 +173,8 @@ vec3 getColor(vec2 p, vec2 uv)
 
         if(minDist < EPSILON)
         {
+
+
             break;
         }
 

@@ -61,6 +61,7 @@ namespace WeirdEngine
 			Shader m_2DDistanceShader;
 			Shader m_2DMaterialColorShader;
 			Shader m_2DMaterialBlendShader;
+			Shader m_2DGridShader;
 			Shader m_2DLightingShader;
 			Shader m_postProcessingShader;
 			Shader m_3DsdfShaderProgram;
@@ -73,6 +74,7 @@ namespace WeirdEngine
 			RenderTarget m_2DSceneRender;
 			RenderTarget m_2DColorRender;
 			RenderTarget m_2DPostProcessRender;
+			RenderTarget m_2DBackgroundRender;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;
@@ -98,6 +100,7 @@ namespace WeirdEngine
 			RenderTarget *m_postProcessDoubleBuffer[2];
 
 			Texture m_lit2DSceneTexture;
+			Texture m_2DBackgroundTexture;
 
 			Texture m_combineResultTexture;
 

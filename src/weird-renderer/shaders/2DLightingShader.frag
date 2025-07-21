@@ -5,6 +5,7 @@
 #define DITHERING
 
 // #define DEBUG_SHOW_DISTANCE
+// #define DEBUG_SHOW_COLORS
 
 // Constants
 const int MAX_STEPS = 1000;
@@ -164,14 +165,20 @@ float render(vec2 uv)
 void main()
 {
   vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
-  vec3 color = texture(t_colorTexture, screenUV).rgb;
+  vec4 colorSample = texture(t_colorTexture, screenUV);
+  vec3 color = colorSample.rgb; // + (0.25 * floor(colorSample.a));
   vec4 data = texture(t_distanceTexture, screenUV);
   float distance = data.x;
 
-  vec3 backgroundColor = vec3(0.35);
+  vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
 
   float aaWidth = 0.001;
   float edge = smoothstep(0.0, aaWidth, distance); // aaWidth controls softness
+
+  #ifdef DEBUG_SHOW_COLORS
+  edge = 0.0;
+  #endif
+
   color = mix(color, backgroundColor, edge);
 
 #ifdef DEBUG_SHOW_DISTANCE
@@ -192,6 +199,7 @@ void main()
 
   return;
 #endif
+
 
   float light = render(screenUV);
   vec3 col = light * color.xyz;

@@ -107,6 +107,8 @@ namespace WeirdEngine
 			WeirdRenderer::Dot2D* m_2DData = nullptr;
 			uint32_t m_2DDataSize = 0;
 
+			uint32_t m_materialBlendIterations;
+
 
 			void output(Scene& scene, Texture& texture);
 
@@ -115,7 +117,7 @@ namespace WeirdEngine
 				vec3(1.0f, 1.0f, 1.0f), // White
 				vec3(0.484f, 0.484f, 0.584f), // Dark Gray
 				vec3(0.752f, 0.762f, 0.74f), // Light Gray
-				vec3(.95f, 0.1f, 0.1f), // Red
+				vec3(.8f, 0.1f, 0.1f), // Red
 				vec3(0.1f, .95f, 0.1f), // Green
 				vec3(0.15f, 0.25f, .85f), // Blue
 				vec3(1.0f, .9f, 0.2f), // Yellow

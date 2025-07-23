@@ -127,7 +127,7 @@ float render(vec2 uv)
 
   float d = map(uv);
   float minD;
-  vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;
+  vec2 offsetPosition = uv + (2.0 / u_resolution) * rd; // 2 pixels towards the light
 
   if (d <= 0.0)
   {
@@ -172,7 +172,7 @@ void main()
 
   vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
 
-  float aaWidth = 0.001;
+  float aaWidth = 0.0;
   float edge = smoothstep(0.0, aaWidth, distance); // aaWidth controls softness
 
   #ifdef DEBUG_SHOW_COLORS
@@ -183,19 +183,14 @@ void main()
 
 #ifdef DEBUG_SHOW_DISTANCE
 
-  if (abs(distance) < (0.5 / u_resolution.x))
-  {
-    FragColor = vec4(vec3(0.0), 1.0);
-  }
-  else
-  {
+
     float value = 0.5 * (cos(500.0 * distance) + 1.0);
     value = value * value * value;
     vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :                    // outside
                           (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value); // inside
 
     FragColor = vec4(debugColor, 1.0);
-  }
+
 
   return;
 #endif

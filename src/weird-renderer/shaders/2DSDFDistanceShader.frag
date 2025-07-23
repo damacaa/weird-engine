@@ -20,7 +20,7 @@ uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
 
 uniform float u_time;
-uniform float u_k = 1.25;
+uniform float u_k = 0.25;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
@@ -141,13 +141,13 @@ vec3 getColor(vec2 p, vec2 uv)
 
     /*ADD_SHAPES_HERE*/
 
-    if(minDist < EPSILON)
+    if(minDist <= 0.0)
     {
-        return vec3(minDist, finalMaterialId, mask);
+        return vec3(minDist, finalMaterialId, 0.0);
     }
 
     float shapeDist = minDist;
-    // minDist = 100000.0;
+    // minDist = 1.0; // Disable blending between balls and shapes
 
     float inv_k = 1.0 / u_k;
 
@@ -159,7 +159,7 @@ vec3 getColor(vec2 p, vec2 uv)
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
         // Inside ball mask is set to 0
-        mask = objectDist <= 0 ? 0.5 : mask;
+        mask = objectDist <= 0 ? 0.25 : mask;
 
         finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
 

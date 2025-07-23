@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 1
-#define MOTION_BLUR 1
+// #define MOTION_BLUR 1
 
 out vec4 FragColor;
 
@@ -193,14 +193,18 @@ void main()
   // return;
 
   vec2 uv = (2.0f * v_texCoord) - 1.0f;
+  float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
+  uv.x *= aspectRatio;
 
   float zoom = -u_camMatrix[3].z;
   vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
+  
 
   vec3 result = getColor(pos, v_texCoord); // Same as uv but (0, 0) is bottom left corner
   float distance = result.x;
 
-  float finalDistance = 0.6667 * 0.5 * distance / zoom;
+  float finalDistance =  0.5 * distance / zoom;
+  finalDistance *= 0.5 / aspectRatio;
 
 
 
@@ -210,13 +214,13 @@ void main()
   vec4 previousColor = texture(t_colorTexture, screenUV.xy);
 
   float previousDistance = previousColor.x;
-    int previousMaterial = int(previousColor.y);
+  int previousMaterial = int(previousColor.y);
 
   previousDistance += u_blendIterations * 0.00035;
   previousDistance = mix(finalDistance, previousDistance, 0.95);
   // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
-    finalDistance = min(previousDistance, finalDistance);
+  finalDistance = min(previousDistance, finalDistance);
 
 
 

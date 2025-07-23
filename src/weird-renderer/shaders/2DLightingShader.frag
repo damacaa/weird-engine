@@ -164,7 +164,7 @@ float render(vec2 uv)
 
 void main()
 {
-  vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+  vec2 screenUV = v_texCoord;
   vec4 colorSample = texture(t_colorTexture, screenUV);
   vec3 color = colorSample.rgb; // + (0.25 * floor(colorSample.a));
   vec4 data = texture(t_distanceTexture, screenUV);

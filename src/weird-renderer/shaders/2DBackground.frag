@@ -20,7 +20,7 @@ void main()
     vec2 screenUV = gl_FragCoord.xy / u_resolution.xy;
 
     vec2 uv = (2.0 * v_texCoord) - 1.0;
-    float zoom = -u_camMatrix[3].z;
+    float zoom = -2.0 * u_camMatrix[3].z;
     vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
     float aspectRatio = u_resolution.x / u_resolution.y;
     vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);

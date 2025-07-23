@@ -85,6 +85,7 @@ namespace WeirdEngine
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
+			, m_materialBlendIterations(10)
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
@@ -300,12 +301,7 @@ namespace WeirdEngine
 					m_2DMaterialBlendShader.use();
 					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
 
-
-
-
-					static int amount = 10;
-
-					for (unsigned int i = 0; i < amount; i++)
+					for (unsigned int i = 0; i < m_materialBlendIterations; i++)
 					{
 						m_postProcessDoubleBuffer[horizontal]->bind();
 

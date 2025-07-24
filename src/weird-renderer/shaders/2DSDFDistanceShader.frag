@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 1
-// #define MOTION_BLUR 1
+#define MOTION_BLUR 1
 
 out vec4 FragColor;
 

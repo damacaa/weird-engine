@@ -21,7 +21,7 @@ vec3 toSRGB(vec3 linear) {
 
 void main()
 {
-    vec2 tex_offset = 2.0 / textureSize(t_colorTexture, 0);
+    vec2 tex_offset = 1.0 / textureSize(t_colorTexture, 0);
     vec4 data = texture(t_colorTexture, v_texCoord);
     float mask = data.w;
 

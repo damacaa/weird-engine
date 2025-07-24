@@ -51,7 +51,9 @@ namespace WeirdEngine
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
+			float m_distanceSampleScale;
 			float m_renderScale;
+			unsigned int m_distanceSampleWidth, m_distanceSampleHeight;
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;

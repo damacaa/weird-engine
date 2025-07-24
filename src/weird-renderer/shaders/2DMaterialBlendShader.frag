@@ -13,7 +13,7 @@ uniform float u_weight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0
 
 
 vec3 toLinear(vec3 srgb) {
-    return pow(srgb, vec3(2.2)); // or use inverse gamma
+    return pow(srgb, vec3(2.2));// or use inverse gamma
 }
 vec3 toSRGB(vec3 linear) {
     return pow(linear, vec3(1.0 / 2.2));
@@ -25,7 +25,7 @@ void main()
     vec4 data = texture(t_colorTexture, v_texCoord);
     float mask = data.w;
 
-    vec3 result = toLinear(data.rgb) * u_weight[0]; // TODO: precompute toLinear before this shader
+    vec3 result = toLinear(data.rgb) * u_weight[0];// TODO: precompute toLinear before this shader
 
     for (int i = 1; i < 5; ++i)
     {

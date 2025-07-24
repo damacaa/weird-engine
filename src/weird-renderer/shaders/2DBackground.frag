@@ -21,7 +21,7 @@ void main()
 
     vec2 uv = (2.0 * v_texCoord) - 1.0;
     uv.x *= (u_resolution.x / u_resolution.y);
-    
+
     float zoom = -1.5 * u_camMatrix[3].z;
     vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
     float aspectRatio = u_resolution.x / u_resolution.y;

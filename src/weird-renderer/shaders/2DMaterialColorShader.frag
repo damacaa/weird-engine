@@ -50,9 +50,6 @@ void main()
     vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
 
 
-
-
-
     // Decide whether to use blended or background
     // c = distance <= 0.0 ? c : background;
 

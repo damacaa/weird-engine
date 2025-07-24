@@ -81,6 +81,9 @@ namespace WeirdEngine
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
+			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleWidth(width * m_distanceSampleScale)
+			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
@@ -131,7 +134,7 @@ namespace WeirdEngine
 			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
 
 
-			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
 
@@ -150,7 +153,7 @@ namespace WeirdEngine
 			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
 			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
 
-			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, m_renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_2DPostProcessRender = RenderTarget(false);
 			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
 
@@ -238,6 +241,8 @@ namespace WeirdEngine
 			if (enable2D)
 			{
 				{
+					glViewport(0, 0, m_distanceSampleWidth, m_distanceSampleHeight);
+
 					// Bind the framebuffer you want to render to
 					m_2DSceneRender.bind();
 
@@ -249,7 +254,7 @@ namespace WeirdEngine
 					// Set uniforms
 					m_2DDistanceShader.setUniform("u_camMatrix", sceneCamera.view);
 					m_2DDistanceShader.setUniform("u_time", scene.getTime());
-					m_2DDistanceShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 
 					m_2DDistanceShader.setUniform("u_blendIterations", 1);
 
@@ -269,6 +274,8 @@ namespace WeirdEngine
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
 				}
+
+				glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 				{
 					// Bind the framebuffer you want to render to
@@ -334,6 +341,8 @@ namespace WeirdEngine
 
 				// 2D Lighting
 				{
+					// glViewport(0, 0, m_windowWidth, m_windowHeight);
+
 					m_2DPostProcessRender.bind();
 
 					m_2DLightingShader.use();

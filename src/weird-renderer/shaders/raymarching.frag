@@ -397,13 +397,11 @@ float rand(vec2 co){
 
 void main()
 {
-
-    float aspectRatio = u_resolution.x / u_resolution.y;
-    vec2 pixelScale = vec2(aspectRatio * 0.2, 0.2);
-
     vec2 screenUV = v_texCoord;
 
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
+    float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
+    uv.x *= aspectRatio;
 
     // Calculate true z value from the depth buffer: https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
     float depth = texture(t_depthTexture, screenUV).r;

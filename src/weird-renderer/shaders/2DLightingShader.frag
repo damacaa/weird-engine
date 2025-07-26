@@ -2,7 +2,7 @@
 
 #define SHADOWS_ENABLED
 // #define SOFT_SHADOWS
-#define DITHERING
+// #define DITHERING
 
 // #define DEBUG_SHOW_DISTANCE
 // #define DEBUG_SHOW_COLORS
@@ -34,8 +34,8 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 
 #ifdef DITHERING
 
-uniform float u_spread = .025;
-uniform int u_colorCount = 16;
+uniform float u_spread = .5;
+uniform int u_colorCount = 4;
 
 // Dithering and posterizing
 uniform int u_bayer2[2 * 2] = int[2 * 2](

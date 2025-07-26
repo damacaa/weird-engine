@@ -88,7 +88,7 @@ namespace WeirdEngine
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
-			, m_materialBlendIterations(10)
+			, m_materialBlendIterations(2)
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
@@ -296,6 +296,9 @@ namespace WeirdEngine
 					m_2DMaterialColorShader.setUniform("t_colorTexture", 0);
 					m_distanceTexture.bind(0);
 
+					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
+					m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
+
 
 					m_renderPlane.draw(m_2DMaterialColorShader);
 
@@ -307,6 +310,7 @@ namespace WeirdEngine
 				{
 					m_2DMaterialBlendShader.use();
 					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
+					m_2DMaterialBlendShader.setUniform("u_time", scene.getTime());
 
 					for (unsigned int i = 0; i < m_materialBlendIterations; i++)
 					{

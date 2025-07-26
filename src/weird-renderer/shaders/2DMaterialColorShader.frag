@@ -18,6 +18,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 uniform sampler2D t_colorTexture;
+uniform sampler2D t_currentColorTexture;
 uniform vec3 u_staticColors[16];
 
 float map(vec2 p)
@@ -52,6 +53,10 @@ void main()
 
     // Decide whether to use blended or background
     // c = distance <= 0.0 ? c : background;
+
+    vec3 currentColor = texture(t_currentColorTexture, screenUV).xyz;
+
+    c = mix(c, currentColor, 0.99 * mask);
 
     // FragColor = vec4(c, distance);
     FragColor = vec4(c, mask);

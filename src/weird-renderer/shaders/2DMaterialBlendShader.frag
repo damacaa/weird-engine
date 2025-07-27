@@ -20,9 +20,13 @@ vec3 toSRGB(vec3 linear) {
     return pow(linear, vec3(1.0 / 2.2));
 }
 
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
 void main()
 {
-    vec2 tex_offset = 5.0 / textureSize(t_colorTexture, 0);
+    vec2 tex_offset = 1.0 / textureSize(t_colorTexture, 0);
 
     vec4 data = texture(t_colorTexture, v_texCoord);
     float mask = data.w;

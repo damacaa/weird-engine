@@ -306,7 +306,7 @@ namespace WeirdEngine
 					m_shapes2D.unbind();
 				}
 
-				bool horizontal = true;
+				static bool horizontal = true;
 				{
 					m_2DMaterialBlendShader.use();
 					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);

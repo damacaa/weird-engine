@@ -161,7 +161,7 @@ vec3 getColor(vec2 p, vec2 uv)
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
 
         // Inside ball mask is set to 0
-        mask = objectDist <= 0 ? 0.25 : mask;
+        mask = objectDist <= 0 ? 0.95 : mask;
 
         #if BLEND_SHAPES
 
@@ -222,6 +222,7 @@ void main()
 
     float previousDistance = previousColor.x;
     int previousMaterial = int(previousColor.y);
+    result.y = finalDistance > 0.0 && previousDistance < 0.0 ? previousColor.y : result.y;
 
     previousDistance += u_blendIterations * 0.00035;
     previousDistance = mix(finalDistance, previousDistance, 0.95);

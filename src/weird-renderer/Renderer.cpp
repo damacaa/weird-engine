@@ -81,10 +81,14 @@ namespace WeirdEngine
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
+			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleWidth(width * m_distanceSampleScale)
+			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
-			, m_renderWidth(width* m_renderScale)
-			, m_renderHeight(height* m_renderScale)
+			, m_renderWidth(width * m_renderScale)
+			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
+			, m_materialBlendIterations(2)
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
@@ -98,9 +102,17 @@ namespace WeirdEngine
 
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
 
-			m_2DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching2d.frag");
+			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
 
-			m_postProcessShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "postProcess2d.frag");
+			m_2DMaterialColorShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialColorShader.frag");
+
+			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
+
+			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
+
+			m_2DGridShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DBackground.frag");
+
+			m_postProcessingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "PostProcessShader.frag");
 
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
 
@@ -122,13 +134,32 @@ namespace WeirdEngine
 			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
 
 
-			m_distanceTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
 
-			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_2dColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_2DColorRender = RenderTarget(false);
+			m_2DColorRender.bindColorTextureToFrameBuffer(m_2dColorTexture);
+
+			m_postProcessTextureFront = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_postProcessRenderFront = RenderTarget(false);
+			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
+
+			m_postProcessTextureBack = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_postProcessRenderBack = RenderTarget(false);
+			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
+
+			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
+			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
+
+			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, m_renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_2DPostProcessRender = RenderTarget(false);
 			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
+
+			m_2DBackgroundTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_2DBackgroundRender = RenderTarget(false);
+			m_2DBackgroundRender.bindColorTextureToFrameBuffer(m_2DBackgroundTexture);
 
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
@@ -150,8 +181,8 @@ namespace WeirdEngine
 			// Delete all the objects we've created
 			m_geometryShaderProgram.free();
 			m_instancedGeometryShaderProgram.free();
-			m_2DsdfShaderProgram.free();
-			m_postProcessShaderProgram.free();
+			m_2DDistanceShader.free();
+			m_2DLightingShader.free();
 			m_3DsdfShaderProgram.free();
 			m_combineScenesShaderProgram.free();
 			m_outputShaderProgram.free();
@@ -210,53 +241,134 @@ namespace WeirdEngine
 			if (enable2D)
 			{
 				{
+					glViewport(0, 0, m_distanceSampleWidth, m_distanceSampleHeight);
+
 					// Bind the framebuffer you want to render to
 					m_2DSceneRender.bind();
 
 					// Draw ray marching stuff
-					m_2DsdfShaderProgram.use();
+					m_2DDistanceShader.use();
 
-					scene.updateRayMarchingShader(m_2DsdfShaderProgram);
+					scene.updateRayMarchingShader(m_2DDistanceShader);
 
 					// Set uniforms
-					m_2DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
-					m_2DsdfShaderProgram.setUniform("u_time", scene.getTime());
-					m_2DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					m_2DDistanceShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DDistanceShader.setUniform("u_time", scene.getTime());
+					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 
-					m_2DsdfShaderProgram.setUniform("u_blendIterations", 1);
+					m_2DDistanceShader.setUniform("u_blendIterations", 1);
 
-					m_2DsdfShaderProgram.setUniform("t_colorTexture", 0);
+					m_2DDistanceShader.setUniform("t_colorTexture", 0);
 					m_distanceTexture.bind(0);
 
 					// Shape data
 					scene.get2DShapesData(m_2DData, m_2DDataSize);
-					m_2DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+					m_2DDistanceShader.setUniform("u_loadedObjects", (int)m_2DDataSize);
 
-					m_2DsdfShaderProgram.setUniform("t_shapeBuffer", 1);
+					m_2DDistanceShader.setUniform("t_shapeBuffer", 1);
 					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
 					m_shapes2D.bind(1);
 
-					m_renderPlane.draw(m_2DsdfShaderProgram);
+					m_renderPlane.draw(m_2DDistanceShader);
 
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
 				}
 
-				// 2D Lighting
+				glViewport(0, 0, m_renderWidth, m_renderHeight);
+
 				{
-					m_2DPostProcessRender.bind();
+					// Bind the framebuffer you want to render to
+					m_2DColorRender.bind();
 
-					m_postProcessShaderProgram.use();
-					m_postProcessShaderProgram.setUniform("u_time", scene.getTime());
-					m_postProcessShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					// Draw ray marching stuff
+					m_2DMaterialColorShader.use();
 
-					GLuint u_colorTextureLocation = glGetUniformLocation(m_postProcessShaderProgram.ID, "t_colorTexture");
-					glUniform1i(u_colorTextureLocation, 0);
+					// Get materials ?
+					// scene.updateRayMarchingShader(m_2DcolorShaderProgram);
 
+					// Set uniforms
+					m_2DMaterialColorShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DMaterialColorShader.setUniform("u_time", scene.getTime());
+					m_2DMaterialColorShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
+
+					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
 					m_distanceTexture.bind(0);
 
-					m_renderPlane.draw(m_postProcessShaderProgram);
+					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
+					m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
+
+
+					m_renderPlane.draw(m_2DMaterialColorShader);
+
 					m_distanceTexture.unbind();
+					m_shapes2D.unbind();
+				}
+
+				static bool horizontal = true;
+				{
+					m_2DMaterialBlendShader.use();
+					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
+					m_2DMaterialBlendShader.setUniform("u_time", scene.getTime());
+
+					for (unsigned int i = 0; i < m_materialBlendIterations; i++)
+					{
+						m_postProcessDoubleBuffer[horizontal]->bind();
+
+						m_2DMaterialBlendShader.setUniform("u_horizontal", horizontal);
+						if (i == 0)
+						{
+							m_2dColorTexture.bind(0);
+						}
+						else
+						{
+							m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+						}
+
+						m_renderPlane.draw(m_2DMaterialBlendShader);
+
+						horizontal = !horizontal;
+					}
+				}
+
+				{
+					m_2DBackgroundRender.bind();
+
+					m_2DGridShader.use();
+					m_2DGridShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DGridShader.setUniform("u_time", scene.getTime());
+					m_2DGridShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+					m_renderPlane.draw(m_2DLightingShader);
+				}
+
+				// 2D Lighting
+				{
+					// glViewport(0, 0, m_windowWidth, m_windowHeight);
+
+					m_2DPostProcessRender.bind();
+
+					m_2DLightingShader.use();
+					m_2DLightingShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DLightingShader.setUniform("u_time", scene.getTime());
+					m_2DLightingShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
+					glUniform1i(colorTextureLocation, 0);
+
+					m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+
+					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
+					glUniform1i(distanceTextureLocation, 1);
+					m_distanceTexture.bind(1);
+
+					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");
+					glUniform1i(backgroundTextureLocation, 2);
+					m_2DBackgroundTexture.bind(2);
+
+					m_renderPlane.draw(m_2DLightingShader);
+					m_postProcessTextureFront.unbind();
 				}
 			}
 
@@ -370,7 +482,7 @@ namespace WeirdEngine
 			glUniform1i(u_colorTextureLocation3d, 1);
 			m_3DSceneTexture.bind(1);
 
-			m_renderPlane.draw(m_postProcessShaderProgram);
+			m_renderPlane.draw(m_2DLightingShader);
 
 			m_lit2DSceneTexture.unbind();
 			m_3DSceneTexture.unbind();
@@ -378,19 +490,7 @@ namespace WeirdEngine
 			output(scene, m_combineResultTexture);
 		}
 
-		void Renderer::renderFire(Scene& scene, Camera& camera, float time)
-		{
-		}
 
-		void Renderer::renderGeometry(Scene& scene, Camera& camera)
-		{
-		}
-
-		bool Renderer::checkWindowClosed() const
-		{
-
-			return false;
-		}
 
 		void Renderer::setWindowTitle(const char* name)
 		{

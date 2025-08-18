@@ -130,9 +130,9 @@ namespace WeirdEngine
 						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
 					}
 
-					if (targetPosition.z < 20.0f)
+					if (targetPosition.z < 5.0f)
 					{
-						targetPosition.z = 20.0f;
+						targetPosition.z = 5.0f;
 					}
 
 					if (targetPosition.y < 0.1f)

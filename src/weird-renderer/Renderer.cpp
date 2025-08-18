@@ -293,7 +293,7 @@ namespace WeirdEngine
 					m_2DMaterialColorShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
 
-					m_2DMaterialColorShader.setUniform("t_colorTexture", 0);
+					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
 					m_distanceTexture.bind(0);
 
 					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);

@@ -531,6 +531,7 @@ namespace WeirdEngine
 			float d = map(p);
 			if (d < m_radious)
 			{
+
 				float penetration = (m_radious - d);
 
 				// Collision normal calculation
@@ -541,25 +542,28 @@ namespace WeirdEngine
 				vec2 normal = vec2(d - d1, d - d2);
 				normal = normalize(normal);
 
-				// Position
-				p += penetration * normal;
+				if (map(p - (m_radious * normal)) <= EPSILON) // Bad solution?
+				{
+					// Position
+					p += penetration * normal;
 
-				// Impulse
-				float restitution = 0.5f;
-				vec2 vRel = -m_velocities[i];
-				float velocityAlongNormal = glm::dot(normal, vRel);
-				float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
-				vec2 impulse = impulseMagnitude * normal;
+					// Impulse
+					float restitution = 0.5f;
+					vec2 vRel = -m_velocities[i];
+					float velocityAlongNormal = glm::dot(normal, vRel);
+					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
+					vec2 impulse = impulseMagnitude * normal;
 
-				// m_velocities[i] -= impulse; // * m_invMass[i]
+					// m_velocities[i] -= impulse; // * m_invMass[i]
 
-				// Penalty
-				vec2 v = penetration * normal;
-				vec2 force = m_mass[i] * m_push * v;
+					// Penalty
+					vec2 v = penetration * normal;
+					vec2 force = m_mass[i] * m_push * v;
 
-				// force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
+					// force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
 
-				m_forces[i] += force;
+					m_forces[i] += force;
+				}
 			}
 
 			// Old walls

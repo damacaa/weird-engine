@@ -7,6 +7,7 @@ in vec2 v_texCoord;
 
 uniform mat4 u_camMatrix;
 uniform float u_fov;
+uniform vec2 u_resolution;
 
 uniform float gridScale = 1.0;    // Size of each grid cell in world units
 uniform vec3 gridColor = vec3(1);     // Color of the grid lines
@@ -41,6 +42,9 @@ void main()
 {          
     // Bring 0,0 to the center of the screen
     vec2 uv = (2.0 * v_texCoord) - 1.0;
+    float aspectRatio = u_resolution.x / u_resolution.y;
+    uv.x *= 2.0 * aspectRatio;
+
     // Calculate the direction of a ray that goes from origin towards the frag coord
     // This formula is often used in ray marching, I don't know where I got it for the first 
     // time at this point

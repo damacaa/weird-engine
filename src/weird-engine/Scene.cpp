@@ -103,9 +103,9 @@ namespace WeirdEngine
 
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
 	{
-		auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
+		const auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
 		int32_t ballsCount = sdfBalls->getSize();
-		auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
+		const auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
 		shader.setUniform("u_customShapeCount", componentArray->getSize());
 
 		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
@@ -117,7 +117,7 @@ namespace WeirdEngine
 
 		std::string str = shader.getFragmentCode();
 
-		std::string toReplace("/*ADD_SHAPES_HERE*/");
+		const std::string toReplace("/*ADD_SHAPES_HERE*/");
 
 		std::ostringstream oss;
 
@@ -133,10 +133,10 @@ namespace WeirdEngine
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
 			// Get shape
-			auto &shape = componentArray->getDataAtIdx(i);
+			const auto &shape = componentArray->getDataAtIdx(i);
 
 			// Get group
-			int group = shape.m_groupId;
+			const int group = shape.m_groupId;
 
 			// Start new group if necessary
 			if(group != currentGroup)
@@ -144,8 +144,7 @@ namespace WeirdEngine
 				// If this is not the first group, combine current group distance with global minDistance
 				if(currentGroup != -1)
 				{
-					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";\n";
-					oss << "col = getMaterial(p," << 3 << ");}\n";
+					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";}\n";
 				}
 
 				// Next group
@@ -181,8 +180,8 @@ namespace WeirdEngine
 			// Shape distance calculation
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
-			// Scale negative distances
-			oss << "dist = dist > 0 ? dist : 0.1 * dist;" << std::endl;
+
+
 
 			// Apply globalEffect logic
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
@@ -193,6 +192,7 @@ namespace WeirdEngine
 				case CombinationType::Addition:
 				{
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
+					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
 					break;
 				}
 				case CombinationType::Subtraction:
@@ -208,6 +208,7 @@ namespace WeirdEngine
 				case CombinationType::SmoothAddition:
 				{
 					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
+					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
 					break;
 				}
 				default:
@@ -222,9 +223,13 @@ namespace WeirdEngine
 		// Combine last group
 		if (componentArray->getSize() > 0) 
 		{
-			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";\n";
-			oss << "col = getMaterial(p," << 3 << ");}\n";
+			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
 		}
+
+		// Scale negative distances
+		oss << "minDist = minDist > 0 ? minDist : 0.1 * minDist;" << std::endl;
+
+		// oss << "col.x = minDist; col.y = 5;" << std::endl;
 
 		// oss << "minDist -= 1.5;\n";
 
@@ -245,11 +250,18 @@ namespace WeirdEngine
 
 		// Set new source code and recompile shader
 		shader.setFragmentCode(str);
+
+		// TODO: only debug
+		std::ofstream outFile("generated_shader.frag");
+		if (outFile.is_open()) {
+			outFile << str;
+			outFile.close();
+		}
 	}
 
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
-		m_sdfRenderSystem2D.updatePalette(shader);
+		// m_sdfRenderSystem2D.updatePalette(shader);
 
 		updateCustomShapesShader(shader);
 	}
@@ -314,7 +326,7 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(ShapeId shapeId, float* variables, CombinationType combination, bool hasCollision, int group)
+	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
@@ -322,6 +334,7 @@ namespace WeirdEngine
 		shape.m_combination = combination;
 		shape.m_hasCollision = hasCollision;
 		shape.m_groupId = group;
+		shape.m_material = material;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
 		// CustomShape shape(shapeId, variables); // check old constructor for references

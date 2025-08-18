@@ -15,6 +15,13 @@ const float FAR = 1.2f;
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
+// Inputs from vertex shader
+in vec3 v_worldPos;
+in vec3 v_normal;
+in vec3 v_color;
+in vec2 v_texCoord;
+
+uniform mat4 u_camMatrix;
 uniform vec2 u_resolution;
 uniform float u_time;
 

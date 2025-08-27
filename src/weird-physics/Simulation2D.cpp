@@ -410,7 +410,7 @@ namespace WeirdEngine
 		return d;
 	}
 
-	const float EPSILON = 0.0001f;
+	const float EPSILON = 0.25f;
 	void Simulation2D::applyForces()
 	{
 		// External forces
@@ -536,13 +536,18 @@ namespace WeirdEngine
 
 				// Collision normal calculation
 
-				float d1 = map(vec2(p.x - EPSILON, p.y));
-				float d2 = map(vec2(p.x, p.y - EPSILON));
+				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
+				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
 
-				vec2 normal = vec2(d - d1, d - d2);
-				normal = normalize(normal);
+				//
+				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
+				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
 
-				if (map(p - (m_radious * normal)) <= EPSILON) // Bad solution?
+				vec2 normal = normalize(vec2(d1, d2));
+
+				// std::cout << normal.x << " : " << normal.y << std::endl;
+
+				if (map(p - (1.1f * m_radious * normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					// Position
 					p += penetration * normal;
@@ -551,10 +556,10 @@ namespace WeirdEngine
 					float restitution = 0.5f;
 					vec2 vRel = -m_velocities[i];
 					float velocityAlongNormal = glm::dot(normal, vRel);
-					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
+					float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
 					vec2 impulse = impulseMagnitude * normal;
 
-					// m_velocities[i] -= impulse; // * m_invMass[i]
+					m_velocities[i] -= impulse; // * m_invMass[i]
 
 					// Penalty
 					vec2 v = penetration * normal;

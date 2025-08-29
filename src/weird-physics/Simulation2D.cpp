@@ -484,9 +484,9 @@ namespace WeirdEngine
 			float penetration = (m_radious + m_radious) - length(col.AB);
 
 			// Position
-			/*vec2 translation = 0.5f * penetration * normal;
+			vec2 translation = 0.5f * penetration * normal;
 			m_positions[col.A] -= translation;
-			m_positions[col.B] += translation;*/
+			m_positions[col.B] += translation;
 
 			// Impulse method
 			float restitution = 0.5f;
@@ -500,8 +500,8 @@ namespace WeirdEngine
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
-			m_forces[col.A] -= m_mass[col.A] * penalty;
-			m_forces[col.B] += m_mass[col.B] * penalty;
+			// m_forces[col.A] -= m_mass[col.A] * penalty;
+			// m_forces[col.B] += m_mass[col.B] * penalty;
 
 			// Notify collision callback
 			if (m_collisionCallback)
@@ -565,7 +565,7 @@ namespace WeirdEngine
 					vec2 v = penetration * normal;
 					vec2 force = m_mass[i] * m_push * v;
 
-					// force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
+					force -= (1000000.0f * m_damping * m_velocities[i]); // Drag ???
 
 					m_forces[i] += force;
 				}

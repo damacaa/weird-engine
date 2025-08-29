@@ -236,9 +236,11 @@ namespace WeirdEngine
 		// Get string
 		std::string replacement = oss.str();
 
+#ifndef NDEBUG
 		// Print
 		std::cout << replacement << std::endl;
-
+#endif
+		
 		// Replace in shader source code
 		size_t pos = str.find(toReplace);
 		// Check if the substring was found

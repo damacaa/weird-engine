@@ -71,10 +71,12 @@ namespace WeirdEngine
 			// Clear any GL errors that may have occurred during initialization
 			while (glGetError() != GL_NO_ERROR);
 
+#ifndef NDEBUG
 			// Enable OpenGL debug output
 			glEnable(GL_DEBUG_OUTPUT);
 			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
+#endif
 		}
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)

@@ -23,7 +23,13 @@ inline void CheckOpenGLError(const char *file, int line)
 	}
 }
 
+#ifndef NDEBUG
+// Debug mode (portable)
 #define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
+#else
+#define GL_CHECK_ERROR()
+#endif
+
 
 namespace WeirdEngine
 {

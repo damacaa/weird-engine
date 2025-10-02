@@ -10,6 +10,7 @@ namespace WeirdEngine
 
 	constexpr float SIMULATION_FREQUENCY = 250;
 	constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
+	constexpr float FIXED_DELTA_TIME_F = FIXED_DELTA_TIME;
 
 	constexpr size_t MAX_STEPS = 10;
 
@@ -484,9 +485,9 @@ namespace WeirdEngine
 			float penetration = (m_radious + m_radious) - length(col.AB);
 
 			// Position
-			vec2 translation = 0.5f * penetration * normal;
+			/*vec2 translation = 0.5f * penetration * normal;
 			m_positions[col.A] -= translation;
-			m_positions[col.B] += translation;
+			m_positions[col.B] += translation;*/
 
 			// Impulse method
 			float restitution = 0.5f;
@@ -500,8 +501,8 @@ namespace WeirdEngine
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
-			// m_forces[col.A] -= m_mass[col.A] * penalty;
-			// m_forces[col.B] += m_mass[col.B] * penalty;
+			m_forces[col.A] -= m_mass[col.A] * penalty;
+			m_forces[col.B] += m_mass[col.B] * penalty;
 
 			// Notify collision callback
 			if (m_collisionCallback)
@@ -550,7 +551,7 @@ namespace WeirdEngine
 				if (map(p - (1.1f * m_radious * normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					// Position
-					p += penetration * normal;
+					// p += penetration * normal;
 
 					// Impulse
 					float restitution = 0.5f;
@@ -559,13 +560,17 @@ namespace WeirdEngine
 					float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
 					vec2 impulse = impulseMagnitude * normal;
 
-					m_velocities[i] -= impulse; // * m_invMass[i]
+					// m_velocities[i] -= impulse; // * m_invMass[i]
+
+					constexpr float minFriction = 0.15f;
+					constexpr float restitution2 = 10.0f;
+					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * std::max(minFriction, restitution2 * glm::dot(glm::normalize(m_velocities[i]), normal));
 
 					// Penalty
-					vec2 v = penetration * normal;
+					vec2 v = penetration * penetration * normal;
 					vec2 force = m_mass[i] * m_push * v;
 
-					force -= (1000000.0f * m_damping * m_velocities[i]); // Drag ???
+					// force -= (1000000.0f * m_damping * m_velocities[i]); // Drag ???
 
 					m_forces[i] += force;
 				}

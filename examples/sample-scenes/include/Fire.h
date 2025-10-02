@@ -307,8 +307,9 @@ private:
 		m_backgroundShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
 		float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 		m_backgroundShader.setUniform("u_fov", shaderFov);
+		m_backgroundShader.setUniform("u_resolution", vec2(Screen::rWidth, Screen::rHeight));
 
-		// m_renderPlane.draw(m_backgroundShader);
+		m_renderPlane.draw(m_backgroundShader);
 		// glFrontFace(GL_CW); // Clockwise = front face
 		// m_cube->draw(m_backgroundShader, sceneCamera, sceneCamera.position, vec3(0.0f), vec3(100.0f));
 		// glFrontFace(GL_CCW); // Counter-clockwise = front face (default)

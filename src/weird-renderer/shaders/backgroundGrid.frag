@@ -43,7 +43,7 @@ void main()
     // Bring 0,0 to the center of the screen
     vec2 uv = (2.0 * v_texCoord) - 1.0;
     float aspectRatio = u_resolution.x / u_resolution.y;
-    uv.x *= 2.0 * aspectRatio;
+    uv.x *= aspectRatio;
 
     // Calculate the direction of a ray that goes from origin towards the frag coord
     // This formula is often used in ray marching, I don't know where I got it for the first 

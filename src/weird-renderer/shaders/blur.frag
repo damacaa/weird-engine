@@ -23,5 +23,6 @@ void main()
         result += texture(t_colorTexture, v_texCoord - offset).rgb * u_weight[i];
     }
 
-    FragColor = vec4(result, 1.0);
+    // Make sure there are no negative values
+    FragColor = vec4(max(result, 0.0), 1.0);
 }

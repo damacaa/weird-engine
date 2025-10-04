@@ -2,7 +2,7 @@
 
 #define SHADOWS_ENABLED
 // #define SOFT_SHADOWS
-// #define DITHERING
+#define DITHERING
 
 // #define DEBUG_SHOW_DISTANCE
 // #define DEBUG_SHOW_COLORS
@@ -34,8 +34,8 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 
 #ifdef DITHERING
 
-uniform float u_spread = .5;
-uniform int u_colorCount = 4;
+uniform float u_spread = .05;
+uniform int u_colorCount = 16;
 
 // Dithering and posterizing
 uniform int u_bayer2[2 * 2] = int[2 * 2](
@@ -129,12 +129,12 @@ float render(vec2 uv)
     float minD;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
-    if (d <= 0.0)
+    /*if (d <= 0.0)
     {
 
         // float dd =  -max(-0.05, d) - 0.01;
         // dd = max(0.0, dd);
-        float distanceFallof = 1.25;
+        float distanceFallof = 2.5;
         float maxDistance = 0.05;
 
         float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
@@ -143,7 +143,48 @@ float render(vec2 uv)
         // Get distance at offset position
         d = rayMarch(offsetPosition, rd, minD);
         return d < FAR ? 1.0 + (-1.5f * dd) : 2.0;// * dot(n,  rd);
+    }*/
+
+    if (d <= 0.0005)
+    {
+        float distanceFallof = 2.5;
+        float maxDistance = 0.05;
+
+        float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+        dd = min(maxDistance, dd);
+
+        float dForward = map(uv + (0.01 * rd));
+
+        float dChange = dForward - d;
+        dChange = max(0, dChange);
+
+        float innerShadow = (-2.5f * dd);
+        float specular = d > -0.001 ? 10.0 * dChange : 0.0;
+        float insideShapeLight = innerShadow + specular;
+
+        float distanceAtOffsetPosition = rayMarch(offsetPosition, rd, minD);
+        return distanceAtOffsetPosition < FAR ? 1.0 + (-1.5f * dd) + insideShapeLight : 2.0;// * dot(n,  rd);
     }
+
+    // Try this again with corrected distances
+    /*if (d <= 0.0)
+    {
+        float distanceFallof = 2.5;
+        float maxDistance = 0.05;
+
+        float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+        dd = min(maxDistance, dd);
+
+        float dForward = map(uv + (abs(d * 20.0) * rd));
+
+        float dChange = dForward - d;
+        dChange = max(0, dChange);
+
+        float innerShadow = 1.0 + (-2.5f * dd);
+        float specular = d > -0.001 ? 10.0 * dChange : 0.0;
+
+        return dForward > 0.0 ? 1.0 : 0.0;// * dot(n,  rd);
+    }*/
 
     d = rayMarch(uv, rd, minD);
 
@@ -170,21 +211,11 @@ void main()
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
-    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
-
-    float aaWidth = 0.0;
-    float edge = smoothstep(0.0, aaWidth, distance);// aaWidth controls softness
-
-    #ifdef DEBUG_SHOW_COLORS
-    edge = 0.0;
-    #endif
-
-    color = mix(color, backgroundColor, edge);
 
     #ifdef DEBUG_SHOW_DISTANCE
 
 
-    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    float value = 0.5 * (cos(5.0 * distance) + 1.0);
     value = value * value * value;
     vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :// outside
     (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
@@ -196,8 +227,25 @@ void main()
     #endif
 
 
+
+    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
+
+    float aaWidth = 0.001;
+    float edge = smoothstep(0.0, 0.0 + aaWidth, distance);// aaWidth controls softness
+
+    #ifdef DEBUG_SHOW_COLORS
+    edge = 0.0;
+    #endif
+
+
+
+    color = mix(color, backgroundColor, edge);
+
+
     float light = render(screenUV);
     vec3 col = light * color.xyz;
+
+
 
     #ifdef DITHERING
 

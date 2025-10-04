@@ -408,7 +408,7 @@ namespace WeirdEngine
 
 		d = std::min(d, currentGroupMinDistance);
 
-		return d;
+		return d - 0.05f;
 	}
 
 	const float EPSILON = 0.25f;

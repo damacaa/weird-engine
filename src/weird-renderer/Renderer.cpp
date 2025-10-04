@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+// #define USE_CORRECTED_DISTANCE_TEXTURE
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -106,6 +108,8 @@ namespace WeirdEngine
 
 			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
 
+			m_2DDistanceCorrectionShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceCorrection.frag");
+
 			m_2DMaterialColorShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialColorShader.frag");
 
 			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
@@ -139,6 +143,10 @@ namespace WeirdEngine
 			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
+
+			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_2DDistanceCorrectionRender = RenderTarget(false);
+			m_2DDistanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
 			m_2dColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DColorRender = RenderTarget(false);
@@ -242,6 +250,13 @@ namespace WeirdEngine
 			// 2D Ray marching
 			if (enable2D)
 			{
+				// 2D ray marching
+				// Renders to m_distanceTexture
+				// Stores non-RGBA data in each channel
+				// R: Distance
+				// G: MaterialID
+				// B: Mask???
+				// A:
 				{
 					glViewport(0, 0, m_distanceSampleWidth, m_distanceSampleHeight);
 
@@ -279,11 +294,14 @@ namespace WeirdEngine
 
 				glViewport(0, 0, m_renderWidth, m_renderHeight);
 
+				// Renders color
+				// RGB: color
+				// A: mask used for next step
 				{
 					// Bind the framebuffer you want to render to
 					m_2DColorRender.bind();
 
-					// Draw ray marching stuff
+					// Calculate pixel color
 					m_2DMaterialColorShader.use();
 
 					// Get materials ?
@@ -308,6 +326,7 @@ namespace WeirdEngine
 					m_shapes2D.unbind();
 				}
 
+				// Apply gaussian blur to color texture to blend materials
 				static bool horizontal = true;
 				{
 					m_2DMaterialBlendShader.use();
@@ -334,6 +353,7 @@ namespace WeirdEngine
 					}
 				}
 
+				// Render background
 				{
 					m_2DBackgroundRender.bind();
 
@@ -344,6 +364,22 @@ namespace WeirdEngine
 
 					m_renderPlane.draw(m_2DLightingShader);
 				}
+
+#ifdef USE_CORRECTED_DISTANCE_TEXTURE
+				// TODO: correct distance texture
+				{
+					m_2DDistanceCorrectionRender.bind();
+					m_2DDistanceCorrectionShader.use();
+					m_2DDistanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+
+					// Distance
+					GLuint distanceTextureLocation = glGetUniformLocation(m_2DDistanceCorrectionShader.ID, "t_distanceTexture");
+					glUniform1i(distanceTextureLocation, 0);
+					m_distanceTexture.bind(0);
+
+					m_renderPlane.draw(m_2DDistanceCorrectionShader);
+				}
+#endif
 
 				// 2D Lighting
 				{
@@ -356,15 +392,21 @@ namespace WeirdEngine
 					m_2DLightingShader.setUniform("u_time", scene.getTime());
 					m_2DLightingShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
+					// Color texture
 					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
 					glUniform1i(colorTextureLocation, 0);
-
 					m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
 
+					// Distance
 					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
 					glUniform1i(distanceTextureLocation, 1);
+#ifdef USE_CORRECTED_DISTANCE_TEXTURE
+					m_distanceTextureCorrected.bind(1);
+#else
 					m_distanceTexture.bind(1);
+#endif
 
+					// Bg
 					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");
 					glUniform1i(backgroundTextureLocation, 2);
 					m_2DBackgroundTexture.bind(2);

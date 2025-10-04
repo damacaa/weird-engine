@@ -36,15 +36,20 @@ void main()
     float distance = color.x;
     int materialId = int(color.y);
     float mask = color.z;
+
+    // New material color
     vec3 c = u_staticColors[materialId];
 
-    float zoom = -u_camMatrix[3].z;
-
+    // Get current material color
     vec3 currentColor = texture(t_currentColorTexture, screenUV).xyz;
 
-    // TODO: uniform?
+    // Blend new color with current color
+    // Calculate zoom factor to reduce blending with distance
+    float zoom = -u_camMatrix[3].z;
     float zoomFactor = (zoom - 10.0) * 0.02;
     zoomFactor = smoothstep(0.0, 1.0, zoomFactor);
+
+    // TODO: uniform to control speed?
     c = mix(c, currentColor, 0.9 * (1.0 - zoomFactor) * mask);
 
     FragColor = vec4(c, mask);

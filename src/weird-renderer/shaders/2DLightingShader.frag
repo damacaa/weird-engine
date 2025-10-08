@@ -114,6 +114,41 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     return traveled;
 }
 
+const float MAX_DIST_INSIDE = 0.1;
+
+float rayMarchInside(vec2 ro, vec2 rd, out float maxDistance)
+{
+    float d;
+    maxDistance = 10000.0;
+
+    float traveled = 0.0;
+
+
+
+    for (int i = 0; i < MAX_STEPS; i++)
+    {
+        vec2 p = ro + (traveled * rd);
+
+        d = map(p);
+
+        if (d >= -EPSILON)
+        break;
+
+
+
+        // traveled += 0.01;
+        // traveled += d;
+        traveled += min(-d, 0.01);
+
+        if (traveled >= MAX_DIST_INSIDE)
+        {
+            return MAX_DIST_INSIDE;
+        }
+    }
+
+    return traveled;
+}
+
 float render(vec2 uv)
 {
 
@@ -125,68 +160,86 @@ float render(vec2 uv)
     // Directional light
     // vec2 rd = u_directionalLightDirection.xy;
 
-    float d = map(uv);
+    float mapDistance = map(uv);
     float minD;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
-    /*if (d <= 0.0)
+    /*if (mapDistance <= 0.0)
     {
 
-        // float dd =  -max(-0.05, d) - 0.01;
+        // float dd =  -max(-0.05, mapDistance) - 0.01;
         // dd = max(0.0, dd);
         float distanceFallof = 2.5;
         float maxDistance = 0.05;
 
-        float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
         dd = min(maxDistance, dd);
 
         // Get distance at offset position
-        d = rayMarch(offsetPosition, rd, minD);
-        return d < FAR ? 1.0 + (-1.5f * dd) : 2.0;// * dot(n,  rd);
+        mapDistance = rayMarch(offsetPosition, rd, minD);
+        return mapDistance < FAR ? 1.0 + (-1.5f * dd) : 2.0;// * dot(n,  rd);
     }*/
 
-    if (d <= 0.0005)
+    /*if (mapDistance <= 0.0005)
     {
         float distanceFallof = 2.5;
         float maxDistance = 0.05;
 
-        float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
         dd = min(maxDistance, dd);
 
         float dForward = map(uv + (0.01 * rd));
 
-        float dChange = dForward - d;
+        float dChange = dForward - mapDistance;
         dChange = max(0, dChange);
 
         float innerShadow = (-2.5f * dd);
-        float specular = d > -0.001 ? 10.0 * dChange : 0.0;
+        float specular = mapDistance > -0.001 ? 10.0 * dChange : 0.0;
         float insideShapeLight = innerShadow + specular;
 
         float distanceAtOffsetPosition = rayMarch(offsetPosition, rd, minD);
         return distanceAtOffsetPosition < FAR ? 1.0 + (-1.5f * dd) + insideShapeLight : 2.0;// * dot(n,  rd);
-    }
+    }*/
 
     // Try this again with corrected distances
-    /*if (d <= 0.0)
+    /*if (mapDistance <= 0.0)
     {
         float distanceFallof = 2.5;
         float maxDistance = 0.05;
 
-        float dd = mix(0.0, 1.0, -(distanceFallof * d));// - 0.005;
+        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
         dd = min(maxDistance, dd);
 
-        float dForward = map(uv + (abs(d * 20.0) * rd));
+        float dForward = map(uv + (abs(mapDistance * 20.0) * rd));
 
-        float dChange = dForward - d;
+        float dChange = dForward - mapDistance;
         dChange = max(0, dChange);
 
         float innerShadow = 1.0 + (-2.5f * dd);
-        float specular = d > -0.001 ? 10.0 * dChange : 0.0;
+        float specular = mapDistance > -0.001 ? 10.0 * dChange : 0.0;
 
         return dForward > 0.0 ? 1.0 : 0.0;// * dot(n,  rd);
     }*/
 
-    d = rayMarch(uv, rd, minD);
+
+    if (mapDistance < 0.0005)
+    {
+        float distanceInside = rayMarchInside(uv, rd, minD);
+
+        vec2 surfacePos = uv + (rd * (distanceInside * 1.1));
+        float surfaceD = rayMarch(surfacePos, rd, minD);
+
+        // distanceInside += surfaceD < FAR ? 0.05 : 0.0;
+        distanceInside = surfaceD < FAR ? MAX_DIST_INSIDE : distanceInside; // what if MAX_DIST_INSIDE is too big?
+        float factorInside = (1.0 - (distanceInside/ MAX_DIST_INSIDE));
+        factorInside = pow(factorInside * 1.1, 3) - minD;
+        factorInside = max(1.0, factorInside);
+
+
+        return factorInside;
+    }
+
+    float d = rayMarch(uv, rd, minD);
 
     // return (10.0 * minD)+0.5;
 
@@ -244,6 +297,7 @@ void main()
 
     float light = render(screenUV);
     vec3 col = light * color.xyz;
+    // col = vec3(light);
 
 
 

@@ -35,7 +35,7 @@ namespace WeirdEngine
 		m_simulationTime(0),
 		m_substeps(1),
 		m_gravity(-10),
-		m_push(20.0f * SIMULATION_FREQUENCY),
+		m_push(10.0f * SIMULATION_FREQUENCY),
 		m_damping(0.001f),
 		m_simulating(false),
 		m_collisionDetectionMethod(MethodNaive),

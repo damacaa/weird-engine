@@ -149,7 +149,7 @@ float rayMarchInside(vec2 ro, vec2 rd, out float maxDistance)
     return traveled;
 }
 
-float render(vec2 uv)
+float render(vec2 uv, float edge)
 {
 
     #ifdef SHADOWS_ENABLED
@@ -222,7 +222,7 @@ float render(vec2 uv)
     }*/
 
 
-    if (mapDistance < 0.0005)
+    if (edge < 0.5)
     {
         float distanceInside = rayMarchInside(uv, rd, minD);
 
@@ -232,9 +232,8 @@ float render(vec2 uv)
         // distanceInside += surfaceD < FAR ? 0.05 : 0.0;
         distanceInside = surfaceD < FAR ? MAX_DIST_INSIDE : distanceInside; // what if MAX_DIST_INSIDE is too big?
         float factorInside = (1.0 - (distanceInside/ MAX_DIST_INSIDE));
-        factorInside = pow(factorInside * 1.1, 3) - minD;
+        factorInside = 1.5 * pow(factorInside, 3); // - minD;
         factorInside = max(1.0, factorInside);
-
 
         return factorInside;
     }
@@ -295,7 +294,7 @@ void main()
     color = mix(color, backgroundColor, edge);
 
 
-    float light = render(screenUV);
+    float light = render(screenUV, edge);
     vec3 col = light * color.xyz;
     // col = vec3(light);
 

@@ -149,7 +149,7 @@ float rayMarchInside(vec2 ro, vec2 rd, out float maxDistance)
     return traveled;
 }
 
-float render(vec2 uv, float edge)
+float render(vec2 uv)
 {
 
     #ifdef SHADOWS_ENABLED
@@ -222,7 +222,7 @@ float render(vec2 uv, float edge)
     }*/
 
 
-    if (edge < 0.5)
+    if (mapDistance <= 0.0)
     {
         float distanceInside = rayMarchInside(uv, rd, minD);
 
@@ -239,6 +239,9 @@ float render(vec2 uv, float edge)
     }
 
     float d = rayMarch(uv, rd, minD);
+    // If ray doesnt go to infinity, cast shadow
+    // Original distance is substracted to fade  shadow when close to surfaces
+    return d < FAR ? 0.85 - (0.5 * mapDistance) : 1.0;
 
     // return (10.0 * minD)+0.5;
 
@@ -294,7 +297,7 @@ void main()
     color = mix(color, backgroundColor, edge);
 
 
-    float light = render(screenUV, edge);
+    float light = render(screenUV);
     vec3 col = light * color.xyz;
     // col = vec3(light);
 

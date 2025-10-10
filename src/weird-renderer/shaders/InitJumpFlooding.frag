@@ -21,6 +21,6 @@ void main()
     float distance = color.x;
 
     vec2 seed = distance > 0.0 ? screenUV : vec2(-1.0);
-
-    FragColor = vec4(seed, 0.0, 0.0);
+    float initDistance = distance >= 0.0 ? 0.0 : 1e9;
+    FragColor = vec4(seed, initDistance, 0.0);
 }

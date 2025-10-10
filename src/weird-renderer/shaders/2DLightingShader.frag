@@ -116,14 +116,10 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 
 const float MAX_DIST_INSIDE = 0.1;
 
-float rayMarchInside(vec2 ro, vec2 rd, out float maxDistance)
+float rayMarchInside(vec2 ro, vec2 rd)
 {
     float d;
-    maxDistance = 10000.0;
-
     float traveled = 0.0;
-
-
 
     for (int i = 0; i < MAX_STEPS; i++)
     {
@@ -134,11 +130,7 @@ float rayMarchInside(vec2 ro, vec2 rd, out float maxDistance)
         if (d >= -EPSILON)
         break;
 
-
-
-        // traveled += 0.01;
-        // traveled += d;
-        traveled += min(-d, 0.01);
+        traveled += -d;
 
         if (traveled >= MAX_DIST_INSIDE)
         {
@@ -164,67 +156,9 @@ float render(vec2 uv)
     float minD;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
-    /*if (mapDistance <= 0.0)
-    {
-
-        // float dd =  -max(-0.05, mapDistance) - 0.01;
-        // dd = max(0.0, dd);
-        float distanceFallof = 2.5;
-        float maxDistance = 0.05;
-
-        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
-        dd = min(maxDistance, dd);
-
-        // Get distance at offset position
-        mapDistance = rayMarch(offsetPosition, rd, minD);
-        return mapDistance < FAR ? 1.0 + (-1.5f * dd) : 2.0;// * dot(n,  rd);
-    }*/
-
-    /*if (mapDistance <= 0.0005)
-    {
-        float distanceFallof = 2.5;
-        float maxDistance = 0.05;
-
-        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
-        dd = min(maxDistance, dd);
-
-        float dForward = map(uv + (0.01 * rd));
-
-        float dChange = dForward - mapDistance;
-        dChange = max(0, dChange);
-
-        float innerShadow = (-2.5f * dd);
-        float specular = mapDistance > -0.001 ? 10.0 * dChange : 0.0;
-        float insideShapeLight = innerShadow + specular;
-
-        float distanceAtOffsetPosition = rayMarch(offsetPosition, rd, minD);
-        return distanceAtOffsetPosition < FAR ? 1.0 + (-1.5f * dd) + insideShapeLight : 2.0;// * dot(n,  rd);
-    }*/
-
-    // Try this again with corrected distances
-    /*if (mapDistance <= 0.0)
-    {
-        float distanceFallof = 2.5;
-        float maxDistance = 0.05;
-
-        float dd = mix(0.0, 1.0, -(distanceFallof * mapDistance));// - 0.005;
-        dd = min(maxDistance, dd);
-
-        float dForward = map(uv + (abs(mapDistance * 20.0) * rd));
-
-        float dChange = dForward - mapDistance;
-        dChange = max(0, dChange);
-
-        float innerShadow = 1.0 + (-2.5f * dd);
-        float specular = mapDistance > -0.001 ? 10.0 * dChange : 0.0;
-
-        return dForward > 0.0 ? 1.0 : 0.0;// * dot(n,  rd);
-    }*/
-
-
     if (mapDistance <= 0.0)
     {
-        float distanceInside = rayMarchInside(uv, rd, minD);
+        float distanceInside = rayMarchInside(uv, rd);
 
         vec2 surfacePos = uv + (rd * (distanceInside * 1.1));
         float surfaceD = rayMarch(surfacePos, rd, minD);
@@ -243,7 +177,6 @@ float render(vec2 uv)
     // Original distance is substracted to fade  shadow when close to surfaces
     return d < FAR ? 0.85 - (0.5 * mapDistance) : 1.0;
 
-    // return (10.0 * minD)+0.5;
 
     #ifdef SOFT_SHADOWS
     return mix(0.85, 1.0, d / FAR);
@@ -266,40 +199,21 @@ void main()
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
-
-    #ifdef DEBUG_SHOW_DISTANCE
-
-
-    float value = 0.5 * (cos(500.0 * distance) + 1.0);
-    // value = value * value * value;
-    vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :// outside
-    (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
-
-    FragColor = vec4(debugColor, 1.0);
-
-
-    return;
-    #endif
-
-
-
     vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
 
-    float aaWidth = 0.0;
-    float edge = smoothstep(0.0, 0.0 + aaWidth, distance);// aaWidth controls softness
+    bool isShape = distance < 0.0;
 
     #ifdef DEBUG_SHOW_COLORS
-    edge = 0.0;
+    isShape = true;
     #endif
 
-
-
-    color = mix(color, backgroundColor, edge);
-
+    color = isShape ? color : backgroundColor;
 
     float light = render(screenUV);
-    vec3 col = light * color.xyz;
-    // col = vec3(light);
+    vec3 lightColor = vec3(light);
+    vec3 ambienLight = vec3(0.0, 0.0, 0.0);
+    lightColor += ambienLight;
+    vec3 col = lightColor * color.xyz;
 
 
 
@@ -317,4 +231,17 @@ void main()
 
 
     FragColor = vec4(col.xyz, 1.0);
+
+
+    // Distance debug
+    #ifdef DEBUG_SHOW_DISTANCE
+
+    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    // value = value * value * value;
+    vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :// outside
+    (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
+
+    FragColor = vec4(debugColor, 1.0);
+
+    #endif
 }

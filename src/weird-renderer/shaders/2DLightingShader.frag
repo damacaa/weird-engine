@@ -270,8 +270,8 @@ void main()
     #ifdef DEBUG_SHOW_DISTANCE
 
 
-    float value = 0.5 * (cos(5.0 * distance) + 1.0);
-    value = value * value * value;
+    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    // value = value * value * value;
     vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :// outside
     (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
 

@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 
-// #define USE_CORRECTED_DISTANCE_TEXTURE
+#define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine
 {
@@ -81,6 +81,14 @@ namespace WeirdEngine
 #endif
 		}
 
+		static int largestPowerOfTwoBelow(int n) {
+			int p = 1;
+			while (p * 2 <= n) {
+				p *= 2;
+			}
+			return p;
+		}
+
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)
 			, m_windowWidth(width)
@@ -108,6 +116,8 @@ namespace WeirdEngine
 
 			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
 
+			m_JumpFloodInitShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "InitJumpFlooding.frag");
+			m_JumpFloodStepShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "JumpFlooding.frag");
 			m_2DDistanceCorrectionShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceCorrection.frag");
 
 			m_2DMaterialColorShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialColorShader.frag");
@@ -143,6 +153,19 @@ namespace WeirdEngine
 			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DSceneRender = RenderTarget(false);
 			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
+
+			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodInitRender = RenderTarget(false);
+			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
+
+			m_JumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_JumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_JumpFloodRenderPing = RenderTarget(false);
+			m_JumpFloodRenderPing.bindColorTextureToFrameBuffer(m_JumpFloodTexturePing);
+			m_JumpFloodRenderPong = RenderTarget(false);
+			m_JumpFloodRenderPong.bindColorTextureToFrameBuffer(m_JumpFloodTexturePong);
+			m_JumpFloodDoubleBuffer[0] = &m_JumpFloodRenderPing;
+			m_JumpFloodDoubleBuffer[1] = &m_JumpFloodRenderPong;
 
 			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DDistanceCorrectionRender = RenderTarget(false);
@@ -255,8 +278,8 @@ namespace WeirdEngine
 				// Stores non-RGBA data in each channel
 				// R: Distance
 				// G: MaterialID
-				// B: Mask???
-				// A:
+				// B: Mask for color blending
+				// A: Empty
 				{
 					glViewport(0, 0, m_distanceSampleWidth, m_distanceSampleHeight);
 
@@ -292,6 +315,85 @@ namespace WeirdEngine
 					m_shapes2D.unbind();
 				}
 
+#ifdef USE_CORRECTED_DISTANCE_TEXTURE
+
+				float maxDim = std::max(m_distanceSampleWidth, m_distanceSampleHeight);
+				uint16_t m_jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
+				bool pingpong = true;
+
+				{
+					// Initialize
+					m_jumpFloodInitRender.bind();
+					m_JumpFloodInitShader.use();
+
+					GLuint distanceTextureLocation = glGetUniformLocation(m_2DDistanceCorrectionShader.ID, "t_distanceTexture");
+					glUniform1i(distanceTextureLocation, 0);
+					m_distanceTexture.bind(0);
+
+					m_renderPlane.draw(m_JumpFloodInitShader);
+
+					// Jumps
+					m_JumpFloodStepShader.use();
+
+					GLuint prevSeedsTextureLocation = glGetUniformLocation(m_JumpFloodStepShader.ID, "t_prevSeeds");
+					glUniform1i(prevSeedsTextureLocation, 0);
+
+					m_JumpFloodStepShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0 / m_distanceSampleHeight));
+
+
+
+
+					float jump = m_jumpFloodIterations;
+					bool first = true;
+
+					while (jump >= 1)
+					{
+						m_JumpFloodDoubleBuffer[pingpong]->bind();
+
+						// Update uniforms
+						vec2 uJumpSize;
+						uJumpSize.x = float(jump) / float(m_distanceSampleWidth);
+						uJumpSize.y = float(jump) / float(m_distanceSampleHeight);
+						m_JumpFloodStepShader.setUniform("u_jumpSize", uJumpSize);
+
+						if (first)
+						{
+							m_jumpFloodInitTexture.bind(0);
+							first = false;
+						}
+						else
+						{
+							m_JumpFloodDoubleBuffer[!pingpong]->getColorAttachment()->bind(0);
+						}
+
+						m_renderPlane.draw(m_JumpFloodStepShader);
+
+						pingpong = !pingpong;
+
+						jump /= 2;
+					}
+				}
+
+				// TODO: correct distance texture
+				{
+					m_2DDistanceCorrectionRender.bind();
+					m_2DDistanceCorrectionShader.use();
+					m_2DDistanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleWidth));
+
+					// Distance
+					m_2DDistanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
+					m_distanceTexture.bind(0);
+
+					// Distance
+					m_2DDistanceCorrectionShader.setUniform("t_distanceTexture", 1);
+
+					int lastIndex = pingpong ? 0 : 1; // TODO: check if its the other way
+					m_JumpFloodDoubleBuffer[lastIndex]->getColorAttachment()->bind(1);
+
+					m_renderPlane.draw(m_2DDistanceCorrectionShader);
+				}
+#endif
+
 				glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 				// Renders color
@@ -314,7 +416,11 @@ namespace WeirdEngine
 					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
 
 					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
+#ifdef USE_CORRECTED_DISTANCE_TEXTURE
+					m_distanceTextureCorrected.bind(0);
+#else
 					m_distanceTexture.bind(0);
+#endif
 
 					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
 					m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
@@ -364,22 +470,6 @@ namespace WeirdEngine
 
 					m_renderPlane.draw(m_2DLightingShader);
 				}
-
-#ifdef USE_CORRECTED_DISTANCE_TEXTURE
-				// TODO: correct distance texture
-				{
-					m_2DDistanceCorrectionRender.bind();
-					m_2DDistanceCorrectionShader.use();
-					m_2DDistanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-					// Distance
-					GLuint distanceTextureLocation = glGetUniformLocation(m_2DDistanceCorrectionShader.ID, "t_distanceTexture");
-					glUniform1i(distanceTextureLocation, 0);
-					m_distanceTexture.bind(0);
-
-					m_renderPlane.draw(m_2DDistanceCorrectionShader);
-				}
-#endif
 
 				// 2D Lighting
 				{

@@ -67,6 +67,8 @@ namespace WeirdEngine
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
 			Shader m_2DDistanceShader;
+			Shader m_JumpFloodInitShader;
+			Shader m_JumpFloodStepShader;
 			Shader m_2DDistanceCorrectionShader;
 			Shader m_2DMaterialColorShader;
 			Shader m_2DMaterialBlendShader;
@@ -100,8 +102,20 @@ namespace WeirdEngine
 
 
 			Texture m_distanceTexture; // World coords???
-			Texture m_distanceTextureCorrected; // Screen coords
+
 			Texture m_2dColorTexture;
+
+			// Distance correction
+			Texture			m_jumpFloodInitTexture;
+			RenderTarget	m_jumpFloodInitRender;
+
+			Texture	m_JumpFloodTexturePing;
+			Texture m_JumpFloodTexturePong;
+			RenderTarget m_JumpFloodRenderPing;
+			RenderTarget m_JumpFloodRenderPong;
+			RenderTarget *m_JumpFloodDoubleBuffer[2];
+
+			Texture m_distanceTextureCorrected; // Screen coords
 
 
 			Texture	m_postProcessTextureFront;

@@ -16,15 +16,22 @@ uniform sampler2D t_prevSeeds;   // previous seed texture
 uniform vec2 u_jumpSize;        // in UV units (so jump in pixels / texture size)
 uniform vec2 u_texelSize;        // 1.0 / texture resolution (e.g., 1/width, 1/height)
 
+float distanceSqrt(vec2 a, vec2 b)
+{
+    vec2 d = a - b;
+    return dot(d, d);   // or (d.x*d.x + d.y*d.y)
+}
+
 void main()
 {
     vec2 uv = v_texCoord;
 
+    vec3 data = texture(t_prevSeeds, uv).xyz;
     // Current best seed from previous pass
-    vec2 bestSeed = texture(t_prevSeeds, uv).xy;
+    vec2 bestSeed = data.xy;
     // TODO: include in output and read from texture instead
     // TODO: replace distance with distanceSqrt to avoid square roots, real distance will be calculated in a different shader
-    float bestDist = (bestSeed.x < 0.0) ? 1e9 : distance(bestSeed, uv);
+    float bestDist = data.z;
 
     // 8 directions
     const vec2 OFFSETS[8] = vec2[8](
@@ -53,7 +60,7 @@ void main()
         if (nSeed.x < 0.0)  // invalid
             continue;
 
-        float d = distance(nSeed, uv);
+        float d = distanceSqrt(nSeed, uv);
         if (d < bestDist)
         {
             bestDist = d;
@@ -62,5 +69,5 @@ void main()
     }
 
     // Write best seed found
-    FragColor = vec4(bestSeed, 0.0, 1.0);
+    FragColor = vec4(bestSeed, bestDist, 1.0);
 }

@@ -23,9 +23,10 @@ void main()
     vec4 color = texture(t_originalDistanceTexture, screenUV);
     vec4 floodResult = texture(t_distanceTexture, screenUV);
     vec2 seed = floodResult.xy;
+    float floodDist = sqrt(floodResult.z);
 
     float originalDistance = color.x;
-    float realDistance = originalDistance < 0.0 ? -1.0 * distance(seed, screenUV) : originalDistance; //
+    float realDistance = originalDistance < 0.0 ? -1.0 * floodDist: originalDistance; //
 
     FragColor = vec4(realDistance, color.yzw);
 }

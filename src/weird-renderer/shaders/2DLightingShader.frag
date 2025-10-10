@@ -285,7 +285,7 @@ void main()
 
     vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
 
-    float aaWidth = 0.001;
+    float aaWidth = 0.0;
     float edge = smoothstep(0.0, 0.0 + aaWidth, distance);// aaWidth controls softness
 
     #ifdef DEBUG_SHOW_COLORS

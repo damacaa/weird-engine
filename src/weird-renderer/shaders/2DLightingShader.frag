@@ -111,6 +111,7 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
         }
     }
 
+    minDistance = 0.0;
     return traveled;
 }
 
@@ -160,13 +161,13 @@ float render(vec2 uv)
     {
         float distanceInside = rayMarchInside(uv, rd);
 
-        vec2 surfacePos = uv + (rd * (distanceInside * 1.1));
+        vec2 surfacePos = uv + (rd * (distanceInside * 1.5));
         float surfaceD = rayMarch(surfacePos, rd, minD);
 
         // distanceInside += surfaceD < FAR ? 0.05 : 0.0;
         distanceInside = surfaceD < FAR ? MAX_DIST_INSIDE : distanceInside; // what if MAX_DIST_INSIDE is too big?
         float factorInside = (1.0 - (distanceInside/ MAX_DIST_INSIDE));
-        factorInside = 1.5 * pow(factorInside, 3); // - minD;
+        factorInside = 1.5 * pow(factorInside, 3);
         factorInside = max(1.0, factorInside);
 
         return factorInside;
@@ -175,7 +176,7 @@ float render(vec2 uv)
     float d = rayMarch(uv, rd, minD);
     // If ray doesnt go to infinity, cast shadow
     // Original distance is substracted to fade  shadow when close to surfaces
-    return d < FAR ? 0.85 - (0.5 * mapDistance) : 1.0;
+    return d < FAR ? (0.85 - (0.5 * mapDistance)) : 1.0; // * (1.0 - texture(t_colorTexture, uv + (rd * d)).a)
 
 
     #ifdef SOFT_SHADOWS
@@ -196,6 +197,7 @@ void main()
     vec2 screenUV = v_texCoord;
     vec4 colorSample = texture(t_colorTexture, screenUV);
     vec3 color = colorSample.rgb;// + (0.25 * floor(colorSample.a));
+    float alpha = colorSample.a;// + (0.25 * floor(colorSample.a));
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
@@ -207,7 +209,7 @@ void main()
     isShape = true;
     #endif
 
-    color = isShape ? color : backgroundColor;
+    color = mix(color, backgroundColor, isShape ? 1.0 - alpha : 1.0);
 
     float light = render(screenUV);
     vec3 lightColor = vec3(light);

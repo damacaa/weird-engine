@@ -1,5 +1,8 @@
 #version 330 core
 
+// #define CORRECT_INSIDE
+ #define CORRECT_OUTSIDE
+
 // Constants
 
 // Outputs u_staticColors in RGBA
@@ -25,8 +28,15 @@ void main()
     vec2 seed = floodResult.xy;
     float floodDist = sqrt(floodResult.z);
 
-    float originalDistance = color.x;
-    float realDistance = originalDistance < 0.0 ? -1.0 * floodDist: originalDistance; //
+    float realDistance = color.x; // Old distance
+
+    #ifdef CORRECT_INSIDE
+    realDistance = realDistance < 0.0 ? -floodDist: realDistance; //
+    #endif
+
+    #ifdef CORRECT_OUTSIDE
+    realDistance = realDistance > 0.0 ? floodDist: realDistance; //
+    #endif
 
     FragColor = vec4(realDistance, color.yzw);
 }

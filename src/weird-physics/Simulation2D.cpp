@@ -707,6 +707,7 @@ namespace WeirdEngine
 
 #endif
 
+		// TODO: improve this shit
 		for (size_t i = 0; i < m_size; i++)
 		{
 			m_positionsAux[i] = m_positions[i];

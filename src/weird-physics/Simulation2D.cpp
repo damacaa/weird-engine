@@ -980,10 +980,11 @@ namespace WeirdEngine
 		while (m_simulating)
 		{
 			if (m_simulationDelay >= FIXED_DELTA_TIME)
-				{
+			{
 				process();
 			}else {
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				int delay = std::ceil((FIXED_DELTA_TIME - m_simulationDelay) * 1000); // ms
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 			}
 		}
 	}

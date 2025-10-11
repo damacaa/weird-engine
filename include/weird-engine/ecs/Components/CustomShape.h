@@ -11,7 +11,8 @@ namespace WeirdEngine
 		Addition,
 		Subtraction,
 		Intersection,
-		SmoothAddition
+		SmoothAddition,
+		SmoothSubtraction,
 	};
 
 	struct CustomShape : public Component

@@ -345,10 +345,17 @@ namespace WeirdEngine
 		return std::min(a, b) - e * e * 0.25 / r;
 	}
 
+	// Smooth subtraction (a - b), 2D SDF
+	static float fOpSubSoft(float a, float b, float r)
+	{
+		return -fOpUnionSoft(b, -a, r);
+	}
+
+
 	float Simulation2D::map(vec2 p)
 	{
-		float d = 1.0f;
-		float currentGroupMinDistance = 1.0f;
+		float d = 1000.0f;
+		float currentGroupMinDistance = 1000.0f;
 
 		auto currentGroup = 0;
 
@@ -398,6 +405,10 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition: {
 					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				case CombinationType::SmoothSubtraction: {
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
 					break;
 				}
 				default:
@@ -973,6 +984,32 @@ namespace WeirdEngine
 
 			return m_treeIdToSimulationID[possibleCollisions[0]];
 		}
+	}
+
+	float Simulation2D::raymarch(vec2 pos, vec2 direction) {
+		float d;
+		constexpr float FAR = 100.0f;
+
+		float traveled = 0.0;
+
+		for (int i = 0; i < 100; i++)
+		{
+			vec2 p = pos + (traveled * direction);
+
+			d = map(p);
+
+			if (d <= EPSILON)
+				break;
+
+			traveled += d;
+
+			if (traveled >= FAR)
+			{
+				return FAR;
+			}
+		}
+
+		return traveled;
 	}
 
 	void Simulation2D::runSimulationThread()

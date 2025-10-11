@@ -1,5 +1,8 @@
 #version 330 core
 
+// #define CORRECT_INSIDE
+#define CORRECT_OUTSIDE
+
 // Constants
 
 // Outputs u_staticColors in RGBA
@@ -20,7 +23,18 @@ void main()
     vec4 color = texture(t_distanceTexture, screenUV);
     float distance = color.x;
 
-    vec2 seed = distance > 0.0 ? screenUV : vec2(-1.0);
-    float initDistance = distance >= 0.0 ? 0.0 : 1e9;
+    bool condition;
+
+    #ifdef CORRECT_INSIDE
+    condition = distance > 0.0;
+    #endif
+
+    #ifdef CORRECT_OUTSIDE
+    condition = distance < 0.0;
+    #endif
+
+    vec2 seed = condition ? screenUV : vec2(-1.0);
+    float initDistance = condition ? 0.0 : 1e9;
+
     FragColor = vec4(seed, initDistance, 0.0);
 }

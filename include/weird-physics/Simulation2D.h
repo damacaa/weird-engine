@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <vector>
 #include <thread>
 #include <unordered_set>
@@ -276,6 +277,9 @@ namespace WeirdEngine
 		bool m_useSimdOperations;
 
 		vec2* m_positions;
+		vec2* m_positionsRead;;
+		vec2* m_positionsAux;;
+
 		vec2* m_previousPositions;
 		vec2* m_velocities;
 		vec2* m_forces;

@@ -14,13 +14,12 @@ namespace WeirdEngine
 
 	constexpr size_t MAX_STEPS = 10;
 
-	std::mutex g_simulationTimeMutex;
-	std::mutex g_externalForcesMutex;
-	std::mutex g_fixMutex;
-	std::mutex g_collisionTreeUpdateMutex;
+
 
 	Simulation2D::Simulation2D(size_t size) : m_isPaused(false),
 		m_positions(new vec2[size]),
+		m_positionsRead(new vec2[size]),
+		m_positionsAux(new vec2[size]),
 		m_previousPositions(new vec2[size]),
 		m_velocities(new vec2[size]),
 		m_forces(new vec2[size]),
@@ -47,7 +46,9 @@ namespace WeirdEngine
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
 			m_positions[i] = vec2(0.0f, 0.0f);
+			m_positionsRead[i] = vec2(0.0f, 0.0f);
 			m_previousPositions[i] = vec2(0.0f, 0.0f);
+
 			m_velocities[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
 
@@ -61,6 +62,8 @@ namespace WeirdEngine
 	Simulation2D::~Simulation2D()
 	{
 		delete[] m_positions;
+		delete[] m_positionsRead;
+		delete[] m_positionsAux;
 		delete[] m_previousPositions;
 		delete[] m_velocities;
 		delete[] m_forces;
@@ -88,7 +91,7 @@ namespace WeirdEngine
 	void Simulation2D::update(double delta)
 	{
 		{
-			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+			// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 			m_simulationDelay += delta;
 		}
 
@@ -122,15 +125,17 @@ namespace WeirdEngine
 				step((float)FIXED_DELTA_TIME);
 				++steps;
 				{
-					std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+					// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 					m_simulationTime += FIXED_DELTA_TIME;
 				}
 			}
 
 			{
-				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+				// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 				m_simulationDelay -= FIXED_DELTA_TIME;
 			}
+
+
 
 #if MEASURE_PERFORMANCE
 			// Get the ending time
@@ -154,7 +159,7 @@ namespace WeirdEngine
 
 	double Simulation2D::getSimulationTime()
 	{
-		std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
+		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
 	}
 
@@ -647,7 +652,7 @@ namespace WeirdEngine
 		}
 
 		{
-			std::lock_guard<std::mutex> lock(g_fixMutex);
+			// std::lock_guard<std::mutex> lock(g_fixMutex);
 			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
 			{
 				SimulationID id = *it;
@@ -701,6 +706,16 @@ namespace WeirdEngine
 		}
 
 #endif
+
+		for (size_t i = 0; i < m_size; i++)
+		{
+			m_positionsAux[i] = m_positions[i];
+		}
+
+		// swap buffers
+		vec2* aux = m_positionsAux;
+		m_positionsAux = m_positionsRead;
+		m_positionsRead = aux;
 	}
 
 #pragma endregion
@@ -716,6 +731,7 @@ namespace WeirdEngine
 		auto toId = id;
 		auto fromId = m_lastIdGiven;
 
+		m_positions[toId] = m_positions[fromId];
 		m_positions[toId] = m_positions[fromId];
 		m_previousPositions[toId] = m_previousPositions[fromId];
 		m_velocities[toId] = m_velocities[fromId];
@@ -794,7 +810,7 @@ namespace WeirdEngine
 
 	void Simulation2D::addForce(SimulationID id, vec2 force)
 	{
-		std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+		// std::lock_guard<std::mutex> lock(g_externalForcesMutex);
 
 		// TODO: create two buffers (contnious forces and impulses), depending on type multiply by mass imitating 4 unity types
 
@@ -828,25 +844,25 @@ namespace WeirdEngine
 
 	void Simulation2D::fix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
+		// std::lock_guard<std::mutex> lock(g_fixMutex);
 		m_fixedObjects.emplace_back(id);
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
+		// std::lock_guard<std::mutex> lock(g_fixMutex);
 		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
 	}
 
 	vec2 Simulation2D::getPosition(SimulationID entity)
 	{
-		return m_positions[entity];
+		return m_positionsRead[entity];
 	}
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
-
 		m_positions[id] = pos;
+		m_positionsRead[id] = pos;
 		m_previousPositions[id] = pos;
 		m_velocities[id] = vec2(0.0f);
 		// m_forces[entity] = vec2(0.0f);
@@ -855,8 +871,8 @@ namespace WeirdEngine
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
 	{
-		transform.position.x = m_positions[id].x;
-		transform.position.y = m_positions[id].y;
+		transform.position.x = m_positionsRead[id].x;
+		transform.position.y = m_positionsRead[id].y;
 	}
 
 	void Simulation2D::setMass(SimulationID id, float mass)
@@ -945,7 +961,7 @@ namespace WeirdEngine
 		else
 		{
 			float size = 0.001f;
-			std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+			// std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
 			AABB boundinBox(pos.x - size, pos.y - size, pos.x + size, pos.y + size);
 			std::vector<int> possibleCollisions;
 			// possibleCollisions.reserve(3);
@@ -962,7 +978,12 @@ namespace WeirdEngine
 	{
 		while (m_simulating)
 		{
-			process();
+			if (m_simulationDelay >= FIXED_DELTA_TIME)
+				{
+				process();
+			}else {
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
 		}
 	}
 

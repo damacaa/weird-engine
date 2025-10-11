@@ -485,7 +485,13 @@ namespace WeirdEngine
 					// Color texture
 					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
 					glUniform1i(colorTextureLocation, 0);
-					m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+
+					if (m_materialBlendIterations > 0) {
+						m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
+					}else {
+						m_2dColorTexture.bind(0);
+					}
+
 
 					// Distance
 					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");

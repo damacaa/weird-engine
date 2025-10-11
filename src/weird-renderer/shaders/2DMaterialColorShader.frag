@@ -19,7 +19,7 @@ uniform float u_time;
 
 uniform sampler2D t_materialDataTexture;
 uniform sampler2D t_currentColorTexture;
-uniform vec3 u_staticColors[16];
+uniform vec4 u_staticColors[16];
 
 vec3 randomColor(int index) {
     float seed = float(index) * 43758.5453;
@@ -38,10 +38,10 @@ void main()
     float mask = color.z;
 
     // New material color
-    vec3 c = u_staticColors[materialId];
+    vec4 c = u_staticColors[materialId];
 
     // Get current material color
-    vec3 currentColor = texture(t_currentColorTexture, screenUV).xyz;
+    vec4 currentColor = texture(t_currentColorTexture, screenUV);
 
     // Blend new color with current color
     // Calculate zoom factor to reduce blending with distance
@@ -52,6 +52,6 @@ void main()
     // TODO: uniform to control speed?
     c = mix(c, currentColor, 0.9 * (1.0 - zoomFactor) * mask);
 
-    FragColor = vec4(c, mask);
+    FragColor = c;
 }
 

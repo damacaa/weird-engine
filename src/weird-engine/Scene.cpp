@@ -211,6 +211,15 @@ namespace WeirdEngine
 					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
 					break;
 				}
+				case CombinationType::SmoothSubtraction:
+				{
+					// Smoothly subtract "dist" from currentMinDistance
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0);\n";
+					// Material belongs to the *a* shape if it still “wins” after subtraction
+					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
+					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
+					break;
+				}
 				default:
 					break;
 			}

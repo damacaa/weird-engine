@@ -1,6 +1,6 @@
 #version 330 core
 
-#define BLEND_SHAPES 0
+#define BLEND_SHAPES 1
 #define MOTION_BLUR 0
 
 out vec4 FragColor;
@@ -20,7 +20,7 @@ uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
 
 uniform float u_time;
-uniform float u_k = 0.15;
+uniform float u_k = 0.5;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
@@ -63,14 +63,20 @@ const float FAR = 100.0f;
 // Operations
 float fOpUnionSoft(float a, float b, float r)
 {
-    float e = max(r - abs(a - b), 0);
+    float e = max(r - abs(a - b), 0.0);
     return min(a, b) - e * e * 0.25 / r;
 }
 
 float fOpUnionSoft(float a, float b, float r, float invR)
 {
-    float e = max(r - abs(a - b), 0);
+    float e = max(r - abs(a - b), 0.0);
     return min(a, b) - e * e * 0.25 * invR;
+}
+
+// Smooth subtraction: a - b
+float fOpSubSoft(float a, float b, float r)
+{
+    return -fOpUnionSoft(b, -a, 0.5);
 }
 
 float smin(float a, float b, float u_k)

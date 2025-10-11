@@ -126,6 +126,7 @@ namespace WeirdEngine
 		void removeShape(CustomShape& shape);
 
 		SimulationID raycast(vec2 pos);
+		float raymarch(vec2 pos, vec2 direction);
 
 		void setGravity(float gravity) { m_gravity = gravity; }
 		void setDamping(float damping) { m_damping = damping; }

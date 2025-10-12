@@ -189,11 +189,10 @@ float render(vec2 uv)
 
     float ddot = -(dot(-rd, normal));
     float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
-    float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01);
+    float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
     float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
 
-    return d < FAR ? min(0.85 + finalDdot , 0.95) * extraShadow : 1.0; // + (0.05 * d)
-
+    return d < FAR ? min(0.85 + finalDdot, 0.95) * extraShadow : 1.0;
 
     #ifdef SOFT_SHADOWS
     return mix(0.85, 1.0, d / FAR);

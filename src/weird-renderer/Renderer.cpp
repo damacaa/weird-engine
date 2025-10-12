@@ -2,6 +2,14 @@
 
 #include <SDL3/SDL.h>
 
+#define MA_NO_DEVICE_IO
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio/miniaudio.h>
+
+#define CHANNELS    2               /* Must be stereo for this example. */
+#define SAMPLE_RATE 48000
+
+// SETTINGS
 #define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine
@@ -21,13 +29,69 @@ namespace WeirdEngine
 			std::cerr << "OpenGL Debug: " << message << std::endl;
 		}
 
+		static ma_engine g_engine;
+		static ma_sound g_sound;            /* This example will play only a single sound at once, so we only need one ma_sound object. */
+
+		void data_callback(void* pUserData, ma_uint8* pBuffer, int bufferSizeInBytes)
+		{
+			ma_uint32 bufferSizeInFrames;
+
+			(void)pUserData;
+
+			/* Reading is just a matter of reading straight from the engine. */
+			bufferSizeInFrames = (ma_uint32)bufferSizeInBytes / ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&g_engine));
+			ma_engine_read_pcm_frames(&g_engine, pBuffer, bufferSizeInFrames, NULL);
+		}
+
 		GLInitializer::GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window)
 		{
+			ma_result result;
+			ma_engine_config engineConfig;
+			SDL_AudioSpec desiredSpec;
+			SDL_AudioSpec obtainedSpec;
+			SDL_AudioDeviceID deviceID;
+
+			/*
+			We'll initialize the engine first for the purpose of the example, but since the engine and SDL
+			are independent of each other you can initialize them in any order. You need only make sure the
+			channel count and sample rates are consistent between the two.
+
+			When initializing the engine it's important to make sure we don't initialize a device
+			internally because we want SDL to be dealing with that for us instead.
+			*/
+			engineConfig = ma_engine_config_init();
+			engineConfig.noDevice   = MA_TRUE;      /* <-- Make sure this is set so that no device is created (we'll deal with that ourselves). */
+			engineConfig.channels   = CHANNELS;
+			engineConfig.sampleRate = SAMPLE_RATE;
+
+			result = ma_engine_init(&engineConfig, &g_engine);
+			if (result != MA_SUCCESS) {
+				printf("Failed to initialize audio engine.");
+				throw;
+			}
+
+			/* Now load our sound. */
+			result = ma_sound_init_from_file(&g_engine, SHADERS_PATH "sample.wav", 0, NULL, NULL, &g_sound);
+			if (result != MA_SUCCESS) {
+				printf("Failed to initialize sound.");
+				throw;
+			}
+
+			/* Loop the sound so we can continuously hear it. */
+			ma_sound_set_looping(&g_sound, MA_TRUE);
+
+			/*
+			The sound will not be started by default, so start it now. We won't hear anything until the SDL
+			audio device has been opened and started.c
+			*/
+			ma_sound_start(&g_sound);
+
+
 			// Initialize SDL
-			if (!SDL_Init(SDL_INIT_VIDEO))
+			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) // Correct check for SDL3
 			{
 				std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-				throw;
+				throw std::runtime_error("SDL Initialization Failed"); // Throw an actual exception object
 			}
 
 			// Set OpenGL attributes for a core profile
@@ -79,6 +143,24 @@ namespace WeirdEngine
 			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
 #endif
+
+
+			MA_ZERO_OBJECT(&desiredSpec);
+			desiredSpec.freq     = ma_engine_get_sample_rate(&g_engine);
+			desiredSpec.format   = AUDIO_F32;
+			desiredSpec.channels = ma_engine_get_channels(&g_engine);
+			desiredSpec.samples  = 512;
+			desiredSpec.callback = data_callback;
+			desiredSpec.userdata = NULL;
+
+			deviceID = SDL_OpenAudioDevice(NULL, 0, &desiredSpec, &obtainedSpec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+			if (deviceID == 0) {
+				printf("Failed to open SDL audio device.");
+				throw;
+			}
+
+			/* Start playback. */
+			SDL_PauseAudioDevice(deviceID);
 		}
 
 		static int largestPowerOfTwoBelow(int n) {
@@ -88,6 +170,8 @@ namespace WeirdEngine
 			}
 			return p;
 		}
+
+
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
 			: m_initializer(width, height, m_window)

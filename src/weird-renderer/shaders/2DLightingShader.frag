@@ -1,7 +1,6 @@
 #version 330 core
 
 #define SHADOWS_ENABLED
-// #define SOFT_SHADOWS
 #define DITHERING
 
 // #define DEBUG_SHOW_DISTANCE
@@ -193,12 +192,6 @@ float render(vec2 uv)
     float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
 
     return d < FAR ? min(0.85 + finalDdot, 0.95) * extraShadow : 1.0;
-
-    #ifdef SOFT_SHADOWS
-    return mix(0.85, 1.0, d / FAR);
-    #else
-    return d < FAR ? 0.85 : 1.0;
-    #endif
 
     #else// No shadows
 

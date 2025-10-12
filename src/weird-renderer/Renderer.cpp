@@ -455,7 +455,7 @@ namespace WeirdEngine {
 
 #ifdef USE_CORRECTED_DISTANCE_TEXTURE
 
-				float maxDim = std::max(m_distanceSampleWidth, m_distanceSampleHeight);
+				float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
 				uint16_t m_jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
 				bool pingpong = true;
 

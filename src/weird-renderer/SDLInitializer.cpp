@@ -33,6 +33,9 @@ namespace WeirdEngine {
                 throw std::runtime_error("Failed to initialize GLAD.");
             }
 
+            audioEngine.init();
+
+
             // Audio Stream Setup
             SDL_AudioSpec desiredSpec;
             SDL_memset(&desiredSpec, 0, sizeof(desiredSpec));

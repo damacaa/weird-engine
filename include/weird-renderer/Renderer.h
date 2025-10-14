@@ -32,8 +32,10 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
-			SDLInitializer m_sdlInitializer;
+
 			AudioEngine m_audioEngine;
+
+			SDLInitializer m_sdlInitializer;
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;

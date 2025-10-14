@@ -41,7 +41,6 @@ namespace WeirdEngine {
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
 
-			m_audioEngine.init();
 			m_audioEngine.loadSound(SHADERS_PATH "sample.wav");
 
 			// Load shaders

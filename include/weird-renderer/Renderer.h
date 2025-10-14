@@ -5,6 +5,8 @@
 #include "RenderTarget.h"
 #include "DataBuffer.h"
 #include "Screen.h"
+#include "SDLInitializer.h"
+#include "AudioEngine.h"
 
 #include "weird-engine/Scene.h"
 #include "RenderPlane.h"
@@ -12,34 +14,11 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
-inline void CheckOpenGLError(const char *file, int line)
-{
-	GLenum err;
-	while ((err = glGetError()) != GL_NO_ERROR)
-	{
-		// int e = err;
-		std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
-		// Optionally, map err to a string representation
-	}
-}
-
-#ifndef NDEBUG
-// Debug mode (portable)
-#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
-#else
-#define GL_CHECK_ERROR()
-#endif
-
 
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		class GLInitializer {
-		public:
-			GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window);
-		};
-
 		class Renderer
 		{
 		
@@ -53,7 +32,8 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
-			GLInitializer m_initializer;
+			SDLInitializer m_sdlInitializer;
+			AudioEngine m_audioEngine;
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;

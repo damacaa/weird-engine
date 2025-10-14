@@ -1,225 +1,14 @@
 #include "weird-renderer/Renderer.h"
+#include "weird-renderer/Debug.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
-
-#define MA_NO_DEVICE_IO
-#define MINIAUDIO_IMPLEMENTATION
-#include <miniaudio/miniaudio.h>
-
-#define CHANNELS    2               /* Must be stereo for this example. */
-#define SAMPLE_RATE 44100
 
 // SETTINGS
 #define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine {
 	namespace WeirdRenderer {
-		void GLAPIENTRY OpenGLDebugCallback(
-			GLenum source,
-			GLenum type,
-			GLuint id,
-			GLenum severity,
-			GLsizei length,
-			const GLchar* message,
-			const void* userParam)
-		{
-			// You can filter specific messages by severity or source if needed
-			std::cerr << "OpenGL Debug: " << message << std::endl;
-		}
-
-		static ma_engine g_engine;
-		static ma_sound g_sound;            /* This example will play only a single sound at once, so we only need one ma_sound object. */
-
-		// The miniaudio logic needs to be adapted to the SDL3 callback
-		void data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount, int total_amount)
-		{
-			// Cast pUserData back to ma_engine or just use the global g_engine (since it's static)
-			// For this simple case, we'll use the global g_engine, similar to the original example.
-
-			// total_amount is the amount of data in bytes requested or available.
-			// Since this is a playback stream with a callback, total_amount is the amount
-			// requested for playback.
-
-			ma_uint32 framesToRead;
-			ma_uint32 bytesToRead = (ma_uint32)total_amount;
-
-			// miniaudio's read function takes frame count, so convert bytes to frames
-			framesToRead = bytesToRead / ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&g_engine));
-
-			// Allocate a temporary buffer for the audio data
-			// Note: SDL3's callback does not provide a buffer to fill directly like SDL2.
-			// Instead, you generate or read the data and *put* it into the stream.
-			float tempBuffer[512 * CHANNELS]; // Assuming 512 frames as a reasonable buffer size for this example.
-			// The requested size is `total_amount` bytes, so a safe
-			// temporary buffer size should be large enough, or dynamically allocated.
-
-			// A safer, more direct approach is to use the exact number of bytes requested.
-			// For simplicity, we'll use a fixed-size buffer as a placeholder, but for
-			// a robust solution, you should allocate for `bytesToRead` (or use a helper).
-
-			// --- Safe allocation approach (better for production) ---
-			// ma_uint8* pBuffer = (ma_uint8*)malloc(bytesToRead);
-			// if (!pBuffer) return; // Handle allocation failure
-
-			// ma_engine_read_pcm_frames(&g_engine, pBuffer, framesToRead, NULL);
-
-			// SDL_PutAudioStreamData(stream, pBuffer, bytesToRead);
-			// free(pBuffer);
-			// --- End safe allocation approach ---
-
-			// --- Simple example approach (using a fixed buffer to keep it simple, but less robust) ---
-			// Assuming the requested framesToRead is less than or equal to 512 for this simple example
-			if (framesToRead > 512) framesToRead = 512; // Safety guard for this simplified example
-
-			ma_engine_read_pcm_frames(&g_engine, tempBuffer, framesToRead, NULL);
-
-			// Now, put the data we just read from miniaudio into the SDL audio stream.
-			SDL_PutAudioStreamData(stream, tempBuffer, framesToRead * ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&g_engine)));
-			// --- End simple example approach ---
-		}
-
-		GLInitializer::GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window)
-		{
-			ma_result result;
-			ma_engine_config engineConfig;
-
-			// Miniaudio initialization
-			engineConfig = ma_engine_config_init();
-			engineConfig.noDevice   = MA_TRUE;
-			engineConfig.channels   = CHANNELS;
-			engineConfig.sampleRate = SAMPLE_RATE;
-
-			result = ma_engine_init(&engineConfig, &g_engine);
-			if (result != MA_SUCCESS)
-			{
-				throw std::runtime_error("Failed to initialize audio engine");
-			}
-
-			// Load sample sound
-			result = ma_sound_init_from_file(&g_engine, SHADERS_PATH "sample.wav", 0, NULL, NULL, &g_sound);
-			if (result != MA_SUCCESS)
-			{
-				ma_engine_uninit(&g_engine); // Clean up miniaudio engine on failure ?
-				throw std::runtime_error("Failed to initialize sound");
-			}
-
-			// Loop the sound and start
-			ma_sound_set_looping(&g_sound, MA_TRUE);
-			ma_sound_start(&g_sound);
-
-			int num_drivers = SDL_GetNumAudioDrivers();
-			std::cout << "Available SDL Audio Drivers:" << std::endl;
-			for (int i = 0; i < num_drivers; ++i) {
-				std::cout << "  - " << SDL_GetAudioDriver(i) << std::endl;
-			}
-
-			// SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "pulseaudio");
-
-			// Initialize SDL
-			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
-			{
-				std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-				ma_engine_uninit(&g_engine);
-				throw std::runtime_error("SDL Initialization Failed");
-			}
-
-			// Set OpenGL attributes for a core profile
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
-			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-			// Create an SDL window that supports OpenGL
-			m_window = SDL_CreateWindow("SDL3 OpenGL Window", width, height, SDL_WINDOW_OPENGL);
-
-			if (m_window == NULL)
-			{
-				std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
-				SDL_Quit();
-				ma_engine_uninit(&g_engine);
-				throw;
-			}
-
-			// Create the OpenGL context
-			SDL_GLContext m_glContext = SDL_GL_CreateContext(m_window);
-			if (m_glContext == NULL)
-			{
-				std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << std::endl;
-				SDL_DestroyWindow(m_window);
-				SDL_Quit();
-				ma_engine_uninit(&g_engine);
-				throw;
-			}
-
-			// Make the OpenGL context current
-			SDL_GL_MakeCurrent(m_window, m_glContext);
-
-			// Load GLAD so it configures OpenGL
-			if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
-			{
-				std::cerr << "Failed to initialize GLAD" << std::endl;
-				SDL_GL_DestroyContext(m_glContext);
-				SDL_DestroyWindow(m_window);
-				SDL_Quit();
-				ma_engine_uninit(&g_engine);
-				throw;
-			}
-
-			// Clear any GL errors that may have occurred during initialization
-			while (glGetError() != GL_NO_ERROR){}
-
-
-			// NEW SDL3 AUDIO INITIALIZATION
-			SDL_AudioSpec desiredSpec;
-			SDL_memset(&desiredSpec, 0, sizeof(desiredSpec)); // Use SDL_memset for the spec
-
-			// 1. Fill the desired SDL_AudioSpec (only format, channels, and freq)
-			desiredSpec.freq     = ma_engine_get_sample_rate(&g_engine);
-			desiredSpec.format   = SDL_AUDIO_F32; // Use SDL_AUDIO_F32
-			desiredSpec.channels = ma_engine_get_channels(&g_engine);
-			// Note: The 'samples' field is gone, and the callback function is passed to SDL_OpenAudioDeviceStream
-
-			// 2. Use SDL_OpenAudioDeviceStream for callback-based audio
-			// This function opens the device, creates the stream, and binds the callback.
-			auto m_audioStream = SDL_OpenAudioDeviceStream(
-				SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, // Use default playback device
-				&desiredSpec,                      // Your desired format
-				(SDL_AudioStreamCallback)data_callback, // Your existing callback function
-				NULL                               // Userdata for the callback (can be NULL)
-			);
-
-			if (m_audioStream == NULL) {
-				std::cerr << "Failed to open SDL audio device stream: " << SDL_GetError() << std::endl;
-				// Clean up GL and miniaudio resources
-				SDL_GL_DestroyContext(m_glContext);
-				SDL_DestroyWindow(m_window);
-				SDL_Quit();
-				ma_engine_uninit(&g_engine);
-				throw;
-			}
-
-			/* 3. Start playback. */
-			// SDL_OpenAudioDeviceStream starts the device paused, so we must resume it
-			// First, get the underlying device ID
-			SDL_AudioDeviceID deviceID = SDL_GetAudioStreamDevice(m_audioStream);
-			SDL_ResumeAudioDevice(deviceID);
-		}
-
-		// Don't forget to destroy the stream in your class destructor:
-		/*
-		GLInitializer::~GLInitializer() {
-			// ... (Destroy GL context, window, etc.)
-			ma_sound_uninit(&g_sound);
-			ma_engine_uninit(&g_engine);
-			if (m_audioStream) {
-				SDL_DestroyAudioStream(m_audioStream); // This cleans up the stream and closes the device
-			}
-			SDL_QuitSubSystem(SDL_INIT_AUDIO);
-			// ... (Other cleanup)
-		}
-		*/
 
 
 
@@ -234,7 +23,8 @@ namespace WeirdEngine {
 
 
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
-			: m_initializer(width, height, m_window)
+			: m_audioEngine()
+			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_distanceSampleScale(1.0f)
@@ -250,6 +40,9 @@ namespace WeirdEngine {
 			Screen::height = m_windowHeight;
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
+
+			m_audioEngine.init();
+			m_audioEngine.loadSound(SHADERS_PATH "sample.wav");
 
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -379,10 +172,6 @@ namespace WeirdEngine {
 			m_combineResultTexture.dispose();
 
 			delete[] m_2DData;
-
-			// SDL_DestroyRenderer(renderer); // TODO
-			SDL_DestroyWindow(m_window);
-			SDL_Quit();
 		}
 
 		void Renderer::render(Scene& scene, const double time)

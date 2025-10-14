@@ -6,8 +6,12 @@
 
 namespace WeirdEngine {
     namespace WeirdRenderer {
-        SDLInitializer::SDLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window) {
-            if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+        SDLInitializer::SDLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
+        {
+            audioEngine.init();
+
+            if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
+            {
                 throw std::runtime_error("SDL could not initialize!");
             }
 
@@ -33,7 +37,6 @@ namespace WeirdEngine {
                 throw std::runtime_error("Failed to initialize GLAD.");
             }
 
-            audioEngine.init();
 
 
             // Audio Stream Setup

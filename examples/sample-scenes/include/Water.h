@@ -1,6 +1,7 @@
 #pragma once
 
 #include <weird-engine.h>
+#include "weird-renderer/Debug.h"
 
 using namespace WeirdEngine;
 class WaterScene : public Scene

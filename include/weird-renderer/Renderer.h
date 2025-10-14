@@ -32,7 +32,9 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
+
 			AudioEngine m_audioEngine;
+
 			SDLInitializer m_sdlInitializer;
 
 			SDL_Window* m_window;

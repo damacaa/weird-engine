@@ -108,7 +108,13 @@ namespace WeirdEngine {
 			ma_sound_set_looping(&g_sound, MA_TRUE);
 			ma_sound_start(&g_sound);
 
-			SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "pulseaudio,pipewire");
+			int num_drivers = SDL_GetNumAudioDrivers();
+			std::cout << "Available SDL Audio Drivers:" << std::endl;
+			for (int i = 0; i < num_drivers; ++i) {
+				std::cout << "  - " << SDL_GetAudioDriver(i) << std::endl;
+			}
+
+			// SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "pulseaudio");
 
 			// Initialize SDL
 			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))

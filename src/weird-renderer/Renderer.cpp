@@ -595,6 +595,17 @@ namespace WeirdEngine {
 				texture.saveToDisk("output_texture.png");
 			}
 
+			static  bool collisionStarted = false;
+			if (Input::GetKeyDown(Input::C))
+			{
+				m_audioEngine.triggerCollision(100.0f, 0.1f, 0.3f);
+				collisionStarted = true;
+			}
+
+			if (collisionStarted) {
+				m_audioEngine.setFrictionLevel(0.01f * (sin(scene.getTime()) + 1.0f) * 0.5f);
+			}
+
 
 			SDL_GL_SwapWindow(m_window);
 

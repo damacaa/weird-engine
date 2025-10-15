@@ -49,6 +49,8 @@ namespace WeirdEngine
 
 		RenderMode getRenderMode() const;
 
+		float getFrictionSound();
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;

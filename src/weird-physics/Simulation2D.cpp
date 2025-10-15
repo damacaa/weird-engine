@@ -579,23 +579,29 @@ namespace WeirdEngine
 					// p += penetration * normal;
 
 					// Impulse
-					float restitution = 0.5f;
-					vec2 vRel = -m_velocities[i];
-					float velocityAlongNormal = glm::dot(normal, vRel);
-					float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
-					vec2 impulse = impulseMagnitude * normal;
+					// float restitution = 0.5f;
+					// vec2 vRel = -m_velocities[i];
+					// float velocityAlongNormal = glm::dot(normal, vRel);
+					// float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
+					// vec2 impulse = impulseMagnitude * normal;
 
 					// m_velocities[i] -= impulse; // * m_invMass[i]
 
-					constexpr float minRestitution = 0.0f;
 					constexpr float restitution2 = 10.0f;
-					auto velocityDirection = glm::normalize(m_velocities[i]);
+					vec2 vel = m_velocities[i];
+					float speed = glm::length(vel);
+
+					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
+
 					float normalAlongVelocity = glm::dot(velocityDirection, normal);
-					float restitutionAmount = std::max(minRestitution, restitution2 * normalAlongVelocity);
 
-					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * restitutionAmount; // Lose velocity on collision
+					normalAlongVelocity = glm::clamp(normalAlongVelocity, -1.0f, 1.0f); // optional safety
 
-					float surfaceFriction = (1.0f - abs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+					float restitutionAmount = std::max(0.0f, restitution2 * normalAlongVelocity);
+					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * restitutionAmount;
+
+					float surfaceFriction = 0.1f * (1.0f - fabs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+
 					m_currentFriction += surfaceFriction;
 
 					m_velocities[i] -= FIXED_DELTA_TIME_F * 0.01f * surfaceFriction * velocityDirection; // Lose velocity on collision

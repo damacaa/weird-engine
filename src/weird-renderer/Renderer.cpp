@@ -595,14 +595,12 @@ namespace WeirdEngine {
 				texture.saveToDisk("output_texture.png");
 			}
 
-			static  bool collisionStarted = false;
 			if (Input::GetKeyDown(Input::C))
 			{
 				m_audioEngine.triggerCollision(1000.0f, 0.1f, 0.3f);
-				collisionStarted = true;
 			}
 
-			m_audioEngine.setFrictionLevel(std::min(0.01f * scene.getFrictionSound(), 0.1f));
+			m_audioEngine.setFrictionLevel(std::min(0.1f * scene.getFrictionSound(), 0.3f));
 
 
 

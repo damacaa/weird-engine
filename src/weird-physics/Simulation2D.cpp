@@ -107,6 +107,11 @@ namespace WeirdEngine
 	uint64_t g_collisionCount = 0;
 #endif
 
+	float Simulation2D::getTotalFriction()
+	{
+		return m_totalFrictionRead;
+	}
+
 	void Simulation2D::process()
 	{
 		int steps = 0;
@@ -117,6 +122,8 @@ namespace WeirdEngine
 			auto start = std::chrono::high_resolution_clock::now();
 #endif
 			checkCollisions();
+
+			m_currentFriction = 0.0f;
 
 			if (!m_isPaused)
 			{
@@ -129,6 +136,8 @@ namespace WeirdEngine
 					m_simulationTime += FIXED_DELTA_TIME;
 				}
 			}
+
+			m_totalFrictionRead = m_currentFriction;
 
 			{
 				// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
@@ -578,9 +587,19 @@ namespace WeirdEngine
 
 					// m_velocities[i] -= impulse; // * m_invMass[i]
 
-					constexpr float minFriction = 0.15f;
+					constexpr float minRestitution = 0.0f;
 					constexpr float restitution2 = 10.0f;
-					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * std::max(minFriction, restitution2 * glm::dot(glm::normalize(m_velocities[i]), normal));
+					auto velocityDirection = glm::normalize(m_velocities[i]);
+					float normalAlongVelocity = glm::dot(velocityDirection, normal);
+					float restitutionAmount = std::max(minRestitution, restitution2 * normalAlongVelocity);
+
+					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * restitutionAmount; // Lose velocity on collision
+
+					float surfaceFriction = (1.0f - abs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+					m_currentFriction += surfaceFriction;
+
+					m_velocities[i] -= FIXED_DELTA_TIME_F * 0.01f * surfaceFriction * velocityDirection; // Lose velocity on collision
+
 
 					// Penalty
 					vec2 v = penetration * penetration * normal;

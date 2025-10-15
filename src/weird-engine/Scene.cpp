@@ -337,6 +337,11 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
+	float Scene::getFrictionSound()
+	{
+		return m_simulation2D.getTotalFriction();
+	}
+
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();

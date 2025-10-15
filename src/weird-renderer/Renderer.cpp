@@ -598,13 +598,12 @@ namespace WeirdEngine {
 			static  bool collisionStarted = false;
 			if (Input::GetKeyDown(Input::C))
 			{
-				m_audioEngine.triggerCollision(100.0f, 0.1f, 0.3f);
+				m_audioEngine.triggerCollision(1000.0f, 0.1f, 0.3f);
 				collisionStarted = true;
 			}
 
-			if (collisionStarted) {
-				m_audioEngine.setFrictionLevel(0.01f * (sin(scene.getTime()) + 1.0f) * 0.5f);
-			}
+			m_audioEngine.setFrictionLevel(std::min(0.01f * scene.getFrictionSound(), 0.1f));
+
 
 
 			SDL_GL_SwapWindow(m_window);

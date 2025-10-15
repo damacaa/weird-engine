@@ -131,6 +131,7 @@ namespace WeirdEngine
 		void setGravity(float gravity) { m_gravity = gravity; }
 		void setDamping(float damping) { m_damping = damping; }
 
+		float getTotalFriction();
 	private:
 		void process();
 		void checkCollisions();
@@ -274,6 +275,9 @@ namespace WeirdEngine
 		bool m_simulating;
 		double m_simulationDelay;
 		double m_simulationTime;
+
+		float m_totalFrictionRead;
+		float m_currentFriction;
 
 		bool m_useSimdOperations;
 

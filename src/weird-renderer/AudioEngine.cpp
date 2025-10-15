@@ -1,5 +1,7 @@
 #include "weird-renderer/AudioEngine.h"
+
 #include <iostream>
+#include <vector>
 
 #define MA_NO_DEVICE_IO
 #define MINIAUDIO_IMPLEMENTATION
@@ -54,22 +56,59 @@ namespace WeirdEngine {
             return ma_engine_get_channels(&g_engine);
         }
 
-        void AudioEngine::data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount, int total_amount) {
-            AudioEngine* audioEngine = static_cast<AudioEngine*>(pUserData);
-            if (!audioEngine) return;
+        void AudioEngine::data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount, int total_amount)
+        {
 
-            ma_uint32 framesToRead;
-            ma_uint32 bytesToRead = (ma_uint32)total_amount;
+            // AudioEngine* audioEngine = static_cast<AudioEngine*>(pUserData);
+            // if (!audioEngine) return;
+            //
+            // ma_uint32 framesToRead;
+            // ma_uint32 bytesToRead = (ma_uint32)total_amount;
+            //
+            // framesToRead = bytesToRead / ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&audioEngine->g_engine));
+            //
+            // float tempBuffer[512 * CHANNELS];
+            //
+            // if (framesToRead > 512) framesToRead = 512;
+            //
+            // ma_engine_read_pcm_frames(&audioEngine->g_engine, tempBuffer, framesToRead, NULL);
+            //
+            // SDL_PutAudioStreamData(stream, tempBuffer, framesToRead * ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&audioEngine->g_engine)));
 
-            framesToRead = bytesToRead / ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&audioEngine->g_engine));
 
-            float tempBuffer[512 * CHANNELS];
+            static float phase = 0.0f;
 
-            if (framesToRead > 512) framesToRead = 512;
+            const float freq         = 40.0f;   // Sine frequency (Hz)
+            const float amplitude    = 0.2f;     // Sine amplitude
+            const float noise_amp    = 0.001f;    // Noise amplitude (lower = more subtle)
+            const float phaseInc     = 2.0f * M_PI * freq / SAMPLE_RATE;
 
-            ma_engine_read_pcm_frames(&audioEngine->g_engine, tempBuffer, framesToRead, NULL);
+            ma_uint32 bytesToWrite   = (ma_uint32)total_amount;
+            ma_uint32 framesToWrite  = bytesToWrite / ma_get_bytes_per_frame(ma_format_f32, CHANNELS);
 
-            SDL_PutAudioStreamData(stream, tempBuffer, framesToRead * ma_get_bytes_per_frame(ma_format_f32, ma_engine_get_channels(&audioEngine->g_engine)));
+            std::vector<float> tempBuffer(framesToWrite * CHANNELS);
+
+            for (ma_uint32 i = 0; i < framesToWrite; ++i) {
+                // Base sine sample
+                float sineSample = amplitude * sinf(phase);
+
+                // White noise sample (-1.0 to 1.0)
+                float noiseSample = noise_amp * ((float)rand() / RAND_MAX * 2.0f - 1.0f);
+
+                // Combine
+                float sample = sineSample + noiseSample;
+
+                // Update phase and wrap
+                phase += phaseInc;
+                if (phase >= 2.0f * M_PI) phase -= 2.0f * M_PI;
+
+                // Stereo output
+                for (int ch = 0; ch < CHANNELS; ++ch)
+                    tempBuffer[i * CHANNELS + ch] = sample;
+            }
+
+            SDL_PutAudioStreamData(stream, tempBuffer.data(),
+                framesToWrite * ma_get_bytes_per_frame(ma_format_f32, CHANNELS));
         }
     }
 }

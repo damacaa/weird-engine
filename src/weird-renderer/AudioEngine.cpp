@@ -75,9 +75,114 @@ ma_uint8 AudioEngine::getChannels() const {
 
 // ------------------- Procedural Controls -------------------
 
-void AudioEngine::setFrictionLevel(float level) {
-    frictionLevel = std::clamp(level, 0.0f, 1.0f);
+void AudioEngine::setFrictionLevel(float level)
+{
+    level = std::clamp(level, 0.0f, 1.0f);
+
+    static int curveMode = 6;
+
+    const float MAX_FRICTION = 1.0f;
+    const float MIN_AUDIBLE = 0.05f;
+    const float MAX_AMPLITUDE = 0.5f;
+
+    switch (curveMode) {
+
+        case 0: {
+            frictionLevel = std::min(0.5f * level, 0.1f);
+            break;
+        }
+
+        case 1: {
+            float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(normalizedFriction, 2.0f);
+            frictionLevel = amplitude;
+            break;
+        }
+
+        case 2: {
+            float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(normalizedFriction, 3.0f);
+            frictionLevel = amplitude;
+            break;
+        }
+
+        case 3: {
+            float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            if (normalizedFriction > 0) {
+                float amplitude = MIN_AUDIBLE * pow((MAX_AMPLITUDE / MIN_AUDIBLE), normalizedFriction);
+                frictionLevel = amplitude;
+            } else {
+                frictionLevel = 0.0f;
+            }
+            break;
+        }
+
+        case 4: {
+            const float minFrictionLog = 0.01f;
+            if (level > minFrictionLog) {
+                float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+                float logFriction = log(normalizedFriction * (MAX_FRICTION - minFrictionLog) + minFrictionLog);
+                float logMin = log(minFrictionLog);
+                float logMax = log(MAX_FRICTION);
+
+                float range = logMax - logMin;
+                if (range > 0) {
+                    float normalizedLog = (logFriction - logMin) / range;
+                    float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * normalizedLog;
+                    frictionLevel = amplitude;
+                } else {
+                    frictionLevel = MIN_AUDIBLE;
+                }
+            } else {
+                frictionLevel = 0.0f;
+            }
+            break;
+        }
+
+        case 5: {
+            float threshold = 0.4f;
+            float ratio = 4.0f;
+
+            float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            float initialAmplitude = MAX_AMPLITUDE * pow(normalizedFriction, 2.0f);
+
+            if (initialAmplitude > threshold) {
+                float overshoot = initialAmplitude - threshold;
+                float compressedOvershoot = overshoot / ratio;
+                float finalAmplitude = threshold + compressedOvershoot;
+                frictionLevel = finalAmplitude;
+            } else {
+                frictionLevel = initialAmplitude;
+            }
+            break;
+        }
+
+        case 6: {
+            float threshold = 0.4f;
+            float ratio = 4.0f;
+
+            float lowEndBoostExponent = 0.75f;
+            float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            float initialAmplitude = (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(normalizedFriction, lowEndBoostExponent);
+
+            if (initialAmplitude > threshold) {
+                float overshoot = initialAmplitude - threshold;
+                float compressedOvershoot = overshoot / ratio;
+                float finalAmplitude = threshold + compressedOvershoot;
+                frictionLevel = finalAmplitude;
+            } else {
+                frictionLevel = initialAmplitude;
+            }
+            break;
+        }
+
+        default: {
+            curveMode = 0;
+            break;
+        }
+    }
 }
+
 
 void AudioEngine::triggerCollision(float freq, float amp, float decaySec) {
     collisionFreq = freq;

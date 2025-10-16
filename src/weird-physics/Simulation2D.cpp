@@ -587,24 +587,25 @@ namespace WeirdEngine
 
 					// m_velocities[i] -= impulse; // * m_invMass[i]
 
-					constexpr float restitution2 = 10.0f;
+					constexpr float energyAbsortion = 10.0f;
 					vec2 vel = m_velocities[i];
-					float speed = glm::length(vel);
+					float speed = length(vel);
 
 					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
 
 					float normalAlongVelocity = glm::dot(velocityDirection, normal);
+					// normalAlongVelocity = glm::clamp(normalAlongVelocity, -1.0f, 1.0f); // optional safety
 
-					normalAlongVelocity = glm::clamp(normalAlongVelocity, -1.0f, 1.0f); // optional safety
+					float absortionRate = std::max(0.0f, energyAbsortion * normalAlongVelocity);
+					m_velocities[i] -= FIXED_DELTA_TIME_F * absortionRate * speed * normal;
 
-					float restitutionAmount = std::max(0.0f, restitution2 * normalAlongVelocity);
-					m_velocities[i] -= FIXED_DELTA_TIME_F * m_velocities[i] * restitutionAmount;
+					constexpr float DYNAMIC_FRICTION = 0.01f;
+					float frictionCoefficient = DYNAMIC_FRICTION;
 
-					float surfaceFriction = 0.1f * (1.0f - fabs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+					float surfaceFriction = frictionCoefficient * (1.0f - abs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+					m_currentFriction = std::max(surfaceFriction, m_currentFriction);
 
-					m_currentFriction += surfaceFriction;
-
-					m_velocities[i] -= FIXED_DELTA_TIME_F * 0.01f * surfaceFriction * velocityDirection; // Lose velocity on collision
+					m_velocities[i] -= FIXED_DELTA_TIME_F * surfaceFriction * velocityDirection; // Lose velocity on collision
 
 
 					// Penalty

@@ -597,11 +597,13 @@ namespace WeirdEngine {
 
 			if (Input::GetKeyDown(Input::C))
 			{
-				m_audioEngine.triggerCollision(440.0f, 0.1f, 0.3f);
+				m_audioEngine.triggerCollision(440.0f, 0.9f, 1.3f);
 			}
 
-			m_audioEngine.setFrictionLevel(std::min(0.1f * scene.getFrictionSound(), 0.1f));
-			
+			float frictionValue = scene.getFrictionSound();
+			m_audioEngine.setFrictionLevel(std::min(0.5f * frictionValue, 0.1f));
+			// std::cout << "frictionValue: " << frictionValue << std::endl;
+
 			SDL_GL_SwapWindow(m_window);
 
 			GL_CHECK_ERROR();

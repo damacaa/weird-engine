@@ -61,7 +61,7 @@ void AudioEngine::loadSound(const char* filePath) {
     }
 
     ma_sound_set_looping(&g_sound, MA_TRUE);
-    ma_sound_set_volume(&g_sound, 0.5);
+    ma_sound_set_volume(&g_sound, 0.0);
     ma_sound_start(&g_sound);
 }
 

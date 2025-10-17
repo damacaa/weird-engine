@@ -77,13 +77,15 @@ ma_uint8 AudioEngine::getChannels() const {
 
 void AudioEngine::setFrictionLevel(float level)
 {
-    level = std::clamp(level, 0.0f, 1.0f);
+    const float MAX_FRICTION = 0.5f;
+    const float MIN_AUDIBLE = 0.05f;
+    const float MAX_AMPLITUDE = 0.3f;
+
+    level = std::clamp(level, 0.0f, MAX_FRICTION);
 
     static int curveMode = 6;
 
-    const float MAX_FRICTION = 1.0f;
-    const float MIN_AUDIBLE = 0.05f;
-    const float MAX_AMPLITUDE = 0.5f;
+
 
     switch (curveMode) {
 
@@ -158,7 +160,7 @@ void AudioEngine::setFrictionLevel(float level)
         }
 
         case 6: {
-            float threshold = 0.4f;
+            float threshold = 0.25f;
             float ratio = 4.0f;
 
             float lowEndBoostExponent = 0.75f;

@@ -39,7 +39,7 @@ bool AudioEngine::init() {
     ma_noise_config noiseConfig = ma_noise_config_init(
         ma_format_f32,
         CHANNELS,
-        ma_noise_type_white,
+        ma_noise_type_pink,
         0,          // seed
         1.0f        // amplitude
     );

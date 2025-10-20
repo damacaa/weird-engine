@@ -305,6 +305,7 @@ namespace WeirdEngine
 			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 		}
 
+		m_simulation2D.m_frictionSamplePosition = vec2(g_cameraPosition.x, g_cameraPosition.y);
 		m_simulation2D.update(delta);
 
 		onUpdate(delta);

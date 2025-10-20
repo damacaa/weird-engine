@@ -603,7 +603,11 @@ namespace WeirdEngine
 					float frictionCoefficient = DYNAMIC_FRICTION;
 
 					float surfaceFriction = frictionCoefficient * (1.0f - abs(normalAlongVelocity)) * glm::length(m_velocities[i]);
-					m_currentFriction = std::max(surfaceFriction, m_currentFriction);
+
+					const float m_soundFalloff = 0.001f;
+					float frictionSample = surfaceFriction / (1.0f + (m_soundFalloff * glm::distance2(m_frictionSamplePosition, p))); // Apply distance falloff
+
+					m_currentFriction = std::max(frictionSample, m_currentFriction);
 
 					m_velocities[i] -= FIXED_DELTA_TIME_F * surfaceFriction * velocityDirection; // Lose velocity on collision
 

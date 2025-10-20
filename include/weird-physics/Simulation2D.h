@@ -88,6 +88,8 @@ namespace WeirdEngine
 		Simulation2D(size_t size);
 		~Simulation2D();
 
+		vec2 m_frictionSamplePosition;
+
 		// Manage simulation
 		void pause();
 		void resume();

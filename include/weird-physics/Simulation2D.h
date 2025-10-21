@@ -10,6 +10,7 @@
 #include <chrono>
 #include <immintrin.h>
 #include <mutex>
+#include <queue>
 #include <set>
 
 #include <glm/glm.hpp>
@@ -77,6 +78,9 @@ namespace WeirdEngine
 		SimulationID bodyB;
 		// bool firstContact; TODO
 	};
+
+	// Define the function pointer type and include a user data pointer
+	using StepCallbackFn = void (*)(void*);
 
 	// Define the function pointer type and include a user data pointer
 	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
@@ -315,6 +319,9 @@ namespace WeirdEngine
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 		std::vector<DistanceFieldObject2D> m_objects;
 
+		std::vector<bool> collisionMap;
+		std::vector<SimulationID> collisionQueue;
+
 		float map(vec2 p);
 
 		// Collision
@@ -340,15 +347,24 @@ namespace WeirdEngine
 		bool m_liftEnabled = false;
 
 	private:
+		StepCallbackFn m_stepCallback = nullptr;
 		CollisionCallbackFn m_collisionCallback = nullptr;
 		void* m_callbackUserData = nullptr;
 
 	public:
+		void setStepCallback(StepCallbackFn callback, void* userData)
+		{
+			m_stepCallback = callback;
+			m_callbackUserData = userData;
+		}
+
 		void setCollisionCallback(CollisionCallbackFn callback, void* userData)
 		{
 			m_collisionCallback = callback;
 			m_callbackUserData = userData;
 		}
+
+		bool hasCollisions = false;
 	};
 
 }

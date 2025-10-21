@@ -16,6 +16,8 @@ namespace WeirdEngine
 
 
 
+
+
 	Simulation2D::Simulation2D(size_t size) : m_isPaused(false),
 		m_positions(new vec2[size]),
 		m_positionsRead(new vec2[size]),
@@ -41,7 +43,8 @@ namespace WeirdEngine
 		m_useSimdOperations(false),
 		m_diameter(1.0f),
 		m_diameterSquared(m_diameter* m_diameter),
-		m_radious(m_diameter / 2.0f)
+		m_radious(m_diameter / 2.0f),
+		collisionMap(size)
 	{
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
@@ -134,6 +137,22 @@ namespace WeirdEngine
 				{
 					// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 					m_simulationTime += FIXED_DELTA_TIME;
+
+
+
+					// Notify collision callback
+					if (m_stepCallback)
+					{
+						if (!collisionQueue.empty())
+						{
+							hasCollisions = true;
+							collisionQueue.clear();
+						}
+
+						m_stepCallback(m_callbackUserData);
+
+						hasCollisions = false;
+					}
 				}
 			}
 
@@ -553,6 +572,10 @@ namespace WeirdEngine
 				m_forces[i].y += m_mass[i] * m_gravity;
 			}
 
+			// Check
+			bool previousCollision = collisionMap[i];
+			bool currentCollision = false;
+
 			// Static shapes
 			float d = map(p);
 			if (d < m_radious)
@@ -573,8 +596,15 @@ namespace WeirdEngine
 
 				// std::cout << normal.x << " : " << normal.y << std::endl;
 
+
+
+
+
 				if (map(p - (1.1f * m_radious * normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
+					currentCollision = true;
+
+
 					// Position
 					// p += penetration * normal;
 
@@ -620,6 +650,22 @@ namespace WeirdEngine
 
 					m_forces[i] += force;
 				}
+
+
+			}
+
+			if (currentCollision != previousCollision)
+			{
+				if (currentCollision) {
+					// Inform of new collision
+					collisionQueue.push_back(i);
+					// std::cout << "Collision in" << std::endl;
+				} else {
+					// Inform of end of collision?
+					// std::cout << "Collision out" << std::endl;
+				}
+
+				collisionMap[i] = currentCollision;
 			}
 
 			// Old walls

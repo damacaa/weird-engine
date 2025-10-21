@@ -9,6 +9,11 @@
 
 namespace WeirdEngine
 {
+	void Scene::handlePhysicsStep(void *userData)
+	{
+		Scene *self = static_cast<Scene *>(userData);
+		self->onPhysicsStep();
+	}
 
 	void Scene::handleCollision(CollisionEvent &event, void *userData)
 	{
@@ -42,6 +47,7 @@ namespace WeirdEngine
 			m_simulation2D.startSimulationThread();
 		}
 
+		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
 		m_simulation2D.setCollisionCallback(&handleCollision, this);
 	}
 
@@ -311,6 +317,11 @@ namespace WeirdEngine
 		onUpdate(delta);
 
 		m_ecs.freeRemovedComponents();
+	}
+
+	void Scene::onPhysicsStep()
+	{
+		m_collisionSoundQueued = m_simulation2D.hasCollisions || m_collisionSoundQueued;
 	}
 
 	WeirdRenderer::Camera &Scene::getCamera()

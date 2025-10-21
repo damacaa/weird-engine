@@ -602,8 +602,8 @@ namespace WeirdEngine
 
 				if (map(p - (1.1f * m_radious * normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
-					currentCollision = true;
-
+					if (penetration > 0.3f)
+						currentCollision = true;
 
 					// Position
 					// p += penetration * normal;
@@ -623,16 +623,16 @@ namespace WeirdEngine
 
 					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
 
-					float normalAlongVelocity = glm::dot(velocityDirection, normal);
-					// normalAlongVelocity = glm::clamp(normalAlongVelocity, -1.0f, 1.0f); // optional safety
+					float velocityAlongNormal = glm::dot(velocityDirection, normal);
+					// velocityAlongNormal = glm::clamp(velocityAlongNormal, -1.0f, 1.0f); // optional safety
 
-					float absortionRate = std::max(0.0f, energyAbsortion * normalAlongVelocity);
+					float absortionRate = std::max(0.0f, energyAbsortion * velocityAlongNormal);
 					m_velocities[i] -= FIXED_DELTA_TIME_F * absortionRate * speed * normal;
 
 					constexpr float DYNAMIC_FRICTION = 0.01f;
 					float frictionCoefficient = DYNAMIC_FRICTION;
 
-					float surfaceFriction = frictionCoefficient * (1.0f - abs(normalAlongVelocity)) * glm::length(m_velocities[i]);
+					float surfaceFriction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * glm::length(m_velocities[i]);
 
 					const float m_soundFalloff = 0.001f;
 					float frictionSample = surfaceFriction / (1.0f + (m_soundFalloff * glm::distance2(m_frictionSamplePosition, p))); // Apply distance falloff

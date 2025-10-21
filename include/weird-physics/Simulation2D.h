@@ -79,6 +79,12 @@ namespace WeirdEngine
 		// bool firstContact; TODO
 	};
 
+	struct ShapeCollisionEvent
+	{
+		SimulationID body;
+		ShapeId shape;
+	};
+
 	// Define the function pointer type and include a user data pointer
 	using StepCallbackFn = void (*)(void*);
 

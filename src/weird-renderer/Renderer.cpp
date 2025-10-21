@@ -595,9 +595,10 @@ namespace WeirdEngine {
 				texture.saveToDisk("output_texture.png");
 			}
 
-			if (Input::GetKeyDown(Input::C))
+			if (scene.m_collisionSoundQueued)
 			{
-				m_audioEngine.triggerCollision(440.0f, 0.9f, 1.3f);
+				m_audioEngine.triggerCollision(440.0f, 0.5f, 0.3f);
+				scene.m_collisionSoundQueued = false;
 			}
 
 

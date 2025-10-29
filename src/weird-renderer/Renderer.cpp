@@ -597,7 +597,7 @@ namespace WeirdEngine {
 
 			if (scene.m_collisionSoundQueued)
 			{
-				m_audioEngine.triggerCollision(440.0f, 0.5f, 0.3f);
+				m_audioEngine.triggerCollision(200.0f, 0.1f, 0.3f);
 				scene.m_collisionSoundQueued = false;
 			}
 

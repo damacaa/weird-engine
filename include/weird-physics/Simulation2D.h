@@ -81,8 +81,13 @@ namespace WeirdEngine
 
 	struct ShapeCollisionEvent
 	{
+		bool firstCollision;
 		SimulationID body;
 		ShapeId shape;
+		float strength;
+		float friction;
+		vec2 position;
+		vec2 normal;
 	};
 
 	// Define the function pointer type and include a user data pointer
@@ -90,6 +95,7 @@ namespace WeirdEngine
 
 	// Define the function pointer type and include a user data pointer
 	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
+	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
 
 	class Simulation2D
 	{
@@ -97,8 +103,6 @@ namespace WeirdEngine
 	public:
 		Simulation2D(size_t size);
 		~Simulation2D();
-
-		vec2 m_frictionSamplePosition;
 
 		// Manage simulation
 		void pause();
@@ -143,7 +147,6 @@ namespace WeirdEngine
 		void setGravity(float gravity) { m_gravity = gravity; }
 		void setDamping(float damping) { m_damping = damping; }
 
-		float getTotalFriction();
 	private:
 		void process();
 		void checkCollisions();
@@ -288,9 +291,6 @@ namespace WeirdEngine
 		double m_simulationDelay;
 		double m_simulationTime;
 
-		float m_totalFrictionRead;
-		float m_currentFriction;
-
 		bool m_useSimdOperations;
 
 		vec2* m_positions;
@@ -325,8 +325,8 @@ namespace WeirdEngine
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 		std::vector<DistanceFieldObject2D> m_objects;
 
-		std::vector<bool> collisionMap;
-		std::vector<SimulationID> collisionQueue;
+		std::vector<bool> m_collisionMap;
+		std::vector<ShapeCollisionEvent> m_collisionQueue;
 
 		float map(vec2 p);
 
@@ -355,6 +355,7 @@ namespace WeirdEngine
 	private:
 		StepCallbackFn m_stepCallback = nullptr;
 		CollisionCallbackFn m_collisionCallback = nullptr;
+		ShapeCollisionCallbackFn m_shapeCollisionCallback = nullptr;
 		void* m_callbackUserData = nullptr;
 
 	public:
@@ -370,7 +371,11 @@ namespace WeirdEngine
 			m_callbackUserData = userData;
 		}
 
-		bool hasCollisions = false;
+		void setShapeCollisionCallback(ShapeCollisionCallbackFn callback, void* userData)
+		{
+			m_shapeCollisionCallback = callback;
+			m_callbackUserData = userData;
+		}
 	};
 
 }

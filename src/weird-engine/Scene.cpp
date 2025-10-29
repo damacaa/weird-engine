@@ -9,10 +9,18 @@
 
 namespace WeirdEngine
 {
+	static float g_frictionSound = 0.0f;
+	static float g_frictionSoundRead = 0.0f;
+
+	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
+	vec3 g_cameraPosition(0, 1, 20);
+
 	void Scene::handlePhysicsStep(void *userData)
 	{
 		Scene *self = static_cast<Scene *>(userData);
 		self->onPhysicsStep();
+		g_frictionSoundRead = g_frictionSound;
+		g_frictionSound = 0.0f;
 	}
 
 	void Scene::handleCollision(CollisionEvent &event, void *userData)
@@ -22,8 +30,18 @@ namespace WeirdEngine
 		self->onCollision(event);
 	}
 
-	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0, 1, 20);
+	void Scene::handleShapeCollision(ShapeCollisionEvent &event, void *userData)
+	{
+		// Unsafe cast! Prone to error.
+		Scene *self = static_cast<Scene *>(userData);
+		self->onShapeCollision(event);
+
+		const float m_soundFalloff = 0.001f;
+		float frictionSample = event.friction / (1.0f + (m_soundFalloff * glm::distance2(vec2(g_cameraPosition.x, g_cameraPosition.y), event.position))); // Apply distance falloff
+
+		g_frictionSound = std::max(frictionSample, g_frictionSound);
+	}
+
 
 	Scene::Scene()
 			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
@@ -49,6 +67,7 @@ namespace WeirdEngine
 
 		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
 		m_simulation2D.setCollisionCallback(&handleCollision, this);
+		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
 	}
 
 	Scene::~Scene()
@@ -311,7 +330,6 @@ namespace WeirdEngine
 			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
 		}
 
-		m_simulation2D.m_frictionSamplePosition = vec2(g_cameraPosition.x, g_cameraPosition.y);
 		m_simulation2D.update(delta);
 
 		onUpdate(delta);
@@ -321,7 +339,7 @@ namespace WeirdEngine
 
 	void Scene::onPhysicsStep()
 	{
-		m_collisionSoundQueued = m_simulation2D.hasCollisions || m_collisionSoundQueued;
+		m_collisionSoundQueued = false || m_collisionSoundQueued; // TODO
 	}
 
 	WeirdRenderer::Camera &Scene::getCamera()
@@ -351,7 +369,7 @@ namespace WeirdEngine
 
 	float Scene::getFrictionSound()
 	{
-		return m_simulation2D.getTotalFriction();
+		return g_frictionSoundRead;
 	}
 
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)

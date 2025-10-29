@@ -59,6 +59,7 @@ namespace WeirdEngine
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		void onPhysicsStep();
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
+		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 
 		ECSManager m_ecs;
@@ -115,5 +116,6 @@ namespace WeirdEngine
 
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(CollisionEvent& event, void* userData);
+		static void handleShapeCollision(ShapeCollisionEvent& event, void* userData);
 	};
 }

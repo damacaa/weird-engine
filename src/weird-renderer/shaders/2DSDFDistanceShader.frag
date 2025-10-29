@@ -251,4 +251,7 @@ void main()
 
     FragColor = vec4(finalDistance, result.y, result.z, 0);
 
+    // This has no visual effect (multiplying by zero), but it forces
+    // the compiler to keep u_time because it's used to calculate FragColor.
+    FragColor.a += u_time * 0.001;
 }

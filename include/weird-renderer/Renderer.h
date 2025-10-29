@@ -5,6 +5,8 @@
 #include "RenderTarget.h"
 #include "DataBuffer.h"
 #include "Screen.h"
+#include "SDLInitializer.h"
+#include "AudioEngine.h"
 
 #include "weird-engine/Scene.h"
 #include "RenderPlane.h"
@@ -12,34 +14,11 @@
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
-inline void CheckOpenGLError(const char *file, int line)
-{
-	GLenum err;
-	while ((err = glGetError()) != GL_NO_ERROR)
-	{
-		// int e = err;
-		std::cerr << "OpenGL Error (" << err << ") at " << file << ":" << line << std::endl;
-		// Optionally, map err to a string representation
-	}
-}
-
-#ifndef NDEBUG
-// Debug mode (portable)
-#define GL_CHECK_ERROR() CheckOpenGLError(__FILE__, __LINE__)
-#else
-#define GL_CHECK_ERROR()
-#endif
-
 
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		class GLInitializer {
-		public:
-			GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window);
-		};
-
 		class Renderer
 		{
 		
@@ -53,7 +32,10 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
-			GLInitializer m_initializer;
+
+			AudioEngine m_audioEngine;
+
+			SDLInitializer m_sdlInitializer;
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
@@ -142,10 +124,10 @@ namespace WeirdEngine
 				glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), // White
 				glm::vec4(0.484f, 0.484f, 0.584f, 1.0f), // Dark Gray
 				glm::vec4(0.752f, 0.762f, 0.74f, 1.0f), // Light Gray
-				glm::vec4(.8f, 0.1f, 0.1f, 0.25f), // Red
+				glm::vec4(.8f, 0.2f, 0.2f, 1.0f), // Red
 				glm::vec4(0.1f, .95f, 0.1f, 1.0f), // Green
 				glm::vec4(0.15f, 0.25f, .85f, 1.0f), // Blue
-				glm::vec4(1.0f, .9f, 0.2f, 1.0f), // Yellow
+				glm::vec4(1.0f, .9f, 0.2f, 0.33f), // Yellow
 				glm::vec4(.95f, 0.4f, 0.1f, 1.0f), // Orange
 				glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), // Purple
 				glm::vec4(0.0f, .9f, .9f, 1.0f), // Cyan

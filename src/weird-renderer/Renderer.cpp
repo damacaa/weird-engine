@@ -1,85 +1,16 @@
 #include "weird-renderer/Renderer.h"
+#include "weird-renderer/Debug.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_hints.h>
 
+// SETTINGS
 #define USE_CORRECTED_DISTANCE_TEXTURE
 
-namespace WeirdEngine
-{
-	namespace WeirdRenderer
-	{
-		void GLAPIENTRY OpenGLDebugCallback(
-			GLenum source,
-			GLenum type,
-			GLuint id,
-			GLenum severity,
-			GLsizei length,
-			const GLchar* message,
-			const void* userParam)
-		{
-			// You can filter specific messages by severity or source if needed
-			std::cerr << "OpenGL Debug: " << message << std::endl;
-		}
+namespace WeirdEngine {
+	namespace WeirdRenderer {
 
-		GLInitializer::GLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& m_window)
-		{
-			// Initialize SDL
-			if (!SDL_Init(SDL_INIT_VIDEO))
-			{
-				std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-				throw;
-			}
 
-			// Set OpenGL attributes for a core profile
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
-			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-			// Create an SDL window that supports OpenGL
-			m_window = SDL_CreateWindow("SDL3 OpenGL Window", width, height, SDL_WINDOW_OPENGL);
-
-			if (m_window == NULL)
-			{
-				std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
-				SDL_Quit();
-				throw;
-			}
-
-			// Create the OpenGL context
-			SDL_GLContext m_glContext = SDL_GL_CreateContext(m_window);
-			if (m_glContext == NULL)
-			{
-				std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << std::endl;
-				SDL_DestroyWindow(m_window);
-				SDL_Quit();
-				throw;
-			}
-
-			// Make the OpenGL context current
-			SDL_GL_MakeCurrent(m_window, m_glContext);
-
-			// Load GLAD so it configures OpenGL
-			if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
-			{
-				std::cerr << "Failed to initialize GLAD" << std::endl;
-				SDL_GL_DestroyContext(m_glContext);
-				SDL_DestroyWindow(m_window);
-				SDL_Quit();
-				throw;
-			}
-
-			// Clear any GL errors that may have occurred during initialization
-			while (glGetError() != GL_NO_ERROR);
-
-#ifndef NDEBUG
-			// Enable OpenGL debug output
-			glEnable(GL_DEBUG_OUTPUT);
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-			glDebugMessageCallback(OpenGLDebugCallback, nullptr);
-#endif
-		}
 
 		static int largestPowerOfTwoBelow(int n) {
 			int p = 1;
@@ -89,8 +20,11 @@ namespace WeirdEngine
 			return p;
 		}
 
+
+
 		Renderer::Renderer(const unsigned int width, const unsigned int height)
-			: m_initializer(width, height, m_window)
+			: m_audioEngine()
+			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_distanceSampleScale(1.0f)
@@ -106,6 +40,8 @@ namespace WeirdEngine
 			Screen::height = m_windowHeight;
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
+
+			m_audioEngine.loadSound(SHADERS_PATH "sample.wav");
 
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -235,10 +171,6 @@ namespace WeirdEngine
 			m_combineResultTexture.dispose();
 
 			delete[] m_2DData;
-
-			// SDL_DestroyRenderer(renderer); // TODO
-			SDL_DestroyWindow(m_window);
-			SDL_Quit();
 		}
 
 		void Renderer::render(Scene& scene, const double time)
@@ -663,6 +595,19 @@ namespace WeirdEngine
 				texture.saveToDisk("output_texture.png");
 			}
 
+			if (scene.m_collisionSoundQueued)
+			{
+				m_audioEngine.triggerCollision(200.0f, 0.1f, 0.3f);
+				scene.m_collisionSoundQueued = false;
+			}
+
+
+			// Update friction sound
+			float frictionValue = scene.getFrictionSound();
+			m_audioEngine.setFrictionLevel(frictionValue);
+
+
+			// std::cout << "frictionValue: " << frictionValue << std::endl;
 
 			SDL_GL_SwapWindow(m_window);
 

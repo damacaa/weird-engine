@@ -63,7 +63,7 @@ private:
     // Subtract star
     {
       float vars[8] = { -2.5f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f };
-      addShape(CustomShape::STAR, vars, 0, CombinationType::Subtraction, true, 2);
+      addShape(CustomShape::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
     }
 
 

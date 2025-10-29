@@ -49,12 +49,17 @@ namespace WeirdEngine
 
 		RenderMode getRenderMode() const;
 
+		float getFrictionSound();
+		bool m_collisionSoundQueued = false;
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
+		void onPhysicsStep();
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
+		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 
 		ECSManager m_ecs;
@@ -109,6 +114,8 @@ namespace WeirdEngine
 
 		std::vector<WeirdRenderer::Light> m_lights;
 
+		static void handlePhysicsStep(void* userData);
 		static void handleCollision(CollisionEvent& event, void* userData);
+		static void handleShapeCollision(ShapeCollisionEvent& event, void* userData);
 	};
 }

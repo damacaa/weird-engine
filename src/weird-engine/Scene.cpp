@@ -40,6 +40,9 @@ namespace WeirdEngine
 		float frictionSample = event.friction / (1.0f + (m_soundFalloff * glm::distance2(vec2(g_cameraPosition.x, g_cameraPosition.y), event.position))); // Apply distance falloff
 
 		g_frictionSound = std::max(frictionSample, g_frictionSound);
+
+		if (event.firstCollision)
+			self->m_collisionSoundQueued = true;
 	}
 
 

@@ -15,15 +15,15 @@ public:
 private:
 	void onStart() override
 	{
+		m_renderMode = RenderMode::RayMarching2D;
 	}
 
-	void onUpdate() override
-	{
-	}
-
-	void onRender() override
-	{
-	}
+	void onUpdate(float delta) override{}
+	void onCreate() override{}
+	void onRender(WeirdRenderer::RenderTarget& renderTarget) override{}
+	void onCollision(WeirdEngine::CollisionEvent& event) override{}
+	void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) override{}
+	void onDestroy() override{}
 };
 
 int main()

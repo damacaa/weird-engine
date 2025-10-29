@@ -632,7 +632,7 @@ namespace WeirdEngine
 					constexpr float DYNAMIC_FRICTION = 0.01f;
 					float frictionCoefficient = DYNAMIC_FRICTION;
 
-					float surfaceFriction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * glm::length(m_velocities[i]);
+					float surfaceFriction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * speed;
 
 					const float m_soundFalloff = 0.001f;
 					float frictionSample = surfaceFriction / (1.0f + (m_soundFalloff * glm::distance2(m_frictionSamplePosition, p))); // Apply distance falloff

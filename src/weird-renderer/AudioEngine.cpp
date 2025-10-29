@@ -77,161 +77,37 @@ namespace WeirdEngine {
 
         // ------------------- Procedural Controls -------------------
 
-        void AudioEngine::setFrictionLevel(float level) {
-            const float MAX_FRICTION = 1.0f;
-            const float MIN_AUDIBLE = 0.05f;
-            const float MAX_AMPLITUDE = 1.0f;
+        void AudioEngine::setFrictionLevel(float level)
+        {
+            // Normalize
+            constexpr float MAX_FRICTION = 1.0f;
+            const float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
 
-            level = std::clamp(level, 0.0f, MAX_FRICTION);
+            // Remove min audible and compensate
+            constexpr float MIN_AUDIBLE = 0.01f;
+            constexpr float MIN_COMPENSATION = 1.0f / (1.0f - MIN_AUDIBLE);
+            const float adjustedAmplitude = std::max(normalizedFriction - MIN_AUDIBLE, 0.0f) * MIN_COMPENSATION;
 
-            static int curveMode = 6;
+            // Use a square root curve to boost the volume of low values significantly
+            // 0.5f = Strong boost (square root)
+            // 0.75f = Medium boost
+            // 1.0f = No boost (linear)
+            constexpr float LOW_END_BOOST_EXPONENT = 0.5f;
+            constexpr float MAX_AMPLITUDE = 1.0f;
+            const float initialAmplitude = MAX_AMPLITUDE * pow(adjustedAmplitude, LOW_END_BOOST_EXPONENT);
 
-            if (Input::GetKeyDown(Input::C)) {
-                curveMode++;
-                std::cout << "Curve Mode: " << curveMode << std::endl;
-            }
-
-
-            switch (curveMode) {
-                case 0:
-                {
-                    // Simple Linear
-                    frictionLevel = std::min(level, MAX_AMPLITUDE);
-                    break;
-                }
-
-                case 1:
-                {
-                    // Power Curve (Quadratic)
-                    // Good for a gentle start that ramps up. Computationally cheap.
-                    float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-                    float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(normalizedFriction, 2.0f);
-                    frictionLevel = amplitude;
-                    break;
-                }
-
-                case 2:
-                {
-                    // Power Curve (Cubic)
-                    // Steeper curve than quadratic. The sound will be quieter for longer
-                    // and then ramp up more aggressively at higher friction values.
-                    float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-                    float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(normalizedFriction, 3.0f);
-                    frictionLevel = amplitude;
-                    break;
-                }
-
-                case 3:
-                {
-                    // Exponential Curve
-                    // Provides a very smooth and natural-sounding increase, closely matching human hearing.
-                    float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-                    if (normalizedFriction > 0) {
-                        // The factor (e.g., 5.0f) controls the steepness of the curve.
-                        float amplitude = MIN_AUDIBLE * pow((MAX_AMPLITUDE / MIN_AUDIBLE), normalizedFriction);
-                        frictionLevel = amplitude;
-                    } else {
-                        frictionLevel = 0.0f;
-                    }
-                    break;
-                }
-
-                case 4:
-                {
-                    // Logarithmic Curve
-                    // Gives you more control and variation at the *low* friction levels.
-                    const float minFrictionLog = 0.01f;
-                    if (level > minFrictionLog) {
-                        float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-                        float logFriction = log(normalizedFriction * (MAX_FRICTION - minFrictionLog) + minFrictionLog);
-                        float logMin = log(minFrictionLog);
-                        float logMax = log(MAX_FRICTION);
-
-                        float range = logMax - logMin;
-                        if (range > 0) {
-                            float normalizedLog = (logFriction - logMin) / range;
-                            float amplitude = MIN_AUDIBLE + (MAX_AMPLITUDE - MIN_AUDIBLE) * normalizedLog;
-                            frictionLevel = amplitude;
-                        } else {
-                            frictionLevel = MIN_AUDIBLE;
-                        }
-                    } else {
-                        frictionLevel = 0.0f;
-                    }
-                    break;
-                }
-
-                case 5:
-                {
-                    // Conceptual Dynamic Range Compression
-                    // This is a simplified concept. A real implementation would be more complex,
-                    // often involving a dedicated audio processing library.
-                    // It works by reducing the volume (gain) more aggressively as the sound gets louder.
-                    float threshold = 0.4f; // The amplitude at which compression starts
-                    float ratio = 4.0f; // How much to reduce the volume above the threshold (e.g., 4:1)
-
-                    // First, calculate an amplitude using one of the curves above (e.g., quadratic)
-
-                    float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-                    float initialAmplitude = MAX_AMPLITUDE * pow(normalizedFriction, 2.0f);
-
-                    if (initialAmplitude > threshold) {
-                        // Calculate how much the amplitude is "over" the threshold
-                        float overshoot = initialAmplitude - threshold;
-                        // Reduce the overshoot by the compression ratio
-                        float compressedOvershoot = overshoot / ratio;
-                        // The final amplitude is the threshold plus the compressed overshoot
-                        float finalAmplitude = threshold + compressedOvershoot;
-                        frictionLevel = finalAmplitude;
-                    } else {
-                        frictionLevel = initialAmplitude;
-                    }
-                    break;
-                }
-
-                case 6:
-                {
-                    // Enhanced Compression (Stronger Low-End)
-                    float threshold = 0.5f;
-                    float ratio = 4.0f;
-
-                    // We use a square root curve (pow^0.5) instead of a quadratic one.
-                    // This curve rises very quickly at the start and then flattens,
-                    // which boosts the volume of low friction values significantly.
-                    //
-                    // You can TUNE this exponent:
-                    // 0.5f = Strong boost (square root)
-                    // 0.75f = Medium boost
-                    // 1.0f = No boost (linear)
-                    float lowEndBoostExponent = 0.5f;
-                    float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
-
-                    // Calculate the initial amplitude using the new curve.
-                    // We also add MIN_AUDIBLE to guarantee it's always heard.
-                    float initialAmplitude = (MAX_AMPLITUDE - MIN_AUDIBLE) * pow(
-                                                 normalizedFriction, lowEndBoostExponent);
-
-                    // The compression logic is IDENTICAL to case 5. It will tame the
-                    // now-louder signal once it crosses the threshold, preserving your perfect top-end.
-                    if (initialAmplitude > threshold) {
-                        float overshoot = initialAmplitude - threshold;
-                        float compressedOvershoot = overshoot / ratio;
-                        float finalAmplitude = threshold + compressedOvershoot;
-                        frictionLevel = finalAmplitude;
-                        // frictionLevel = 10.0;
-                    } else {
-                        frictionLevel = initialAmplitude;
-                    }
-
-                    // frictionLevel = MAX_FRICTION;
-                    break;
-                }
-
-                default:
-                {
-                    curveMode = 0;
-                    break;
-                }
+            // Compression will tame the louder signal once it crosses the threshold, preserving top-end
+            constexpr float COMPRESSION_THRESHOLD = 0.3f;
+            constexpr float COMPRESSION_RATIO = 4.0f;
+            if (initialAmplitude > COMPRESSION_THRESHOLD)
+            {
+                float overshoot = initialAmplitude - COMPRESSION_THRESHOLD;
+                float compressedOvershoot = overshoot / COMPRESSION_RATIO;
+                float finalAmplitude = COMPRESSION_THRESHOLD + compressedOvershoot;
+                frictionLevel = finalAmplitude;
+            } else
+            {
+                frictionLevel = initialAmplitude;
             }
         }
 

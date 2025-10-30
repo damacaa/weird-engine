@@ -264,7 +264,7 @@ namespace WeirdEngine
 		}
 
 		// Scale negative distances
-		oss << "minDist = minDist > 0 ? minDist : 0.1 * minDist;" << std::endl;
+		// oss << "minDist = minDist > 0 ? minDist : 0.1 * minDist;" << std::endl;
 
 		// oss << "col.x = minDist; col.y = 5;" << std::endl;
 

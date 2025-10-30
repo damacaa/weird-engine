@@ -181,8 +181,8 @@ namespace WeirdEngine
 			case TextureType::Data:
 			{
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -269,20 +269,38 @@ namespace WeirdEngine
 			// Read the pixels from the texture into the buffer.
 			glGetTexImage(GL_TEXTURE_2D, 0, numColCh == 3 ? GL_RGB : GL_RGBA, GL_FLOAT, pixels);
 
-			// Convert float data to unsigned char since stb_image_write expects that format.
 			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
-			for (int i = 0; i < width * height; i++)
-			{
-				size_t idx = 4 * i;
-				/*pixels_uchar[idx] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 1] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 2] = static_cast<unsigned char>(pixels[idx + 3] * 255.0f);
-				pixels_uchar[idx + 3] = 255.0f;*/
+			// size_t is the size of one pixel in bytes (4 for RGBA)
+			const size_t pixel_size = 4;
 
-				pixels_uchar[idx] = static_cast<unsigned char>(pixels[idx] * 255.0f);
-				pixels_uchar[idx + 1] = static_cast<unsigned char>(pixels[idx + 1] * 255.0f);
-				pixels_uchar[idx + 2] = static_cast<unsigned char>(pixels[idx + 2] * 255.0f);
-				pixels_uchar[idx + 3] = 255.0f;
+			for (int y = 0; y < height; y++)
+			{
+				// Source index (reading from the 'pixels' array)
+				// We read rows from top (y=0) to bottom (y=height-1)
+				// The source row is y.
+				size_t src_row_start = pixel_size * width * y;
+
+				// Destination index (writing to the 'pixels_uchar' array)
+				// We want to write the top row (y=0 in source) to the BOTTOM row (y_dest=height-1) in the destination.
+				// The target row index is (height - 1 - y).
+				size_t dest_row_start = pixel_size * width * (height - 1 - y);
+
+				for (int x = 0; x < width; x++)
+				{
+					// Calculate the index for the current pixel in the source float array
+					size_t src_idx = src_row_start + pixel_size * x;
+
+					// Calculate the index for the current pixel in the destination uchar array
+					size_t dest_idx = dest_row_start + pixel_size * x;
+
+					// Clamp and scale the R, G, B components
+					pixels_uchar[dest_idx]     = static_cast<unsigned char>(glm::clamp(pixels[src_idx],     0.0f, 1.0f) * 255.0f);
+					pixels_uchar[dest_idx + 1] = static_cast<unsigned char>(glm::clamp(pixels[src_idx + 1], 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[dest_idx + 2] = static_cast<unsigned char>(glm::clamp(pixels[src_idx + 2], 0.0f, 1.0f) * 255.0f);
+
+					// Set the Alpha component
+					pixels_uchar[dest_idx + 3] = 255;
+				}
 			}
 
 			// Save the image using stb_image_write. This will write it as a PNG.

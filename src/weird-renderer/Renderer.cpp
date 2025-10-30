@@ -5,7 +5,7 @@
 #include <SDL3/SDL_hints.h>
 
 // SETTINGS
-#define USE_CORRECTED_DISTANCE_TEXTURE
+// #define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine {
 	namespace WeirdRenderer {
@@ -27,14 +27,14 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleScale(0.25f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
-			, m_materialBlendIterations(2)
+			, m_materialBlendIterations(2.0f / m_distanceSampleScale)
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;

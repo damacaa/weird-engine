@@ -79,6 +79,10 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying runtime DLLs to executable directory"
 )
 
+if (MINGW)
+    target_link_options(${PROJECT_NAME} PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 # ----------------------------------------------------------
 # Helper function to assign source groups based on folder structure.
 function(assign_source_groups TARGET)

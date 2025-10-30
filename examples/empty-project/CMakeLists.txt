@@ -68,6 +68,10 @@ message(STATUS "Assets path: ${ASSETS_PATH}")
 # Use the variable in target_compile_definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${ASSETS_PATH}")
 
+if (MINGW)
+    target_link_options(${PROJECT_NAME} PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 # ----------------------------------------------------------
 # Helper function to assign source groups based on folder structure.
 function(assign_source_groups TARGET)

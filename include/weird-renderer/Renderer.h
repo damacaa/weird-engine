@@ -119,6 +119,9 @@ namespace WeirdEngine
 
 			void output(Scene& scene, Texture& texture);
 
+			// TODO: Split into color palette and materials
+			// Materials can use multiple colors from the palette
+			// Materials have extra parameters like "temporal permanence"
 			glm::vec4 m_colorPalette[16] = {
 				glm::vec4(0.025f, 0.025f, 0.05f, 1.0f), // Black
 				glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), // White

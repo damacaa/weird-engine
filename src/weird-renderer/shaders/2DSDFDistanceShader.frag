@@ -1,7 +1,7 @@
 #version 330 core
 
 #define BLEND_SHAPES 1
-#define MOTION_BLUR 0
+#define MOTION_BLUR 1
 
 out vec4 FragColor;
 
@@ -230,7 +230,21 @@ void main()
 
     float previousDistance = previousColor.x;
     int previousMaterial = int(previousColor.y);
-    result.y = finalDistance > 0.0 && previousDistance < 0.0 ? previousColor.y : result.y;
+
+    // Keep same material as original
+    // result.y = finalDistance > 0.0 && previousDistance < 0.0 ? previousColor.y : result.y;
+
+
+    // IDEA! add noise for particles!
+    float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
+    //previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
+
+    // TODO: I need to store if the distance is from a shape or a balld
+    float a = previousMaterial > 3 ? 0.00035 : 0.0;
+    float b = previousMaterial > 3 ? 0.95 : 0.8;
+
+    // previousDistance += u_blendIterations * a;
+    //previousDistance = mix(finalDistance, previousDistance, b);
 
     previousDistance += u_blendIterations * 0.00035;
     previousDistance = mix(finalDistance, previousDistance, 0.95);

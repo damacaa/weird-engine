@@ -78,9 +78,8 @@ private:
       addShape(CustomShape::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 
-  vec3 camPos = vec3(0.0f, 7.5f, 15.0f);
-    // m_ecs.getComponent<Transform>(m_mainCamera).position = camPos;
-    m_ecs.getComponent<FlyMovement2D>(m_mainCamera).targetPosition = camPos;
+    vec3 camPos = vec3(0.0f, 7.5f, 15.0f);
+    m_ecs.getComponent<Transform>(m_mainCamera).position = camPos;
   }
 
   void onUpdate(float delta) override

@@ -27,7 +27,7 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(0.25f)
+			, m_distanceSampleScale(0.1f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
@@ -246,6 +246,9 @@ namespace WeirdEngine {
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
 				}
+
+				// TODO: scale distance texture to final render size
+				// glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 #ifdef USE_CORRECTED_DISTANCE_TEXTURE
 
@@ -590,7 +593,7 @@ namespace WeirdEngine {
 			texture.unbind();
 
 			// Screenshot
-			if (Input::GetKeyDown(Input::O))
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
 			{
 				texture.saveToDisk("output_texture.png");
 			}

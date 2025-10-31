@@ -1,7 +1,5 @@
 #version 330 core
 
-#define DEBUG_SHOW_DISTANCE 0
-
 // Constants
 
 // Outputs u_staticColors in RGBA

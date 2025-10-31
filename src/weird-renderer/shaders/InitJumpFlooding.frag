@@ -1,7 +1,7 @@
 #version 330 core
 
-#define CORRECT_INSIDE
-// #define CORRECT_OUTSIDE
+// #define CORRECT_INSIDE
+#define CORRECT_OUTSIDE
 
 // Constants
 

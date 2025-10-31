@@ -23,8 +23,8 @@ int main()
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
-	sceneManager.registerScene<FireScene>("fire");
-	sceneManager.registerScene<LinesScene>("lines");
+	// sceneManager.registerScene<FireScene>("fire");
+	// sceneManager.registerScene<LinesScene>("lines");
 
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	// sceneManager.registerScene<WaterScene>("water");

@@ -12,9 +12,6 @@ namespace WeirdEngine
 	static float g_frictionSound = 0.0f;
 	static float g_frictionSoundRead = 0.0f;
 
-	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0, 1, 20);
-
 	void Scene::handlePhysicsStep(void *userData)
 	{
 		Scene *self = static_cast<Scene *>(userData);
@@ -37,7 +34,8 @@ namespace WeirdEngine
 		self->onShapeCollision(event);
 
 		const float m_soundFalloff = 0.001f;
-		float frictionSample = event.friction / (1.0f + (m_soundFalloff * glm::distance2(vec2(g_cameraPosition.x, g_cameraPosition.y), event.position))); // Apply distance falloff
+		auto camPosition = self->getCamera().position; // Mutex?
+		float frictionSample = event.friction / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position))); // Apply distance falloff
 
 		g_frictionSound = std::max(frictionSample, g_frictionSound);
 
@@ -100,7 +98,7 @@ namespace WeirdEngine
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			{
 				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				// fly.targetPosition = g_cameraPosition;
+				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 				break;
 			}
 			default:
@@ -127,6 +125,47 @@ namespace WeirdEngine
 		{
 			str.replace(start_pos, from.length(), to);
 		}
+	}
+
+	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
+	{
+		// m_sdfRenderSystem2D.updatePalette(shader);
+
+		updateCustomShapesShader(shader);
+	}
+
+	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
+	{
+		m_sdfRenderSystem2D.fillDataBuffer(data, size);
+	}
+
+	void Scene::update(double delta, double time)
+	{
+		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
+		{
+			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+		}
+
+		// Update systems
+		if (m_debugFly)
+		{
+			m_playerMovementSystem.update(m_ecs, delta);
+		}
+		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
+
+		m_cameraSystem.update(m_ecs);
+
+		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
+		if (m_debugInput)
+		{
+			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+		}
+
+		m_simulation2D.update(delta);
+
+		onUpdate(delta);
+
+		m_ecs.freeRemovedComponents();
 	}
 
 	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
@@ -258,7 +297,7 @@ namespace WeirdEngine
 		}
 
 		// Combine last group
-		if (componentArray->getSize() > 0) 
+		if (componentArray->getSize() > 0)
 		{
 			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
 		}
@@ -277,7 +316,7 @@ namespace WeirdEngine
 		// Print
 		std::cout << replacement << std::endl;
 #endif
-		
+
 		// Replace in shader source code
 		size_t pos = str.find(toReplace);
 		// Check if the substring was found
@@ -290,54 +329,16 @@ namespace WeirdEngine
 		// Set new source code and recompile shader
 		shader.setFragmentCode(str);
 
-		// TODO: only debug
-		std::ofstream outFile("generated_shader.frag");
-		if (outFile.is_open()) {
-			outFile << str;
-			outFile.close();
-		}
-	}
-
-	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
-	{
-		// m_sdfRenderSystem2D.updatePalette(shader);
-
-		updateCustomShapesShader(shader);
-	}
-
-	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
-	{
-		m_sdfRenderSystem2D.fillDataBuffer(data, size);
-	}
-
-	void Scene::update(double delta, double time)
-	{
-		if (Input::GetKeyDown((Input::V)))
+#ifndef NDEBUG
+		if (Input::GetKey(Input::LeftShift))
 		{
-			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+			std::ofstream outFile("generated_shader.frag");
+			if (outFile.is_open()) {
+				outFile << str;
+				outFile.close();
+			}
 		}
-
-		// Update systems
-		if (m_debugFly)
-		{
-			m_playerMovementSystem.update(m_ecs, delta);
-		}
-		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
-
-		m_cameraSystem.update(m_ecs);
-		g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
-
-		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
-		if (m_debugInput)
-		{
-			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
-		}
-
-		m_simulation2D.update(delta);
-
-		onUpdate(delta);
-
-		m_ecs.freeRemovedComponents();
+#endif
 	}
 
 	void Scene::onPhysicsStep()
@@ -416,7 +417,6 @@ namespace WeirdEngine
 		m_mainCamera = m_ecs.createEntity();
 
 		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
-		t.position = g_cameraPosition;
 		t.rotation = vec3(0, 0, -1.0f);
 
 		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);

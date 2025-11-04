@@ -17,8 +17,8 @@
 #include <glm/gtx/norm.hpp>
 
 #include "weird-engine/ecs/Entity.h"
-#include "weird-engine/ecs/Components/Transform.h"
-#include "weird-engine/ecs/Components/CustomShape.h"
+#include "../weird-engine/Components/Transform.h"
+#include "../weird-renderer/Components/CustomShape.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
 

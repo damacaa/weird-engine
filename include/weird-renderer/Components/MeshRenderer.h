@@ -1,6 +1,6 @@
 #pragma once
-#include "../Component.h"
-#include"../../../weird-renderer/Mesh.h"
+#include "weird-engine/ecs/Component.h"
+#include"weird-renderer/Mesh.h"
 
 namespace WeirdEngine
 {

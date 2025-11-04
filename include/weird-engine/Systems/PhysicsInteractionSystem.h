@@ -1,5 +1,5 @@
 #pragma once
-#include "../ECS.h"
+#include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 #include "weird-physics/Simulation2D.h"
 

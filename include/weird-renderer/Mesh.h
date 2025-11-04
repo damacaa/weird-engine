@@ -10,7 +10,7 @@
 #include"Texture.h"
 #include "Light.h"
 #include "../weird-engine/ecs/ComponentManager.h"
-#include "../weird-engine/ecs/Components/Transform.h"
+#include "../weird-engine/Components/Transform.h"
 
 
 namespace WeirdEngine

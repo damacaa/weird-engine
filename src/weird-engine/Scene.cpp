@@ -376,6 +376,11 @@ namespace WeirdEngine
 		return g_frictionSoundRead;
 	}
 
+	const std::vector<WeirdRenderer::DrawCommand> & Scene::getDrawQueue() const
+	{
+		return m_drawQueue;
+	}
+
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();

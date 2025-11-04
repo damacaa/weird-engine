@@ -189,6 +189,8 @@ namespace WeirdEngine {
 			// Updates and exports the camera matrix to the Vertex Shader
 			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
+			auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
+
 			//
 			auto renderMode = scene.getRenderMode();
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;

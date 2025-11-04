@@ -1,5 +1,5 @@
 #pragma once
-#include "../Component.h"
+#include "weird-engine/ecs/Component.h"
 #include <glm/glm.hpp>
 
 namespace WeirdEngine

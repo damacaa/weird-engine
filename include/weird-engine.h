@@ -43,7 +43,7 @@ namespace WeirdEngine
 		sceneManager.loadScene(0);
 
 		// Time
-		double time = SDL_GetTicks() / 1000.0;
+		double time = static_cast<double>(SDL_GetTicks()) / 1000.0;
 		double prevTime = time;
 		double delta = 0;
 		double timeDiff = 0;
@@ -52,11 +52,8 @@ namespace WeirdEngine
 		bool quit = false;
 		while (!quit)
 		{
-			// --- UNIFIED EVENT LOOP ---
-
-			// --- UPDATE ---
-			// // Meassure time
-			time = SDL_GetTicks() / 1000.0;
+			// Measure time
+			time = static_cast<double>(SDL_GetTicks()) / 1000.0;
 			delta = time - prevTime;
 			timeDiff += delta;
 			prevTime = time;
@@ -101,9 +98,6 @@ namespace WeirdEngine
 
 			// Update scene logic and physics
 			scene->update(delta, time);
-
-			// Clear input
-			// Input::clear();
 
 			// Render scene
 			renderer.render(*scene, time);

@@ -1,7 +1,7 @@
 #pragma once
 #include "../weird-renderer/Shape.h" // TODO: replace with components
 #include "../weird-engine/ecs/Entity.h"
-#include "../weird-engine/ecs/Components/Transform.h"
+#include "../weird-engine/Components/Transform.h"
 #include <vector>
 #include <thread>
 

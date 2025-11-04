@@ -1,13 +1,15 @@
 #pragma once
 #include "../weird-renderer/Shape.h"
+#include "../weird-renderer/RenderTarget.h"
+
 #include "../weird-physics/Simulation.h"
 #include "../weird-physics/Simulation2D.h"
-#include "../weird-renderer/RenderTarget.h"
-#include "../weird-renderer/Shape.h"
+
 
 #include "ecs/ECS.h"
 
 #include "ResourceManager.h"
+#include "weird-renderer/DrawCommand.h"
 
 namespace WeirdEngine
 {
@@ -51,6 +53,8 @@ namespace WeirdEngine
 
 		float getFrictionSound();
 		bool m_collisionSoundQueued = false;
+
+		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 
 	protected:
 		virtual void onCreate() {};
@@ -112,6 +116,7 @@ namespace WeirdEngine
 
 		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
 
+		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light> m_lights;
 
 		static void handlePhysicsStep(void* userData);

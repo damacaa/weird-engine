@@ -127,27 +127,27 @@ namespace WeirdEngine
 	};
 }
 
-#include "Components/Transform.h"
-#include "Components/SDFRenderer.h"
-#include "Components/MeshRenderer.h"
-#include "Components/InstancedMeshRenderer.h"
-#include "Components/RigidBody.h"
-#include "Components/Camera.h"
-#include "Components/FlyMovement.h"
-#include "Components/FlyMovement2D.h"
-#include "Components/CustomShape.h"
+#include "../Components/Transform.h"
+#include "weird-renderer/Components/SDFRenderer.h"
+#include "../../weird-renderer/Components/MeshRenderer.h"
+#include "../../weird-renderer/Components/InstancedMeshRenderer.h"
+#include "../../weird-physics/Components/RigidBody.h"
+#include "../../weird-renderer/Components/Camera.h"
+#include "../Components/FlyMovement.h"
+#include "../Components/FlyMovement2D.h"
+#include "weird-renderer/Components/CustomShape.h"
 
-#include "Systems/RenderSystem.h"
-#include "Systems/InstancedRenderSystem.h"
-#include "Systems/SDFRenderSystem.h"
-
-
-#include "Components/RigidBodyManager.h"
+#include "../Systems/RenderSystem.h"
+#include "../Systems/InstancedRenderSystem.h"
+#include "../Systems/SDFRenderSystem.h"
 
 
-#include "Systems/SDFRenderSystem2D.h"
-#include "Systems/PhysicsSystem2D.h"
-#include "Systems/PhysicsInteractionSystem.h"
-#include "Systems/PlayerMovementSystem.h"
-#include "Systems/CameraSystem.h"
+#include "../../weird-physics/Components/RigidBodyManager.h"
+
+
+#include "../Systems/SDFRenderSystem2D.h"
+#include "../Systems/PhysicsSystem2D.h"
+#include "../Systems/PhysicsInteractionSystem.h"
+#include "../Systems/PlayerMovementSystem.h"
+#include "../Systems/CameraSystem.h"
 

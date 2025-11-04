@@ -1,7 +1,7 @@
 #pragma once
 #pragma once
-#include "../ECS.h"
-#include "../../../weird-physics/Simulation2D.h"
+#include "weird-engine/ecs/ECS.h"
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {

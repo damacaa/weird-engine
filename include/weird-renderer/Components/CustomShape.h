@@ -1,6 +1,6 @@
 #pragma once
-#include "../Component.h"
-#include "../../math/MathExpressions.h"
+#include "weird-engine/ecs/Component.h"
+#include "weird-engine/math/MathExpressions.h"
 
 namespace WeirdEngine
 {

@@ -1,6 +1,6 @@
 #pragma once
-#include "../ECS.h"
-#include "../../ResourceManager.h"
+#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ResourceManager.h"
 
 
 namespace WeirdEngine

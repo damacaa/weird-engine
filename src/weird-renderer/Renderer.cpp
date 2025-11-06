@@ -27,13 +27,13 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(0.1f)
+			, m_distanceSampleScale(0.25f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
-			, m_vSyncEnabled(true)
+			, m_vSyncEnabled(false)
 			, m_materialBlendIterations(2.0f / m_distanceSampleScale)
 		{
 			Screen::width = m_windowWidth;
@@ -225,8 +225,13 @@ namespace WeirdEngine {
 
 					scene.updateRayMarchingShader(m_2DDistanceShader);
 
+					static glm::vec3 lastCameraPosition = scene.getCamera().position;
+					glm::vec3 cameraPositionChange = scene.getCamera().position - lastCameraPosition;
+					lastCameraPosition = scene.getCamera().position;
+
 					// Set uniforms
 					m_2DDistanceShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DDistanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 					m_2DDistanceShader.setUniform("u_time", scene.getTime());
 					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 

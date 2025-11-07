@@ -263,6 +263,7 @@ void main()
     // Compensate camera motion to achieve screen space motion blur
     // TODO: implement zoom compensation
     vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
+    previousDistanceOffset.x /= aspectRatio;
 
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
     vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);

@@ -35,6 +35,7 @@ uniform vec3 u_staticColors[16];
 uniform vec3 u_directionalLightDirection;
 
 uniform int u_blendIterations;
+uniform float u_deltaTime;
 
 uniform int u_customShapeCount;
 
@@ -273,8 +274,9 @@ void main()
     // Different material for object trail?
     // material = finalDistance > 0.0 && finalDistance > previousDistance ? 16 : material;
 
-    previousDistance += u_blendIterations * 0.00035;
-    previousDistance = mix(finalDistance, previousDistance, 0.99);
+    previousDistance += 300.0 * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
+    // previousDistance += u_blendIterations * 0.00035;
+    // previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
     finalDistance = min(previousDistance, finalDistance);

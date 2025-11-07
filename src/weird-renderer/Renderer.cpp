@@ -28,7 +28,7 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleScale(0.5f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
@@ -178,7 +178,7 @@ namespace WeirdEngine {
 		{
 			if (m_vSyncEnabled)
 			{
-				SDL_GL_SetSwapInterval(1); // Enable VSync
+				SDL_GL_SetSwapInterval(2); // Enable VSync
 			}
 			else
 			{
@@ -244,6 +244,11 @@ namespace WeirdEngine {
 
 
 					m_2DDistanceShader.setUniform("u_time", scene.getTime());
+
+					static double lastTime = time;
+					double deltaTime = time - lastTime;
+					lastTime = time;
+					m_2DDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime));
 					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 
 					m_2DDistanceShader.setUniform("u_blendIterations", 1);
@@ -261,7 +266,7 @@ namespace WeirdEngine {
 
 					m_renderPlane.draw(m_2DDistanceShader);
 
-					m_distanceTexture.unbind();
+					// m_distanceTexture.unbind();
 					m_shapes2D.unbind();
 				}
 

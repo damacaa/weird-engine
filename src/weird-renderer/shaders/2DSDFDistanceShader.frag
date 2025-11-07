@@ -270,6 +270,9 @@ void main()
     // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
     // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
+    // Different material for object trail?
+    // material = finalDistance > 0.0 && finalDistance > previousDistance ? 16 : material;
+
     previousDistance += u_blendIterations * 0.00035;
     previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));

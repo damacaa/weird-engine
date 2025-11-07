@@ -178,7 +178,7 @@ namespace WeirdEngine {
 		{
 			if (m_vSyncEnabled)
 			{
-				SDL_GL_SetSwapInterval(2); // Enable VSync
+				SDL_GL_SetSwapInterval(1); // Enable VSync
 			}
 			else
 			{

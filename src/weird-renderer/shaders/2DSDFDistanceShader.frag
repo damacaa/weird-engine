@@ -206,7 +206,7 @@ vec3 getColor(vec2 p, vec2 uv)
 }
 
 // Bilinear
-float smoothSample(sampler2D tex, vec2 uv)
+vec2 smoothSample(sampler2D tex, vec2 uv)
 {
     vec2 texelSize = 1.0 / u_resolution;
 
@@ -227,17 +227,17 @@ float smoothSample(sampler2D tex, vec2 uv)
     vec2 uv11 = (vec2(i_j) + vec2(1.5, 1.5)) * texelSize;
 
     // 6. Sample the four texels (d00, d10, d01, d11)
-    float d00 = texture(tex, uv00).x;
+    vec2 d00 = texture(tex, uv00).xy;
     float d10 = texture(tex, uv10).x;
     float d01 = texture(tex, uv01).x;
     float d11 = texture(tex, uv11).x;
 
     // 7. Perform the Bilinear Interpolation
-    float d_top = mix(d00, d10, f.x);
+    float d_top = mix(d00.x, d10, f.x);
     float d_bottom = mix(d01, d11, f.x);
     float d = mix(d_top, d_bottom, f.y);
 
-    return d;
+    return vec2(d, d00.y);
 }
 
 void main()
@@ -265,19 +265,21 @@ void main()
     vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
 
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
-    float previousDistance = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
-
-    // IDEA! add noise for particles!
-    // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
-    // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
+    vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
+    float previousDistance = previousData.x;
+    float previousMaterial = previousData.y;
 
     // Different material for object trail?
-    // material = finalDistance > 0.0 && finalDistance > previousDistance ? 16 : material;
+    material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
     previousDistance += 300.0 * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
     // previousDistance += u_blendIterations * 0.00035;
     // previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
+
+    // IDEA! add noise for particles!
+    // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
+    // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
     finalDistance = min(previousDistance, finalDistance);
 

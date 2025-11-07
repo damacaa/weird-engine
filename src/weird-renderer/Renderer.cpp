@@ -3,9 +3,10 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
+#include <sys/stat.h>
 
 // SETTINGS
-// #define USE_CORRECTED_DISTANCE_TEXTURE
+#define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine {
 	namespace WeirdRenderer {
@@ -27,14 +28,14 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(0.25f)
+			, m_distanceSampleScale(1.0f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
-			, m_vSyncEnabled(false)
-			, m_materialBlendIterations(2.0f / m_distanceSampleScale)
+			, m_vSyncEnabled(true)
+			, m_materialBlendIterations(1.0f / m_distanceSampleScale)
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
@@ -225,13 +226,23 @@ namespace WeirdEngine {
 
 					scene.updateRayMarchingShader(m_2DDistanceShader);
 
-					static glm::vec3 lastCameraPosition = scene.getCamera().position;
-					glm::vec3 cameraPositionChange = scene.getCamera().position - lastCameraPosition;
-					lastCameraPosition = scene.getCamera().position;
+
+
+
+
+					static auto oldCameraMatrix = sceneCamera.view;
 
 					// Set uniforms
 					m_2DDistanceShader.setUniform("u_camMatrix", sceneCamera.view);
+					m_2DDistanceShader.setUniform("u_oldCamMatrix", oldCameraMatrix);
+					oldCameraMatrix = sceneCamera.view;
+
+					static glm::vec3 lastCameraPosition = scene.getCamera().position;
+					glm::vec3 cameraPositionChange = scene.getCamera().position - lastCameraPosition;
+					lastCameraPosition = scene.getCamera().position;
 					m_2DDistanceShader.setUniform("u_camPositionChange", cameraPositionChange);
+
+
 					m_2DDistanceShader.setUniform("u_time", scene.getTime());
 					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 
@@ -381,7 +392,7 @@ namespace WeirdEngine {
 					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
 					m_2DMaterialBlendShader.setUniform("u_time", scene.getTime());
 
-					for (unsigned int i = 0; i < m_materialBlendIterations; i++)
+					for (unsigned int i = 0; i < m_materialBlendIterations * 2; i++)
 					{
 						m_postProcessDoubleBuffer[horizontal]->bind();
 

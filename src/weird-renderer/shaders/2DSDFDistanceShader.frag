@@ -29,6 +29,7 @@ uniform samplerBuffer t_shapeBuffer;
 uniform vec2 u_resolution;
 
 uniform mat4 u_camMatrix;
+uniform mat4 u_oldCamMatrix;
 uniform vec3 u_camPositionChange;
 uniform vec3 u_staticColors[16];
 uniform vec3 u_directionalLightDirection;
@@ -203,11 +204,43 @@ vec3 getColor(vec2 p, vec2 uv)
     return vec3(minDist, finalMaterialId, mask);
 }
 
+// Bilinear
+float smoothSample(sampler2D tex, vec2 uv)
+{
+    vec2 texelSize = 1.0 / u_resolution;
+
+    vec2 P = uv * u_resolution - 0.5;
+
+    // 3. Get the integer indices of the top-left texel (i, j)
+    ivec2 i_j = ivec2(floor(P));
+
+    // 4. Calculate the fractional distance (weights) from the top-left center
+    // This gives the interpolation factors (fx, fy) between 0.0 and 1.0
+    vec2 f = fract(P);
+
+    // 5. Calculate the indices for the four texels (i, j), (i+1, j), (i, j+1), (i+1, j+1)
+    // We add 0.5 to center the sampling point inside the texel
+    vec2 uv00 = (vec2(i_j) + 0.5) * texelSize;
+    vec2 uv10 = (vec2(i_j) + vec2(1.5, 0.5)) * texelSize;
+    vec2 uv01 = (vec2(i_j) + vec2(0.5, 1.5)) * texelSize;
+    vec2 uv11 = (vec2(i_j) + vec2(1.5, 1.5)) * texelSize;
+
+    // 6. Sample the four texels (d00, d10, d01, d11)
+    float d00 = texture(tex, uv00).x;
+    float d10 = texture(tex, uv10).x;
+    float d01 = texture(tex, uv01).x;
+    float d11 = texture(tex, uv11).x;
+
+    // 7. Perform the Bilinear Interpolation
+    float d_top = mix(d00, d10, f.x);
+    float d_bottom = mix(d01, d11, f.x);
+    float d = mix(d_top, d_bottom, f.y);
+
+    return d;
+}
+
 void main()
 {
-    // FragColor = vec4(u_customShapeCount);
-    // return;
-
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
     float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
     uv.x *= aspectRatio;
@@ -215,58 +248,37 @@ void main()
     float zoom = -u_camMatrix[3].z;
     vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-
     vec3 result = getColor(pos, v_texCoord);
     float distance = result.x;
 
     float finalDistance =  0.5 * distance / zoom;
     finalDistance *= 0.5 / aspectRatio;
 
+    float material = result.y;
+    float mask = result.z;
 
     #if MOTION_BLUR
 
-    // This is a good idea poorly implemented, I need to do the math but I believe it can work
-    // Screen space motion blur? Only moving objects will be moved if the previous distance is
-    // transformed to match with the position it had on the previous frame
+    // Compensate camera motion to achieve screen space motion blur
+    // TODO: implement zoom compensation
     vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
-    vec4 previousColor = texture(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
 
-    float previousDistance = previousColor.x;
-    int previousMaterial = int(previousColor.y);
-
-    // Keep same material as original
-    // result.y = finalDistance > 0.0 && previousDistance < 0.0 ? previousColor.y : result.y;
-
+    // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
+    float previousDistance = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
 
     // IDEA! add noise for particles!
-    float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
-    //previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
+    // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
+    // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
-    // TODO: I need to store if the distance is from a shape or a balld
-    float a = previousMaterial > 3 ? 0.00035 : 0.0;
-    float b = previousMaterial > 3 ? 0.95 : 0.8;
-
-    // previousDistance += u_blendIterations * a;
-    //previousDistance = mix(finalDistance, previousDistance, b);
-
-    // previousDistance += u_blendIterations * 0.00035;
+    previousDistance += u_blendIterations * 0.00035;
     previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
     finalDistance = min(previousDistance, finalDistance);
 
-
-    // FragColor = previousColor;
-
-    // FragColor = mix(vec4(color.xyz, finalDistance), previousColor, 0.9);
-
-    #else
-
-
-
     #endif
 
-    FragColor = vec4(finalDistance, result.y, result.z, 0);
+    FragColor = vec4(finalDistance, material, mask, 0);
 
     // This has no visual effect (multiplying by zero), but it forces
     // the compiler to keep u_time because it's used to calculate FragColor.

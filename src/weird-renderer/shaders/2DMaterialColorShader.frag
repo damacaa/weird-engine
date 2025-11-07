@@ -36,7 +36,7 @@ void main()
     float mask = color.z;
 
     // New material color
-    vec4 c = u_staticColors[materialId];
+    vec4 c = materialId < 16 ? u_staticColors[materialId] : 0.83 * vec4(1.0, 1.0, 1.0, 0.0);
 
     // Get current material color
     vec4 currentColor = texture(t_currentColorTexture, screenUV);

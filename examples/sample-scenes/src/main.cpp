@@ -17,6 +17,10 @@
 #include "Water.h"
 #include "ShapesCombinations.h"
 
+#include "globals.h"
+
+WeirdEngine::vec3 g_cameraPositon = vec3(0.0f, 7.5f, 15.0f);
+
 int main()
 {
 	SceneManager &sceneManager = SceneManager::getInstance();

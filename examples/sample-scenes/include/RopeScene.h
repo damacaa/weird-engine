@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 // Example scene demonstrating how to create a rope of connected circles using springs.
 class RopeScene : public Scene
@@ -72,16 +74,18 @@ private:
 
 		// Add base shapes (walls, ground, custom)
 		float vars0[8] = { 1.0f, 0.5f }; // Floor shape
-		addShape(0, vars0, 3);
+		addShape(CustomShape::SINE, vars0, 3);
 
 		float vars1[8] = { 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f }; // Custom shape
-		m_star = addShape(1, vars1, 3);
+		m_star = addShape(CustomShape::STAR, vars1, 3);
 
 		float vars2[8] = { 30.5f, 3.5f, 30.0f, 3.0f };
 		// addScreenSpaceShape(3, vars2); // UI overlay shape
 
 		float vars3[8] = { 15.0f, 0.0f, 15.0f, 2.0f };
-		addShape(3, vars3, 3);
+		addShape(CustomShape::BOX, vars3, 3);
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
 	void throwBalls(ECSManager& ecs, Simulation2D& sim)
@@ -113,6 +117,8 @@ private:
 
 	void onUpdate(float delta) override
 	{
+		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+
 		// Animate custom shape over time
 		{
 			auto& cs = m_ecs.getComponent<CustomShape>(m_star);

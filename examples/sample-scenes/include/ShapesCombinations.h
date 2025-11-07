@@ -4,6 +4,8 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 // Example scene demonstrating how to create a rope of connected circles using springs.
 class ShapeCombinatiosScene : public Scene
@@ -78,12 +80,13 @@ private:
       addShape(CustomShape::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 
-    vec3 camPos = vec3(0.0f, 7.5f, 15.0f);
-    m_ecs.getComponent<Transform>(m_mainCamera).position = camPos;
+    m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 
   void onUpdate(float delta) override
   {
+    g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+
     auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
     float x = Input::GetMouseX();
     float y = Input::GetMouseY();

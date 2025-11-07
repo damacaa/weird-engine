@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 class MouseCollisionScene : public Scene
 {
@@ -43,19 +45,23 @@ private:
 		// Floor
 		{
 			float variables[8]{ 0.5f, 1.5f, -1.0f };
-			addShape(0, variables, 3);
+			addShape(CustomShape::SINE, variables, 3);
 		}
 
 		{
-			float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
-			Entity star = addShape(1, variables, 3);
+			float variables[8]{ -15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f };
+			Entity star = addShape(CustomShape::STAR, variables, 3);
 
 			m_cursorShape = star;
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
 	void onUpdate(float delta) override
 	{
+		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+
 		// Move wall to mouse
 		{
 			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_cursorShape);

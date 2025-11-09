@@ -1,5 +1,6 @@
 #include "weird-renderer/Shader.h"
 
+#include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -7,12 +8,39 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
+
 		// Constructor that build the Shader Program from 2 different shaders
 		Shader::Shader(const char* vertexFile, const char* fragmentFile)
 		{
 			m_vertexFile = vertexFile;
 			m_fragmentFile = fragmentFile;
 
+			std::string source = get_file_contents(fragmentFile);
+
+			const std::filesystem::path baseDir = std::filesystem::path(fragmentFile).parent_path();
+			static const std::regex includeRegex("#include\\s+\"([^\"]+)\"");
+
+			std::smatch match;
+			std::string src = source;
+			auto searchStart = src.cbegin();
+
+			while (std::regex_search(searchStart, src.cend(), match, includeRegex))
+			{
+				std::string includeFile = match[1].str();
+				std::filesystem::path includePath = baseDir / includeFile;
+
+				// Ignore procedural includes, those that are generated at runtime instead of loaded from a file
+				if (includePath.has_extension())
+				{
+					m_includedFragmentContents.push_back(get_file_contents(includePath.string().c_str()));
+				}
+				else
+				{
+					m_includedFragmentContents.push_back("// includeFile");
+				}
+
+				searchStart = match.suffix().first;
+			}
 
 			recompile();
 		}
@@ -53,13 +81,16 @@ namespace WeirdEngine
 
 		std::string Shader::getFragmentCode()
 		{
-			return get_file_contents(m_fragmentFile);
+			std::string code = get_file_contents(m_fragmentFile);
+
+
+			return code;
 		}
 
-		void Shader::setFragmentCode(std::string& code)
+		void Shader::setFragmentIncludeCode(int i, std::string& code)
 		{
-			std::string v = getVertexCode();
-			recompile(v, code);
+			m_includedFragmentContents[i] = code;
+			recompile();
 		}
 
 		void Shader::recompile()
@@ -78,9 +109,28 @@ namespace WeirdEngine
 			if (ID != -1)
 				free();
 
+			// Add includes
+			static const std::regex includeRegex("#include\\s+\"([^\"]+)\"");
+
+			std::string fragmentCodeAfterIncludes;
+			fragmentCodeAfterIncludes.reserve(fragmentCode.size() + m_includedFragmentContents.size() * 200); // preallocate roughly
+
+			std::sregex_iterator it(fragmentCode.begin(), fragmentCode.end(), includeRegex);
+			std::sregex_iterator end;
+			size_t includeIndex = 0;
+			size_t lastPos = 0;
+
+			for (; it != end && includeIndex < m_includedFragmentContents.size(); ++it, ++includeIndex) {
+				fragmentCodeAfterIncludes.append(fragmentCode.substr(lastPos, it->position() - lastPos));
+				fragmentCodeAfterIncludes.append(m_includedFragmentContents[includeIndex]);
+				lastPos = it->position() + it->length();
+			}
+
+			fragmentCodeAfterIncludes.append(fragmentCode.substr(lastPos));
+
 			// Convert the shader source strings into character arrays
 			const char* vertexSource = vertexCode.c_str();
-			const char* fragmentSource = fragmentCode.c_str();
+			const char* fragmentSource = fragmentCodeAfterIncludes.c_str();
 
 			// Create Vertex Shader Object and get its reference
 			GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);

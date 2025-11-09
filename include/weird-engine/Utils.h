@@ -36,6 +36,23 @@ namespace fs = std::filesystem;
 		throw(errno);
 	}
 
+	static std::string get_file_contents_no_except(const char* filename) noexcept
+	{
+		std::ifstream in(filename, std::ios::binary);
+		if (in)
+		{
+			std::string contents;
+			in.seekg(0, std::ios::end);
+			contents.resize(in.tellg());
+			in.seekg(0, std::ios::beg);
+			in.read(&contents[0], contents.size());
+			in.close();
+			return(contents);
+		}
+
+		return "";
+	}
+
 	static std::string get_file_contents_no_exception(const char* filename, bool& success)
 	{
 		std::ifstream in(filename, std::ios::binary);

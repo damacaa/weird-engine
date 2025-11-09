@@ -1,5 +1,7 @@
 #version 330 core
 
+#include "shapes.glsl"
+
 #define BLEND_SHAPES 1
 #define MOTION_BLUR 1
 
@@ -63,79 +65,7 @@ const float FAR = 100.0f;
 #define var6 parameters1.z
 #define var7 parameters1.w
 
-// Operations
-float fOpUnionSoft(float a, float b, float r)
-{
-    float e = max(r - abs(a - b), 0.0);
-    return min(a, b) - e * e * 0.25 / r;
-}
 
-float fOpUnionSoft(float a, float b, float r, float invR)
-{
-    float e = max(r - abs(a - b), 0.0);
-    return min(a, b) - e * e * 0.25 * invR;
-}
-
-// Smooth subtraction: a - b
-float fOpSubSoft(float a, float b, float r)
-{
-    return -fOpUnionSoft(b, -a, 0.5);
-}
-
-float smin(float a, float b, float u_k)
-{
-    float h = clamp(0.5 + 0.5 * (b - a) / u_k, 0.0, 1.0);
-    return mix(b, a, h) - u_k * h * (1.0 - h);
-}
-
-float shape_circle(vec2 p)
-{
-    return length(p) - 0.5;
-}
-
-// y = sin(5x + t) / 5
-// 0 = sin(5x + t) / 5 - y
-float shape_sine(vec2 p)
-{
-    return p.y - sin(p.x * 5.0 + u_time) * 0.2;
-}
-
-float shape_box2d(vec2 p, vec2 b)
-{
-    vec2 d = abs(p) - b;
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
-}
-
-float shape_line(vec2 p, vec2 a, vec2 b)
-{
-    vec2 dir = b - a;
-    return abs(dot(normalize(vec2(dir.y, -dir.x)), a - p));
-}
-
-float shape_segment(vec2 p, vec2 a, vec2 b)
-{
-    float d = shape_line(p, a, b);
-    float d0 = dot(p - b, b - a);
-    float d1 = dot(p - a, b - a);
-    return d1 < 0.0 ? length(a - p) : d0 > 0.0 ? length(b - p)
-    : d;
-}
-
-float shape_circles_smin(vec2 p, float t)
-{
-    return smin(shape_circle(p - vec2(cos(t))), shape_circle(p + vec2(sin(t), 0)), 0.8);
-}
-
-vec3 draw_line(float d, float thicu_kness)
-{
-    const float aa = 3.0;
-    return vec3(smoothstep(0.0, aa / u_resolution.y, max(0.0, abs(d) - thicu_kness)));
-}
-
-vec3 draw_line(float d)
-{
-    return draw_line(d, 0.0025);
-}
 
 vec3 getMaterial(vec2 p, int materialId)
 {
@@ -150,7 +80,7 @@ vec3 getColor(vec2 p, vec2 uv)
     int finalMaterialId = 0;
     float mask = 1.0;
 
-    /*ADD_SHAPES_HERE*/
+    #include "custom_shapes"
 
     if (minDist <= 0.0)
     {
@@ -268,7 +198,7 @@ void main()
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
     vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
     float previousDistance = previousData.x;
-    float previousMaterial = previousData.y;
+    float previousMaterial = texture(t_colorTexture, v_texCoord.xy).y;
 
     // Different material for object trail?
     material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;

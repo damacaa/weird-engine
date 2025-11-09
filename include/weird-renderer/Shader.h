@@ -3,10 +3,7 @@
 
 #include<glad/glad.h>
 #include<string>
-#include<fstream>
-#include<sstream>
-#include<iostream>
-#include<cerrno>
+#include <vector>
 #include <glm/glm.hpp>
 
 #include "weird-engine/Utils.h"
@@ -33,7 +30,7 @@ namespace WeirdEngine
 
 			std::string getVertexCode();
 			std::string getFragmentCode();
-			void setFragmentCode(std::string& code);
+			void setFragmentIncludeCode(int i, std::string& code);
 
 			// Utility uniform functions
 			void setUniform(const std::string& name, float value) const {
@@ -87,7 +84,7 @@ namespace WeirdEngine
 			// Checks if the different Shaders have compiled properly
 			void compileErrors(unsigned int shader, const std::string& type);
 
-
+			std::vector<std::string> m_includedFragmentContents;
 		};
 	}
 }

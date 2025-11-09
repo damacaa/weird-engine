@@ -42,13 +42,13 @@ namespace WeirdEngine
 		}
 	};
 
-	struct StaticVariable : IMathExpression
+	struct FloatConstant : IMathExpression
 	{
 	private:
 		float m_value;
 
 	public:
-		explicit StaticVariable(float value) : m_value(value) {}
+		explicit FloatConstant(float value) : m_value(value) {}
 
 		void propagateValues(float* values) override
 		{
@@ -89,7 +89,7 @@ namespace WeirdEngine
 			: valueA(std::make_shared<FloatVariable>(i)) {}
 
 		OneFloatOperation(float constant)
-			: valueA(std::make_shared<StaticVariable>(constant)) {}
+			: valueA(std::make_shared<FloatConstant>(constant)) {}
 
 		void setValue(std::shared_ptr<IMathExpression> a)
 		{
@@ -160,10 +160,10 @@ namespace WeirdEngine
 			: valueA(std::move(a)), valueB(std::move(b)) {}
 
 		TwoFloatOperation(float constant, std::shared_ptr<IMathExpression> b)
-			: valueA(std::make_shared<StaticVariable>(constant)), valueB(std::move(b)) {}
+			: valueA(std::make_shared<FloatConstant>(constant)), valueB(std::move(b)) {}
 
 		TwoFloatOperation(std::shared_ptr<IMathExpression> a, float constant)
-			: valueA(std::move(a)), valueB(std::make_shared<StaticVariable>(constant)) {}
+			: valueA(std::move(a)), valueB(std::make_shared<FloatConstant>(constant)) {}
 
 		//TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
 		//	: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}

@@ -66,12 +66,6 @@ const float FAR = 100.0f;
 #define var7 parameters1.w
 
 
-
-vec3 getMaterial(vec2 p, int materialId)
-{
-    return u_staticColors[materialId];
-}
-
 vec3 getColor(vec2 p, vec2 uv)
 {
     float minDist = 100000.0;
@@ -123,8 +117,6 @@ vec3 getColor(vec2 p, vec2 uv)
         #else
 
         minDist = min(minDist, objectDist);
-
-
 
         #endif
 

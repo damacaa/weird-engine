@@ -569,8 +569,6 @@ namespace WeirdEngine
 			float d = map(p);
 			if (d < m_radious)
 			{
-				collisionEvent.firstCollision = !previousCollision;
-
 				float penetration = (m_radious - d);
 
 				// Collision normal calculation
@@ -608,7 +606,7 @@ namespace WeirdEngine
 					collisionEvent.normal = normal;
 
 					// Calculate friction
-					constexpr float DYNAMIC_FRICTION = 0.01f;
+					constexpr float DYNAMIC_FRICTION = 0.1f;
 					float frictionCoefficient = DYNAMIC_FRICTION;
 
 					float surfaceFriction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * speed;
@@ -637,16 +635,25 @@ namespace WeirdEngine
 
 			if (currentCollision != previousCollision)
 			{
-				if (currentCollision) {
+				if (currentCollision)
+				{
 					// Inform of new collision
+					collisionEvent.state = CollisionState::START;
 					m_collisionQueue.push_back(collisionEvent);
-					// std::cout << "Collision in" << std::endl;
-				} else {
-					// Inform of end of collision?
-					// std::cout << "Collision out" << std::endl;
+				}
+				else
+				{
+					// Inform of end of collision
+					collisionEvent.state = CollisionState::END;
+					m_collisionQueue.push_back(collisionEvent);
 				}
 
 				m_collisionMap[i] = currentCollision;
+			}
+			else if (currentCollision)
+			{
+				collisionEvent.state = CollisionState::CONTINUE;
+				m_collisionQueue.push_back(collisionEvent);
 			}
 
 			// Old walls

@@ -72,16 +72,23 @@ namespace WeirdEngine
 		size_t size;
 	};
 
+	enum class CollisionState
+	{
+		START,
+		CONTINUE,
+		END
+	};
+
 	struct CollisionEvent
 	{
+		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
-		// bool firstContact; TODO
 	};
 
 	struct ShapeCollisionEvent
 	{
-		bool firstCollision;
+		CollisionState state;
 		SimulationID body;
 		ShapeId shape;
 		float strength;

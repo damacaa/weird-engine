@@ -39,7 +39,7 @@ namespace WeirdEngine
 
 		g_frictionSound = std::max(frictionSample, g_frictionSound);
 
-		if (event.firstCollision)
+		if (event.state == CollisionState::START)
 			self->m_collisionSoundQueued = true;
 	}
 

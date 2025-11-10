@@ -14,19 +14,12 @@
 #include <set>
 
 #include <glm/glm.hpp>
-#include <glm/gtx/norm.hpp>
 
 #include "weird-engine/ecs/Entity.h"
 #include "../weird-engine/Components/Transform.h"
 #include "../weird-renderer/Components/CustomShape.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
-
-#include "CollisionDetection/UniformGrid2D.h"
-#include "CollisionDetection/DynamicAABBTree2D.h"
-#include "CollisionDetection/SpatialHash.h"
-#include "CollisionDetection/Octree.h"
-
 
 namespace WeirdEngine
 {
@@ -36,41 +29,9 @@ namespace WeirdEngine
 	using SimulationID = std::uint32_t;
 
 	using vec2 = glm::vec2;
+	using vec3 = glm::vec3;
 
-	class CustomBitset
-	{
-	public:
-		CustomBitset(size_t size) : bits((size + 63) / 64, 0), size(size) {}
 
-		void set(SimulationID pos)
-		{
-			if (pos < size)
-			{
-				bits[pos / 64] |= (1ULL << (pos % 64));
-			}
-		}
-
-		void clear(SimulationID pos)
-		{
-			if (pos < size)
-			{
-				bits[pos / 64] &= ~(1ULL << (pos % 64));
-			}
-		}
-
-		bool test(SimulationID pos) const
-		{
-			if (pos < size)
-			{
-				return bits[pos / 64] & (1ULL << (pos % 64));
-			}
-			return false;
-		}
-
-	private:
-		std::vector<uint64_t> bits;
-		size_t size;
-	};
 
 	enum class CollisionState
 	{
@@ -341,7 +302,6 @@ namespace WeirdEngine
 		CollisionDetectionMethod m_collisionDetectionMethod;
 
 		std::vector<Collision> m_collisions;
-		DynamicAABBTree m_tree;
 		std::vector<int> m_treeIDs;
 		std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 

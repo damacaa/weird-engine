@@ -1,5 +1,9 @@
 #include "weird-physics/Simulation2D.h"
 
+#include <algorithm>
+
+#include "glm/gtx/norm.hpp"
+
 namespace WeirdEngine
 {
 
@@ -188,10 +192,6 @@ namespace WeirdEngine
 		m_simulationThread.join();
 	}
 
-	// Track previous positions for lazy updates
-	std::vector<AABB> previousAABBs;
-	std::vector<vec2> previousAABBPositions;
-
 	void Simulation2D::checkCollisions()
 	{
 		// Detect collisions
@@ -200,133 +200,24 @@ namespace WeirdEngine
 #endif
 		m_collisions.clear();
 
-		switch (m_collisionDetectionMethod)
+		for (size_t i = 0; i < m_size; i++)
 		{
-		case Simulation2D::None:
-			break;
-		case Simulation2D::MethodNaive:
-		{
-			for (size_t i = 0; i < m_size; i++)
+			// Simple collisions
+			for (size_t j = i + 1; j < m_size; j++)
 			{
-				// Simple collisions
-				for (size_t j = i + 1; j < m_size; j++)
+				vec2 ij = m_positions[j] - m_positions[i];
+
+				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+				if (distanceSquared < m_diameterSquared)
 				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared < m_diameterSquared)
-					{
-						m_collisions.emplace_back(Collision(i, j, ij));
-					}
+					m_collisions.emplace_back(Collision(i, j, ij));
+				}
 
 #if MEASURE_PERFORMANCE
-					checks++;
+				checks++;
 #endif
-				}
 			}
-			break;
-		}
-		case Simulation2D::MethodTree:
-		{
-
-			// std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
-
-			// Add new objects
-			for (size_t i = m_tree.count; i < m_size; i++)
-			{
-				AABB boundinBox(0, 0, 0, 0);
-				auto id = m_tree.insertObject(boundinBox);
-				m_treeIDs.push_back(id);
-				m_treeIdToSimulationID[id] = i;
-				previousAABBs.push_back(boundinBox);
-				previousAABBPositions.push_back(vec2(0.0f));
-			}
-
-			float scale = 1.5f;
-			const float speedThreshold = 0.5f;
-			// Update the objects' positions
-			for (size_t i = 0; i < m_treeIDs.size(); ++i)
-			{
-				auto& p = m_positions[i];
-
-				float halfw = m_radious, halfh = m_radious;
-
-				AABB updatedBox(
-					p.x - halfw,
-					p.y - halfw,
-					p.x + halfh,
-					p.y + halfh);
-
-				// Update the object in the tree
-				m_tree.updateObject(m_treeIDs[i], updatedBox);
-
-				// Optimization ideas
-				// Lazy update: only update the tree if the object has moved significantly
-				// if (!previousAABBs[i].overlaps(updatedBox))
-				//{
-				//	m_tree.updateObject(m_treeIDs[i], updatedBox);
-				//	previousAABBs[i] = updatedBox;
-				//}
-				// else {
-				//	//std::cout << "Nope: " << i << std::endl;
-				//}
-
-				/*loat maxMovement = (scale - 1) * halfw;
-				if (fabs(p.x - previousAABBPositions[i].x) > maxMovement || fabs(p.y - previousAABBPositions[i].y) > maxMovement)
-				{
-					AABB updatedBox(
-						p.x - (scale * halfw),
-						p.y - (scale * halfw),
-						p.x + (scale * halfh),
-						p.y + (scale * halfh)
-					);
-
-					m_tree.updateObject(m_treeIDs[i], updatedBox);
-					previousAABBPositions[i] = p;
-				}*/
-			}
-
-			std::vector<int> possibleCollisions;
-			// Perform collision queries
-			for (size_t i = 0; i < m_treeIDs.size(); ++i)
-			{
-				possibleCollisions.clear();
-				m_tree.query(m_tree.nodes[m_treeIDs[i]].box, possibleCollisions);
-
-				// Check actual collisions
-				for (int id : possibleCollisions)
-				{
-					if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box))
-					{
-						// std::cout << "Object " << m_treeIDs[i] << " is colliding with object " << id << std::endl;
-
-						int a = i;
-						int b = m_treeIdToSimulationID[id];
-
-						if (a >= b)
-							continue;
-
-						vec2 ab = m_positions[b] - m_positions[a];
-
-						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
-
-						if (distanceSquared < m_diameterSquared)
-						{
-							vec2 vRel = m_velocities[b] - m_velocities[a];
-							m_collisions.emplace_back(Collision(a, b, ab));
-						}
-#if MEASURE_PERFORMANCE
-						checks++;
-#endif
-					}
-				}
-			}
-
-			break;
-		}
-		default:
-			break;
 		}
 
 #if MEASURE_PERFORMANCE
@@ -334,14 +225,12 @@ namespace WeirdEngine
 			std::cout << "First frame checks: " << checks << std::endl;
 #endif
 
-
-		// Apply extra forces
+		// Check shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
 			vec2& p = m_positions[i];
 
 			// Check
-			bool previousCollision = m_collisionMap[i];
 			bool currentCollision = false;
 			ShapeCollisionEvent collisionEvent;
 
@@ -384,6 +273,7 @@ namespace WeirdEngine
 				}
 			}
 
+			bool previousCollision = m_collisionMap[i];
 			if (currentCollision != previousCollision)
 			{
 				if (currentCollision)
@@ -546,7 +436,7 @@ namespace WeirdEngine
 		{
 			Collision col = *it;
 
-			float lengthSquared = length2(col.AB);
+			float lengthSquared = glm::length2(col.AB);
 			vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 			float penetration = (m_radious + m_radious) - length(col.AB);
 
@@ -976,12 +866,8 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::raycast(vec2 pos)
 	{
-		if (m_collisionDetectionMethod == None || m_collisionDetectionMethod == MethodNaive)
-		{
-
 			for (size_t i = 0; i < m_size; i++)
 			{
-
 				vec2 ij = pos - m_positions[i];
 
 				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
@@ -993,21 +879,6 @@ namespace WeirdEngine
 			}
 
 			return -1;
-		}
-		else
-		{
-			float size = 0.001f;
-			// std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
-			AABB boundinBox(pos.x - size, pos.y - size, pos.x + size, pos.y + size);
-			std::vector<int> possibleCollisions;
-			// possibleCollisions.reserve(3);
-			m_tree.query(boundinBox, possibleCollisions);
-
-			if (possibleCollisions.size() == 0)
-				return -1;
-
-			return m_treeIdToSimulationID[possibleCollisions[0]];
-		}
 	}
 
 	float Simulation2D::raymarch(vec2 pos, vec2 direction) {

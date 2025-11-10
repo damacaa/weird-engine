@@ -14,7 +14,7 @@ namespace WeirdEngine
 
 	constexpr size_t MAX_STEPS = 10;
 
-
+	const float EPSILON = 0.25f;
 
 
 
@@ -131,16 +131,9 @@ namespace WeirdEngine
 					// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 					m_simulationTime += FIXED_DELTA_TIME;
 
-
-
 					// Notify collision callback
 					if (m_stepCallback)
 					{
-						if (!m_collisionQueue.empty())
-						{
-							m_collisionQueue.clear();
-						}
-
 						m_stepCallback(m_callbackUserData);
 					}
 				}
@@ -340,6 +333,96 @@ namespace WeirdEngine
 		if (g_simulationSteps == 0)
 			std::cout << "First frame checks: " << checks << std::endl;
 #endif
+
+
+		// Apply extra forces
+		for (size_t i = 0; i < m_size; i++)
+		{
+			vec2& p = m_positions[i];
+
+			// Check
+			bool previousCollision = m_collisionMap[i];
+			bool currentCollision = false;
+			ShapeCollisionEvent collisionEvent;
+
+			// Static shapes
+			float d = map(p);
+			if (d < m_radious)
+			{
+				float penetration = (m_radious - d);
+
+				// Collision normal calculation
+
+				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
+				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
+
+				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
+				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
+
+				collisionEvent.normal = normalize(vec2(d1, d2));
+
+				if (map(p - (1.1f * m_radious * collisionEvent.normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				{
+					currentCollision = true;
+
+					vec2 vel = m_velocities[i];
+					float speed = length(vel);
+
+					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
+
+					float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
+
+					collisionEvent.body = i;
+					collisionEvent.strength = penetration;
+					collisionEvent.position = p - (0.5f * collisionEvent.normal);
+
+					// Calculate friction
+					constexpr float DYNAMIC_FRICTION = 0.1f;
+					float frictionCoefficient = DYNAMIC_FRICTION;
+
+					collisionEvent.friction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * speed;
+				}
+			}
+
+			if (currentCollision != previousCollision)
+			{
+				if (currentCollision)
+				{
+					// Inform of new collision
+					collisionEvent.state = CollisionState::START;
+					m_collisionQueue.push_back(collisionEvent);
+				}
+				else
+				{
+					// Inform of end of collision
+					collisionEvent.state = CollisionState::END;
+					m_collisionQueue.push_back(collisionEvent);
+				}
+
+				m_collisionMap[i] = currentCollision;
+			}
+			else if (currentCollision)
+			{
+				collisionEvent.state = CollisionState::CONTINUE;
+				m_collisionQueue.push_back(collisionEvent);
+			}
+
+			// Old walls
+			if (Input::GetKey(Input::R))
+			{
+				if (p.x < m_radious)
+				{
+					p.x += m_radious - p.x;
+					m_velocities[i].x = -0.5f * m_velocities[i].x;
+				}
+				else if (p.x > 30.0f - m_radious)
+				{
+					p.x -= m_radious - (30.0f - p.x);
+					m_velocities[i].x = -0.5f * m_velocities[i].x;
+				}
+			}
+		}
+
 	}
 
 	void Simulation2D::solveCollisionsPositionBased()
@@ -443,7 +526,7 @@ namespace WeirdEngine
 		return d - 0.05f;
 	}
 
-	const float EPSILON = 0.25f;
+
 	void Simulation2D::applyForces()
 	{
 		// External forces
@@ -455,55 +538,6 @@ namespace WeirdEngine
 				vec2& f = m_externalForces[i];
 				m_forces[i] = f;
 				m_externalForces[i] = vec2(0);
-			}
-		}
-
-		// Attraction force
-		if (m_attracttionEnabled)
-		{
-			for (size_t i = 0; i < m_size; i++)
-			{
-				for (size_t j = i + 1; j < m_size; j++)
-				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared > m_diameterSquared)
-					{
-						vec2 attractionForce = (0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
-						m_forces[i] += attractionForce;
-						m_forces[j] -= attractionForce;
-					}
-				}
-			}
-		}
-
-		if (m_repulsionEnabled)
-		{
-			for (size_t i = 0; i < m_size; i++)
-			{
-				for (size_t j = i + 1; j < m_size; j++)
-				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared > m_diameterSquared)
-					{
-						vec2 attractionForce = -(0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
-						m_forces[i] += attractionForce;
-						m_forces[j] -= attractionForce;
-					}
-				}
-			}
-		}
-
-		if (m_liftEnabled)
-		{
-			for (size_t i = 0; i < m_size / 2; i++)
-			{
-				m_forces[i] += vec2(0, 100000.0f);
 			}
 		}
 
@@ -548,6 +582,43 @@ namespace WeirdEngine
 #endif
 		}
 
+		// Shape collisions
+		for (auto &collisionEvent: m_collisionQueue)
+		{
+			// Send event
+			if (m_shapeCollisionCallback)
+			{
+				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify it
+			}
+
+			vec2 vel = m_velocities[collisionEvent.body];
+			float speed = length(vel);
+
+			// Apply friction
+			vec2 velDirection = speed > 0.0f ? normalize(vel) : vec2(1.0f);
+			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * collisionEvent.friction * velDirection; // Lose velocity on collision
+
+			// Absortion
+			constexpr float energyAbsortion = 10.0f;
+
+			vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
+
+			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
+
+			float absortionRate = std::max(0.0f, energyAbsortion * velocityAlongNormal);
+			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * absortionRate * speed * collisionEvent.normal;
+
+			// Penalty
+			vec2 v = collisionEvent.strength * collisionEvent.strength * collisionEvent.normal;
+			vec2 force = m_mass[collisionEvent.body] * m_push * v;
+
+			m_forces[collisionEvent.body] += force;
+		}
+
+		m_collisionQueue.clear();
+
+
+
 		// Apply extra forces
 		for (size_t i = 0; i < m_size; i++)
 		{
@@ -558,117 +629,6 @@ namespace WeirdEngine
 			if (!m_attracttionEnabled)
 			{
 				m_forces[i].y += m_mass[i] * m_gravity;
-			}
-
-			// Check
-			bool previousCollision = m_collisionMap[i];
-			bool currentCollision = false;
-			ShapeCollisionEvent collisionEvent;
-
-			// Static shapes
-			float d = map(p);
-			if (d < m_radious)
-			{
-				float penetration = (m_radious - d);
-
-				// Collision normal calculation
-
-				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
-				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
-
-				//
-				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
-				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
-
-				vec2 normal = normalize(vec2(d1, d2));
-
-				// std::cout << normal.x << " : " << normal.y << std::endl;
-
-
-
-
-
-				if (map(p - (1.1f * m_radious * normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
-				{
-					currentCollision = true;
-
-					constexpr float energyAbsortion = 10.0f;
-					vec2 vel = m_velocities[i];
-					float speed = length(vel);
-
-					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
-
-					float velocityAlongNormal = glm::dot(velocityDirection, normal);
-
-					collisionEvent.body = i;
-					collisionEvent.strength = penetration;
-					collisionEvent.position = p;
-					collisionEvent.normal = normal;
-
-					// Calculate friction
-					constexpr float DYNAMIC_FRICTION = 0.1f;
-					float frictionCoefficient = DYNAMIC_FRICTION;
-
-					float surfaceFriction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * speed;
-					collisionEvent.friction = surfaceFriction;
-
-					// Send event
-					if (m_shapeCollisionCallback)
-					{
-						m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify it
-					}
-
-					// Apply friction
-					m_velocities[i] -= FIXED_DELTA_TIME_F * collisionEvent.friction * velocityDirection; // Lose velocity on collision
-
-					// Absortion
-					float absortionRate = std::max(0.0f, energyAbsortion * velocityAlongNormal);
-					m_velocities[i] -= FIXED_DELTA_TIME_F * absortionRate * speed * normal;
-					
-					// Penalty
-					vec2 v = penetration * penetration * normal;
-					vec2 force = m_mass[i] * m_push * v;
-
-					m_forces[i] += force;
-				}
-			}
-
-			if (currentCollision != previousCollision)
-			{
-				if (currentCollision)
-				{
-					// Inform of new collision
-					collisionEvent.state = CollisionState::START;
-					m_collisionQueue.push_back(collisionEvent);
-				}
-				else
-				{
-					// Inform of end of collision
-					collisionEvent.state = CollisionState::END;
-					m_collisionQueue.push_back(collisionEvent);
-				}
-
-				m_collisionMap[i] = currentCollision;
-			}
-			else if (currentCollision)
-			{
-				collisionEvent.state = CollisionState::CONTINUE;
-				m_collisionQueue.push_back(collisionEvent);
-			}
-
-			// Old walls
-			if (Input::GetKey(Input::R))
-			{
-				if (p.x < m_radious)
-				{
-					p.x += m_radious - p.x;
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
-				else if (p.x > 30.0f - m_radious)
-				{
-					p.x -= m_radious - (30.0f - p.x);
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
 			}
 		}
 	}

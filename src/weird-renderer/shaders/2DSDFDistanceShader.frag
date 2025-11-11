@@ -22,7 +22,7 @@ uniform vec3  u_lightPos;
 uniform vec3  u_camPos;
 
 uniform float u_time;
-uniform float u_k = 0.5;
+uniform float u_k = 0.25;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;

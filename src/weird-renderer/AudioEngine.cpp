@@ -93,7 +93,7 @@ namespace WeirdEngine {
             // 0.75f = Medium boost
             // 1.0f = No boost (linear)
             constexpr float LOW_END_BOOST_EXPONENT = 0.5f;
-            constexpr float MAX_AMPLITUDE = 1.0f;
+            constexpr float MAX_AMPLITUDE = 0.75f;
             const float initialAmplitude = MAX_AMPLITUDE * pow(adjustedAmplitude, LOW_END_BOOST_EXPONENT);
 
             // Compression will tame the louder signal once it crosses the threshold, preserving top-end

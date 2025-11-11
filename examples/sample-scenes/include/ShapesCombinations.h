@@ -31,7 +31,7 @@ private:
 
     // Floor shape
     {
-      float vars0[8] = {0.5f, 2.5f};
+      float vars0[8] = {0.5f, 2.5f, 1.0f};
       addShape(CustomShape::SINE, vars0, 2, CombinationType::Addition, true, 0);
     }
 

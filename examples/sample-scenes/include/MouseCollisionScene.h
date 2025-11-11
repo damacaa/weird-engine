@@ -44,7 +44,7 @@ private:
 
 		// Floor
 		{
-			float variables[8]{ 0.5f, 1.5f, -1.0f };
+			float variables[8]{ 0.5f, 1.5f, 1.0f};
 			addShape(CustomShape::SINE, variables, 3);
 		}
 
@@ -77,4 +77,6 @@ private:
 			cs.m_isDirty = true;
 		}
 	}
+
+
 };

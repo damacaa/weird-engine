@@ -35,7 +35,7 @@ namespace WeirdEngine
 
 		const float m_soundFalloff = 0.001f;
 		auto camPosition = self->getCamera().position; // Mutex?
-		float frictionSample = event.friction / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position))); // Apply distance falloff
+		float frictionSample = event.friction * 0.1f * glm::length2(event.velocity) / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position))); // Apply distance falloff
 
 		g_frictionSound = std::max(frictionSample, g_frictionSound);
 
@@ -312,11 +312,6 @@ namespace WeirdEngine
 			}
 		}
 #endif
-	}
-
-	void Scene::onPhysicsStep()
-	{
-		m_collisionSoundQueued = false || m_collisionSoundQueued; // TODO
 	}
 
 	WeirdRenderer::Camera &Scene::getCamera()

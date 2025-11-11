@@ -18,14 +18,16 @@ namespace WeirdEngine
 			// Define variables
 			auto amplitude = std::make_shared<FloatVariable>(0);
 			auto period = std::make_shared<FloatVariable>(1);
+			auto speed = std::make_shared<FloatVariable>(2);
+			auto offset = std::make_shared<FloatVariable>(3);
 
 			auto time = std::make_shared<FloatVariable>(8);
 			auto x = std::make_shared<FloatVariable>(9);
 			auto y = std::make_shared<FloatVariable>(10);
 
 			// Define function
-			auto sineContent = std::make_shared<Addition>(std::make_shared<Multiplication>(period, x), time);
-			std::shared_ptr<IMathExpression> waveFormula = std::make_shared<Substraction>(y, std::make_shared<Multiplication>(amplitude, std::make_shared<Sine>(sineContent)));
+			auto sineContent = std::make_shared<Addition>(std::make_shared<Multiplication>(period, x), std::make_shared<Multiplication>(speed, time));
+			std::shared_ptr<IMathExpression> waveFormula = std::make_shared<Substraction>(std::make_shared<Substraction>(y, offset), std::make_shared<Multiplication>(amplitude, std::make_shared<Sine>(sineContent)));
 
 			// Store function
 			m_sdfs.push_back(waveFormula);

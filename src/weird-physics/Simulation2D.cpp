@@ -18,7 +18,7 @@ namespace WeirdEngine
 
 	constexpr size_t MAX_STEPS = 10;
 
-	const float EPSILON = 0.25f;
+	const float EPSILON = 0.01f;
 
 
 
@@ -254,22 +254,16 @@ namespace WeirdEngine
 				{
 					currentCollision = true;
 
-					vec2 vel = m_velocities[i];
-					float speed = length(vel);
-
-					vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
-
-					float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
-
 					collisionEvent.body = i;
 					collisionEvent.strength = penetration;
 					collisionEvent.position = p - (0.5f * collisionEvent.normal);
+					collisionEvent.velocity = m_velocities[i];
 
-					// Calculate friction
 					constexpr float DYNAMIC_FRICTION = 0.1f;
-					float frictionCoefficient = DYNAMIC_FRICTION;
+					collisionEvent.friction = DYNAMIC_FRICTION;
 
-					collisionEvent.friction = frictionCoefficient * (1.0f - abs(velocityAlongNormal)) * speed;
+					constexpr float ABSORTION = 10.0f;
+					collisionEvent.absortion = ABSORTION;
 				}
 			}
 
@@ -296,23 +290,7 @@ namespace WeirdEngine
 				collisionEvent.state = CollisionState::CONTINUE;
 				m_collisionQueue.push_back(collisionEvent);
 			}
-
-			// Old walls
-			if (Input::GetKey(Input::R))
-			{
-				if (p.x < m_radious)
-				{
-					p.x += m_radious - p.x;
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
-				else if (p.x > 30.0f - m_radious)
-				{
-					p.x -= m_radious - (30.0f - p.x);
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
-			}
 		}
-
 	}
 
 	void Simulation2D::solveCollisionsPositionBased()
@@ -478,24 +456,21 @@ namespace WeirdEngine
 			// Send event
 			if (m_shapeCollisionCallback)
 			{
-				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify it
+				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify values
 			}
 
-			vec2 vel = m_velocities[collisionEvent.body];
+			vec2 vel = collisionEvent.velocity;
 			float speed = length(vel);
 
-			// Apply friction
-			vec2 velDirection = speed > 0.0f ? normalize(vel) : vec2(1.0f);
-			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * collisionEvent.friction * velDirection; // Lose velocity on collision
-
-			// Absortion
-			constexpr float energyAbsortion = 10.0f;
-
 			vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
-
 			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
 
-			float absortionRate = std::max(0.0f, energyAbsortion * velocityAlongNormal);
+			// Apply friction
+			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.1f);
+			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * friction * velocityDirection; // Lose velocity on collision
+
+			// Absortion
+			float absortionRate = std::max(0.0f, collisionEvent.absortion * velocityAlongNormal);
 			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * absortionRate * speed * collisionEvent.normal;
 
 			// Penalty
@@ -506,7 +481,6 @@ namespace WeirdEngine
 		}
 
 		m_collisionQueue.clear();
-
 
 
 		// Apply extra forces

@@ -54,7 +54,9 @@ namespace WeirdEngine
 		ShapeId shape;
 		float strength;
 		float friction;
+		float absortion;
 		vec2 position;
+		vec2 velocity;
 		vec2 normal;
 	};
 

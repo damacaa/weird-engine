@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 
 // SETTINGS
-#define USE_CORRECTED_DISTANCE_TEXTURE
+// #define USE_CORRECTED_DISTANCE_TEXTURE
 
 namespace WeirdEngine {
 	namespace WeirdRenderer {

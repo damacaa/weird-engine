@@ -60,7 +60,7 @@ namespace WeirdEngine
 		virtual void onStart() = 0;
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
-		void onPhysicsStep();
+		virtual void onPhysicsStep() {};
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
 		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};

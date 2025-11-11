@@ -73,7 +73,7 @@ private:
 		}
 
 		// Add base shapes (walls, ground, custom)
-		float vars0[8] = { 1.0f, 0.5f }; // Floor shape
+		float vars0[8] = { 1.0f, 0.5f, 1.0f}; // Floor shape
 		addShape(CustomShape::SINE, vars0, 3);
 
 		float vars1[8] = { 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f }; // Custom shape
@@ -163,6 +163,33 @@ private:
 
 			m_simulation2D.removeShape(components->getDataAtIdx(id));
 			m_ecs.destroyEntity(components->getDataAtIdx(id).Owner);
+		}
+	}
+
+	void onPhysicsStep() override
+	{
+		if (!Input::GetKey(Input::R))
+			return;
+
+		auto size = m_simulation2D.getSize();
+
+		for (int i = 0; i < size; i++)
+		{
+			auto p = m_simulation2D.getPosition(i);
+
+			if (p.x > 29.5f) {
+				p.x = 29.5f;
+				m_simulation2D.setPosition(i, p);
+			}else if (p.x < 0.5f)
+			{
+				p.x = 0.5f;
+				m_simulation2D.setPosition(i, p);
+			}
+			else if (p.y < 0.5f)
+			{
+				p.y = 0.5f;
+				m_simulation2D.setPosition(i, p);
+			}
 		}
 	}
 };

@@ -45,12 +45,12 @@ private:
 		// Floor
 		{
 			float variables[8]{ 0.5f, 1.5f, 1.0f};
-			addShape(CustomShape::SINE, variables, 3);
+			addShape(DefaultShapes::SINE, variables, 3);
 		}
 
 		{
 			float variables[8]{ -15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f };
-			Entity star = addShape(CustomShape::STAR, variables, 3);
+			Entity star = addShape(DefaultShapes::STAR, variables, 3);
 
 			m_cursorShape = star;
 		}

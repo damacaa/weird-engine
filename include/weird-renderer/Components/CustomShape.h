@@ -37,11 +37,6 @@ namespace WeirdEngine
 			std::copy(params, params + 8, m_parameters);
 		}
 
-		static constexpr ShapeId CIRCLE = 2;
-		static constexpr ShapeId BOX = 3;
-		static constexpr ShapeId SINE = 0;
-		static constexpr ShapeId STAR = 1;
-
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
 
 	};

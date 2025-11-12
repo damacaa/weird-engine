@@ -2,6 +2,8 @@
 
 #include "RigidBody.h"
 #include "weird-engine/ecs/ComponentManager.h"
+#include "weird-physics/Simulation2D.h"
+
 
 namespace WeirdEngine
 {

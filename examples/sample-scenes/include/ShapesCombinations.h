@@ -32,7 +32,7 @@ private:
     // Floor shape
     {
       float vars0[8] = {0.5f, 2.5f, 1.0f};
-      addShape(CustomShape::SINE, vars0, 2, CombinationType::Addition, true, 0);
+      addShape(DefaultShapes::SINE, vars0, 2, CombinationType::Addition, true, 0);
     }
 
     std::random_device rd;
@@ -50,7 +50,7 @@ private:
         float y = -2.0f + distribY(gen);
 
         float vars2[8] = { x, y, 3.0f, 5.0f, 1.0f, 0.0f }; // Custom shape
-        addShape(CustomShape::BOX, vars2, 4 + i, CombinationType::Addition, true, 1);
+        addShape(DefaultShapes::BOX, vars2, 4 + i, CombinationType::Addition, true, 1);
       }
     }
 
@@ -59,25 +59,25 @@ private:
     // Circle
     {
       float vars[8] = { 0.0f, 7.5f, 5.0f};
-      addShape(CustomShape::CIRCLE, vars, 3, CombinationType::Addition, true, 2);
+      addShape(DefaultShapes::CIRCLE, vars, 3, CombinationType::Addition, true, 2);
     }
 
     // Subtract star
     {
       float vars[8] = { -2.5f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f };
-      addShape(CustomShape::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
+      addShape(DefaultShapes::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
     }
 
 
     // Cursor circle
     {
       float vars2[8] = { 25.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
-      m_circle = addShape(CustomShape::CIRCLE, vars2, 0, CombinationType::Subtraction, true, CustomShape::GLOBAL_GROUP);
+      m_circle = addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Subtraction, true, CustomShape::GLOBAL_GROUP);
     }
 
     {
       float vars2[8] = { 0.0f, 0.0f, 30.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
-      addShape(CustomShape::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
+      addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;

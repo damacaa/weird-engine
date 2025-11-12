@@ -68,19 +68,19 @@ private:
 		// Floor
 		{
 			float variables[8]{ 15, -5, 25.0f, 5.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall right
 		{
 			float variables[8]{ 30 + 5, 20, 5.0f, 30.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall left
 		{
 			float variables[8]{ 0 - 5, 20, 5.0f, 30.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 	}
 

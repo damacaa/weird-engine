@@ -73,7 +73,7 @@ private:
 	{
 		{
 			float variables[8]{ 0.0f, 0.0f };
-			addShape(0, variables, 3);
+			addShape(DefaultShapes::SINE, variables, 3);
 		}
 	}
 };

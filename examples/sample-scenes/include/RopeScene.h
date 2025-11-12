@@ -74,16 +74,16 @@ private:
 
 		// Add base shapes (walls, ground, custom)
 		float vars0[8] = { 1.0f, 0.5f, 1.0f}; // Floor shape
-		addShape(CustomShape::SINE, vars0, 3);
+		addShape(DefaultShapes::SINE, vars0, 3);
 
 		float vars1[8] = { 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f }; // Custom shape
-		m_star = addShape(CustomShape::STAR, vars1, 3);
+		m_star = addShape(DefaultShapes::STAR, vars1, 3);
 
 		float vars2[8] = { 30.5f, 3.5f, 30.0f, 3.0f };
 		// addScreenSpaceShape(3, vars2); // UI overlay shape
 
 		float vars3[8] = { 15.0f, 0.0f, 15.0f, 2.0f };
-		addShape(CustomShape::BOX, vars3, 3);
+		addShape(DefaultShapes::BOX, vars3, 3);
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}

@@ -13,8 +13,9 @@
 #include <queue>
 #include <set>
 
-#include <glm/glm.hpp>
 
+
+#include "weird-engine/vec.h"
 #include "weird-engine/ecs/Entity.h"
 #include "../weird-engine/Components/Transform.h"
 #include "../weird-renderer/Components/CustomShape.h"
@@ -28,8 +29,7 @@ namespace WeirdEngine
 
 	using SimulationID = std::uint32_t;
 
-	using vec2 = glm::vec2;
-	using vec3 = glm::vec3;
+
 
 
 

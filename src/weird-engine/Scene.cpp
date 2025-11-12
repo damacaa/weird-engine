@@ -1,7 +1,6 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
-#include "weird-engine/math/Default2DSDFs.h"
 
 #include <random>
 #include <stb/stb_image.h>
@@ -400,7 +399,7 @@ namespace WeirdEngine
 		m_lights.push_back(light);
 
 		// Shapes
-		m_sdfs = getSDFS();
+		m_sdfs = DefaultShapes::getSDFS();
 		m_simulation2D.setSDFs(m_sdfs);
 	}
 

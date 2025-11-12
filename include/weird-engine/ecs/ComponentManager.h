@@ -1,6 +1,7 @@
 #pragma once
 
 #include <queue>
+#include <memory>
 
 #include "ComponentArray.h"
 #include "Entity.h"

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_map>
+#include <stdexcept>
+
 #include "Entity.h"
 #include "Component.h"
 

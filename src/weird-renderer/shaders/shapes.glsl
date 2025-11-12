@@ -29,7 +29,12 @@ float shape_circle(vec2 p)
     return length(p) - 0.5;
 }
 
-
+float sdSegment( in vec2 p, in vec2 a, in vec2 b )
+{
+    vec2 pa = p-a, ba = b-a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h );
+}
 
 const int N = 4;
 float sdPolygon( in vec2[N] v, in vec2 p )

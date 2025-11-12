@@ -1,14 +1,14 @@
 #pragma once
-#include "../weird-renderer/Shape.h"
-#include "../weird-renderer/RenderTarget.h"
-
-#include "../weird-physics/Simulation2D.h"
-
 
 #include "ecs/ECS.h"
-
 #include "ResourceManager.h"
+#include "weird-engine/math/Default2DSDFs.h"
+
+#include "weird-renderer/Shape.h"
 #include "weird-renderer/DrawCommand.h"
+#include "weird-renderer/RenderTarget.h"
+
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {

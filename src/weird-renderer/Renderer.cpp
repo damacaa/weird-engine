@@ -28,7 +28,7 @@ namespace WeirdEngine {
 			, m_sdlInitializer(width, height, m_window, m_audioEngine)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleScale(0.5f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
@@ -52,6 +52,7 @@ namespace WeirdEngine {
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
 
 			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
+			m_2DDistanceUpscalerShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceUpscaler.frag");
 
 			m_JumpFloodInitShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "InitJumpFlooding.frag");
 			m_JumpFloodStepShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "JumpFlooding.frag");
@@ -107,6 +108,10 @@ namespace WeirdEngine {
 			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_2DDistanceCorrectionRender = RenderTarget(false);
 			m_2DDistanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
+
+			m_2DDistanceUpscaled = Texture(m_renderWidth, m_renderWidth, Texture::TextureType::Data);
+			m_2DDistanceUpscaler = RenderTarget(false);
+			m_2DDistanceUpscaler.bindColorTextureToFrameBuffer(m_2DDistanceUpscaled);
 
 			m_2dColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DColorRender = RenderTarget(false);
@@ -354,6 +359,26 @@ namespace WeirdEngine {
 
 				glViewport(0, 0, m_renderWidth, m_renderHeight);
 
+				{
+					// Bind the framebuffer you want to render to
+					m_2DDistanceUpscaler.bind();
+
+					// Calculate pixel color
+					m_2DDistanceUpscalerShader.use();
+
+					// Set uniforms
+					m_2DDistanceUpscalerShader.setUniform("u_originalResolution", vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+					m_2DDistanceUpscalerShader.setUniform("u_targetResolution", vec2(m_renderWidth, m_renderHeight));
+					m_2DDistanceUpscalerShader.setUniform("t_data", 0);
+#ifdef USE_CORRECTED_DISTANCE_TEXTURE
+					m_distanceTextureCorrected.bind(0);
+#else
+					m_distanceTexture.bind(0);
+#endif
+
+					m_renderPlane.draw(m_2DDistanceUpscalerShader);
+				}
+
 				// Renders color
 				// RGB: color
 				// A: mask used for next step
@@ -374,11 +399,7 @@ namespace WeirdEngine {
 					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
 
 					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
-#ifdef USE_CORRECTED_DISTANCE_TEXTURE
-					m_distanceTextureCorrected.bind(0);
-#else
-					m_distanceTexture.bind(0);
-#endif
+					m_2DDistanceUpscaled.bind(0);
 
 					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
 					m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
@@ -454,11 +475,7 @@ namespace WeirdEngine {
 					// Distance
 					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
 					glUniform1i(distanceTextureLocation, 1);
-#ifdef USE_CORRECTED_DISTANCE_TEXTURE
-					m_distanceTextureCorrected.bind(1);
-#else
-					m_distanceTexture.bind(1);
-#endif
+					m_2DDistanceUpscaled.bind(1);
 
 					// Bg
 					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");

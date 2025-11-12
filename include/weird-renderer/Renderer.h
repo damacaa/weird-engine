@@ -52,6 +52,7 @@ namespace WeirdEngine
 			Shader m_JumpFloodInitShader;
 			Shader m_JumpFloodStepShader;
 			Shader m_2DDistanceCorrectionShader;
+			Shader m_2DDistanceUpscalerShader;
 			Shader m_2DMaterialColorShader;
 			Shader m_2DMaterialBlendShader;
 			Shader m_2DGridShader;
@@ -66,6 +67,7 @@ namespace WeirdEngine
 
 			RenderTarget m_2DSceneRender;
 			RenderTarget m_2DDistanceCorrectionRender;
+			RenderTarget m_2DDistanceUpscaler;
 			RenderTarget m_2DColorRender;
 			RenderTarget m_2DPostProcessRender;
 			RenderTarget m_2DBackgroundRender;
@@ -84,6 +86,7 @@ namespace WeirdEngine
 
 
 			Texture m_distanceTexture; // World coords???
+			Texture m_2DDistanceUpscaled;
 
 			Texture m_2dColorTexture;
 

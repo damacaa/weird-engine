@@ -195,7 +195,7 @@ void main()
     // Different material for object trail?
     material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
-    previousDistance += 300.0 * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
+    previousDistance += 10000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
     // previousDistance += u_blendIterations * 0.00035;
     // previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));

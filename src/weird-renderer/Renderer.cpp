@@ -109,7 +109,7 @@ namespace WeirdEngine {
 			m_2DDistanceCorrectionRender = RenderTarget(false);
 			m_2DDistanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
-			m_2DDistanceUpscaled = Texture(m_renderWidth, m_renderWidth, Texture::TextureType::Data);
+			m_2DDistanceUpscaled = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DDistanceUpscaler = RenderTarget(false);
 			m_2DDistanceUpscaler.bindColorTextureToFrameBuffer(m_2DDistanceUpscaled);
 

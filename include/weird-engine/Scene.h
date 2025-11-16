@@ -51,7 +51,7 @@ namespace WeirdEngine
 		RenderMode getRenderMode() const;
 
 		float getFrictionSound();
-		bool m_collisionSoundQueued = false;
+		std::atomic<bool> m_collisionSoundQueued = false; // Bad fix
 
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 

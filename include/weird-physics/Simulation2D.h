@@ -52,7 +52,7 @@ namespace WeirdEngine
 		CollisionState state;
 		SimulationID body;
 		ShapeId shape;
-		float strength;
+		float penetration;
 		float friction;
 		float absortion;
 		vec2 position;

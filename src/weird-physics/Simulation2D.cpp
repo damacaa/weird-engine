@@ -18,7 +18,7 @@ namespace WeirdEngine
 
 	constexpr size_t MAX_STEPS = 10;
 
-	const float EPSILON = 0.01f;
+	const float EPSILON = 0.0001f;
 
 
 
@@ -238,24 +238,22 @@ namespace WeirdEngine
 			float d = map(p);
 			if (d < m_radious)
 			{
-				float penetration = (m_radious - d);
-
 				// Collision normal calculation
+				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
+				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
 
 				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
 				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
 
-				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
-				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
-
 				collisionEvent.normal = normalize(vec2(d1, d2));
 
-				if (map(p - (1.1f * m_radious * collisionEvent.normal)) < 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				float penetration = m_radious - raymarch(p, -collisionEvent.normal);
+				if (penetration > 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					currentCollision = true;
 
 					collisionEvent.body = i;
-					collisionEvent.strength = penetration;
+					collisionEvent.penetration = penetration;
 					collisionEvent.position = p - (0.5f * collisionEvent.normal);
 					collisionEvent.velocity = m_velocities[i];
 
@@ -308,8 +306,9 @@ namespace WeirdEngine
 
 	static float fOpUnionSoft(float a, float b, float r)
 	{
-		float e = std::max(r - std::abs(a - b), 0.0f);
-		return std::min(a, b) - e * e * 0.25 / r;
+		r *= 1.0f; // 4.0f orignal
+		float h = std::max(r - abs(a - b), 0.0f);
+		return std::min(a, b) - h * h * 0.25f / r;
 	}
 
 	// Smooth subtraction (a - b), 2D SDF
@@ -462,7 +461,7 @@ namespace WeirdEngine
 			vec2 vel = collisionEvent.velocity;
 			float speed = length(vel);
 
-			vec2 velocityDirection = speed > 0.0001f ? vel / speed : vec2(0.0f); // Avoid NaN
+			vec2 velocityDirection = speed > 0.0f ? vel / speed : vec2(0.0f); // Avoid NaN
 			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
 
 			// Apply friction
@@ -474,7 +473,7 @@ namespace WeirdEngine
 			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * absortionRate * speed * collisionEvent.normal;
 
 			// Penalty
-			vec2 v = collisionEvent.strength * collisionEvent.strength * collisionEvent.normal;
+			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;
 			vec2 force = m_mass[collisionEvent.body] * m_push * v;
 
 			m_forces[collisionEvent.body] += force;
@@ -867,10 +866,10 @@ namespace WeirdEngine
 
 			d = map(p);
 
-			if (d <= EPSILON)
+			if (d <= -EPSILON)
 				break;
 
-			traveled += d;
+			traveled += std::abs(d) + EPSILON;
 
 			if (traveled >= FAR)
 			{
@@ -878,7 +877,7 @@ namespace WeirdEngine
 			}
 		}
 
-		return traveled;
+		return traveled - EPSILON;
 	}
 
 	void Simulation2D::runSimulationThread()

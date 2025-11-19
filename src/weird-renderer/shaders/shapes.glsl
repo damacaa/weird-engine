@@ -2,26 +2,22 @@
 // Operations
 float fOpUnionSoft(float a, float b, float r)
 {
-    float e = max(r - abs(a - b), 0.0);
-    return min(a, b) - e * e * 0.25 / r;
+    r *= 1.0;
+    float h = max(r - abs(a - b), 0.0f);
+    return min(a, b) - h * h * 0.25 / r;
 }
 
 float fOpUnionSoft(float a, float b, float r, float invR)
 {
-    float e = max(r - abs(a - b), 0.0);
-    return min(a, b) - e * e * 0.25 * invR;
+    r *= 1.0;
+    float h = max(r - abs(a - b), 0.0f);
+    return min(a, b) - h * h * 0.25 * invR;
 }
 
 // Smooth subtraction: a - b
 float fOpSubSoft(float a, float b, float r)
 {
-    return -fOpUnionSoft(b, -a, 0.5);
-}
-
-float smin(float a, float b, float u_k)
-{
-    float h = clamp(0.5 + 0.5 * (b - a) / u_k, 0.0, 1.0);
-    return mix(b, a, h) - u_k * h * (1.0 - h);
+    return -fOpUnionSoft(b, -a, r);
 }
 
 float shape_circle(vec2 p)
@@ -79,11 +75,6 @@ float shape_segment(vec2 p, vec2 a, vec2 b)
     float d1 = dot(p - a, b - a);
     return d1 < 0.0 ? length(a - p) : d0 > 0.0 ? length(b - p)
     : d;
-}
-
-float shape_circles_smin(vec2 p, float t)
-{
-    return smin(shape_circle(p - vec2(cos(t))), shape_circle(p + vec2(sin(t), 0)), 0.8);
 }
 
 vec3 draw_line(float d, float thicu_kness, vec2 resolution)

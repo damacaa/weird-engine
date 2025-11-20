@@ -660,6 +660,11 @@ namespace WeirdEngine {
 				m_2DLightingShader.toggleDefine("DEBUG_SHOW_COLORS");
 			}
 
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::A))
+			{
+				m_2DLightingShader.toggleDefine("ANTIALIASING");
+			}
+
 			if (scene.m_collisionSoundQueued)
 			{
 				// m_audioEngine.triggerCollision(220.0f, 0.2f, 0.15f);

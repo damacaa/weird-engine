@@ -46,7 +46,7 @@ private:
 
       for (int i = 0; i < 0; ++i)
       {
-        float x = distrib(gen);
+        float x = distrib(gen) + 15.0f;
         float y = -2.0f + distribY(gen);
 
         float vars2[8] = { x, y, 3.0f, 5.0f, 1.0f, 0.0f }; // Custom shape
@@ -58,25 +58,25 @@ private:
 
     // Circle
     {
-      float vars[8] = { 0.0f, 7.5f, 5.0f};
+      float vars[8] = { 15.0f, 7.5f, 5.0f};
       addShape(DefaultShapes::CIRCLE, vars, 3, CombinationType::Addition, true, 2);
     }
 
     // Subtract star
     {
-      float vars[8] = { -2.5f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f };
+      float vars[8] = { -2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f };
       addShape(DefaultShapes::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
     }
 
 
     // Cursor circle
     {
-      float vars2[8] = { 25.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
+      float vars2[8] = { 250.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
       m_circle = addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Subtraction, true, CustomShape::GLOBAL_GROUP);
     }
 
     {
-      float vars2[8] = { 0.0f, 0.0f, 30.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
+      float vars2[8] = { 15.0f, 0.0f, 30.0f, 0.0f, 0.0f, 0.0f }; // Custom shape
       addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 

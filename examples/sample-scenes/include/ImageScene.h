@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 class ImageScene : public Scene
 {
@@ -13,7 +15,7 @@ public:
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
-	std::string imagePath = "SampleProject/Resources/Textures/image.jpg";
+	std::string imagePath = ASSETS_PATH "jimmy.jpg";
 
 	// Inherited via Scene
 	void onStart() override
@@ -82,11 +84,15 @@ private:
 			float variables[8]{ 0 - 5, 20, 5.0f, 30.0f, 0.0f };
 			addShape(DefaultShapes::BOX, variables, 3);
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	vec3 getColor(const char* path, int x, int y)
+	vec3 getColor(const char* path, float x, float y)
 	{
-		// Load the image
+		y = 1.0f - y;
+
+		// 1. Load the image to get dimensions
 		int width, height, channels;
 		unsigned char* img = wstbi_load(path, &width, &height, &channels, 0);
 
@@ -96,45 +102,45 @@ private:
 			return vec3();
 		}
 
-		if (x < 0)
-		{
-			x = 0;
-		}
-		else if (x >= width)
-		{
-			x = width - 1;
-		}
+		// 2. Convert Normalized UV (0.0 - 1.0) to Pixel Coordinates
+		// We multiply by width/height.
+		// Example: x=0.5, width=100 -> pixel=50
+		int pixelX = static_cast<int>(x * width);
+		int pixelY = static_cast<int>(y * height);
 
-		if (y < 0)
-		{
-			y = 0;
-		}
-		else if (y >= height)
-		{
-			y = height - 1;
-		}
+		// 3. Clamp values (Clamp to Edge)
+		// This handles cases where x/y might be < 0.0 or >= 1.0 (like exactly 1.0)
+		if (pixelX < 0)       pixelX = 0;
+		if (pixelX >= width)  pixelX = width - 1;
 
-		// Calculate the index of the pixel in the image data
-		int index = (y * width + x) * channels;
+		if (pixelY < 0)       pixelY = 0;
+		if (pixelY >= height) pixelY = height - 1;
 
+		// 4. Calculate index
+		int index = (pixelY * width + pixelX) * channels;
+
+		// Safety check (though clamping above should prevent this)
 		if (index < 0 || index >= width * height * channels)
 		{
+			wstbi_image_free(img);
 			return vec3();
 		}
 
-		// Get the color values
+		// 5. Get color values
 		unsigned char r = img[index];
 		unsigned char g = img[index + 1];
 		unsigned char b = img[index + 2];
-		unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+		// Alpha is available at index+3 if channels==4, but vec3 usually ignores it.
 
-		// Free the image memory
+		// 6. Free memory
 		wstbi_image_free(img);
 
+		// 7. Return normalized color
 		return vec3(
 			static_cast<int>(r) / 255.0f,
 			static_cast<int>(g) / 255.0f,
-			static_cast<int>(b) / 255.0f);
+			static_cast<int>(b) / 255.0f
+		);
 	}
 
 	void onUpdate(float delta) override
@@ -155,7 +161,9 @@ private:
 				int x = floor(t.position.x);
 				int y = floor(30 - t.position.y);
 
-				vec3 color = getColor(imagePath.c_str(), x * 10, y * 10);
+				vec2 uv = vec2(x, y) / 30.0f;
+
+				vec3 color = getColor(imagePath.c_str(), uv.x, uv.y);
 				int id = m_sdfRenderSystem2D.findClosestColorInPalette(color);
 
 				result += std::to_string(id) + "-";

@@ -3,6 +3,8 @@
 #include <weird-engine.h>
 #include <random>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 class CollisionHandlingScene : public Scene
 {
@@ -39,23 +41,25 @@ private:
     // Floor
     {
       float variables[8]{0.5f, 1.5f, -1.0f};
-      addShape(0, variables, 3);
+      addShape(DefaultShapes::SINE, variables, 3);
     }
 
     // Wall right
     {
       float variables[8]{30 + 5, 0, 5.0f, 30.0f, 0.0f};
-      addShape(m_sdfs.size() - 1, variables, 3);
+      addShape(DefaultShapes::BOX, variables, 3);
     }
 
     // Wall left
     {
       float variables[8]{-5, 0, 5.0f, 30.0f, 0.0f};
-      addShape(m_sdfs.size() - 1, variables, 3);
+      addShape(DefaultShapes::BOX, variables, 3);
     }
 
     m_ecs.getComponent<FlyMovement2D>(m_mainCamera).targetPosition = vec3(15.0f, 15.0f, 10.0f);
     m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(15.0f, 15.0f, 10.0f);
+
+    m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 
   void onUpdate(float delta) override

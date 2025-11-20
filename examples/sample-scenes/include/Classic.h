@@ -38,6 +38,8 @@ private:
 
 			m_ball = entity;
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0,2,10);
 	}
 
 	void onUpdate(float delta) override

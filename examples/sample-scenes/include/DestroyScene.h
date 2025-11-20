@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 class DestroyScene : public Scene
 {
@@ -75,5 +77,7 @@ private:
 			float variables[8]{ 0.0f, 0.0f };
 			addShape(DefaultShapes::SINE, variables, 3);
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 };

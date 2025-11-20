@@ -15,7 +15,7 @@
 
 #include "globals.h"
 
-WeirdEngine::vec3 g_cameraPositon = vec3(0.0f, 7.5f, 15.0f);
+WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 
 int main()
 {
@@ -23,13 +23,13 @@ int main()
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
-	sceneManager.registerScene<FireScene>("fire");
-	sceneManager.registerScene<LinesScene>("lines");
-	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
-	sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
-	sceneManager.registerScene<ClassicScene>("classic");
-	sceneManager.registerScene<DestroyScene>("empty");
 	sceneManager.registerScene<ImageScene>("image");
+	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
+	sceneManager.registerScene<DestroyScene>("destroy-test");
+	// sceneManager.registerScene<ClassicScene>("classic");
+	// sceneManager.registerScene<FireScene>("fire");
+	// sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
+	// sceneManager.registerScene<LinesScene>("lines");
 
 	start(sceneManager);
 }

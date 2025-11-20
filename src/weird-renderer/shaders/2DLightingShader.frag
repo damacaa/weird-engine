@@ -1,7 +1,7 @@
 #version 330 core
 
-#define SHADOWS_ENABLED
-#define DITHERING
+// #define SHADOWS_ENABLED
+// #define DITHERING
 
 // #define DEBUG_SHOW_DISTANCE
 // #define DEBUG_SHOW_COLORS

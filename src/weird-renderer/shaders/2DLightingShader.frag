@@ -2,6 +2,7 @@
 
 // #define SHADOWS_ENABLED
 // #define DITHERING
+// #define ANTIALIASING
 
 // #define DEBUG_SHOW_DISTANCE
 // #define DEBUG_SHOW_COLORS
@@ -211,13 +212,27 @@ void main()
 
     vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
 
-    bool isShape = distance < 0.0;
+    #ifdef ANTIALIASING
 
-    #ifdef DEBUG_SHOW_COLORS
-    isShape = true;
+    // Distance change over one pixel
+    float smoothing = 1.0 * fwidth(distance);
+
+    // Convert the distance to a factor between 0.0 and 1.0
+    float shapeFactor = 1.0 - smoothstep(-smoothing, smoothing, distance);
+
+    #else
+
+    float shapeFactor = distance <= 0.0 ? 1.0 : 0.0;
+
     #endif
 
-    color = mix(color, backgroundColor, isShape ? 1.0 - alpha : 1.0);
+    #ifdef DEBUG_SHOW_COLORS
+    shapeFactor = 1.0;
+    #endif
+
+    // Combine the material's alpha with shape factor
+    float finalAlpha = alpha * shapeFactor;
+    color = mix(color, backgroundColor, 1.0 - finalAlpha);
 
     float light = render(screenUV);
     vec3 lightColor = vec3(light);

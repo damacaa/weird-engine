@@ -31,6 +31,9 @@ namespace WeirdEngine
 			std::string getVertexCode();
 			std::string getFragmentCode();
 			void setFragmentIncludeCode(int i, std::string& code);
+			void addDefine(const std::string& name);
+			void removeDefine(const std::string& name);
+			void toggleDefine(const std::string& name);
 
 			// Utility uniform functions
 			void setUniform(const std::string& name, float value) const {
@@ -78,6 +81,8 @@ namespace WeirdEngine
 			const char* m_fragmentFile;
 			time_t m_lastModifiedTime;
 
+			bool m_needsRecompile = false;
+
 			void recompile();
 			void recompile(std::string& vertexCode, std::string& fragmentCode);
 
@@ -85,6 +90,7 @@ namespace WeirdEngine
 			void compileErrors(unsigned int shader, const std::string& type);
 
 			std::vector<std::string> m_includedFragmentContents;
+			std::vector<std::string> m_activeDefines;
 		};
 	}
 }

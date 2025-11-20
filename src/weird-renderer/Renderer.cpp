@@ -52,6 +52,9 @@ namespace WeirdEngine {
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
 
 			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
+			m_2DDistanceShader.addDefine("BLEND_SHAPES");
+			m_2DDistanceShader.addDefine("MOTION_BLUR");
+
 			m_2DDistanceUpscalerShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceUpscaler.frag");
 
 			m_JumpFloodInitShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "InitJumpFlooding.frag");
@@ -63,6 +66,8 @@ namespace WeirdEngine {
 			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
 
 			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
+			m_2DLightingShader.addDefine("SHADOWS_ENABLED");
+			m_2DLightingShader.addDefine("DITHERING");
 
 			m_2DGridShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DBackground.frag");
 
@@ -407,6 +412,8 @@ namespace WeirdEngine {
 
 					m_renderPlane.draw(m_2DMaterialColorShader);
 
+					// TODO: add custom materials, they will be rendered in this same render target with a mask
+
 					m_distanceTexture.unbind();
 					m_shapes2D.unbind();
 				}
@@ -638,9 +645,24 @@ namespace WeirdEngine {
 				texture.saveToDisk("output_texture.png");
 			}
 
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
+			{
+				m_2DLightingShader.toggleDefine("SHADOWS_ENABLED");
+			}
+
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::D))
+			{
+				m_2DLightingShader.toggleDefine("DEBUG_SHOW_DISTANCE");
+			}
+
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::C))
+			{
+				m_2DLightingShader.toggleDefine("DEBUG_SHOW_COLORS");
+			}
+
 			if (scene.m_collisionSoundQueued)
 			{
-				m_audioEngine.triggerCollision(200.0f, 0.1f, 0.3f);
+				// m_audioEngine.triggerCollision(220.0f, 0.2f, 0.15f);
 				scene.m_collisionSoundQueued = false;
 			}
 

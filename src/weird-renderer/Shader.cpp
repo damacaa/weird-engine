@@ -60,7 +60,14 @@ namespace WeirdEngine
 		// Activates the Shader Program
 		void Shader::use()
 		{
-			if (isFileModified(m_fragmentFile, m_lastModifiedTime)) {
+			if (isFileModified(m_fragmentFile, m_lastModifiedTime))
+			{
+				m_needsRecompile = true;
+			}
+
+			if (m_needsRecompile)
+			{
+				m_needsRecompile = false;
 				recompile();
 			}
 
@@ -93,6 +100,39 @@ namespace WeirdEngine
 			recompile();
 		}
 
+		void Shader::addDefine(const std::string& name)
+		{
+			for (const auto& define : m_activeDefines) {
+				if (define == name) return;
+			}
+			m_activeDefines.push_back(name);
+			m_needsRecompile = true;
+		}
+
+		void Shader::removeDefine(const std::string& name)
+		{
+			auto it = std::remove(m_activeDefines.begin(), m_activeDefines.end(), name);
+			if (it != m_activeDefines.end()) {
+				m_activeDefines.erase(it, m_activeDefines.end());
+			}
+			m_needsRecompile = true;
+		}
+
+		void Shader::toggleDefine(const std::string& name)
+		{
+			for (const auto& define : m_activeDefines)
+			{
+				if (define == name)
+				{
+					removeDefine(name);
+					return;
+				}
+			}
+
+			m_activeDefines.push_back(name);
+			m_needsRecompile = true;
+		}
+
 		void Shader::recompile()
 		{
 			auto root = fs::current_path().string(); // TODO
@@ -111,16 +151,41 @@ namespace WeirdEngine
 
 			// Add includes
 			static const std::regex includeRegex("#include\\s+\"([^\"]+)\"");
-
 			std::string fragmentCodeAfterIncludes;
-			fragmentCodeAfterIncludes.reserve(fragmentCode.size() + m_includedFragmentContents.size() * 200); // preallocate roughly
+			fragmentCodeAfterIncludes.reserve(fragmentCode.size() + m_includedFragmentContents.size() * 200);
 
 			std::sregex_iterator it(fragmentCode.begin(), fragmentCode.end(), includeRegex);
 			std::sregex_iterator end;
+
 			size_t includeIndex = 0;
 			size_t lastPos = 0;
 
+			// 1. Handle the first line (e.g. #version) so defines come AFTER it
+			size_t firstLineEnd = fragmentCode.find('\n');
+
+			if (firstLineEnd != std::string::npos) {
+				firstLineEnd += 1; // Include the newline character
+				// Append the first line to the buffer
+				fragmentCodeAfterIncludes.append(fragmentCode.substr(lastPos, firstLineEnd));
+				// Update lastPos so the include loop knows we've already processed this chunk
+				lastPos = firstLineEnd;
+			}
+
+			// 2. Insert Defines
+			for (auto& define : m_activeDefines) {
+				fragmentCodeAfterIncludes.append("#define ");
+				fragmentCodeAfterIncludes.append(define);
+				fragmentCodeAfterIncludes.append("\n");
+			}
+
+			// 3. Process Includes
 			for (; it != end && includeIndex < m_includedFragmentContents.size(); ++it, ++includeIndex) {
+				// Safety Check: If an include matches on the first line (which we already copied),
+				// skip it to avoid string index underflows.
+				if (static_cast<size_t>(it->position()) < lastPos) {
+					continue;
+				}
+
 				fragmentCodeAfterIncludes.append(fragmentCode.substr(lastPos, it->position() - lastPos));
 				fragmentCodeAfterIncludes.append(m_includedFragmentContents[includeIndex]);
 				lastPos = it->position() + it->length();

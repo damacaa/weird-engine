@@ -90,21 +90,24 @@ namespace WeirdEngine
 					}
 
 					// Handles key inputs
-					if (Input::GetKey(Input::W))
+					if (!Input::GetKey(Input::LeftCtrl))
 					{
-						targetPosition += t.position.z * delta * flyComponent.speed * c.camera.up;
-					}
-					if (Input::GetKey(Input::A))
-					{
-						targetPosition += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
-					}
-					if (Input::GetKey(Input::S))
-					{
-						targetPosition += t.position.z * delta * flyComponent.speed * -c.camera.up;
-					}
-					if (Input::GetKey(Input::D))
-					{
-						targetPosition += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
+						if (Input::GetKey(Input::W))
+						{
+							targetPosition += t.position.z * delta * flyComponent.speed * c.camera.up;
+						}
+						if (Input::GetKey(Input::A))
+						{
+							targetPosition += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
+						}
+						if (Input::GetKey(Input::S))
+						{
+							targetPosition += t.position.z * delta * flyComponent.speed * -c.camera.up;
+						}
+						if (Input::GetKey(Input::D))
+						{
+							targetPosition += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
+						}
 					}
 
 

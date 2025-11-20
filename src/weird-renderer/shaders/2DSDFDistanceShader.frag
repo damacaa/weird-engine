@@ -2,8 +2,8 @@
 
 #include "shapes.glsl"
 
-#define BLEND_SHAPES 1
-#define MOTION_BLUR 1
+// #define BLEND_SHAPES
+// #define MOTION_BLUR
 
 out vec4 FragColor;
 
@@ -98,7 +98,7 @@ vec3 getColor(vec2 p, vec2 uv)
         // Inside ball mask is set to 0
         mask = objectDist <= 0 ? 0.95 : mask;
 
-        #if BLEND_SHAPES
+        #ifdef BLEND_SHAPES
 
         finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
 
@@ -109,7 +109,7 @@ vec3 getColor(vec2 p, vec2 uv)
         #endif
 
 
-        #if BLEND_SHAPES
+        #ifdef BLEND_SHAPES
 
         minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
         minColorDist = min(minColorDist, objectDist);
@@ -180,7 +180,7 @@ void main()
     float material = result.y;
     float mask = result.z;
 
-    #if MOTION_BLUR
+    #ifdef MOTION_BLUR
 
     // Compensate camera motion to achieve screen space motion blur
     // TODO: implement zoom compensation

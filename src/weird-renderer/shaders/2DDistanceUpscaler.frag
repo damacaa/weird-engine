@@ -54,7 +54,13 @@ void main()
 {
     vec4 data = texture(t_data, v_texCoord.xy);
 
-    data.x = smoothSample(t_data, v_texCoord.xy);
+    // Sample just the Y component using texelFetch (No filtering)
+    // textureSize(t_data, 0) gets the resolution of the texture at mip level 0
+    ivec2 texelCoords = ivec2(v_texCoord.xy * textureSize(t_data, 0));
+    data.y = texelFetch(t_data, texelCoords, 0).y;
+
+
+    // data.x = smoothSample(t_data, v_texCoord.xy);
 
     FragColor = data;
 }

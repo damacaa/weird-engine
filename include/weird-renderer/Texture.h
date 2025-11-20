@@ -24,6 +24,7 @@ namespace WeirdEngine
 				RetroColor,
 				Depth,
 				Data,
+				LinearData,
 				IntData
 			};
 

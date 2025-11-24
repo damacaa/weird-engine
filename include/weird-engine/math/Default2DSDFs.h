@@ -28,6 +28,10 @@ namespace WeirdEngine
 		protected:
 			std::vector<float> m_values;
 
+			static constexpr uint8_t TIME = 8;
+			static constexpr uint8_t WORLD_X = 9;
+			static constexpr uint8_t WORLD_Y = 10;
+
 		public:
 			ShapeMacro()
 			{
@@ -54,12 +58,18 @@ namespace WeirdEngine
 
 		struct Ramp : ShapeMacro
 		{
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t WIDTH = 2;
+			static constexpr uint8_t HEIGHT = 3;
+			static constexpr uint8_t SKEW = 4;
+
 			float getValue() const
 			{
-				vec2 p = vec2(m_values[9] - m_values[0], m_values[10] - m_values[1]);
-				float wi = m_values[2];
-				float he = m_values[3];
-				float sk = m_values[4];
+				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
+				float wi = m_values[WIDTH];
+				float he = m_values[HEIGHT];
+				float sk = m_values[SKEW];
 
 				glm::vec2 e(wi, sk);
 				if (p.x < 0.0f) p = -p;
@@ -77,7 +87,10 @@ namespace WeirdEngine
 
 			std::string print()
 			{
-				return "sdParallelogramVertical(p - vec2(var0, var1), var2, var3, var4)";
+				return "sdParallelogramVertical(p - vec2(var"
+					+ std::to_string(POS_X) +
+					", var" + std::to_string(POS_Y) + "), var" + std::to_string(WIDTH) + ", var" + std::to_string(HEIGHT)
+					+ ", var" + std::to_string(SKEW) + ")";
 			}
 		};
 

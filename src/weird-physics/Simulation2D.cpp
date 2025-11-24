@@ -233,6 +233,7 @@ namespace WeirdEngine
 			// Check
 			bool currentCollision = false;
 			ShapeCollisionEvent collisionEvent;
+			collisionEvent.body = i;
 
 			// Static shapes
 			float d = map(p);
@@ -247,12 +248,11 @@ namespace WeirdEngine
 
 				collisionEvent.normal = normalize(vec2(d1, d2));
 
-				float penetration = m_radious - raymarch(p, -collisionEvent.normal);
+				float penetration = m_radious - raymarch(p, -collisionEvent.normal, m_radious);
 				if (penetration > 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					currentCollision = true;
 
-					collisionEvent.body = i;
 					collisionEvent.penetration = penetration;
 					collisionEvent.position = p - (0.5f * collisionEvent.normal);
 					collisionEvent.velocity = m_velocities[i];
@@ -457,6 +457,9 @@ namespace WeirdEngine
 			{
 				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify values
 			}
+
+			if (collisionEvent.state == CollisionState::END)
+				continue;
 
 			vec2 vel = collisionEvent.velocity;
 			float speed = length(vel);
@@ -854,10 +857,9 @@ namespace WeirdEngine
 			return -1;
 	}
 
-	float Simulation2D::raymarch(vec2 pos, vec2 direction) {
+	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
+	{
 		float d;
-		constexpr float FAR = 100.0f;
-
 		float traveled = 0.0;
 
 		for (int i = 0; i < 100; i++)

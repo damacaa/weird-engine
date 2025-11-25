@@ -161,7 +161,7 @@ float render(vec2 uv)
     {
         float distanceInside = rayMarchInside(uv, rd);
 
-        vec2 surfacePos = uv + (rd * (distanceInside * 1.5));
+        vec2 surfacePos = uv + (rd * (distanceInside * 2.0));
         float surfaceD = rayMarch(surfacePos, rd, minD);
 
         // distanceInside += surfaceD < FAR ? 0.05 : 0.0;

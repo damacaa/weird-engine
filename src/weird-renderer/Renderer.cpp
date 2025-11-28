@@ -68,6 +68,8 @@ namespace WeirdEngine {
 			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
 			m_2DLightingShader.addDefine("SHADOWS_ENABLED");
 			m_2DLightingShader.addDefine("DITHERING");
+			if (m_renderScale >= 1.0f)
+				m_2DLightingShader.addDefine("ANTIALIASING");
 
 			m_2DGridShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DBackground.frag");
 
@@ -665,6 +667,16 @@ namespace WeirdEngine {
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::A))
 			{
 				m_2DLightingShader.toggleDefine("ANTIALIASING");
+			}
+
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::B))
+			{
+				m_2DDistanceShader.toggleDefine("BLEND_SHAPES");
+			}
+
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::M))
+			{
+				m_2DDistanceShader.toggleDefine("MOTION_BLUR");
 			}
 
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::F))

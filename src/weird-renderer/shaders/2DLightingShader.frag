@@ -8,10 +8,10 @@
 // #define DEBUG_SHOW_COLORS
 
 // Constants
-const int MAX_STEPS = 1000;
+const int MAX_STEPS = 128;
 const float EPSILON = 0.00001;
 const float NEAR = 0.1f;
-const float FAR = 1.2f;
+const float FAR = 1.4f;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -201,42 +201,65 @@ float render(vec2 uv)
     #endif
 }
 
+vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
+    float res = 1.0;
+    float t = minD;
+
+    for(int i = 0; i < MAX_STEPS; i++) {
+        float h = map(ro + rd * t); // Your SDF function
+
+        // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)
+        res = min(res, k * h / t);
+
+        if(res < EPSILON) return vec2(0.0); // Fully in shadow
+        if(t > far) break;          // Missed everything
+
+        t += h;
+    }
+
+    // Clamp result to prevent weird artifacts
+    return vec2(t, clamp(res, 0.0, 1.0));
+}
+
 float renderShadows(vec2 uv)
 {
     #ifdef SHADOWS_ENABLED
 
     // Point light
-    vec2 rd = normalize(vec2(1.0) - uv);
+    // vec2 rd = normalize(uv - vec2(1.0));
 
     // Directional light
-    // vec2 rd = u_directionalLightDirection.xy;
+    vec2 rd = u_directionalLightDirection.xy;
 
     float mapDistance = map(uv);
-    float minD;
+    float minD = mapDistance;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
-    float d = rayMarch(uv, rd, minD);
+    float shadowValue = 1.0;
 
-    const float NORMAL_EPSILON = 0.001;
+    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 64.0);
+    float d = 1.0; // raymarchInfo.x;
 
-    vec2 p = uv;
-    float d1 = map(p + vec2(NORMAL_EPSILON, 0.0)) - map(p - vec2(NORMAL_EPSILON, 0.0));
-    float d2 = map(p + vec2(0.0, NORMAL_EPSILON)) - map(p - vec2(0.0, NORMAL_EPSILON));
 
-    vec2 normal = normalize(vec2(d1, d2));
+    float shadowFactor = raymarchInfo.y;
+    // mix(ShadowColor, LightColor, factor)
+    shadowValue = mix(0.85, 1.0, shadowFactor);
 
-    // If ray doesnt go to infinity, cast shadow
-    // Original distance is substracted to fade  shadow when close to surfaces
-    // return d < FAR ? min(0.5 + d, 0.85) : 1.0;
+    //    const float NORMAL_EPSILON = 0.001;
+    //    vec2 p = uv;
+    //    float d1 = map(p + vec2(NORMAL_EPSILON, 0.0)) - map(p - vec2(NORMAL_EPSILON, 0.0));
+    //    float d2 = map(p + vec2(0.0, NORMAL_EPSILON)) - map(p - vec2(0.0, NORMAL_EPSILON));
+    //    vec2 normal = normalize(vec2(d1, d2));
+    //     float ddot = -(dot(-rd, normal));
+    //     float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
+    //     float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
+    //     shadowValue = min(shadowValue + finalDdot, 0.95);
 
-    float ddot = -(dot(-rd, normal));
-    float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
-    float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
     float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
+    shadowValue *= extraShadow;
 
-    finalDdot = 0.0;
 
-    return d < FAR ? min(0.85 + finalDdot, 0.95) * extraShadow : 1.0;
+    return shadowValue;
 
     #else// No shadows
 

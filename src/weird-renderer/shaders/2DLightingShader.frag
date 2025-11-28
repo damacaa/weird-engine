@@ -226,10 +226,10 @@ float renderShadows(vec2 uv)
     #ifdef SHADOWS_ENABLED
 
     // Point light
-    // vec2 rd = normalize(uv - vec2(1.0));
+    vec2 rd = normalize(vec2(1.0) - uv);
 
     // Directional light
-    vec2 rd = u_directionalLightDirection.xy;
+    // vec2 rd = u_directionalLightDirection.xy;
 
     float mapDistance = map(uv);
     float minD = mapDistance;
@@ -237,7 +237,7 @@ float renderShadows(vec2 uv)
 
     float shadowValue = 1.0;
 
-    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 64.0);
+    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 16.0);
     float d = 1.0; // raymarchInfo.x;
 
 
@@ -298,11 +298,12 @@ void main()
     shapeFactor = 1.0;
     #endif
 
-    float light = 1.0; // render(screenUV);
-    float shadows = renderShadows(screenUV);
+    float shadows = renderShadows(screenUV + vec2(0.005));
+    float light = distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;
+    // finalAlpha = 0.25;
     color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
     vec3 col = color;
 
@@ -318,8 +319,8 @@ void main()
 
     #endif
 
-
     FragColor = vec4(col.xyz, 1.0);
+    // FragColor = vec4(vec3(shadows), 1.0);
 
 
     // Distance debug

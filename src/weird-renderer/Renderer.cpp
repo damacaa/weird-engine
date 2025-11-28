@@ -650,7 +650,11 @@ namespace WeirdEngine {
 
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::D))
 			{
-				m_2DLightingShader.toggleDefine("DEBUG_SHOW_DISTANCE");
+				if (Input::GetKey(Input::LeftShift)) {
+					m_2DLightingShader.toggleDefine("DITHERING");
+				} else {
+					m_2DLightingShader.toggleDefine("DEBUG_SHOW_DISTANCE");
+				}
 			}
 
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::C))

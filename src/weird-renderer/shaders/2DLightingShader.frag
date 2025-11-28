@@ -161,7 +161,7 @@ float render(vec2 uv)
     {
         float distanceInside = rayMarchInside(uv, rd);
 
-        vec2 surfacePos = uv + (rd * (distanceInside * 2.0));
+        vec2 surfacePos = uv + (rd * (distanceInside * 1.0));
         float surfaceD = rayMarch(surfacePos, rd, minD);
 
         // distanceInside += surfaceD < FAR ? 0.05 : 0.0;
@@ -201,6 +201,51 @@ float render(vec2 uv)
     #endif
 }
 
+float renderShadows(vec2 uv)
+{
+    #ifdef SHADOWS_ENABLED
+
+    // Point light
+    vec2 rd = normalize(vec2(1.0) - uv);
+
+    // Directional light
+    // vec2 rd = u_directionalLightDirection.xy;
+
+    float mapDistance = map(uv);
+    float minD;
+    vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
+
+    float d = rayMarch(uv, rd, minD);
+
+    const float NORMAL_EPSILON = 0.001;
+
+    vec2 p = uv;
+    float d1 = map(p + vec2(NORMAL_EPSILON, 0.0)) - map(p - vec2(NORMAL_EPSILON, 0.0));
+    float d2 = map(p + vec2(0.0, NORMAL_EPSILON)) - map(p - vec2(0.0, NORMAL_EPSILON));
+
+    vec2 normal = normalize(vec2(d1, d2));
+
+    // If ray doesnt go to infinity, cast shadow
+    // Original distance is substracted to fade  shadow when close to surfaces
+    // return d < FAR ? min(0.5 + d, 0.85) : 1.0;
+
+    float ddot = -(dot(-rd, normal));
+    float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
+    float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
+    float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
+
+    finalDdot = 0.0;
+
+    return d < FAR ? min(0.85 + finalDdot, 0.95) * extraShadow : 1.0;
+
+    #else// No shadows
+
+    return 1.0;
+
+    #endif
+
+}
+
 void main()
 {
     vec2 screenUV = v_texCoord;
@@ -230,17 +275,13 @@ void main()
     shapeFactor = 1.0;
     #endif
 
+    float light = 1.0; // render(screenUV);
+    float shadows = renderShadows(screenUV);
+
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;
-    color = mix(color, backgroundColor, 1.0 - finalAlpha);
-
-    float light = render(screenUV);
-    vec3 lightColor = vec3(light);
-    vec3 ambienLight = vec3(0.0, 0.0, 0.0);
-    lightColor += ambienLight;
-    vec3 col = lightColor * color.xyz;
-    // col = vec3(light);
-
+    color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
+    vec3 col = color;
 
     #ifdef DITHERING
 

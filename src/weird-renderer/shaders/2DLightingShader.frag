@@ -298,7 +298,8 @@ void main()
     shapeFactor = 1.0;
     #endif
 
-    float shadows = renderShadows(screenUV + vec2(0.005));
+    float zoom = -u_camMatrix[3].z;
+    float shadows = renderShadows(screenUV + vec2(0.1 / zoom));
     float light = distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Combine the material's alpha with shape factor

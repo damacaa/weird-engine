@@ -205,7 +205,17 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
     float res = 1.0;
     float t = minD;
 
-    for(int i = 0; i < MAX_STEPS; i++) {
+    for(int i = 0; i < 2 * MAX_STEPS; i++)
+    {
+        vec2 p = ro + rd * t;
+
+        // Center the coordinates at 0.5, take absolute value
+        // If result > 0.5, it was outside [0, 1]
+        vec2 dist = abs(p - 0.5);
+        if (max(dist.x, dist.y) > 0.5) {
+            break;
+        }
+
         float h = map(ro + rd * t); // Your SDF function
 
         // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)

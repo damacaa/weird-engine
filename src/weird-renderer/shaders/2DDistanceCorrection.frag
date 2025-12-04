@@ -35,7 +35,8 @@ void main()
     #endif
 
     #ifdef CORRECT_OUTSIDE
-    realDistance = realDistance > 0.0 ? floodDist: realDistance; //
+    realDistance = mix(realDistance, floodDist, smoothstep(0.0025, 0.005, realDistance));
+    // realDistance = realDistance > 0.001 ? floodDist: realDistance; //
     #endif
 
     FragColor = vec4(realDistance, color.yzw);

@@ -174,7 +174,7 @@ void main()
     vec3 result = getColor(pos, v_texCoord);
     float distance = result.x;
 
-    float finalDistance =  0.5 * distance / zoom;
+    float finalDistance = distance / zoom;
     finalDistance *= 0.5 / aspectRatio;
 
     float material = result.y;

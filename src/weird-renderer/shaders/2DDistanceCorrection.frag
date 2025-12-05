@@ -35,7 +35,7 @@ void main()
     #endif
 
     #ifdef CORRECT_OUTSIDE
-    realDistance = mix(realDistance, floodDist, smoothstep(0.0005, 0.0015, realDistance));
+    realDistance = mix(realDistance, floodDist, smoothstep(0.0, 0.01, realDistance));
     // realDistance = realDistance > 0.001 ? floodDist: realDistance; //
     #endif
 

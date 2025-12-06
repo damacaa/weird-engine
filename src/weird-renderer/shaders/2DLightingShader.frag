@@ -291,7 +291,7 @@ void main()
     vec4 colorSample = texture(t_colorTexture, screenUV);
     vec3 color = colorSample.rgb;// + (0.25 * floor(colorSample.a));
     float alpha = colorSample.a;// + (0.25 * floor(colorSample.a));
-    vec4 data = texture(t_shadowDistanceTexture, screenUV);
+    vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
     vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);

@@ -165,7 +165,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
         if(h <= 0.0 || res < EPSILON) return vec2(0.0); // Fully in shadow
         if(t > far) break;          // Missed everything
 
-        t += 0.5 * h; // TODO: why do I need smaller steps to get rid of artifacts?!?!
+        t += h; // TODO: why do I need smaller steps to get rid of artifacts?!?!
 
         iter++;
     }
@@ -289,7 +289,7 @@ void main()
     float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
     // value = debugDistance * 10.;
     // value = value * value * value;
-    vec3 debugColor = debugDistance > 0.005 ? mix(vec3(1), vec3(0.2), value) :// outside
+    vec3 debugColor = debugDistance > 0.0 ? mix(vec3(1), vec3(0.2), value) :// outside
     (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
 
     FragColor = vec4(debugColor, 1.0);

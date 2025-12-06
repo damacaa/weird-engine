@@ -11,6 +11,8 @@ uniform float u_renderScale;
 uniform float u_time;
 
 uniform sampler2D t_colorTexture;
+uniform sampler2D t_uiTexture;
+uniform sampler2D t_uiColorTexture;
 
 float rand(vec2 co)
 {
@@ -94,6 +96,11 @@ void main()
 
 	// FragColor = color.xyz * mask;
 	// FragColor = color.wwww;
+
+	screenUV *= 1;
+	float d = texture(t_uiTexture, screenUV).x;
+	vec4 ui = texture(t_uiColorTexture, screenUV);
+	col = mix(ui.rgb, col, d > 0.0 || max(screenUV.x, screenUV.y) > 1.0 ? 1.0 : 0.0);
 
 	FragColor = col;
 }

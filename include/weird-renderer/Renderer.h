@@ -49,6 +49,7 @@ namespace WeirdEngine
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
 			Shader m_2DDistanceShader;
+			Shader m_uiDistanceShader;
 			Shader m_JumpFloodInitShader;
 			Shader m_JumpFloodStepShader;
 			Shader m_2DDistanceCorrectionShader;

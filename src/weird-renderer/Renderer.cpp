@@ -55,6 +55,10 @@ namespace WeirdEngine {
 			m_2DDistanceShader.addDefine("BLEND_SHAPES");
 			m_2DDistanceShader.addDefine("MOTION_BLUR");
 
+			m_uiDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
+			m_uiDistanceShader.addDefine("BLEND_SHAPES");
+			m_uiDistanceShader.addDefine("MOTION_BLUR");
+
 			m_2DDistanceUpscalerShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceUpscaler.frag");
 
 			m_JumpFloodInitShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "InitJumpFlooding.frag");
@@ -606,6 +610,59 @@ namespace WeirdEngine {
 
 		void Renderer::output(Scene& scene, Texture& texture)
 		{
+			// Render UI
+			static auto cameraMatrix = scene.getCamera().view;
+
+			{
+				// Bind the framebuffer you want to render to
+				m_2DSceneRender.bind();
+
+				// Draw ray marching stuff
+				m_uiDistanceShader.use();
+
+				scene.updateRayMarchingShader(m_uiDistanceShader);
+
+				// Set uniforms
+
+				m_uiDistanceShader.setUniform("u_camMatrix", cameraMatrix);
+
+				glm::vec3 cameraPositionChange{0.0f,0.0f,0.0f};
+				m_uiDistanceShader.setUniform("u_camPositionChange", cameraPositionChange);
+
+
+				m_uiDistanceShader.setUniform("u_time", scene.getTime());
+
+				double deltaTime = 1.0;
+				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime));
+				m_uiDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
+				m_uiDistanceShader.setUniform("u_blendIterations", 1);
+
+				m_uiDistanceShader.setUniform("t_colorTexture", 0);
+				m_distanceTexture.bind(0);
+
+				// Shape data
+				scene.get2DShapesData(m_2DData, m_2DDataSize);
+
+				for (int i = 0; i < m_2DDataSize; i++)
+				{
+					m_2DData[i].position = glm::vec2(1.0f * i ,2.0f * i);
+					m_2DData[i].size = 3.0f * i;
+					m_2DData[i].material = 4.0f * i;
+				}
+
+				m_uiDistanceShader.setUniform("u_loadedObjects", (int)m_2DDataSize);
+
+				m_uiDistanceShader.setUniform("t_shapeBuffer", 1);
+				m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
+				m_shapes2D.bind(1);
+
+				m_renderPlane.draw(m_uiDistanceShader);
+
+				// m_distanceTexture.unbind();
+				m_shapes2D.unbind();
+			}
+
+
 			// TODO: abstract this
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
@@ -617,6 +674,12 @@ namespace WeirdEngine {
 
 			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			texture.bind(0);
+
+			m_outputShaderProgram.setUniform("t_uiTexture", 1);
+			m_distanceTexture.bind(1);
+
+			m_outputShaderProgram.setUniform("t_uiColorTexture", 2);
+			m_2dColorTexture.bind(2);
 
 			m_renderPlane.draw(m_outputShaderProgram);
 

@@ -35,7 +35,7 @@ namespace WeirdEngine {
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
-			, m_materialBlendIterations(1.0f / m_distanceSampleScale)
+			, m_materialBlendIterations(std::min(1, static_cast<int>(1.0f / m_distanceSampleScale)))
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;

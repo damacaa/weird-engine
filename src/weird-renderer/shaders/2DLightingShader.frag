@@ -9,7 +9,7 @@
 
 // Constants
 const int MAX_STEPS = 128;
-const float EPSILON = 0.00001;
+const float EPSILON = 0.005;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
 
@@ -343,10 +343,14 @@ void main()
     // Distance debug
     #ifdef DEBUG_SHOW_DISTANCE
 
-    float value = 0.5 * (cos(500.0 * distance) + 1.0);
+    float debugDistance = distance;
+    // float debugDistance = texture(t_shadowDistanceTexture, screenUV).x;
+
+    float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
+    // value = debugDistance * 10.;
     // value = value * value * value;
-    vec3 debugColor = distance > 0 ? mix(vec3(1), vec3(0.2), value) :// outside
-    (distance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
+    vec3 debugColor = debugDistance > 0.005 ? mix(vec3(1), vec3(0.2), value) :// outside
+    (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);// inside
 
     FragColor = vec4(debugColor, 1.0);
 

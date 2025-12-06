@@ -103,8 +103,8 @@ namespace WeirdEngine {
 			m_jumpFloodInitRender = RenderTarget(false);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_JumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
-			m_JumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_JumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_JumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_JumpFloodRenderPing = RenderTarget(false);
 			m_JumpFloodRenderPing.bindColorTextureToFrameBuffer(m_JumpFloodTexturePing);
 			m_JumpFloodRenderPong = RenderTarget(false);
@@ -112,7 +112,7 @@ namespace WeirdEngine {
 			m_JumpFloodDoubleBuffer[0] = &m_JumpFloodRenderPing;
 			m_JumpFloodDoubleBuffer[1] = &m_JumpFloodRenderPong;
 
-			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceTextureCorrected = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_2DDistanceCorrectionRender = RenderTarget(false);
 			m_2DDistanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 

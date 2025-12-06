@@ -28,15 +28,14 @@ void main()
     vec2 seed = floodResult.xy;
     float floodDist = sqrt(floodResult.z);
 
-    float realDistance = color.x; // Old distance
+    float realDistance = 0;
 
     #ifdef CORRECT_INSIDE
-    realDistance = realDistance < 0.0 ? -floodDist: realDistance; //
+    realDistance = realDistance < 0.0 ? -floodDist: 1.0; //
     #endif
 
     #ifdef CORRECT_OUTSIDE
-    realDistance = mix(realDistance, floodDist, smoothstep(0.0, 0.01, realDistance));
-    // realDistance = realDistance > 0.001 ? floodDist: realDistance; //
+    realDistance = realDistance >= 0.0 ? floodDist: 0; //
     #endif
 
     FragColor = vec4(realDistance, color.yzw);

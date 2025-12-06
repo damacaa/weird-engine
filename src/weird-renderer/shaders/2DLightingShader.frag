@@ -29,6 +29,7 @@ uniform float u_time;
 uniform sampler2D t_colorTexture;
 uniform sampler2D t_distanceTexture;
 uniform sampler2D t_backgroundTexture;
+uniform sampler2D t_shadowDistanceTexture;
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 
@@ -77,7 +78,7 @@ float Getu_bayer8(int x, int y)
 
 float map(vec2 p)
 {
-    return texture(t_distanceTexture, p).x;
+    return texture(t_shadowDistanceTexture, p).x;
 }
 
 float rayMarch(vec2 ro, vec2 rd, out float minDistance)
@@ -201,6 +202,11 @@ float render(vec2 uv)
     #endif
 }
 
+float calculateLight(vec2 uv, float shadown)
+{
+    return 1.0;
+}
+
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
     float res = 1.0;
     float t = minD;
@@ -247,7 +253,7 @@ float renderShadows(vec2 uv)
 
     float shadowValue = 1.0;
 
-    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 16.0);
+    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 8.0);
     float d = 1.0; // raymarchInfo.x;
 
 
@@ -285,7 +291,7 @@ void main()
     vec4 colorSample = texture(t_colorTexture, screenUV);
     vec3 color = colorSample.rgb;// + (0.25 * floor(colorSample.a));
     float alpha = colorSample.a;// + (0.25 * floor(colorSample.a));
-    vec4 data = texture(t_distanceTexture, screenUV);
+    vec4 data = texture(t_shadowDistanceTexture, screenUV);
     float distance = data.x;
 
     vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
@@ -309,8 +315,8 @@ void main()
     #endif
 
     float zoom = -u_camMatrix[3].z;
-    float shadows = renderShadows(screenUV + vec2(0.1 / zoom));
-    float light = distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+    float shadows = renderShadows(screenUV + vec2(0.0 / zoom));
+    float light = calculateLight(screenUV, shadows); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;

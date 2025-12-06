@@ -211,11 +211,8 @@ namespace WeirdEngine {
 			bool used2DAsBackground = renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool renderMeshesOnly = renderMode == Scene::RenderMode::Simple3D;
 
-			//
+			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
-
-			// Render viewport
-			glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 			// 2D Ray marching
 			if (enable2D) {
@@ -227,8 +224,6 @@ namespace WeirdEngine {
 				// B: Mask for color blending
 				// A: Empty
 				{
-					glViewport(0, 0, m_distanceSampleWidth, m_distanceSampleHeight);
-
 					// Bind the framebuffer you want to render to
 					m_2DSceneRender.bind();
 
@@ -281,9 +276,6 @@ namespace WeirdEngine {
 					m_shapes2D.unbind();
 				}
 
-				// TODO: scale distance texture to final render size
-				// glViewport(0, 0, m_renderWidth, m_renderHeight);
-
 				if ( USE_CORRECTED_DISTANCE_TEXTURE) {
 					float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
 					uint16_t m_jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
@@ -294,8 +286,7 @@ namespace WeirdEngine {
 						m_jumpFloodInitRender.bind();
 						m_JumpFloodInitShader.use();
 
-						GLuint distanceTextureLocation = glGetUniformLocation(m_2DDistanceCorrectionShader.ID, "t_distanceTexture");
-						glUniform1i(distanceTextureLocation, 0);
+						m_2DDistanceCorrectionShader.setUniform("t_distanceTexture", 0);
 						m_distanceTexture.bind(0);
 
 						m_renderPlane.draw(m_JumpFloodInitShader);
@@ -303,13 +294,8 @@ namespace WeirdEngine {
 						// Jumps
 						m_JumpFloodStepShader.use();
 
-						GLuint prevSeedsTextureLocation = glGetUniformLocation(m_JumpFloodStepShader.ID, "t_prevSeeds");
-						glUniform1i(prevSeedsTextureLocation, 0);
-
+						m_JumpFloodStepShader.setUniform("t_prevSeeds", 0);
 						m_JumpFloodStepShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0 / m_distanceSampleHeight));
-
-
-
 
 						float jump = m_jumpFloodIterations;
 						bool first = true;
@@ -361,8 +347,6 @@ namespace WeirdEngine {
 						m_renderPlane.draw(m_2DDistanceCorrectionShader);
 					}
 				}
-
-				glViewport(0, 0, m_renderWidth, m_renderHeight);
 
 				{
 					// Bind the framebuffer you want to render to
@@ -459,8 +443,6 @@ namespace WeirdEngine {
 
 				// 2D Lighting
 				{
-					// glViewport(0, 0, m_windowWidth, m_windowHeight);
-
 					m_2DPostProcessRender.bind();
 
 					m_2DLightingShader.use();
@@ -469,9 +451,7 @@ namespace WeirdEngine {
 					m_2DLightingShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 					// Color texture
-					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
-					glUniform1i(colorTextureLocation, 0);
-
+					m_2DLightingShader.setUniform("t_colorTexture", 0);
 					if (m_materialBlendIterations > 0) {
 						m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
 					}else {
@@ -480,13 +460,11 @@ namespace WeirdEngine {
 
 
 					// Distance
-					GLuint distanceTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_distanceTexture");
-					glUniform1i(distanceTextureLocation, 1);
+					m_2DLightingShader.setUniform("t_distanceTexture", 1);
 					m_2DDistanceUpscaled.bind(1);
 
 					// Bg
-					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");
-					glUniform1i(backgroundTextureLocation, 2);
+					m_2DLightingShader.setUniform("t_backgroundTexture", 2);
 					m_2DBackgroundTexture.bind(2);
 
 					m_renderPlane.draw(m_2DLightingShader);
@@ -596,12 +574,10 @@ namespace WeirdEngine {
 			m_combineScenesShaderProgram.use();
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			GLuint u_colorTextureLocation2d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_2DSceneTexture");
-			glUniform1i(u_colorTextureLocation2d, 0);
+			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 0);
 			m_lit2DSceneTexture.bind(0);
 
-			GLuint u_colorTextureLocation3d = glGetUniformLocation(m_combineScenesShaderProgram.ID, "t_3DSceneTexture");
-			glUniform1i(u_colorTextureLocation3d, 1);
+			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 1);
 			m_3DSceneTexture.bind(1);
 
 			m_renderPlane.draw(m_2DLightingShader);
@@ -624,6 +600,7 @@ namespace WeirdEngine {
 
 		void Renderer::output(Scene& scene, Texture& texture)
 		{
+			// TODO: abstract this
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
 

@@ -230,7 +230,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
         if(res < EPSILON) return vec2(0.0); // Fully in shadow
         if(t > far) break;          // Missed everything
 
-        t += h;
+        t += 0.5 * h; // TODO: why do I need smaller steps to get rid of artifacts?!?!
     }
 
     // Clamp result to prevent weird artifacts

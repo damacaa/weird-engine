@@ -30,6 +30,8 @@ namespace WeirdEngine
 
 			std::vector<const Texture*> m_colorAttachments;
 			const Texture* m_depthAttachement;
+
+			int m_width, m_height;
 		};
 	}
 }

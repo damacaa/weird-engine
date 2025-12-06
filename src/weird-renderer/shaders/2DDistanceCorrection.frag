@@ -23,20 +23,17 @@ uniform sampler2D t_distanceTexture;
 void main()
 {
     vec2 screenUV = v_texCoord;
-    vec4 color = texture(t_originalDistanceTexture, screenUV);
     vec4 floodResult = texture(t_distanceTexture, screenUV);
     vec2 seed = floodResult.xy;
     float floodDist = sqrt(floodResult.z);
 
-    float realDistance = 0;
-
     #ifdef CORRECT_INSIDE
-    realDistance = realDistance < 0.0 ? -floodDist: 1.0; //
+    floodDist = -floodDist;
     #endif
 
     #ifdef CORRECT_OUTSIDE
-    realDistance = realDistance >= 0.0 ? floodDist: 0; //
+
     #endif
 
-    FragColor = vec4(realDistance, color.yzw);
+    FragColor = vec4(floodDist, vec3(0.0));
 }

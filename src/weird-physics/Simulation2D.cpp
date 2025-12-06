@@ -123,10 +123,10 @@ namespace WeirdEngine
 #if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
 #endif
-			checkCollisions();
 
 			if (!m_isPaused)
 			{
+				checkCollisions();
 				applyForces();
 				solveConstraints();
 				step((float)FIXED_DELTA_TIME);

@@ -4,7 +4,8 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		RenderTarget::RenderTarget(bool shapeRenderer)
+		RenderTarget::RenderTarget(bool shapeRenderer):
+		m_width(0), m_height(0)
 		{
 			// Frame buffer to store render output
 			glGenFramebuffers(1, &FBO);
@@ -15,6 +16,7 @@ namespace WeirdEngine
 		void RenderTarget::bind() const
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+			glViewport(0, 0, m_width, m_height);
 		}
 
 
@@ -26,6 +28,9 @@ namespace WeirdEngine
 
 		void RenderTarget::bindTextureToFrameBuffer(const Texture& texture, GLenum attachment)
 		{
+			m_width = texture.getWidth();
+			m_height = texture.getHeight();
+
 			glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
 			texture.bind();

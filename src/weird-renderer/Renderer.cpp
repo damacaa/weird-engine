@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 
 // SETTINGS
-static bool USE_CORRECTED_DISTANCE_TEXTURE = false;
+static bool USE_CORRECTED_DISTANCE_TEXTURE = true;
 
 namespace WeirdEngine {
 	namespace WeirdRenderer {
@@ -284,7 +284,8 @@ namespace WeirdEngine {
 				// TODO: scale distance texture to final render size
 				// glViewport(0, 0, m_renderWidth, m_renderHeight);
 
-				if ( USE_CORRECTED_DISTANCE_TEXTURE) {
+				if ( USE_CORRECTED_DISTANCE_TEXTURE)
+				{
 					float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
 					uint16_t m_jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
 					bool pingpong = true;
@@ -294,7 +295,7 @@ namespace WeirdEngine {
 						m_jumpFloodInitRender.bind();
 						m_JumpFloodInitShader.use();
 
-						GLuint distanceTextureLocation = glGetUniformLocation(m_2DDistanceCorrectionShader.ID, "t_distanceTexture");
+						GLuint distanceTextureLocation = glGetUniformLocation(m_JumpFloodInitShader.ID, "t_distanceTexture");
 						glUniform1i(distanceTextureLocation, 0);
 						m_distanceTexture.bind(0);
 
@@ -342,11 +343,11 @@ namespace WeirdEngine {
 						}
 					}
 
-					// TODO: correct distance texture
 					{
 						m_2DDistanceCorrectionRender.bind();
 						m_2DDistanceCorrectionShader.use();
 						m_2DDistanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleWidth));
+						m_2DDistanceCorrectionShader.setUniform("u_time", scene.getTime());
 
 						// Distance
 						m_2DDistanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
@@ -376,10 +377,7 @@ namespace WeirdEngine {
 					m_2DDistanceUpscalerShader.setUniform("u_targetResolution", vec2(m_renderWidth, m_renderHeight));
 					m_2DDistanceUpscalerShader.setUniform("t_data", 0);
 
-					if(USE_CORRECTED_DISTANCE_TEXTURE)
-						m_distanceTextureCorrected.bind(0);
-					else
-						m_distanceTexture.bind(0);
+					m_distanceTexture.bind(0);
 
 					m_renderPlane.draw(m_2DDistanceUpscalerShader);
 				}
@@ -472,7 +470,8 @@ namespace WeirdEngine {
 					GLuint colorTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_colorTexture");
 					glUniform1i(colorTextureLocation, 0);
 
-					if (m_materialBlendIterations > 0) {
+					if (m_materialBlendIterations > 0)
+					{
 						m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
 					}else {
 						m_2dColorTexture.bind(0);
@@ -488,6 +487,15 @@ namespace WeirdEngine {
 					GLuint backgroundTextureLocation = glGetUniformLocation(m_2DLightingShader.ID, "t_backgroundTexture");
 					glUniform1i(backgroundTextureLocation, 2);
 					m_2DBackgroundTexture.bind(2);
+
+					// Corrected distance for shadows
+					m_2DLightingShader.setUniform("t_shadowDistanceTexture", 3);
+					// TODO: dont pass the texture twice if corrected distance is disabled...
+					if(USE_CORRECTED_DISTANCE_TEXTURE)
+						m_distanceTextureCorrected.bind(3);
+					else
+						m_distanceTexture.bind(3);
+
 
 					m_renderPlane.draw(m_2DLightingShader);
 					m_postProcessTextureFront.unbind();

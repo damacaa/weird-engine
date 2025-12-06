@@ -81,6 +81,11 @@ float map(vec2 p)
     return texture(t_shadowDistanceTexture, p).x;
 }
 
+float mapInside(vec2 p)
+{
+    return texture(t_distanceTexture, p).x;
+}
+
 float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 {
     float d;
@@ -116,102 +121,32 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     return traveled;
 }
 
-const float MAX_DIST_INSIDE = 0.1;
-
-float rayMarchInside(vec2 ro, vec2 rd)
+float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
 {
-    float d;
-    float traveled = 0.0;
-
-    for (int i = 0; i < MAX_STEPS; i++)
-    {
-        vec2 p = ro + (traveled * rd);
-
-        d = map(p);
-
-        if (d >= -EPSILON)
-        break;
-
-        traveled += -d;
-
-        if (traveled >= MAX_DIST_INSIDE)
-        {
-            return MAX_DIST_INSIDE;
-        }
-    }
-
-    return traveled;
-}
-
-float render(vec2 uv)
-{
-
-    #ifdef SHADOWS_ENABLED
-
-    // Point light
-    vec2 rd = normalize(vec2(1.0) - uv);
-
-    // Directional light
-    // vec2 rd = u_directionalLightDirection.xy;
-
-    float mapDistance = map(uv);
-    float minD;
-    vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
-
-    if (mapDistance <= 0.0)
-    {
-        float distanceInside = rayMarchInside(uv, rd);
-
-        vec2 surfacePos = uv + (rd * (distanceInside * 1.0));
-        float surfaceD = rayMarch(surfacePos, rd, minD);
-
-        // distanceInside += surfaceD < FAR ? 0.05 : 0.0;
-        distanceInside = surfaceD < FAR ? MAX_DIST_INSIDE : distanceInside; // what if MAX_DIST_INSIDE is too big?
-        float factorInside = (1.0 - (distanceInside/ MAX_DIST_INSIDE));
-        factorInside = 1.5 * pow(factorInside, 3);
-        factorInside = max(1.0, factorInside);
-
-        return factorInside;
-    }
-
-    float d = rayMarch(uv, rd, minD);
-
-    const float NORMAL_EPSILON = 0.001;
+    const float NORMAL_EPSILON = 0.05;
 
     vec2 p = uv;
-    float d1 = map(p + vec2(NORMAL_EPSILON, 0.0)) - map(p - vec2(NORMAL_EPSILON, 0.0));
-    float d2 = map(p + vec2(0.0, NORMAL_EPSILON)) - map(p - vec2(0.0, NORMAL_EPSILON));
-
+    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
+    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
     vec2 normal = normalize(vec2(d1, d2));
+    float lightNormalDot = -(dot(-rd, normal));
 
-    // If ray doesnt go to infinity, cast shadow
-    // Original distance is substracted to fade  shadow when close to surfaces
-    // return d < FAR ? min(0.5 + d, 0.85) : 1.0;
+    float zoom = -u_camMatrix[3].z;
+    float light = mix(1.0, max(1.0, lightNormalDot * 2.0 - (innerDistance * 10.0 * zoom)), shadows - 0.85);
 
-    float ddot = -(dot(-rd, normal));
-    float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
-    float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
-    float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
-
-    return d < FAR ? min(0.85 + finalDdot, 0.95) * extraShadow : 1.0;
-
-    #else// No shadows
-
-    return 1.0;
-
+    #ifndef SHADOWS_ENABLED
+    light = 1.0;
     #endif
+
+    return light * light + 0.1;
 }
 
-float calculateLight(vec2 uv, float shadown)
-{
-    return 1.0;
-}
-
-vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
+vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
     float res = 1.0;
     float t = minD;
+    iter = 0;
 
-    for(int i = 0; i < 2 * MAX_STEPS; i++)
+    for(int i = 0; i < MAX_STEPS; i++)
     {
         vec2 p = ro + rd * t;
 
@@ -227,15 +162,19 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k) {
         // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)
         res = min(res, k * h / t);
 
-        if(res < EPSILON) return vec2(0.0); // Fully in shadow
+        if(h <= 0.0 || res < EPSILON) return vec2(0.0); // Fully in shadow
         if(t > far) break;          // Missed everything
 
         t += 0.5 * h; // TODO: why do I need smaller steps to get rid of artifacts?!?!
+
+        iter++;
     }
 
     // Clamp result to prevent weird artifacts
     return vec2(t, clamp(res, 0.0, 1.0));
 }
+
+
 
 float renderShadows(vec2 uv)
 {
@@ -251,15 +190,14 @@ float renderShadows(vec2 uv)
     float minD = mapDistance;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
-    float shadowValue = 1.0;
-
-    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 8.0);
+    int iter;
+    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 8.0, iter);
     float d = 1.0; // raymarchInfo.x;
 
 
     float shadowFactor = raymarchInfo.y;
     // mix(ShadowColor, LightColor, factor)
-    shadowValue = mix(0.85, 1.0, shadowFactor);
+    float shadowValue = mix(0.85, 1.0, shadowFactor);
 
     //    const float NORMAL_EPSILON = 0.001;
     //    vec2 p = uv;
@@ -274,7 +212,7 @@ float renderShadows(vec2 uv)
     float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
     shadowValue *= extraShadow;
 
-
+    // return iter / 100.0;
     return shadowValue;
 
     #else// No shadows
@@ -315,8 +253,10 @@ void main()
     #endif
 
     float zoom = -u_camMatrix[3].z;
-    float shadows = renderShadows(screenUV + vec2(0.0 / zoom));
-    float light = calculateLight(screenUV, shadows); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+
+    vec2 rd = normalize(vec2(1.0) - screenUV);
+    float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd));
+    float light = calculateLight(screenUV, rd, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;

@@ -52,6 +52,11 @@ namespace WeirdEngine
 			int width, height, numColCh;
 
 			void createTexture(float* data, int width, int height, TextureType type);
+
+		public:
+			int getWidth() const {return width;};
+			int getHeight() const {return height;};
+			int getNumColChannels() const {return numColCh;};
 		};
 	}
 }

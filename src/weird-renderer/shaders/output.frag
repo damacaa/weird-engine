@@ -97,10 +97,13 @@ void main()
 	// FragColor = color.xyz * mask;
 	// FragColor = color.wwww;
 
-	screenUV *= 1;
-	float d = texture(t_uiTexture, screenUV).x;
 	vec4 ui = texture(t_uiColorTexture, screenUV);
-	col = mix(ui.rgb, col, d > 0.0 || max(screenUV.x, screenUV.y) > 1.0 ? 1.0 : 0.0);
+	float distance = texture(t_uiTexture, screenUV).x;
+	float smoothing = 1.0 * fwidth(distance);
+	float factor = 1.0 - smoothstep(-smoothing, smoothing, distance);
+
+
+	col = mix(col, ui.rgb, factor);
 
 	FragColor = col;
 }

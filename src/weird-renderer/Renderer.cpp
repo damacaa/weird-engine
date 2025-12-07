@@ -53,11 +53,12 @@ namespace WeirdEngine {
 
 			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
 			m_2DDistanceShader.addDefine("BLEND_SHAPES");
-			m_2DDistanceShader.addDefine("MOTION_BLUR");
+			// m_2DDistanceShader.addDefine("MOTION_BLUR");
 
 			m_uiDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
 			m_uiDistanceShader.addDefine("BLEND_SHAPES");
-			m_uiDistanceShader.addDefine("MOTION_BLUR");
+			// m_uiDistanceShader.addDefine("MOTION_BLUR");
+			m_uiDistanceShader.addDefine("ORIGIN_AT_BOTTOM_LEFT");
 
 			m_2DDistanceUpscalerShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceUpscaler.frag");
 
@@ -264,7 +265,7 @@ namespace WeirdEngine {
 					m_2DDistanceShader.setUniform("u_blendIterations", 1);
 
 					m_2DDistanceShader.setUniform("t_colorTexture", 0);
-					m_distanceTexture.bind(0);
+					m_distanceTexture.bind(0); // TODO: copy previous texture to a different texture and use that instead
 
 					// Shape data
 					scene.get2DShapesData(m_2DData, m_2DDataSize);
@@ -611,7 +612,13 @@ namespace WeirdEngine {
 		void Renderer::output(Scene& scene, Texture& texture)
 		{
 			// Render UI
-			static auto cameraMatrix = scene.getCamera().view;
+			static float uiScale = 0.1f; // scale coordinates to make balls bigger
+			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight * uiScale);
+			static glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
+			static glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);;
+
+
 
 			{
 				// Bind the framebuffer you want to render to
@@ -641,25 +648,39 @@ namespace WeirdEngine {
 				m_distanceTexture.bind(0);
 
 				// Shape data
-				scene.get2DShapesData(m_2DData, m_2DDataSize);
+				static u_int32_t dataSize = 10 + 10;
+				static WeirdRenderer::Dot2D* uiData = new WeirdRenderer::Dot2D[dataSize];
+				// scene.get2DShapesData(uiData, dataSize);
 
-				for (int i = 0; i < m_2DDataSize; i++)
+				glm::vec2 center = glm::vec2(75.0f * uiScale, 75.0f * uiScale); // Screen center X, Y
+				float radius = 50.0f * uiScale;    // Distance from center
+				float speed = 1.0f;       // How fast they rotate
+				float spacing = 2.0f * 3.14f / (static_cast<float>(dataSize) - 10.0f);     // Gap between each dot along the circle arc
+
+				for (int i = 0; i < dataSize - 10; i++)
 				{
-					m_2DData[i].position = glm::vec2(1.0f * i ,2.0f * i);
-					m_2DData[i].size = 3.0f * i;
-					m_2DData[i].material = 4.0f * i;
+					// Calculate angle: Time moves them, 'i' spreads them out
+					float angle = (scene.getTime() * speed) + (i * spacing);
+
+					float x = center.x + std::cos(angle) * radius;
+					float y = center.y + std::sin(angle) * radius;
+
+					uiData[i].position = glm::vec2(x, y);
+
+					uiData[i].size = 1.0f;
+					uiData[i].material = 1.0f;
 				}
 
-				m_uiDistanceShader.setUniform("u_loadedObjects", (int)m_2DDataSize);
+				m_uiDistanceShader.setUniform("u_loadedObjects", (int)dataSize);
 
 				m_uiDistanceShader.setUniform("t_shapeBuffer", 1);
-				m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
-				m_shapes2D.bind(1);
+				m_uiData.uploadData<Dot2D>(uiData, dataSize);
+				m_uiData.bind(1);
 
 				m_renderPlane.draw(m_uiDistanceShader);
 
 				// m_distanceTexture.unbind();
-				m_shapes2D.unbind();
+				m_uiData.unbind();
 			}
 
 
@@ -679,7 +700,9 @@ namespace WeirdEngine {
 			m_distanceTexture.bind(1);
 
 			m_outputShaderProgram.setUniform("t_uiColorTexture", 2);
-			m_2dColorTexture.bind(2);
+			static Texture colorTexture(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+			colorTexture.bind(2);
+			// m_2dColorTexture.bind(2);
 
 			m_renderPlane.draw(m_outputShaderProgram);
 

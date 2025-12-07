@@ -164,7 +164,12 @@ vec2 smoothSample(sampler2D tex, vec2 uv)
 
 void main()
 {
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    vec2 uv = v_texCoord;
+    #else
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
+    #endif
+
     float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
     uv.x *= aspectRatio;
 

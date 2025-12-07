@@ -79,6 +79,7 @@ namespace WeirdEngine
 			RenderPlane m_renderPlane;
 
 			DataBuffer m_shapes2D;
+			DataBuffer m_uiData;
 
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;

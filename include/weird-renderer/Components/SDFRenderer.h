@@ -18,4 +18,6 @@ namespace WeirdEngine
 			this->materialId = 0;
 		}
 	};
+
+	struct UIDot : public SDFRenderer{};
 }

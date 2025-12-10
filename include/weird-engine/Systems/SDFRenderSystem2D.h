@@ -1,32 +1,37 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
-#include "weird-renderer/RenderTarget.h"
+#include "weird-engine/ecs/Component.h"
+
+#include <memory>
+#include <limits>
 
 namespace WeirdEngine
 {
 	using namespace ECS;
 
+	template<typename DotClass, typename ShapeClass>
 	class SDFRenderSystem2D : public System
 	{
 	public:
-
 		SDFRenderSystem2D(ECSManager& ecs)
 		{
-			m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
-			m_customShapeManager = ecs.getComponentManager<CustomShape>();
-			m_transformManager = ecs.getComponentManager<Transform>();
+			m_dotClassManager = ecs.getComponentManager<DotClass>();
+			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
+			m_transformManager = ecs.getComponentManager<Transform>(); // Transform remains non-templated
 		}
 
 		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
 		{
-			auto componentArray = m_sdfRendererManager->getComponentArray();
-			auto customShapeArray = m_customShapeManager->getComponentArray();
+			// Get component arrays for the templated types
+			auto dotClassArray = m_dotClassManager->getComponentArray();
+			auto shapeClassArray = m_shapeClassManager->getComponentArray();
 			auto transformArray = m_transformManager->getComponentArray();
 
-			uint32_t ballCount = componentArray->getSize();
-			uint32_t customShapeCount = customShapeArray->getSize();
+			uint32_t dotCount = dotClassArray->getSize();
+			uint32_t shapeCount = shapeClassArray->getSize();
 
-			uint32_t newSize = ballCount + (2 * customShapeCount);
+			// Each ShapeClass will contribute 2 dots to the buffer
+			uint32_t newSize = dotCount + (2 * shapeCount);
 
 			if (size != newSize)
 			{
@@ -44,29 +49,31 @@ namespace WeirdEngine
 				data = new WeirdRenderer::Dot2D[size];
 			}
 
-
-			for (size_t i = 0; i < ballCount; i++)
+			// Process DotClass instances
+			for (size_t i = 0; i < dotCount; i++)
 			{
-				auto& mr = componentArray->getDataAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(mr.Owner);
+				auto& dotComp = dotClassArray->getDataAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(dotComp.Owner); // Assuming DotClass has an 'Owner' member
 
-				data[i].position = (vec2)t.position;
+				data[i].position = (glm::vec2)t.position;
 				data[i].size = t.position.z;
-				data[i].material = mr.materialId;
+				data[i].material = dotComp.materialId;
 			}
 
-			// 2 vec4s per customShape
-			for (size_t i = 0; i < customShapeCount; i++)
+			// Process ShapeClass instances
+			for (size_t i = 0; i < shapeCount; i++)
 			{
-				auto& shape = customShapeArray->getDataAtIdx(i);
+				auto& shapeComp = shapeClassArray->getDataAtIdx(i);
 
-				data[ballCount + (2 * i)].position = vec2(shape.m_parameters[0], shape.m_parameters[1]);
-				data[ballCount + (2 * i)].size = shape.m_parameters[2];
-				data[ballCount + (2 * i)].material = shape.m_parameters[3];
+				// Assuming ShapeClass has m_parameters[0] through m_parameters[7]
+				// Make sure your ShapeClass provides these members.
+				data[dotCount + (2 * i)].position = glm::vec2(shapeComp.m_parameters[0], shapeComp.m_parameters[1]);
+				data[dotCount + (2 * i)].size = shapeComp.m_parameters[2];
+				data[dotCount + (2 * i)].material = shapeComp.m_parameters[3];
 
-				data[ballCount + (2 * i) + 1].position = vec2(shape.m_parameters[4], shape.m_parameters[5]);
-				data[ballCount + (2 * i) + 1].size = shape.m_parameters[6];
-				data[ballCount + (2 * i) + 1].material = shape.m_parameters[7];
+				data[dotCount + (2 * i) + 1].position = glm::vec2(shapeComp.m_parameters[4], shapeComp.m_parameters[5]);
+				data[dotCount + (2 * i) + 1].size = shapeComp.m_parameters[6];
+				data[dotCount + (2 * i) + 1].material = shapeComp.m_parameters[7];
 			}
 		}
 
@@ -100,35 +107,35 @@ namespace WeirdEngine
 
 		bool& shaderNeedsUpdate()
 		{
-			return m_customShapesNeedUpdate;
+			return m_shapesNeedUpdate;
 		}
 
 	private:
-		std::shared_ptr<ComponentManager<SDFRenderer>> m_sdfRendererManager;
-		std::shared_ptr<ComponentManager<CustomShape>> m_customShapeManager;
+		std::shared_ptr<ComponentManager<DotClass>> m_dotClassManager;
+		std::shared_ptr<ComponentManager<ShapeClass>> m_shapeClassManager;
 		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 		glm::vec3 m_colorPalette[16] = {
-			vec3(0.025f, 0.025f, 0.05f), // Black
-			vec3(1.0f, 1.0f, 1.0f), // White
-			vec3(0.484f, 0.484f, 0.584f), // Dark Gray
-			vec3(0.752f, 0.762f, 0.74f), // Light Gray
-			vec3(.95f, 0.1f, 0.1f), // Red
-			vec3(0.1f, .95f, 0.1f), // Green
-			vec3(0.15f, 0.25f, .85f), // Blue
-			vec3(1.0f, .9f, 0.2f), // Yellow
-			vec3(.95f, 0.4f, 0.1f), // Orange
-			vec3(0.5f, 0.0f, 1.0f), // Purple
-			vec3(0.0f, .9f, .9f), // Cyan
-			vec3(1.0f, 0.3f, .6f), // Magenta
-			vec3(0.5f, 1.0f, 0.5f), // Light Green
-			vec3(1.0f, 0.5f, 0.5f), // Pink
-			vec3(0.5f, 0.5f, 1.0f), // Light Blue
-			vec3(0.4f, 0.25f, 0.1f) // Brown
+			glm::vec3(0.025f, 0.025f, 0.05f), // Black
+			glm::vec3(1.0f, 1.0f, 1.0f), // White
+			glm::vec3(0.484f, 0.484f, 0.584f), // Dark Gray
+			glm::vec3(0.752f, 0.762f, 0.74f), // Light Gray
+			glm::vec3(.95f, 0.1f, 0.1f), // Red
+			glm::vec3(0.1f, .95f, 0.1f), // Green
+			glm::vec3(0.15f, 0.25f, .85f), // Blue
+			glm::vec3(1.0f, .9f, 0.2f), // Yellow
+			glm::vec3(.95f, 0.4f, 0.1f), // Orange
+			glm::vec3(0.5f, 0.0f, 1.0f), // Purple
+			glm::vec3(0.0f, .9f, .9f), // Cyan
+			glm::vec3(1.0f, 0.3f, .6f), // Magenta
+			glm::vec3(0.5f, 1.0f, 0.5f), // Light Green
+			glm::vec3(1.0f, 0.5f, 0.5f), // Pink
+			glm::vec3(0.5f, 0.5f, 1.0f), // Light Blue
+			glm::vec3(0.4f, 0.25f, 0.1f) // Brown
 		};
 
 		bool m_materialsAreDirty = true;
-		bool m_customShapesNeedUpdate = true;
-		size_t m_lastCustomShapeCount = 0;
+		bool m_shapesNeedUpdate = true;
+		size_t m_lastShapeCount = 0;
 	};
 }

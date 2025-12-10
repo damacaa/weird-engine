@@ -24,6 +24,7 @@ namespace WeirdEngine
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
+		void updateUIShader(WeirdRenderer::Shader& shader);
 		void update(double delta, double time);
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
@@ -74,12 +75,13 @@ namespace WeirdEngine
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
+		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, int group = 0);
 
 		void lookAt(Entity entity);
 
 		SDFRenderSystem m_sdfRenderSystem;
 		SDFRenderSystem2D<SDFRenderer, CustomShape> m_sdfRenderSystem2D;
-		SDFRenderSystem2D<UIDot, CustomShape> m_UIRenderSystem;
+		SDFRenderSystem2D<UIDot, UIShape> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;
@@ -115,7 +117,7 @@ namespace WeirdEngine
 
 		bool m_runSimulationInThread;
 
-		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
+		
 
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light> m_lights;

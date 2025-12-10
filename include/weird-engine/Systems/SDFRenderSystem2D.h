@@ -110,6 +110,152 @@ namespace WeirdEngine
 			return m_shapesNeedUpdate;
 		}
 
+		void updateCustomShapesShader(WeirdRenderer::Shader& shader, std::vector<std::shared_ptr<IMathExpression>> sdfs)
+		{
+			const auto sdfBalls = m_dotClassManager->getComponentArray();
+			int32_t ballsCount = sdfBalls->getSize();
+			const auto componentArray = m_shapeClassManager->getComponentArray();
+			shader.setUniform("u_customShapeCount", componentArray->getSize());
+
+			if (!m_shapesNeedUpdate)
+			{
+				return;
+			}
+
+			m_shapesNeedUpdate = false;
+
+			std::ostringstream oss;
+
+			oss << "///////////////////////////////////////////\n";
+
+			oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
+
+			int currentGroup = -1;
+			std::string groupDistanceVariable;
+
+			for (size_t i = 0; i < componentArray->getSize(); i++)
+			{
+				// Get shape
+				const auto& shape = componentArray->getDataAtIdx(i);
+
+				// Get group
+				const int group = shape.m_groupId;
+
+				// Start new group if necessary
+				if (group != currentGroup)
+				{
+					// If this is not the first group, combine current group distance with global minDistance
+					if (currentGroup != -1)
+					{
+						oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+					}
+
+					// Next group
+					currentGroup = group;
+					groupDistanceVariable = "d" + std::to_string(currentGroup);
+
+					// Initialize distance with big value
+					oss << "float " << groupDistanceVariable << "= 10000;\n";
+				}
+
+				// Start shape
+				oss << "{\n";
+
+				// Calculate data position in array
+				oss << "int idx = dataOffset + " << 2 * i << ";\n";
+
+				// Fetch parameters
+				oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
+				oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+
+				// Get distance function
+				auto fragmentCode = sdfs[shape.m_distanceFieldId]->print();
+
+				// Use screen space coords (DEPRECATED)
+				if (shape.m_screenSpace)
+				{
+					replaceSubstring(fragmentCode, "var9", "var11");
+					replaceSubstring(fragmentCode, "var10", "var12");
+				}
+
+				bool globalEffect = group == CustomShape::GLOBAL_GROUP;
+
+				// Shape distance calculation
+				oss << "float dist = " << fragmentCode << ";" << std::endl;
+
+				// Apply globalEffect logic
+				oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
+
+				// Combine shape distance
+				switch (shape.m_combination)
+				{
+				case CombinationType::Addition:
+				{
+					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
+					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? " << shape.m_material << ": finalMaterialId;" << std::endl;
+					break;
+				}
+				case CombinationType::Subtraction:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
+					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? " << shape.m_material << ": finalMaterialId;" << std::endl;
+					break;
+				}
+				case CombinationType::SmoothSubtraction:
+				{
+					// Smoothly subtract "dist" from currentMinDistance
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0);\n";
+					// Material belongs to the *a* shape if it still “wins” after subtraction
+					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
+					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
+					break;
+				}
+				default:
+					break;
+				}
+
+				// Assign back to the correct target
+				oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+				oss << "}\n\n";
+			}
+
+			// Combine last group
+			if (componentArray->getSize() > 0)
+			{
+				oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+			}
+
+			// Get string
+			std::string replacement = oss.str();
+
+			// Set new source code and recompile shader
+			shader.setFragmentIncludeCode(1, replacement);
+
+#ifndef NDEBUG
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
+			{
+				std::cout << replacement << std::endl;
+
+				// Broken
+				std::ofstream outFile("generated_shader.frag");
+				if (outFile.is_open()) {
+					outFile << shader.getFragmentCode();
+					outFile.close();
+				}
+			}
+#endif
+		}
+
 	private:
 		std::shared_ptr<ComponentManager<DotClass>> m_dotClassManager;
 		std::shared_ptr<ComponentManager<ShapeClass>> m_shapeClassManager;

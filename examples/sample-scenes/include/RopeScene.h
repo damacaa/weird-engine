@@ -139,7 +139,7 @@ private:
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			float vars[8] = { world.x, world.y, 5.0f, 0.5f, 13.0f, 5.0f };
-			addShape(1, vars, 3);
+			addUIShape(1, vars, 3);
 		}
 
 		if (Input::GetKeyDown(Input::N))

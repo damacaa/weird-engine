@@ -130,7 +130,12 @@ namespace WeirdEngine
 	{
 		// m_sdfRenderSystem2D.updatePalette(shader);
 
-		updateCustomShapesShader(shader);
+		m_sdfRenderSystem2D.updateCustomShapesShader(shader, m_sdfs);
+	}
+	
+	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
+	{
+		m_UIRenderSystem.updateCustomShapesShader(shader, m_sdfs);
 	}
 
 	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
@@ -172,151 +177,7 @@ namespace WeirdEngine
 		m_ecs.freeRemovedComponents();
 	}
 
-	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
-	{
-		const auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t ballsCount = sdfBalls->getSize();
-		const auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-		shader.setUniform("u_customShapeCount", componentArray->getSize());
-
-		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
-		{
-			return;
-		}
-
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = false;
-
-		std::ostringstream oss;
-
-		oss << "///////////////////////////////////////////\n";
-
-		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
-
-		int currentGroup = -1;
-		std::string groupDistanceVariable;
-
-		for (size_t i = 0; i < componentArray->getSize(); i++)
-		{
-			// Get shape
-			const auto &shape = componentArray->getDataAtIdx(i);
-
-			// Get group
-			const int group = shape.m_groupId;
-
-			// Start new group if necessary
-			if(group != currentGroup)
-			{
-				// If this is not the first group, combine current group distance with global minDistance
-				if(currentGroup != -1)
-				{
-					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";}\n";
-				}
-
-				// Next group
-				currentGroup = group;
-				groupDistanceVariable = "d" + std::to_string(currentGroup);
-
-				// Initialize distance with big value
-				oss << "float " << groupDistanceVariable << "= 10000;\n";
-			}
-
-			// Start shape
-			oss << "{\n";
-
-			// Calculate data position in array
-			oss << "int idx = dataOffset + " << 2 * i << ";\n";
-
-			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
-
-			// Get distance function
-			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
-
-			// Use screen space coords (DEPRECATED)
-			if (shape.m_screenSpace)
-			{
-				replaceSubstring(fragmentCode, "var9", "var11");
-				replaceSubstring(fragmentCode, "var10", "var12");
-			}
-
-			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
-
-			// Shape distance calculation
-			oss << "float dist = " << fragmentCode << ";" << std::endl;
-
-			// Apply globalEffect logic
-			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
-
-			// Combine shape distance
-			switch (shape.m_combination)
-			{
-				case CombinationType::Addition:
-				{
-					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				case CombinationType::Subtraction:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
-					break;
-				}
-				case CombinationType::Intersection:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
-					break;
-				}
-				case CombinationType::SmoothAddition:
-				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				case CombinationType::SmoothSubtraction:
-				{
-					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0);\n";
-					// Material belongs to the *a* shape if it still “wins” after subtraction
-					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
-					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
-					break;
-				}
-				default:
-					break;
-			}
-
-			// Assign back to the correct target
-			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
-			oss << "}\n\n";
-		}
-
-		// Combine last group
-		if (componentArray->getSize() > 0)
-		{
-			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-		}
-
-		// Get string
-		std::string replacement = oss.str();
-
-		// Set new source code and recompile shader
-		shader.setFragmentIncludeCode(1, replacement);
-
-#ifndef NDEBUG
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
-		{
-			std::cout << replacement << std::endl;
-
-			// Broken
-			std::ofstream outFile("generated_shader.frag");
-			if (outFile.is_open()) {
-				outFile << shader.getFragmentCode();
-				outFile.close();
-			}
-		}
-#endif
-	}
+	
 
 	WeirdRenderer::Camera &Scene::getCamera()
 	{
@@ -364,9 +225,23 @@ namespace WeirdEngine
 		shape.m_material = material;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
-		// CustomShape shape(shapeId, variables); // check old constructor for references
-
 		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+
+		return entity;
+	}
+
+	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, int group)
+	{
+		Entity entity = m_ecs.createEntity();
+		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
+		shape.m_distanceFieldId = shapeId;
+		shape.m_combination = combination;
+		shape.m_hasCollision = false;
+		shape.m_groupId = group;
+		shape.m_material = material;
+		std::copy(variables, variables + 8, shape.m_parameters);
+
+		m_UIRenderSystem.shaderNeedsUpdate() = true;
 
 		return entity;
 	}
@@ -428,7 +303,7 @@ namespace WeirdEngine
 				Transform &t = m_ecs.addComponent<Transform>(entity);
 				t.position = vec3(x, y, -10.0f);
 
-				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				UIDot &sdfRenderer = m_ecs.addComponent<UIDot>(entity);
 				sdfRenderer.materialId = 4 + idx % 12;
 			}
 

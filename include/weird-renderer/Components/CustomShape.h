@@ -40,4 +40,6 @@ namespace WeirdEngine
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
 
 	};
+
+	struct UIShape : public CustomShape {};
 }

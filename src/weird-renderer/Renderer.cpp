@@ -648,7 +648,7 @@ namespace WeirdEngine {
 				m_distanceTexture.bind(0);
 
 				// Shape data
-				static u_int32_t dataSize = 10 + 10;
+				static uint32_t dataSize = 10 + 10;
 				static WeirdRenderer::Dot2D* uiData = new WeirdRenderer::Dot2D[dataSize];
 				// scene.get2DShapesData(uiData, dataSize);
 

@@ -13,6 +13,11 @@
 #define CHANNELS    2
 #define SAMPLE_RATE 44100
 
+#ifndef M_PI
+#define M_PI 3.14159265359f
+#endif // !M_PI
+
+
 namespace WeirdEngine {
     namespace WeirdRenderer {
         AudioEngine::AudioEngine() {
@@ -81,12 +86,12 @@ namespace WeirdEngine {
         {
             // Normalize
             constexpr float MAX_FRICTION = 1.0f;
-            const float normalizedFriction = std::min(level / MAX_FRICTION, 1.0f);
+            const float normalizedFriction = (std::min)(level / MAX_FRICTION, 1.0f);
 
             // Remove min audible and compensate
             constexpr float MIN_AUDIBLE = 0.01f;
             constexpr float MIN_COMPENSATION = 1.0f / (1.0f - MIN_AUDIBLE);
-            const float adjustedAmplitude = std::max(normalizedFriction - MIN_AUDIBLE, 0.0f) * MIN_COMPENSATION;
+            const float adjustedAmplitude = (std::max)(normalizedFriction - MIN_AUDIBLE, 0.0f) * MIN_COMPENSATION;
 
             // Use a square root curve to boost the volume of low values significantly
             // 0.5f = Strong boost (square root)

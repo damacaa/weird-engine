@@ -27,6 +27,7 @@ namespace WeirdEngine
 		void update(double delta, double time);
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
+		void getUIData(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
 		Scene(const Scene&) = default;						 // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
@@ -77,7 +78,8 @@ namespace WeirdEngine
 		void lookAt(Entity entity);
 
 		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D m_sdfRenderSystem2D;
+		SDFRenderSystem2D<SDFRenderer, CustomShape> m_sdfRenderSystem2D;
+		SDFRenderSystem2D<UIDot, CustomShape> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;

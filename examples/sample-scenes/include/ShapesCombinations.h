@@ -25,6 +25,8 @@ private:
   float m_circleRadioud = 0.0f;
   vec2 m_initialMousePositionInWorld;
 
+  std::vector<Entity> m_uiPoints;
+
   void onStart() override
   {
     m_debugInput = true;
@@ -80,6 +82,17 @@ private:
       addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 
+    for (int i = 0; i < 10; ++i){
+      auto ee = m_ecs.createEntity();
+      auto& t = m_ecs.addComponent<Transform>(ee);
+      t.position = vec3(15.0f, 15.0f, 10.0f);
+
+      auto& ui = m_ecs.addComponent<UIDot>(ee);
+
+
+      m_uiPoints.push_back(ee);
+    }
+
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 
@@ -132,6 +145,27 @@ private:
       cs.m_parameters[2] = std::max(0.0f, m_circleRadioud - 0.1f);
 
 			cs.m_isDirty = true;
+    }
+
+
+
+    static float uiScale = 0.1f;
+
+    glm::vec2 center = glm::vec2(75.0f * uiScale, 75.0f * uiScale); // Screen center X, Y
+    float radius = 50.0f * uiScale;    // Distance from center
+    float speed = 1.0f;       // How fast they rotate
+    float spacing = 2.0f * 3.14f / (static_cast<float>(m_uiPoints.size()));     // Gap between each dot along the circle arc
+
+    for (int i = 0; i < m_uiPoints.size(); i++)
+    {
+    	// Calculate angle: Time moves them, 'i' spreads them out
+    	float angle = (getTime() * speed) + (i * spacing);
+
+    	float x = center.x + std::cos(angle) * radius;
+    	float y = center.y + std::sin(angle) * radius;
+
+    	auto& t = m_ecs.getComponent<Transform>(m_uiPoints[i]);
+      t.position = vec3(x, y, 0.0f);
     }
   }
 

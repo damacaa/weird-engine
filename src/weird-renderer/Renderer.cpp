@@ -648,28 +648,9 @@ namespace WeirdEngine {
 				m_distanceTexture.bind(0);
 
 				// Shape data
-				static uint32_t dataSize = 10 + 10;
-				static WeirdRenderer::Dot2D* uiData = new WeirdRenderer::Dot2D[dataSize];
-				// scene.get2DShapesData(uiData, dataSize);
-
-				glm::vec2 center = glm::vec2(75.0f * uiScale, 75.0f * uiScale); // Screen center X, Y
-				float radius = 50.0f * uiScale;    // Distance from center
-				float speed = 1.0f;       // How fast they rotate
-				float spacing = 2.0f * 3.14f / (static_cast<float>(dataSize) - 10.0f);     // Gap between each dot along the circle arc
-
-				for (int i = 0; i < dataSize - 10; i++)
-				{
-					// Calculate angle: Time moves them, 'i' spreads them out
-					float angle = (scene.getTime() * speed) + (i * spacing);
-
-					float x = center.x + std::cos(angle) * radius;
-					float y = center.y + std::sin(angle) * radius;
-
-					uiData[i].position = glm::vec2(x, y);
-
-					uiData[i].size = 1.0f;
-					uiData[i].material = 1.0f;
-				}
+				static uint32_t dataSize;
+				static WeirdRenderer::Dot2D* uiData = nullptr;
+				scene.getUIData(uiData, dataSize);
 
 				m_uiDistanceShader.setUniform("u_loadedObjects", (int)dataSize);
 

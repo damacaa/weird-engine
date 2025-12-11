@@ -100,7 +100,7 @@ namespace WeirdEngine
 
 		std::vector<std::vector<vec2>> m_letters;
 
-		void print(const std::string& text);
+		void print(const std::string& text, float size = 10.0f);
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 	private:

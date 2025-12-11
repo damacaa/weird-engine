@@ -149,10 +149,8 @@ private:
 
 
 
-    static float uiScale = 0.1f;
-
-    glm::vec2 center = glm::vec2(75.0f * uiScale, 75.0f * uiScale); // Screen center X, Y
-    float radius = 50.0f * uiScale;    // Distance from center
+    glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
+    float radius = 50.0f;    // Distance from center
     float speed = 1.0f;       // How fast they rotate
     float spacing = 2.0f * 3.14f / (static_cast<float>(m_uiPoints.size()));     // Gap between each dot along the circle arc
 

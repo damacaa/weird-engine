@@ -132,14 +132,49 @@ private:
 			throwBalls(m_ecs, m_simulation2D);
 		}
 
+		static vec2 boxStart;
+		static bool createBoxInUI = true;
 		if (Input::GetKeyDown(Input::M))
+		{
+			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
+			
+			if (createBoxInUI)
+			{
+				boxStart = vec2(screen.x, Screen::height - screen.y);
+			}
+			else
+			{
+				vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+				boxStart = world;
+			}
+		}
+		else if (Input::GetKeyUp(Input::M))
 		{
 			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
 			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			float vars[8] = { world.x, world.y, 5.0f, 0.5f, 13.0f, 5.0f };
-			addUIShape(1, vars, 3);
+			vec2 boxEnd;
+			if (createBoxInUI)
+			{
+				boxEnd = vec2(screen.x, Screen::height - screen.y);
+			}
+			else
+			{
+				boxEnd = world;
+			}
+
+			float x = (boxStart.x + boxEnd.x) / 2.0f;
+			float y = (boxStart.y + boxEnd.y) / 2.0f;
+			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
+			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
+			float vars[8] = { x, y, w, h, 13.0f, 5.0f };
+
+			if(createBoxInUI)
+				addUIShape(1, vars, 3, CombinationType::SmoothAddition); // m_ecs.getComponentArray<UIShape>()->getSize()
+			else
+				addShape(1, vars, 3);
 		}
 
 		if (Input::GetKeyDown(Input::N))

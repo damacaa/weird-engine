@@ -13,6 +13,8 @@ namespace WeirdEngine
 	class SDFRenderSystem2D : public System
 	{
 	public:
+		float m_shapeBlending = 1.0f;
+
 		SDFRenderSystem2D(ECSManager& ecs)
 		{
 			m_dotClassManager = ecs.getComponentManager<DotClass>();
@@ -108,6 +110,15 @@ namespace WeirdEngine
 		bool& shaderNeedsUpdate()
 		{
 			return m_shapesNeedUpdate;
+		}
+
+		void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
+		{
+			size_t start_pos = str.find(from);
+			if (start_pos != std::string::npos)
+			{
+				str.replace(start_pos, from.length(), to);
+			}
 		}
 
 		void updateCustomShapesShader(WeirdRenderer::Shader& shader, std::vector<std::shared_ptr<IMathExpression>> sdfs)
@@ -207,15 +218,15 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << m_shapeBlending << ");\n";
 					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? " << shape.m_material << ": finalMaterialId;" << std::endl;
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
 				{
 					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0);\n";
-					// Material belongs to the *a* shape if it still “wins” after subtraction
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << m_shapeBlending << ");\n";
+					// Material belongs to the *a* shape if it still ï¿½winsï¿½ after subtraction
 					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
 					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
 					break;

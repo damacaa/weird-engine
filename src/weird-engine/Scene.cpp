@@ -68,6 +68,8 @@ namespace WeirdEngine
 		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
 		m_simulation2D.setCollisionCallback(&handleCollision, this);
 		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
+
+		m_UIRenderSystem.m_shapeBlending = 10.0f;
 	}
 
 	Scene::~Scene()
@@ -115,15 +117,6 @@ namespace WeirdEngine
 		onRender(renderTarget);
 
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
-	}
-
-	void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
-	{
-		size_t start_pos = str.find(from);
-		if (start_pos != std::string::npos)
-		{
-			str.replace(start_pos, from.length(), to);
-		}
 	}
 
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
@@ -285,7 +278,7 @@ namespace WeirdEngine
 
 	constexpr int INVALID_INDEX = -1;
 
-	void Scene::print(const std::string &text)
+	void Scene::print(const std::string &text, float size)
 	{
 		float offset = 0;
 		for (auto i : text)
@@ -296,8 +289,8 @@ namespace WeirdEngine
 
 			for (auto vec2 : m_letters[idx])
 			{
-				float x = 2 + vec2.x + offset;
-				float y = vec2.y;
+				float x = (2 + vec2.x + offset) * size;
+				float y = vec2.y * size;
 
 				Entity entity = m_ecs.createEntity();
 				Transform &t = m_ecs.addComponent<Transform>(entity);

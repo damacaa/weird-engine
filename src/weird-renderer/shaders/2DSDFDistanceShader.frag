@@ -93,7 +93,11 @@ vec3 getColor(vec2 p, vec2 uv)
         vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
         int materialId = int(positionSizeMaterial.w);
 
+        #ifdef ORIGIN_AT_BOTTOM_LEFT
+        float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+        #else
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
+        #endif
 
         // Inside ball mask is set to 0
         mask = objectDist <= 0 ? 0.95 : mask;
@@ -162,6 +166,7 @@ vec2 smoothSample(sampler2D tex, vec2 uv)
     return vec2(d, d00.y);
 }
 
+
 void main()
 {
     #ifdef ORIGIN_AT_BOTTOM_LEFT
@@ -177,9 +182,9 @@ void main()
     vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
     vec3 result = getColor(pos, v_texCoord);
-    float distance = result.x;
+    float d = result.x;
 
-    float finalDistance = distance / zoom;
+    float finalDistance = d / zoom;
     finalDistance *= 0.5 / aspectRatio;
 
     float material = result.y;
@@ -211,6 +216,11 @@ void main()
 
     finalDistance = min(previousDistance, finalDistance);
 
+    #endif
+
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    // float pixelSize = 0.25 / u_resolution.x;
+    // finalDistance = abs(finalDistance + pixelSize) - (pixelSize);
     #endif
 
     FragColor = vec4(finalDistance, material, mask, 0);

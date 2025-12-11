@@ -612,8 +612,7 @@ namespace WeirdEngine {
 		void Renderer::output(Scene& scene, Texture& texture)
 		{
 			// Render UI
-			static float uiScale = 0.1f; // scale coordinates to make balls bigger
-			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight * uiScale);
+			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
 			static glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
 			static glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);;
@@ -643,6 +642,7 @@ namespace WeirdEngine {
 				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime));
 				m_uiDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 				m_uiDistanceShader.setUniform("u_blendIterations", 1);
+				m_uiDistanceShader.setUniform("u_k", 10.0f);
 
 				m_uiDistanceShader.setUniform("t_colorTexture", 0);
 				m_distanceTexture.bind(0);

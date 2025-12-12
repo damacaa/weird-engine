@@ -141,13 +141,37 @@ namespace WeirdEngine
 
 			oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
 
+			oss << "int currentGroupColor = -1;\n";
+
 			int currentGroup = -1;
 			std::string groupDistanceVariable;
 
-			for (size_t i = 0; i < componentArray->getSize(); i++)
+			ShapeClass dummyShape;
+			dummyShape.m_groupId = CustomShape::GLOBAL_GROUP - 1;
+
+			// TODO: do this for physics too
+			// Sort Shapes by group
+			std::vector<size_t> orderedIndices;
+			orderedIndices.reserve(componentArray->getSize());
+
+			for (size_t i = 0; i < componentArray->getSize(); i++) {
+				orderedIndices.push_back(i);
+			}
+
+			// Sort indices by the shape's group value
+			std::sort(orderedIndices.begin(), orderedIndices.end(),
+				[&](size_t a, size_t b) {
+					return componentArray->getDataAtIdx(a).m_groupId <
+						   componentArray->getDataAtIdx(b).m_groupId;
+				}
+			);
+
+			for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
 			{
+				size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
+
 				// Get shape
-				const auto& shape = componentArray->getDataAtIdx(i);
+				const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape :  componentArray->getDataAtIdx(i);
 
 				// Get group
 				const int group = shape.m_groupId;
@@ -158,6 +182,8 @@ namespace WeirdEngine
 					// If this is not the first group, combine current group distance with global minDistance
 					if (currentGroup != -1)
 					{
+						oss << "if(" << groupDistanceVariable << " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
+						// oss << "{ finalMaterialId = currentGroupColor;}\n";
 						oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
 					}
 
@@ -168,6 +194,9 @@ namespace WeirdEngine
 					// Initialize distance with big value
 					oss << "float " << groupDistanceVariable << "= 10000;\n";
 				}
+
+				if (group == CustomShape::GLOBAL_GROUP - 1)
+					break;
 
 				// Start shape
 				oss << "{\n";
@@ -203,7 +232,7 @@ namespace WeirdEngine
 				case CombinationType::Addition:
 				{
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? " << shape.m_material << ": finalMaterialId;" << std::endl;
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::Subtraction:
@@ -219,7 +248,7 @@ namespace WeirdEngine
 				case CombinationType::SmoothAddition:
 				{
 					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << m_shapeBlending << ");\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? " << shape.m_material << ": finalMaterialId;" << std::endl;
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
@@ -241,16 +270,18 @@ namespace WeirdEngine
 			}
 
 			// Combine last group
-			if (componentArray->getSize() > 0)
-			{
-				oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-			}
+			// if (componentArray->getSize() > 0)
+			// {
+			// 	oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+			// }
 
 			// Get string
 			std::string replacement = oss.str();
 
 			// Set new source code and recompile shader
 			shader.setFragmentIncludeCode(1, replacement);
+
+			// std::cout << replacement << std::endl;
 
 #ifndef NDEBUG
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))

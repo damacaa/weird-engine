@@ -141,7 +141,7 @@ private:
 			
 			if (createBoxInUI)
 			{
-				boxStart = vec2(screen.x, Screen::height - screen.y);
+				boxStart = vec2(screen.x, screen.y);
 			}
 			else
 			{
@@ -158,7 +158,7 @@ private:
 			vec2 boxEnd;
 			if (createBoxInUI)
 			{
-				boxEnd = vec2(screen.x, Screen::height - screen.y);
+				boxEnd = vec2(screen.x, screen.y);
 			}
 			else
 			{
@@ -172,9 +172,9 @@ private:
 			float vars[8] = { x, y, w, h, 13.0f, 5.0f };
 
 			if(createBoxInUI)
-				addUIShape(1, vars, 3, CombinationType::SmoothAddition); // m_ecs.getComponentArray<UIShape>()->getSize()
+				addUIShape(1, vars, 3, CombinationType::SmoothAddition,1); // m_ecs.getComponentArray<UIShape>()->getSize()
 			else
-				addShape(1, vars, 3);
+				addShape(1, vars, 4 + m_ecs.getComponentArray<CustomShape>()->getSize() % 12, CombinationType::Addition, true,  m_ecs.getComponentArray<CustomShape>()->getSize());
 		}
 
 		if (Input::GetKeyDown(Input::N))

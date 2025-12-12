@@ -128,7 +128,7 @@ vec3 getColor(vec2 p, vec2 uv)
 
     // minDist = min(minDist, shapeDist);
 
-    return vec3(minDist, finalMaterialId, mask);
+    return vec3(minDist, max(finalMaterialId, 0), mask);
 }
 
 // Bilinear

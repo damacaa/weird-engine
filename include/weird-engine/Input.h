@@ -8,6 +8,7 @@
 // but it's not required for the input handling itself.
 #include <SDL/include/SDL3/SDL.h>
 // #include <SDL/src/events/SDL_mouse_c.h>
+#include "weird-renderer/Screen.h"
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
@@ -153,7 +154,7 @@ namespace WeirdEngine
 #pragma region MouseMovement
 
 		static float GetMouseX() { return getInstance().m_mouseX; };
-		static float GetMouseY() { return getInstance().m_mouseY; };
+		static float GetMouseY() { return static_cast<float>(WeirdRenderer::Screen::height) - getInstance().m_mouseY; };
 		static float GetMouseDeltaX() { return getInstance().m_deltaX / getInstance().m_width; };
 		static float GetMouseDeltaY() { return getInstance().m_deltaY / getInstance().m_height; };
 

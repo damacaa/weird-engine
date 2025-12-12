@@ -50,6 +50,8 @@ namespace WeirdEngine
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
 
+		m_UIRenderSystem.m_shapeBlending = 10.0f;
+
 		// Read content from file
 		std::string content = "";
 
@@ -68,8 +70,6 @@ namespace WeirdEngine
 		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
 		m_simulation2D.setCollisionCallback(&handleCollision, this);
 		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
-
-		m_UIRenderSystem.m_shapeBlending = 10.0f;
 	}
 
 	Scene::~Scene()

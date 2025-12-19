@@ -50,7 +50,7 @@ private:
 
 		{
 			float variables[8]{ -15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f };
-			Entity star = addShape(DefaultShapes::STAR, variables, 3);
+			Entity star = addShape(DefaultShapes::CIRCLE, variables, 7);
 
 			m_cursorShape = star;
 		}

@@ -24,9 +24,7 @@ namespace WeirdEngine {
         }
 
         AudioEngine::~AudioEngine() {
-            ma_noise_uninit(&g_noise, nullptr);
-            ma_sound_uninit(&g_sound);
-            ma_engine_uninit(&g_engine);
+
         }
 
         bool AudioEngine::init() {
@@ -58,6 +56,13 @@ namespace WeirdEngine {
             }
 
             return true;
+        }
+
+        void AudioEngine::close()
+        {
+            ma_noise_uninit(&g_noise, nullptr);
+            ma_sound_uninit(&g_sound);
+            ma_engine_uninit(&g_engine);
         }
 
         void AudioEngine::loadSound(const char *filePath) {

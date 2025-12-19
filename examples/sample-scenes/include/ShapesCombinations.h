@@ -61,7 +61,7 @@ private:
     // Circle
     {
       float vars[8] = { 15.0f, 7.5f, 5.0f};
-      addShape(DefaultShapes::CIRCLE, vars, 3, CombinationType::Addition, true, 2);
+      addShape(DefaultShapes::CIRCLE, vars, 7, CombinationType::Addition, true, 2);
     }
 
     // Subtract star

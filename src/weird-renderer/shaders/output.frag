@@ -104,6 +104,7 @@ void main()
 
 
 	col = mix(col, ui.rgb, factor);
+	// 	col = mix(col, vec3(texture(t_uiTexture, screenUV).y / 16.0), factor);
 
 	FragColor = col;
 }

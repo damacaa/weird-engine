@@ -12,6 +12,7 @@ namespace WeirdEngine {
             ~AudioEngine();
 
             bool init();
+            void close();
             void loadSound(const char* filePath);
             static void data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount, int total_amount);
 

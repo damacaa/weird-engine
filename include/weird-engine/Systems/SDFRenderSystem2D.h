@@ -223,6 +223,14 @@ namespace WeirdEngine
 				// Shape distance calculation
 				oss << "float dist = " << fragmentCode << ";" << std::endl;
 
+				// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
+				// oss << "float pixelSize = 10.0; dist = abs(dist - pixelSize) - (pixelSize);" << std::endl;
+				// oss << "#endif" << std::endl;
+
+
+
+
+
 				// Apply globalEffect logic
 				oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
 

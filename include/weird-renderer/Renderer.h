@@ -24,7 +24,7 @@ namespace WeirdEngine
 		
 
 		public:
-			Renderer(const unsigned int width, const unsigned int height);
+			Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window);
 			~Renderer();
 			void render(Scene& scene, const double time);
 			void setWindowTitle(const char* name);
@@ -32,10 +32,6 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
-
-			AudioEngine m_audioEngine;
-
-			SDLInitializer m_sdlInitializer;
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;

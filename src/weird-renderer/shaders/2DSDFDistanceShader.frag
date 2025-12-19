@@ -219,8 +219,8 @@ void main()
     #endif
 
     #ifdef ORIGIN_AT_BOTTOM_LEFT
-    // float pixelSize = 0.25 / u_resolution.x;
-    // finalDistance = abs(finalDistance + pixelSize) - (pixelSize);
+    // float pixelSize = 0.3 / u_resolution.x;
+    // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
     #endif
 
     FragColor = vec4(finalDistance, material, mask, 0);

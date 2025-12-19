@@ -32,12 +32,16 @@ namespace WeirdEngine
 	using namespace WeirdRenderer;
 	void start(SceneManager& sceneManager)
 	{
-
 		// Window resolution
 		const unsigned int width = 800;
 		const unsigned int height = 800;
 
-		Renderer renderer(width, height);
+		SDL_Window* window;
+		AudioEngine audioEngine;
+		SDLInitializer m_sdlInitializer(width, height, window, audioEngine);
+		Renderer renderer(width, height, window);
+
+		// audioEngine.loadSound(SHADERS_PATH "sample.wav");
 
 		// Scenes
 		sceneManager.loadScene(0);
@@ -99,8 +103,22 @@ namespace WeirdEngine
 			// Update scene logic and physics
 			scene->update(delta, time);
 
+			if (scene->m_collisionSoundQueued)
+			{
+				// audioEngine.triggerCollision(220.0f, 0.2f, 0.15f);
+				scene->m_collisionSoundQueued = false;
+			}
+
+			// Update friction sound
+			float frictionValue = scene->getFrictionSound();
+			audioEngine.setFrictionLevel(frictionValue);
+			// std::cout << "frictionValue: " << frictionValue << std::endl;
+
 			// Render scene
 			renderer.render(*scene, time);
 		}
+
+		std::cout << "Quitting..." << std::endl;
+		// audioEngine.close();
 	}
 }

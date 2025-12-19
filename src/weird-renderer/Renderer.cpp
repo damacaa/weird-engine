@@ -23,9 +23,9 @@ namespace WeirdEngine {
 
 
 
-		Renderer::Renderer(const unsigned int width, const unsigned int height)
-			: m_audioEngine()
-			, m_sdlInitializer(width, height, m_window, m_audioEngine)
+		Renderer::Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window)
+			:
+			m_window(window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_distanceSampleScale(0.5f)
@@ -41,8 +41,6 @@ namespace WeirdEngine {
 			Screen::height = m_windowHeight;
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
-
-			m_audioEngine.loadSound(SHADERS_PATH "sample.wav");
 
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -733,20 +731,6 @@ namespace WeirdEngine {
 			{
 				USE_CORRECTED_DISTANCE_TEXTURE = !USE_CORRECTED_DISTANCE_TEXTURE;
 			}
-
-			if (scene.m_collisionSoundQueued)
-			{
-				// m_audioEngine.triggerCollision(220.0f, 0.2f, 0.15f);
-				scene.m_collisionSoundQueued = false;
-			}
-
-
-			// Update friction sound
-			float frictionValue = scene.getFrictionSound();
-			m_audioEngine.setFrictionLevel(frictionValue);
-
-
-			// std::cout << "frictionValue: " << frictionValue << std::endl;
 
 			SDL_GL_SwapWindow(m_window);
 

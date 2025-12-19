@@ -28,7 +28,7 @@ namespace WeirdEngine {
 			m_window(window)
 			, m_windowWidth(width)
 			, m_windowHeight(height)
-			, m_distanceSampleScale(1.0f)
+			, m_distanceSampleScale(0.5f)
 			, m_distanceSampleWidth(width * m_distanceSampleScale)
 			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)

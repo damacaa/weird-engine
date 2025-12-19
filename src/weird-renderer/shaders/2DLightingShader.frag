@@ -122,12 +122,8 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     return traveled;
 }
 
-float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
+float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance)
 {
-    vec2 p = uv;
-    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
-    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
-    vec2 normal = normalize(vec2(d1, d2));
     float lightNormalDot = -(dot(-rd, normal));
 
     float zoom = -u_camMatrix[3].z;
@@ -137,7 +133,7 @@ float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
     light = 1.0;
     #endif
 
-    return light * light;
+    return clamp(light * light, 0.0, 1.0);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
@@ -231,7 +227,13 @@ void main()
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
-
+    vec2 p = screenUV;
+    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
+    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
+    vec2 g = vec2(d1, d2);
+    float len2 = dot(g, g);
+    // Prevent NaN vector if length == 0
+    vec2 normal = (len2 > 1e-8) ? g * inversesqrt(len2) : vec2(0.0);
 
     #ifdef ANTIALIASING
 
@@ -255,18 +257,12 @@ void main()
 
     vec2 rd = normalize(vec2(1.0) - screenUV);
     float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd));
-    float light = calculateLight(screenUV, rd, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+    float light = calculateLight(screenUV, rd, normal, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Refraction
     #ifdef REFRACTION
 
-    vec2 p = screenUV;
-    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
-    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
-    vec2 g = vec2(d1, d2);
-    float len2 = dot(g, g);
-    // Prevent NaN vector if length == 0
-    vec2 normal = (len2 > 1e-8) ? g * inversesqrt(len2) : vec2(0.0);
+
 
     // normal = vec2(1.0, 1.0);
 

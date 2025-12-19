@@ -57,6 +57,7 @@ namespace WeirdEngine
 			Shader m_postProcessingShader;
 			Shader m_3DsdfShaderProgram;
 			Shader m_combineScenesShaderProgram;
+			Shader m_finalUIShader;
 			Shader m_outputShaderProgram;
 
 			RenderTarget m_geometryRender;
@@ -68,6 +69,14 @@ namespace WeirdEngine
 			RenderTarget m_2DColorRender;
 			RenderTarget m_2DPostProcessRender;
 			RenderTarget m_2DBackgroundRender;
+			RenderTarget m_UIDistanceRender;
+			RenderTarget m_UIColorRender;
+			RenderTarget m_FinalRender;
+
+
+			Texture m_uiDistanceTexture;
+			Texture m_uiColorTexture;
+			Texture m_finalResultTexture;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;

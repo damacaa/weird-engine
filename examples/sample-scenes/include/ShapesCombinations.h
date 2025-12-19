@@ -88,6 +88,7 @@ private:
       t.position = vec3(15.0f, 15.0f, 10.0f);
 
       auto& ui = m_ecs.addComponent<UIDot>(ee);
+      ui.materialId = 4 + (i % 12);
 
 
       m_uiPoints.push_back(ee);

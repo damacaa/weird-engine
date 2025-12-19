@@ -9,10 +9,10 @@
 
 // Constants
 const int MAX_STEPS = 128;
-const float EPSILON = 0.005;
+const float EPSILON = 0.05;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
-const float NORMAL_EPSILON = 0.001;
+const float NORMAL_EPSILON = 0.1;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -137,7 +137,7 @@ float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
     light = 1.0;
     #endif
 
-    return light * light + 0.1;
+    return light * light;
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
@@ -258,10 +258,15 @@ void main()
     float light = calculateLight(screenUV, rd, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Refraction
+    #ifdef REFRACTION
+
     vec2 p = screenUV;
     float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
     float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
-    vec2 normal = normalize(vec2(d1, d2));
+    vec2 g = vec2(d1, d2);
+    float len2 = dot(g, g);
+    // Prevent NaN vector if length == 0
+    vec2 normal = (len2 > 1e-8) ? g * inversesqrt(len2) : vec2(0.0);
 
     // normal = vec2(1.0, 1.0);
 
@@ -271,8 +276,13 @@ void main()
     // refractionDistance = sqrt(refractionDistance);
     // refractionDistance = 1.0;
     vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
-    vec3 backgroundColor = texture(t_backgroundTexture, screenUV + backgroundOffset).rgb;// vec3(0.35);
-    // backgroundColor = vec3(abs(distance));
+    vec3 backgroundColor = texture(t_backgroundTexture, screenUV + backgroundOffset).rgb;
+
+    #else
+
+    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;
+
+    #endif
 
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;
@@ -298,8 +308,11 @@ void main()
 
     // Distance debug
     #ifdef DEBUG_SHOW_DISTANCE
+
+    #ifdef REFRACTION
         FragColor = vec4(vec3(length(refractionDistance * 0.1)), 1.0);
-    return;
+    // return;
+    #endif
 
 
     float debugDistance = distance;

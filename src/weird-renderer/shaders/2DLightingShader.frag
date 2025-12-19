@@ -12,6 +12,7 @@ const int MAX_STEPS = 128;
 const float EPSILON = 0.005;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
+const float NORMAL_EPSILON = 0.001;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -123,8 +124,6 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 
 float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
 {
-    const float NORMAL_EPSILON = 0.05;
-
     vec2 p = uv;
     float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
     float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
@@ -232,7 +231,7 @@ void main()
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
-    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
+
 
     #ifdef ANTIALIASING
 
@@ -258,6 +257,23 @@ void main()
     float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd));
     float light = calculateLight(screenUV, rd, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
+    // Refraction
+    vec2 p = screenUV;
+    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
+    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
+    vec2 normal = normalize(vec2(d1, d2));
+
+    // normal = vec2(1.0, 1.0);
+
+    // Sample background with refraction
+    float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
+    refractionDistance = max(0.0, refractionDistance - 0.1);
+    // refractionDistance = sqrt(refractionDistance);
+    // refractionDistance = 1.0;
+    vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
+    vec3 backgroundColor = texture(t_backgroundTexture, screenUV + backgroundOffset).rgb;// vec3(0.35);
+    // backgroundColor = vec3(abs(distance));
+
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;
     // finalAlpha = 0.25;
@@ -277,11 +293,14 @@ void main()
     #endif
 
     FragColor = vec4(col.xyz, 1.0);
-    // FragColor = vec4(vec3(shadows), 1.0);
+
 
 
     // Distance debug
     #ifdef DEBUG_SHOW_DISTANCE
+        FragColor = vec4(vec3(length(refractionDistance * 0.1)), 1.0);
+    return;
+
 
     float debugDistance = distance;
     // float debugDistance = texture(t_shadowDistanceTexture, screenUV).x;

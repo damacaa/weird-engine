@@ -72,7 +72,7 @@ vec3 getColor(vec2 p, vec2 uv)
     float minColorDist = minDist;
 
     int finalMaterialId = 0;
-    float mask = 1.0;
+    float mask = 0.0;
 
     #include "custom_shapes"
 

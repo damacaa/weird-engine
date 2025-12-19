@@ -172,7 +172,7 @@ private:
 			float vars[8] = { x, y, w, h, 1.2f};
 
 			if(createBoxInUI)
-				addUIShape(DefaultShapes::BOX_LINE, vars, 4 + m_ecs.getComponentArray<UIShape>()->getSize() % 12, CombinationType::SmoothAddition,m_ecs.getComponentArray<UIShape>()->getSize()); // m_ecs.getComponentArray<UIShape>()->getSize()
+				addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
 			else
 				addShape(DefaultShapes::BOX, vars, 4 + m_ecs.getComponentArray<CustomShape>()->getSize() % 12, CombinationType::SmoothAddition, true,  m_ecs.getComponentArray<CustomShape>()->getSize());
 		}

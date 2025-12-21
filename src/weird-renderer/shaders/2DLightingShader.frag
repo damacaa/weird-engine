@@ -12,7 +12,7 @@ const int MAX_STEPS = 128;
 const float EPSILON = 0.05;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
-const float NORMAL_EPSILON = 0.1;
+const float NORMAL_EPSILON = 0.05;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -133,7 +133,7 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
     light = 1.0;
     #endif
 
-    return clamp(light * light, 0.0, 1.0);
+    return clamp(light * light, 0.0, 2.0);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {

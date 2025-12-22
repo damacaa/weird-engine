@@ -94,6 +94,15 @@ private:
       m_uiPoints.push_back(ee);
     }
 
+    {
+      Entity text = m_ecs.createEntity();
+      auto& t = m_ecs.addComponent<Transform>(text);
+      auto& uiText = m_ecs.addComponent<UITextRenderer>(text);
+      uiText.text = "text";
+      uiText.bufferedDotCount = 4; // should be auto
+      t.position = vec3(150.0f, 150.0f, 0.0f);
+    }
+
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 

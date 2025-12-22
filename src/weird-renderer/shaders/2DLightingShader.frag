@@ -272,7 +272,31 @@ void main()
     // refractionDistance = sqrt(refractionDistance);
     // refractionDistance = 1.0;
     vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
-    vec3 backgroundColor = texture(t_backgroundTexture, screenUV + backgroundOffset).rgb;
+
+    // 1. Calculate the base UV
+    vec2 finalUV = screenUV + backgroundOffset;
+
+    // 2. Get the size of one texel (pixel) in UV space
+    // If t_backgroundTexture is the screen, you can use vec2(1.0) / viewPortSize
+    // Otherwise use textureSize(t_backgroundTexture, 0)
+    ivec2 texSize = textureSize(t_backgroundTexture, 0);
+    vec2 texelSize = 1.0 / vec2(texSize);
+
+    // 3. Define a Rotated Grid pattern (approx 0.5 pixel radius)
+    // This pattern breaks grid alignment artifacts better than a simple + shape
+    vec2 uv0 = finalUV + vec2(-0.125, -0.375) * texelSize; // Top-Left
+    vec2 uv1 = finalUV + vec2( 0.375, -0.125) * texelSize; // Top-Right
+    vec2 uv2 = finalUV + vec2( 0.125,  0.375) * texelSize; // Bottom-Right
+    vec2 uv3 = finalUV + vec2(-0.375,  0.125) * texelSize; // Bottom-Left
+
+    // 4. Sample and Average
+    vec3 col0 = texture(t_backgroundTexture, uv0).rgb;
+    vec3 col1 = texture(t_backgroundTexture, uv1).rgb;
+    vec3 col2 = texture(t_backgroundTexture, uv2).rgb;
+    vec3 col3 = texture(t_backgroundTexture, uv3).rgb;
+
+    vec3 backgroundColor = (col0 + col1 + col2 + col3) * 0.25;
+    backgroundColor = mix(texture(t_backgroundTexture, screenUV).rgb, backgroundColor, shapeFactor);
 
     #else
 

@@ -80,8 +80,8 @@ namespace WeirdEngine
 		void lookAt(Entity entity);
 
 		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D<SDFRenderer, CustomShape> m_sdfRenderSystem2D;
-		SDFRenderSystem2D<UIDot, UIShape> m_UIRenderSystem;
+		SDFRenderSystem2D<SDFRenderer, CustomShape, TextRenderer> m_sdfRenderSystem2D;
+		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;

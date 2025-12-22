@@ -9,7 +9,7 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
-	template<typename DotClass, typename ShapeClass>
+	template<typename DotClass, typename ShapeClass, typename TextClass>
 	class SDFRenderSystem2D : public System
 	{
 	public:
@@ -19,6 +19,7 @@ namespace WeirdEngine
 		{
 			m_dotClassManager = ecs.getComponentManager<DotClass>();
 			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
+			m_textClassManager = ecs.getComponentManager<TextClass>();
 			m_transformManager = ecs.getComponentManager<Transform>(); // Transform remains non-templated
 		}
 
@@ -27,9 +28,12 @@ namespace WeirdEngine
 			// Get component arrays for the templated types
 			auto dotClassArray = m_dotClassManager->getComponentArray();
 			auto shapeClassArray = m_shapeClassManager->getComponentArray();
+			auto textClassArray = m_textClassManager->getComponentArray();
 			auto transformArray = m_transformManager->getComponentArray();
 
-			uint32_t dotCount = dotClassArray->getSize();
+			uint32_t normalDots = dotClassArray->getSize();
+			uint32_t textDots = textClassArray->getDataAtIdx(0).bufferedDotCount;
+			uint32_t dotCount = normalDots + textDots;
 			uint32_t shapeCount = shapeClassArray->getSize();
 
 			// Each ShapeClass will contribute 2 dots to the buffer
@@ -52,7 +56,7 @@ namespace WeirdEngine
 			}
 
 			// Process DotClass instances
-			for (size_t i = 0; i < dotCount; i++)
+			for (size_t i = 0; i < normalDots; i++)
 			{
 				auto& dotComp = dotClassArray->getDataAtIdx(i);
 				auto& t = transformArray->getDataFromEntity(dotComp.Owner); // Assuming DotClass has an 'Owner' member
@@ -60,6 +64,25 @@ namespace WeirdEngine
 				data[i].position = (glm::vec2)t.position;
 				data[i].size = t.position.z;
 				data[i].material = dotComp.materialId;
+			}
+
+			// Text
+			int dotIndex = 0;
+			for (size_t i = 0; i < textClassArray->getSize(); i++) {
+				auto &text = textClassArray->getDataAtIdx(i);
+				auto &t = transformArray->getDataFromEntity(text.Owner);
+				int charCount = text.text.length();
+
+				for (size_t c = 0; c < charCount; c++) {
+					for (size_t j = 0; j < 1; j++) {
+						int idx = normalDots + dotIndex;
+						dotIndex++;
+
+						data[idx].position = (vec2)t.position + vec2(20 * c, 10 * j); // + letter
+						data[idx].size = 1.0;
+						data[idx].material = c % 16;
+					}
+				}
 			}
 
 			// Process ShapeClass instances
@@ -309,6 +332,7 @@ namespace WeirdEngine
 	private:
 		std::shared_ptr<ComponentManager<DotClass>> m_dotClassManager;
 		std::shared_ptr<ComponentManager<ShapeClass>> m_shapeClassManager;
+		std::shared_ptr<ComponentManager<TextClass>> m_textClassManager;
 		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 		glm::vec3 m_colorPalette[16] = {

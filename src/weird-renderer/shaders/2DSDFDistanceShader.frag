@@ -214,6 +214,12 @@ void main()
     // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
     // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
+    //    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    //    finalDistance = min(previousDistance, mix(finalDistance, previousDistance, 0.5));
+    //    #else
+    //    finalDistance = min(previousDistance, finalDistance);
+    //    #endif
+
     finalDistance = min(previousDistance, finalDistance);
 
     #endif

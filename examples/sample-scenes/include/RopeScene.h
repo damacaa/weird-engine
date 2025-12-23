@@ -22,12 +22,6 @@ private:
 	{
 		m_debugInput = true;
 
-		// Load fixed-width font for on-screen text
-		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5,
-			"ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>0123456789!\" ");
-
-		print("Nice rope dude!");
-
 		constexpr int numBalls = 60;
 		constexpr int rowWidth = 30;
 		constexpr float startY = 20.0f + (numBalls / rowWidth);
@@ -84,6 +78,15 @@ private:
 
 		float vars3[8] = { 15.0f, -98.0f, 15.0f, 100.0f };
 		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
+
+		{
+			Entity text = m_ecs.createEntity();
+			auto& t = m_ecs.addComponent<Transform>(text);
+			t.position = vec3(20.0f, 0.0f, 0.0f);
+			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
+			textRenderer.text = "Nice rope dude!";
+			textRenderer.material = 4;
+		}
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}

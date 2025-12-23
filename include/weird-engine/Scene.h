@@ -95,23 +95,11 @@ namespace WeirdEngine
 
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
-		int m_charWidth;
-		int m_charHeight;
 
-		std::vector<std::vector<vec2>> m_letters;
 
-		void print(const std::string& text, float size = 10.0f);
-		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 	private:
-		// Char lookup table
-		std::array<int, 256> m_CharLookUpTable{};
 
-		// Lookup function
-		int getIndex(char c)
-		{
-			return m_CharLookUpTable[static_cast<unsigned char>(c)];
-		}
 
 		void loadScene(std::string& sceneFileContent);
 

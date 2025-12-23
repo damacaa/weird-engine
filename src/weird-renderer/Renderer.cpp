@@ -669,10 +669,10 @@ namespace WeirdEngine {
 
 				m_uiDistanceShader.setUniform("u_time", scene.getTime());
 
-				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime * 20.0));
+				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime * 1.0));
 				m_uiDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 				m_uiDistanceShader.setUniform("u_blendIterations", 1);
-				m_uiDistanceShader.setUniform("u_k", 10.0f);
+				m_uiDistanceShader.setUniform("u_k", 7.5f);
 
 				m_uiDistanceShader.setUniform("t_colorTexture", 0);
 				m_uiDistanceTexture.bind(0);

@@ -22,6 +22,7 @@ private:
 
   Entity m_circle;
   Entity m_circle2 = 0;
+  Entity m_text = 0;
   float m_circleRadioud = 0.0f;
   vec2 m_initialMousePositionInWorld;
 
@@ -98,9 +99,11 @@ private:
       Entity text = m_ecs.createEntity();
       auto& t = m_ecs.addComponent<Transform>(text);
       auto& uiText = m_ecs.addComponent<UITextRenderer>(text);
-      uiText.text = "text";
-      uiText.bufferedDotCount = 4; // should be auto
+      uiText.text = "";
+      uiText.material = 12;
       t.position = vec3(150.0f, 150.0f, 0.0f);
+
+      m_text = text;
     }
 
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
@@ -110,9 +113,21 @@ private:
   {
     g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
+
+
     auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
     float x = Input::GetMouseX();
     float y = Input::GetMouseY();
+
+    {
+      auto& text = m_ecs.getComponent<UITextRenderer>(m_text);
+      text.text = "Balls:" + std::to_string(static_cast<int>(m_ecs.getComponentArray<SDFRenderer>()->getSize()));
+      text.dirty = true;
+
+      auto& textTransform = m_ecs.getComponent<Transform>(m_text);
+      textTransform.position.x = x;
+      textTransform.position.y = y;
+    }
 
     // Transform mouse coordinates to world space
     vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));

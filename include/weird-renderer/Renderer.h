@@ -26,7 +26,7 @@ namespace WeirdEngine
 		public:
 			Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window);
 			~Renderer();
-			void render(Scene& scene, const double time);
+			void render(Scene& scene, const double time, const double delta);
 			void setWindowTitle(const char* name);
 
 			SDL_Window* getWindow();
@@ -127,7 +127,7 @@ namespace WeirdEngine
 			uint32_t m_materialBlendIterations;
 
 
-			void output(Scene& scene, Texture& texture);
+			void output(Scene& scene, Texture& texture, const double delta);
 
 			// TODO: Split into color palette and materials
 			// Materials can use multiple colors from the palette

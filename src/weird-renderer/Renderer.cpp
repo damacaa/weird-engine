@@ -214,7 +214,7 @@ namespace WeirdEngine {
 			delete[] m_2DData;
 		}
 
-		void Renderer::render(Scene& scene, const double time)
+		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
 			if (m_vSyncEnabled)
 			{
@@ -279,10 +279,7 @@ namespace WeirdEngine {
 
 					m_2DDistanceShader.setUniform("u_time", scene.getTime());
 
-					static double lastTime = time;
-					double deltaTime = time - lastTime;
-					lastTime = time;
-					m_2DDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime));
+					m_2DDistanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 
 					m_2DDistanceShader.setUniform("u_blendIterations", 1);
@@ -508,7 +505,7 @@ namespace WeirdEngine {
 
 			if (!enable3D)
 			{
-				output(scene, m_lit2DSceneTexture);
+				output(scene, m_lit2DSceneTexture, delta);
 				return;
 			}
 
@@ -598,7 +595,7 @@ namespace WeirdEngine {
 
 			if (!used2DAsBackground)
 			{
-				output(scene, m_3DSceneTexture);
+				output(scene, m_3DSceneTexture, delta);
 				return;
 			}
 
@@ -619,7 +616,7 @@ namespace WeirdEngine {
 			m_lit2DSceneTexture.unbind();
 			m_3DSceneTexture.unbind();
 
-			output(scene, m_combineResultTexture);
+			output(scene, m_combineResultTexture, delta);
 		}
 
 
@@ -632,7 +629,7 @@ namespace WeirdEngine {
 			}
 		}
 
-		void Renderer::output(Scene& scene, Texture& texture)
+		void Renderer::output(Scene& scene, Texture& texture, const double delta)
 		{
 			// Render UI
 			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
@@ -646,9 +643,6 @@ namespace WeirdEngine {
 			scene.getUIData(uiData, dataSize);
 
 			double time = scene.getTime();
-			static double lastTime = time;
-			double deltaTime = time - lastTime;
-			lastTime = time;
 
 			{
 				// Bind the framebuffer you want to render to
@@ -669,7 +663,7 @@ namespace WeirdEngine {
 
 				m_uiDistanceShader.setUniform("u_time", scene.getTime());
 
-				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(deltaTime * 1.0));
+				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(delta * 1.0));
 				m_uiDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
 				m_uiDistanceShader.setUniform("u_blendIterations", 1);
 				m_uiDistanceShader.setUniform("u_k", 7.5f);

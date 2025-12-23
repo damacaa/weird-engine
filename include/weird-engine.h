@@ -115,7 +115,7 @@ namespace WeirdEngine
 			// std::cout << "frictionValue: " << frictionValue << std::endl;
 
 			// Render scene
-			renderer.render(*scene, time);
+			renderer.render(*scene, time, delta);
 		}
 
 		std::cout << "Quitting..." << std::endl;

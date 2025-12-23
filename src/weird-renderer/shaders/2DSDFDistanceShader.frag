@@ -205,6 +205,16 @@ void main()
     // Different material for object trail?
     material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
+
+
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    // finalDistance = step(previousDistance, finalDistance - previousDistance);
+    float distanceChange = finalDistance - previousDistance;
+    distanceChange *= distanceChange > 0.0 ? 0.25 : 0.5;
+    finalDistance = previousDistance + (distanceChange * u_deltaTime * 50.0);
+    finalDistance = clamp(finalDistance, -1.0, 1.0);
+
+    #else
     previousDistance += 20000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
     // previousDistance += u_blendIterations * 0.00035;
     // previousDistance = mix(finalDistance, previousDistance, 0.99);
@@ -214,13 +224,9 @@ void main()
     // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
     // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
-    //    #ifdef ORIGIN_AT_BOTTOM_LEFT
-    //    finalDistance = min(previousDistance, mix(finalDistance, previousDistance, 0.5));
-    //    #else
-    //    finalDistance = min(previousDistance, finalDistance);
-    //    #endif
-
     finalDistance = min(previousDistance, finalDistance);
+    #endif
+
 
     #endif
 

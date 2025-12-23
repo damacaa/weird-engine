@@ -1,12 +1,96 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/ecs/Component.h"
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
 
 #include <memory>
 #include <limits>
 
 namespace WeirdEngine
 {
+	class Font {
+	public:
+		struct CharData {
+			int dotCount = 0;
+			std::vector<glm::vec2> positions;
+		};
+
+		Font(const std::string &fileName, int charWidth, int charHeight, const std::string &charList)
+		{
+			// Store char dimensions
+			m_charWidth = charWidth;
+			m_charHeight = charHeight;
+
+			// Load the image
+			int width, height, channels;
+			unsigned char *img = wstbi_load(fileName.c_str(), &width, &height, &channels, 0);
+
+			if (img == nullptr) {
+				std::cerr << "Error: could not load image." << std::endl;
+				return;
+			}
+
+			int columns = width / charWidth;
+			int rows = height / charHeight;
+
+			int charCount = charList.length();
+
+
+			for (size_t i = 0; i < charCount; i++)
+			{
+				CharData charData;
+
+				int startX = charWidth * (i % columns);
+				int startY = (charHeight * (i / columns));
+
+				for (size_t offsetX = 0; offsetX < charWidth; offsetX++) {
+					for (size_t offsetY = 0; offsetY < charHeight; offsetY++) {
+						int x = startX + offsetX;
+						int y = startY + offsetY;
+
+						// Calculate the index of the pixel in the image data
+						int index = (y * width + x) * channels;
+
+						if (index < 0 || index >= width * height * channels) {
+							continue;
+						}
+
+						// Get the color values
+						unsigned char r = img[index];
+						unsigned char g = img[index + 1];
+						unsigned char b = img[index + 2];
+						unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+						if (r < 50)
+						{
+							float localX = offsetX;
+							float localY = charHeight - offsetY;
+							charData.positions.emplace_back(localX, localY);
+						}
+					}
+				}
+
+				charData.dotCount = charData.positions.size();
+				m_charData[charList[i]] = charData;
+			}
+
+			// Free the image memory
+			wstbi_image_free(img);
+		}
+
+		CharData getCharData(int charIndex) {
+			return m_charData[charIndex];
+		}
+
+	private:
+		std::array<CharData, 1024> m_charData;
+
+		int m_charWidth;
+		int m_charHeight;
+	};
+
+
 	using namespace ECS;
 
 	template<typename DotClass, typename ShapeClass, typename TextClass>
@@ -14,8 +98,10 @@ namespace WeirdEngine
 	{
 	public:
 		float m_shapeBlending = 1.0f;
+		Font m_font;
 
-		SDFRenderSystem2D(ECSManager& ecs)
+		SDFRenderSystem2D(ECSManager& ecs): m_font(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5,
+		                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
 		{
 			m_dotClassManager = ecs.getComponentManager<DotClass>();
 			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
@@ -32,7 +118,25 @@ namespace WeirdEngine
 			auto transformArray = m_transformManager->getComponentArray();
 
 			uint32_t normalDots = dotClassArray->getSize();
-			uint32_t textDots = textClassArray->getDataAtIdx(0).bufferedDotCount;
+			uint32_t textDots = 0;
+			for (size_t i = 0; i < textClassArray->getSize(); i++)
+			{
+				auto& text = textClassArray->getDataAtIdx(i);
+				if(text.dirty)
+				{
+					// Update dot count
+					text.bufferedDotCount = 0;
+
+					for (const auto& c : text.text)
+					{
+						text.bufferedDotCount += m_font.getCharData(c).dotCount;
+					}
+
+					text.dirty = false;
+				}
+
+				textDots += text.bufferedDotCount;
+			}
 			uint32_t dotCount = normalDots + textDots;
 			uint32_t shapeCount = shapeClassArray->getSize();
 
@@ -74,13 +178,14 @@ namespace WeirdEngine
 				int charCount = text.text.length();
 
 				for (size_t c = 0; c < charCount; c++) {
-					for (size_t j = 0; j < 1; j++) {
+					auto charData = m_font.getCharData(text.text[c]);
+					for (size_t j = 0; j < charData.dotCount; j++) {
 						int idx = normalDots + dotIndex;
 						dotIndex++;
 
-						data[idx].position = (vec2)t.position + vec2(20 * c, 10 * j); // + letter
+						data[idx].position = (vec2)t.position + vec2(40 * c, 0) + (10.0f * charData.positions[j]); // + letter
 						data[idx].size = 1.0;
-						data[idx].material = c % 16;
+						data[idx].material = text.material;
 					}
 				}
 			}

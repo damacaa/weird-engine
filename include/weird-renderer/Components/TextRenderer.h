@@ -10,6 +10,7 @@ namespace WeirdEngine
         std::string text;
         uint32_t bufferedDotCount = 0;
         bool dirty = true;
+        uint16_t material = 0;
     };
 
     struct UITextRenderer : public TextRenderer{};

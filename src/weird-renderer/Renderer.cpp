@@ -800,6 +800,7 @@ namespace WeirdEngine {
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::M))
 			{
 				m_2DDistanceShader.toggleDefine("MOTION_BLUR");
+				m_uiDistanceShader.toggleDefine("MOTION_BLUR");
 			}
 
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::F))

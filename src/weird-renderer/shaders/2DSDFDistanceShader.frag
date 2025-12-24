@@ -200,21 +200,33 @@ void main()
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
     vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
     float previousDistance = previousData.x;
-    float previousMaterial = texture(t_colorTexture, v_texCoord.xy).y;
 
+
+    vec4 previousDataExact = texture(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
+    float previousDistanceExact = previousDataExact.x;
+    float previousMaterial = previousDataExact.y;
     // Different material for object trail?
-    material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;
-
+    material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
 
     #ifdef ORIGIN_AT_BOTTOM_LEFT
+
+    finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
+
     // finalDistance = step(previousDistance, finalDistance - previousDistance);
-    float distanceChange = finalDistance - previousDistance;
-    distanceChange *= distanceChange > 0.0 ? 0.25 : 0.5;
-    finalDistance = previousDistance + (distanceChange * u_deltaTime * 50.0);
-    finalDistance = clamp(finalDistance, -1.0, 1.0);
+    float distanceChange = finalDistance - previousDistanceExact;
+    // distanceChange = clamp(distanceChange, -0.1, 0.05);
+
+    // qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
+    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * 10.0));
+
+    //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
+
+    blendDistance = clamp(blendDistance, -0.1, 0.1);
+    finalDistance = blendDistance;
 
     #else
+
     previousDistance += 20000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
     // previousDistance += u_blendIterations * 0.00035;
     // previousDistance = mix(finalDistance, previousDistance, 0.99);

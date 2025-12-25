@@ -121,7 +121,8 @@ private:
 
     {
       auto& text = m_ecs.getComponent<UITextRenderer>(m_text);
-      text.text = "Balls:" + std::to_string(static_cast<int>(m_ecs.getComponentArray<SDFRenderer>()->getSize()));
+      bool hideText = Input::GetKey(Input::LeftAlt);
+      text.text = hideText ? "" : "Balls:" + std::to_string(static_cast<int>(m_ecs.getComponentArray<SDFRenderer>()->getSize()));
       text.dirty = true;
 
       auto& textTransform = m_ecs.getComponent<Transform>(m_text);

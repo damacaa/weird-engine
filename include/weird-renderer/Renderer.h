@@ -24,18 +24,14 @@ namespace WeirdEngine
 		
 
 		public:
-			Renderer(const unsigned int width, const unsigned int height);
+			Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window);
 			~Renderer();
-			void render(Scene& scene, const double time);
+			void render(Scene& scene, const double time, const double delta);
 			void setWindowTitle(const char* name);
 
 			SDL_Window* getWindow();
 
 		private:
-
-			AudioEngine m_audioEngine;
-
-			SDLInitializer m_sdlInitializer;
 
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
@@ -49,6 +45,7 @@ namespace WeirdEngine
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
 			Shader m_2DDistanceShader;
+			Shader m_uiDistanceShader;
 			Shader m_JumpFloodInitShader;
 			Shader m_JumpFloodStepShader;
 			Shader m_2DDistanceCorrectionShader;
@@ -60,6 +57,7 @@ namespace WeirdEngine
 			Shader m_postProcessingShader;
 			Shader m_3DsdfShaderProgram;
 			Shader m_combineScenesShaderProgram;
+			Shader m_finalUIShader;
 			Shader m_outputShaderProgram;
 
 			RenderTarget m_geometryRender;
@@ -71,6 +69,14 @@ namespace WeirdEngine
 			RenderTarget m_2DColorRender;
 			RenderTarget m_2DPostProcessRender;
 			RenderTarget m_2DBackgroundRender;
+			RenderTarget m_UIDistanceRender;
+			RenderTarget m_UIColorRender;
+			RenderTarget m_FinalRender;
+
+
+			Texture m_uiDistanceTexture;
+			Texture m_uiColorTexture;
+			Texture m_finalResultTexture;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;
@@ -78,6 +84,7 @@ namespace WeirdEngine
 			RenderPlane m_renderPlane;
 
 			DataBuffer m_shapes2D;
+			DataBuffer m_uiData;
 
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;
@@ -120,7 +127,7 @@ namespace WeirdEngine
 			uint32_t m_materialBlendIterations;
 
 
-			void output(Scene& scene, Texture& texture);
+			void output(Scene& scene, Texture& texture, const double delta);
 
 			// TODO: Split into color palette and materials
 			// Materials can use multiple colors from the palette

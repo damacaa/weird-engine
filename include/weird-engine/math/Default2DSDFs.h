@@ -15,6 +15,7 @@ namespace WeirdEngine
 		{
 			CIRCLE,
 			BOX,
+			BOX_LINE,
 			LINE,
 			RAMP,
 			SINE,
@@ -226,7 +227,7 @@ namespace WeirdEngine
 				auto offsetY = std::make_shared<FloatVariable>(1);
 				auto bX = std::make_shared<FloatVariable>(2);
 				auto bY = std::make_shared<FloatVariable>(3);
-				auto r = std::make_shared<FloatVariable>(4);
+				// auto r = std::make_shared<FloatVariable>(4);
 
 				auto time = std::make_shared<FloatVariable>(8);
 				auto x = std::make_shared<FloatVariable>(9);
@@ -252,6 +253,28 @@ namespace WeirdEngine
 
 				// Store function
 				m_sdfs[DefaultShapes::BOX] = boxDistance;
+			}
+
+			// Box line
+			{
+				// Define variables
+				auto offsetX = std::make_shared<FloatVariable>(0);
+				auto offsetY = std::make_shared<FloatVariable>(1);
+				auto bX = std::make_shared<FloatVariable>(2);
+				auto bY = std::make_shared<FloatVariable>(3);
+				auto thickness = std::make_shared<FloatVariable>(4);
+
+				auto time = std::make_shared<FloatVariable>(8);
+				auto x = std::make_shared<FloatVariable>(9);
+				auto y = std::make_shared<FloatVariable>(10);
+
+				// Define function
+
+
+				std::shared_ptr<IMathExpression> lineDistance = std::make_shared<Substraction>(std::make_shared<Abs>(m_sdfs[DefaultShapes::BOX]), thickness);
+
+				// Store function
+				m_sdfs[DefaultShapes::BOX_LINE] = lineDistance;
 			}
 
 			Line l;

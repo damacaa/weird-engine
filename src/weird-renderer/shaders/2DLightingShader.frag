@@ -9,9 +9,10 @@
 
 // Constants
 const int MAX_STEPS = 128;
-const float EPSILON = 0.005;
+const float EPSILON = 0.05;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
+const float NORMAL_EPSILON = 0.05;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -121,14 +122,8 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     return traveled;
 }
 
-float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
+float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance)
 {
-    const float NORMAL_EPSILON = 0.05;
-
-    vec2 p = uv;
-    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
-    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
-    vec2 normal = normalize(vec2(d1, d2));
     float lightNormalDot = -(dot(-rd, normal));
 
     float zoom = -u_camMatrix[3].z;
@@ -138,7 +133,7 @@ float calculateLight(vec2 uv, vec2 rd, float shadows, float innerDistance)
     light = 1.0;
     #endif
 
-    return light * light + 0.1;
+    return clamp(light * light, 0.0, 2.0);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
@@ -232,7 +227,13 @@ void main()
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
 
-    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;// vec3(0.35);
+    vec2 p = screenUV;
+    float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
+    float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
+    vec2 g = vec2(d1, d2);
+    float len2 = dot(g, g);
+    // Prevent NaN vector if length == 0
+    vec2 normal = (len2 > 1e-8) ? g * inversesqrt(len2) : vec2(0.0);
 
     #ifdef ANTIALIASING
 
@@ -256,7 +257,52 @@ void main()
 
     vec2 rd = normalize(vec2(1.0) - screenUV);
     float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd));
-    float light = calculateLight(screenUV, rd, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+    float light = calculateLight(screenUV, rd, normal, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+
+    // Refraction
+    #ifdef REFRACTION
+
+
+
+    // normal = vec2(1.0, 1.0);
+
+    // Sample background with refraction
+    float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
+    refractionDistance = max(0.0, refractionDistance - 0.1);
+    // refractionDistance = sqrt(refractionDistance);
+    // refractionDistance = 1.0;
+    vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
+
+    // 1. Calculate the base UV
+    vec2 finalUV = screenUV + backgroundOffset;
+
+    // 2. Get the size of one texel (pixel) in UV space
+    // If t_backgroundTexture is the screen, you can use vec2(1.0) / viewPortSize
+    // Otherwise use textureSize(t_backgroundTexture, 0)
+    ivec2 texSize = textureSize(t_backgroundTexture, 0);
+    vec2 texelSize = 1.0 / vec2(texSize);
+
+    // 3. Define a Rotated Grid pattern (approx 0.5 pixel radius)
+    // This pattern breaks grid alignment artifacts better than a simple + shape
+    vec2 uv0 = finalUV + vec2(-0.125, -0.375) * texelSize; // Top-Left
+    vec2 uv1 = finalUV + vec2( 0.375, -0.125) * texelSize; // Top-Right
+    vec2 uv2 = finalUV + vec2( 0.125,  0.375) * texelSize; // Bottom-Right
+    vec2 uv3 = finalUV + vec2(-0.375,  0.125) * texelSize; // Bottom-Left
+
+    // 4. Sample and Average
+    vec3 col0 = texture(t_backgroundTexture, uv0).rgb;
+    vec3 col1 = texture(t_backgroundTexture, uv1).rgb;
+    vec3 col2 = texture(t_backgroundTexture, uv2).rgb;
+    vec3 col3 = texture(t_backgroundTexture, uv3).rgb;
+
+    vec3 backgroundColor = (col0 + col1 + col2 + col3) * 0.25;
+    backgroundColor = mix(texture(t_backgroundTexture, screenUV).rgb, backgroundColor, shapeFactor);
+
+    #else
+
+    vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;
+
+    #endif
 
     // Combine the material's alpha with shape factor
     float finalAlpha = alpha * shapeFactor;
@@ -277,11 +323,17 @@ void main()
     #endif
 
     FragColor = vec4(col.xyz, 1.0);
-    // FragColor = vec4(vec3(shadows), 1.0);
+
 
 
     // Distance debug
     #ifdef DEBUG_SHOW_DISTANCE
+
+    #ifdef REFRACTION
+        FragColor = vec4(vec3(length(refractionDistance * 0.1)), 1.0);
+    // return;
+    #endif
+
 
     float debugDistance = distance;
     // float debugDistance = texture(t_shadowDistanceTexture, screenUV).x;

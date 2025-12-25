@@ -24,9 +24,11 @@ namespace WeirdEngine
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
+		void updateUIShader(WeirdRenderer::Shader& shader);
 		void update(double delta, double time);
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
+		void getUIData(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
 		Scene(const Scene&) = default;						 // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
@@ -73,11 +75,13 @@ namespace WeirdEngine
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
+		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, int group = 0);
 
 		void lookAt(Entity entity);
 
 		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D m_sdfRenderSystem2D;
+		SDFRenderSystem2D<SDFRenderer, CustomShape, TextRenderer> m_sdfRenderSystem2D;
+		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
 		PhysicsSystem2D m_rbPhysicsSystem2D;
@@ -91,29 +95,17 @@ namespace WeirdEngine
 
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
-		int m_charWidth;
-		int m_charHeight;
 
-		std::vector<std::vector<vec2>> m_letters;
 
-		void print(const std::string& text);
-		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
 
 	private:
-		// Char lookup table
-		std::array<int, 256> m_CharLookUpTable{};
 
-		// Lookup function
-		int getIndex(char c)
-		{
-			return m_CharLookUpTable[static_cast<unsigned char>(c)];
-		}
 
 		void loadScene(std::string& sceneFileContent);
 
 		bool m_runSimulationInThread;
 
-		void updateCustomShapesShader(WeirdRenderer::Shader& shader);
+		
 
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light> m_lights;

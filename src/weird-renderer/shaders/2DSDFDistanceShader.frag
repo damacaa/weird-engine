@@ -72,7 +72,7 @@ vec3 getColor(vec2 p, vec2 uv)
     float minColorDist = minDist;
 
     int finalMaterialId = 0;
-    float mask = 1.0;
+    float mask = 0.0;
 
     #include "custom_shapes"
 
@@ -93,7 +93,11 @@ vec3 getColor(vec2 p, vec2 uv)
         vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
         int materialId = int(positionSizeMaterial.w);
 
+        #ifdef ORIGIN_AT_BOTTOM_LEFT
+        float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+        #else
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
+        #endif
 
         // Inside ball mask is set to 0
         mask = objectDist <= 0 ? 0.95 : mask;
@@ -124,7 +128,7 @@ vec3 getColor(vec2 p, vec2 uv)
 
     // minDist = min(minDist, shapeDist);
 
-    return vec3(minDist, finalMaterialId, mask);
+    return vec3(minDist, max(finalMaterialId, 0), mask);
 }
 
 // Bilinear
@@ -162,9 +166,15 @@ vec2 smoothSample(sampler2D tex, vec2 uv)
     return vec2(d, d00.y);
 }
 
+
 void main()
 {
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    vec2 uv = v_texCoord;
+    #else
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
+    #endif
+
     float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
     uv.x *= aspectRatio;
 
@@ -172,9 +182,9 @@ void main()
     vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
     vec3 result = getColor(pos, v_texCoord);
-    float distance = result.x;
+    float d = result.x;
 
-    float finalDistance = distance / zoom;
+    float finalDistance = d / zoom;
     finalDistance *= 0.5 / aspectRatio;
 
     float material = result.y;
@@ -190,12 +200,34 @@ void main()
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
     vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
     float previousDistance = previousData.x;
-    float previousMaterial = texture(t_colorTexture, v_texCoord.xy).y;
 
+
+    vec4 previousDataExact = texture(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
+    float previousDistanceExact = previousDataExact.x;
+    float previousMaterial = previousDataExact.y;
     // Different material for object trail?
-    material = finalDistance > 0.0 && previousDistance < 0.0 ? previousMaterial : material;
+    material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
-    previousDistance += 10000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
+
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+
+    finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
+
+    // finalDistance = step(previousDistance, finalDistance - previousDistance);
+    float distanceChange = finalDistance - previousDistanceExact;
+    // distanceChange = clamp(distanceChange, -0.1, 0.05);
+
+    // qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
+    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * 10.0));
+
+    //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
+
+    blendDistance = clamp(blendDistance, -0.1, 0.1);
+    finalDistance = blendDistance;
+
+    #else
+
+    previousDistance += 20000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
     // previousDistance += u_blendIterations * 0.00035;
     // previousDistance = mix(finalDistance, previousDistance, 0.99);
     // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
@@ -205,7 +237,14 @@ void main()
     // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
     finalDistance = min(previousDistance, finalDistance);
+    #endif
 
+
+    #endif
+
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    // float pixelSize = 0.3 / u_resolution.x;
+    // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
     #endif
 
     FragColor = vec4(finalDistance, material, mask, 0);

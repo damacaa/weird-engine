@@ -52,12 +52,13 @@ namespace WeirdEngine
 		Texture::Texture(glm::vec4 color)
 			: width(1), height(1)
 		{
-			float* textureData = new float[4];
+			unsigned char* textureData = new unsigned char[4];
 
-			textureData[0] = color.r;
-			textureData[1] = color.g;
-			textureData[2] = color.b;
-			textureData[3] = color.a;
+			// Multiply 0.0-1.0 range by 255 to get 0-255 range
+			textureData[0] = (unsigned char)(color.r * 255.0f);
+			textureData[1] = (unsigned char)(color.g * 255.0f);
+			textureData[2] = (unsigned char)(color.b * 255.0f);
+			textureData[3] = (unsigned char)(color.a * 255.0f);
 
 			createTexture(textureData, width, height, TextureType::ColorAlpha);
 
@@ -71,7 +72,7 @@ namespace WeirdEngine
 			createTexture(nullptr, width, height, type);
 		}
 
-		void Texture::createTexture(float* data, int width, int height, TextureType type)
+		void Texture::createTexture(void* data, int width, int height, TextureType type)
 		{
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);

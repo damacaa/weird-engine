@@ -3,8 +3,7 @@
 #include "weird-engine/SceneManager.h"
 
 #include <random>
-#include <stb/stb_image.h>
-#include <stb/stb_image_write.h>
+
 
 namespace WeirdEngine
 {
@@ -44,11 +43,13 @@ namespace WeirdEngine
 
 
 	Scene::Scene()
-			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_UIRenderSystem(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
+
+		m_UIRenderSystem.m_shapeBlending = 10.0f;
 
 		// Read content from file
 		std::string content = "";
@@ -117,25 +118,26 @@ namespace WeirdEngine
 		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
 	}
 
-	void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
-	{
-		size_t start_pos = str.find(from);
-		if (start_pos != std::string::npos)
-		{
-			str.replace(start_pos, from.length(), to);
-		}
-	}
-
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
 		// m_sdfRenderSystem2D.updatePalette(shader);
 
-		updateCustomShapesShader(shader);
+		m_sdfRenderSystem2D.updateCustomShapesShader(shader, m_sdfs);
+	}
+	
+	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
+	{
+		m_UIRenderSystem.updateCustomShapesShader(shader, m_sdfs);
 	}
 
 	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
 	{
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
+	}
+
+	void Scene::getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size)
+	{
+		m_UIRenderSystem.fillDataBuffer(uiData, size);
 	}
 
 	void Scene::update(double delta, double time)
@@ -167,151 +169,7 @@ namespace WeirdEngine
 		m_ecs.freeRemovedComponents();
 	}
 
-	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
-	{
-		const auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t ballsCount = sdfBalls->getSize();
-		const auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-		shader.setUniform("u_customShapeCount", componentArray->getSize());
-
-		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
-		{
-			return;
-		}
-
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = false;
-
-		std::ostringstream oss;
-
-		oss << "///////////////////////////////////////////\n";
-
-		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
-
-		int currentGroup = -1;
-		std::string groupDistanceVariable;
-
-		for (size_t i = 0; i < componentArray->getSize(); i++)
-		{
-			// Get shape
-			const auto &shape = componentArray->getDataAtIdx(i);
-
-			// Get group
-			const int group = shape.m_groupId;
-
-			// Start new group if necessary
-			if(group != currentGroup)
-			{
-				// If this is not the first group, combine current group distance with global minDistance
-				if(currentGroup != -1)
-				{
-					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";}\n";
-				}
-
-				// Next group
-				currentGroup = group;
-				groupDistanceVariable = "d" + std::to_string(currentGroup);
-
-				// Initialize distance with big value
-				oss << "float " << groupDistanceVariable << "= 10000;\n";
-			}
-
-			// Start shape
-			oss << "{\n";
-
-			// Calculate data position in array
-			oss << "int idx = dataOffset + " << 2 * i << ";\n";
-
-			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
-
-			// Get distance function
-			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
-
-			// Use screen space coords (DEPRECATED)
-			if (shape.m_screenSpace)
-			{
-				replaceSubstring(fragmentCode, "var9", "var11");
-				replaceSubstring(fragmentCode, "var10", "var12");
-			}
-
-			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
-
-			// Shape distance calculation
-			oss << "float dist = " << fragmentCode << ";" << std::endl;
-
-			// Apply globalEffect logic
-			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
-
-			// Combine shape distance
-			switch (shape.m_combination)
-			{
-				case CombinationType::Addition:
-				{
-					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				case CombinationType::Subtraction:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
-					break;
-				}
-				case CombinationType::Intersection:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
-					break;
-				}
-				case CombinationType::SmoothAddition:
-				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				case CombinationType::SmoothSubtraction:
-				{
-					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0);\n";
-					// Material belongs to the *a* shape if it still “wins” after subtraction
-					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
-					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
-					break;
-				}
-				default:
-					break;
-			}
-
-			// Assign back to the correct target
-			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
-			oss << "}\n\n";
-		}
-
-		// Combine last group
-		if (componentArray->getSize() > 0)
-		{
-			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-		}
-
-		// Get string
-		std::string replacement = oss.str();
-
-		// Set new source code and recompile shader
-		shader.setFragmentIncludeCode(1, replacement);
-
-#ifndef NDEBUG
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
-		{
-			std::cout << replacement << std::endl;
-
-			// Broken
-			std::ofstream outFile("generated_shader.frag");
-			if (outFile.is_open()) {
-				outFile << shader.getFragmentCode();
-				outFile.close();
-			}
-		}
-#endif
-	}
+	
 
 	WeirdRenderer::Camera &Scene::getCamera()
 	{
@@ -359,9 +217,23 @@ namespace WeirdEngine
 		shape.m_material = material;
 		std::copy(variables, variables + 8, shape.m_parameters);
 
-		// CustomShape shape(shapeId, variables); // check old constructor for references
-
 		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+
+		return entity;
+	}
+
+	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, int group)
+	{
+		Entity entity = m_ecs.createEntity();
+		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
+		shape.m_distanceFieldId = shapeId;
+		shape.m_combination = combination;
+		shape.m_hasCollision = false;
+		shape.m_groupId = group;
+		shape.m_material = material;
+		std::copy(variables, variables + 8, shape.m_parameters);
+
+		m_UIRenderSystem.shaderNeedsUpdate() = true;
 
 		return entity;
 	}
@@ -381,7 +253,7 @@ namespace WeirdEngine
 		// json scene = json::parse(sceneFileContent);
 
 		// load font
-		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+		// loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
 
 		std::string projectDir = fs::current_path().string() + "/SampleProject";
 
@@ -403,109 +275,6 @@ namespace WeirdEngine
 		m_simulation2D.setSDFs(m_sdfs);
 	}
 
-	constexpr int INVALID_INDEX = -1;
 
-	void Scene::print(const std::string &text)
-	{
-		float offset = 0;
-		for (auto i : text)
-		{
-			int idx = getIndex(i);
 
-			// std::cout << idx << std::endl;
-
-			for (auto vec2 : m_letters[idx])
-			{
-				float x = 2 + vec2.x + offset;
-				float y = vec2.y;
-
-				Entity entity = m_ecs.createEntity();
-				Transform &t = m_ecs.addComponent<Transform>(entity);
-				t.position = vec3(x, y, -10.0f);
-
-				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-				sdfRenderer.materialId = 4 + idx % 12;
-			}
-
-			offset += m_charWidth;
-		}
-	}
-
-	void Scene::loadFont(const char *imagePath, int charWidth, int charHeight, const char *characters)
-	{
-		// Set all to INVALID_INDEX initially
-		for (int &val : m_CharLookUpTable)
-		{
-			val = INVALID_INDEX;
-		}
-
-		// Fill look up table
-		for (size_t i = 0; characters[i] != '\0'; ++i)
-		{
-			m_CharLookUpTable[characters[i]] = i;
-		}
-
-		// Store char dimensions
-		m_charWidth = charWidth;
-		m_charHeight = charHeight;
-
-		// Load the image
-		int width, height, channels;
-		unsigned char *img = wstbi_load(imagePath, &width, &height, &channels, 0);
-
-		if (img == nullptr)
-		{
-			std::cerr << "Error: could not load image." << std::endl;
-			return;
-		}
-
-		int columns = width / charWidth;
-		int rows = height / charHeight;
-
-		int charCount = columns * rows;
-
-		m_letters.clear();
-		m_letters.resize(charCount);
-
-		for (size_t i = 0; i < charCount; i++)
-		{
-			int startX = charWidth * (i % columns);
-			int startY = (charHeight * (i / columns));
-
-			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
-			{
-				for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
-				{
-
-					int x = startX + offsetX;
-					int y = startY + offsetY;
-
-					// Calculate the index of the pixel in the image data
-					int index = (y * width + x) * channels;
-
-					if (index < 0 || index >= width * height * channels)
-					{
-						continue;
-					}
-
-					// Get the color values
-					unsigned char r = img[index];
-					unsigned char g = img[index + 1];
-					unsigned char b = img[index + 2];
-					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
-
-					if (r < 50)
-					{
-						float localX = offsetX;
-						float localY = charHeight - offsetY;
-
-						m_letters[i].emplace_back(localX, localY);
-					}
-				}
-			}
-		}
-
-		// Free the image memory
-		wstbi_image_free(img);
-	}
 }

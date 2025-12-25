@@ -1,32 +1,147 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
-#include "weird-renderer/RenderTarget.h"
+#include "weird-engine/ecs/Component.h"
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
+
+#include <memory>
+#include <limits>
 
 namespace WeirdEngine
 {
+	class Font {
+	public:
+		struct CharData {
+			int dotCount = 0;
+			std::vector<glm::vec2> positions;
+		};
+
+		Font(const std::string &fileName, int charWidth, int charHeight, const std::string &charList)
+		{
+			// Store char dimensions
+			m_charWidth = charWidth;
+			m_charHeight = charHeight;
+
+			// Load the image
+			int width, height, channels;
+			unsigned char *img = wstbi_load(fileName.c_str(), &width, &height, &channels, 0);
+
+			if (img == nullptr) {
+				std::cerr << "Error: could not load image." << std::endl;
+				return;
+			}
+
+			int columns = width / charWidth;
+			int rows = height / charHeight;
+
+			int charCount = charList.length();
+
+
+			for (size_t i = 0; i < charCount; i++)
+			{
+				CharData charData;
+
+				int startX = charWidth * (i % columns);
+				int startY = (charHeight * (i / columns));
+
+				for (size_t offsetX = 0; offsetX < charWidth; offsetX++) {
+					for (size_t offsetY = 0; offsetY < charHeight; offsetY++) {
+						int x = startX + offsetX;
+						int y = startY + offsetY;
+
+						// Calculate the index of the pixel in the image data
+						int index = (y * width + x) * channels;
+
+						if (index < 0 || index >= width * height * channels) {
+							continue;
+						}
+
+						// Get the color values
+						unsigned char r = img[index];
+						unsigned char g = img[index + 1];
+						unsigned char b = img[index + 2];
+						unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+
+						if (r < 50)
+						{
+							float localX = offsetX;
+							float localY = charHeight - offsetY;
+							charData.positions.emplace_back(localX, localY);
+						}
+					}
+				}
+
+				charData.dotCount = charData.positions.size();
+				m_charData[charList[i]] = charData;
+			}
+
+			// Free the image memory
+			wstbi_image_free(img);
+		}
+
+		CharData getCharData(int charIndex) {
+			return m_charData[charIndex];
+		}
+
+	private:
+		std::array<CharData, 1024> m_charData;
+
+		int m_charWidth;
+		int m_charHeight;
+	};
+
+
 	using namespace ECS;
 
+	template<typename DotClass, typename ShapeClass, typename TextClass>
 	class SDFRenderSystem2D : public System
 	{
 	public:
+		float m_shapeBlending = 1.0f;
+		Font m_font;
 
-		SDFRenderSystem2D(ECSManager& ecs)
+		SDFRenderSystem2D(ECSManager& ecs): m_font(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5,
+		                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
 		{
-			m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
-			m_customShapeManager = ecs.getComponentManager<CustomShape>();
-			m_transformManager = ecs.getComponentManager<Transform>();
+			m_dotClassManager = ecs.getComponentManager<DotClass>();
+			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
+			m_textClassManager = ecs.getComponentManager<TextClass>();
+			m_transformManager = ecs.getComponentManager<Transform>(); // Transform remains non-templated
 		}
 
 		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
 		{
-			auto componentArray = m_sdfRendererManager->getComponentArray();
-			auto customShapeArray = m_customShapeManager->getComponentArray();
+			// Get component arrays for the templated types
+			auto dotClassArray = m_dotClassManager->getComponentArray();
+			auto shapeClassArray = m_shapeClassManager->getComponentArray();
+			auto textClassArray = m_textClassManager->getComponentArray();
 			auto transformArray = m_transformManager->getComponentArray();
 
-			uint32_t ballCount = componentArray->getSize();
-			uint32_t customShapeCount = customShapeArray->getSize();
+			uint32_t normalDots = dotClassArray->getSize();
+			uint32_t textDots = 0;
+			for (size_t i = 0; i < textClassArray->getSize(); i++)
+			{
+				auto& text = textClassArray->getDataAtIdx(i);
+				if(text.dirty)
+				{
+					// Update dot count
+					text.bufferedDotCount = 0;
 
-			uint32_t newSize = ballCount + (2 * customShapeCount);
+					for (const auto& c : text.text)
+					{
+						text.bufferedDotCount += m_font.getCharData(c).dotCount;
+					}
+
+					text.dirty = false;
+				}
+
+				textDots += text.bufferedDotCount;
+			}
+			uint32_t dotCount = normalDots + textDots;
+			uint32_t shapeCount = shapeClassArray->getSize();
+
+			// Each ShapeClass will contribute 2 dots to the buffer
+			uint32_t newSize = dotCount + (2 * shapeCount);
 
 			if (size != newSize)
 			{
@@ -44,29 +159,51 @@ namespace WeirdEngine
 				data = new WeirdRenderer::Dot2D[size];
 			}
 
-
-			for (size_t i = 0; i < ballCount; i++)
+			// Process DotClass instances
+			for (size_t i = 0; i < normalDots; i++)
 			{
-				auto& mr = componentArray->getDataAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(mr.Owner);
+				auto& dotComp = dotClassArray->getDataAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(dotComp.Owner); // Assuming DotClass has an 'Owner' member
 
-				data[i].position = (vec2)t.position;
+				data[i].position = (glm::vec2)t.position;
 				data[i].size = t.position.z;
-				data[i].material = mr.materialId;
+				data[i].material = dotComp.materialId;
 			}
 
-			// 2 vec4s per customShape
-			for (size_t i = 0; i < customShapeCount; i++)
+			// Text
+			int dotIndex = 0;
+			for (size_t i = 0; i < textClassArray->getSize(); i++) {
+				auto &text = textClassArray->getDataAtIdx(i);
+				auto &t = transformArray->getDataFromEntity(text.Owner);
+				int charCount = text.text.length();
+
+				for (size_t c = 0; c < charCount; c++) {
+					auto charData = m_font.getCharData(text.text[c]);
+					for (size_t j = 0; j < charData.dotCount; j++) {
+						int idx = normalDots + dotIndex;
+						dotIndex++;
+
+						data[idx].position = (vec2)t.position + vec2(40 * c, 0) + (10.0f * charData.positions[j]); // + letter
+						data[idx].size = 1.0;
+						data[idx].material = text.material;
+					}
+				}
+			}
+
+			// Process ShapeClass instances
+			for (size_t i = 0; i < shapeCount; i++)
 			{
-				auto& shape = customShapeArray->getDataAtIdx(i);
+				auto& shapeComp = shapeClassArray->getDataAtIdx(i);
 
-				data[ballCount + (2 * i)].position = vec2(shape.m_parameters[0], shape.m_parameters[1]);
-				data[ballCount + (2 * i)].size = shape.m_parameters[2];
-				data[ballCount + (2 * i)].material = shape.m_parameters[3];
+				// Assuming ShapeClass has m_parameters[0] through m_parameters[7]
+				// Make sure your ShapeClass provides these members.
+				data[dotCount + (2 * i)].position = glm::vec2(shapeComp.m_parameters[0], shapeComp.m_parameters[1]);
+				data[dotCount + (2 * i)].size = shapeComp.m_parameters[2];
+				data[dotCount + (2 * i)].material = shapeComp.m_parameters[3];
 
-				data[ballCount + (2 * i) + 1].position = vec2(shape.m_parameters[4], shape.m_parameters[5]);
-				data[ballCount + (2 * i) + 1].size = shape.m_parameters[6];
-				data[ballCount + (2 * i) + 1].material = shape.m_parameters[7];
+				data[dotCount + (2 * i) + 1].position = glm::vec2(shapeComp.m_parameters[4], shapeComp.m_parameters[5]);
+				data[dotCount + (2 * i) + 1].size = shapeComp.m_parameters[6];
+				data[dotCount + (2 * i) + 1].material = shapeComp.m_parameters[7];
 			}
 		}
 
@@ -100,35 +237,230 @@ namespace WeirdEngine
 
 		bool& shaderNeedsUpdate()
 		{
-			return m_customShapesNeedUpdate;
+			return m_shapesNeedUpdate;
+		}
+
+		void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
+		{
+			size_t start_pos = str.find(from);
+			if (start_pos != std::string::npos)
+			{
+				str.replace(start_pos, from.length(), to);
+			}
+		}
+
+		void updateCustomShapesShader(WeirdRenderer::Shader& shader, std::vector<std::shared_ptr<IMathExpression>> sdfs)
+		{
+			const auto sdfBalls = m_dotClassManager->getComponentArray();
+			int32_t ballsCount = sdfBalls->getSize();
+			const auto componentArray = m_shapeClassManager->getComponentArray();
+			shader.setUniform("u_customShapeCount", componentArray->getSize());
+
+			if (!m_shapesNeedUpdate)
+			{
+				return;
+			}
+
+			m_shapesNeedUpdate = false;
+
+			std::ostringstream oss;
+
+			oss << "///////////////////////////////////////////\n";
+
+			oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
+
+			oss << "int currentGroupColor = -1;\n";
+
+			int currentGroup = -1;
+			std::string groupDistanceVariable;
+
+			ShapeClass dummyShape;
+			dummyShape.m_groupId = CustomShape::GLOBAL_GROUP - 1;
+
+			// TODO: do this for physics too
+			// Sort Shapes by group
+			std::vector<size_t> orderedIndices;
+			orderedIndices.reserve(componentArray->getSize());
+
+			for (size_t i = 0; i < componentArray->getSize(); i++) {
+				orderedIndices.push_back(i);
+			}
+
+			// Sort indices by the shape's group value
+			std::sort(orderedIndices.begin(), orderedIndices.end(),
+				[&](size_t a, size_t b) {
+					return componentArray->getDataAtIdx(a).m_groupId <
+						   componentArray->getDataAtIdx(b).m_groupId;
+				}
+			);
+
+			for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
+			{
+				size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
+
+				// Get shape
+				const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape :  componentArray->getDataAtIdx(i);
+
+				// Get group
+				const int group = shape.m_groupId;
+
+				// Start new group if necessary
+				if (group != currentGroup)
+				{
+					// If this is not the first group, combine current group distance with global minDistance
+					if (currentGroup != -1)
+					{
+						oss << "if(" << groupDistanceVariable << " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
+						// oss << "{ finalMaterialId = currentGroupColor;}\n";
+						oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+					}
+
+					// Next group
+					currentGroup = group;
+					groupDistanceVariable = "d" + std::to_string(currentGroup);
+
+					// Initialize distance with big value
+					oss << "float " << groupDistanceVariable << "= 10000;\n";
+				}
+
+				if (group == CustomShape::GLOBAL_GROUP - 1)
+					break;
+
+				// Start shape
+				oss << "{\n";
+
+				// Calculate data position in array
+				oss << "int idx = dataOffset + " << 2 * i << ";\n";
+
+				// Fetch parameters
+				oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
+				oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+
+				// Get distance function
+				auto fragmentCode = sdfs[shape.m_distanceFieldId]->print();
+
+				// Use screen space coords (DEPRECATED)
+				if (shape.m_screenSpace)
+				{
+					replaceSubstring(fragmentCode, "var9", "var11");
+					replaceSubstring(fragmentCode, "var10", "var12");
+				}
+
+				bool globalEffect = group == CustomShape::GLOBAL_GROUP;
+
+				// Shape distance calculation
+				oss << "float dist = " << fragmentCode << ";" << std::endl;
+
+				// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
+				// oss << "float pixelSize = 10.0; dist = abs(dist - pixelSize) - (pixelSize);" << std::endl;
+				// oss << "#endif" << std::endl;
+
+
+
+
+
+				// Apply globalEffect logic
+				oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
+
+				// Combine shape distance
+				switch (shape.m_combination)
+				{
+				case CombinationType::Addition:
+				{
+					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
+					break;
+				}
+				case CombinationType::Subtraction:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << m_shapeBlending << ");\n";
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
+					break;
+				}
+				case CombinationType::SmoothSubtraction:
+				{
+					// Smoothly subtract "dist" from currentMinDistance
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << m_shapeBlending << ");\n";
+					// Material belongs to the *a* shape if it still �wins� after subtraction
+					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
+					//	<< shape.m_material << " : finalMaterialId;" << std::endl;
+					break;
+				}
+				default:
+					break;
+				}
+
+				// Assign back to the correct target
+				oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+				oss << "}\n\n";
+			}
+
+			// Combine last group
+			// if (componentArray->getSize() > 0)
+			// {
+			// 	oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+			// }
+
+			// Get string
+			std::string replacement = oss.str();
+
+			// Set new source code and recompile shader
+			shader.setFragmentIncludeCode(1, replacement);
+
+			// std::cout << replacement << std::endl;
+
+#ifndef NDEBUG
+			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
+			{
+				std::cout << replacement << std::endl;
+
+				// Broken
+				std::ofstream outFile("generated_shader.frag");
+				if (outFile.is_open()) {
+					outFile << shader.getFragmentCode();
+					outFile.close();
+				}
+			}
+#endif
 		}
 
 	private:
-		std::shared_ptr<ComponentManager<SDFRenderer>> m_sdfRendererManager;
-		std::shared_ptr<ComponentManager<CustomShape>> m_customShapeManager;
+		std::shared_ptr<ComponentManager<DotClass>> m_dotClassManager;
+		std::shared_ptr<ComponentManager<ShapeClass>> m_shapeClassManager;
+		std::shared_ptr<ComponentManager<TextClass>> m_textClassManager;
 		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 		glm::vec3 m_colorPalette[16] = {
-			vec3(0.025f, 0.025f, 0.05f), // Black
-			vec3(1.0f, 1.0f, 1.0f), // White
-			vec3(0.484f, 0.484f, 0.584f), // Dark Gray
-			vec3(0.752f, 0.762f, 0.74f), // Light Gray
-			vec3(.95f, 0.1f, 0.1f), // Red
-			vec3(0.1f, .95f, 0.1f), // Green
-			vec3(0.15f, 0.25f, .85f), // Blue
-			vec3(1.0f, .9f, 0.2f), // Yellow
-			vec3(.95f, 0.4f, 0.1f), // Orange
-			vec3(0.5f, 0.0f, 1.0f), // Purple
-			vec3(0.0f, .9f, .9f), // Cyan
-			vec3(1.0f, 0.3f, .6f), // Magenta
-			vec3(0.5f, 1.0f, 0.5f), // Light Green
-			vec3(1.0f, 0.5f, 0.5f), // Pink
-			vec3(0.5f, 0.5f, 1.0f), // Light Blue
-			vec3(0.4f, 0.25f, 0.1f) // Brown
+			glm::vec3(0.025f, 0.025f, 0.05f), // Black
+			glm::vec3(1.0f, 1.0f, 1.0f), // White
+			glm::vec3(0.484f, 0.484f, 0.584f), // Dark Gray
+			glm::vec3(0.752f, 0.762f, 0.74f), // Light Gray
+			glm::vec3(.95f, 0.1f, 0.1f), // Red
+			glm::vec3(0.1f, .95f, 0.1f), // Green
+			glm::vec3(0.15f, 0.25f, .85f), // Blue
+			glm::vec3(1.0f, .9f, 0.2f), // Yellow
+			glm::vec3(.95f, 0.4f, 0.1f), // Orange
+			glm::vec3(0.5f, 0.0f, 1.0f), // Purple
+			glm::vec3(0.0f, .9f, .9f), // Cyan
+			glm::vec3(1.0f, 0.3f, .6f), // Magenta
+			glm::vec3(0.5f, 1.0f, 0.5f), // Light Green
+			glm::vec3(1.0f, 0.5f, 0.5f), // Pink
+			glm::vec3(0.5f, 0.5f, 1.0f), // Light Blue
+			glm::vec3(0.4f, 0.25f, 0.1f) // Brown
 		};
 
 		bool m_materialsAreDirty = true;
-		bool m_customShapesNeedUpdate = true;
-		size_t m_lastCustomShapeCount = 0;
+		bool m_shapesNeedUpdate = true;
+		size_t m_lastShapeCount = 0;
 	};
 }

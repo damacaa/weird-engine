@@ -136,6 +136,7 @@ namespace WeirdEngine
 #include "../Components/FlyMovement.h"
 #include "../Components/FlyMovement2D.h"
 #include "weird-renderer/Components/CustomShape.h"
+#include "weird-renderer/Components/TextRenderer.h"
 
 #include "../Systems/RenderSystem.h"
 #include "../Systems/InstancedRenderSystem.h"

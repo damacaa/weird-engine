@@ -22,8 +22,11 @@ private:
 
   Entity m_circle;
   Entity m_circle2 = 0;
+  Entity m_text = 0;
   float m_circleRadioud = 0.0f;
   vec2 m_initialMousePositionInWorld;
+
+  std::vector<Entity> m_uiPoints;
 
   void onStart() override
   {
@@ -59,7 +62,7 @@ private:
     // Circle
     {
       float vars[8] = { 15.0f, 7.5f, 5.0f};
-      addShape(DefaultShapes::CIRCLE, vars, 3, CombinationType::Addition, true, 2);
+      addShape(DefaultShapes::CIRCLE, vars, 7, CombinationType::Addition, true, 2);
     }
 
     // Subtract star
@@ -80,6 +83,29 @@ private:
       addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
     }
 
+    for (int i = 0; i < 10; ++i){
+      auto ee = m_ecs.createEntity();
+      auto& t = m_ecs.addComponent<Transform>(ee);
+      t.position = vec3(15.0f, 15.0f, 10.0f);
+
+      auto& ui = m_ecs.addComponent<UIDot>(ee);
+      ui.materialId = 4 + (i % 12);
+
+
+      m_uiPoints.push_back(ee);
+    }
+
+    {
+      Entity text = m_ecs.createEntity();
+      auto& t = m_ecs.addComponent<Transform>(text);
+      auto& uiText = m_ecs.addComponent<UITextRenderer>(text);
+      uiText.text = "";
+      uiText.material = 12;
+      t.position = vec3(150.0f, 150.0f, 0.0f);
+
+      m_text = text;
+    }
+
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 
@@ -87,9 +113,22 @@ private:
   {
     g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
+
+
     auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
     float x = Input::GetMouseX();
     float y = Input::GetMouseY();
+
+    {
+      auto& text = m_ecs.getComponent<UITextRenderer>(m_text);
+      bool hideText = Input::GetKey(Input::LeftAlt);
+      text.text = hideText ? "" : "Balls:" + std::to_string(static_cast<int>(m_ecs.getComponentArray<SDFRenderer>()->getSize()));
+      text.dirty = true;
+
+      auto& textTransform = m_ecs.getComponent<Transform>(m_text);
+      textTransform.position.x = x;
+      textTransform.position.y = y;
+    }
 
     // Transform mouse coordinates to world space
     vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
@@ -132,6 +171,25 @@ private:
       cs.m_parameters[2] = std::max(0.0f, m_circleRadioud - 0.1f);
 
 			cs.m_isDirty = true;
+    }
+
+
+
+    glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
+    float radius = 50.0f;    // Distance from center
+    float speed = 1.0f;       // How fast they rotate
+    float spacing = 2.0f * 3.14f / (static_cast<float>(m_uiPoints.size()));     // Gap between each dot along the circle arc
+
+    for (int i = 0; i < m_uiPoints.size(); i++)
+    {
+    	// Calculate angle: Time moves them, 'i' spreads them out
+    	float angle = (getTime() * speed) + (i * spacing);
+
+    	float x = center.x + std::cos(angle) * radius;
+    	float y = center.y + std::sin(angle) * radius;
+
+    	auto& t = m_ecs.getComponent<Transform>(m_uiPoints[i]);
+      t.position = vec3(x, y, 0.0f);
     }
   }
 

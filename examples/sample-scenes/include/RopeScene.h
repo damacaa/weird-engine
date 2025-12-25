@@ -22,12 +22,6 @@ private:
 	{
 		m_debugInput = true;
 
-		// Load fixed-width font for on-screen text
-		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5,
-			"ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>0123456789!\" ");
-
-		print("Nice rope dude!");
-
 		constexpr int numBalls = 60;
 		constexpr int rowWidth = 30;
 		constexpr float startY = 20.0f + (numBalls / rowWidth);
@@ -82,8 +76,17 @@ private:
 		float vars2[8] = { 30.5f, 3.5f, 30.0f, 3.0f };
 		// addScreenSpaceShape(3, vars2); // UI overlay shape
 
-		float vars3[8] = { 15.0f, 0.0f, 15.0f, 2.0f };
-		addShape(DefaultShapes::BOX, vars3, 3);
+		float vars3[8] = { 15.0f, -98.0f, 15.0f, 100.0f };
+		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
+
+		{
+			Entity text = m_ecs.createEntity();
+			auto& t = m_ecs.addComponent<Transform>(text);
+			t.position = vec3(20.0f, 0.0f, 0.0f);
+			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
+			textRenderer.text = "Nice rope dude!";
+			textRenderer.material = 4;
+		}
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
@@ -132,14 +135,49 @@ private:
 			throwBalls(m_ecs, m_simulation2D);
 		}
 
+		static vec2 boxStart;
+		static bool createBoxInUI = true;
 		if (Input::GetKeyDown(Input::M))
+		{
+			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
+			
+			if (createBoxInUI)
+			{
+				boxStart = vec2(screen.x, screen.y);
+			}
+			else
+			{
+				vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+				boxStart = world;
+			}
+		}
+		else if (Input::GetKeyUp(Input::M))
 		{
 			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
 			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			float vars[8] = { world.x, world.y, 5.0f, 0.5f, 13.0f, 5.0f };
-			addShape(1, vars, 3);
+			vec2 boxEnd;
+			if (createBoxInUI)
+			{
+				boxEnd = vec2(screen.x, screen.y);
+			}
+			else
+			{
+				boxEnd = world;
+			}
+
+			float x = (boxStart.x + boxEnd.x) / 2.0f;
+			float y = (boxStart.y + boxEnd.y) / 2.0f;
+			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
+			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
+			float vars[8] = { x, y, w, h, 1.2f};
+
+			if(createBoxInUI)
+				addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
+			else
+				addShape(DefaultShapes::BOX, vars, 4 + m_ecs.getComponentArray<CustomShape>()->getSize() % 12, CombinationType::SmoothAddition, true,  m_ecs.getComponentArray<CustomShape>()->getSize());
 		}
 
 		if (Input::GetKeyDown(Input::N))

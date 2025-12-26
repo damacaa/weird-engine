@@ -12,8 +12,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Option to switch between local and online version of WeirdEngine
 option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
 
+# Option to...
+option(RELEASE_BUILD "Build" OFF)
+
 # Set paths for the local WeirdEngine
 set(WEIRD_ENGINE_LOCAL_PATH "../../")
+
+if(RELEASE_BUILD)
+    set(WEIRD_ENGINE_USE_RUNTIME_ASSETS ON CACHE BOOL "" FORCE)
+endif()
 
 if(USE_LOCAL_WEIRD_ENGINE)
     # Use the local version of WeirdEngine

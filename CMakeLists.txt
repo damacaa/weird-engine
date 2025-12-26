@@ -31,6 +31,11 @@ target_include_directories(glad
 
 
 # SDL3 setup
+# FORCE SDL3 to build as a STATIC library.
+# This prevents the creation of libSDL3.so and embeds the code
+# directly into your engine/game.
+set(SDL_SHARED OFF CACHE BOOL "Build SDL shared library" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
 # Add dependencies
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL_image)
@@ -68,10 +73,26 @@ target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3)
     
 
 # Shaders
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-    ENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}"
-    SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/"
+option(WEIRD_ENGINE_USE_RUNTIME_ASSETS
+    "Load shaders/assets from runtime folder instead of source tree"
+    OFF
 )
+
+if (WEIRD_ENGINE_USE_RUNTIME_ASSETS)
+    set(WEIRD_ENGINE_ENGINE_PATH "./weird-engine/")
+    set(WEIRD_ENGINE_SHADERS_PATH "./shaders/")
+else()
+    set(WEIRD_ENGINE_ENGINE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(WEIRD_ENGINE_SHADERS_PATH
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/"
+    )
+endif()
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    ENGINE_PATH="${WEIRD_ENGINE_ENGINE_PATH}"
+    SHADERS_PATH="${WEIRD_ENGINE_SHADERS_PATH}"
+)
+
 
 #
 set_target_properties(${PROJECT_NAME} PROPERTIES

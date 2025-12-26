@@ -20,9 +20,14 @@ float fOpSubSoft(float a, float b, float r)
     return -fOpUnionSoft(b, -a, r);
 }
 
-float shape_circle(vec2 p, float r = 0.5)
+float shape_circle(vec2 p, float r)
 {
     return length(p) - r;
+}
+
+float shape_circle(vec2 p)
+{
+    return shape_circle(p, 0.5);
 }
 
 float sdSegment( in vec2 p, in vec2 a, in vec2 b )

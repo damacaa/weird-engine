@@ -79,17 +79,19 @@ option(WEIRD_ENGINE_USE_RUNTIME_ASSETS
 )
 
 if (WEIRD_ENGINE_USE_RUNTIME_ASSETS)
-    set(WEIRD_ENGINE_ENGINE_PATH "./weird-engine/")
+    set(WEIRD_ENGINE_FONTS_PATH "./fonts/")
     set(WEIRD_ENGINE_SHADERS_PATH "./shaders/")
 else()
-    set(WEIRD_ENGINE_ENGINE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(WEIRD_ENGINE_FONTS_PATH
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/fonts/"
+    )
     set(WEIRD_ENGINE_SHADERS_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/"
     )
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC
-    ENGINE_PATH="${WEIRD_ENGINE_ENGINE_PATH}"
+    FONTS_PATH="${WEIRD_ENGINE_FONTS_PATH}"
     SHADERS_PATH="${WEIRD_ENGINE_SHADERS_PATH}"
 )
 

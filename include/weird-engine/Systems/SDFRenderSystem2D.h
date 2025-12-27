@@ -100,7 +100,7 @@ namespace WeirdEngine
 		float m_shapeBlending = 1.0f;
 		Font m_font;
 
-		SDFRenderSystem2D(ECSManager& ecs): m_font(ENGINE_PATH "/src/weird-renderer/fonts/small.bmp", 4, 5,
+		SDFRenderSystem2D(ECSManager& ecs): m_font(FONTS_PATH "small.bmp", 4, 5,
 		                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
 		{
 			m_dotClassManager = ecs.getComponentManager<DotClass>();

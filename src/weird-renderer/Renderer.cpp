@@ -29,70 +29,30 @@ namespace WeirdEngine {
 			, m_windowWidth(width)
 			, m_windowHeight(height)
 			, m_distanceSampleScale(0.5f)
-			, m_distanceSampleWidth(width * m_distanceSampleScale)
-			, m_distanceSampleHeight(height * m_distanceSampleScale)
 			, m_renderScale(1.0f)
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
-			, m_materialBlendIterations((std::min)(1, static_cast<int>(1.0f / m_distanceSampleScale)))
 		{
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
 
-			// Load shaders
+			GL_CHECK_ERROR();
+			// Load shaders (only 3D and output shaders now)
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
-
+			GL_CHECK_ERROR();
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
-
+			GL_CHECK_ERROR();
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
-
-			m_2DDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
-			m_2DDistanceShader.addDefine("BLEND_SHAPES");
-			m_2DDistanceShader.addDefine("MOTION_BLUR");
-
-			m_uiDistanceShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DSDFDistanceShader.frag");
-			m_uiDistanceShader.addDefine("BLEND_SHAPES");
-			m_uiDistanceShader.addDefine("MOTION_BLUR");
-			m_uiDistanceShader.addDefine("ORIGIN_AT_BOTTOM_LEFT");
-
-			m_2DDistanceUpscalerShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceUpscaler.frag");
-
-			m_JumpFloodInitShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "InitJumpFlooding.frag");
-			m_JumpFloodStepShader= Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "JumpFlooding.frag");
-			m_2DDistanceCorrectionShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DDistanceCorrection.frag");
-
-			m_2DMaterialColorShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialColorShader.frag");
-
-			m_2DMaterialBlendShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DMaterialBlendShader.frag");
-
-			m_2DLightingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
-			m_2DLightingShader.addDefine("SHADOWS_ENABLED");
-			m_2DLightingShader.addDefine("REFRACTION");
-			// m_2DLightingShader.addDefine("DITHERING");
-			if (m_renderScale >= 1.0f)
-				m_2DLightingShader.addDefine("ANTIALIASING");
-
-			m_finalUIShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DLightingShader.frag");
-			// m_finalUIShader.addDefine("SHADOWS_ENABLED");
-			m_finalUIShader.addDefine("REFRACTION");
-			m_finalUIShader.addDefine("DITHERING");
-			if (m_renderScale >= 1.0f)
-				m_finalUIShader.addDefine("ANTIALIASING");
-
-			m_2DGridShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "2DBackground.frag");
-
-			m_postProcessingShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "PostProcessShader.frag");
-
+			GL_CHECK_ERROR();
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
-
+			GL_CHECK_ERROR();
 			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
-
 			GL_CHECK_ERROR();
 
-			// Bind textures to render planes fbo outputs
+			// Initialize 3D rendering resources
 			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
 			m_geometryRender = RenderTarget(false);
@@ -105,79 +65,49 @@ namespace WeirdEngine {
 			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
 			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
 
-
-			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_2DSceneRender = RenderTarget(false);
-			m_2DSceneRender.bindColorTextureToFrameBuffer(m_distanceTexture);
-
-			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
-			m_jumpFloodInitRender = RenderTarget(false);
-			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
-
-			m_JumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_JumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_JumpFloodRenderPing = RenderTarget(false);
-			m_JumpFloodRenderPing.bindColorTextureToFrameBuffer(m_JumpFloodTexturePing);
-			m_JumpFloodRenderPong = RenderTarget(false);
-			m_JumpFloodRenderPong.bindColorTextureToFrameBuffer(m_JumpFloodTexturePong);
-			m_JumpFloodDoubleBuffer[0] = &m_JumpFloodRenderPing;
-			m_JumpFloodDoubleBuffer[1] = &m_JumpFloodRenderPong;
-
-			m_distanceTextureCorrected = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_2DDistanceCorrectionRender = RenderTarget(false);
-			m_2DDistanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
-
-			m_2DDistanceUpscaled = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_2DDistanceUpscaler = RenderTarget(false);
-			m_2DDistanceUpscaler.bindColorTextureToFrameBuffer(m_2DDistanceUpscaled);
-
-			m_2dColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_2DColorRender = RenderTarget(false);
-			m_2DColorRender.bindColorTextureToFrameBuffer(m_2dColorTexture);
-
-			m_postProcessTextureFront = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_postProcessRenderFront = RenderTarget(false);
-			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
-
-			m_postProcessTextureBack = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_postProcessRenderBack = RenderTarget(false);
-			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
-
-			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
-			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
-
-			m_lit2DSceneTexture = Texture(m_renderWidth, m_renderHeight, m_renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
-			m_2DPostProcessRender = RenderTarget(false);
-			m_2DPostProcessRender.bindColorTextureToFrameBuffer(m_lit2DSceneTexture);
-
-			m_2DBackgroundTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Color);
-			m_2DBackgroundRender = RenderTarget(false);
-			m_2DBackgroundRender.bindColorTextureToFrameBuffer(m_2DBackgroundTexture);
-
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
 			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
 
-
-			m_UIDistanceRender = RenderTarget(false);
-			m_uiDistanceTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::LinearData); // TODO: change to distance sample size and upscale with the upscaler shader
-			m_UIDistanceRender.bindColorTextureToFrameBuffer(m_uiDistanceTexture);
-
-			m_UIColorRender = RenderTarget(false);
-			m_uiColorTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::ColorAlpha);
-			m_UIColorRender.bindColorTextureToFrameBuffer(m_uiColorTexture);
-
-			m_FinalRender = RenderTarget(false);
-			m_finalResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::ColorAlpha);
-			m_FinalRender.bindColorTextureToFrameBuffer(m_finalResultTexture);
-
-			Texture m_uiDistanceTexture;
-			Texture m_uiColorTexture;
-			Texture m_finalResultTexture;
-
 			m_outputResolutionRender = RenderTarget(false);
 
 			m_renderPlane = RenderPlane();
+
+			GL_CHECK_ERROR();
+
+			// Initialize world 2D pipeline
+			SDF2DRenderPipeline::Config worldConfig;
+			worldConfig.renderWidth = m_renderWidth;
+			worldConfig.renderHeight = m_renderHeight;
+			worldConfig.distanceSampleScale = m_distanceSampleScale;
+			worldConfig.renderScale = m_renderScale;
+			worldConfig.dataMode = SDF2DRenderPipeline::DataMode::WORLD;
+			worldConfig.originAtBottomLeft = false;
+			worldConfig.enableShadows = true;
+			worldConfig.enableRefraction = true;
+			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
+			worldConfig.enableMotionBlur = true;
+			worldConfig.enableDithering = false;
+			worldConfig.useCorrectedDistance = true;
+			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
+
+			// Initialize UI 2D pipeline
+			SDF2DRenderPipeline::Config uiConfig;
+			uiConfig.renderWidth = m_renderWidth;
+			uiConfig.renderHeight = m_renderHeight;
+			uiConfig.distanceSampleScale = 1.0f; // UI at full resolution
+			uiConfig.renderScale = m_renderScale;
+			uiConfig.dataMode = SDF2DRenderPipeline::DataMode::UI;
+			uiConfig.originAtBottomLeft = true;
+			uiConfig.enableShadows = false;
+			uiConfig.enableRefraction = true;
+			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
+			uiConfig.enableMotionBlur = true;
+			uiConfig.enableDithering = true;
+			uiConfig.useCorrectedDistance = false; // UI doesn't need correction at full res
+			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+
+			m_3DShapeDataBuffer = new DataBuffer();
 
 			GL_CHECK_ERROR();
 
@@ -188,30 +118,28 @@ namespace WeirdEngine {
 
 		Renderer::~Renderer()
 		{
-			// Delete all the objects we've created
+			// Delete pipelines
+			delete m_worldPipeline;
+			delete m_uiPipeline;
+
+			// Delete all the other objects we've created
 			m_geometryShaderProgram.free();
 			m_instancedGeometryShaderProgram.free();
-			m_2DDistanceShader.free();
-			m_2DLightingShader.free();
 			m_3DsdfShaderProgram.free();
 			m_combineScenesShaderProgram.free();
 			m_outputShaderProgram.free();
 
 			m_geometryRender.free();
 			m_3DSceneRender.free();
-			m_2DSceneRender.free();
-			m_2DPostProcessRender.free();
 			m_combinationRender.free();
 			m_outputResolutionRender.free();
 
 			m_geometryTexture.dispose();
 			m_geometryDepthTexture.dispose();
 			m_3DSceneTexture.dispose();
-			m_distanceTexture.dispose();
-			m_lit2DSceneTexture.dispose();
 			m_combineResultTexture.dispose();
 
-			delete[] m_2DData;
+			delete m_3DShapeDataBuffer;
 		}
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
@@ -243,271 +171,26 @@ namespace WeirdEngine {
 			glDisable(GL_DEPTH_TEST);
 
 			// 2D Ray marching
-			if (enable2D) {
-				// 2D ray marching
-				// Renders to m_distanceTexture
-				// Stores non-RGBA data in each channel
-				// R: Distance
-				// G: MaterialID
-				// B: Mask for color blending
-				// A: Empty
-				{
-					// Bind the framebuffer you want to render to
-					m_2DSceneRender.bind();
-
-					// Draw ray marching stuff
-					m_2DDistanceShader.use();
-
-					scene.updateRayMarchingShader(m_2DDistanceShader);
-
-
-
-
-
-					static auto oldCameraMatrix = sceneCamera.view;
-
-					// Set uniforms
-					m_2DDistanceShader.setUniform("u_camMatrix", sceneCamera.view);
-					m_2DDistanceShader.setUniform("u_oldCamMatrix", oldCameraMatrix);
-					oldCameraMatrix = sceneCamera.view;
-
-					static glm::vec3 lastCameraPosition = scene.getCamera().position;
-					glm::vec3 cameraPositionChange = scene.getCamera().position - lastCameraPosition;
-					lastCameraPosition = scene.getCamera().position;
-					m_2DDistanceShader.setUniform("u_camPositionChange", cameraPositionChange);
-
-
-					m_2DDistanceShader.setUniform("u_time", scene.getTime());
-
-					m_2DDistanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
-					m_2DDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
-
-					m_2DDistanceShader.setUniform("u_blendIterations", 1);
-
-					m_2DDistanceShader.setUniform("t_colorTexture", 0);
-					m_distanceTexture.bind(0); // TODO: copy previous texture to a different texture and use that instead
-
-					// Shape data
-					scene.get2DShapesData(m_2DData, m_2DDataSize);
-					m_2DDistanceShader.setUniform("u_loadedObjects", (int)m_2DDataSize);
-
-					m_2DDistanceShader.setUniform("t_shapeBuffer", 1);
-					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
-					m_shapes2D.bind(1);
-
-					m_renderPlane.draw(m_2DDistanceShader);
-
-					// m_distanceTexture.unbind();
-					m_shapes2D.unbind();
-				}
-
-				if ( USE_CORRECTED_DISTANCE_TEXTURE) {
-					float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
-					uint16_t m_jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
-					bool pingpong = true;
-
-					{
-						// Initialize
-						m_jumpFloodInitRender.bind();
-						m_JumpFloodInitShader.use();
-
-						m_2DDistanceCorrectionShader.setUniform("t_distanceTexture", 0);
-						m_distanceTexture.bind(0);
-
-						m_renderPlane.draw(m_JumpFloodInitShader);
-
-						// Jumps
-						m_JumpFloodStepShader.use();
-
-						m_JumpFloodStepShader.setUniform("t_prevSeeds", 0);
-						m_JumpFloodStepShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0 / m_distanceSampleHeight));
-
-						float jump = m_jumpFloodIterations;
-						bool first = true;
-
-						while (jump >= 1)
-						{
-							m_JumpFloodDoubleBuffer[pingpong]->bind();
-
-							// Update uniforms
-							vec2 uJumpSize;
-							uJumpSize.x = float(jump) / float(m_distanceSampleWidth);
-							uJumpSize.y = float(jump) / float(m_distanceSampleHeight);
-							m_JumpFloodStepShader.setUniform("u_jumpSize", uJumpSize);
-
-							if (first)
-							{
-								m_jumpFloodInitTexture.bind(0);
-								first = false;
-							}
-							else
-							{
-								m_JumpFloodDoubleBuffer[!pingpong]->getColorAttachment()->bind(0);
-							}
-
-							m_renderPlane.draw(m_JumpFloodStepShader);
-
-							pingpong = !pingpong;
-
-							jump /= 2;
-						}
-					}
-
-					{
-						m_2DDistanceCorrectionRender.bind();
-						m_2DDistanceCorrectionShader.use();
-						m_2DDistanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleWidth));
-						m_2DDistanceCorrectionShader.setUniform("u_time", scene.getTime());
-
-						// Distance
-						m_2DDistanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
-						m_distanceTexture.bind(0);
-
-						// Distance
-						m_2DDistanceCorrectionShader.setUniform("t_distanceTexture", 1);
-
-						int lastIndex = pingpong ? 0 : 1; // TODO: check if its the other way
-						m_JumpFloodDoubleBuffer[lastIndex]->getColorAttachment()->bind(1);
-
-						m_renderPlane.draw(m_2DDistanceCorrectionShader);
-					}
-				}
-
-				{
-					// Bind the framebuffer you want to render to
-					m_2DDistanceUpscaler.bind();
-
-					// Calculate pixel color
-					m_2DDistanceUpscalerShader.use();
-
-					// Set uniforms
-					m_2DDistanceUpscalerShader.setUniform("u_originalResolution", vec2(m_distanceSampleWidth, m_distanceSampleHeight));
-					m_2DDistanceUpscalerShader.setUniform("u_targetResolution", vec2(m_renderWidth, m_renderHeight));
-					m_2DDistanceUpscalerShader.setUniform("t_data", 0);
-
-					m_distanceTexture.bind(0);
-
-					m_renderPlane.draw(m_2DDistanceUpscalerShader);
-				}
-
-				// Renders color
-				// RGB: color
-				// A: mask used for next step
-				{
-					// Bind the framebuffer you want to render to
-					m_2DColorRender.bind();
-
-					// Calculate pixel color
-					m_2DMaterialColorShader.use();
-
-					// Get materials ?
-					// scene.updateRayMarchingShader(m_2DcolorShaderProgram);
-
-					// Set uniforms
-					m_2DMaterialColorShader.setUniform("u_camMatrix", sceneCamera.view);
-					m_2DMaterialColorShader.setUniform("u_time", scene.getTime());
-					m_2DMaterialColorShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
-
-					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
-					m_2DDistanceUpscaled.bind(0);
-
-					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
-					m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
-
-
-					m_renderPlane.draw(m_2DMaterialColorShader);
-
-					// TODO: add custom materials, they will be rendered in this same render target with a mask
-
-					m_distanceTexture.unbind();
-					m_shapes2D.unbind();
-				}
-
-				// Apply gaussian blur to color texture to blend materials
-				static bool horizontal = true;
-				{
-					m_2DMaterialBlendShader.use();
-					m_2DMaterialBlendShader.setUniform("t_colorTexture", 0);
-					m_2DMaterialBlendShader.setUniform("u_time", scene.getTime());
-
-					for (unsigned int i = 0; i < m_materialBlendIterations * 2; i++)
-					{
-						m_postProcessDoubleBuffer[horizontal]->bind();
-
-						m_2DMaterialBlendShader.setUniform("u_horizontal", horizontal);
-						if (i == 0)
-						{
-							m_2dColorTexture.bind(0);
-						}
-						else
-						{
-							m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
-						}
-
-						m_renderPlane.draw(m_2DMaterialBlendShader);
-
-						horizontal = !horizontal;
-					}
-				}
-
-				// Render background
-				{
-					m_2DBackgroundRender.bind();
-
-					m_2DGridShader.use();
-					m_2DGridShader.setUniform("u_camMatrix", sceneCamera.view);
-					m_2DGridShader.setUniform("u_time", scene.getTime());
-					m_2DGridShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-					m_renderPlane.draw(m_2DLightingShader);
-				}
-
-				// 2D Lighting
-				{
-					m_2DPostProcessRender.bind();
-
-					m_2DLightingShader.use();
-					m_2DLightingShader.setUniform("u_camMatrix", sceneCamera.view);
-					m_2DLightingShader.setUniform("u_time", scene.getTime());
-					m_2DLightingShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-					// Color texture
-					m_2DLightingShader.setUniform("t_colorTexture", 0);
-					if (m_materialBlendIterations > 0) {
-						m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
-					}else {
-						m_2dColorTexture.bind(0);
-					}
-
-
-					// Distance
-					m_2DLightingShader.setUniform("t_distanceTexture", 1);
-					m_2DDistanceUpscaled.bind(1);
-
-					// Bg
-					m_2DLightingShader.setUniform("t_backgroundTexture", 2);
-					m_2DBackgroundTexture.bind(2);
-
-					// Corrected distance for shadows
-					m_2DLightingShader.setUniform("t_shadowDistanceTexture", 3);
-					// TODO: dont pass the texture twice if corrected distance is disabled...
-					if(USE_CORRECTED_DISTANCE_TEXTURE)
-						m_distanceTextureCorrected.bind(3);
-					else
-						m_distanceTexture.bind(3);
-
-
-					m_renderPlane.draw(m_2DLightingShader);
-					m_postProcessTextureFront.unbind();
-				}
-			}
-
-			if (!enable3D)
+			Texture* m_lit2DSceneTexture = nullptr;
+			if (enable2D)
 			{
-				output(scene, m_lit2DSceneTexture, delta);
-				return;
+				m_worldPipeline->getDistanceShader().use();
+				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
+
+				static uint32_t dataSize;
+				static WeirdRenderer::Dot2D* data = nullptr;
+				scene.get2DShapesData(data, dataSize);
+
+				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta);
+				m_lit2DSceneTexture = &t;
+				if (!enable3D)
+				{
+					output(scene, t, delta);
+					return;
+				}
 			}
+
+
 
 			// Render geometry
 			{
@@ -552,12 +235,14 @@ namespace WeirdEngine {
 					m_geometryDepthTexture.bind(1);
 
 					// Upload and bind shapes for ray marching
-					scene.get2DShapesData(m_2DData, m_2DDataSize);
+					static uint32_t DataSize3D;
+					static WeirdRenderer::Dot2D* Data3D = nullptr;
+					scene.get2DShapesData(Data3D, DataSize3D);
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-					m_shapes2D.uploadData<Dot2D>(m_2DData, m_2DDataSize);
-					m_shapes2D.bind(2);
+					m_3DShapeDataBuffer->uploadData<Dot2D>(Data3D, DataSize3D);
+					m_3DShapeDataBuffer->bind(2);
 
-					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)m_2DDataSize);
+					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
 
 					GL_CHECK_ERROR();
 
@@ -567,7 +252,7 @@ namespace WeirdEngine {
 					// Unbind textures and buffers
 					m_geometryTexture.unbind();
 					m_geometryDepthTexture.unbind();
-					m_shapes2D.unbind();
+					m_3DShapeDataBuffer->unbind();
 
 					// glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
 					glDisable(GL_BLEND);
@@ -606,14 +291,16 @@ namespace WeirdEngine {
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
 			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 0);
-			m_lit2DSceneTexture.bind(0);
+			if (m_lit2DSceneTexture)
+				m_lit2DSceneTexture->bind(0);
 
 			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 1);
 			m_3DSceneTexture.bind(1);
 
-			m_renderPlane.draw(m_2DLightingShader);
+			m_renderPlane.draw(m_combineScenesShaderProgram);
 
-			m_lit2DSceneTexture.unbind();
+			if (m_lit2DSceneTexture)
+				m_lit2DSceneTexture->unbind();
 			m_3DSceneTexture.unbind();
 
 			output(scene, m_combineResultTexture, delta);
@@ -637,110 +324,19 @@ namespace WeirdEngine {
 			static glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);;
 
+			static WeirdRenderer::Camera uiCamera(vec3(0.0f, 0.0f, 0.0f));
+			uiCamera.view = cameraMatrix;
+
 			// Shape data
+			m_uiPipeline->getDistanceShader().use();
+			scene.updateUIShader(m_uiPipeline->getDistanceShader());
+
 			static uint32_t dataSize;
 			static WeirdRenderer::Dot2D* uiData = nullptr;
 			scene.getUIData(uiData, dataSize);
 
 			double time = scene.getTime();
-
-			{
-				// Bind the framebuffer you want to render to
-				m_UIDistanceRender.bind();
-
-				// Draw ray marching stuff
-				m_uiDistanceShader.use();
-
-				scene.updateUIShader(m_uiDistanceShader);
-
-				// Set uniforms
-
-				m_uiDistanceShader.setUniform("u_camMatrix", cameraMatrix);
-
-				glm::vec3 cameraPositionChange{0.0f,0.0f,0.0f};
-				m_uiDistanceShader.setUniform("u_camPositionChange", cameraPositionChange);
-
-
-				m_uiDistanceShader.setUniform("u_time", scene.getTime());
-
-				m_uiDistanceShader.setUniform("u_deltaTime", static_cast<float>(delta * 1.0));
-				m_uiDistanceShader.setUniform("u_resolution", glm::vec2( m_distanceSampleWidth, m_distanceSampleHeight));
-				m_uiDistanceShader.setUniform("u_blendIterations", 1);
-				m_uiDistanceShader.setUniform("u_k", 1.0f);
-
-				m_uiDistanceShader.setUniform("t_colorTexture", 0);
-				m_uiDistanceTexture.bind(0);
-
-				m_uiDistanceShader.setUniform("u_loadedObjects", (int)dataSize);
-
-				m_uiDistanceShader.setUniform("t_shapeBuffer", 1);
-				m_uiData.uploadData<Dot2D>(uiData, dataSize);
-				m_uiData.bind(1);
-
-				m_renderPlane.draw(m_uiDistanceShader);
-
-				// m_distanceTexture.unbind();
-				m_uiData.unbind();
-			}
-
-			{
-					// Bind the framebuffer you want to render to
-					m_UIColorRender.bind();
-
-					// Calculate pixel color
-					m_2DMaterialColorShader.use();
-
-					// Set uniforms
-					m_2DMaterialColorShader.setUniform("u_camMatrix", cameraMatrix);
-					m_2DMaterialColorShader.setUniform("u_time", scene.getTime());
-					m_2DMaterialColorShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-					m_2DMaterialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
-
-					m_2DMaterialColorShader.setUniform("t_materialDataTexture", 0);
-					m_uiDistanceTexture.bind(0);
-
-					m_2DMaterialColorShader.setUniform("t_currentColorTexture", 1);
-					m_uiColorTexture.bind(1);
-
-					m_renderPlane.draw(m_2DMaterialColorShader);
-
-					m_distanceTexture.unbind();
-					m_shapes2D.unbind();
-				}
-
-
-
-				// 2D Lighting
-				{
-					m_FinalRender.bind();
-
-					m_finalUIShader.use();
-					m_finalUIShader.setUniform("u_camMatrix", cameraMatrix);
-					m_finalUIShader.setUniform("u_time", scene.getTime());
-					m_finalUIShader.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-
-					// Color texture
-					m_finalUIShader.setUniform("t_colorTexture", 0);
-					m_uiColorTexture.bind(0);
-
-
-					// Distance
-					m_finalUIShader.setUniform("t_distanceTexture", 1);
-					m_uiDistanceTexture.bind(1);
-
-					// Bg
-					m_finalUIShader.setUniform("t_backgroundTexture", 2);
-					texture.bind(2);
-
-					// Corrected distance for shadows
-					m_finalUIShader.setUniform("t_shadowDistanceTexture", 3);
-					// TODO: change this...
-					m_uiDistanceTexture.bind(3);
-
-
-					m_renderPlane.draw(m_finalUIShader);
-				}
-
+			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, uiCamera, time, delta, &texture);
 
 			// TODO: abstract this
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -756,51 +352,13 @@ namespace WeirdEngine {
 
 			m_renderPlane.draw(m_outputShaderProgram);
 
+
 			// Screenshot
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
 			{
 				m_finalResultTexture.saveToDisk("output_texture.png");
 			}
 
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
-			{
-				m_2DLightingShader.toggleDefine("SHADOWS_ENABLED");
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::D))
-			{
-				if (Input::GetKey(Input::LeftShift)) {
-					m_finalUIShader.toggleDefine("DITHERING");
-				} else {
-					m_finalUIShader.toggleDefine("DEBUG_SHOW_DISTANCE");
-				}
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::C))
-			{
-				m_2DLightingShader.toggleDefine("DEBUG_SHOW_COLORS");
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::A))
-			{
-				m_2DLightingShader.toggleDefine("ANTIALIASING");
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::B))
-			{
-				m_2DDistanceShader.toggleDefine("BLEND_SHAPES");
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::M))
-			{
-				m_2DDistanceShader.toggleDefine("MOTION_BLUR");
-				m_uiDistanceShader.toggleDefine("MOTION_BLUR");
-			}
-
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::F))
-			{
-				USE_CORRECTED_DISTANCE_TEXTURE = !USE_CORRECTED_DISTANCE_TEXTURE;
-			}
 
 			SDL_GL_SwapWindow(m_window);
 

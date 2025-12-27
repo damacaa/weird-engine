@@ -15,7 +15,7 @@ option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
 set(WEIRD_ENGINE_LOCAL_PATH "../../")
 
 # Option to build for standalone deployment
-option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" OFF)
+option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" ON)
 
 if(DEPLOY_STANDALONE)
     message(STATUS ">> DEPLOY MODE: Assets will be copied to output. Paths set to relative.")
@@ -92,9 +92,9 @@ endif()
 # -------------------------------------------------------------------------
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     # 1. Copy DLLs (SDL3)
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:SDL3::SDL3>
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    # COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    #    $<TARGET_FILE:SDL3::SDL3>
+    #    $<TARGET_FILE_DIR:${PROJECT_NAME}>
 
     # 2. Copy Project ASSETS folder -> Build/assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory

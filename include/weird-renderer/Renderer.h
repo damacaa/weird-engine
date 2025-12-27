@@ -7,6 +7,7 @@
 #include "Screen.h"
 #include "SDLInitializer.h"
 #include "AudioEngine.h"
+#include "SDF2DRenderPipeline.h"
 
 #include "weird-engine/Scene.h"
 #include "RenderPlane.h"
@@ -37,95 +38,36 @@ namespace WeirdEngine
 			unsigned int m_windowWidth, m_windowHeight;
 			float m_distanceSampleScale;
 			float m_renderScale;
-			unsigned int m_distanceSampleWidth, m_distanceSampleHeight;
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;
 
+			// Pipelines for 2D SDF rendering
+			SDF2DRenderPipeline* m_worldPipeline;
+			SDF2DRenderPipeline* m_uiPipeline;
+
 			Shader m_geometryShaderProgram;
 			Shader m_instancedGeometryShaderProgram;
-			Shader m_2DDistanceShader;
-			Shader m_uiDistanceShader;
-			Shader m_JumpFloodInitShader;
-			Shader m_JumpFloodStepShader;
-			Shader m_2DDistanceCorrectionShader;
-			Shader m_2DDistanceUpscalerShader;
-			Shader m_2DMaterialColorShader;
-			Shader m_2DMaterialBlendShader;
-			Shader m_2DGridShader;
-			Shader m_2DLightingShader;
 			Shader m_postProcessingShader;
 			Shader m_3DsdfShaderProgram;
 			Shader m_combineScenesShaderProgram;
-			Shader m_finalUIShader;
 			Shader m_outputShaderProgram;
 
 			RenderTarget m_geometryRender;
 			RenderTarget m_3DSceneRender;
-
-			RenderTarget m_2DSceneRender;
-			RenderTarget m_2DDistanceCorrectionRender;
-			RenderTarget m_2DDistanceUpscaler;
-			RenderTarget m_2DColorRender;
-			RenderTarget m_2DPostProcessRender;
-			RenderTarget m_2DBackgroundRender;
-			RenderTarget m_UIDistanceRender;
-			RenderTarget m_UIColorRender;
-			RenderTarget m_FinalRender;
-
-
-			Texture m_uiDistanceTexture;
-			Texture m_uiColorTexture;
-			Texture m_finalResultTexture;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;
 
 			RenderPlane m_renderPlane;
 
-			DataBuffer m_shapes2D;
-			DataBuffer m_uiData;
-
 			Texture m_geometryTexture;
 			Texture m_geometryDepthTexture;
 			Texture m_3DSceneTexture;
 			Texture m_3DDepthSceneTexture;
-
-
-			Texture m_distanceTexture; // World coords???
-			Texture m_2DDistanceUpscaled;
-
-			Texture m_2dColorTexture;
-
-			// Distance correction
-			Texture			m_jumpFloodInitTexture;
-			RenderTarget	m_jumpFloodInitRender;
-
-			Texture	m_JumpFloodTexturePing;
-			Texture m_JumpFloodTexturePong;
-			RenderTarget m_JumpFloodRenderPing;
-			RenderTarget m_JumpFloodRenderPong;
-			RenderTarget *m_JumpFloodDoubleBuffer[2];
-
-			Texture m_distanceTextureCorrected; // Screen coords
-
-
-			Texture	m_postProcessTextureFront;
-			Texture m_postProcessTextureBack;
-			RenderTarget m_postProcessRenderFront;
-			RenderTarget m_postProcessRenderBack;
-			RenderTarget *m_postProcessDoubleBuffer[2];
-
-			Texture m_lit2DSceneTexture;
-			Texture m_2DBackgroundTexture;
+			DataBuffer* m_3DShapeDataBuffer;
 
 			Texture m_combineResultTexture;
-
-			WeirdRenderer::Dot2D* m_2DData = nullptr;
-			uint32_t m_2DDataSize = 0;
-
-			uint32_t m_materialBlendIterations;
-
 
 			void output(Scene& scene, Texture& texture, const double delta);
 

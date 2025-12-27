@@ -245,6 +245,7 @@ namespace WeirdEngine
 				glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
+					std::cout << "Compiling Shader Program:" <<"\n	VS: "<< m_vertexFile <<"\n	FS: "<< m_fragmentFile << std::endl;
 					glGetShaderInfoLog(shader, 1024, NULL, infoLog);
 					std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << infoLog << std::endl;
 				}
@@ -254,6 +255,7 @@ namespace WeirdEngine
 				glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
+					std::cout << "Compiling Shader Program:" <<"\n	VS: "<< m_vertexFile <<"\n	FS: "<< m_fragmentFile << std::endl;
 					glGetProgramInfoLog(shader, 1024, NULL, infoLog);
 					std::cout << "SHADER_LINKING_ERROR for:" << type << "\n" << infoLog << std::endl;
 				}

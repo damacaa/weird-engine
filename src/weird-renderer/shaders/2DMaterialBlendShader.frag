@@ -23,7 +23,7 @@ void main()
     vec4 data = texture(t_colorTexture, v_texCoord);
     float alpha = data.w;
 
-    vec4 originalColor = vec4(toLinear(data.rgb), alpha);
+    vec4 originalColor = vec4(data.rgb, alpha);
     vec4 result = originalColor * u_weight[0];// TODO: precompute toLinear before this shader
 
     for (int i = 1; i < 5; ++i)
@@ -31,13 +31,13 @@ void main()
         vec2 offset = u_horizontal ?  vec2((tex_offset.x * i), 0.0) : vec2(0.0, (tex_offset.y * i)); // (tex_offset.x * i) + hash(gl_FragCoord.xy + u_time)
 
         vec4 colRight = texture(t_colorTexture, v_texCoord + offset);
-        result += vec4(toLinear(colRight.rgb), colRight.a) * u_weight[i];
+        result += colRight * u_weight[i];
 
         vec4 colLeft = texture(t_colorTexture, v_texCoord - offset);
-        result += vec4(toLinear(colLeft.rgb), colLeft.a) * u_weight[i];
+        result += colLeft * u_weight[i];
     }
 
-    result = vec4(toSRGB(result.rgb), result.a);
+    result = vec4(result.rgb, result.a);
     FragColor = result;
 
     // FragColor = vec4(vec3(mask), data.w);

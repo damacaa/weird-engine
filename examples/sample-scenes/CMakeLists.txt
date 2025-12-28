@@ -15,7 +15,7 @@ option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
 set(WEIRD_ENGINE_LOCAL_PATH "../../")
 
 # Option to build for standalone deployment
-option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" ON)
+option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" OFF)
 
 if(DEPLOY_STANDALONE)
     message(STATUS ">> DEPLOY MODE: Assets will be copied to output. Paths set to relative.")

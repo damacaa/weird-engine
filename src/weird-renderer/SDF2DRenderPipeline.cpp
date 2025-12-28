@@ -1,6 +1,6 @@
 #include "weird-renderer/SDF2DRenderPipeline.h"
 #include "weird-renderer/Debug.h"
-#include "weird-engine/Scene.h"
+#include "weird-engine/vec.h"
 #include <algorithm>
 
 namespace WeirdEngine {
@@ -24,7 +24,7 @@ namespace WeirdEngine {
 			, m_renderPlane(renderPlane)
 			, m_distanceSampleWidth(config.renderWidth * config.distanceSampleScale)
 			, m_distanceSampleHeight(config.renderHeight * config.distanceSampleScale)
-			, m_materialBlendIterations((std::min)(1, static_cast<int>(1.0f / config.distanceSampleScale)))
+			, m_materialBlendIterations(config.materialBlendIterations)
 			, m_oldCameraMatrix(1.0f)
 			, m_lastCameraPosition(0.0f)
 		{
@@ -165,7 +165,7 @@ namespace WeirdEngine {
 			}
 			
 			upscaleDistance();
-			renderMaterialColors(camera, time);
+			renderMaterialColors(camera, time, delta);
 			blendMaterials(time);
 			renderBackground(camera, time);
 			applyLighting(camera, time, backgroundTexture);
@@ -287,15 +287,17 @@ namespace WeirdEngine {
 			m_renderPlane.draw(m_distanceUpscalerShader);
 		}
 
-		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time)
+		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time, double delta)
 		{
 			m_colorRender.bind();
 
 			m_materialColorShader.use();
 			m_materialColorShader.setUniform("u_camMatrix", camera.view);
 			m_materialColorShader.setUniform("u_time", time);
+			m_materialColorShader.setUniform("u_deltaTime", delta);
 			m_materialColorShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			m_materialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
+			m_materialColorShader.setUniform("u_materialBlendSpeed", m_config.materialBlendSpeed);
 
 			m_materialColorShader.setUniform("t_materialDataTexture", 0);
 			m_distanceUpscaled.bind(0);
@@ -308,8 +310,6 @@ namespace WeirdEngine {
 
 		void SDF2DRenderPipeline::blendMaterials(double time)
 		{
-			static bool horizontal = true;
-			
 			m_materialBlendShader.use();
 			m_materialBlendShader.setUniform("t_colorTexture", 0);
 			m_materialBlendShader.setUniform("u_time", time);

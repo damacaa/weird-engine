@@ -14,6 +14,8 @@ in vec2 v_texCoord;
 uniform mat4 u_camMatrix;
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform float u_deltaTime;
+uniform float u_materialBlendSpeed = 60.0;
 
 uniform sampler2D t_materialDataTexture;
 uniform sampler2D t_currentColorTexture;
@@ -40,6 +42,7 @@ void main()
 
     // Get current material color
     vec4 currentColor = texture(t_currentColorTexture, screenUV);
+    currentColor = clamp(currentColor, 0.0, 1.0);
 
     // Blend new color with current color
     // Calculate zoom factor to reduce blending with distance
@@ -48,7 +51,10 @@ void main()
     zoomFactor = smoothstep(0.0, 1.0, zoomFactor);
 
     // TODO: uniform to control speed?
-    c = mix(c, currentColor, 0.9 * (1.0 - zoomFactor) * mask);
+    // c = mix(c, currentColor, 0.999 * (1.0 - zoomFactor) * mask);
+    // c = mix(c, currentColor, pow(0.99, 60.0 * u_deltaTime) * (1.0 - zoomFactor) * mask);
+    vec4 diff = clamp((c - currentColor), -1.0, 1.0);
+    c = currentColor + (u_deltaTime * u_materialBlendSpeed * diff);
 
     FragColor = c;
 }

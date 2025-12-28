@@ -1,5 +1,7 @@
 #version 330 core
 
+#include "utils.glsl"
+
 // #define SHADOWS_ENABLED
 // #define DITHERING
 // #define ANTIALIASING
@@ -222,7 +224,7 @@ void main()
 {
     vec2 screenUV = v_texCoord;
     vec4 colorSample = texture(t_colorTexture, screenUV);
-    vec3 color = colorSample.rgb;// + (0.25 * floor(colorSample.a));
+    vec3 color = toSRGB(colorSample.rgb);// + (0.25 * floor(colorSample.a));
     float alpha = colorSample.a;// + (0.25 * floor(colorSample.a));
     vec4 data = texture(t_distanceTexture, screenUV);
     float distance = data.x;
@@ -305,7 +307,9 @@ void main()
     #endif
 
     // Combine the material's alpha with shape factor
-    float finalAlpha = alpha * shapeFactor;
+    float finalAlpha = clamp(alpha + 0.1, 0.0, 1.0) * shapeFactor;
+    // finalAlpha *= 2.0;
+    // finalAlpha = clamp(finalAlpha, 0.0, 1.0);
     // finalAlpha = 0.25;
     color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
     vec3 col = color;

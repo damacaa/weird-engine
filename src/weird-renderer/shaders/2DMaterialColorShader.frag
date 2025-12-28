@@ -1,5 +1,7 @@
 #version 330 core
 
+#include "utils.glsl"
+
 // Constants
 
 // Outputs u_staticColors in RGBA
@@ -55,6 +57,8 @@ void main()
     // c = mix(c, currentColor, pow(0.99, 60.0 * u_deltaTime) * (1.0 - zoomFactor) * mask);
     vec4 diff = clamp((c - currentColor), -1.0, 1.0);
     c = currentColor + (u_deltaTime * u_materialBlendSpeed * diff);
+
+    // c = vec4(toLinear(c.rgb), c.a);
 
     FragColor = c;
 }

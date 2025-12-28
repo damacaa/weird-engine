@@ -6,12 +6,9 @@
 #include "Texture.h"
 #include "RenderPlane.h"
 #include "Camera.h"
-#include <glm/glm.hpp>
 
 namespace WeirdEngine
 {
-	class Scene;
-
 	namespace WeirdRenderer
 	{
 		class SDF2DRenderPipeline
@@ -37,6 +34,8 @@ namespace WeirdEngine
 				bool enableMotionBlur;
 				bool enableDithering;
 				bool useCorrectedDistance;
+				int materialBlendIterations;
+				float materialBlendSpeed;
 			};
 
 			SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane);
@@ -103,10 +102,12 @@ namespace WeirdEngine
 			glm::mat4 m_oldCameraMatrix;
 			glm::vec3 m_lastCameraPosition;
 
+			bool horizontal = true;
+
 			void renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
-			void renderMaterialColors(const Camera& camera, double time);
+			void renderMaterialColors(const Camera& camera, double time, double delta);
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);

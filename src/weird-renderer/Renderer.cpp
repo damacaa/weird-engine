@@ -34,12 +34,13 @@ namespace WeirdEngine {
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
 		{
+			GL_CHECK_ERROR();
+
 			Screen::width = m_windowWidth;
 			Screen::height = m_windowHeight;
 			Screen::rWidth = m_renderWidth;
 			Screen::rHeight = m_renderHeight;
 
-			GL_CHECK_ERROR();
 			// Load shaders (only 3D and output shaders now)
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
 			GL_CHECK_ERROR();
@@ -89,22 +90,26 @@ namespace WeirdEngine {
 			worldConfig.enableMotionBlur = true;
 			worldConfig.enableDithering = false;
 			worldConfig.useCorrectedDistance = true;
+			worldConfig.materialBlendIterations = 2;
+			worldConfig.materialBlendSpeed = 120.0f;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline
 			SDF2DRenderPipeline::Config uiConfig;
 			uiConfig.renderWidth = m_renderWidth;
 			uiConfig.renderHeight = m_renderHeight;
-			uiConfig.distanceSampleScale = 1.0f; // UI at full resolution
+			uiConfig.distanceSampleScale = m_distanceSampleScale;
 			uiConfig.renderScale = m_renderScale;
 			uiConfig.dataMode = SDF2DRenderPipeline::DataMode::UI;
 			uiConfig.originAtBottomLeft = true;
 			uiConfig.enableShadows = false;
 			uiConfig.enableRefraction = true;
-			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
+			uiConfig.enableAntialiasing = true;
 			uiConfig.enableMotionBlur = true;
 			uiConfig.enableDithering = true;
-			uiConfig.useCorrectedDistance = false; // UI doesn't need correction at full res
+			uiConfig.useCorrectedDistance = false; // UI doesn't need correction
+			uiConfig.materialBlendIterations = 1;
+			uiConfig.materialBlendSpeed = 5.0f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			m_3DShapeDataBuffer = new DataBuffer();

@@ -1,5 +1,7 @@
 #version 330 core
 
+#include "utils.glsl"
+
 // Outputs colors in RGBA
 out vec4 FragColor;
 
@@ -12,17 +14,6 @@ uniform float u_weight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0
 uniform float u_time;
 
 
-
-vec3 toLinear(vec3 srgb) {
-    return pow(srgb, vec3(2.2));// or use inverse gamma
-}
-vec3 toSRGB(vec3 linear) {
-    return pow(linear, vec3(1.0 / 2.2));
-}
-
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
 
 void main()
 {

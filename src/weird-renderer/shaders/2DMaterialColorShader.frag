@@ -57,7 +57,7 @@ void main()
     // c = mix(c, currentColor, 0.999 * (1.0 - zoomFactor) * mask);
     // c = mix(c, currentColor, pow(0.99, 60.0 * u_deltaTime) * (1.0 - zoomFactor) * mask);
     vec4 diff = clamp((c - currentColor), -1.0, 1.0);
-    c = currentColor + (u_deltaTime * u_materialBlendSpeed * diff);
+    c = currentColor + (min(u_deltaTime * u_materialBlendSpeed, 1.0) * diff);
 
     FragColor = c;
 }

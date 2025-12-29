@@ -7,15 +7,13 @@
 
 namespace WeirdEngine
 {
-	static float g_frictionSound = 0.0f;
-	static float g_frictionSoundRead = 0.0f;
-
 	void Scene::handlePhysicsStep(void *userData)
 	{
 		Scene *self = static_cast<Scene *>(userData);
 		self->onPhysicsStep();
-		g_frictionSoundRead = g_frictionSound;
-		g_frictionSound = 0.0f;
+
+		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
+		self->m_frictionSoundLevel = 0.0f;
 	}
 
 	void Scene::handleCollision(CollisionEvent &event, void *userData)
@@ -27,18 +25,21 @@ namespace WeirdEngine
 
 	void Scene::handleShapeCollision(ShapeCollisionEvent &event, void *userData)
 	{
-		// Unsafe cast! Prone to error.
-		Scene *self = static_cast<Scene *>(userData);
+		Scene *self = static_cast<Scene*>(userData);
 		self->onShapeCollision(event);
 
 		const float m_soundFalloff = 0.001f;
 		auto camPosition = self->getCamera().position; // Mutex?
-		float frictionSample = event.friction * 0.1f * glm::length2(event.velocity) / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position))); // Apply distance falloff
+		float speed = glm::length2(event.velocity);
+		float frictionSample = event.friction * 0.1f * speed / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position)));
 
-		g_frictionSound = std::max(frictionSample, g_frictionSound);
+		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
 
 		if (event.state == CollisionState::START)
-			self->m_collisionSoundQueued = true;
+		{
+			float volume = (std::min)(0.01f * speed, 1.0f);
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{ volume, 220.0f, true, vec3(event.position, 0.0f) });
+		}
 	}
 
 
@@ -197,12 +198,17 @@ namespace WeirdEngine
 
 	float Scene::getFrictionSound()
 	{
-		return g_frictionSoundRead;
+		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
 	}
 
 	const std::vector<WeirdRenderer::DrawCommand> & Scene::getDrawQueue() const
 	{
 		return m_drawQueue;
+	}
+
+	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128>& Scene::getAudioQueue()
+	{
+		return m_audioQueue;
 	}
 
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)

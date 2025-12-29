@@ -85,6 +85,29 @@ namespace WeirdEngine {
             return ma_engine_get_channels(&g_engine);
         }
 
+        void AudioEngine::listen(Scene& scene)
+        {
+            auto& audioQueue = scene.getAudioQueue();
+            auto cameraPosition = scene.getCamera().position;
+
+            // Process queue
+            SimpleAudioRequest request{};
+            while (audioQueue.pop(request))
+            {
+                float frequency = request.soundSeed;
+
+                const float m_soundFalloff = 0.001f;
+                float distance = glm::distance2(request.position, cameraPosition);
+                float amp = request.spatial ? request.volume / (1.0f + (m_soundFalloff * distance)) : request.volume;
+
+                float decay = 0.15f;
+                triggerCollision(frequency, amp, decay);
+            }
+
+            float frictionValue = scene.getFrictionSound();
+            setFrictionLevel(frictionValue);
+        }
+
         // ------------------- Procedural Controls -------------------
 
         void AudioEngine::setFrictionLevel(float level)

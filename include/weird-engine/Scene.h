@@ -9,6 +9,8 @@
 #include "weird-renderer/RenderTarget.h"
 
 #include "weird-physics/Simulation2D.h"
+#include "weird-renderer/SimpleAudioRequest.h"
+#include "weird-renderer/AudioRingBuffer.h"
 
 namespace WeirdEngine
 {
@@ -52,9 +54,8 @@ namespace WeirdEngine
 		RenderMode getRenderMode() const;
 
 		float getFrictionSound();
-		std::atomic<bool> m_collisionSoundQueued = false; // Bad fix
-
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
+		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128>& getAudioQueue();
 
 	protected:
 		virtual void onCreate() {};
@@ -105,6 +106,10 @@ namespace WeirdEngine
 		bool m_runSimulationInThread;
 
 		
+
+		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128> m_audioQueue;
+		float m_frictionSoundLevel{0.0f};
+		std::atomic<float> m_frictionSoundLevelRead{0.0f};
 
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light> m_lights;

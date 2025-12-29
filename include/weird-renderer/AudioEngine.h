@@ -3,6 +3,8 @@
 #include <SDL3/SDL.h>
 #include <miniaudio/miniaudio.h>
 
+#include "weird-engine/Scene.h"
+
 namespace WeirdEngine {
     namespace WeirdRenderer {
 
@@ -18,6 +20,8 @@ namespace WeirdEngine {
 
             ma_uint32 getSampleRate() const;
             ma_uint8 getChannels() const;
+
+            void listen(Scene& scene);
 
             // --- Procedural control ---
             void setFrictionLevel(float level);      // 0..1, continuous

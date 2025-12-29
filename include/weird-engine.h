@@ -103,16 +103,8 @@ namespace WeirdEngine
 			// Update scene logic and physics
 			scene->update(delta, time);
 
-			if (scene->m_collisionSoundQueued)
-			{
-				// audioEngine.triggerCollision(220.0f, 0.2f, 0.15f);
-				scene->m_collisionSoundQueued = false;
-			}
-
-			// Update friction sound
-			float frictionValue = scene->getFrictionSound();
-			audioEngine.setFrictionLevel(frictionValue);
-			// std::cout << "frictionValue: " << frictionValue << std::endl;
+			// Audio
+			audioEngine.listen(*scene);
 
 			// Render scene
 			renderer.render(*scene, time, delta);

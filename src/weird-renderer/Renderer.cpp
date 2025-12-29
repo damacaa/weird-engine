@@ -90,8 +90,8 @@ namespace WeirdEngine {
 			worldConfig.enableMotionBlur = true;
 			worldConfig.enableDithering = false;
 			worldConfig.useCorrectedDistance = true;
-			worldConfig.materialBlendIterations = 2;
-			worldConfig.materialBlendSpeed = 120.0f;
+			worldConfig.materialBlendIterations = 1;
+			worldConfig.materialBlendSpeed = 10.0f;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline
@@ -169,35 +169,12 @@ namespace WeirdEngine {
 			auto renderMode = scene.getRenderMode();
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
-			bool used2DAsBackground = renderMode == Scene::RenderMode::RayMarchingBoth;
-			bool renderMeshesOnly = renderMode == Scene::RenderMode::Simple3D;
 
-			// TODO: abstract this
-			glDisable(GL_DEPTH_TEST);
-
-			// 2D Ray marching
-			Texture* m_lit2DSceneTexture = nullptr;
-			if (enable2D)
-			{
-				m_worldPipeline->getDistanceShader().use();
-				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
-
-				static uint32_t dataSize;
-				static WeirdRenderer::Dot2D* data = nullptr;
-				scene.get2DShapesData(data, dataSize);
-
-				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta);
-				m_lit2DSceneTexture = &t;
-				if (!enable3D)
-				{
-					output(scene, t, delta);
-					return;
-				}
-			}
-
+			bool renderMeshesOnly = false;
 
 
 			// Render geometry
+			if (enable3D)
 			{
 				// Set up framebuffer for 3D scene rendering
 				glBindFramebuffer(GL_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
@@ -281,34 +258,42 @@ namespace WeirdEngine {
 				glClearDepth(1.0f); // Make sure depth buffer is initialized correctly
 
 				GL_CHECK_ERROR();
+
+				if (!enable2D)
+				{
+					output(scene, m_3DSceneTexture, delta);
+					return;
+				}
 			}
 
-			if (!used2DAsBackground)
+
+			// TODO: abstract this
+			glDisable(GL_DEPTH_TEST);
+
+			// 2D
+			Texture* m_lit2DSceneTexture = nullptr;
+			if (enable2D)
 			{
-				output(scene, m_3DSceneTexture, delta);
-				return;
+				m_worldPipeline->getDistanceShader().use();
+				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
+
+				static uint32_t dataSize;
+				static WeirdRenderer::Dot2D* data = nullptr;
+				scene.get2DShapesData(data, dataSize);
+
+				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta, enable3D ? &m_3DSceneTexture : nullptr);
+				m_lit2DSceneTexture = &t;
+
+				output(scene, t, delta);
 			}
 
-			// Combine 2D and 3D
-			m_combinationRender.bind();
 
-			m_combineScenesShaderProgram.use();
-			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 
-			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 0);
-			if (m_lit2DSceneTexture)
-				m_lit2DSceneTexture->bind(0);
 
-			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 1);
-			m_3DSceneTexture.bind(1);
 
-			m_renderPlane.draw(m_combineScenesShaderProgram);
 
-			if (m_lit2DSceneTexture)
-				m_lit2DSceneTexture->unbind();
-			m_3DSceneTexture.unbind();
 
-			output(scene, m_combineResultTexture, delta);
+
 		}
 
 

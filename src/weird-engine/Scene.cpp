@@ -38,7 +38,7 @@ namespace WeirdEngine
 		if (event.state == CollisionState::START)
 		{
 			float volume = (std::min)(0.01f * speed, 1.0f);
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{ volume, 220.0f, true, vec3(event.position, 0.0f) });
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{ volume, 140.0f, true, vec3(event.position, 0.0f) });
 		}
 	}
 

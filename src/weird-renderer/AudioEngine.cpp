@@ -105,7 +105,7 @@ namespace WeirdEngine {
             }
 
             float frictionValue = scene.getFrictionSound();
-            setFrictionLevel(frictionValue);
+            setFrictionLevel(0.5 * frictionValue);
         }
 
         // ------------------- Procedural Controls -------------------
@@ -146,60 +146,99 @@ namespace WeirdEngine {
 
 
         void AudioEngine::triggerCollision(float freq, float amp, float decaySec) {
-            collisionFreq = freq;
-            collisionAmp = amp;
-            collisionDecay = decaySec;
-            collisionTime = 0.0f;
-            collisionPhase = 0.0f;
+            // Lock the mutex so the audio thread doesn't read while we write
+            std::lock_guard<std::mutex> lock(voiceMutex);
+
+            // Optional: Limit max polyphony to prevent CPU overload
+            if (activeVoices.size() > 32) return;
+
+            CollisionVoice newVoice;
+            newVoice.frequency = freq;
+            newVoice.amplitude = amp;
+            newVoice.decay = decaySec;
+            newVoice.time = 0.0f;
+            newVoice.phase = 0.0f;
+            newVoice.finished = false;
+
+            activeVoices.push_back(newVoice);
         }
 
-        // ------------------- Audio Mixing Callback -------------------
+        // ------------------- Updated Callback -------------------
 
-        void AudioEngine::data_callback(void *pUserData, SDL_AudioStream *stream, int additional_amount,
-                                        int total_amount) {
+        void AudioEngine::data_callback(void *pUserData, SDL_AudioStream *stream, int additional_amount, int total_amount) {
             AudioEngine *audio = static_cast<AudioEngine *>(pUserData);
             if (!audio) return;
 
             ma_uint32 bytesToWrite = (ma_uint32) total_amount;
             ma_uint32 framesToWrite = bytesToWrite / ma_get_bytes_per_frame(ma_format_f32, CHANNELS);
 
+            // Initialize mix buffer with silence
             std::vector<float> mix(framesToWrite * CHANNELS, 0.0f);
             std::vector<float> temp(framesToWrite * CHANNELS);
 
-            // --- 1. Mix background music from miniaudio engine ---
+            // --- 1. Mix background music (MiniAudio) ---
             ma_engine_read_pcm_frames(&audio->g_engine, mix.data(), framesToWrite, NULL);
 
-            // --- 2. Friction noise (continuous, amplitude-modulated) ---
+            // --- 2. Friction noise ---
             audio->smoothedFriction += (audio->frictionLevel - audio->smoothedFriction) * 0.05f;
             if (audio->smoothedFriction > 0.0001f) {
                 ma_noise_read_pcm_frames(&audio->g_noise, temp.data(), framesToWrite, NULL);
                 for (ma_uint32 i = 0; i < framesToWrite * CHANNELS; ++i) {
-                    mix[i] += temp[i] * audio->smoothedFriction * 0.4f; // scale down a bit
+                    mix[i] += temp[i] * audio->smoothedFriction * 0.4f;
                 }
             }
 
-            // --- 3. Collision tone (decaying sine) ---
-            if (audio->collisionAmp > 0.0001f) {
-                const float phaseInc = 2.0f * M_PI * audio->collisionFreq / SAMPLE_RATE;
-                for (ma_uint32 i = 0; i < framesToWrite; ++i) {
-                    float env = audio->collisionAmp * expf(-audio->collisionTime / audio->collisionDecay);
-                    float sample = env * sinf(audio->collisionPhase);
-                    audio->collisionPhase += phaseInc;
-                    if (audio->collisionPhase >= 2.0f * M_PI) audio->collisionPhase -= 2.0f * M_PI;
-                    audio->collisionTime += 1.0f / SAMPLE_RATE;
+            // --- 3. Collision Tones (Polyphonic) ---
 
-                    for (int ch = 0; ch < CHANNELS; ++ch)
-                        mix[i * CHANNELS + ch] += sample;
+            // Lock mutex to safely access the vector
+            {
+                std::lock_guard<std::mutex> lock(audio->voiceMutex);
+
+                for (auto& voice : audio->activeVoices) {
+                    if (voice.finished) continue;
+
+                    const float phaseInc = 2.0f * M_PI * voice.frequency / SAMPLE_RATE;
+
+                    for (ma_uint32 i = 0; i < framesToWrite; ++i) {
+                        float env = voice.amplitude * expf(-voice.time / voice.decay);
+                        float sample = env * sinf(voice.phase);
+
+                        voice.phase += phaseInc;
+                        if (voice.phase >= 2.0f * M_PI) voice.phase -= 2.0f * M_PI;
+                        voice.time += 1.0f / SAMPLE_RATE;
+
+                        // Add to both channels
+                        for (int ch = 0; ch < CHANNELS; ++ch) {
+                            mix[i * CHANNELS + ch] += sample;
+                        }
+                    }
+
+                    // Check if voice is effectively silent
+                    if (voice.amplitude * expf(-voice.time / voice.decay) < 0.001f) {
+                        voice.finished = true;
+                    }
                 }
 
-                // auto stop when amplitude decays enough
-                if (audio->collisionAmp * expf(-audio->collisionTime / audio->collisionDecay) < 0.0001f)
-                    audio->collisionAmp = 0.0f;
+                // Cleanup finished voices to keep vector small
+                // Using remove_if idiom
+                audio->activeVoices.erase(
+                    std::remove_if(audio->activeVoices.begin(), audio->activeVoices.end(),
+                        [](const CollisionVoice& v) { return v.finished; }),
+                    audio->activeVoices.end()
+                );
             }
 
-            // --- 4. Submit mixed result to SDL ---
+            // --- 4. HARD LIMITER / CLIPPING PROTECTION ---
+            // Because we are adding multiple sounds, volume might exceed 1.0.
+            // We apply a "soft clip" using tanh() or simple clamping to prevent distortion.
+            for (size_t i = 0; i < mix.size(); ++i) {
+                // Soft clipping (smoothly limits to -1.0 to 1.0 range)
+                mix[i] = std::tanh(mix[i]);
+            }
+
+            // --- 5. Submit to SDL ---
             SDL_PutAudioStreamData(stream, mix.data(),
                                    framesToWrite * ma_get_bytes_per_frame(ma_format_f32, CHANNELS));
         }
-    } // namespace WeirdRenderer
+    }  // namespace WeirdRenderer
 } // namespace WeirdEngine

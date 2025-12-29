@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <vector>
+
 #include <SDL3/SDL.h>
 #include <miniaudio/miniaudio.h>
 
@@ -7,6 +10,15 @@
 
 namespace WeirdEngine {
     namespace WeirdRenderer {
+
+        struct CollisionVoice {
+            float frequency;
+            float amplitude;
+            float decay;
+            float time = 0.0f;
+            float phase = 0.0f;
+            bool finished = false;
+        };
 
         class AudioEngine {
         public:
@@ -42,6 +54,10 @@ namespace WeirdEngine {
             float     collisionPhase = 0.0f;
             float     collisionDecay = 0.0f;
             float     collisionTime = 0.0f;
+
+            // 2. Replace the single float variables with a vector of voices
+            std::vector<CollisionVoice> activeVoices;
+            std::mutex voiceMutex; // Essential for thread safety
         };
 
     } // namespace WeirdRenderer

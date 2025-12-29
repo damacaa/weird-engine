@@ -61,9 +61,17 @@ namespace WeirdEngine {
 			}
 
 			// Initialize textures and render targets
-			m_distanceTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_distanceRender = RenderTarget(false);
-			m_distanceRender.bindColorTextureToFrameBuffer(m_distanceTexture);
+			m_distanceTextureA = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceRenderA = RenderTarget(false);
+			m_distanceRenderA.bindColorTextureToFrameBuffer(m_distanceTextureA);
+
+			m_distanceTextureB = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceRenderB = RenderTarget(false);
+			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
+
+			m_distanceTextureDoubleBuffer[0] = &m_distanceRenderA;
+			m_distanceTextureDoubleBuffer[1] = &m_distanceRenderB;
+			m_distanceTextureDoubleBufferIdx = 0;
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender = RenderTarget(false);
@@ -130,7 +138,8 @@ namespace WeirdEngine {
 			m_defaultBackgroundShader.free();
 			m_lightingShader.free();
 
-			m_distanceRender.free();
+			m_distanceRenderA.free();
+			m_distanceRenderB.free();
 			m_jumpFloodInitRender.free();
 			m_jumpFloodRenderPing.free();
 			m_jumpFloodRenderPong.free();
@@ -142,7 +151,8 @@ namespace WeirdEngine {
 			m_backgroundRender.free();
 			m_litSceneRender.free();
 
-			m_distanceTexture.dispose();
+			m_distanceTextureA.dispose();
+			m_distanceTextureB.dispose();
 			m_jumpFloodInitTexture.dispose();
 			m_jumpFloodTexturePing.dispose();
 			m_jumpFloodTexturePong.dispose();
@@ -175,9 +185,10 @@ namespace WeirdEngine {
 
 		void SDF2DRenderPipeline::renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta)
 		{
+			int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
+			m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
 
-
-			m_distanceRender.bind();
+			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
 			m_distanceShader.use();
 
 			// Set uniforms
@@ -195,7 +206,7 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_blendIterations", 1);
 
 			m_distanceShader.setUniform("t_colorTexture", 0);
-			m_distanceTexture.bind(0);
+			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
 
 			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_distanceShader.setUniform("t_shapeBuffer", 1);
@@ -220,7 +231,7 @@ namespace WeirdEngine {
 			m_jumpFloodInitShader.use();
 
 			m_distanceCorrectionShader.setUniform("t_distanceTexture", 0);
-			m_distanceTexture.bind(0);
+			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_jumpFloodInitShader);
 
@@ -264,7 +275,7 @@ namespace WeirdEngine {
 			m_distanceCorrectionShader.setUniform("u_time", time);
 
 			m_distanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
-			m_distanceTexture.bind(0);
+			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_distanceCorrectionShader.setUniform("t_distanceTexture", 1);
 			int lastIndex = pingpong ? 0 : 1;
@@ -282,7 +293,7 @@ namespace WeirdEngine {
 			m_distanceUpscalerShader.setUniform("u_targetResolution", vec2(m_config.renderWidth, m_config.renderHeight));
 			m_distanceUpscalerShader.setUniform("t_data", 0);
 
-			m_distanceTexture.bind(0);
+			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_distanceUpscalerShader);
 		}
@@ -381,7 +392,7 @@ namespace WeirdEngine {
 			if (m_config.useCorrectedDistance) {
 				m_distanceTextureCorrected.bind(3);
 			} else {
-				m_distanceTexture.bind(3);
+				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(3);
 			}
 
 			m_renderPlane.draw(m_lightingShader);

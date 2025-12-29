@@ -64,8 +64,12 @@ namespace WeirdEngine
 			Shader m_defaultBackgroundShader;
 			Shader m_lightingShader;
 
-			Texture m_distanceTexture;
-			RenderTarget m_distanceRender;
+			Texture m_distanceTextureA;
+			RenderTarget m_distanceRenderA;
+			Texture m_distanceTextureB;
+			RenderTarget m_distanceRenderB;
+			RenderTarget* m_distanceTextureDoubleBuffer[2];
+			int m_distanceTextureDoubleBufferIdx;
 
 			Texture m_jumpFloodInitTexture;
 			RenderTarget m_jumpFloodInitRender;

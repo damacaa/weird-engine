@@ -237,6 +237,7 @@ void main()
     // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
 
     finalDistance = min(previousDistance, finalDistance);
+    // finalDistance = fOpUnionSoft(previousDistance, finalDistance, 0.0025);
     #endif
 
 

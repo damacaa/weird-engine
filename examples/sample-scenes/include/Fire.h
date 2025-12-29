@@ -39,7 +39,7 @@ private:
 
 	void onCreate() override
 	{
-		m_renderMode = RenderMode::Simple3D;
+		m_renderMode = RenderMode::RayMarching3D;
 
 		// Base shaders
 		m_backgroundShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "backgroundGrid.frag");

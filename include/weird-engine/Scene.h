@@ -44,7 +44,6 @@ namespace WeirdEngine
 
 		enum class RenderMode
 		{
-			Simple3D,
 			RayMarching3D,
 			RayMarching2D,
 			RayMarchingBoth

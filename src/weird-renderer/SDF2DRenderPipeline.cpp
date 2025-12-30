@@ -196,7 +196,8 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 			m_oldCameraMatrix = camera.view;
 
-			glm::vec3 cameraPositionChange = camera.position - m_lastCameraPosition;
+			
+			cameraPositionChange = camera.position - m_lastCameraPosition;
 			m_lastCameraPosition = camera.position;
 			m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 
@@ -309,6 +310,8 @@ namespace WeirdEngine {
 			m_materialColorShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			m_materialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
 			m_materialColorShader.setUniform("u_materialBlendSpeed", m_config.materialBlendSpeed);
+			m_materialColorShader.setUniform("u_camPositionChange", cameraPositionChange);
+
 
 			m_materialColorShader.setUniform("t_materialDataTexture", 0);
 			m_distanceUpscaled.bind(0);

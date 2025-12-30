@@ -10,7 +10,7 @@ namespace WeirdEngine
         struct SimpleAudioRequest
         {
             float volume;
-            float soundSeed;
+            float frequency;
             bool spatial;
             vec3 position;
         };

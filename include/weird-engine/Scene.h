@@ -16,6 +16,8 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
+	constexpr int SOUND_QUEUE_SIZE = 16;
+
 	class Scene
 	{
 	public:
@@ -55,7 +57,7 @@ namespace WeirdEngine
 
 		float getFrictionSound();
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128>& getAudioQueue();
+		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 
 	protected:
 		virtual void onCreate() {};
@@ -107,7 +109,7 @@ namespace WeirdEngine
 
 		
 
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128> m_audioQueue;
+		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
 		float m_frictionSoundLevel{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
 

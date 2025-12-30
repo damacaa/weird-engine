@@ -85,6 +85,75 @@ namespace WeirdEngine {
             return ma_engine_get_channels(&g_engine);
         }
 
+        // Standard Reference: A4 = 440Hz
+        const float A4_FREQ = 440.0f;
+        const int A4_MIDI = 69;
+
+        // Helper: Convert Frequency to MIDI Note Number (e.g., 60.0 is Middle C)
+        float freqToMidi(float freq)
+        {
+            return 69.0f + 12.0f * std::log2(freq / 440.0f);
+        }
+
+        // Helper: Convert MIDI Note Number back to Frequency
+        float midiToFreq(float midiNote)
+        {
+            return 440.0f * std::pow(2.0f, (midiNote - 69.0f) / 12.0f);
+        }
+
+        /**
+         * rounds the input frequency to the nearest note in the C Major Pentatonic scale.
+         * Pentatonic scales are famous because almost any combination of notes
+         * within them sounds "pleasant" together.
+         */
+        float getPleasantFrequency(float inputFreq)
+        {
+            // 1. Convert input frequency to a continuous MIDI note value
+            float continuousNote = freqToMidi(inputFreq);
+
+            // 2. Round to nearest integer (nearest semitone)
+            int roundedNote = static_cast<int>(std::round(continuousNote));
+
+            // 3. Define a "Safe" Scale (C Major Pentatonic: C, D, E, G, A)
+            // Notes relative to C: 0, 2, 4, 7, 9
+            // This removes notes that create high tension (like F and B)
+            std::vector<int> allowedIntervals = {0, 2, 4, 7, 9};
+
+            // Find the note relative to C (MIDI % 12)
+            // We strictly want notes where (note % 12) matches our allowed intervals
+            // If the current note isn't allowed, find the closest one that is.
+
+            int closestNote = roundedNote;
+            int minDistance = 100;
+
+            // Search neighboring notes to find the closest allowed note
+            for (int offset = -2; offset <= 2; ++offset)
+            {
+                int candidate = roundedNote + offset;
+                int interval = candidate % 12; // Modulo 12 gets the note name (C, C#, etc.)
+
+                // Handle negative modulo results if freq is very low
+                if (interval < 0) interval += 12;
+
+                // Check if this interval is in our allowed list
+                for (int allowed : allowedIntervals)
+                {
+                    if (interval == allowed)
+                    {
+                        // If this allowed note is closer to original, pick it
+                        if (std::abs(candidate - continuousNote) < minDistance)
+                        {
+                            minDistance = std::abs(candidate - continuousNote);
+                            closestNote = candidate;
+                        }
+                    }
+                }
+            }
+
+            // 4. Convert back to frequency
+            return midiToFreq(static_cast<float>(closestNote));
+        }
+
         void AudioEngine::listen(Scene& scene)
         {
             auto& audioQueue = scene.getAudioQueue();
@@ -94,18 +163,49 @@ namespace WeirdEngine {
             SimpleAudioRequest request{};
             while (audioQueue.pop(request))
             {
-                float frequency = request.soundSeed;
+                float frequency = getPleasantFrequency(request.soundSeed);
+                float decay = 0.1f;
 
-                const float m_soundFalloff = 0.001f;
-                float distance = glm::distance2(request.position, cameraPosition);
-                float amp = request.spatial ? request.volume / (1.0f + (m_soundFalloff * distance)) : request.volume;
+                float amp = request.volume;
+                if (request.spatial)
+                {
+                    // 1. Calculate Distances
+                    // We need squared distance for spreading, and linear distance for absorption
+                    float distSq = glm::distance2(request.position, cameraPosition);
+                    float dist = std::sqrt(distSq);
 
-                float decay = 0.15f;
-                triggerCollision(frequency, amp, decay);
+                    // --- PHYSICS CONSTANTS (Tune these to your game scale) ---
+                    // Controls how fast sound dies in general (Inverse Square Law)
+                    const float FALLOFF_GEOMETRIC = 0.001f;
+
+                    // Controls how much air "eats" sound.
+                    // Real world is approx 0.000002, but in games use higher values (e.g. 0.00005)
+                    // to exaggerate the effect so players notice it.
+                    const float FALLOFF_AIR_ABSORPTION = 0.00005f;
+
+                    // 2. Geometric Spreading (Inverse Distance Model)
+                    // Energy dissipates over area. Affects all frequencies equally.
+                    // Using (1.0 + ...) prevents division by zero at close range.
+                    float geometricFactor = 1.0f / (1.0f + (FALLOFF_GEOMETRIC * distSq));
+
+                    // 3. Atmospheric Absorption (Exponential Decay)
+                    // Formula: e^(-coefficient * frequency * distance)
+                    // Higher Freq = Faster Decay. Further Dist = More Decay.
+                    float absorptionFactor = std::exp(-FALLOFF_AIR_ABSORPTION * frequency * dist);
+
+                    // Combine factors
+                    amp = request.volume * geometricFactor * absorptionFactor;
+                }
+
+                // Optimization: Don't play sounds that are effectively silent
+                if (amp > 0.001f)
+                {
+                    playSineSound(frequency, amp, decay);
+                }
             }
 
             float frictionValue = scene.getFrictionSound();
-            setFrictionLevel(0.5 * frictionValue);
+            setFrictionLevel(frictionValue);
         }
 
         // ------------------- Procedural Controls -------------------
@@ -145,7 +245,7 @@ namespace WeirdEngine {
         }
 
 
-        void AudioEngine::triggerCollision(float freq, float amp, float decaySec) {
+        void AudioEngine::playSineSound(float freq, float amp, float decaySec) {
             // Lock the mutex so the audio thread doesn't read while we write
             std::lock_guard<std::mutex> lock(voiceMutex);
 

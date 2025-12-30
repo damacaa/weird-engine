@@ -156,6 +156,11 @@ namespace WeirdEngine {
 
         void AudioEngine::listen(Scene& scene)
         {
+            // std::cout << activeVoices.size() << std::endl;
+
+            float frictionValue = scene.getFrictionSound();
+            setFrictionLevel(frictionValue);
+
             auto& audioQueue = scene.getAudioQueue();
             auto cameraPosition = scene.getCamera().position;
 
@@ -163,10 +168,10 @@ namespace WeirdEngine {
             SimpleAudioRequest request{};
             while (audioQueue.pop(request))
             {
-                float frequency = getPleasantFrequency(request.soundSeed);
+                float frequency = getPleasantFrequency(request.frequency);
                 float decay = 0.1f;
 
-                float amp = request.volume;
+                float amplitude = request.volume;
                 if (request.spatial)
                 {
                     // 1. Calculate Distances
@@ -194,18 +199,16 @@ namespace WeirdEngine {
                     float absorptionFactor = std::exp(-FALLOFF_AIR_ABSORPTION * frequency * dist);
 
                     // Combine factors
-                    amp = request.volume * geometricFactor * absorptionFactor;
+                    amplitude = request.volume * geometricFactor * absorptionFactor;
                 }
 
                 // Optimization: Don't play sounds that are effectively silent
-                if (amp > 0.001f)
+                if (amplitude > 0.001f)
                 {
-                    playSineSound(frequency, amp, decay);
+                    playSineSound(frequency, amplitude, decay);
+                    break;
                 }
             }
-
-            float frictionValue = scene.getFrictionSound();
-            setFrictionLevel(frictionValue);
         }
 
         // ------------------- Procedural Controls -------------------
@@ -225,7 +228,7 @@ namespace WeirdEngine {
             // 0.5f = Strong boost (square root)
             // 0.75f = Medium boost
             // 1.0f = No boost (linear)
-            constexpr float LOW_END_BOOST_EXPONENT = 0.5f;
+            constexpr float LOW_END_BOOST_EXPONENT = 0.25f;
             constexpr float MAX_AMPLITUDE = 0.75f;
             const float initialAmplitude = MAX_AMPLITUDE * pow(adjustedAmplitude, LOW_END_BOOST_EXPONENT);
 

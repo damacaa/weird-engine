@@ -17,6 +17,7 @@ public:
 private:
 	Entity m_star;
 	double m_lastSpawnTime = 0.0;
+	std:: vector<Entity> m_audioEntities;
 
 	void onStart() override
 	{
@@ -88,6 +89,18 @@ private:
 			textRenderer.material = 4;
 		}
 
+		for (int i = 0; i < 8; ++i)
+		{
+			// float value = AudioEngine::getAudioVisuals().waveform[i];
+			Entity e = m_ecs.createEntity();
+			auto& t = m_ecs.addComponent<Transform>(e);
+			t.position = vec3((i + 1) * 20, 20.0f, 0.0f);
+			auto& ui = m_ecs.addComponent<UIDot>(e);
+			ui.materialId = 4 + (i % 12);
+
+			m_audioEntities.push_back(e);
+		}
+
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
@@ -128,6 +141,21 @@ private:
 			cs.m_parameters[4] = static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5 + 2;
 			cs.m_parameters[3] = std::sin(3.1416f * m_simulation2D.getSimulationTime());
 			cs.m_isDirty = true;
+		}
+
+		auto audioVisualData = AudioEngine::getAudioVisuals();
+
+		if (audioVisualData.waveform.size() > 0)
+		{
+			int skip = audioVisualData.waveform.size() / m_audioEntities.size();
+			for (int i = 0; i < m_audioEntities.size(); ++i)
+			{
+				float value = audioVisualData.waveform[i * skip];
+				auto&t = m_ecs.getComponent<Transform>(m_audioEntities[i]);
+				float nextPos = Screen::rHeight - ((10.0f * std::sqrt(std::abs(value)) * glm::sign(value)) + 20.0f);
+				// t.position.y += (std::min)(nextPos - t.position.y, 100.0f * delta);
+				t.position.y = nextPos;
+			}
 		}
 
 		if (Input::GetKey(Input::E))

@@ -20,6 +20,12 @@ namespace WeirdEngine {
             bool finished = false;
         };
 
+        struct AudioVisualData {
+            float currentVolume = 0.0f;     // For pulsing size
+            float currentFriction = 0.0f;   // For static/jitter
+            std::vector<float> waveform;    // For oscilloscope effects (snapshot of last 256 samples)
+        };
+
         class AudioEngine {
         public:
             AudioEngine();
@@ -58,6 +64,16 @@ namespace WeirdEngine {
             // 2. Replace the single float variables with a vector of voices
             std::vector<CollisionVoice> activeVoices;
             std::mutex voiceMutex; // Essential for thread safety
+
+            // Visualizer
+        private:
+            // Add a mutex specifically for visual data to avoid locking the main audio processing too long
+            std::mutex visualMutex;
+            AudioVisualData visualSnapshot;
+
+        public:
+            // Call this every frame in your Render loop
+            static AudioVisualData getAudioVisuals();
         };
 
     } // namespace WeirdRenderer

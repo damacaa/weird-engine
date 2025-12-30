@@ -17,10 +17,12 @@
 #define M_PI 3.14159265359f
 #endif // !M_PI
 
+WeirdEngine::WeirdRenderer::AudioEngine* g_instance;
 
 namespace WeirdEngine {
     namespace WeirdRenderer {
         AudioEngine::AudioEngine() {
+            g_instance = this;
         }
 
         AudioEngine::~AudioEngine() {
@@ -156,12 +158,51 @@ namespace WeirdEngine {
 
         void AudioEngine::listen(Scene& scene)
         {
-            // std::cout << activeVoices.size() << std::endl;
-
             float frictionValue = scene.getFrictionSound();
             setFrictionLevel(frictionValue);
 
             auto& audioQueue = scene.getAudioQueue();
+
+            static int buffered = 0;
+            static SimpleAudioRequest buffered_request{};
+            static float lastTime = 0.0f;
+            const static float MIN_TIME = 0.15f;
+            const static float MAX_TIME = 1.0f;
+
+            float time = scene.getTime();
+            if (activeVoices.size() > 0 && (time - lastTime < MIN_TIME))
+            {
+
+                SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
+                while (audioQueue.pop(aux))
+                {
+                    buffered++;
+                    buffered_request.volume += aux.volume;
+                    buffered_request.frequency += aux.frequency;
+                    buffered_request.position += buffered_request.position;
+                }
+
+                return;
+            }
+
+            if (buffered)
+            {
+                float invBufferedAmount = 1.0f / static_cast<float>(buffered);
+                buffered_request.volume *= invBufferedAmount;
+                buffered_request.volume = (std::min)(buffered_request.volume, 1.0f);
+                buffered_request.frequency *= invBufferedAmount;
+                buffered_request.position *= invBufferedAmount;
+                audioQueue.push(buffered_request);
+                std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
+                buffered = 0;
+                buffered_request.volume *= 0.0f;
+                buffered_request.frequency *= 0.5f;
+                buffered_request.position = vec3(0.0f);
+            }
+
+            // std::cout << activeVoices.size() << std::endl;
+
+
             auto cameraPosition = scene.getCamera().position;
 
             // Process queue
@@ -205,6 +246,7 @@ namespace WeirdEngine {
                 // Optimization: Don't play sounds that are effectively silent
                 if (amplitude > 0.001f)
                 {
+                    lastTime = time;
                     playSineSound(frequency, amplitude, decay);
                     break;
                 }
@@ -264,6 +306,12 @@ namespace WeirdEngine {
             newVoice.finished = false;
 
             activeVoices.push_back(newVoice);
+        }
+
+        AudioVisualData AudioEngine::getAudioVisuals()
+        {
+            std::lock_guard<std::mutex> lock(g_instance->visualMutex);
+            return g_instance->visualSnapshot;
         }
 
         // ------------------- Updated Callback -------------------
@@ -337,6 +385,36 @@ namespace WeirdEngine {
             for (size_t i = 0; i < mix.size(); ++i) {
                 // Soft clipping (smoothly limits to -1.0 to 1.0 range)
                 mix[i] = std::tanh(mix[i]);
+            }
+
+            // --- NEW: CALCULATE VISUAL DATA ---
+            // Do this AFTER mixing but BEFORE SDL_PutAudioStreamData
+            if (audio) {
+                float sumSquares = 0.0f;
+
+                // 1. Calculate RMS (Volume)
+                // We iterate with a stride to save CPU (checking every 4th sample is enough for visuals)
+                for (size_t i = 0; i < mix.size(); i += 4) {
+                    sumSquares += mix[i] * mix[i];
+                }
+                float rms = std::sqrt(sumSquares / (mix.size() / 4));
+
+                // 2. Update the shared snapshot
+                {
+                    // Try_lock allows us to skip an update if the render thread is currently reading.
+                    // This prevents the audio thread from stuttering.
+                    if (audio->visualMutex.try_lock()) {
+                        audio->visualSnapshot.currentVolume = rms;
+                        audio->visualSnapshot.currentFriction = audio->smoothedFriction;
+
+                        // Grab a small chunk of the wave for visuals (e.g., last 128 samples)
+                        size_t captureSize = std::min((size_t)128, mix.size());
+                        audio->visualSnapshot.waveform.resize(captureSize);
+                        std::copy(mix.end() - captureSize, mix.end(), audio->visualSnapshot.waveform.begin());
+
+                        audio->visualMutex.unlock();
+                    }
+                }
             }
 
             // --- 5. Submit to SDL ---

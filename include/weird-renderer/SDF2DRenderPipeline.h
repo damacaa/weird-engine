@@ -107,6 +107,7 @@ namespace WeirdEngine
 			glm::vec3 m_lastCameraPosition;
 
 			bool horizontal = true;
+			glm::vec3 cameraPositionChange;
 
 			void renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta);
 			void applyJumpFloodCorrection(double time);

@@ -22,6 +22,8 @@ uniform float u_materialBlendSpeed = 60.0;
 uniform sampler2D t_materialDataTexture;
 uniform sampler2D t_currentColorTexture;
 uniform vec4 u_staticColors[16];
+uniform vec3 u_camPositionChange;
+
 
 vec3 randomColor(int index) {
     float seed = float(index) * 43758.5453;
@@ -44,12 +46,17 @@ void main()
     c = vec4(toLinear(c.rgb), c.a);
 
     // Get current material color
-    vec4 currentColor = texture(t_currentColorTexture, screenUV);
+    float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
+    float zoom = -u_camMatrix[3].z;
+    vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
+    previousDistanceOffset.x /= aspectRatio;
+
+    vec4 currentColor = texture(t_currentColorTexture, screenUV + previousDistanceOffset);
     currentColor = clamp(currentColor, 0.0, 1.0);
 
     // Blend new color with current color
     // Calculate zoom factor to reduce blending with distance
-    float zoom = -u_camMatrix[3].z;
+
     float zoomFactor = (zoom - 10.0) * 0.02;
     zoomFactor = smoothstep(0.0, 1.0, zoomFactor);
 

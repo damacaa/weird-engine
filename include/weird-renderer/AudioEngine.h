@@ -37,7 +37,7 @@ namespace WeirdEngine {
 
             // --- Procedural control ---
             void setFrictionLevel(float level);      // 0..1, continuous
-            void triggerCollision(float freq, float amp, float decaySec = 0.3f);
+            void playSineSound(float freq, float amp, float decaySec = 0.3f);
 
         private:
             ma_engine g_engine;

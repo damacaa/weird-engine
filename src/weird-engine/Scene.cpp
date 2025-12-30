@@ -31,14 +31,19 @@ namespace WeirdEngine
 		const float m_soundFalloff = 0.001f;
 		auto camPosition = self->getCamera().position; // Mutex?
 		float speed = glm::length2(event.velocity);
-		float frictionSample = event.friction * 0.1f * speed / (1.0f + (m_soundFalloff * glm::distance2(vec2(camPosition.x, camPosition.y), event.position)));
+		float frictionSample = event.friction * 0.1f * speed / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
 
 		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
 
 		if (event.state == CollisionState::START)
 		{
-			float volume = (std::min)(0.01f * speed, 1.0f);
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{ volume, 140.0f, true, vec3(event.position, 0.0f) });
+			float speedFactor = std::sqrt((std::min)(0.0001f * speed * speed, 1.0f));
+			float seed = 80.0f + (speedFactor * 220.0f);
+
+			float volume = std::abs(glm::dot(event.normal, event.velocity));
+			volume = std::min(volume, 1.0f);
+			volume = volume * volume;
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{ volume, seed, true, vec3(event.position, 0.0f) });
 		}
 	}
 
@@ -206,7 +211,7 @@ namespace WeirdEngine
 		return m_drawQueue;
 	}
 
-	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, 128>& Scene::getAudioQueue()
+	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
 	{
 		return m_audioQueue;
 	}

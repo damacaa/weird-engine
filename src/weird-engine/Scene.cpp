@@ -28,7 +28,7 @@ namespace WeirdEngine
 		Scene *self = static_cast<Scene*>(userData);
 		self->onShapeCollision(event);
 
-		const float m_soundFalloff = 0.001f;
+		const float m_soundFalloff = 0.1f;
 		auto camPosition = self->getCamera().position; // Mutex?
 		float speed = glm::length2(event.velocity);
 		float frictionSample = event.friction * 0.005f * speed / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
@@ -37,14 +37,15 @@ namespace WeirdEngine
 
 		if (event.state == CollisionState::START)
 		{
-			float speedFactor = std::sqrt((std::min)(0.0001f * speed * speed, 1.0f));
+			float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
+			float volume = speedFactor;
 			
-			float freqFactor = std::abs(glm::dot(event.normal, glm::normalize(event.velocity)));
-			freqFactor *= 0.75f;
-			freqFactor = freqFactor * freqFactor;
-			float frequency = 120.0f + (freqFactor * 180.0f);
+			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
+			freqFactor *= 0.05f;
+			// freqFactor = freqFactor * freqFactor;
+			float frequency = 140.0f + (freqFactor * 300.0f);
 
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{speedFactor, frequency, true, vec3(event.position, 0.0f) });
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, true, vec3(event.position, 0.0f) });
 		}
 	}
 

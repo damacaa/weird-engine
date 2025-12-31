@@ -158,6 +158,9 @@ namespace WeirdEngine {
 
         void AudioEngine::listen(Scene& scene)
         {
+            if (Input::GetKeyDown(Input::C))
+                playSineSound(getPleasantFrequency(200.0f), 1.0f, 0.1f);
+
             float frictionValue = scene.getFrictionSound();
             setFrictionLevel(frictionValue);
 
@@ -165,14 +168,13 @@ namespace WeirdEngine {
 
             static int buffered = 0;
             static SimpleAudioRequest buffered_request{0.0f, 0.0f, true, vec3(0.0f)};
-            static float lastTime = 0.0f;
-            const static float MIN_TIME = 0.5f;
+            static float nextTime = 0.0f;
+            const static float MIN_TIME = 0.2f;
             const static float MAX_TIME = 1.0f;
 
             float time = SDL_GetTicks() / 1000.0f;
-            float delta = time - lastTime;
 
-            if (activeVoices.size() > 0 && (delta < MIN_TIME))
+            if (activeVoices.size() > 0 && (time < nextTime))
             {
 
                 SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
@@ -180,7 +182,7 @@ namespace WeirdEngine {
                 {
                     buffered++;
                     buffered_request.volume += aux.volume;
-                    buffered_request.frequency += aux.frequency;
+                    buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
                     buffered_request.position += buffered_request.position;
                 }
 
@@ -194,20 +196,20 @@ namespace WeirdEngine {
                 {
                     buffered++;
                     buffered_request.volume += aux.volume;
-                    buffered_request.frequency += aux.frequency;
+                    buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
                     buffered_request.position += buffered_request.position;
                 }
 
                 float invBufferedAmount = 1.0f / static_cast<float>(buffered + 1);
                 // buffered_request.volume *= invBufferedAmount;
-                buffered_request.volume = (std::min)(buffered_request.volume, 0.7f);
-                buffered_request.frequency *= invBufferedAmount;
+                buffered_request.volume = (std::min)(buffered_request.volume, 1.0f);
+                // buffered_request.frequency *= invBufferedAmount;
                 buffered_request.position *= invBufferedAmount;
                 audioQueue.push(buffered_request);
                 std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
                 buffered = 0;
-                buffered_request.volume *= 0.0f;
-                buffered_request.frequency *= 0.0f;
+                buffered_request.volume = 0.0f;
+                buffered_request.frequency = 0.0f;
                 buffered_request.position = vec3(0.0f);
             }
 
@@ -221,8 +223,6 @@ namespace WeirdEngine {
             while (audioQueue.pop(request))
             {
                 float frequency = getPleasantFrequency(request.frequency);
-                float decay = 0.15f;
-
                 float amplitude = request.volume;
                 if (request.spatial)
                 {
@@ -255,11 +255,14 @@ namespace WeirdEngine {
                 }
 
                 // Optimization: Don't play sounds that are effectively silent
-                if (amplitude > 0.001f)
+                if (amplitude > 0.01f)
                 {
-                    lastTime = time;
+                    float randLength = static_cast<float>(std::rand() % 2) + 1.0f;
+
+                    float decay = 0.15f * randLength;
+                    nextTime = time + (MIN_TIME * randLength);
                     playSineSound(frequency, amplitude, decay);
-                    break;
+                    return;
                 }
             }
         }
@@ -273,7 +276,7 @@ namespace WeirdEngine {
             const float normalizedFriction = (std::min)(level / MAX_FRICTION, 1.0f);
 
             // Remove min audible and compensate
-            constexpr float MIN_AUDIBLE = 0.01f;
+            constexpr float MIN_AUDIBLE = 0.001f;
             constexpr float MIN_COMPENSATION = 1.0f / (1.0f - MIN_AUDIBLE);
             const float adjustedAmplitude = (std::max)(normalizedFriction - MIN_AUDIBLE, 0.0f) * MIN_COMPENSATION;
 
@@ -281,7 +284,7 @@ namespace WeirdEngine {
             // 0.5f = Strong boost (square root)
             // 0.75f = Medium boost
             // 1.0f = No boost (linear)
-            constexpr float LOW_END_BOOST_EXPONENT = 0.25f;
+            constexpr float LOW_END_BOOST_EXPONENT = 0.5f;
             constexpr float MAX_AMPLITUDE = 0.75f;
             const float initialAmplitude = MAX_AMPLITUDE * pow(adjustedAmplitude, LOW_END_BOOST_EXPONENT);
 

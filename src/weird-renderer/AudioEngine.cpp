@@ -206,7 +206,8 @@ namespace WeirdEngine {
                 // buffered_request.frequency *= invBufferedAmount;
                 buffered_request.position *= invBufferedAmount;
                 audioQueue.push(buffered_request);
-                std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
+                // std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
+
                 buffered = 0;
                 buffered_request.volume = 0.0f;
                 buffered_request.frequency = 0.0f;
@@ -309,7 +310,7 @@ namespace WeirdEngine {
             std::lock_guard<std::mutex> lock(voiceMutex);
 
             // Optional: Limit max polyphony to prevent CPU overload
-            if (activeVoices.size() > 32) return;
+            if (activeVoices.size() > 4) return;
 
             CollisionVoice newVoice;
             newVoice.frequency = freq;
@@ -356,8 +357,12 @@ namespace WeirdEngine {
             // --- 3. Collision Tones (Polyphonic) ---
 
             // Lock mutex to safely access the vector
+            // Lock mutex to safely access the vector
             {
                 std::lock_guard<std::mutex> lock(audio->voiceMutex);
+
+                // Define a short attack time (e.g., 10ms) to prevent popping
+                const float ATTACK_TIME = 0.01f;
 
                 for (auto& voice : audio->activeVoices) {
                     if (voice.finished) continue;
@@ -365,7 +370,15 @@ namespace WeirdEngine {
                     const float phaseInc = 2.0f * M_PI * voice.frequency / SAMPLE_RATE;
 
                     for (ma_uint32 i = 0; i < framesToWrite; ++i) {
+                        // 1. Calculate the standard decay envelope
                         float env = voice.amplitude * expf(-voice.time / voice.decay);
+
+                        // 2. APPLY ATTACK RAMP (The Fix)
+                        // If time is less than ATTACK_TIME, scale from 0.0 to 1.0
+                        if (voice.time < ATTACK_TIME) {
+                            env *= (voice.time / ATTACK_TIME);
+                        }
+
                         float sample = env * sinf(voice.phase);
 
                         voice.phase += phaseInc;

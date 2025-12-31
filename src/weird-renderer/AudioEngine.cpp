@@ -170,7 +170,7 @@ namespace WeirdEngine {
             const static float MAX_TIME = 1.0f;
 
             float time = scene.getTime();
-            if (activeVoices.size() > 0 && (time - lastTime < MIN_TIME))
+            if (activeVoices.size() > 5 && (time - lastTime < MIN_TIME))
             {
 
                 SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
@@ -210,7 +210,7 @@ namespace WeirdEngine {
             while (audioQueue.pop(request))
             {
                 float frequency = getPleasantFrequency(request.frequency);
-                float decay = 0.1f;
+                float decay = 0.15f;
 
                 float amplitude = request.volume;
                 if (request.spatial)

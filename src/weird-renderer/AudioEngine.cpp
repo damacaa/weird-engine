@@ -164,13 +164,15 @@ namespace WeirdEngine {
             auto& audioQueue = scene.getAudioQueue();
 
             static int buffered = 0;
-            static SimpleAudioRequest buffered_request{};
+            static SimpleAudioRequest buffered_request{0.0f, 0.0f, true, vec3(0.0f)};
             static float lastTime = 0.0f;
-            const static float MIN_TIME = 0.15f;
+            const static float MIN_TIME = 0.5f;
             const static float MAX_TIME = 1.0f;
 
-            float time = scene.getTime();
-            if (activeVoices.size() > 5 && (time - lastTime < MIN_TIME))
+            float time = SDL_GetTicks() / 1000.0f;
+            float delta = time - lastTime;
+
+            if (activeVoices.size() > 0 && (delta < MIN_TIME))
             {
 
                 SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
@@ -187,16 +189,25 @@ namespace WeirdEngine {
 
             if (buffered)
             {
-                float invBufferedAmount = 1.0f / static_cast<float>(buffered);
-                buffered_request.volume *= invBufferedAmount;
-                buffered_request.volume = (std::min)(buffered_request.volume, 1.0f);
+                SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
+                while (audioQueue.pop(aux))
+                {
+                    buffered++;
+                    buffered_request.volume += aux.volume;
+                    buffered_request.frequency += aux.frequency;
+                    buffered_request.position += buffered_request.position;
+                }
+
+                float invBufferedAmount = 1.0f / static_cast<float>(buffered + 1);
+                // buffered_request.volume *= invBufferedAmount;
+                buffered_request.volume = (std::min)(buffered_request.volume, 0.7f);
                 buffered_request.frequency *= invBufferedAmount;
                 buffered_request.position *= invBufferedAmount;
                 audioQueue.push(buffered_request);
                 std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
                 buffered = 0;
                 buffered_request.volume *= 0.0f;
-                buffered_request.frequency *= 0.5f;
+                buffered_request.frequency *= 0.0f;
                 buffered_request.position = vec3(0.0f);
             }
 

@@ -38,12 +38,13 @@ namespace WeirdEngine
 		if (event.state == CollisionState::START)
 		{
 			float speedFactor = std::sqrt((std::min)(0.0001f * speed * speed, 1.0f));
-			float frequency = 80.0f + (speedFactor * 220.0f);
+			
+			float freqFactor = std::abs(glm::dot(event.normal, glm::normalize(event.velocity)));
+			freqFactor *= 0.75f;
+			freqFactor = freqFactor * freqFactor;
+			float frequency = 120.0f + (freqFactor * 180.0f);
 
-			float volume = std::abs(glm::dot(event.normal, glm::normalize(event.velocity)));
-			volume *= 0.75f;
-			volume = volume * volume;
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, true, vec3(event.position, 0.0f) });
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{speedFactor, frequency, true, vec3(event.position, 0.0f) });
 		}
 	}
 

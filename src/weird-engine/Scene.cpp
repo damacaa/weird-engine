@@ -31,17 +31,18 @@ namespace WeirdEngine
 		const float m_soundFalloff = 0.1f;
 		auto camPosition = self->getCamera().position; // Mutex?
 		float speed = glm::length2(event.velocity);
-		float frictionSample = event.friction * 0.005f * speed / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
+		float frictionSample = event.friction * 0.01f * speed / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
 
 		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
 
 		if (event.state == CollisionState::START)
 		{
-			float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
-			float volume = speedFactor;
+			// float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
+			float penetrationFactor = std::sqrt((std::min)(2.0f * event.penetration, 1.0f));
+			float volume = penetrationFactor;
 			
 			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
-			freqFactor *= 0.05f;
+			freqFactor *= 0.01f;
 			// freqFactor = freqFactor * freqFactor;
 			float frequency = 140.0f + (freqFactor * 300.0f);
 

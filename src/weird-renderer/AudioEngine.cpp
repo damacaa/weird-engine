@@ -21,7 +21,10 @@ WeirdEngine::WeirdRenderer::AudioEngine* g_instance;
 
 namespace WeirdEngine {
     namespace WeirdRenderer {
-        AudioEngine::AudioEngine() {
+
+        constexpr int MAX_ACTIVE_VOICES = 16;
+
+        AudioEngine::AudioEngine() : mute(false) {
             g_instance = this;
         }
 
@@ -158,6 +161,9 @@ namespace WeirdEngine {
 
         void AudioEngine::listen(Scene& scene)
         {
+            if (mute)
+                return;
+
             if (Input::GetKeyDown(Input::C))
                 playSineSound(getPleasantFrequency(200.0f), 1.0f, 0.1f);
 
@@ -170,11 +176,10 @@ namespace WeirdEngine {
             static SimpleAudioRequest buffered_request{0.0f, 0.0f, true, vec3(0.0f)};
             static float nextTime = 0.0f;
             const static float MIN_TIME = 0.2f;
-            const static float MAX_TIME = 1.0f;
 
             float time = SDL_GetTicks() / 1000.0f;
 
-            if (activeVoices.size() > 0 && (time < nextTime))
+            if ((time < nextTime) && !activeVoices.empty())
             {
 
                 SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
@@ -184,12 +189,13 @@ namespace WeirdEngine {
                     buffered_request.volume += aux.volume;
                     buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
                     buffered_request.position += buffered_request.position;
+                    buffered_request.spatial = buffered_request.spatial || aux.spatial;
                 }
 
                 return;
             }
 
-            if (buffered)
+            if (buffered && activeVoices.size() < MAX_ACTIVE_VOICES)
             {
                 SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
                 while (audioQueue.pop(aux))
@@ -198,6 +204,7 @@ namespace WeirdEngine {
                     buffered_request.volume += aux.volume;
                     buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
                     buffered_request.position += buffered_request.position;
+                    buffered_request.spatial = buffered_request.spatial || aux.spatial;
                 }
 
                 float invBufferedAmount = 1.0f / static_cast<float>(buffered + 1);
@@ -212,6 +219,7 @@ namespace WeirdEngine {
                 buffered_request.volume = 0.0f;
                 buffered_request.frequency = 0.0f;
                 buffered_request.position = vec3(0.0f);
+                buffered_request.spatial = false;
             }
 
             // std::cout << activeVoices.size() << std::endl;
@@ -304,13 +312,12 @@ namespace WeirdEngine {
             }
         }
 
-
         void AudioEngine::playSineSound(float freq, float amp, float decaySec) {
             // Lock the mutex so the audio thread doesn't read while we write
             std::lock_guard<std::mutex> lock(voiceMutex);
 
             // Optional: Limit max polyphony to prevent CPU overload
-            if (activeVoices.size() > 4) return;
+            if (activeVoices.size() > MAX_ACTIVE_VOICES) return;
 
             CollisionVoice newVoice;
             newVoice.frequency = freq;
@@ -392,7 +399,7 @@ namespace WeirdEngine {
                     }
 
                     // Check if voice is effectively silent
-                    if (voice.amplitude * expf(-voice.time / voice.decay) < 0.001f) {
+                    if (voice.time > ATTACK_TIME && voice.amplitude * expf(-voice.time / voice.decay) < 0.001f) {
                         voice.finished = true;
                     }
                 }

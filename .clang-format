@@ -1,0 +1,44 @@
+---
+Language:        Cpp
+# Start with the Microsoft base style, which handles Windows headers and macros well
+BasedOnStyle:    Microsoft
+
+# Visual Studio Standard: Allman style (curly braces on new lines)
+BreakBeforeBraces: Allman
+
+# Visual Studio Standard: 4 spaces for indentation, no tabs
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Never
+
+# Align pointers to the type (int* p) rather than variable (int *p)
+PointerAlignment: Left
+
+# Access Modifiers (public/private) usually align with the class definition
+# Because content is indented by 4, we pull modifiers back by 4.
+AccessModifierOffset: -4
+
+# Indentation logic
+IndentCaseLabels: true
+IndentRequires:  true
+NamespaceIndentation: None
+
+# Line breaking and Column limits
+ColumnLimit:     120
+
+# C++ Version
+Standard:        Latest
+
+# Sort includes (mimics VS "Organize Imports" behavior)
+SortIncludes:    CaseInsensitive
+
+# Specific Visual Studio nuances
+AllowShortFunctionsOnASingleLine: Empty
+BreakAfterAttributes: Always
+BreakBeforeBinaryOperators: None
+BreakConstructorInitializers: BeforeComma
+FixNamespaceComments: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false
+...

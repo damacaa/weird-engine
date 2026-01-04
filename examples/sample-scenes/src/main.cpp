@@ -3,8 +3,8 @@
 
 #include <weird-engine.h>
 
-#include "CollisionHandling.h"
 #include "Classic.h"
+#include "CollisionHandling.h"
 #include "DestroyScene.h"
 #include "Fire.h"
 #include "ImageScene.h"
@@ -19,7 +19,7 @@ WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 
 int main()
 {
-	SceneManager &sceneManager = SceneManager::getInstance();
+	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");

@@ -173,15 +173,9 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
 
 
 
-float renderShadows(vec2 uv)
+float renderShadows(vec2 uv, vec2 rd)
 {
     #ifdef SHADOWS_ENABLED
-
-    // Point light
-    vec2 rd = normalize(vec2(1.0) - uv);
-
-    // Directional light
-    // vec2 rd = u_directionalLightDirection.xy;
 
     float mapDistance = map(uv);
     float minD = mapDistance;
@@ -257,8 +251,13 @@ void main()
 
     float zoom = -u_camMatrix[3].z;
 
-    vec2 rd = normalize(vec2(1.0) - screenUV);
-    float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd));
+    // Point light
+    // vec2 rd = normalize(vec2(1.0) - screenUV);
+
+    // Directional light
+    vec2 rd = u_directionalLightDirection.xy;
+
+    float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd), rd);
     float light = calculateLight(screenUV, rd, normal, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Refraction

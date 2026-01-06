@@ -23,7 +23,7 @@ AccessModifierOffset: -4
 # Indentation logic
 IndentCaseLabels: true
 IndentRequires:  true
-NamespaceIndentation: None
+NamespaceIndentation: All
 
 # Line breaking and Column limits
 # Set to 0 to disable line wrapping, or keep 120 as a guideline

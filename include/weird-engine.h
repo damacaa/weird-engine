@@ -79,12 +79,27 @@ namespace WeirdEngine
 			// Capture window input
 			Input::update(renderer.getWindow());
 
+			bool newResolution = false;
 			SDL_Event event;
 			while (SDL_PollEvent(&event))
 			{
 				if (event.type == SDL_EVENT_QUIT)
 				{
 					quit = true;
+				}
+				else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+
+					// OPTION A: Get size directly from the event data
+					int newWidth = event.window.data1;
+					int newHeight = event.window.data2;
+
+					// OPTION B (Safer): Query the window explicitly to be sure
+					// SDL_GetWindowSizeInPixels(window, &newWidth, &newHeight);
+
+					std::cout << "Window resized to: " << newWidth << "x" << newHeight << std::endl;
+
+					renderer.setWindowSize(newWidth, newHeight);
+					newResolution = true;
 				}
 				else
 				{
@@ -107,6 +122,8 @@ namespace WeirdEngine
 			audioEngine.listen(*scene);
 
 			// Render scene
+			if (newResolution)
+				scene->forceShaderRefresh();
 			renderer.render(*scene, time, delta);
 		}
 

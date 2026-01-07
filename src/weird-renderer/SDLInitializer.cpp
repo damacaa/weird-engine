@@ -21,7 +21,7 @@ namespace WeirdEngine {
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
             SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-            window = SDL_CreateWindow("Weird Engine", width, height, SDL_WINDOW_OPENGL);
+            window = SDL_CreateWindow("Weird Engine", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
             if (!window) {
                 throw std::runtime_error("Failed to create SDL window.");
             }

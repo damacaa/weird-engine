@@ -128,14 +128,18 @@ namespace WeirdEngine
 
 	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
 	{
-		// m_sdfRenderSystem2D.updatePalette(shader);
-
 		m_sdfRenderSystem2D.updateCustomShapesShader(shader, m_sdfs);
 	}
 	
 	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
 	{
 		m_UIRenderSystem.updateCustomShapesShader(shader, m_sdfs);
+	}
+
+	void Scene::forceShaderRefresh()
+	{
+		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+		m_UIRenderSystem.shaderNeedsUpdate() = true;
 	}
 
 	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)

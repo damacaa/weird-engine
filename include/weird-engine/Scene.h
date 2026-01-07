@@ -29,6 +29,7 @@ namespace WeirdEngine
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
+		void forceShaderRefresh();
 		void update(double delta, double time);
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);

@@ -36,10 +36,7 @@ namespace WeirdEngine {
 		{
 			GL_CHECK_ERROR();
 
-			Screen::width = m_windowWidth;
-			Screen::height = m_windowHeight;
-			Screen::rWidth = m_renderWidth;
-			Screen::rHeight = m_renderHeight;
+			setWindowSize(m_windowWidth, m_windowHeight);
 
 			// Load shaders (only 3D and output shaders now)
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -53,68 +50,13 @@ namespace WeirdEngine {
 			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
 			GL_CHECK_ERROR();
 
-			// Initialize 3D rendering resources
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_geometryRender = RenderTarget(false);
-			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
-			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
 
-			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_3DSceneRender = RenderTarget(false);
-			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
-			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
-
-			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_combinationRender = RenderTarget(false);
-			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
-
-			m_outputResolutionRender = RenderTarget(false);
-
-			m_renderPlane = RenderPlane();
-
-			GL_CHECK_ERROR();
-
-			// Initialize world 2D pipeline
-			SDF2DRenderPipeline::Config worldConfig;
-			worldConfig.renderWidth = m_renderWidth;
-			worldConfig.renderHeight = m_renderHeight;
-			worldConfig.distanceSampleScale = m_distanceSampleScale;
-			worldConfig.renderScale = m_renderScale;
-			worldConfig.dataMode = SDF2DRenderPipeline::DataMode::WORLD;
-			worldConfig.originAtBottomLeft = false;
-			worldConfig.enableShadows = true;
-			worldConfig.enableRefraction = true;
-			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
-			worldConfig.enableMotionBlur = true;
-			worldConfig.enableDithering = false;
-			worldConfig.useCorrectedDistance = true;
-			worldConfig.materialBlendIterations = 1;
-			worldConfig.materialBlendSpeed = 10.0f;
-			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
-
-			// Initialize UI 2D pipeline
-			SDF2DRenderPipeline::Config uiConfig;
-			uiConfig.renderWidth = m_renderWidth;
-			uiConfig.renderHeight = m_renderHeight;
-			uiConfig.distanceSampleScale = m_distanceSampleScale;
-			uiConfig.renderScale = m_renderScale;
-			uiConfig.dataMode = SDF2DRenderPipeline::DataMode::UI;
-			uiConfig.originAtBottomLeft = true;
-			uiConfig.enableShadows = false;
-			uiConfig.enableRefraction = true;
-			uiConfig.enableAntialiasing = true;
-			uiConfig.enableMotionBlur = true;
-			uiConfig.enableDithering = true;
-			uiConfig.useCorrectedDistance = false; // UI doesn't need correction
-			uiConfig.materialBlendIterations = 1;
-			uiConfig.materialBlendSpeed = 5.0f;
-			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			m_3DShapeDataBuffer = new DataBuffer();
 
 			GL_CHECK_ERROR();
+
+
 
 			// Enable culling
 			glCullFace(GL_FRONT);
@@ -123,27 +65,13 @@ namespace WeirdEngine {
 
 		Renderer::~Renderer()
 		{
-			// Delete pipelines
-			delete m_worldPipeline;
-			delete m_uiPipeline;
-
+			freeAll();
 			// Delete all the other objects we've created
 			m_geometryShaderProgram.free();
 			m_instancedGeometryShaderProgram.free();
 			m_3DsdfShaderProgram.free();
 			m_combineScenesShaderProgram.free();
 			m_outputShaderProgram.free();
-
-			m_geometryRender.free();
-			m_3DSceneRender.free();
-			m_combinationRender.free();
-			m_outputResolutionRender.free();
-
-			m_geometryTexture.dispose();
-			m_geometryDepthTexture.dispose();
-			m_3DSceneTexture.dispose();
-			m_combineResultTexture.dispose();
-
 			delete m_3DShapeDataBuffer;
 		}
 
@@ -306,6 +234,80 @@ namespace WeirdEngine {
 			}
 		}
 
+		void Renderer::setWindowSize(unsigned int width, unsigned int height)
+		{
+			m_windowWidth = width;
+			m_windowHeight = height;
+			m_renderWidth = width * m_renderScale;
+			m_renderHeight = height * m_renderScale;
+
+			Screen::width = m_windowWidth;
+			Screen::height = m_windowHeight;
+			Screen::rWidth = m_renderWidth;
+			Screen::rHeight = m_renderHeight;
+
+			freeAll();
+
+			// Initialize 3D rendering resources
+			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
+			m_geometryRender = RenderTarget(false);
+			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
+			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
+
+			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
+			m_3DSceneRender = RenderTarget(false);
+			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
+			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
+
+			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
+			m_combinationRender = RenderTarget(false);
+			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
+
+			m_outputResolutionRender = RenderTarget(false);
+
+			m_renderPlane = RenderPlane();
+
+			GL_CHECK_ERROR();
+
+			// Initialize world 2D pipeline
+			SDF2DRenderPipeline::Config worldConfig;
+			worldConfig.renderWidth = m_renderWidth;
+			worldConfig.renderHeight = m_renderHeight;
+			worldConfig.distanceSampleScale = m_distanceSampleScale;
+			worldConfig.renderScale = m_renderScale;
+			worldConfig.dataMode = SDF2DRenderPipeline::DataMode::WORLD;
+			worldConfig.originAtBottomLeft = false;
+			worldConfig.enableShadows = true;
+			worldConfig.enableRefraction = true;
+			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
+			worldConfig.enableMotionBlur = true;
+			worldConfig.enableDithering = false;
+			worldConfig.useCorrectedDistance = true;
+			worldConfig.materialBlendIterations = 1;
+			worldConfig.materialBlendSpeed = 10.0f;
+			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
+
+			// Initialize UI 2D pipeline
+			SDF2DRenderPipeline::Config uiConfig;
+			uiConfig.renderWidth = m_renderWidth;
+			uiConfig.renderHeight = m_renderHeight;
+			uiConfig.distanceSampleScale = m_distanceSampleScale;
+			uiConfig.renderScale = m_renderScale;
+			uiConfig.dataMode = SDF2DRenderPipeline::DataMode::UI;
+			uiConfig.originAtBottomLeft = true;
+			uiConfig.enableShadows = false;
+			uiConfig.enableRefraction = true;
+			uiConfig.enableAntialiasing = true;
+			uiConfig.enableMotionBlur = true;
+			uiConfig.enableDithering = true;
+			uiConfig.useCorrectedDistance = false; // UI doesn't need correction
+			uiConfig.materialBlendIterations = 1;
+			uiConfig.materialBlendSpeed = 5.0f;
+			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+		}
+
 		void Renderer::output(Scene& scene, Texture& texture, const double delta)
 		{
 			// Render UI
@@ -353,6 +355,26 @@ namespace WeirdEngine {
 			SDL_GL_SwapWindow(m_window);
 
 			GL_CHECK_ERROR();
+		}
+
+		void Renderer::freeAll()
+		{
+			if (!m_worldPipeline)
+				return;
+
+			// Delete pipelines
+			delete m_worldPipeline;
+			delete m_uiPipeline;
+
+			m_geometryRender.free();
+			m_3DSceneRender.free();
+			m_combinationRender.free();
+			m_outputResolutionRender.free();
+
+			m_geometryTexture.dispose();
+			m_geometryDepthTexture.dispose();
+			m_3DSceneTexture.dispose();
+			m_combineResultTexture.dispose();
 		}
 
 		SDL_Window* Renderer::getWindow()

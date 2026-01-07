@@ -29,6 +29,7 @@ namespace WeirdEngine
 			~Renderer();
 			void render(Scene& scene, const double time, const double delta);
 			void setWindowTitle(const char* name);
+			void setWindowSize(unsigned int width, unsigned int height);
 
 			SDL_Window* getWindow();
 
@@ -92,6 +93,8 @@ namespace WeirdEngine
 				glm::vec4(0.5f, 0.5f, 1.0f, 1.0f), // Light Blue
 				glm::vec4(0.4f, 0.25f, 0.1f, 1.0f) // Brown
 			};
+
+			void freeAll();
 		};
 
 

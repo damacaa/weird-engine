@@ -60,6 +60,13 @@ namespace WeirdEngine {
 				m_lightingShader.addDefine("ANTIALIASING");
 			}
 
+			if(m_config.debugDistanceField) {
+				m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
+			}
+			if(m_config.debugMaterialColors) {
+				m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
+			}
+
 			// Initialize textures and render targets
 			m_distanceTextureA = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderA = RenderTarget(false);

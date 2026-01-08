@@ -36,6 +36,8 @@ namespace WeirdEngine
 				bool useCorrectedDistance;
 				int materialBlendIterations;
 				float materialBlendSpeed;
+				bool debugDistanceField;
+				bool debugMaterialColors;
 			};
 
 			SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane);

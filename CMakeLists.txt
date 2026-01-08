@@ -95,6 +95,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     SHADERS_PATH="${WEIRD_ENGINE_SHADERS_PATH}"
 )
 
+# target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 
 #
 set_target_properties(${PROJECT_NAME} PROPERTIES

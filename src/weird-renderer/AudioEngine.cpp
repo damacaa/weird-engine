@@ -442,7 +442,7 @@ namespace WeirdEngine {
                         audio->visualSnapshot.currentFriction = audio->smoothedFriction;
 
                         // Grab a small chunk of the wave for visuals (e.g., last 128 samples)
-                        size_t captureSize = std::min((size_t)128, mix.size());
+                        size_t captureSize = (std::min)((size_t)128, mix.size());
                         audio->visualSnapshot.waveform.resize(captureSize);
                         std::copy(mix.end() - captureSize, mix.end(), audio->visualSnapshot.waveform.begin());
 

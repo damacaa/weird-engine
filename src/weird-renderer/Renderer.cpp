@@ -33,6 +33,8 @@ namespace WeirdEngine {
 			, m_renderWidth(width * m_renderScale)
 			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
+			, m_uiPipeline(nullptr)
+			, m_worldPipeline(nullptr)
 		{
 			GL_CHECK_ERROR();
 
@@ -287,6 +289,8 @@ namespace WeirdEngine {
 			worldConfig.useCorrectedDistance = true;
 			worldConfig.materialBlendIterations = 1;
 			worldConfig.materialBlendSpeed = 10.0f;
+			worldConfig.debugDistanceField = false;
+			worldConfig.debugMaterialColors = false;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline
@@ -305,6 +309,8 @@ namespace WeirdEngine {
 			uiConfig.useCorrectedDistance = false; // UI doesn't need correction
 			uiConfig.materialBlendIterations = 1;
 			uiConfig.materialBlendSpeed = 5.0f;
+			uiConfig.debugDistanceField = false;
+			uiConfig.debugMaterialColors = false;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 		}
 

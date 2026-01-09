@@ -44,7 +44,7 @@ namespace WeirdEngine
 			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
 			freqFactor *= 0.01f;
 			// freqFactor = freqFactor * freqFactor;
-			float frequency = 140.0f + (freqFactor * 300.0f);
+			float frequency = 200.0f + (freqFactor * 300.0f);
 
 			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, true, vec3(event.position, 0.0f) });
 		}

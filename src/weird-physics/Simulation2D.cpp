@@ -248,7 +248,7 @@ namespace WeirdEngine
 
 				collisionEvent.normal = normalize(vec2(d1, d2));
 
-				if (map(p - ((m_radious + 0.01f) * collisionEvent.normal)) <= 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				if (map(p - ((m_radious) * collisionEvent.normal)) <= 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					float penetration = m_radious - d;
 					currentCollision = true;

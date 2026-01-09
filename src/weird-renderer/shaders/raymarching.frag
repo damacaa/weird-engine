@@ -190,7 +190,7 @@ float map(vec3 p)
 
     //float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
     // float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
-    float planeDist = fPlane(p, vec3(0, 1, 0), (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
+    float planeDist = fPlane(p, vec3(0, 1, 0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
 
 
     res = min(res, planeDist);
@@ -320,7 +320,7 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 }
 
 
-vec4 render(in vec2 uv, in vec4 originalColor)
+vec4 render(in vec2 uv)
 {
 
     // Ray origin
@@ -404,13 +404,13 @@ void main()
     uv.x *= aspectRatio;
 
     // Calculate true z value from the depth buffer: https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
-    float depth = texture(t_depthTexture, screenUV).r;
-    float z_n = 2.0 * depth - 1.0;
-    float z_e = 2.0 * NEAR * FAR / (FAR + NEAR - z_n * (FAR - NEAR));
+    // float depth = texture(t_depthTexture, screenUV).r;
+    // float z_n = 2.0 * depth - 1.0;
+    // float z_e = 2.0 * NEAR * FAR / (FAR + NEAR - z_n * (FAR - NEAR));
 
-    vec4 originalColor = texture(t_colorTexture, screenUV);
+    // vec4 originalColor = texture(t_colorTexture, screenUV);
 
-    vec4 col = render(uv, originalColor);
+    vec4 col = render(uv);
 
     col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 

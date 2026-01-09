@@ -26,19 +26,15 @@ namespace WeirdEngine {
 		Renderer::Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window)
 			:
 			m_window(window)
-			, m_windowWidth(width)
-			, m_windowHeight(height)
 			, m_distanceSampleScale(0.5f)
 			, m_renderScale(1.0f)
-			, m_renderWidth(width * m_renderScale)
-			, m_renderHeight(height * m_renderScale)
 			, m_vSyncEnabled(true)
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 		{
 			GL_CHECK_ERROR();
 
-			setWindowSize(m_windowWidth, m_windowHeight);
+			setWindowSize(width, height);
 
 			// Load shaders (only 3D and output shaders now)
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -100,30 +96,30 @@ namespace WeirdEngine {
 			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 
-			bool renderMeshesOnly = false;
+			bool enable3DSDFs = true;
 
 
 			// Render geometry
 			if (enable3D)
 			{
 				// Set up framebuffer for 3D scene rendering
-				glBindFramebuffer(GL_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
+				m_3DSceneRender.bind();
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 				glClearColor(0, 0, 0, 1);
+				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
+				glClearDepth(1.0f); // Make sure depth buffer is initialized correctly
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
 				glEnable(GL_DEPTH_TEST);
 				glDepthFunc(GL_LESS); // Ensure depth comparison is 'less than'
 				glDepthMask(GL_TRUE); // Write to depth buffer
+				glDisable(GL_BLEND);
 
-				// Render ray marching only for background (do not affect depth buffer)
-				if (!renderMeshesOnly)
+				// Render ray marching
+				// TODO: render meshes before ray marching to reduce overdraw
+				if (enable3DSDFs)
 				{
-					// glDepthMask(GL_FALSE); // Disable depth writing during ray marching
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 					// Draw ray marching stuff
 					m_3DsdfShaderProgram.use();
 
@@ -147,9 +143,9 @@ namespace WeirdEngine {
 					m_geometryDepthTexture.bind(1);
 
 					// Upload and bind shapes for ray marching
-					static uint32_t DataSize3D;
+					static uint32_t DataSize3D = 0;
 					static WeirdRenderer::Dot2D* Data3D = nullptr;
-					scene.get2DShapesData(Data3D, DataSize3D);
+					// scene.get2DShapesData(Data3D, DataSize3D);
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
 					m_3DShapeDataBuffer->uploadData<Dot2D>(Data3D, DataSize3D);
 					m_3DShapeDataBuffer->bind(2);
@@ -165,9 +161,6 @@ namespace WeirdEngine {
 					m_geometryTexture.unbind();
 					m_geometryDepthTexture.unbind();
 					m_3DShapeDataBuffer->unbind();
-
-					// glDepthMask(GL_TRUE); // Re-enable depth writing after ray marching
-					glDisable(GL_BLEND);
 				}
 
 				// Render 3D geometry objects (with depth writing)
@@ -182,10 +175,7 @@ namespace WeirdEngine {
 
 				// Draw objects in the scene (3D models)
 				scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-
-				glDisable(GL_DEPTH_TEST); // No depth test for the final pass
-				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
-				glClearDepth(1.0f); // Make sure depth buffer is initialized correctly
+				
 
 				GL_CHECK_ERROR();
 
@@ -214,16 +204,25 @@ namespace WeirdEngine {
 				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta, enable3D ? &m_3DSceneTexture : nullptr);
 				m_lit2DSceneTexture = &t;
 
-				output(scene, t, delta);
+				if(!enable3D)
+				{
+					output(scene, t, delta);
+					return;
+				}
 			}
 
+			m_combinationRender.bind();
+			m_combineScenesShaderProgram.use();
+			m_combineScenesShaderProgram.setUniform("u_time", scene.getTime());
+			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 0);
+			m_3DSceneTexture.bind(0);
+			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 1);
+			m_lit2DSceneTexture->bind(1);
+			
+			m_renderPlane.draw(m_combineScenesShaderProgram);
 
-
-
-
-
-
-
+			output(scene, m_combineResultTexture, delta);
 		}
 
 
@@ -337,6 +336,7 @@ namespace WeirdEngine {
 			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, uiCamera, time, delta, &texture);
 
 			// TODO: abstract this
+			glDisable(GL_DEPTH_TEST);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glViewport(0, 0, m_windowWidth, m_windowHeight);
 

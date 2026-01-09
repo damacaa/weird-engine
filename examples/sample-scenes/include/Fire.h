@@ -466,11 +466,17 @@ class FireSceneRayMarching : public FireScene
 private:
 	void onStart() override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
-
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
 		cameraTransform.position = vec3(0.0f, 2.0f, 10.0f);
 		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
+
+		{
+			Entity text = m_ecs.createEntity();
+			m_ecs.addComponent<Transform>(text);
+			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
+			textRenderer.text = "Fire Scene - Ray Marching 3D";
+			textRenderer.material = 10; // UI material
+		}
 	}
 };

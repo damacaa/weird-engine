@@ -103,9 +103,9 @@ private:
         m_lineTexture->bind(1);
 
         glDisable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
+        // glEnable(GL_BLEND);
         m_renderPlane->draw(*m_combinationShader);
-        glDisable(GL_BLEND);
+        // glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
 };

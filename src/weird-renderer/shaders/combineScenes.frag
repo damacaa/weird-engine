@@ -19,4 +19,6 @@ void main()
     FragColor = mix(color2D, color3D, color3D.a).xyz;
     //FragColor = mix(color2D, color3D, screenUV.x).xyz;
 
+    // FragColor = max(color2D, color3D).xyz;
+
 }

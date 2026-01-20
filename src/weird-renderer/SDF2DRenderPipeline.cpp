@@ -324,7 +324,7 @@ namespace WeirdEngine {
 			m_distanceUpscaled.bind(0);
 
 			m_materialColorShader.setUniform("t_currentColorTexture", 1);
-			m_postProcessDoubleBuffer[0]->getColorAttachment()->bind(1);
+			m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(1);
 
 			m_renderPlane.draw(m_materialColorShader);
 		}
@@ -378,7 +378,7 @@ namespace WeirdEngine {
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);
-			static bool horizontal = true;
+
 			if (m_materialBlendIterations > 0) {
 				m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
 			} else {

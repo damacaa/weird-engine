@@ -45,11 +45,14 @@ namespace WeirdEngine
 			recompile();
 		}
 
-		static bool isFileModified(const char* filename, time_t& lastModifiedTime) {
+		static bool isFileModified(const char* filename, time_t& lastModifiedTime)
+		{
 
 			struct stat result;
-			if (stat(filename, &result) == 0) {
-				if (lastModifiedTime != result.st_mtime) {
+			if (stat(filename, &result) == 0)
+			{
+				if (lastModifiedTime != result.st_mtime)
+				{
 					lastModifiedTime = result.st_mtime;
 					return true;
 				}
@@ -90,7 +93,6 @@ namespace WeirdEngine
 		{
 			std::string code = get_file_contents(m_fragmentFile);
 
-
 			return code;
 		}
 
@@ -102,8 +104,10 @@ namespace WeirdEngine
 
 		void Shader::addDefine(const std::string& name)
 		{
-			for (const auto& define : m_activeDefines) {
-				if (define == name) return;
+			for (const auto& define : m_activeDefines)
+			{
+				if (define == name)
+					return;
 			}
 			m_activeDefines.push_back(name);
 			m_needsRecompile = true;
@@ -112,7 +116,8 @@ namespace WeirdEngine
 		void Shader::removeDefine(const std::string& name)
 		{
 			auto it = std::remove(m_activeDefines.begin(), m_activeDefines.end(), name);
-			if (it != m_activeDefines.end()) {
+			if (it != m_activeDefines.end())
+			{
 				m_activeDefines.erase(it, m_activeDefines.end());
 			}
 			m_needsRecompile = true;
@@ -131,6 +136,23 @@ namespace WeirdEngine
 
 			m_activeDefines.push_back(name);
 			m_needsRecompile = true;
+		}
+
+		GLint Shader::getUniformLocation(const std::string& name) const
+		{
+			// Check if we already found this location
+			auto it = m_uniformLocationCache.find(name);
+			if (it != m_uniformLocationCache.end())
+			{
+				return it->second;
+			}
+
+			// If not found, ask OpenGL
+			GLint location = glGetUniformLocation(ID, name.c_str());
+
+			// Cache it (even if it's -1, so we don't keep asking for invalid names)
+			m_uniformLocationCache[name] = location;
+			return location;
 		}
 
 		void Shader::recompile()
@@ -163,7 +185,8 @@ namespace WeirdEngine
 			// 1. Handle the first line (e.g. #version) so defines come AFTER it
 			size_t firstLineEnd = fragmentCode.find('\n');
 
-			if (firstLineEnd != std::string::npos) {
+			if (firstLineEnd != std::string::npos)
+			{
 				firstLineEnd += 1; // Include the newline character
 				// Append the first line to the buffer
 				fragmentCodeAfterIncludes.append(fragmentCode.substr(lastPos, firstLineEnd));
@@ -172,17 +195,20 @@ namespace WeirdEngine
 			}
 
 			// 2. Insert Defines
-			for (auto& define : m_activeDefines) {
+			for (auto& define : m_activeDefines)
+			{
 				fragmentCodeAfterIncludes.append("#define ");
 				fragmentCodeAfterIncludes.append(define);
 				fragmentCodeAfterIncludes.append("\n");
 			}
 
 			// 3. Process Includes
-			for (; it != end && includeIndex < m_includedFragmentContents.size(); ++it, ++includeIndex) {
+			for (; it != end && includeIndex < m_includedFragmentContents.size(); ++it, ++includeIndex)
+			{
 				// Safety Check: If an include matches on the first line (which we already copied),
 				// skip it to avoid string index underflows.
-				if (static_cast<size_t>(it->position()) < lastPos) {
+				if (static_cast<size_t>(it->position()) < lastPos)
+				{
 					continue;
 				}
 
@@ -206,8 +232,7 @@ namespace WeirdEngine
 			// Checks if Shader compiled succesfully
 			compileErrors(vertexShader, "VERTEX");
 
-
-			//const char* fragmentSource = InsertDependencies(fragmentSource);
+			// const char* fragmentSource = InsertDependencies(fragmentSource);
 
 			// Create Fragment Shader Object and get its reference
 			GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -231,6 +256,8 @@ namespace WeirdEngine
 			// Delete the now useless Vertex and Fragment Shader objects
 			glDeleteShader(vertexShader);
 			glDeleteShader(fragmentShader);
+
+			m_uniformLocationCache.clear();
 		}
 
 		// Checks if the different Shaders have compiled properly
@@ -245,7 +272,8 @@ namespace WeirdEngine
 				glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
-					std::cout << "Compiling Shader Program:" <<"\n	VS: "<< m_vertexFile <<"\n	FS: "<< m_fragmentFile << std::endl;
+					std::cout << "Compiling Shader Program:" << "\n	VS: " << m_vertexFile
+							  << "\n	FS: " << m_fragmentFile << std::endl;
 					glGetShaderInfoLog(shader, 1024, NULL, infoLog);
 					std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << infoLog << std::endl;
 				}
@@ -255,11 +283,12 @@ namespace WeirdEngine
 				glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
-					std::cout << "Compiling Shader Program:" <<"\n	VS: "<< m_vertexFile <<"\n	FS: "<< m_fragmentFile << std::endl;
+					std::cout << "Compiling Shader Program:" << "\n	VS: " << m_vertexFile
+							  << "\n	FS: " << m_fragmentFile << std::endl;
 					glGetProgramInfoLog(shader, 1024, NULL, infoLog);
 					std::cout << "SHADER_LINKING_ERROR for:" << type << "\n" << infoLog << std::endl;
 				}
 			}
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

@@ -2,6 +2,7 @@
 #include "weird-renderer/AudioEngine.h"
 #include <iostream>
 #include <stdexcept>
+#include <csignal>
 #include <glad/glad.h>
 
 namespace WeirdEngine 

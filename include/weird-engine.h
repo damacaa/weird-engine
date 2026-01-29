@@ -116,7 +116,7 @@ namespace WeirdEngine
 			// Load next scene if requested
 			if (scene->isSceneComplete())
 			{
-				auto& nextScene = scene->getNextScene();
+				const auto& nextScene = scene->getNextScene();
 				if (!nextScene.empty())
 				{
 					sceneManager.loadScene(nextScene);

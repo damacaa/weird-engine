@@ -64,6 +64,10 @@ private:
 
   void onUpdate(float delta) override
   {
+    if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
   }
 
   float m_lastTime = 0.0f;

@@ -20,6 +20,11 @@ private:
 
 	void onUpdate(float delta) override
 	{
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+		
 		if (m_testEntityCreated && (getTime() - m_lastSpawnTime) > 0.5f && Input::GetKeyDown(Input::U))
 		{
 			for (size_t i = 0; i < m_testEntity.size(); i++)

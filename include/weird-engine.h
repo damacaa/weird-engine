@@ -20,13 +20,6 @@ extern "C"
 	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
 }
 
-// int start(const char* projectPath);
-// int main() {
-//	const char* projectPath = "SampleProject/";
-//	start(projectPath);
-// }
-//
-
 namespace WeirdEngine
 {
 	using namespace WeirdRenderer;
@@ -40,9 +33,7 @@ namespace WeirdEngine
 		AudioEngine audioEngine;
 		SDLInitializer m_sdlInitializer(width, height, window, audioEngine);
 		Renderer renderer(width, height, window);
-
-		// audioEngine.loadSound(SHADERS_PATH "sample.wav");
-
+		
 		// Scenes
 		sceneManager.loadScene(0);
 
@@ -107,11 +98,6 @@ namespace WeirdEngine
 				}
 			}
 
-			// Load next scene
-			if (Input::GetKeyDown(Input::Q))
-			{
-				sceneManager.loadNextScene();
-			}
 
 			auto scene = sceneManager.getCurrentScene();
 
@@ -124,7 +110,22 @@ namespace WeirdEngine
 			// Render scene
 			if (newResolution)
 				scene->forceShaderRefresh();
+			
 			renderer.render(*scene, time, delta);
+
+			// Load next scene if requested
+			if (scene->isSceneComplete())
+			{
+				auto& nextScene = scene->getNextScene();
+				if (!nextScene.empty())
+				{
+					sceneManager.loadScene(nextScene);
+				}
+				else
+				{
+					sceneManager.loadNextScene();
+				}
+			}
 		}
 
 		std::cout << "Quitting..." << std::endl;

@@ -60,6 +60,9 @@ namespace WeirdEngine
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 
+		bool isSceneComplete() const { return m_isSceneComplete; };
+		std::string getNextScene() const {return m_nextScene; };
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
@@ -69,6 +72,14 @@ namespace WeirdEngine
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
 		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
+
+		void setSceneComplete(std::string nextScene = "") 
+		{
+			m_isSceneComplete = true;
+			m_nextScene = nextScene;
+		};
+
+		
 
 		ECSManager m_ecs;
 		Entity m_mainCamera;
@@ -120,5 +131,8 @@ namespace WeirdEngine
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(CollisionEvent& event, void* userData);
 		static void handleShapeCollision(ShapeCollisionEvent& event, void* userData);
+
+		std::string m_nextScene;
+		bool m_isSceneComplete = false;
 	};
 }

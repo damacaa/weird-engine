@@ -67,6 +67,15 @@ namespace WeirdEngine
 
 			// Set the callback function
 			glDebugMessageCallback(MessageCallback, 0);
+
+			GLuint ignoreIDs[] = {
+                131185, // Buffer object successfully created
+                131218, // Material/Shader state info
+                131204 // Texture state info
+            };
+
+            // Ignore non-significant error/warning codes
+			glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 3, ignoreIDs, GL_FALSE);
 #endif
 
 			// Audio Stream Setup

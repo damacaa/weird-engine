@@ -1,7 +1,6 @@
 #pragma once
 
 #include <weird-engine.h>
-#include "weird-renderer/Debug.h"
 
 using namespace WeirdEngine;
 class FireScene : public Scene
@@ -317,8 +316,6 @@ private:
 
 		glDepthMask(GL_TRUE);
 
-		GL_CHECK_ERROR();
-
 		// Render stuff
 		m_litShader.use();
 		m_litShader.setUniform("u_time", (float)time);
@@ -352,7 +349,7 @@ private:
 		m_cube->draw(m_litShader, sceneCamera, vec3(-2.0f, 2.75f, 0.9f), vec3(-0.75f, 0.0f, 0), vec3(1));
 
 
-		GL_CHECK_ERROR();
+		
 
 		// m_cube->draw(m_litShader, sceneCamera, vec3(0, 0.0f, 0), vec3(0), vec3(0.1f, 2.0f, 0.1f));
 
@@ -382,7 +379,7 @@ private:
 		m_heatDistortionShader.setUniform("t_flameShape", 2);
 		m_flameShape->bind(2);
 
-		GL_CHECK_ERROR();
+		
 
 		// Time to animate effect
 		m_heatDistortionShader.setUniform("u_time", (float)time);

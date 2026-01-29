@@ -4,9 +4,28 @@
 #include <stdexcept>
 #include <glad/glad.h>
 
-namespace WeirdEngine {
-    namespace WeirdRenderer {
-        SDLInitializer::SDLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
+namespace WeirdEngine 
+{
+    namespace WeirdRenderer 
+    {
+		void APIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+									  const GLchar* message, const void* userParam)
+		{
+			fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+					(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+
+			// If it's a high-severity error, break the debugger!
+			if (severity == GL_DEBUG_SEVERITY_HIGH)
+			{
+#ifdef _WIN32
+				__debugbreak(); // This acts as a breakpoint
+#else
+				raise(SIGTRAP);
+#endif
+			}
+		}
+
+		SDLInitializer::SDLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
         {
             audioEngine.init();
 
@@ -39,9 +58,18 @@ namespace WeirdEngine {
                 throw std::runtime_error("Failed to initialize GLAD.");
             }
 
+#ifndef NDEBUG
+			// Enable debug output
+			glEnable(GL_DEBUG_OUTPUT);
 
+			// Forces the callback to happen on the same thread, immediately during the offending call
+			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
-            // Audio Stream Setup
+			// Set the callback function
+			glDebugMessageCallback(MessageCallback, 0);
+#endif
+
+			// Audio Stream Setup
             SDL_AudioSpec desiredSpec;
             SDL_memset(&desiredSpec, 0, sizeof(desiredSpec));
             desiredSpec.freq = audioEngine.getSampleRate();

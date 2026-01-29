@@ -1,5 +1,4 @@
 #include "weird-renderer/Renderer.h"
-#include "weird-renderer/Debug.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
@@ -32,27 +31,27 @@ namespace WeirdEngine {
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 		{
-			GL_CHECK_ERROR();
+			
 
 			setWindowSize(width, height);
 
 			// Load shaders (only 3D and output shaders now)
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
-			GL_CHECK_ERROR();
+			
 			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
-			GL_CHECK_ERROR();
+			
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
-			GL_CHECK_ERROR();
+			
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
-			GL_CHECK_ERROR();
+			
 			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
-			GL_CHECK_ERROR();
+			
 
 
 
 			m_3DShapeDataBuffer = new DataBuffer();
 
-			GL_CHECK_ERROR();
+			
 
 
 
@@ -75,6 +74,8 @@ namespace WeirdEngine {
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
+			
+
 			if (m_vSyncEnabled)
 			{
 				SDL_GL_SetSwapInterval(1); // Enable VSync
@@ -152,7 +153,7 @@ namespace WeirdEngine {
 
 					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
 
-					GL_CHECK_ERROR();
+					
 
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);
@@ -177,7 +178,7 @@ namespace WeirdEngine {
 				scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 				
 
-				GL_CHECK_ERROR();
+				
 
 				if (!enable2D)
 				{
@@ -194,6 +195,9 @@ namespace WeirdEngine {
 			Texture* m_lit2DSceneTexture = nullptr;
 			if (enable2D)
 			{
+				
+
+			
 				m_worldPipeline->getDistanceShader().use();
 				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
 
@@ -270,7 +274,7 @@ namespace WeirdEngine {
 
 			m_renderPlane = RenderPlane();
 
-			GL_CHECK_ERROR();
+			
 
 			// Initialize world 2D pipeline
 			SDF2DRenderPipeline::Config worldConfig;
@@ -357,10 +361,7 @@ namespace WeirdEngine {
 				m_finalResultTexture.saveToDisk("output_texture.png");
 			}
 
-
 			SDL_GL_SwapWindow(m_window);
-
-			GL_CHECK_ERROR();
 		}
 
 		void Renderer::freeAll()

@@ -1,5 +1,4 @@
 #include "weird-renderer/SDF2DRenderPipeline.h"
-#include "weird-renderer/Debug.h"
 #include "weird-engine/vec.h"
 #include <algorithm>
 
@@ -124,8 +123,6 @@ namespace WeirdEngine {
 				m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_litSceneRender = RenderTarget(false);
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
-
-			GL_CHECK_ERROR();
 		}
 
 		SDF2DRenderPipeline::~SDF2DRenderPipeline()
@@ -224,8 +221,6 @@ namespace WeirdEngine {
 			m_renderPlane.draw(m_distanceShader);
 
 			m_shapeDataBuffer.unbind();
-
-			GL_CHECK_ERROR();
 		}
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)

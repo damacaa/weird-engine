@@ -16,6 +16,8 @@ const float NEAR = 0.1f;
 const float FAR = 1.4f;
 const float NORMAL_EPSILON = 0.05;
 
+const float SHADOW_VALUE = 0.85;
+
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
@@ -129,7 +131,7 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
     float lightNormalDot = -(dot(-rd, normal));
 
     float zoom = -u_camMatrix[3].z;
-    float light = mix(1.0, max(1.0, lightNormalDot * 2.0 - (innerDistance * 10.0 * zoom)), shadows - 0.85);
+    float light = mix(1.0, max(1.0, lightNormalDot * 2.0 - (innerDistance * 10.0 * zoom)), shadows - SHADOW_VALUE);
 
     #ifndef SHADOWS_ENABLED
     light = 1.0;
@@ -188,7 +190,7 @@ float renderShadows(vec2 uv, vec2 rd)
 
     float shadowFactor = raymarchInfo.y;
     // mix(ShadowColor, LightColor, factor)
-    float shadowValue = mix(0.85, 1.0, shadowFactor);
+    float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
     //    const float NORMAL_EPSILON = 0.001;
     //    vec2 p = uv;
@@ -258,6 +260,31 @@ void main()
     vec2 rd = u_directionalLightDirection.xy;
 
     float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd), rd);
+
+    // if(shadows > SHADOW_VALUE && shadows < 1.0 && dot(rd, normal) > 0.5)
+    // {
+    //     shadows = 0.95;
+    // }
+
+    {
+        // 1. Calculate how much each condition is "active" (0.0 to 1.0)
+        // Fades in as distance goes from 0.01 down to 0.0
+        float distFactor = smoothstep(0.01, 0.0, distance);
+
+        // Fades in as dot product goes from 0.5 up to 0.7
+        float dotFactor = smoothstep(0.5, 0.7, dot(rd, normal));
+
+        // Fades in near the shadow boundaries to avoid hard lines at SHADOW_VALUE and 1.0
+        // This creates a "mask" that is strongest when shadows are in the middle of your range
+        float shadowMask = smoothstep(SHADOW_VALUE, 0.90, shadows) * smoothstep(1.0, 0.95, shadows);
+
+        // 2. Combine the factors into a single strength value
+        float strength = distFactor * dotFactor * shadowMask;
+
+        // 3. Linearly interpolate between the original shadow and your "reduced" shadow (0.95)
+        shadows = mix(shadows, 0.99, strength);
+    }
+
     float light = calculateLight(screenUV, rd, normal, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
 
     // Refraction

@@ -4,56 +4,34 @@
 #include <SDL3/SDL_hints.h>
 #include <sys/stat.h>
 
-// SETTINGS
-static bool USE_CORRECTED_DISTANCE_TEXTURE = true;
-
-namespace WeirdEngine {
-	namespace WeirdRenderer {
-
-
-
-		static int largestPowerOfTwoBelow(int n) {
-			int p = 1;
-			while (p * 2 <= n) {
-				p *= 2;
-			}
-			return p;
-		}
-
-
-
+namespace WeirdEngine
+{
+	namespace WeirdRenderer
+	{
 		Renderer::Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window)
-			:
-			m_window(window)
+			: m_window(window)
 			, m_distanceSampleScale(0.5f)
 			, m_renderScale(1.0f)
 			, m_vSyncEnabled(true)
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 		{
-			
 
 			setWindowSize(width, height);
 
-			// Load shaders (only 3D and output shaders now)
+			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
-			
-			m_instancedGeometryShaderProgram = Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
-			
+
+			m_instancedGeometryShaderProgram =
+				Shader(SHADERS_PATH "default_instancing.vert", SHADERS_PATH "default.frag");
+
 			m_3DsdfShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "raymarching.frag");
-			
+
 			m_combineScenesShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "combineScenes.frag");
-			
+
 			m_outputShaderProgram = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "output.frag");
-			
-
-
 
 			m_3DShapeDataBuffer = new DataBuffer();
-
-			
-
-
 
 			// Enable culling
 			glCullFace(GL_FRONT);
@@ -74,8 +52,6 @@ namespace WeirdEngine {
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
-			
-
 			if (m_vSyncEnabled)
 			{
 				SDL_GL_SetSwapInterval(1); // Enable VSync
@@ -90,25 +66,25 @@ namespace WeirdEngine {
 			// Updates and exports the camera matrix to the Vertex Shader
 			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
-			auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
-
-			//
+			// Determine render mode
 			auto renderMode = scene.getRenderMode();
-			bool enable2D = renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
+			bool enable2D =
+				renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 
 			bool enable3DSDFs = true;
 
-
 			// Render geometry
 			if (enable3D)
 			{
+				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
+
 				// Set up framebuffer for 3D scene rendering
 				m_3DSceneRender.bind();
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 				glClearColor(0, 0, 0, 1);
 				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
-				glClearDepth(1.0f); // Make sure depth buffer is initialized correctly
+				glClearDepth(1.0f);	  // Make sure depth buffer is initialized correctly
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
@@ -153,8 +129,6 @@ namespace WeirdEngine {
 
 					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
 
-					
-
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);
 
@@ -176,9 +150,6 @@ namespace WeirdEngine {
 
 				// Draw objects in the scene (3D models)
 				scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
-				
-
-				
 
 				if (!enable2D)
 				{
@@ -187,7 +158,6 @@ namespace WeirdEngine {
 				}
 			}
 
-
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
 
@@ -195,9 +165,6 @@ namespace WeirdEngine {
 			Texture* m_lit2DSceneTexture = nullptr;
 			if (enable2D)
 			{
-				
-
-			
 				m_worldPipeline->getDistanceShader().use();
 				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
 
@@ -205,10 +172,11 @@ namespace WeirdEngine {
 				static WeirdRenderer::Dot2D* data = nullptr;
 				scene.get2DShapesData(data, dataSize);
 
-				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta, enable3D ? &m_3DSceneTexture : nullptr);
+				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta,
+												  enable3D ? &m_3DSceneTexture : nullptr);
 				m_lit2DSceneTexture = &t;
 
-				if(!enable3D)
+				if (!enable3D)
 				{
 					output(scene, t, delta);
 					return;
@@ -223,13 +191,11 @@ namespace WeirdEngine {
 			m_3DSceneTexture.bind(0);
 			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 1);
 			m_lit2DSceneTexture->bind(1);
-			
+
 			m_renderPlane.draw(m_combineScenesShaderProgram);
 
 			output(scene, m_combineResultTexture, delta);
 		}
-
-
 
 		void Renderer::setWindowTitle(const char* name)
 		{
@@ -273,8 +239,6 @@ namespace WeirdEngine {
 			m_outputResolutionRender = RenderTarget(false);
 
 			m_renderPlane = RenderPlane();
-
-			
 
 			// Initialize world 2D pipeline
 			SDF2DRenderPipeline::Config worldConfig;
@@ -323,7 +287,7 @@ namespace WeirdEngine {
 			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
 			static glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
 			static glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);;
+			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);
 
 			static WeirdRenderer::Camera uiCamera(vec3(0.0f, 0.0f, 0.0f));
 			uiCamera.view = cameraMatrix;
@@ -353,7 +317,6 @@ namespace WeirdEngine {
 			m_finalResultTexture.bind(0);
 
 			m_renderPlane.draw(m_outputShaderProgram);
-
 
 			// Screenshot
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
@@ -389,5 +352,5 @@ namespace WeirdEngine {
 			return m_window;
 		}
 
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

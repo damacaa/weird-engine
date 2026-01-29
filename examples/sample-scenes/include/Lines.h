@@ -56,6 +56,11 @@ private:
 
     void onUpdate(float delta) override
     {
+        if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+        
         Transform &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
         cameraTransform.position.y = 5.0f;
         cameraTransform.position.z -= 10.0f * delta;

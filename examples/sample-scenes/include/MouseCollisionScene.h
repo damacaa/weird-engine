@@ -62,6 +62,11 @@ private:
 	{
 		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+
 		// Move wall to mouse
 		{
 			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_cursorShape);

@@ -113,6 +113,10 @@ private:
   {
     g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
+    if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
 
 
     auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
@@ -143,12 +147,12 @@ private:
     if(Input::GetMouseButton(Input::RightClick))
     {
       vec2 v = mousePositionInWorld - m_initialMousePositionInWorld;
-      m_circleRadioud = std::min(10.0f, length(v));
+      m_circleRadioud = (std::min)(10.0f, length(v));
     }
     else
     {
       m_circleRadioud -= delta * 10.0f * (m_circleRadioud + 1.0f);
-      m_circleRadioud = std::max(0.0f, m_circleRadioud);
+      m_circleRadioud = (std::max)(0.0f, m_circleRadioud);
     }
 
 
@@ -168,7 +172,7 @@ private:
       CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle2);
     	cs.m_parameters[0] = m_initialMousePositionInWorld.x;
 			cs.m_parameters[1] = m_initialMousePositionInWorld.y;
-      cs.m_parameters[2] = std::max(0.0f, m_circleRadioud - 0.1f);
+      cs.m_parameters[2] = (std::max)(0.0f, m_circleRadioud - 0.1f);
 
 			cs.m_isDirty = true;
     }

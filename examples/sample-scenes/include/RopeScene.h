@@ -135,6 +135,11 @@ private:
 	{
 		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
 
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+
 		// Animate custom shape over time
 		{
 			auto& cs = m_ecs.getComponent<CustomShape>(m_star);

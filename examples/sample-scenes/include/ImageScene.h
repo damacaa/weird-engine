@@ -145,6 +145,11 @@ private:
 
 	void onUpdate(float delta) override
 	{
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+		
 		// Get colors
 		if (Input::GetKeyDown(Input::P))
 		{

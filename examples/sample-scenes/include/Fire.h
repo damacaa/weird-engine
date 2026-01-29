@@ -215,6 +215,11 @@ private:
 	float m_time = 3.1416f;
 	void onUpdate(float delta) override
 	{
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+		
 		if (m_debugFly)
 		{
 			return;

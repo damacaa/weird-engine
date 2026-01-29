@@ -44,6 +44,11 @@ private:
 
 	void onUpdate(float delta) override
 	{
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+		
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
 		{

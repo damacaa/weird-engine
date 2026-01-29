@@ -23,7 +23,7 @@ private:
   Entity m_circle;
   Entity m_circle2 = 0;
   Entity m_text = 0;
-  float m_circleRadioud = 0.0f;
+  float m_circleRadious = 0.0f;
   vec2 m_initialMousePositionInWorld;
 
   std::vector<Entity> m_uiPoints;
@@ -147,12 +147,12 @@ private:
     if(Input::GetMouseButton(Input::RightClick))
     {
       vec2 v = mousePositionInWorld - m_initialMousePositionInWorld;
-      m_circleRadioud = (std::min)(10.0f, length(v));
+      m_circleRadious = (std::min)(10.0f, length(v));
     }
     else
     {
-      m_circleRadioud -= delta * 10.0f * (m_circleRadioud + 1.0f);
-      m_circleRadioud = (std::max)(0.0f, m_circleRadioud);
+      m_circleRadious -= delta * 10.0f * (m_circleRadious + 1.0f);
+      m_circleRadious = (std::max)(0.0f, m_circleRadious);
     }
 
 
@@ -160,8 +160,8 @@ private:
 
       CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle);
     	cs.m_parameters[0] = m_initialMousePositionInWorld.x;
-			cs.m_parameters[1] = m_initialMousePositionInWorld.y;
-      cs.m_parameters[2] = m_circleRadioud;
+			cs.m_parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
+      cs.m_parameters[2] = m_circleRadious;
 
 			cs.m_isDirty = true;
     }
@@ -172,7 +172,7 @@ private:
       CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle2);
     	cs.m_parameters[0] = m_initialMousePositionInWorld.x;
 			cs.m_parameters[1] = m_initialMousePositionInWorld.y;
-      cs.m_parameters[2] = (std::max)(0.0f, m_circleRadioud - 0.1f);
+      cs.m_parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
 
 			cs.m_isDirty = true;
     }

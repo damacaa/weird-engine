@@ -4,10 +4,10 @@
 #include <vector>
 
 #include "MathExpressions.h"
+#include "StarShape.h"
 
 namespace WeirdEngine
 {
-
 	// OLD STYLE
 	namespace DefaultShapes
 	{
@@ -29,6 +29,8 @@ namespace WeirdEngine
 		protected:
 			std::vector<float> m_values;
 
+			static constexpr uint8_t VALUES_SIZE = 11;
+
 			static constexpr uint8_t TIME = 8;
 			static constexpr uint8_t WORLD_X = 9;
 			static constexpr uint8_t WORLD_Y = 10;
@@ -36,26 +38,113 @@ namespace WeirdEngine
 		public:
 			ShapeMacro()
 			{
-				// m_values = new float[16];
-				m_values.resize(11);
+				m_values.resize(VALUES_SIZE);
 			}
 
-			~ShapeMacro()
-			{
-				// delete[] m_values;
-			}
+			~ShapeMacro() override = default;
 
 			void propagateValues(float *values)
 			{
-				for (int i = 0; i < 11; i++) {
+				for (int i = 0; i < VALUES_SIZE; i++) {
 					m_values[i] = values[i];
 				}
 			}
 
-			virtual float getValue() const = 0;
+			float getValue() const override = 0;
 
-			virtual std::string print() = 0;
+			std::string print() override = 0;
 		};
+
+		struct Circle : ShapeMacro
+		{
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t RADIUS = 2;
+
+			float getValue() const override
+			{
+				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
+				return length(p) - m_values[RADIUS];
+			}
+
+			std::string print() override
+			{
+				return "length(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + ")) - var" + std::to_string(RADIUS);
+			}
+		};
+
+		struct Box : ShapeMacro
+		{
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t SIZE_X = 2;
+			static constexpr uint8_t SIZE_Y = 3;
+
+			float getValue() const override
+			{
+				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
+				vec2 b = vec2(m_values[SIZE_X], m_values[SIZE_Y]);
+				vec2 d = abs(p) - b;
+				return length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
+			}
+
+			std::string print() override
+			{
+				return "sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + "), vec2(var" + std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))";
+			}
+		};
+
+		struct BoxLine : ShapeMacro
+		{
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t SIZE_X = 2;
+			static constexpr uint8_t SIZE_Y = 3;
+			static constexpr uint8_t THICKNESS = 4;
+
+			float getValue() const override
+			{
+				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
+				vec2 b = vec2(m_values[SIZE_X], m_values[SIZE_Y]);
+				vec2 d = abs(p) - b;
+				float boxSdf = length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
+				return std::abs(boxSdf) - m_values[THICKNESS];
+			}
+
+			std::string print() override
+			{
+				return "abs(sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + "), vec2(var" + std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))) - var" + std::to_string(THICKNESS);
+			}
+		};
+
+		struct Sine : ShapeMacro
+		{
+			static constexpr uint8_t AMPLITUDE = 0;
+			static constexpr uint8_t PERIOD = 1;
+			static constexpr uint8_t SPEED = 2;
+			static constexpr uint8_t OFFSET = 3;
+
+			float getValue() const override
+			{
+				float x = m_values[WORLD_X];
+				float y = m_values[WORLD_Y];
+				float time = m_values[TIME];
+
+				float amplitude = m_values[AMPLITUDE];
+				float period = m_values[PERIOD];
+				float speed = m_values[SPEED];
+				float offset = m_values[OFFSET];
+
+				return (y - offset) - amplitude * sinf(period * x + speed * time);
+			}
+
+			std::string print() override
+			{
+				return "(p.y - var" + std::to_string(OFFSET) + ") - var" + std::to_string(AMPLITUDE) +
+				       " * sin(var" + std::to_string(PERIOD) + " * p.x + var" + std::to_string(SPEED) + " * u_time)";
+			}
+		};
+
 
 		struct Ramp : ShapeMacro
 		{
@@ -65,7 +154,7 @@ namespace WeirdEngine
 			static constexpr uint8_t HEIGHT = 3;
 			static constexpr uint8_t SKEW = 4;
 
-			float getValue() const
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
 				float wi = m_values[WIDTH];
@@ -85,8 +174,7 @@ namespace WeirdEngine
 				return std::sqrt(d.x) * std::copysign(1.0f, -d.y);
 			}
 
-
-			std::string print()
+			std::string print() override
 			{
 				return "sdParallelogramVertical(p - vec2(var"
 					+ std::to_string(POS_X) +
@@ -97,24 +185,29 @@ namespace WeirdEngine
 
 		struct Line : ShapeMacro
 		{
-			float getValue() const
+			static constexpr uint8_t POS_A_X = 0;
+			static constexpr uint8_t POS_A_Y = 1;
+			static constexpr uint8_t POS_B_X = 2;
+			static constexpr uint8_t POS_B_Y = 3;
+			static constexpr uint8_t WIDTH = 4;
+
+			float getValue() const override
 			{
-				vec2 p = vec2(m_values[9], m_values[10]);
+				vec2 p = vec2(m_values[WORLD_X], m_values[WORLD_Y]);
 
-				vec2 a = vec2(m_values[0], m_values[1]);
-				vec2 b = vec2(m_values[2], m_values[3]);
+				vec2 a = vec2(m_values[POS_A_X], m_values[POS_A_Y]);
+				vec2 b = vec2(m_values[POS_B_X], m_values[POS_B_Y]);
 
-				float width = m_values[4];
+				float width = m_values[WIDTH];
 
 				vec2 pa = p - a, ba = b - a;
 				float h = glm::clamp(glm::dot(pa, ba) / glm::dot(ba, ba), 0.0f, 1.0f);
 				return length(pa - ba * h) - width;
 			}
 
-
-			std::string print()
+			std::string print() override
 			{
-				return "sdSegment(p, vec2(var0, var1), vec2(var2, var3)) - var4";
+				return "sdSegment(p, vec2(var" + std::to_string(POS_A_X) + ", var" + std::to_string(POS_A_Y) + "), vec2(var" + std::to_string(POS_B_X) + ", var" + std::to_string(POS_B_Y) + ")) - var" + std::to_string(WIDTH);
 			}
 		};
 
@@ -123,164 +216,26 @@ namespace WeirdEngine
 			std::vector<std::shared_ptr<IMathExpression> > m_sdfs;
 			m_sdfs.resize(DefaultShapes::SIZE);
 
-			// Floor
-			{
-				// p.y - a * sinf(0.5f * p.x + u_time);
-
-				// Define variables
-				auto amplitude = std::make_shared<FloatVariable>(0);
-				auto period = std::make_shared<FloatVariable>(1);
-				auto speed = std::make_shared<FloatVariable>(2);
-				auto offset = std::make_shared<FloatVariable>(3);
-
-				auto time = std::make_shared<FloatVariable>(8);
-				auto x = std::make_shared<FloatVariable>(9);
-				auto y = std::make_shared<FloatVariable>(10);
-
-				// Define function
-				auto sineContent = std::make_shared<Addition>(std::make_shared<Multiplication>(period, x),
-				                                              std::make_shared<Multiplication>(speed, time));
-				std::shared_ptr<IMathExpression> waveFormula = std::make_shared<Substraction>(
-					std::make_shared<Substraction>(y, offset),
-					std::make_shared<Multiplication>(amplitude, std::make_shared<Sine>(sineContent)));
-
-				// Store function
-				m_sdfs[DefaultShapes::SINE] = waveFormula;
-			}
+			// Sine
+			m_sdfs[SINE] = std::make_shared<Sine>();
 
 			// Star
-			{
-				// vec2 starPosition = p - vec2(25.0f, 30.0f);
-				// float infiniteShereDist = length(starPosition) - 5.0f;
-				// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
-
-				// Define variables
-				auto offsetX = std::make_shared<FloatVariable>(0);
-				auto offsetY = std::make_shared<FloatVariable>(1);
-				auto radious = std::make_shared<FloatVariable>(2);
-				auto displacementStrength = std::make_shared<FloatVariable>(3);
-				auto starPoints = std::make_shared<FloatVariable>(4);
-				auto speed = std::make_shared<FloatVariable>(5);
-
-				auto time = std::make_shared<FloatVariable>(8);
-				auto x = std::make_shared<FloatVariable>(9);
-				auto y = std::make_shared<FloatVariable>(10);
-
-				// Define function
-				std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-				std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-				// Circle
-				std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(
-					std::make_shared<Length>(positionX, positionY), radious);
-
-				std::shared_ptr<IMathExpression> angularDisplacement = std::make_shared<Multiplication>(
-					starPoints, std::make_shared<Atan2>(positionY, positionX));
-				std::shared_ptr<IMathExpression> animationTime = std::make_shared<Multiplication>(speed, time);
-
-				std::shared_ptr<IMathExpression> sinContent = std::make_shared<Sine>(
-					std::make_shared<Substraction>(angularDisplacement, animationTime));
-				std::shared_ptr<IMathExpression> displacement = std::make_shared<Multiplication>(
-					displacementStrength, sinContent);
-
-				std::shared_ptr<IMathExpression> starDistance = std::make_shared<
-					Addition>(circleDistance, displacement);
-
-				// Store function
-				m_sdfs[DefaultShapes::STAR] = starDistance;
-			}
+			m_sdfs[STAR] = getStarShape();
 
 			// Circle
-			{
-				// vec2 starPosition = p - vec2(25.0f, 30.0f);
-				// float infiniteShereDist = length(starPosition) - 5.0f;
-				// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
-
-				// Define variables
-				auto offsetX = std::make_shared<FloatVariable>(0);
-				auto offsetY = std::make_shared<FloatVariable>(1);
-				auto radious = std::make_shared<FloatVariable>(2);
-				auto displacementStrength = std::make_shared<FloatVariable>(3);
-				auto starPoints = std::make_shared<FloatVariable>(4);
-				auto speed = std::make_shared<FloatVariable>(5);
-
-				auto time = std::make_shared<FloatVariable>(8);
-				auto x = std::make_shared<FloatVariable>(9);
-				auto y = std::make_shared<FloatVariable>(10);
-
-				// Define function
-				std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-				std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-				// Circle
-				std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(
-					std::make_shared<Length>(positionX, positionY), radious);
-
-				// Store function
-				m_sdfs[DefaultShapes::CIRCLE] = circleDistance;
-			}
+			m_sdfs[CIRCLE] = std::make_shared<Circle>();
 
 			// Box
-			{
-				// Define variables
-				auto offsetX = std::make_shared<FloatVariable>(0);
-				auto offsetY = std::make_shared<FloatVariable>(1);
-				auto bX = std::make_shared<FloatVariable>(2);
-				auto bY = std::make_shared<FloatVariable>(3);
-				// auto r = std::make_shared<FloatVariable>(4);
-
-				auto time = std::make_shared<FloatVariable>(8);
-				auto x = std::make_shared<FloatVariable>(9);
-				auto y = std::make_shared<FloatVariable>(10);
-
-				// Define function
-				std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-				std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-				std::shared_ptr<IMathExpression> dX = std::make_shared<Substraction>(
-					std::make_shared<Abs>(positionX), bX);
-				std::shared_ptr<IMathExpression> dY = std::make_shared<Substraction>(
-					std::make_shared<Abs>(positionY), bY);
-
-				std::shared_ptr<IMathExpression> aX = std::make_shared<Max>(0.0f, dX);
-				std::shared_ptr<IMathExpression> aY = std::make_shared<Max>(0.0f, dY);
-
-				std::shared_ptr<IMathExpression> length = std::make_shared<Length>(aX, aY);
-
-				std::shared_ptr<IMathExpression> minMax = std::make_shared<Min>(0.0f, std::make_shared<Max>(dX, dY));
-
-				std::shared_ptr<IMathExpression> boxDistance = std::make_shared<Addition>(length, minMax);
-
-				// Store function
-				m_sdfs[DefaultShapes::BOX] = boxDistance;
-			}
+			m_sdfs[BOX] = std::make_shared<Box>();
 
 			// Box line
-			{
-				// Define variables
-				auto offsetX = std::make_shared<FloatVariable>(0);
-				auto offsetY = std::make_shared<FloatVariable>(1);
-				auto bX = std::make_shared<FloatVariable>(2);
-				auto bY = std::make_shared<FloatVariable>(3);
-				auto thickness = std::make_shared<FloatVariable>(4);
+			m_sdfs[BOX_LINE] = std::make_shared<BoxLine>();
 
-				auto time = std::make_shared<FloatVariable>(8);
-				auto x = std::make_shared<FloatVariable>(9);
-				auto y = std::make_shared<FloatVariable>(10);
+			// Line
+			m_sdfs[LINE] = std::make_shared<Line>();
 
-				// Define function
-
-
-				std::shared_ptr<IMathExpression> lineDistance = std::make_shared<Substraction>(std::make_shared<Abs>(m_sdfs[DefaultShapes::BOX]), thickness);
-
-				// Store function
-				m_sdfs[DefaultShapes::BOX_LINE] = lineDistance;
-			}
-
-			Line l;
-			m_sdfs[LINE] = std::make_shared<Line>(l);
-			Ramp r;
-			m_sdfs[RAMP] = std::make_shared<Ramp>(r);
+			// Ramp
+			m_sdfs[RAMP] = std::make_shared<Ramp>();
 
 			return m_sdfs;
 		}

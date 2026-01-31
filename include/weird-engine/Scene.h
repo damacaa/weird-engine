@@ -63,6 +63,8 @@ namespace WeirdEngine
 		bool isSceneComplete() const { return m_isSceneComplete; };
 		std::string getNextScene() const {return m_nextScene; };
 
+		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;

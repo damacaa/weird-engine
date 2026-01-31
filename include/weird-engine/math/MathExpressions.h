@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <algorithm>
 
 namespace WeirdEngine
 {
@@ -10,8 +12,8 @@ namespace WeirdEngine
 	struct IMathExpression
 	{
 		virtual void propagateValues(float* values) = 0;
-		virtual float getValue() const = 0;
-		virtual std::string print() = 0;
+		[[nodiscard]] virtual float getValue() const = 0;
+		[[nodiscard]] virtual std::string print() const = 0;
 		virtual ~IMathExpression() = default;
 	};
 
@@ -31,12 +33,12 @@ namespace WeirdEngine
 			m_value = values + m_offset;
 		}
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return *m_value;
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "var" + std::to_string(m_offset);
 		}
@@ -55,12 +57,12 @@ namespace WeirdEngine
 
 		}
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return m_value;
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return std::to_string(m_value) + "f";
 		}
@@ -101,9 +103,9 @@ namespace WeirdEngine
 			valueA->propagateValues(values);
 		}
 
-		virtual float getValue() const override = 0;
+		[[nodiscard]] float getValue() const override = 0;
 
-		virtual std::string print() = 0;
+		[[nodiscard]] std::string print() const override = 0;
 	};
 
 	// Sine
@@ -111,12 +113,12 @@ namespace WeirdEngine
 	{
 		using OneFloatOperation::OneFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return sinf(valueA->getValue());
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "sin(" + valueA->print() + ")";
 		}
@@ -127,12 +129,12 @@ namespace WeirdEngine
 	{
 		using OneFloatOperation::OneFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
-			return abs(valueA->getValue());
+			return std::abs(valueA->getValue());
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "abs(" + valueA->print() + ")";
 		}
@@ -180,9 +182,9 @@ namespace WeirdEngine
 			valueB = (std::move(b));
 		}
 
-		virtual float getValue() const override = 0;
+		[[nodiscard]] virtual float getValue() const override = 0;
 
-		virtual std::string print() = 0;
+		[[nodiscard]] virtual std::string print() const = 0;
 	};
 
 	// Add
@@ -190,12 +192,12 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return valueA->getValue() + valueB->getValue();
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "(" + valueA->print() + " + " + valueB->print() + ")";
 		}
@@ -206,12 +208,12 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return valueA->getValue() - valueB->getValue();
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "(" + valueA->print() + " - " + valueB->print() + ")";
 		}
@@ -222,12 +224,12 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return valueA->getValue() * valueB->getValue();
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "(" + valueA->print() + " * " + valueB->print() + ")";
 		}
@@ -238,12 +240,12 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			return atan2f(valueA->getValue(), valueB->getValue());
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "atan(" + valueA->print() + ", " + valueB->print() + ")";
 		}
@@ -254,15 +256,16 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			float a = valueA->getValue();
 			float b = valueB->getValue();
 
+			// Note: ensure glm is included in the project configuration
 			return length(glm::vec2(a, b));
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "length(vec2(" + valueA->print() + ", " + valueB->print() + "))";
 		}
@@ -272,7 +275,7 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			float a = valueA->getValue();
 			float b = valueB->getValue();
@@ -280,7 +283,7 @@ namespace WeirdEngine
 			return std::max(a, b);
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "max(" + valueA->print() + ", " + valueB->print() + ")";
 		}
@@ -290,7 +293,7 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
-		float getValue() const override
+		[[nodiscard]] float getValue() const override
 		{
 			float a = valueA->getValue();
 			float b = valueB->getValue();
@@ -298,7 +301,7 @@ namespace WeirdEngine
 			return std::min(a, b);
 		}
 
-		std::string print()
+		[[nodiscard]] std::string print() const override
 		{
 			return "min(" + valueA->print() + ", " + valueB->print() + ")";
 		}

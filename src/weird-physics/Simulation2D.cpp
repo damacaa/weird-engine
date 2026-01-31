@@ -398,14 +398,17 @@ namespace WeirdEngine
 	void Simulation2D::applyForces()
 	{
 		// External forces
-		if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
 		{
-			m_externalForcesSinceLastUpdate = false;
-			for (size_t i = 0; i < m_size; i++)
+			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+			if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
 			{
-				vec2& f = m_externalForces[i];
-				m_forces[i] = f;
-				m_externalForces[i] = vec2(0);
+				m_externalForcesSinceLastUpdate = false;
+				for (size_t i = 0; i < m_size; i++)
+				{
+					vec2& f = m_externalForces[i];
+					m_forces[i] = f;
+					m_externalForces[i] = vec2(0);
+				}
 			}
 		}
 
@@ -554,7 +557,7 @@ namespace WeirdEngine
 		}
 
 		{
-			// std::lock_guard<std::mutex> lock(g_fixMutex);
+			std::lock_guard<std::mutex> lock(m_fixMutex);
 			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
 			{
 				SimulationID id = *it;
@@ -713,7 +716,7 @@ namespace WeirdEngine
 
 	void Simulation2D::addForce(SimulationID id, vec2 force)
 	{
-		// std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
 		// TODO: create two buffers (contnious forces and impulses), depending on type multiply by mass imitating 4 unity types
 
@@ -747,13 +750,13 @@ namespace WeirdEngine
 
 	void Simulation2D::fix(SimulationID id)
 	{
-		// std::lock_guard<std::mutex> lock(g_fixMutex);
+		std::lock_guard<std::mutex> lock(m_fixMutex);
 		m_fixedObjects.emplace_back(id);
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
-		// std::lock_guard<std::mutex> lock(g_fixMutex);
+		std::lock_guard<std::mutex> lock(m_fixMutex);
 		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
 	}
 

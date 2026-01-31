@@ -223,6 +223,14 @@ namespace WeirdEngine
 		return m_audioQueue;
 	}
 
+	ShapeId Scene::registerSDF(std::shared_ptr<IMathExpression> sdf)
+	{
+		m_sdfs.push_back(sdf);
+		m_simulation2D.setSDFs(m_sdfs);
+
+		return m_sdfs.size() - 1;
+	}
+
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();

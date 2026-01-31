@@ -321,6 +321,9 @@ namespace WeirdEngine
 		bool m_repulsionEnabled = false;
 		bool m_liftEnabled = false;
 
+		std::mutex m_fixMutex;
+		std::mutex m_externalForcesMutex;
+
 	private:
 		StepCallbackFn m_stepCallback = nullptr;
 		CollisionCallbackFn m_collisionCallback = nullptr;

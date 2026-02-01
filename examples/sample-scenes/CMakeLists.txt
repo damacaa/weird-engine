@@ -6,8 +6,9 @@ file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/assets")
 file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/include")
 file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/src")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
 
 # Option to switch between local and online version of WeirdEngine
 option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)

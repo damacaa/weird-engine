@@ -98,7 +98,6 @@ namespace WeirdEngine
 	void Simulation2D::update(double delta)
 	{
 		{
-			// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 			m_simulationDelay += delta;
 		}
 
@@ -132,8 +131,8 @@ namespace WeirdEngine
 				step((float)FIXED_DELTA_TIME);
 				++steps;
 				{
-					// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-					m_simulationTime += FIXED_DELTA_TIME;
+					// m_simulationTime += FIXED_DELTA_TIME;
+					m_simulationTime.fetch_add(FIXED_DELTA_TIME);
 
 					// Notify collision callback
 					if (m_stepCallback)

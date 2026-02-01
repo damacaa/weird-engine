@@ -259,7 +259,7 @@ namespace WeirdEngine
 		bool m_isPaused;
 		bool m_simulating;
 		double m_simulationDelay;
-		double m_simulationTime;
+		std::atomic<double> m_simulationTime {0.0};
 
 		bool m_useSimdOperations;
 

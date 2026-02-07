@@ -13,6 +13,37 @@
 
 namespace WeirdEngine
 {
+	struct ShapeMacro : IMathExpression
+	{
+	protected:
+		std::vector<float> m_values;
+
+		static constexpr uint8_t VALUES_SIZE = 11;
+
+		static constexpr uint8_t TIME = 8;
+		static constexpr uint8_t WORLD_X = 9;
+		static constexpr uint8_t WORLD_Y = 10;
+
+	public:
+		ShapeMacro()
+		{
+			m_values.resize(VALUES_SIZE);
+		}
+
+		~ShapeMacro() override = default;
+
+		void propagateValues(float *values) override
+		{
+			for (int i = 0; i < VALUES_SIZE; i++) {
+				m_values[i] = values[i];
+			}
+		}
+
+		[[nodiscard]] float getValue() const override = 0;
+
+		[[nodiscard]] std::string print() const override = 0;
+	};
+
 	// OLD STYLE
 	namespace DefaultShapes
 	{
@@ -26,38 +57,6 @@ namespace WeirdEngine
 			SINE,
 			STAR,
 			SIZE
-		};
-
-
-		struct ShapeMacro : IMathExpression
-		{
-		protected:
-			std::vector<float> m_values;
-
-			static constexpr uint8_t VALUES_SIZE = 11;
-
-			static constexpr uint8_t TIME = 8;
-			static constexpr uint8_t WORLD_X = 9;
-			static constexpr uint8_t WORLD_Y = 10;
-
-		public:
-			ShapeMacro()
-			{
-				m_values.resize(VALUES_SIZE);
-			}
-
-			~ShapeMacro() override = default;
-
-			void propagateValues(float *values) override
-			{
-				for (int i = 0; i < VALUES_SIZE; i++) {
-					m_values[i] = values[i];
-				}
-			}
-
-			[[nodiscard]] float getValue() const override = 0;
-
-			[[nodiscard]] std::string print() const override = 0;
 		};
 
 		struct CircleNode : IMathExpression

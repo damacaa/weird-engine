@@ -44,7 +44,7 @@ namespace WeirdEngine
 			~SDF2DRenderPipeline();
 
 			Shader& getDistanceShader();
-			Texture& render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
+			Texture& render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
 			void free();
 
 		private:
@@ -111,7 +111,7 @@ namespace WeirdEngine
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
 
-			void renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta);
+			void renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);

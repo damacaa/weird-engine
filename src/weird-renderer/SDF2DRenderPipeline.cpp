@@ -169,10 +169,10 @@ namespace WeirdEngine {
 			m_litSceneTexture.dispose();
 		}
 
-		Texture& SDF2DRenderPipeline::render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta, Texture* backgroundTexture)
+		Texture& SDF2DRenderPipeline::render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture)
 		{
 			// Execute all pipeline stages
-			renderDistanceField(shapeData, dataSize, camera, time, delta);
+			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
 			
 			if (m_config.useCorrectedDistance) {
 				applyJumpFloodCorrection(time);
@@ -187,7 +187,7 @@ namespace WeirdEngine {
 			return m_litSceneTexture;
 		}
 
-		void SDF2DRenderPipeline::renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, const Camera& camera, double time, double delta)
+		void SDF2DRenderPipeline::renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta)
 		{
 			int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 			m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
@@ -209,6 +209,7 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 			m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 			m_distanceShader.setUniform("u_blendIterations", 1);
+			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
 
 			m_distanceShader.setUniform("t_colorTexture", 0);
 			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);

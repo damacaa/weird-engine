@@ -52,6 +52,8 @@ namespace WeirdEngine
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
+			double clampedDelta = std::clamp(delta, 0.0, 1.0 / 60.0);
+
 			if (m_vSyncEnabled)
 			{
 				SDL_GL_SetSwapInterval(1); // Enable VSync
@@ -153,7 +155,7 @@ namespace WeirdEngine
 
 				if (!enable2D)
 				{
-					output(scene, m_3DSceneTexture, delta);
+					output(scene, m_3DSceneTexture, clampedDelta);
 					return;
 				}
 			}
@@ -169,16 +171,17 @@ namespace WeirdEngine
 				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
 
 				static uint32_t dataSize;
+				static uint32_t shapeCount;
 				static WeirdRenderer::Dot2D* data = nullptr;
-				scene.get2DShapesData(data, dataSize);
+				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& t = m_worldPipeline->render(data, dataSize, sceneCamera, scene.getTime(), delta,
+				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
 												  enable3D ? &m_3DSceneTexture : nullptr);
 				m_lit2DSceneTexture = &t;
 
 				if (!enable3D)
 				{
-					output(scene, t, delta);
+					output(scene, t, clampedDelta);
 					return;
 				}
 			}
@@ -194,7 +197,7 @@ namespace WeirdEngine
 
 			m_renderPlane.draw(m_combineScenesShaderProgram);
 
-			output(scene, m_combineResultTexture, delta);
+			output(scene, m_combineResultTexture, clampedDelta);
 		}
 
 		void Renderer::setWindowTitle(const char* name)
@@ -297,11 +300,12 @@ namespace WeirdEngine
 			scene.updateUIShader(m_uiPipeline->getDistanceShader());
 
 			static uint32_t dataSize;
+			static uint32_t shapeCount;
 			static WeirdRenderer::Dot2D* uiData = nullptr;
-			scene.getUIData(uiData, dataSize);
+			scene.getUIData(uiData, dataSize, shapeCount);
 
 			double time = scene.getTime();
-			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, uiCamera, time, delta, &texture);
+			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, shapeCount, uiCamera, time, delta, &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);

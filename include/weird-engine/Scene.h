@@ -32,8 +32,8 @@ namespace WeirdEngine
 		void forceShaderRefresh();
 		void update(double delta, double time);
 
-		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size);
-		void getUIData(WeirdRenderer::Dot2D*& data, uint32_t& size);
+		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount);
+		void getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size, uint32_t& customShapeCount);
 
 		Scene(const Scene&) = default;						 // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator

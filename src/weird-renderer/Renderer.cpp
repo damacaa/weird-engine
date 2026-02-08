@@ -175,7 +175,7 @@ namespace WeirdEngine
 				static WeirdRenderer::Dot2D* data = nullptr;
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
+				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), clampedDelta,
 												  enable3D ? &m_3DSceneTexture : nullptr);
 				m_lit2DSceneTexture = &t;
 

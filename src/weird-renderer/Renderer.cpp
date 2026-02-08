@@ -53,6 +53,7 @@ namespace WeirdEngine
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / 60.0);
+			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
 			if (m_vSyncEnabled)
 			{

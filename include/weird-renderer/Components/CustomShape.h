@@ -27,6 +27,7 @@ namespace WeirdEngine
 		bool m_hasCollision;
 		uint16_t m_groupId;
 		uint16_t m_material;
+		ShapeId m_simulationId;
 
 		CustomShape() : m_distanceFieldId(0), m_isDirty(true), m_screenSpace(false)
 		{

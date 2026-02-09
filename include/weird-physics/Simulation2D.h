@@ -92,8 +92,8 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
-		void addForce(SimulationID id, vec2 force);
-		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float daping = 1000.0f);
+		void addForce(SimulationID id, const vec2& force);
+		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float damping = 1000.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
 
@@ -123,7 +123,7 @@ namespace WeirdEngine
 		void solveCollisionsPositionBased();
 		void applyForces();
 		void solveConstraints();
-		void step(float timeStep);
+		void step(const float timeStep);
 
 		struct Collision
 		{
@@ -155,7 +155,7 @@ namespace WeirdEngine
 		struct Spring
 		{
 		public:
-			Spring()
+			Spring() : Distance(0), Damping(0)
 			{
 				A = -1;
 				B = -1;
@@ -299,6 +299,7 @@ namespace WeirdEngine
 		std::vector<ShapeCollisionEvent> m_collisionQueue;
 
 		float map(vec2 p);
+		float map(vec2 p, int& closestShape);
 
 		// Collision
 		CollisionDetectionMethod m_collisionDetectionMethod;

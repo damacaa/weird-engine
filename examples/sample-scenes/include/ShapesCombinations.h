@@ -197,9 +197,4 @@ private:
       t.position = vec3(x, y, 0.0f);
     }
   }
-
-  // void onCollision(WeirdEngine::CollisionEvent &event) override
-  // {
-  //   m_simulation2D.fix(event.bodyB);
-  // }
 };

@@ -235,7 +235,10 @@ namespace WeirdEngine
 			collisionEvent.body = i;
 
 			// Static shapes
-			float d = map(p);
+			int shapeIdx;
+			float d = map(p, shapeIdx);
+			collisionEvent.shape = shapeIdx;
+
 			if (d < m_radious)
 			{
 				// Collision normal calculation
@@ -317,10 +320,18 @@ namespace WeirdEngine
 		return -fOpUnionSoft(b, -a, r);
 	}
 
-
 	float Simulation2D::map(vec2 p)
 	{
+		int dummy;
+		return map(p, dummy);
+	}
+
+	float Simulation2D::map(vec2 p, int& closestShape)
+	{
+		closestShape = 0;
+
 		float d = 1000.0f;
+		float minD = d;
 		float currentGroupMinDistance = 1000.0f;
 
 		auto currentGroup = 0;
@@ -379,6 +390,12 @@ namespace WeirdEngine
 				}
 				default:
 					break;
+			}
+
+			if (currentMinDistance < minD)
+			{
+				minD = currentMinDistance;
+				closestShape = i;
 			}
 
 			if (globalEffect) {
@@ -568,7 +585,7 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::step(float timeStep)
+	void Simulation2D::step(const float timeStep)
 	{
 #if INTEGRATION_METHOD == 0
 
@@ -713,11 +730,11 @@ namespace WeirdEngine
 		return m_size;
 	}
 
-	void Simulation2D::addForce(SimulationID id, vec2 force)
+	void Simulation2D::addForce(SimulationID id, const vec2& force)
 	{
 		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
-		// TODO: create two buffers (contnious forces and impulses), depending on type multiply by mass imitating 4 unity types
+		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4 unity types
 
 		m_externalForcesSinceLastUpdate = true;
 		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
@@ -810,7 +827,9 @@ namespace WeirdEngine
 		{
 			// Key does not exist
 			m_objects.push_back(sdf);
-			m_entityToObjectsIdx[shape.Owner] = m_objects.size() - 1;
+			ShapeId id = m_objects.size() - 1;
+			m_entityToObjectsIdx[shape.Owner] = id;
+			shape.m_simulationId = id;
 		}
 	}
 

@@ -409,15 +409,9 @@ namespace WeirdEngine
 			// 	oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
 			// }
 
-
-
-
 			// Get string
 			std::string replacement = oss.str();
 
-			std::cout << replacement << std::endl;
-
-			auto start = std::chrono::high_resolution_clock::now();
 			// Set new source code and recompile shader
 			shader.setFragmentIncludeCode(1, replacement);
 
@@ -436,11 +430,6 @@ namespace WeirdEngine
 				}
 			}
 #endif
-
-			auto end = std::chrono::high_resolution_clock::now();
-			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-			std::cout << "Shader write time: " << ms << " ms\n";
 		}
 
 	private:

@@ -22,17 +22,15 @@ extern "C"
 
 namespace WeirdEngine
 {
-	using namespace WeirdRenderer;
-	void start(SceneManager& sceneManager)
-	{
-		// Window resolution
-		const unsigned int width = 800;
-		const unsigned int height = 800;
 
+
+	using namespace WeirdRenderer;
+	void start(SceneManager& sceneManager, DisplaySettings displaySettings)
+	{
 		SDL_Window* window;
 		AudioEngine audioEngine;
-		SDLInitializer m_sdlInitializer(width, height, window, audioEngine);
-		Renderer renderer(width, height, window);
+		SDLInitializer m_sdlInitializer(displaySettings, window, audioEngine);
+		Renderer renderer(displaySettings, window);
 		
 		// Scenes
 		sceneManager.loadScene(0);

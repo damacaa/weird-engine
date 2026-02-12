@@ -21,11 +21,11 @@ private:
     void onCreate() override
     {
         m_renderPlane = new RenderPlane();
-        m_colorTextureCopy = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
+        m_colorTextureCopy = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
         m_lineShader = new Shader(SHADERS_PATH "renderPlane.vert", ASSETS_PATH "lines/lines.frag");
 
         m_lineRender = new RenderTarget(false);
-        m_lineTexture = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
+        m_lineTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
         m_lineRender->bindColorTextureToFrameBuffer(*m_lineTexture);
 
         m_combinationShader = new Shader(SHADERS_PATH "renderPlane.vert", ASSETS_PATH "lines/combination.frag");
@@ -80,7 +80,7 @@ private:
         glCopyImageSubData(
             renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
             m_colorTextureCopy->ID, GL_TEXTURE_2D, 0, 0, 0, 0,
-            Screen::rWidth, Screen::rHeight, 1);
+            Display::rWidth, Display::rHeight, 1);
 
         // --- Line detection ---
         m_lineShader->use();
@@ -88,7 +88,7 @@ private:
         m_lineShader->setUniform("t_sceneDepth", 0);
         renderTarget.getDepthAttachment()->bind(0);
 
-        m_lineShader->setUniform("u_pixelSize", vec2(1.0f / Screen::rWidth, 1.0f / Screen::rHeight));
+        m_lineShader->setUniform("u_pixelSize", vec2(1.0f / Display::rWidth, 1.0f / Display::rHeight));
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);

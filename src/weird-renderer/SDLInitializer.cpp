@@ -26,7 +26,7 @@ namespace WeirdEngine
 			}
 		}
 
-		SDLInitializer::SDLInitializer(const unsigned int width, const unsigned int height, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
+		SDLInitializer::SDLInitializer(const DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
         {
             audioEngine.init();
 
@@ -35,16 +35,26 @@ namespace WeirdEngine
                 throw std::runtime_error("SDL could not initialize!");
             }
 
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
             SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-            window = SDL_CreateWindow("Weird Engine", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-            if (!window) {
+			SDL_WindowFlags windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+
+			if (settings.fullscreen) {
+				windowFlags |= SDL_WINDOW_FULLSCREEN;
+			}
+
+			window = SDL_CreateWindow(settings.windowTitle.c_str(), settings.width, settings.height, windowFlags);
+			if (!window) {
                 throw std::runtime_error("Failed to create SDL window.");
             }
+
+			if (!settings.fullscreen) {
+				SDL_SetWindowPosition(window, settings.x, settings.y);
+			}
 
             m_window = window;
 

@@ -1,4 +1,4 @@
-#include "weird-renderer/Screen.h"
+#include "weird-renderer/Display.h"
 
 //int WeirdEngine::WeirdRenderer::Screen::width = 0;
 //int WeirdEngine::WeirdRenderer::Screen::height = 0;

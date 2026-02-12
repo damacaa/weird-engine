@@ -8,17 +8,17 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		Renderer::Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window)
+		Renderer::Renderer(const DisplaySettings& settings, SDL_Window*& window)
 			: m_window(window)
-			, m_distanceSampleScale(1.0f)
-			, m_renderScale(1.0f)
-			, m_vSyncEnabled(true)
+			, m_distanceSampleScale(settings.distanceSampleScale)
+			, m_renderScale(settings.internalResolutionScale)
+			, m_vSyncEnabled(settings.vSyncEnabled)
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 		{
 
-			setWindowSize(width, height);
+			setWindowSize(settings.width, settings.height);
 
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "default.frag");
@@ -217,10 +217,10 @@ namespace WeirdEngine
 			m_renderWidth = width * m_renderScale;
 			m_renderHeight = height * m_renderScale;
 
-			Screen::width = m_windowWidth;
-			Screen::height = m_windowHeight;
-			Screen::rWidth = m_renderWidth;
-			Screen::rHeight = m_renderHeight;
+			Display::width = m_windowWidth;
+			Display::height = m_windowHeight;
+			Display::rWidth = m_renderWidth;
+			Display::rHeight = m_renderHeight;
 
 			freeAll();
 

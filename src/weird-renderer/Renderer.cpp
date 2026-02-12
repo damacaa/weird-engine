@@ -10,11 +10,12 @@ namespace WeirdEngine
 	{
 		Renderer::Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window)
 			: m_window(window)
-			, m_distanceSampleScale(0.5f)
+			, m_distanceSampleScale(1.0f)
 			, m_renderScale(1.0f)
 			, m_vSyncEnabled(true)
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
+			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 		{
 
 			setWindowSize(width, height);
@@ -283,19 +284,18 @@ namespace WeirdEngine
 			uiConfig.debugDistanceField = false;
 			uiConfig.debugMaterialColors = false;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+
+			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
+			glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
+			glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+			auto cameraMatrix = glm::lookAt(position, position + orientation, up);
+
+			m_uiCamera.view = cameraMatrix;
 		}
 
 		void Renderer::output(Scene& scene, Texture& texture, const double delta)
 		{
 			// Render UI
-			static glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
-			static glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
-			static glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-			static auto cameraMatrix = glm::lookAt(position, position + orientation, up);
-
-			static WeirdRenderer::Camera uiCamera(vec3(0.0f, 0.0f, 0.0f));
-			uiCamera.view = cameraMatrix;
-
 			// Shape data
 			m_uiPipeline->getDistanceShader().use();
 			scene.updateUIShader(m_uiPipeline->getDistanceShader());
@@ -306,7 +306,7 @@ namespace WeirdEngine
 			scene.getUIData(uiData, dataSize, shapeCount);
 
 			double time = scene.getTime();
-			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, shapeCount, uiCamera, time, delta, &texture);
+			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);

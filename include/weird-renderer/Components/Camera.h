@@ -1,7 +1,7 @@
 #pragma once
 #include "weird-engine/vec.h"
 #include "weird-engine/ecs/Component.h"
-#include "weird-renderer/Screen.h"
+#include "weird-renderer/Display.h"
 
 
 namespace WeirdEngine 
@@ -24,7 +24,7 @@ namespace WeirdEngine
 
 			static glm::vec2 screenPositionToWorldPosition2D(Transform cameraTransform, vec2 screenPosition)
 			{
-				vec2 resolution(WeirdRenderer::Screen::width, WeirdRenderer::Screen::height);
+				vec2 resolution(WeirdRenderer::Display::width, WeirdRenderer::Display::height);
 				vec2 halfResolution(0.5f * resolution);
 
 				vec2 screenPositionCorrected(screenPosition.x, screenPosition.y);
@@ -35,7 +35,7 @@ namespace WeirdEngine
 
 			static glm::vec2 worldPosition2DToScreenPosition(Transform cameraTransform, vec2 worldPosition)
 			{
-				vec2 resolution(WeirdRenderer::Screen::width, WeirdRenderer::Screen::height);
+				vec2 resolution(WeirdRenderer::Display::width, WeirdRenderer::Display::height);
 				vec2 halfResolution(0.5f * resolution);
 
 				// 1. Get the position relative to the camera center

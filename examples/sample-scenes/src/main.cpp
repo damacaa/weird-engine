@@ -26,10 +26,15 @@ int main()
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
-	// sceneManager.registerScene<ClassicScene>("classic");
-	// sceneManager.registerScene<FireScene>("fire");
-	// sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
-	// sceneManager.registerScene<LinesScene>("lines");
+	sceneManager.registerScene<ClassicScene>("classic");
+	sceneManager.registerScene<FireScene>("fire");
+	sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
+	sceneManager.registerScene<LinesScene>("lines");
 
-	start(sceneManager);
+	DisplaySettings settings{};
+	settings.width = 800;
+	settings.height = 800;
+	settings.fullscreen = false;
+
+	start(sceneManager, settings);
 }

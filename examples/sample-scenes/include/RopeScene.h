@@ -157,7 +157,7 @@ private:
 			{
 				float value = audioVisualData.waveform[i * skip];
 				auto&t = m_ecs.getComponent<Transform>(m_audioEntities[i]);
-				float nextPos = Screen::rHeight - ((50.0f * value) + 20.0f);
+				float nextPos = Display::rHeight - ((50.0f * value) + 20.0f);
 				// t.position.y += (std::min)(nextPos - t.position.y, 100.0f * delta);
 				t.position.y = nextPos;
 			}

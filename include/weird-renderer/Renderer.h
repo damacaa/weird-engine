@@ -4,7 +4,7 @@
 
 #include "RenderTarget.h"
 #include "DataBuffer.h"
-#include "Screen.h"
+#include "Display.h"
 #include "SDLInitializer.h"
 #include "AudioEngine.h"
 #include "SDF2DRenderPipeline.h"
@@ -24,7 +24,7 @@ namespace WeirdEngine
 		
 
 		public:
-			Renderer(const unsigned int width, const unsigned int height, SDL_Window*& window);
+			Renderer(const DisplaySettings& settings, SDL_Window*& window);
 			~Renderer();
 			void render(Scene& scene, const double time, const double delta);
 			void setWindowTitle(const char* name);

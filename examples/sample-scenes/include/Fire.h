@@ -147,9 +147,9 @@ private:
 		m_noiseTexture = new Texture(ASSETS_PATH "fire/fire.jpg");
 		m_flameShape = new Texture(ASSETS_PATH "fire/flame.png");
 
-		m_sceneTextureBeforeFire = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
-		m_postProcessTextureFront = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
-		m_postProcessTextureBack = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
+		m_sceneTextureBeforeFire = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
+		m_postProcessTextureFront = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
+		m_postProcessTextureBack = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 
 		m_postProcessRenderFront = new RenderTarget(false);
 		m_postProcessRenderFront->bindColorTextureToFrameBuffer(*m_postProcessTextureFront);
@@ -161,7 +161,7 @@ private:
 		m_postProcessDoubleBuffer[1] = m_postProcessRenderBack;
 
 		// Bloom Texture and Render Target
-		m_brightPassTexture = new Texture(Screen::rWidth, Screen::rHeight, Texture::TextureType::Data);
+		m_brightPassTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_bloomRenderTarget = new RenderTarget(false);
 		m_bloomRenderTarget->bindColorTextureToFrameBuffer(*m_brightPassTexture);
 	}
@@ -240,13 +240,13 @@ private:
 
 		Transform &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
-		static float amplitude = 12.5f;
+		static float amplitude = 10.0f;
 
-		cameraTransform.position.y = 2.0f + tan(0.5f * m_time);
+		cameraTransform.position.y = 2.0f;
 		cameraTransform.position.x = amplitude * sin(m_time);
 		cameraTransform.position.z = amplitude * cos(m_time);
 
-		cameraTransform.rotation = -cameraTransform.position;
+		cameraTransform.rotation = -cameraTransform.position + vec3(0.0f, 1.0f, 0.0f);
 	}
 
 	void renderFire(WeirdRenderer::Camera &camera, float time)
@@ -312,7 +312,7 @@ private:
 		m_backgroundShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
 		float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
 		m_backgroundShader.setUniform("u_fov", shaderFov);
-		m_backgroundShader.setUniform("u_resolution", vec2(Screen::rWidth, Screen::rHeight));
+		m_backgroundShader.setUniform("u_resolution", vec2(Display::rWidth, Display::rHeight));
 
 		m_renderPlane.draw(m_backgroundShader);
 		// glFrontFace(GL_CW); // Clockwise = front face
@@ -367,7 +367,7 @@ private:
 		glCopyImageSubData(
 			renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
 			m_sceneTextureBeforeFire->ID, GL_TEXTURE_2D, 0, 0, 0, 0,
-			Screen::rWidth, Screen::rHeight, 1);
+			Display::rWidth, Display::rHeight, 1);
 
 		// Heat effect shader
 		m_heatDistortionShader.use();
@@ -389,7 +389,7 @@ private:
 		// Time to animate effect
 		m_heatDistortionShader.setUniform("u_time", (float)time);
 		// Screen resolution to calculate screen uvs
-		m_heatDistortionShader.setUniform("u_resolution", glm::vec2(Screen::rWidth, Screen::rHeight));
+		m_heatDistortionShader.setUniform("u_resolution", glm::vec2(Display::rWidth, Display::rHeight));
 
 		// Render quad
 		m_quad->draw(m_heatDistortionShader, sceneCamera, vec3(0, 1.25f, 0), vec3(0, 0, 0), vec3(6));
@@ -457,7 +457,7 @@ private:
 			finalTarget->getColorAttachment()->bind(0);
 		}
 
-		m_bloomShader.setUniform("u_pixelOffset", vec2(0.5f / Screen::rWidth, 0.5f / Screen::rHeight));
+		m_bloomShader.setUniform("u_pixelOffset", vec2(0.5f / Display::rWidth, 0.5f / Display::rHeight));
 
 		m_renderPlane.draw(m_bloomShader);
 	}

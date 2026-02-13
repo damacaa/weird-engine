@@ -300,6 +300,7 @@ void main()
     // refractionDistance = sqrt(refractionDistance);
     // refractionDistance = 1.0;
     vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
+    backgroundOffset.x *= u_resolution.y / u_resolution.x;
 
     // 1. Calculate the base UV
     vec2 finalUV = screenUV + backgroundOffset;

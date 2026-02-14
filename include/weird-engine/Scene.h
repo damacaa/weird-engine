@@ -109,6 +109,8 @@ namespace WeirdEngine
 
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
+		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
+
 	private:
 
 

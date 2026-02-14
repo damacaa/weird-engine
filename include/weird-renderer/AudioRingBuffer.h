@@ -34,12 +34,17 @@ public:
     bool pop(T& outItem) {
         const size_t currentTail = tail.load(std::memory_order_relaxed);
         
-        if (currentTail == head.load(std::memory_order_acquire)) {
+        if (empty()) {
             return false; // Empty
         }
 
         outItem = buffer[currentTail];
         tail.store((currentTail + 1) % Capacity, std::memory_order_release);
         return true;
+    }
+
+	bool empty()
+    {
+	    return head.load(std::memory_order_acquire) == tail.load(std::memory_order_acquire);
     }
 };

@@ -29,9 +29,11 @@ namespace WeirdEngine
 		self->onShapeCollision(event);
 
 		const float m_soundFalloff = 0.1f;
+		bool spatialAudio = false;
 		auto camPosition = self->getCamera().position; // Mutex?
 		float speed = glm::length2(event.velocity);
-		float frictionSample = event.friction * 0.01f * speed / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
+		float distanceMultiplier = 1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
+		float frictionSample =event.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
 
 		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
 
@@ -46,7 +48,7 @@ namespace WeirdEngine
 			// freqFactor = freqFactor * freqFactor;
 			float frequency = 200.0f + (freqFactor * 300.0f);
 
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, true, vec3(event.position, 0.0f) });
+			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(event.position, 0.0f) });
 		}
 	}
 
@@ -274,6 +276,11 @@ namespace WeirdEngine
 		fly.targetPosition = target.position;
 		fly.targetPosition.z = oldZ;
 	};
+
+	void Scene::playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+	{
+		m_audioQueue.push(audio);
+	}
 
 	void Scene::loadScene(std::string &sceneFileContent)
 	{

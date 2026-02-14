@@ -96,8 +96,9 @@ namespace WeirdEngine
 	template<typename DotClass, typename ShapeClass, typename TextClass>
 	class SDFRenderSystem2D : public System
 	{
-	public:
+	private:
 		float m_shapeBlending = 1.0f;
+	public:
 		Font m_font;
 
 		SDFRenderSystem2D(ECSManager& ecs): m_font(FONTS_PATH "small.bmp", 4, 5,
@@ -107,6 +108,11 @@ namespace WeirdEngine
 			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
 			m_textClassManager = ecs.getComponentManager<TextClass>();
 			m_transformManager = ecs.getComponentManager<Transform>(); // Transform remains non-templated
+		}
+
+		void setShapeBlending(float blending)
+		{
+			m_shapeBlending = blending;
 		}
 
 		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
@@ -197,19 +203,18 @@ namespace WeirdEngine
 
 				// Assuming ShapeClass has m_parameters[0] through m_parameters[7]
 				// Make sure your ShapeClass provides these members.
-				data[dotCount + (2 * i)].position = glm::vec2(shapeComp.m_parameters[0], shapeComp.m_parameters[1]);
-				data[dotCount + (2 * i)].size = shapeComp.m_parameters[2];
-				data[dotCount + (2 * i)].material = shapeComp.m_parameters[3];
+				data[dotCount + (2 * i)].position = glm::vec2(shapeComp.parameters[0], shapeComp.parameters[1]);
+				data[dotCount + (2 * i)].size = shapeComp.parameters[2];
+				data[dotCount + (2 * i)].material = shapeComp.parameters[3];
 
-				data[dotCount + (2 * i) + 1].position = glm::vec2(shapeComp.m_parameters[4], shapeComp.m_parameters[5]);
-				data[dotCount + (2 * i) + 1].size = shapeComp.m_parameters[6];
-				data[dotCount + (2 * i) + 1].material = shapeComp.m_parameters[7];
+				data[dotCount + (2 * i) + 1].position = glm::vec2(shapeComp.parameters[4], shapeComp.parameters[5]);
+				data[dotCount + (2 * i) + 1].size = shapeComp.parameters[6];
+				data[dotCount + (2 * i) + 1].material = shapeComp.parameters[7];
 			}
 		}
 
 		void updatePalette(WeirdRenderer::Shader& shader)
 		{
-			m_materialsAreDirty = true;
 			if (m_materialsAreDirty)
 			{
 				shader.setUniform("u_staticColors", m_colorPalette, 16);
@@ -273,7 +278,7 @@ namespace WeirdEngine
 			std::string groupDistanceVariable;
 
 			ShapeClass dummyShape;
-			dummyShape.m_groupId = CustomShape::GLOBAL_GROUP - 1;
+			dummyShape.groupIdx = CustomShape::GLOBAL_GROUP - 1;
 
 			// TODO: do this for physics too
 			// Sort Shapes by group
@@ -287,8 +292,8 @@ namespace WeirdEngine
 			// Sort indices by the shape's group value
 			std::sort(orderedIndices.begin(), orderedIndices.end(),
 				[&](size_t a, size_t b) {
-					return componentArray->getDataAtIdx(a).m_groupId <
-						   componentArray->getDataAtIdx(b).m_groupId;
+					return componentArray->getDataAtIdx(a).groupIdx <
+						   componentArray->getDataAtIdx(b).groupIdx;
 				}
 			);
 
@@ -300,7 +305,7 @@ namespace WeirdEngine
 				const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape :  componentArray->getDataAtIdx(i);
 
 				// Get group
-				const int group = shape.m_groupId;
+				const int group = shape.groupIdx;
 
 				// Start new group if necessary
 				if (group != currentGroup)
@@ -335,14 +340,14 @@ namespace WeirdEngine
 				oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
 
 				// Get distance function
-				auto fragmentCode = sdfs[shape.m_distanceFieldId]->print();
+				auto fragmentCode = sdfs[shape.distanceFieldId]->print();
 
 				// Use screen space coords (DEPRECATED)
-				if (shape.m_screenSpace)
-				{
-					replaceSubstring(fragmentCode, "var9", "var11");
-					replaceSubstring(fragmentCode, "var10", "var12");
-				}
+				// if (shape.screenSpace)
+				// {
+				// 	replaceSubstring(fragmentCode, "var9", "var11");
+				// 	replaceSubstring(fragmentCode, "var10", "var12");
+				// }
 
 				bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
@@ -361,12 +366,12 @@ namespace WeirdEngine
 				oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
 
 				// Combine shape distance
-				switch (shape.m_combination)
+				switch (shape.combination)
 				{
 				case CombinationType::Addition:
 				{
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material << ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::Subtraction:
@@ -382,7 +387,7 @@ namespace WeirdEngine
 				case CombinationType::SmoothAddition:
 				{
 					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << m_shapeBlending << ");\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.m_material << ": currentGroupColor;" << std::endl;
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material << ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::SmoothSubtraction:

@@ -810,10 +810,10 @@ namespace WeirdEngine
 
 	void Simulation2D::updateShape(CustomShape& shape)
 	{
-		if (shape.m_screenSpace || !shape.m_hasCollision)
+		if (!shape.hasCollisions)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combination, shape.m_groupId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);
@@ -829,7 +829,7 @@ namespace WeirdEngine
 			m_objects.push_back(sdf);
 			ShapeId id = m_objects.size() - 1;
 			m_entityToObjectsIdx[shape.Owner] = id;
-			shape.m_simulationId = id;
+			shape.simulationId = id;
 		}
 	}
 

@@ -81,8 +81,6 @@ namespace WeirdEngine
 			m_nextScene = nextScene;
 		};
 
-		
-
 		ECSManager m_ecs;
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
@@ -106,13 +104,10 @@ namespace WeirdEngine
 
 		PhysicsInteractionSystem m_physicsInteractionSystem;
 
-		bool m_debugFly = true;
+		bool m_debugFly = false;
 		bool m_debugInput = false;
 
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
-
-
-
 
 	private:
 

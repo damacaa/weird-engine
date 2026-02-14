@@ -71,27 +71,7 @@ namespace WeirdEngine
 
 			void output(Scene& scene, Texture& texture, const double delta);
 
-			// TODO: Split into color palette and materials
-			// Materials can use multiple colors from the palette
-			// Materials have extra parameters like "temporal permanence"
-			glm::vec4 m_colorPalette[16] = {
-				glm::vec4(0.025f, 0.025f, 0.05f, 1.0f), // Black
-				glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), // White
-				glm::vec4(0.484f, 0.484f, 0.584f, 1.0f), // Dark Gray
-				glm::vec4(0.752f, 0.762f, 0.74f, 1.0f), // Light Gray
-				glm::vec4(.8f, 0.2f, 0.2f, 1.0f), // Red
-				glm::vec4(0.1f, .95f, 0.1f, 1.0f), // Green
-				glm::vec4(0.15f, 0.25f, .85f, 1.0f), // Blue
-				glm::vec4(1.0f, .9f, 0.2f, 0.33f), // Yellow
-				glm::vec4(.95f, 0.4f, 0.1f, 1.0f), // Orange
-				glm::vec4(0.5f, 0.0f, 1.0f, 1.0f), // Purple
-				glm::vec4(0.0f, .9f, .9f, 1.0f), // Cyan
-				glm::vec4(1.0f, 0.3f, .6f, 1.0f), // Magenta
-				glm::vec4(0.5f, 1.0f, 0.5f, 1.0f), // Light Green
-				glm::vec4(1.0f, 0.5f, 0.5f, 1.0f), // Pink
-				glm::vec4(0.5f, 0.5f, 1.0f, 1.0f), // Light Blue
-				glm::vec4(0.4f, 0.25f, 0.1f, 1.0f) // Brown
-			};
+			glm::vec4 m_colorPalette[16];
 
 			Camera m_uiCamera;
 

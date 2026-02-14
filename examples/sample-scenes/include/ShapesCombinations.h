@@ -155,26 +155,23 @@ private:
       m_circleRadious = (std::max)(0.0f, m_circleRadious);
     }
 
-
     {
+	    CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle);
+	    cs.parameters[0] = m_initialMousePositionInWorld.x;
+	    cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
+	    cs.parameters[2] = m_circleRadious;
 
-      CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle);
-    	cs.m_parameters[0] = m_initialMousePositionInWorld.x;
-			cs.m_parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
-      cs.m_parameters[2] = m_circleRadious;
-
-			cs.m_isDirty = true;
+	    cs.isDirty = true;
     }
-
 
     if (m_circle2)
     {
-      CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle2);
-    	cs.m_parameters[0] = m_initialMousePositionInWorld.x;
-			cs.m_parameters[1] = m_initialMousePositionInWorld.y;
-      cs.m_parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
+	    CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle2);
+	    cs.parameters[0] = m_initialMousePositionInWorld.x;
+	    cs.parameters[1] = m_initialMousePositionInWorld.y;
+	    cs.parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
 
-			cs.m_isDirty = true;
+	    cs.isDirty = true;
     }
 
 

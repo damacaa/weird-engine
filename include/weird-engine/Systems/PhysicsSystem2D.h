@@ -61,10 +61,10 @@ namespace WeirdEngine
 				for (size_t i = 0; i < shapeArray->size; i++)
 				{
 					auto& shape = shapeArray->getDataAtIdx(i);
-					if (shape.m_isDirty)
+					if (shape.isDirty)
 					{
 						simulation.updateShape(shape);
-						shape.m_isDirty = false;
+						shape.isDirty = false;
 					}
 
 				}

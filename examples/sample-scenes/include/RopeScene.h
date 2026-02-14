@@ -143,9 +143,9 @@ private:
 		// Animate custom shape over time
 		{
 			auto& cs = m_ecs.getComponent<CustomShape>(m_star);
-			cs.m_parameters[4] = static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5 + 2;
-			cs.m_parameters[3] = std::sin(3.1416f * m_simulation2D.getSimulationTime());
-			cs.m_isDirty = true;
+			cs.parameters[4] = static_cast<int>(std::floor(m_simulation2D.getSimulationTime())) % 5 + 2;
+			cs.parameters[3] = std::sin(3.1416f * m_simulation2D.getSimulationTime());
+			cs.isDirty = true;
 		}
 
 		auto audioVisualData = AudioEngine::getAudioVisuals();

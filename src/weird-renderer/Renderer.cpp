@@ -17,6 +17,7 @@ namespace WeirdEngine
 			, m_worldPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 		{
+			std::copy_n(settings.colorPalette, 16, m_colorPalette);
 
 			setWindowSize(settings.width, settings.height);
 

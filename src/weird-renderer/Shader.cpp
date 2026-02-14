@@ -419,7 +419,12 @@ namespace WeirdEngine
 #ifndef NDEBUG
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			std::cout << "Building the program: " << ms << " ms\n";
+			std::cout << "Compiling program: \n   V -> " << m_vertexFile << "\n   F -> " << m_fragmentFile << "\n";
+			for (const auto& define : m_activeDefines)
+			{
+				std::cout << define << "\n";
+			}
+			std::cout << "Elapsed time:" << ms << " ms \n\n";
 #endif
 
 			m_uniformLocationCache.clear();

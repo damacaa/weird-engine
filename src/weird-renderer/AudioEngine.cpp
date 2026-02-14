@@ -10,6 +10,8 @@
 
 #include "weird-engine/Input.h"
 
+#include <random>
+
 #define CHANNELS    2
 #define SAMPLE_RATE 44100
 
@@ -172,60 +174,109 @@ namespace WeirdEngine {
 
             auto& audioQueue = scene.getAudioQueue();
 
-            static int buffered = 0;
-            static SimpleAudioRequest buffered_request{0.0f, 0.0f, true, vec3(0.0f)};
-            static float nextTime = 0.0f;
-            const static float MIN_TIME = 0.2f;
+			constexpr float BASE_BEAT = 0.1f;
 
-            float time = SDL_GetTicks() / 1000.0f;
-
-            if ((time < nextTime) && !activeVoices.empty())
-            {
-
-                SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
-                while (audioQueue.pop(aux))
-                {
-                    buffered++;
-                    buffered_request.volume += aux.volume;
-                    buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
-                    buffered_request.position += buffered_request.position;
-                    buffered_request.spatial = buffered_request.spatial || aux.spatial;
-                }
-
-                return;
-            }
-
-            if (buffered && activeVoices.size() < MAX_ACTIVE_VOICES)
-            {
-                SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
-                while (audioQueue.pop(aux))
-                {
-                    buffered++;
-                    buffered_request.volume += aux.volume;
-                    buffered_request.frequency = (std::max)(aux.frequency, buffered_request.frequency);
-                    buffered_request.position += buffered_request.position;
-                    buffered_request.spatial = buffered_request.spatial || aux.spatial;
-                }
-
-                float invBufferedAmount = 1.0f / static_cast<float>(buffered + 1);
-                // buffered_request.volume *= invBufferedAmount;
-                buffered_request.volume = (std::min)(buffered_request.volume, 1.0f);
-                // buffered_request.frequency *= invBufferedAmount;
-                buffered_request.position *= invBufferedAmount;
-                audioQueue.push(buffered_request);
-                // std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
-
-                buffered = 0;
-                buffered_request.volume = 0.0f;
-                buffered_request.frequency = 0.0f;
-                buffered_request.position = vec3(0.0f);
-                buffered_request.spatial = false;
-            }
-
-            // std::cout << activeVoices.size() << std::endl;
+        	constexpr static float MIN_COLLISION_INTERVAL = BASE_BEAT; // Min time between collision sounds
+            constexpr static float SILENCE_TIME_THRESHOLD = BASE_BEAT * 64; // When there are no collisions, start adding collision sounds to generate procedural music
+            constexpr static float AMBIENT_NOTE_INTERVAL = BASE_BEAT * 8; // Time between procedural music sounds
+            constexpr float MAX_AMBIENT_VOLUME = 0.2f;
+        	constexpr float AMBIENT_FADE_IN_SPEED = 0.1f * MAX_AMBIENT_VOLUME;
+        	constexpr float LIKELIHOOD_OF_DOUBLE_BEAT = 0.3f;
+        	constexpr float LIKELIHOOD_OF_SKIP_BEAT = 0.2f;
 
 
-            auto cameraPosition = scene.getCamera().position;
+            static int mergedCollisionCount = 0;
+            static SimpleAudioRequest accumulatedSoundData{0.0f, 0.0f, true, vec3(0.0f)};
+            static float nextAllowedPlayTime = MIN_COLLISION_INTERVAL;
+            static float nextAllowedAmbientPlayTime = AMBIENT_NOTE_INTERVAL;
+            static float ambientStartTime = SILENCE_TIME_THRESHOLD;
+
+            static bool isPlayingAmbience = false;
+        	static float currentAmbientVolume = 0.0f;
+        	static float previousFrameTime = 0.0f;
+
+        	static std::random_device randDevice;
+        	static std::mt19937 generator(randDevice());
+
+			// Time
+            float time = scene.getTime();
+        	float deltaTime = time - previousFrameTime;
+        	if (deltaTime < 0.0f)
+        	{
+        		// New scene
+        		deltaTime = 0.0f;
+        		// playSineSound(getPleasantFrequency(80), MAX_FILL_VOLUME, 1.5f);
+
+        		nextAllowedPlayTime = time + MIN_COLLISION_INTERVAL;
+        		nextAllowedAmbientPlayTime = time + AMBIENT_NOTE_INTERVAL;
+        		ambientStartTime = time + SILENCE_TIME_THRESHOLD;
+        	}
+        	previousFrameTime = time;
+
+
+
+        	if (audioQueue.empty())
+        	{
+        		// Fade fill music in
+        		currentAmbientVolume = (std::min)(currentAmbientVolume + (AMBIENT_FADE_IN_SPEED * deltaTime), MAX_AMBIENT_VOLUME);
+
+        		// Procedural ambient
+        		if ((!isPlayingAmbience && time > ambientStartTime) || (isPlayingAmbience && time > nextAllowedAmbientPlayTime))
+        		{
+        			if (!isPlayingAmbience)
+        			{
+        				isPlayingAmbience = true;
+        				currentAmbientVolume = 0.05f;
+        			}
+
+        			const int minFrequency = 200;
+        			const int maxFrequency = 350;
+
+        			std::uniform_int_distribution<int> distribution(minFrequency, maxFrequency);
+
+        			int randomFrequency = distribution(generator);
+        			std::cout << "Playing: " << randomFrequency << "Hz" << currentAmbientVolume << std::endl;
+        			SimpleAudioRequest aux{currentAmbientVolume, static_cast<float>(randomFrequency),false, vec3(0.0f)};
+        			audioQueue.push(aux);
+        		}
+
+        	}
+        	else
+        	{
+        		// Stop ambient
+        		isPlayingAmbience = false;
+        		nextAllowedAmbientPlayTime = time + AMBIENT_NOTE_INTERVAL;
+
+        		SimpleAudioRequest aux{0,0,true, vec3(0.0f)};
+        		while (audioQueue.pop(aux))
+        		{
+        			mergedCollisionCount++;
+        			accumulatedSoundData.volume += aux.volume;
+        			accumulatedSoundData.frequency = (std::max)(aux.frequency, accumulatedSoundData.frequency);
+        			accumulatedSoundData.position += accumulatedSoundData.position;
+        			accumulatedSoundData.spatial = accumulatedSoundData.spatial || aux.spatial;
+        			accumulatedSoundData.beats = (std::max)(aux.beats, accumulatedSoundData.beats);
+        		}
+
+        		if (time >= nextAllowedPlayTime && activeVoices.size() < MAX_ACTIVE_VOICES)
+        		{
+        			float invBufferedAmount = 1.0f / static_cast<float>(mergedCollisionCount + 1);
+        			// buffered_request.volume *= invBufferedAmount;
+        			accumulatedSoundData.volume = (std::min)(accumulatedSoundData.volume, 1.0f);
+        			// buffered_request.frequency *= invBufferedAmount;
+        			accumulatedSoundData.position *= invBufferedAmount;
+        			audioQueue.push(accumulatedSoundData);
+        			// std::cout << "Playing: " << static_cast<int>(buffered_request.volume * 100) << "% -> " << buffered_request.frequency << "Hz" << std::endl;
+
+        			mergedCollisionCount = 0;
+        			accumulatedSoundData = SimpleAudioRequest{0.0f, 0.0f, false, vec3(0.0f), 1};
+        		}
+        	}
+
+
+
+
+        	auto cameraPosition = scene.getCamera().position;
 
             // Process queue
             SimpleAudioRequest request{};
@@ -266,12 +317,35 @@ namespace WeirdEngine {
                 // Optimization: Don't play sounds that are effectively silent
                 if (amplitude > 0.01f)
                 {
-                    float randLength = static_cast<float>(std::rand() % 2) + 1.0f;
+                	// std::bernoulli_distribution returns true based on the given probability
+                	std::bernoulli_distribution durationDistribution(LIKELIHOOD_OF_DOUBLE_BEAT);
 
-                    float decay = 0.15f * randLength;
-                    nextTime = time + (MIN_TIME * randLength);
-                    playSineSound(frequency, amplitude, decay);
-                    return;
+                	// If true return 2, if false return 1
+                    float duration = durationDistribution(generator) ? 2.0f : 1.0f;
+
+	                float decay = MIN_COLLISION_INTERVAL * duration * static_cast<float>(request.beats);
+	                nextAllowedPlayTime = time + decay;
+
+                	bool skipBeat = false;
+	                if (!isPlayingAmbience)
+                	{
+                		// Reset ambient timer
+                		ambientStartTime = time + SILENCE_TIME_THRESHOLD;
+                	}
+                	else
+                	{
+                		decay = AMBIENT_NOTE_INTERVAL * duration;
+                		nextAllowedAmbientPlayTime = time + decay;
+                		decay *= 0.5f;
+
+                		std::bernoulli_distribution skipBeatDistribution(LIKELIHOOD_OF_SKIP_BEAT);
+                		skipBeat = skipBeatDistribution(generator);
+                	}
+
+                	if (!skipBeat)
+						playSineSound(frequency, amplitude, decay);
+
+                    break;
                 }
             }
         }

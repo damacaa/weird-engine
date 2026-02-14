@@ -58,7 +58,7 @@ namespace WeirdEngine
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
 
-		m_UIRenderSystem.m_shapeBlending = 10.0f;
+		m_UIRenderSystem.setShapeBlending (10.0f);
 
 		// Read content from file
 		std::string content = "";
@@ -237,12 +237,12 @@ namespace WeirdEngine
 	{
 		Entity entity = m_ecs.createEntity();
 		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.m_distanceFieldId = shapeId;
-		shape.m_combination = combination;
-		shape.m_hasCollision = hasCollision;
-		shape.m_groupId = group;
-		shape.m_material = material;
-		std::copy(variables, variables + 8, shape.m_parameters);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.hasCollisions = hasCollision;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
 
 		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
 
@@ -253,12 +253,12 @@ namespace WeirdEngine
 	{
 		Entity entity = m_ecs.createEntity();
 		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
-		shape.m_distanceFieldId = shapeId;
-		shape.m_combination = combination;
-		shape.m_hasCollision = false;
-		shape.m_groupId = group;
-		shape.m_material = material;
-		std::copy(variables, variables + 8, shape.m_parameters);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.hasCollisions = false;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
 
 		m_UIRenderSystem.shaderNeedsUpdate() = true;
 

@@ -17,29 +17,25 @@ namespace WeirdEngine
 
 	struct CustomShape : public Component
 	{
-	public:
+		uint16_t distanceFieldId;
+		CombinationType combination;
+		float parameters[8];
+		bool isDirty;
+		bool hasCollisions;
+		uint16_t groupIdx;
+		uint16_t material;
+		ShapeId simulationId;
 
-		uint16_t m_distanceFieldId;
-		CombinationType m_combination;
-		float m_parameters[8];
-		bool m_isDirty;
-		bool m_screenSpace;
-		bool m_hasCollision;
-		uint16_t m_groupId;
-		uint16_t m_material;
-		ShapeId m_simulationId;
-
-		CustomShape() : m_distanceFieldId(0), m_isDirty(true), m_screenSpace(false)
+		CustomShape() : distanceFieldId(0), isDirty(true)
 		{
 		}
 
-		CustomShape(uint16_t id, float* params) : m_distanceFieldId(id), m_isDirty(true)
+		CustomShape(uint16_t id, float* params) : distanceFieldId(id), isDirty(true)
 		{
-			std::copy(params, params + 8, m_parameters);
+			std::copy(params, params + 8, parameters);
 		}
 
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
-
 	};
 
 	struct UIShape : public CustomShape {};

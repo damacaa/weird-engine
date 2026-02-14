@@ -77,9 +77,9 @@ private:
 			// Transform mouse coordinates to world space
 			vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-			cs.m_parameters[0] = mousePositionInWorld.x;
-			cs.m_parameters[1] = mousePositionInWorld.y;
-			cs.m_isDirty = true;
+			cs.parameters[0] = mousePositionInWorld.x;
+			cs.parameters[1] = mousePositionInWorld.y;
+			cs.isDirty = true;
 		}
 	}
 

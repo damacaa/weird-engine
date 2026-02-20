@@ -488,7 +488,7 @@ namespace WeirdEngine
 			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
 
 			// Apply friction
-			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.1f);
+			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.0f);
 			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * friction * velocityDirection; // Lose velocity on collision
 
 			// Absortion

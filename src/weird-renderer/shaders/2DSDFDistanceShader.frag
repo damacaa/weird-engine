@@ -229,7 +229,7 @@ void main()
     material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
 
-    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    #if 1
 
     finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
 
@@ -238,7 +238,7 @@ void main()
     // distanceChange = clamp(distanceChange, -0.1, 0.05);
 
     // qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
-    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * 10.0));
+    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * 10.0) * (distanceChange < 0.0 ? 5.0 : 1.0));
 
     //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
 

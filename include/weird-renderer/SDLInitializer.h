@@ -7,7 +7,7 @@ namespace WeirdEngine {
     namespace WeirdRenderer {
         class SDLInitializer {
         public:
-            SDLInitializer(const DisplaySettings& settings, SDL_Window*& m_window, AudioEngine& audioEngine);
+            SDLInitializer(DisplaySettings& settings, SDL_Window*& m_window, AudioEngine& audioEngine);
             ~SDLInitializer();
         private:
             SDL_Window* m_window;

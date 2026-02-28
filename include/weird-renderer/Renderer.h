@@ -41,6 +41,7 @@ namespace WeirdEngine
 			unsigned int m_renderWidth, m_renderHeight;
 
 			bool m_vSyncEnabled;
+			float m_targetRefreshRate;
 
 			// Pipelines for 2D SDF rendering
 			SDF2DRenderPipeline* m_worldPipeline;

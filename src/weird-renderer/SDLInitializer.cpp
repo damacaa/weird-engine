@@ -26,7 +26,7 @@ namespace WeirdEngine
 			}
 		}
 
-		SDLInitializer::SDLInitializer(const DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
+		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
         {
             audioEngine.init();
 
@@ -55,6 +55,15 @@ namespace WeirdEngine
 			if (!settings.fullscreen) {
 				SDL_SetWindowPosition(window, settings.x, settings.y);
 			}
+
+			int displayIndex = SDL_GetDisplayForWindow(window);
+			if (displayIndex < 0) {
+				SDL_Log("Failed to get display index: %s", SDL_GetError());
+				return;
+			}
+
+			const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(displayIndex);
+			settings.refreshRate = mode->refresh_rate;
 
             m_window = window;
 

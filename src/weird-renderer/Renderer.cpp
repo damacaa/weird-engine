@@ -16,6 +16,7 @@ namespace WeirdEngine
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
+			, m_targetRefreshRate(settings.refreshRate)
 		{
 			std::copy_n(settings.colorPalette, 16, m_colorPalette);
 
@@ -54,17 +55,10 @@ namespace WeirdEngine
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
-			double clampedDelta = std::clamp(delta, 0.0, 1.0 / 60.0);
+			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
-			if (m_vSyncEnabled)
-			{
-				SDL_GL_SetSwapInterval(1); // Enable VSync
-			}
-			else
-			{
-				SDL_GL_SetSwapInterval(0); // Disable VSync
-			}
+
 
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
@@ -292,6 +286,21 @@ namespace WeirdEngine
 			auto cameraMatrix = glm::lookAt(position, position + orientation, up);
 
 			m_uiCamera.view = cameraMatrix;
+
+			if (m_vSyncEnabled)
+			{
+				// Try -1 (Adaptive) first
+				int result = SDL_GL_SetSwapInterval(-1);
+
+				// If Adaptive fails, fall back to Standard (1)
+				if (result != 0) {
+					result = SDL_GL_SetSwapInterval(1);
+				}
+			}
+			else
+			{
+				SDL_GL_SetSwapInterval(0); // Disable VSync
+			}
 		}
 
 		void Renderer::output(Scene& scene, Texture& texture, const double delta)

@@ -1,4 +1,3 @@
----
 Language:        Cpp
 # Start with the Microsoft base style
 BasedOnStyle:    Microsoft
@@ -44,4 +43,3 @@ FixNamespaceComments: true
 SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: false
 SpacesInParentheses: false
-...

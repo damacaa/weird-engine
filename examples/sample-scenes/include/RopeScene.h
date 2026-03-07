@@ -83,10 +83,12 @@ private:
 		{
 			Entity text = m_ecs.createEntity();
 			auto& t = m_ecs.addComponent<Transform>(text);
-			t.position = vec3(20.0f, 0.0f, 0.0f);
+			t.position = vec3(Display::width / 2.0f, 20.0f, 0.0f);
 			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
 			textRenderer.text = "Nice rope dude!";
 			textRenderer.material = 4;
+			textRenderer.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			textRenderer.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 		}
 
 		for (int i = 0; i < 8; ++i)

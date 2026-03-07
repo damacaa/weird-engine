@@ -17,13 +17,13 @@ namespace WeirdEngine
 		RigidBodyManager(Simulation2D& simulation)
 			: m_simulation(&simulation) {}
 
-		void HandleNewComponent(Entity entity, RigidBody2D& component) override
+		void handleNewComponent(Entity entity, RigidBody2D& component) override
 		{
 			component.simulationId = m_simulation->generateSimulationID();
 			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
 		}
 
-		void HandleDestroyedComponent(Entity entity) override
+		void handleDestroyedComponent(Entity entity) override
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
 
@@ -40,23 +40,6 @@ namespace WeirdEngine
 			lastRb.simulationId = removedId;
 
 			// TODO: lastRb.simulationId might not match the lastId used in m_simulation->removeObject !!!!
-		}
-
-		void HandlePostDestroyedComponent(Entity entity) override
-		{
-		
-			/*std::cout << "After destroy: " << std::endl;
-
-			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
-
-		
-			for (size_t i = 0; i < componentArray->getSize(); i++)
-			{
-				auto& c = componentArray->getDataAtIdx(i);
-				std::cout << "  -" << i << " Entity: " << c.Owner << " Id:" << c.simulationId << std::endl;
-			}
-
-			std::cout << "------------------" << std::endl;*/
 		}
 	};
 }

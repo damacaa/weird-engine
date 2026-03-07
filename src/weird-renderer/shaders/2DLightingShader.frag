@@ -16,7 +16,7 @@ const float NEAR = 0.1f;
 const float FAR = 1.4f;
 const float NORMAL_EPSILON = 0.05;
 
-const float SHADOW_VALUE = 0.85;
+const float SHADOW_VALUE = 0.9;
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;

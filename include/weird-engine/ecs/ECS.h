@@ -143,7 +143,7 @@ namespace WeirdEngine
 #include "../Systems/SDFRenderSystem.h"
 
 
-#include "../../weird-physics/Components/RigidBodyManager.h"
+#include "weird-physics/Components/RigidBodyManager.h"
 
 
 #include "../Systems/SDFRenderSystem2D.h"

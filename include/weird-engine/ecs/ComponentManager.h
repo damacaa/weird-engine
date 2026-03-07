@@ -28,9 +28,8 @@ namespace WeirdEngine
 		std::shared_ptr<void> m_componentArray;
 		std::queue<Entity> m_removedEntities;
 
-		virtual void HandleNewComponent(Entity entity, T& component) {}
-		virtual void HandleDestroyedComponent(Entity entity) {}
-		virtual void HandlePostDestroyedComponent(Entity entity) {}
+		virtual void handleNewComponent(Entity entity, T& component) {}
+		virtual void handleDestroyedComponent(Entity entity) {}
 
 	public:
 
@@ -54,7 +53,7 @@ namespace WeirdEngine
 
 			component.Owner = entity;
 
-			HandleNewComponent(entity, component);
+			handleNewComponent(entity, component);
 
 			return component;
 		}
@@ -95,9 +94,8 @@ namespace WeirdEngine
 
 				if (componentArray->hasData(e))
 				{
-					HandleDestroyedComponent(e);
+					handleDestroyedComponent(e);
 					componentArray->removeData(e);
-					HandlePostDestroyedComponent(e);
 				}
 
 				m_removedEntities.pop();

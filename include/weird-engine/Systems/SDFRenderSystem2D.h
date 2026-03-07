@@ -16,7 +16,7 @@ namespace WeirdEngine
 			std::vector<glm::vec2> positions;
 		};
 
-		Font(const std::string &fileName, int charWidth, int charHeight, const std::string &charList)
+		Font(const std::string &fileName, int charWidth, int charHeight, int spacing, const std::string &charList)
 		{
 			// Store char dimensions
 			m_charWidth = charWidth;
@@ -30,6 +30,10 @@ namespace WeirdEngine
 				std::cerr << "Error: could not load image." << std::endl;
 				return;
 			}
+
+			// Bad fix
+			charWidth += spacing;
+			charHeight += spacing;
 
 			int columns = width / charWidth;
 			int rows = height / charHeight;
@@ -65,7 +69,7 @@ namespace WeirdEngine
 						if (r < 50)
 						{
 							float localX = offsetX;
-							float localY = charHeight - offsetY;
+							float localY = (charHeight * 0.5f) - offsetY;
 							charData.positions.emplace_back(localX, localY);
 						}
 					}
@@ -83,6 +87,9 @@ namespace WeirdEngine
 			return m_charData[charIndex];
 		}
 
+		int getCharWidth() { return m_charWidth; }
+		int getCharHeight() { return m_charHeight; }
+
 	private:
 		std::array<CharData, 1024> m_charData;
 
@@ -98,10 +105,15 @@ namespace WeirdEngine
 	{
 	private:
 		float m_shapeBlending = 1.0f;
+
 	public:
+
+		float m_dotRadious = 5.0f;
+		float m_charSpacing = 10.0f;
 		Font m_font;
 
-		SDFRenderSystem2D(ECSManager& ecs): m_font(FONTS_PATH "small.bmp", 4, 5,
+		// loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
+		SDFRenderSystem2D(ECSManager& ecs): m_font(FONTS_PATH "small.bmp", 3, 4, 1,
 		                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
 		{
 			m_dotClassManager = ecs.getComponentManager<DotClass>();
@@ -115,6 +127,26 @@ namespace WeirdEngine
 			m_shapeBlending = blending;
 		}
 
+		void updateText(TextClass& text)
+		{
+			if(text.dirty)
+			{
+				// Update dot count
+				text.bufferedDotCount = 0;
+
+				for (const auto& c : text.text)
+				{
+					text.bufferedDotCount += m_font.getCharData(c).dotCount;
+				}
+
+				int charCount = text.text.length();
+				text.width = (charCount * m_font.getCharWidth() * 2 * m_dotRadious) + ((charCount - 1) * m_charSpacing);
+				text.height = m_font.getCharHeight() * 2 * m_dotRadious;
+
+				text.dirty = false;
+			}
+		}
+
 		void fillDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size)
 		{
 			// Get component arrays for the templated types
@@ -125,21 +157,11 @@ namespace WeirdEngine
 
 			uint32_t normalDots = dotClassArray->getSize();
 			uint32_t textDots = 0;
+
 			for (size_t i = 0; i < textClassArray->getSize(); i++)
 			{
 				auto& text = textClassArray->getDataAtIdx(i);
-				if(text.dirty)
-				{
-					// Update dot count
-					text.bufferedDotCount = 0;
-
-					for (const auto& c : text.text)
-					{
-						text.bufferedDotCount += m_font.getCharData(c).dotCount;
-					}
-
-					text.dirty = false;
-				}
+				updateText(text);
 
 				textDots += text.bufferedDotCount;
 			}
@@ -176,6 +198,8 @@ namespace WeirdEngine
 				data[i].material = dotComp.materialId;
 			}
 
+			float charWidth = m_font.getCharWidth() * 2 * m_dotRadious; // should be 40
+
 			// Text
 			int dotIndex = 0;
 			for (size_t i = 0; i < textClassArray->getSize(); i++) {
@@ -183,13 +207,43 @@ namespace WeirdEngine
 				auto &t = transformArray->getDataFromEntity(text.Owner);
 				int charCount = text.text.length();
 
+				float horizontalOffset = 0.0f;
+				switch (text.horizontalAlignment) {
+					case TextRenderer::HorizontalAlignment::Left:
+						horizontalOffset = 0.0f;
+						break;
+					case TextRenderer::HorizontalAlignment::Center:
+						horizontalOffset = -text.width * 0.5f;
+						break;
+					case TextRenderer::HorizontalAlignment::Right:
+						horizontalOffset = -text.width;
+						break;
+				}
+
+				float verticalOffset = 0.0f;
+				switch (text.verticalAlignment) {
+					case TextRenderer::VerticalAlignment::Bottom:
+						verticalOffset = 0.0f;
+						break;
+					case TextRenderer::VerticalAlignment::Center:
+						verticalOffset = -text.height * 0.5f;
+						break;
+					case TextRenderer::VerticalAlignment::Top:
+						verticalOffset = -text.height;
+						break;
+				}
+
+				vec2 alignmentOffset(horizontalOffset, verticalOffset);
+
 				for (size_t c = 0; c < charCount; c++) {
 					auto charData = m_font.getCharData(text.text[c]);
 					for (size_t j = 0; j < charData.dotCount; j++) {
 						int idx = normalDots + dotIndex;
 						dotIndex++;
 
-						data[idx].position = (vec2)t.position + vec2(40 * c, 0) + (10.0f * charData.positions[j]); // + letter
+						vec2 charOffset = vec2(((charWidth + m_charSpacing) * c) + m_dotRadious, m_dotRadious); // TODO: different lines
+						vec2 scaledDotPosition = 2 * m_dotRadious * charData.positions[j];
+						data[idx].position = (vec2)t.position + charOffset + scaledDotPosition + alignmentOffset; // + letter
 						data[idx].size = 1.0;
 						data[idx].material = text.material;
 					}

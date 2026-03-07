@@ -29,7 +29,7 @@ void main()
     pixel.x *= aspectRatio;
 
     vec3 background = mix(vec3(0.55), vec3(0.7),
-    (fract(0.1 * pos.x) > pixel.x && fract(0.1 * pos.y) > pixel.y) ? 1.0 : 0.0);
+    (fract(0.1 * pos.x) >= pixel.x && fract(0.1 * pos.y) >= pixel.y) ? 1.0 : 0.0);
 
     FragColor = vec4(background, 1.0);
 }

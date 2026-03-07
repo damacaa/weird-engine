@@ -56,6 +56,11 @@ namespace WeirdEngine
 	Scene::Scene()
 			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_UIRenderSystem(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
+		m_UIRenderSystem.setShapeBlending (10.0f);
+
+		m_sdfRenderSystem2D.m_dotRadious = 0.5f;
+		m_sdfRenderSystem2D.m_charSpacing = 1.0f;
+
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);

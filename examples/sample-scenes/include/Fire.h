@@ -181,7 +181,7 @@ private:
 		m_quad->free();
 		delete m_quad;
 		m_cube->free();
-		delete m_quad;
+		delete m_cube;
 
 		m_noiseTexture->dispose();
 		delete m_noiseTexture;
@@ -475,10 +475,13 @@ private:
 
 		{
 			Entity text = m_ecs.createEntity();
-			m_ecs.addComponent<Transform>(text);
+			auto& t = m_ecs.addComponent<Transform>(text);
+			t.position = vec3(Display::width / 2.0f, Display::height / 2.0f, 0.0f);
 			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
-			textRenderer.text = "Fire Scene - Ray Marching 3D";
+			textRenderer.text = "Fire Scene";
 			textRenderer.material = 10; // UI material
+			textRenderer.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			textRenderer.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 		}
 	}
 };

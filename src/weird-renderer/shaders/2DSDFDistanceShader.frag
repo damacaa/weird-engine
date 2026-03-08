@@ -145,7 +145,7 @@ vec3 getColor(vec2 p, vec2 uv)
     // minDist = min(minDist, shapeDist);
 
 #ifdef ORIGIN_AT_BOTTOM_LEFT
-    minDist = min(minDist, 1.0); // Clamp max distance
+    minDist = min(minDist, 10.0); // Clamp max distance
 #endif
 
     return vec3(minDist, max(finalMaterialId, 0), mask);

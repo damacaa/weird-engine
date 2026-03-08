@@ -22,6 +22,9 @@ namespace WeirdEngine
 			m_charWidth = charWidth;
 			m_charHeight = charHeight;
 
+			// Make sure texture is not flipped
+			wstbi_set_flip_vertically_on_load(false);
+
 			// Load the image
 			int width, height, channels;
 			unsigned char *img = wstbi_load(fileName.c_str(), &width, &height, &channels, 0);

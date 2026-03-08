@@ -258,6 +258,7 @@ namespace WeirdEngine
 			worldConfig.materialBlendSpeed = 10.0f;
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
+			worldConfig.ballK = 0.3f;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline
@@ -278,6 +279,7 @@ namespace WeirdEngine
 			uiConfig.materialBlendSpeed = 5.0f;
 			uiConfig.debugDistanceField = false;
 			uiConfig.debugMaterialColors = false;
+			uiConfig.ballK = 3.0f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);

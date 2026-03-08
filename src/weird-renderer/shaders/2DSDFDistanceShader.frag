@@ -116,7 +116,8 @@ vec3 getColor(vec2 p, vec2 uv)
         #endif
 
         // Inside ball mask is set to 0
-        mask = objectDist <= 0 ? 0.95 : mask;
+        mask = objectDist <= 0 ? -objectDist * 4.0 : mask;
+        // mask = objectDist <= 0 ? 1.0 : mask;
 
         #ifdef BLEND_SHAPES
 
@@ -229,9 +230,8 @@ void main()
     material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
 
-    #if 1
 
-    finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
+    // finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
 
     // finalDistance = step(previousDistance, finalDistance - previousDistance);
     float distanceChange = finalDistance - previousDistanceExact;
@@ -243,22 +243,19 @@ void main()
     //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
 
     blendDistance = clamp(blendDistance, -0.1, 0.1);
+
+
+    #ifdef ORIGIN_AT_BOTTOM_LEFT
+
     finalDistance = blendDistance;
 
     #else
 
-    previousDistance += 20000.0 / zoom * u_deltaTime * (abs(previousDistance * previousDistance) + 0.0001);
-    // previousDistance += u_blendIterations * 0.00035;
-    // previousDistance = mix(finalDistance, previousDistance, 0.99);
-    // previousDistance = min(previousDistance + (u_blendIterations * 0.00035), mix(finalDistance, previousDistance, 0.9));
 
-    // IDEA! add noise for particles!
-    // float distanceFalloff = 10.0 * pow(previousDistance + 0.001, 2);
-    // previousDistance += true ? distanceFalloff  : finalDistance - previousDistance;
+    finalDistance = mix(blendDistance, finalDistance, mask);
 
-    finalDistance = min(previousDistance, finalDistance);
-    // finalDistance = fOpUnionSoft(previousDistance, finalDistance, 0.0025);
     #endif
+
 
 
     #endif

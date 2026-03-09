@@ -107,11 +107,10 @@ namespace WeirdEngine
 	class SDFRenderSystem2D : public System
 	{
 	private:
-		float m_shapeBlending = 1.0f;
 
 	public:
 
-		float m_dotRadious = 5.0f;
+		float m_dotRadious = 5.0f; // TODO: private and getters
 		float m_charSpacing = 10.0f;
 		Font m_font;
 
@@ -123,11 +122,6 @@ namespace WeirdEngine
 			m_shapeClassManager = ecs.getComponentManager<ShapeClass>();
 			m_textClassManager = ecs.getComponentManager<TextClass>();
 			m_transformManager = ecs.getComponentManager<Transform>(); // Transform remains non-templated
-		}
-
-		void setShapeBlending(float blending)
-		{
-			m_shapeBlending = blending;
 		}
 
 		void updateText(TextClass& text)
@@ -443,14 +437,14 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << m_shapeBlending << ");\n";
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << shape.smoothFactor << ");\n";
 					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material << ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
 				{
 					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << m_shapeBlending << ");\n";
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << shape.smoothFactor << ");\n";
 					// Material belongs to the *a* shape if it still �wins� after subtraction
 					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
 					//	<< shape.m_material << " : finalMaterialId;" << std::endl;

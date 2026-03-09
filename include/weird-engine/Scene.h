@@ -90,6 +90,7 @@ namespace WeirdEngine
 
 		Entity addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
 		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, int group = 0);
+		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
 
 		void lookAt(Entity entity);
 

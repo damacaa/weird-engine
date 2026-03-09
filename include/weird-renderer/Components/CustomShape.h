@@ -25,6 +25,7 @@ namespace WeirdEngine
 		uint16_t groupIdx;
 		uint16_t material;
 		ShapeId simulationId;
+		float smoothFactor = 1.0f;
 
 		CustomShape() : distanceFieldId(0), isDirty(true)
 		{
@@ -38,5 +39,16 @@ namespace WeirdEngine
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
 	};
 
-	struct UIShape : public CustomShape {};
+	struct UIShape : public CustomShape
+	{
+		UIShape() : CustomShape()
+		{
+			smoothFactor = 10.0f;
+		}
+
+		UIShape(uint16_t id, float* params) : CustomShape(id, params)
+		{
+			smoothFactor = 10.0f;
+		}
+	};
 }

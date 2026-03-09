@@ -33,6 +33,8 @@ namespace fs = std::filesystem;
 			in.close();
 			return(contents);
 		}
+
+		std::cout << "Can't find " << filename << "\n";
 		throw(errno);
 	}
 

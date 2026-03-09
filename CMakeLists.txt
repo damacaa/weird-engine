@@ -100,12 +100,9 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 
-#
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
-
-
 
 function(assign_source_groups TARGET)
     foreach(source_file IN LISTS ARGN)

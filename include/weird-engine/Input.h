@@ -45,6 +45,8 @@ namespace WeirdEngine
 		int* m_keyTable;
 		int* m_mouseKeysTable;
 
+		bool m_uiFlag = false;
+
 		Input()
 		{
 			// Use SDL_NUM_SCANCODES for the key table size
@@ -153,10 +155,33 @@ namespace WeirdEngine
 
 #pragma region MouseMovement
 
-		static float GetMouseX() { return getInstance().m_mouseX; };
-		static float GetMouseY() { return static_cast<float>(WeirdRenderer::Display::height) - getInstance().m_mouseY; };
-		static float GetMouseDeltaX() { return getInstance().m_deltaX / getInstance().m_width; };
-		static float GetMouseDeltaY() { return getInstance().m_deltaY / getInstance().m_height; };
+		static float GetMouseX()
+		{
+			return getInstance().m_mouseX;
+		}
+
+		static void flagUIClick()
+		{
+			getInstance().m_uiFlag = true;
+		}
+
+		static bool isUIClick()
+		{
+			return getInstance().m_uiFlag;
+		}
+
+		static float GetMouseY()
+		{
+			return static_cast<float>(WeirdRenderer::Display::height) - getInstance().m_mouseY;
+		}
+		static float GetMouseDeltaX()
+		{
+			return getInstance().m_deltaX / getInstance().m_width;
+		}
+		static float GetMouseDeltaY()
+		{
+			return getInstance().m_deltaY / getInstance().m_height;
+		}
 
 		static void SetMousePosition(float x, float y)
 		{
@@ -230,6 +255,7 @@ namespace WeirdEngine
 			instance.m_window = window;
 			SDL_GetWindowSize(window, &instance.m_width, &instance.m_height);
 			instance.pollEventsAndUpdateTables();
+			instance.m_uiFlag = false;
 		}
 
 		// Main update function, to be called once per frame.

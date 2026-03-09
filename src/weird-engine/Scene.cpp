@@ -56,16 +56,12 @@ namespace WeirdEngine
 	Scene::Scene()
 			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_UIRenderSystem(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
 	{
-		m_UIRenderSystem.setShapeBlending (10.0f);
-
 		m_sdfRenderSystem2D.m_dotRadious = 0.5f;
 		m_sdfRenderSystem2D.m_charSpacing = 1.0f;
 
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
-
-		m_UIRenderSystem.setShapeBlending (10.0f);
 
 		// Read content from file
 		std::string content = "";
@@ -177,6 +173,83 @@ namespace WeirdEngine
 
 		m_cameraSystem.update(m_ecs);
 
+		{
+			auto componentArray = m_ecs.getComponentArray<ShapeButton>();
+			unsigned int size = componentArray->getSize();
+			bool clicked = Input::GetMouseButton(Input::LeftClick);
+			for (size_t i = 0; i < size; i++)
+			{
+				auto& buttonComponent = componentArray->getDataAtIdx(i);
+
+				if (clicked)
+				{
+					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+					shape.parameters[8] = getTime();
+					shape.parameters[9] = Input::GetMouseX();
+					shape.parameters[10] = Input::GetMouseY();
+
+					m_sdfs[shape.distanceFieldId]->propagateValues(shape.parameters);
+
+					float distance = m_sdfs[shape.distanceFieldId]->getValue();
+
+					if (distance < 0.0f)
+					{
+						switch (buttonComponent.state)
+						{
+							case ButtonState::Off:
+							case ButtonState::Up:
+								buttonComponent.state = ButtonState::Down;
+
+								for (int i = 0; i < 8; ++i)
+								{
+									// test(i) returns true if the bit is 1
+									if (buttonComponent.parameterModifierMask.test(i))
+									{
+										shape.parameters[i] += buttonComponent.modifierAmount;
+									}
+								}
+								break;
+							case ButtonState::Down:
+							case ButtonState::Hold:
+								buttonComponent.state = ButtonState::Hold;
+								break;
+						}
+
+						Input::flagUIClick();
+					}
+				}
+				else
+				{
+					switch (buttonComponent.state)
+					{
+						case ButtonState::Off:
+							break;
+						case ButtonState::Down:
+						case ButtonState::Hold:
+							buttonComponent.state = ButtonState::Up;
+							break;
+						case ButtonState::Up:
+						{
+							buttonComponent.state = ButtonState::Off;
+
+							// Reset shape
+							auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+							for (int i = 0; i < 8; ++i)
+							{
+								// test(i) returns true if the bit is 1
+								if (buttonComponent.parameterModifierMask.test(i))
+								{
+									shape.parameters[i] -= buttonComponent.modifierAmount;
+								}
+							}
+
+							break;
+						}
+					}
+				}
+			}
+		}
+
 		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
 		if (m_debugInput)
 		{
@@ -270,6 +343,21 @@ namespace WeirdEngine
 		m_UIRenderSystem.shaderNeedsUpdate() = true;
 
 		return entity;
+	}
+
+	UIShape& Scene::addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group)
+	{
+		entity = m_ecs.createEntity();
+		UIShape& component = m_ecs.addComponent<UIShape>(entity);
+		component.distanceFieldId = shapeId;
+		component.hasCollisions = false;
+		component.groupIdx = group;
+		component.smoothFactor = 100.0f;
+		std::copy(variables, variables + 8, component.parameters);
+
+		m_UIRenderSystem.shaderNeedsUpdate() = true;
+
+		return component;
 	}
 
 	void Scene::lookAt(Entity entity)

@@ -89,7 +89,7 @@ namespace WeirdEngine
 
 			[[nodiscard]] std::string print() const override
 			{
-				return "length(vec2(" + m_px->print() + ", " + m_py->print() + ")) - " + m_r->print();
+				return "(length(vec2(" + m_px->print() + ", " + m_py->print() + ")) - " + m_r->print() + ")";
 			}
 		};
 

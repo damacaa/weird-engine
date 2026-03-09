@@ -173,15 +173,17 @@ namespace WeirdEngine
 
 		m_cameraSystem.update(m_ecs);
 
+		// Buttons
 		{
 			auto componentArray = m_ecs.getComponentArray<ShapeButton>();
 			unsigned int size = componentArray->getSize();
-			bool clicked = Input::GetMouseButton(Input::LeftClick);
+			bool mouseIsClicking = Input::GetMouseButton(Input::LeftClick);
+
 			for (size_t i = 0; i < size; i++)
 			{
 				auto& buttonComponent = componentArray->getDataAtIdx(i);
 
-				if (clicked)
+				if (mouseIsClicking)
 				{
 					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
 					shape.parameters[8] = getTime();
@@ -192,7 +194,7 @@ namespace WeirdEngine
 
 					float distance = m_sdfs[shape.distanceFieldId]->getValue();
 
-					if (distance < 0.0f)
+					if (distance < buttonComponent.clickPadding)
 					{
 						switch (buttonComponent.state)
 						{
@@ -227,6 +229,99 @@ namespace WeirdEngine
 						case ButtonState::Down:
 						case ButtonState::Hold:
 							buttonComponent.state = ButtonState::Up;
+							break;
+						case ButtonState::Up:
+						{
+							buttonComponent.state = ButtonState::Off;
+
+							// Reset shape
+							auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+							for (int i = 0; i < 8; ++i)
+							{
+								// test(i) returns true if the bit is 1
+								if (buttonComponent.parameterModifierMask.test(i))
+								{
+									shape.parameters[i] -= buttonComponent.modifierAmount;
+								}
+							}
+
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		// Toggles
+		{
+			auto componentArray = m_ecs.getComponentArray<ShapeToggle>();
+			unsigned int size = componentArray->getSize();
+			bool mouseIsClicking = Input::GetMouseButtonDown(Input::LeftClick);
+
+			for (size_t i = 0; i < size; i++)
+			{
+				auto& buttonComponent = componentArray->getDataAtIdx(i);
+
+				if (mouseIsClicking)
+				{
+					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+					shape.parameters[8] = getTime();
+					shape.parameters[9] = Input::GetMouseX();
+					shape.parameters[10] = Input::GetMouseY();
+
+					m_sdfs[shape.distanceFieldId]->propagateValues(shape.parameters);
+
+					float distance = m_sdfs[shape.distanceFieldId]->getValue();
+
+					if (distance < buttonComponent.clickPadding)
+					{
+						buttonComponent.active = !buttonComponent.active;
+						Input::flagUIClick();
+					}
+				}
+
+				if (buttonComponent.active)
+				{
+					switch (buttonComponent.state)
+					{
+						case ButtonState::Off:
+						case ButtonState::Up:
+						{
+							buttonComponent.state = ButtonState::Down;
+
+							auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+							for (int i = 0; i < 8; ++i)
+							{
+								// test(i) returns true if the bit is 1
+								if (buttonComponent.parameterModifierMask.test(i))
+								{
+									shape.parameters[i] += buttonComponent.modifierAmount;
+								}
+							}
+							break;
+						}
+						case ButtonState::Down:
+							buttonComponent.state = ButtonState::Hold;
+							break;
+						case ButtonState::Hold:
+							break;
+					}
+
+
+				}
+				else
+				{
+					switch (buttonComponent.state)
+					{
+						case ButtonState::Off:
+							break;
+						case ButtonState::Down:
+						case ButtonState::Hold:
+						{
+							buttonComponent.state = ButtonState::Up;
+
+
+						}
 							break;
 						case ButtonState::Up:
 						{

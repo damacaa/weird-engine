@@ -62,7 +62,7 @@ namespace WeirdEngine
 
 					vec3 targetPosition = flyComponent.targetPosition;
 
-					if (Input::GetMouseButtonDown(Input::MiddleClick))
+					if (Input::GetMouseButtonDown(Input::MiddleClick) || (Input::GetMouseButton(Input::MiddleClick) && !m_locked))
 					{
 						firstClick = true;
 						m_locked = true;
@@ -178,10 +178,6 @@ namespace WeirdEngine
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);
 
-					// TODO: fix this!!!
-					uint32_t m_width = 1200;
-					uint32_t m_height = 800;
-
 					// Handles key inputs
 					if (Input::GetKey(Input::W))
 					{
@@ -251,18 +247,18 @@ namespace WeirdEngine
 						// Prevents camera from jumping on the first click
 						if (firstClick)
 						{
-							Input::SetMousePosition((m_width / 2), (m_height / 2));
 							firstClick = false;
-							mouseX = m_width / 2;
-							mouseY = m_height / 2;
+							mouseX = WeirdRenderer::Display::width / 2.0;
+							mouseY = WeirdRenderer::Display::height / 2.0;
+							Input::SetMousePosition(mouseX, mouseY);
 						}
 
 
 						// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
 						// and then "transforms" them into degrees 
 						float fovMultiplier = c.camera.fov / 90.0f;
-						float rotX = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseY - (m_height / 2)) / m_height;
-						float rotY = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseX - (m_width / 2)) / m_width;
+						float rotX = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseY - (WeirdRenderer::Display::height / 2.0)) / WeirdRenderer::Display::height;
+						float rotY = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseX - (WeirdRenderer::Display::width / 2.0)) / WeirdRenderer::Display::width;
 
 						// Calculates upcoming vertical change in the Orientation
 						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), glm::normalize(glm::cross(t.rotation, c.camera.up)));
@@ -283,7 +279,7 @@ namespace WeirdEngine
 						//std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " << std::endl;
 
 						// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-						Input::SetMousePosition((m_width / 2), (m_height / 2));
+						Input::SetMousePosition((WeirdRenderer::Display::width / 2.0), (WeirdRenderer::Display::height / 2.0));
 					}
 				}
 			}

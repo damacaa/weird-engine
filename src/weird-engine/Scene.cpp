@@ -96,25 +96,20 @@ namespace WeirdEngine
 		onCreate();
 		onStart();
 
-		if (m_debugFly)
+		switch (m_renderMode)
 		{
-			switch (m_renderMode)
-			{
-			case WeirdEngine::Scene::RenderMode::RayMarching3D:
-			{
+			case WeirdEngine::Scene::RenderMode::RayMarching3D: {
 				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
-			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
-			{
+			case WeirdEngine::Scene::RenderMode::RayMarchingBoth: {
 				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
 				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 				break;
 			}
 			default:
 				break;
-			}
 		}
 	}
 

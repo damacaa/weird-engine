@@ -10,24 +10,23 @@
 
 #include "MathExpressions.h"
 #include "StarShape.h"
+#include "CompiledMathExpressions.h"
 
 namespace WeirdEngine
 {
 	struct ShapeMacro : IMathExpression
 	{
 	protected:
-		std::vector<float> m_values;
-
 		static constexpr uint8_t VALUES_SIZE = 11;
-
 		static constexpr uint8_t TIME = 8;
 		static constexpr uint8_t WORLD_X = 9;
 		static constexpr uint8_t WORLD_Y = 10;
 
+		std::array<float, VALUES_SIZE> m_values;
+
 	public:
 		ShapeMacro()
 		{
-			m_values.resize(VALUES_SIZE);
 		}
 
 		~ShapeMacro() override = default;
@@ -65,31 +64,53 @@ namespace WeirdEngine
 			std::shared_ptr<IMathExpression> m_px;
 			std::shared_ptr<IMathExpression> m_py;
 			std::shared_ptr<IMathExpression> m_r;
+			std::shared_ptr<IMathExpression> m_time;
+			std::shared_ptr<IMathExpression> m_worldX;
+			std::shared_ptr<IMathExpression> m_worldY;
 
 		public:
+
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t RADIUS = 2;
+
+			// Common
+			static constexpr uint8_t TIME = 8;
+			static constexpr uint8_t WORLD_X = 9;
+			static constexpr uint8_t WORLD_Y = 10;
 
 			CircleNode(
 				std::shared_ptr<IMathExpression> px,
 				std::shared_ptr<IMathExpression> py,
 				std::shared_ptr<IMathExpression> r)
-				: m_px(std::move(px)), m_py(std::move(py)), m_r(std::move(r)) {}
+				: m_px(std::move(px)), m_py(std::move(py)), m_r(std::move(r))
+			{
+				// Can I reuse these?
+				m_time = std::make_shared<FloatVariable>(TIME);
+				m_worldX = std::make_shared<FloatVariable>(WORLD_X);
+				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
+			}
 
 			void propagateValues(float* values) override
 			{
 				m_px->propagateValues(values);
 				m_py->propagateValues(values);
 				m_r->propagateValues(values);
+
+				m_time->propagateValues(values);
+				m_worldX->propagateValues(values);
+				m_worldY->propagateValues(values);
 			}
 
 			[[nodiscard]] float getValue() const override
 			{
-				vec2 p = vec2(m_px->getValue(), m_py->getValue());
+				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
 				return length(p) - m_r->getValue();
 			}
 
 			[[nodiscard]] std::string print() const override
 			{
-				return "(length(vec2(" + m_px->print() + ", " + m_py->print() + ")) - " + m_r->print() + ")";
+				return "(length(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " + m_py->print() + ")) - " + m_r->print() + ")";
 			}
 		};
 

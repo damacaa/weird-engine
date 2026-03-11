@@ -33,7 +33,9 @@ namespace WeirdEngine
 			currentScene = nullptr;
 			currentScene = sceneFactories[sceneName](); // Instantiate the scene
 			currentScene->start();
+#ifndef NDEBUG
 			std::cout << "Changed to " << sceneName << " scene\n";
+#endif
 		}
 	}
 

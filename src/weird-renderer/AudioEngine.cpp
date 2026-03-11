@@ -235,7 +235,7 @@ namespace WeirdEngine {
         			std::uniform_int_distribution<int> distribution(minFrequency, maxFrequency);
 
         			int randomFrequency = distribution(generator);
-        			std::cout << "Playing: " << randomFrequency << "Hz" << currentAmbientVolume << std::endl;
+        			// std::cout << "Playing: " << randomFrequency << "Hz" << currentAmbientVolume << std::endl;
         			SimpleAudioRequest aux{currentAmbientVolume, static_cast<float>(randomFrequency),false, vec3(0.0f)};
         			audioQueue.push(aux);
         		}

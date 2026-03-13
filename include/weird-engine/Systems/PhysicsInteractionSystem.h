@@ -307,7 +307,7 @@ namespace WeirdEngine
 					SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 					if (id < simulation.getSize())
 					{
-						simulation.addSpring(id, m_firstIdInSpring, 1000000.0f);
+						simulation.addSpring(id, m_firstIdInSpring, 0.1f, 1.4142f);
 					}
 				}
 

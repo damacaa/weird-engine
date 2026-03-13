@@ -26,7 +26,7 @@ private:
 		constexpr int numBalls = 60;
 		constexpr int rowWidth = 30;
 		constexpr float startY = 20.0f + (numBalls / rowWidth);
-		constexpr float stiffness = 20000000.0f;
+		constexpr float stiffness = 1.0f;
 
 		// Create 2D rigid bodies in a rope/grid layout
 		for (int i = 0; i < numBalls; ++i)
@@ -49,22 +49,40 @@ private:
 		// Connect balls with springs (down and right)
 		for (int i = 0; i < numBalls; ++i)
 		{
-			if (i + rowWidth < numBalls) // Down
+			bool hasRowBelow = (i + rowWidth < numBalls);
+			bool notRightEdge = ((i + 1) % rowWidth != 0);
+			bool notLeftEdge = (i % rowWidth != 0);
+
+			// Structural Springs (Down and Right)
+			if (hasRowBelow) // Down
 			{
 				m_simulation2D.addSpring(i, i + rowWidth, stiffness);
 			}
 
-			if ((i + 1) % rowWidth != 0) // Right
+			if (notRightEdge) // Right
 			{
 				m_simulation2D.addSpring(i, i + 1, stiffness);
 			}
+
+			// Shear Springs (Diagonal)
+			if (hasRowBelow && notRightEdge) // Bottom-Right
+			{
+				m_simulation2D.addSpring(i, i + rowWidth + 1, stiffness, 1.4142f);
+			}
+
+			if (hasRowBelow && notLeftEdge) // Bottom-Left
+			{
+				m_simulation2D.addSpring(i, i + rowWidth - 1, stiffness, 1.4142f);
+			}
 		}
 
-		// Fix top corners
+		// Fix corners
+		m_simulation2D.fix(0);
 		if (numBalls >= rowWidth)
 		{
-			m_simulation2D.fix(0);
 			m_simulation2D.fix(rowWidth - 1);
+			m_simulation2D.fix(rowWidth);
+			m_simulation2D.fix((2.0f * rowWidth) - 1.0f);
 		}
 
 		// Add base shapes (walls, ground, custom)

@@ -29,10 +29,6 @@ namespace WeirdEngine
 
 	using SimulationID = std::uint32_t;
 
-
-
-
-
 	enum class CollisionState
 	{
 		START,
@@ -93,7 +89,7 @@ namespace WeirdEngine
 
 		// Interaction
 		void addForce(SimulationID id, const vec2& force);
-		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float damping = 1000.0f);
+		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
 
@@ -123,7 +119,9 @@ namespace WeirdEngine
 		void solveCollisionsPositionBased();
 		void applyForces();
 		void solveConstraints();
-		void step(const float timeStep);
+		void integrateVelocity(float timeStep);
+		void integratePredict(float timeStep);
+
 
 		struct Collision
 		{
@@ -152,32 +150,6 @@ namespace WeirdEngine
 			vec2 AB;
 		};
 
-		struct Spring
-		{
-		public:
-			Spring() : Distance(0), Damping(0)
-			{
-				A = -1;
-				B = -1;
-				K = 0;
-			}
-
-			Spring(int a, int b, float k, float distance, float damping)
-			{
-				A = a;
-				B = b;
-				K = k;
-				Distance = distance;
-				Damping = damping;
-			}
-
-			int A;
-			int B;
-			float K;
-			float Distance;
-			float Damping;
-		};
-
 		struct DistanceConstraint
 		{
 		public:
@@ -186,18 +158,21 @@ namespace WeirdEngine
 				A = -1;
 				B = -1;
 				Distance = 1.0f;
+				K = 0.0f;
 			}
 
-			DistanceConstraint(int a, int b, float distance)
+			DistanceConstraint(int a, int b, float distance, float k = 1.0f)
 			{
 				A = a;
 				B = b;
 				Distance = distance;
+				K = k;
 			}
 
 			int A;
 			int B;
 			float Distance;
+			float K;
 		};
 
 		struct GravitationalConstraint
@@ -310,7 +285,6 @@ namespace WeirdEngine
 
 		// Constraints
 		std::vector<SimulationID> m_fixedObjects;
-		std::vector<Spring> m_springs;
 		std::vector<DistanceConstraint> m_distanceConstraints;
 		std::vector<GravitationalConstraint> m_gravitationalConstraints;
 

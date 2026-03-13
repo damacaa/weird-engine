@@ -12,13 +12,14 @@ namespace WeirdEngine
 
 	using namespace std::chrono;
 
-	constexpr float SIMULATION_FREQUENCY = 250;
+	constexpr float SIMULATION_FREQUENCY = 100;
 	constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
 	constexpr float FIXED_DELTA_TIME_F = FIXED_DELTA_TIME;
 
 	constexpr size_t MAX_STEPS = 10;
 
 	const float EPSILON = 0.0001f;
+	constexpr int RELAXATION_ITERATIONS = 10; // Increase this for stiffer ropes (usually 4 to 10)
 
 
 
@@ -125,10 +126,23 @@ namespace WeirdEngine
 
 			if (!m_isPaused)
 			{
+
 				checkCollisions();
 				applyForces();
-				solveConstraints();
-				step((float)FIXED_DELTA_TIME);
+
+				// 1. Predict where particles will go based on velocity and forces
+				integratePredict((float)FIXED_DELTA_TIME);
+
+				// 2. Iteratively solve constraints (Push/Pull particles to their exact distances)
+
+				for (int iter = 0; iter < RELAXATION_ITERATIONS; iter++)
+				{
+					solveConstraints();
+				}
+
+				// 3. Derive the exact velocity based on how much the constraints moved the particles
+				integrateVelocity((float)FIXED_DELTA_TIME);
+
 				++steps;
 				{
 					// m_simulationTime += FIXED_DELTA_TIME;
@@ -521,57 +535,51 @@ namespace WeirdEngine
 
 	void Simulation2D::solveConstraints()
 	{
-		for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
-		{
-			Spring spring = *it;
-
-			vec2 v = m_positions[spring.B] - m_positions[spring.A];
-			vec2 n = normalize(v);
-			float distance = length(v);
-			float d = spring.Distance - distance;
-			// d = std::clamp(d, -10.0f, 10.0f);
-
-			vec2 springForce = 0.5f * spring.K * d * n;
-			vec2 damping = spring.Damping * (m_velocities[spring.B] - m_velocities[spring.A]);
-
-			vec2 f = springForce - damping;
-
-			m_forces[spring.A] -= f;
-			m_forces[spring.B] += f;
-		}
-
 		for (auto it = m_distanceConstraints.begin(); it != m_distanceConstraints.end(); ++it)
 		{
-			DistanceConstraint spring = *it;
-
-			vec2 v = m_positions[spring.B] - m_positions[spring.A];
-			vec2 n = normalize(v);
-			float distance = length(v);
-
-			float correction = (distance - spring.Distance);
-			vec2 correctionVector = -correction * 0.5f * n;
-
-			vec2 pA = m_positions[spring.A] - correctionVector;
-			vec2 pB = m_positions[spring.B] + correctionVector;
-
-			m_positions[spring.A] = pA;
-			m_positions[spring.B] = pB;
-		}
-
-		for (auto it = m_gravitationalConstraints.begin(); it != m_gravitationalConstraints.end(); ++it)
-		{
-			GravitationalConstraint constraint = *it;
+			DistanceConstraint constraint = *it;
 
 			vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
-			vec2 n = normalize(v);
 			float distance = length(v);
+			if (distance <= EPSILON) continue; // Prevent division by zero
 
-			float f = constraint.g * (m_mass[constraint.A] * m_mass[constraint.B]) / (distance * distance);
+			vec2 n = v / distance; // Normalized direction
 
-			m_forces[constraint.A] += f * n;
-			m_forces[constraint.B] -= f * n;
+			// Get inverse masses
+			float wA = m_invMass[constraint.A];
+			float wB = m_invMass[constraint.B];
+			float wSum = wA + wB;
+
+			if (wSum == 0.0f) continue; // Both objects are infinite mass/fixed
+
+			// How far off are we?
+			float error = distance - constraint.Distance;
+
+			// Calculate correction proportional to mass
+			vec2 correctionVector = n * (error / wSum);
+
+			float stiffness = constraint.K; // 1.0f -> 100% correction per iteration
+
+			m_positions[constraint.A] += wA * correctionVector * stiffness;
+			m_positions[constraint.B] -= wB * correctionVector * stiffness;
 		}
 
+		// TODO: implement this position based or move out of relaxation
+		// for (auto it = m_gravitationalConstraints.begin(); it != m_gravitationalConstraints.end(); ++it)
+		// {
+		// 	GravitationalConstraint constraint = *it;
+		//
+		// 	vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
+		// 	vec2 n = normalize(v);
+		// 	float distance = length(v);
+		//
+		// 	float f = constraint.g * (m_mass[constraint.A] * m_mass[constraint.B]) / (distance * distance);
+		//
+		// 	m_forces[constraint.A] += f * n;
+		// 	m_forces[constraint.B] -= f * n;
+		// }
+
+		// TODO: instead of this, set m_invMass[i] to 0 outside the relaxation loop, less mutex and less calculations
 		{
 			std::lock_guard<std::mutex> lock(m_fixMutex);
 			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
@@ -585,50 +593,38 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::step(const float timeStep)
+	void Simulation2D::integratePredict(const float timeStep)
 	{
-#if INTEGRATION_METHOD == 0
-
-		// Integrate with euler
 		for (size_t i = 0; i < m_size; i++)
 		{
-			vec2 acc = m_forces[i] * m_invMass[i];
-			m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-			m_positions[i] += timeStep * m_velocities[i];
+			// Store current position
+			m_previousPositions[i] = m_positions[i];
 
-			// Reset forces
+			// Apply forces to velocity (v = v + a*dt)
+			vec2 acc = m_forces[i] * m_invMass[i];
+			m_velocities[i] += acc * timeStep;
+
+			// Predict new position (p = p + v*dt)
+			m_positions[i] += m_velocities[i] * timeStep;
+
+			// Clear forces for next frame
 			m_forces[i] = vec2(0.0f);
 		}
+	}
 
-#elif INTEGRATION_METHOD == 1
-
-		// Integrate with verlet
+	void Simulation2D::integrateVelocity(const float timeStep)
+	{
 		float invTimeStep = 1.0f / timeStep;
 		for (size_t i = 0; i < m_size; i++)
 		{
-			// Acceleration
-			vec2 acc = m_forces[i] * m_invMass[i] * timeStep * timeStep;
+			// How much did the particle actually move after constraints pushed it around?
+			vec2 newVelocity = (m_positions[i] - m_previousPositions[i]) * invTimeStep;
 
-			// Store the current position
-			vec2 currentPosition = m_positions[i];
-
-			// Update the position using Verlet integration
-			vec2 newPosition = m_positions[i] + (m_velocities[i]) * timeStep * (1.0f - m_damping) + (acc);
-			m_positions[i] = newPosition;
-
-			// Update the previous position
-			m_previousPositions[i] = currentPosition;
-
-			// Reset forces
-			m_forces[i] = vec2(0.0f);
-
-			vec2 newVelocity = (newPosition - currentPosition) * invTimeStep;
-			m_velocities[i] = newVelocity;
+			// Apply damping and store
+			m_velocities[i] = newVelocity * (1.0f - m_damping);
 		}
 
-#endif
-
-		// TODO: improve this shit
+		// Restore your original rendering buffer logic
 		for (size_t i = 0; i < m_size; i++)
 		{
 			m_positionsAux[i] = m_positions[i];
@@ -678,7 +674,6 @@ namespace WeirdEngine
 					container.end());
 			};
 
-		RemoveByID(m_springs);
 		RemoveByID(m_distanceConstraints);
 		RemoveByID(m_gravitationalConstraints);
 
@@ -705,7 +700,6 @@ namespace WeirdEngine
 				}
 			};
 
-		ChangeByID(m_springs);
 		ChangeByID(m_distanceConstraints);
 		ChangeByID(m_gravitationalConstraints);
 
@@ -740,12 +734,12 @@ namespace WeirdEngine
 		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
 	}
 
-	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance, float damping)
+	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
 	{
 		if (a == b)
 			return;
 
-		m_springs.emplace_back(a, b, stiffness, distance, damping);
+		m_distanceConstraints.emplace_back(a, b, distance, std::pow(stiffness, std::sqrt(RELAXATION_ITERATIONS))); // Square to make stiffness more intuitive
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
@@ -753,7 +747,7 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
-		m_distanceConstraints.emplace_back(a, b, distance);
+		m_distanceConstraints.emplace_back(a, b, distance, 1.0f);
 	}
 
 	void Simulation2D::addGravitationalConstraint(SimulationID a, SimulationID b, float gravity)

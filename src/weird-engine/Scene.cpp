@@ -180,12 +180,16 @@ namespace WeirdEngine
 
 				if (mouseIsClicking)
 				{
-					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
-					shape.parameters[8] = getTime();
-					shape.parameters[9] = Input::GetMouseX();
-					shape.parameters[10] = Input::GetMouseY();
+					static float parameters[11];
 
-					m_sdfs[shape.distanceFieldId]->propagateValues(shape.parameters);
+					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+					std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
+
+					parameters[8] = getTime();
+					parameters[9] = Input::GetMouseX();
+					parameters[10] = Input::GetMouseY();
+
+					m_sdfs[shape.distanceFieldId]->propagateValues(parameters);
 
 					float distance = m_sdfs[shape.distanceFieldId]->getValue();
 
@@ -259,12 +263,16 @@ namespace WeirdEngine
 
 				if (mouseIsClicking)
 				{
-					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
-					shape.parameters[8] = getTime();
-					shape.parameters[9] = Input::GetMouseX();
-					shape.parameters[10] = Input::GetMouseY();
+					static float parameters[11];
 
-					m_sdfs[shape.distanceFieldId]->propagateValues(shape.parameters);
+					auto& shape = m_ecs.getComponent<UIShape>(buttonComponent.Owner);
+					std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
+
+					parameters[8] = getTime();
+					parameters[9] = Input::GetMouseX();
+					parameters[10] = Input::GetMouseY();
+
+					m_sdfs[shape.distanceFieldId]->propagateValues(parameters);
 
 					float distance = m_sdfs[shape.distanceFieldId]->getValue();
 

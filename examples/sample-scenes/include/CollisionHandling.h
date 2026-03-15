@@ -40,21 +40,21 @@ private:
 
     // Floor
     {
-      float variables[8]{0.5f, 1.5f, -1.0f};
-      addShape(DefaultShapes::SINE, variables, 3);
-    }
+      float variables[8]{15.0f, 5.0f, 25.0f};
+		addShape(DefaultShapes::CIRCLE, variables, 3);
+	}
 
-    // Wall right
-    {
-      float variables[8]{30 + 5, 0, 5.0f, 30.0f, 0.0f};
-      addShape(DefaultShapes::BOX, variables, 3);
-    }
+	{
+		float variables[8]{15.0f, -50.0f, 250.0f, 50.0f};
+		auto floor = addShape(DefaultShapes::BOX, variables, 3, CombinationType::SmoothAddition);
+		m_ecs.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
+	}
 
-    // Wall left
-    {
-      float variables[8]{-5, 0, 5.0f, 30.0f, 0.0f};
-      addShape(DefaultShapes::BOX, variables, 3);
-    }
+	{
+		float variables[8]{15.0f, 5.0f, 20.0f};
+		addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
+	}
+
 
     m_ecs.getComponent<FlyMovement2D>(m_mainCamera).targetPosition = vec3(15.0f, 15.0f, 10.0f);
     m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(15.0f, 15.0f, 10.0f);
@@ -80,9 +80,10 @@ private:
     m_lastTime = t;
     // m_simulation2D.setPosition(event.bodyA, vec2(15.0f, 15.0f));
     // m_simulation2D.addForce(event.bodyA, vec2(2.0f * sinf(t), -20.0f));
-    m_simulation2D.addForce(event.bodyB, vec2(0.0f, 10.0f));
+	m_simulation2D.setPosition(event.bodyB, vec2(15.0f, 24.45f));
+	m_simulation2D.addForce(event.bodyB, vec2(20.0f * sinf(10.0f * t), -30.0f));
 
-    // Entity a = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(event.bodyA).Owner;
+	// Entity a = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(event.bodyA).Owner;
     // Transform &at = m_ecs.getComponent<Transform>(a);
     // at.position.x = 15.0f + sinf(event.bodyB * 123.4565f + t);
     // at.position.y = 5.0f + (event.bodyA % 10) * 2.5f;

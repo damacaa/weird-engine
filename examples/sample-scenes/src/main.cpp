@@ -3,12 +3,9 @@
 
 #include <weird-engine.h>
 
-#include "Classic.h"
 #include "CollisionHandling.h"
 #include "DestroyScene.h"
-#include "Fire.h"
 #include "ImageScene.h"
-#include "Lines.h"
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
@@ -26,10 +23,6 @@ int main()
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
-	sceneManager.registerScene<ClassicScene>("classic");
-	sceneManager.registerScene<FireScene>("fire");
-	sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
-	sceneManager.registerScene<LinesScene>("lines");
 
 	DisplaySettings settings{};
 	settings.width = 800;

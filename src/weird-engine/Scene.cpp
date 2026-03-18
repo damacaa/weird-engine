@@ -142,13 +142,13 @@ namespace WeirdEngine
 
 	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
-		customShapeCount = m_ecs.getComponentArray<CustomShape>()->size;
+		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
 	void Scene::getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size, uint32_t& customShapeCount)
 	{
-		customShapeCount = m_ecs.getComponentArray<UIShape>()->size;
+		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
 		m_UIRenderSystem.fillDataBuffer(uiData, size);
 	}
 

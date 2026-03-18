@@ -156,7 +156,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
             break;
         }
 
-        float h = map(ro + rd * t); // Your SDF function
+        float h = map(ro + rd * t) - 0.001; // Your SDF function
 
         // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)
         res = min(res, k * h / t);
@@ -164,7 +164,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
         if(h <= 0.0 || res < EPSILON) return vec2(0.0); // Fully in shadow
         if(t > far) break;          // Missed everything
 
-        t += h; // TODO: why do I need smaller steps to get rid of artifacts?!?!
+        t += h;
 
         iter++;
     }
@@ -185,32 +185,31 @@ float renderShadows(vec2 uv, vec2 rd)
 
     int iter;
     vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 8.0, iter);
-    float d = 1.0; // raymarchInfo.x;
-
-
+    float d = raymarchInfo.x;
     float shadowFactor = raymarchInfo.y;
-    // mix(ShadowColor, LightColor, factor)
     float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
-    //    const float NORMAL_EPSILON = 0.001;
-    //    vec2 p = uv;
-    //    float d1 = map(p + vec2(NORMAL_EPSILON, 0.0)) - map(p - vec2(NORMAL_EPSILON, 0.0));
-    //    float d2 = map(p + vec2(0.0, NORMAL_EPSILON)) - map(p - vec2(0.0, NORMAL_EPSILON));
-    //    vec2 normal = normalize(vec2(d1, d2));
-    //     float ddot = -(dot(-rd, normal));
-    //     float ddotMask = max(1.0 - (100.0 * mapDistance), 0.0);
-    //     float finalDdot = 5.0 * clamp(0.01 * (ddot * ddotMask), 0.0, 0.01); // * d to be affected by distance. Issues with overlapping shadows
-    //     shadowValue = min(shadowValue + finalDdot, 0.95);
+       // 1. Define the distance over which the ambient occlusion fades out
+    float aoBlendDistance = 0.1 / (-2.0 * u_camMatrix[3].z);
+    float aoBlendFactor = smoothstep(0.0, aoBlendDistance, mapDistance);
+    shadowValue = mix(shadowValue * 0.8, shadowValue, aoBlendFactor); 
 
-    float extraShadow =  clamp(10.0 * (d + 0.09), 0.5, 1.0); // Harder shadows close to the object
-    shadowValue *= extraShadow;
-
-    // return iter / 100.0;
     return shadowValue;
 
     #else// No shadows
 
-    return 1.0;
+    // Make the distance threshold a variable
+    float blendDistance = 0.002; 
+
+    float mapDistance = map(uv);
+
+    // smoothstep returns 0.0 when mapDistance is <= 0.0, 
+    // 1.0 when it is >= blendDistance, 
+    // and a smooth curve in between.
+    float blendFactor = smoothstep(0.0, blendDistance, mapDistance);
+
+    // mix smoothly interpolates between your shadow value and 1.0
+    return mix(SHADOW_VALUE * 0.99, 1.0, blendFactor);
 
     #endif
 
@@ -260,32 +259,7 @@ void main()
     vec2 rd = u_directionalLightDirection.xy;
 
     float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd), rd);
-
-    // if(shadows > SHADOW_VALUE && shadows < 1.0 && dot(rd, normal) > 0.5)
-    // {
-    //     shadows = 0.95;
-    // }
-
-    {
-        // 1. Calculate how much each condition is "active" (0.0 to 1.0)
-        // Fades in as distance goes from 0.01 down to 0.0
-        float distFactor = smoothstep(0.01, 0.0, distance);
-
-        // Fades in as dot product goes from 0.5 up to 0.7
-        float dotFactor = smoothstep(0.5, 0.7, dot(rd, normal));
-
-        // Fades in near the shadow boundaries to avoid hard lines at SHADOW_VALUE and 1.0
-        // This creates a "mask" that is strongest when shadows are in the middle of your range
-        float shadowMask = smoothstep(SHADOW_VALUE, 0.90, shadows) * smoothstep(1.0, 0.95, shadows);
-
-        // 2. Combine the factors into a single strength value
-        float strength = distFactor * dotFactor * shadowMask;
-
-        // 3. Linearly interpolate between the original shadow and your "reduced" shadow (0.95)
-        shadows = mix(shadows, 0.99, strength);
-    }
-
-    float light = calculateLight(screenUV, rd, normal, shadows, -distance); //distance <= 0.0? mix(1.2, 0.5, 1.0 - shadows) : 1.0; // render(screenUV);
+    float light = calculateLight(screenUV, rd, normal, shadows, -distance);
 
     // Refraction
     #ifdef REFRACTION

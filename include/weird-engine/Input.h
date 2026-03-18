@@ -8,7 +8,7 @@
 // but it's not required for the input handling itself.
 #include <SDL/include/SDL3/SDL.h>
 // #include <SDL/src/events/SDL_mouse_c.h>
-#include "weird-renderer/Display.h"
+#include "weird-renderer/core/Display.h"
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.

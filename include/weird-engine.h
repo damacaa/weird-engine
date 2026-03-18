@@ -7,7 +7,7 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-engine/Utils.h"
-#include "weird-renderer/Renderer.h"
+#include "weird-renderer/core/Renderer.h"
 
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)

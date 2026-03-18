@@ -189,10 +189,10 @@ float renderShadows(vec2 uv, vec2 rd)
     float shadowFactor = raymarchInfo.y;
     float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
-       // 1. Define the distance over which the ambient occlusion fades out
-    float aoBlendDistance = 0.1 / (-2.0 * u_camMatrix[3].z);
+    // Define the distance over which the ambient occlusion fades out
+    float aoBlendDistance = 0.5 / (-2.0 * u_camMatrix[3].z);
     float aoBlendFactor = smoothstep(0.0, aoBlendDistance, mapDistance);
-    shadowValue = mix(shadowValue * 0.8, shadowValue, aoBlendFactor);
+    shadowValue = mix(shadowValue * 0.9, shadowValue, shadowValue < 1.0 ? aoBlendFactor : 1.0);
 
     return shadowValue;
 

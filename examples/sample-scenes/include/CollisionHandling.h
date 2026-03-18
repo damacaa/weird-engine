@@ -55,10 +55,6 @@ private:
 		addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
 	}
 
-
-    m_ecs.getComponent<FlyMovement2D>(m_mainCamera).targetPosition = vec3(15.0f, 15.0f, 10.0f);
-    m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(15.0f, 15.0f, 10.0f);
-
     m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
   }
 

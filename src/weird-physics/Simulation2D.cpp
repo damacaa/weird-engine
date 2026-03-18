@@ -213,23 +213,84 @@ namespace WeirdEngine
 #endif
 		m_collisions.clear();
 
-		for (size_t i = 0; i < m_size; i++)
+		// Spatial hash grid (broadphase)
+		// Static arrays to avoid memory allocation overhead each frame
+		static const int TABLE_SIZE = 8191; // A prime number for better hashing
+		static std::vector<int> head(TABLE_SIZE, -1);
+		static std::vector<int> next;
+
+		// Reset the head array for this frame
+		std::fill(head.begin(), head.end(), -1);
+
+		// Ensure the next array is large enough to hold all particles
+		if (next.size() < m_size)
 		{
-			// Simple collisions
-			for (size_t j = i + 1; j < m_size; j++)
+			next.resize(std::max((size_t)m_size, m_maxSize), -1);
+		}
+
+		// Cell size should be exactly the maximum interaction distance (the diameter)
+		float invCellSize = 1.0f / m_diameter;
+
+		// Fast hash function to convert a 2D grid coordinate into an array index
+		auto getHash =[](int gx, int gy) -> int {
+			constexpr int p1 = 73856093;
+			constexpr int p2 = 19349663;
+			int hash = (gx * p1) ^ (gy * p2);
+			hash = hash % TABLE_SIZE;
+			if (hash < 0) hash += TABLE_SIZE; // Handle negative coordinates safely
+			return hash;
+		};
+
+		// Insert all particles into the spatial grid
+		for (int i = 0; i < m_size; i++)
+		{
+			// Calculate which grid cell the particle is in
+			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
+			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
+
+			int hash = getHash(gx, gy);
+
+			// Insert at the head of the linked list for this cell
+			next[i] = head[hash];
+			head[hash] = i;
+		}
+
+		// Check for collisions using the grid
+		for (int i = 0; i < m_size; i++)
+		{
+			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
+			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
+
+			// Only check the 9 neighboring cells (including the particle's own cell)
+			for (int dx = -1; dx <= 1; dx++)
 			{
-				vec2 ij = m_positions[j] - m_positions[i];
-
-				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-				if (distanceSquared < m_diameterSquared)
+				for (int dy = -1; dy <= 1; dy++)
 				{
-					m_collisions.emplace_back(Collision(i, j, ij));
-				}
+					int hash = getHash(gx + dx, gy + dy);
+					int j = head[hash];
 
+					// Traverse the linked list of particles in this cell
+					while (j != -1)
+					{
+						// Prevents checking a particle against itself
+						// Ensures we only check each pair once
+						if (i < j)
+						{
+							vec2 ij = m_positions[j] - m_positions[i];
+							float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+							if (distanceSquared < m_diameterSquared)
+							{
+								m_collisions.emplace_back(Collision(i, j, ij));
+							}
 #if MEASURE_PERFORMANCE
-				checks++;
+							checks++;
 #endif
+						}
+
+						j = next[j]; // Move to the next particle in the cell
+					}
+				}
 			}
 		}
 
@@ -238,7 +299,7 @@ namespace WeirdEngine
 			std::cout << "First frame checks: " << checks << std::endl;
 #endif
 
-		// Check shape collisions
+		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
 			vec2& p = m_positions[i];
@@ -273,6 +334,9 @@ namespace WeirdEngine
 					collisionEvent.penetration = penetration;
 					collisionEvent.position = p - (0.5f * collisionEvent.normal);
 					collisionEvent.velocity = m_velocities[i];
+
+					// TODO: Pre-calculate target plane for relaxation
+					// collisionEvent.targetPos = p + (penetration * collisionEvent.normal);
 
 					constexpr float DYNAMIC_FRICTION = 0.1f;
 					collisionEvent.friction = DYNAMIC_FRICTION;
@@ -323,7 +387,7 @@ namespace WeirdEngine
 
 	static float fOpUnionSoft(float a, float b, float r)
 	{
-		r *= 1.0f; // 4.0f orignal
+		r *= 1.0f; // 4.0f orignal wtf
 		float h = std::max(r - abs(a - b), 0.0f);
 		return std::min(a, b) - h * h * 0.25f / r;
 	}

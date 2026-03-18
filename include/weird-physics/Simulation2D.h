@@ -270,7 +270,7 @@ namespace WeirdEngine
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 		std::vector<DistanceFieldObject2D> m_objects;
 
-		std::vector<bool> m_collisionMap;
+		std::vector<uint8_t> m_collisionMap;
 		std::vector<ShapeCollisionEvent> m_collisionQueue;
 
 		float map(vec2 p);

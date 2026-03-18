@@ -4,14 +4,13 @@
 #include<string>
 #include<json/json.h>
 
-#include "weird-renderer/resources/VAO.h"
-#include "weird-renderer/resources/EBO.h"
-#include "weird-renderer/scene/Camera.h"
-#include "weird-renderer/resources/Texture.h"
-#include "weird-renderer/scene/Light.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/ComponentManager.h"
-#include "weird-engine/Components/Transform.h"
-
+#include "weird-renderer/resources/EBO.h"
+#include "weird-renderer/resources/Texture.h"
+#include "weird-renderer/resources/VAO.h"
+#include "weird-renderer/scene/Camera.h"
+#include "weird-renderer/scene/Light.h"
 
 namespace WeirdEngine
 {

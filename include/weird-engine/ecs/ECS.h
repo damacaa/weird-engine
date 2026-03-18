@@ -127,29 +127,26 @@ namespace WeirdEngine
 	};
 }
 
-#include "../Components/Transform.h"
-#include "weird-renderer/Components/SDFRenderer.h"
-#include "../../weird-renderer/Components/MeshRenderer.h"
-#include "../../weird-renderer/Components/InstancedMeshRenderer.h"
-#include "../../weird-physics/Components/RigidBody.h"
-#include "../../weird-renderer/Components/Camera.h"
-#include "../Components/FlyMovement.h"
-#include "../Components/FlyMovement2D.h"
-#include "weird-renderer/Components/CustomShape.h"
-#include "weird-renderer/Components/TextRenderer.h"
-#include "weird-renderer/Components/Button.h"
+#include "../../weird-physics/components/RigidBody.h"
+#include "../../weird-renderer/components/Camera.h"
+#include "../../weird-renderer/components/InstancedMeshRenderer.h"
+#include "../../weird-renderer/components/MeshRenderer.h"
+#include "../components/FlyMovement.h"
+#include "../components/FlyMovement2D.h"
+#include "../components/Transform.h"
+#include "weird-renderer/components/Button.h"
+#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/SDFRenderer.h"
+#include "weird-renderer/components/TextRenderer.h"
 
-#include "../Systems/RenderSystem.h"
-#include "../Systems/InstancedRenderSystem.h"
-#include "../Systems/SDFRenderSystem.h"
+#include "../systems/InstancedRenderSystem.h"
+#include "../systems/RenderSystem.h"
+#include "../systems/SDFRenderSystem.h"
 
+#include "weird-physics/components/RigidBodyManager.h"
 
-#include "weird-physics/Components/RigidBodyManager.h"
-
-
-#include "../Systems/SDFRenderSystem2D.h"
-#include "../Systems/PhysicsSystem2D.h"
-#include "../Systems/PhysicsInteractionSystem.h"
-#include "../Systems/PlayerMovementSystem.h"
-#include "../Systems/CameraSystem.h"
-
+#include "../systems/CameraSystem.h"
+#include "../systems/PhysicsInteractionSystem.h"
+#include "../systems/PhysicsSystem2D.h"
+#include "../systems/PlayerMovementSystem.h"
+#include "../systems/SDFRenderSystem2D.h"

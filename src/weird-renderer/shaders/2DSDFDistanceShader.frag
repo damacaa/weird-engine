@@ -205,6 +205,14 @@ void main()
     vec3 result = getColor(pos, v_texCoord);
     float d = result.x;
 
+#ifndef ORIGIN_AT_BOTTOM_LEFT
+
+    float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
+    distanceBonus = min(distanceBonus, 1.0 * zoom / u_resolution.y); // Cap distance bonus to prevent artifacts when zoomed out very far away
+    d -= distanceBonus; 
+    
+#endif
+
     float finalDistance = d / zoom;
     finalDistance *= 0.5 / aspectRatio;
 

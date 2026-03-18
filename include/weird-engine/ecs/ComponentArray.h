@@ -1,50 +1,82 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include <unordered_map>
 #include <stdexcept>
+#include <limits>
+#include <utility>
 
 #include "Entity.h"
 #include "Component.h"
 
 namespace WeirdEngine
 {
+    // Constant representing an invalid/empty index
+    constexpr size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
 
-    // ComponentArray to store components of a specific type
     template <typename T>
     class ComponentArray
     {
     public:
-        std::array<T, MAX_ENTITIES> values;
-        size_t size = 0;
+        ComponentArray()
+        {
+            // The sparse map must be large enough to hold any Entity ID.
+            // We initialize all values to INVALID_INDEX to denote "no component".
+            entityToIndexMap.resize(MAX_ENTITIES, INVALID_INDEX);
+
+            // Optional: reserve a little bit of space for the packed arrays to avoid early reallocations
+            values.reserve(128);
+            indexToEntityMap.reserve(128);
+        }
 
         void insertData(Entity entity, T component)
         {
-            entityToIndexMap[entity] = size;
-            indexToEntityMap[size] = entity;
-            values[size] = component;
-            ++size;
+            if (hasData(entity)) {
+                // Prevent duplicate insertions
+                values[entityToIndexMap[entity]] = std::move(component);
+                return;
+            }
+
+            size_t newIndex = values.size();
+            entityToIndexMap[entity] = newIndex;
+            indexToEntityMap.push_back(entity);
+
+            // push_back actually adds to the size dynamically
+            values.push_back(std::move(component));
         }
 
         T& getNewComponent(Entity entity)
         {
-            entityToIndexMap[entity] = size;
-            indexToEntityMap[size] = entity;
+            size_t newIndex = values.size();
+            entityToIndexMap[entity] = newIndex;
+            indexToEntityMap.push_back(entity);
 
-            return values[size++];
+            // emplace_back constructs the object directly inside the vector
+            values.emplace_back();
+            return values.back();
         }
 
         void removeData(Entity entity)
         {
-            size_t indexOfRemovedEntity = entityToIndexMap[entity];
-            size_t indexOfLastElement = size - 1;
-            values[indexOfRemovedEntity] = values[indexOfLastElement];
+            if (!hasData(entity)) return;
 
+            size_t indexOfRemovedEntity = entityToIndexMap[entity];
+            size_t indexOfLastElement = values.size() - 1;
+
+            // 1. Move the last component into the deleted slot (std::move avoids expensive copying)
+            values[indexOfRemovedEntity] = std::move(values[indexOfLastElement]);
+
+            // 2. Update the map to point to the moved entity
             Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
             entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;
             indexToEntityMap[indexOfRemovedEntity] = entityOfLastElement;
 
-            --size;
+            // 3. Mark the removed entity's index as invalid
+            entityToIndexMap[entity] = INVALID_INDEX;
+
+            // 4. Shrink the packed arrays by removing the last elements
+            values.pop_back();
+            indexToEntityMap.pop_back();
         }
 
         T& getDataFromEntity(Entity entity)
@@ -59,35 +91,35 @@ namespace WeirdEngine
 
         T& getLastData()
         {
-            return values[size - 1];
+            return values.back();
         }
 
-        bool hasData(Entity entity)
+        bool hasData(Entity entity) const
         {
-            return entityToIndexMap[entity] < size;
+            // Fast and safe check
+            return entityToIndexMap[entity] != INVALID_INDEX;
         }
 
-        // Overload [] operator for non-const objects (modifiable)
-        T& operator[](unsigned int index)
+        T& operator[](size_t index)
         {
-
-            if (index < 0 || index >= size)
+            if (index >= values.size())
             {
                 throw std::out_of_range("Index out of range");
             }
-
             return values[index];
         }
 
-        // Function to get the size of the array
-        int getSize() const
+        size_t getSize() const
         {
-            return size;
+            return values.size();
         }
 
     private:
-        std::array<size_t, MAX_ENTITIES> entityToIndexMap = {};
-        std::array<Entity, MAX_ENTITIES> indexToEntityMap = {};
-    };
+        // Packed arrays: Size strictly equals the number of active components
+        std::vector<T> values;
+        std::vector<Entity> indexToEntityMap;
 
+        // Sparse array: Size is always MAX_ENTITIES
+        std::vector<size_t> entityToIndexMap;
+    };
 }

@@ -48,7 +48,7 @@ namespace WeirdEngine
 
 				auto shapeArray = ecs.getComponentArray<CustomShape>();
 
-				for (size_t i = 0; i < shapeArray->size; i++)
+				for (size_t i = 0; i < shapeArray->getSize(); i++)
 				{
 					auto& shape = shapeArray->getDataAtIdx(i);
 					if (shape.isDirty)

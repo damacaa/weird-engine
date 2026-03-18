@@ -13,14 +13,12 @@
 #include <queue>
 #include <set>
 
-
-
-#include "weird-engine/vec.h"
+#include "../weird-engine/components/Transform.h"
+#include "../weird-renderer/components/CustomShape.h"
 #include "weird-engine/ecs/Entity.h"
-#include "../weird-engine/Components/Transform.h"
-#include "../weird-renderer/Components/CustomShape.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-engine/vec.h"
 
 namespace WeirdEngine
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include "weird-engine/vec.h"
 #include "weird-engine/ecs/Component.h"
-#include "weird-renderer/Display.h"
+#include "weird-renderer/core/Display.h"
 
 
 namespace WeirdEngine 

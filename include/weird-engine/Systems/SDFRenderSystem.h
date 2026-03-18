@@ -1,6 +1,6 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
-#include "weird-renderer/RenderTarget.h"
+#include "weird-renderer/core/RenderTarget.h"
 
 namespace WeirdEngine
 {

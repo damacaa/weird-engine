@@ -4,13 +4,13 @@
 #include "ResourceManager.h"
 #include "weird-engine/math/Default2DSDFs.h"
 
-#include "weird-renderer/Shape.h"
-#include "weird-renderer/DrawCommand.h"
-#include "weird-renderer/RenderTarget.h"
+#include "weird-renderer/scene/Shape.h"
+#include "weird-renderer/resources/DrawCommand.h"
+#include "weird-renderer/core/RenderTarget.h"
 
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/SimpleAudioRequest.h"
-#include "weird-renderer/AudioRingBuffer.h"
+#include "weird-renderer/audio/SimpleAudioRequest.h"
+#include "weird-renderer/audio/AudioRingBuffer.h"
 
 namespace WeirdEngine
 {

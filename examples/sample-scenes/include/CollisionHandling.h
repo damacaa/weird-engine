@@ -17,6 +17,9 @@ private:
   // Inherited via Scene
   void onStart() override
   {
+  	m_debugInput = true;
+  	m_debugFly = true;
+
     // Create a random number generator engine
 
     for (size_t i = 0; i < 10; i++)

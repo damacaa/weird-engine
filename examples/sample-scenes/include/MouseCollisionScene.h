@@ -18,6 +18,9 @@ private:
 	// Inherited via Scene
 	void onStart() override
 	{
+		m_debugInput = true;
+		m_debugFly = true;
+
 		for (size_t i = 0; i < 600; i++)
 		{
 

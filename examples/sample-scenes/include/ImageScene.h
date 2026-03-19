@@ -20,6 +20,9 @@ private:
 	// Inherited via Scene
 	void onStart() override
 	{
+		m_debugInput = true;
+		m_debugFly = true;
+
 		// Check if the folder exists
 		if (!std::filesystem::exists("cache/"))
 		{

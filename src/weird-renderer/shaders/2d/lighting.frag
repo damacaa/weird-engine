@@ -14,7 +14,7 @@ const int MAX_STEPS = 128;
 const float EPSILON = 0.05;
 const float NEAR = 0.1f;
 const float FAR = 1.4f;
-const float NORMAL_EPSILON = 0.05;
+const float NORMAL_EPSILON = 0.001;
 
 const float SHADOW_VALUE = 0.9;
 
@@ -37,6 +37,8 @@ uniform sampler2D t_backgroundTexture;
 uniform sampler2D t_shadowDistanceTexture;
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
+uniform float u_ambienOcclusionRadius = 0.005;
+uniform float u_ambienOcclusionStrength = 0.5;
 
 #ifdef DITHERING
 
@@ -126,18 +128,30 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     return traveled;
 }
 
-float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance)
+float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance, float edgeThickness)
 {
+//    #ifndef SHADOWS_ENABLED
+//    return 1.0;
+//    #endif
+
     float lightNormalDot = -(dot(-rd, normal));
 
     float zoom = -u_camMatrix[3].z;
-    float light = mix(1.0, max(1.0, lightNormalDot * 2.0 - (innerDistance * 10.0 * zoom)), shadows - SHADOW_VALUE);
 
-    #ifndef SHADOWS_ENABLED
-    light = 1.0;
-    #endif
+    float extraLight = max(0.0, 0.5 * lightNormalDot);
+    float lightVisibility = smoothstep(SHADOW_VALUE, 1.0, shadows);
+    extraLight *= lightVisibility;
 
-    return clamp(light * light, 0.0, 2.0);
+    float extraShadow = max(0.0, 0.2 * -lightNormalDot);
+
+    // Define how thick you want the edge light effect to be
+    float borderFactor = 1.0 - smoothstep(0.0, edgeThickness, innerDistance * zoom);
+    float borderFactorShadows = 1.0 - smoothstep(0.0, 0.5 * edgeThickness, innerDistance * zoom);
+
+    float lightOnBorderOnly = extraLight * borderFactor;
+
+    float light = 1.0 + lightOnBorderOnly - (extraShadow * borderFactorShadows);
+    return clamp(light, 0.0, 10.0);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
@@ -189,27 +203,13 @@ float renderShadows(vec2 uv, vec2 rd)
     float shadowFactor = raymarchInfo.y;
     float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
-    // Define the distance over which the ambient occlusion fades out
-    float aoBlendDistance = 0.5 / (-2.0 * u_camMatrix[3].z);
-    float aoBlendFactor = smoothstep(0.0, aoBlendDistance, mapDistance);
-    shadowValue = mix(shadowValue * 0.9, shadowValue, shadowValue < 1.0 ? aoBlendFactor : 1.0);
+
 
     return shadowValue;
 
     #else// No shadows
 
-    // Make the distance threshold a variable
-    float blendDistance = 0.002; 
-
-    float mapDistance = map(uv);
-
-    // smoothstep returns 0.0 when mapDistance is <= 0.0, 
-    // 1.0 when it is >= blendDistance, 
-    // and a smooth curve in between.
-    float blendFactor = smoothstep(0.0, blendDistance, mapDistance);
-
-    // mix smoothly interpolates between your shadow value and 1.0
-    return mix(SHADOW_VALUE * 0.99, 1.0, blendFactor);
+    return 1.0;
 
     #endif
 
@@ -258,15 +258,29 @@ void main()
     // Directional light
     vec2 rd = u_directionalLightDirection.xy;
 
-    float shadows = renderShadows(screenUV + ((0.1 / zoom) * rd), rd);
-    float light = calculateLight(screenUV, rd, normal, shadows, -distance);
+    float shadows = renderShadows(screenUV + ((0.05 / zoom) * rd), rd);
+
+    #ifdef SHADOWS_ENABLED
+    float t = shadows;
+    #else
+    float t = SHADOW_VALUE;
+    #endif
+
+    // Define the distance over which the ambient occlusion fades out
+    float aoBlendFactor = smoothstep(0.0, u_ambienOcclusionRadius / u_resolution.y, distance);
+    float fadeToFull = smoothstep(u_ambienOcclusionStrength, 1.0, t);
+    float ao = mix(aoBlendFactor, 1.0, fadeToFull);
+
+    shadows *= ao;
+
+
+
+    float light = calculateLight(screenUV, rd, normal, shadows, -distance, 0.05);
+
+
 
     // Refraction
     #ifdef REFRACTION
-
-
-
-    // normal = vec2(1.0, 1.0);
 
     // Sample background with refraction
     float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
@@ -309,9 +323,7 @@ void main()
 
     // Combine the material's alpha with shape factor
     float finalAlpha = clamp(alpha + 0.1, 0.0, 1.0) * shapeFactor;
-    // finalAlpha *= 2.0;
-    // finalAlpha = clamp(finalAlpha, 0.0, 1.0);
-    // finalAlpha = 0.25;
+
     color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
     vec3 col = color;
 

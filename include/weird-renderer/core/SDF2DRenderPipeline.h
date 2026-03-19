@@ -39,6 +39,8 @@ namespace WeirdEngine
 				bool debugDistanceField;
 				bool debugMaterialColors;
 				float ballK;
+				float ambienOcclusionRadius;
+				float ambienOcclusionStrength;
 			};
 
 			SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane);

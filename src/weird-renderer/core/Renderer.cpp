@@ -258,6 +258,8 @@ namespace WeirdEngine
 			worldConfig.materialBlendSpeed = 10.0f;
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
+			worldConfig.ambienOcclusionRadius = 4.0f;
+			worldConfig.ambienOcclusionStrength = 0.25f;
 			worldConfig.ballK = 0.3f;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
@@ -280,6 +282,8 @@ namespace WeirdEngine
 			uiConfig.debugDistanceField = false;
 			uiConfig.debugMaterialColors = false;
 			uiConfig.ballK = 3.0f;
+			uiConfig.ambienOcclusionRadius = 1.0f;
+			uiConfig.ambienOcclusionStrength = 0.1f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);

@@ -372,6 +372,8 @@ namespace WeirdEngine {
 			m_lightingShader.setUniform("u_camMatrix", camera.view);
 			m_lightingShader.setUniform("u_time", time);
 			m_lightingShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
+			m_lightingShader.setUniform("u_ambienOcclusionRadius", m_config.ambienOcclusionRadius);
+			m_lightingShader.setUniform("u_ambienOcclusionStrength", m_config.ambienOcclusionStrength);
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);

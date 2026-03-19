@@ -1,6 +1,7 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
+#include "weird-engine/Profiler.h"
 
 #include <random>
 
@@ -52,9 +53,18 @@ namespace WeirdEngine
 		}
 	}
 
-
 	Scene::Scene()
-			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_UIRenderSystem(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+		: m_simulation2D(MAX_ENTITIES)
+		, m_sdfRenderSystem(m_ecs)
+		, m_sdfRenderSystem2D(m_ecs)
+		, m_UIRenderSystem(m_ecs)
+		, m_renderSystem(m_ecs)
+		, m_instancedRenderSystem(m_ecs)
+		, m_rbPhysicsSystem2D(m_ecs)
+		, m_physicsInteractionSystem(m_ecs)
+		, m_playerMovementSystem(m_ecs)
+		, m_cameraSystem(m_ecs)
+		, m_runSimulationInThread(true)
 	{
 		m_sdfRenderSystem2D.m_dotRadious = 0.5f;
 		m_sdfRenderSystem2D.m_charSpacing = 1.0f;
@@ -116,6 +126,7 @@ namespace WeirdEngine
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
 	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
 	{
+		PROFILE_SCOPE("Render Models");
 		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
 
@@ -142,31 +153,37 @@ namespace WeirdEngine
 
 	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
+		PROFILE_SCOPE("Fetch World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
 	void Scene::getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size, uint32_t& customShapeCount)
 	{
+		PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
 		m_UIRenderSystem.fillDataBuffer(uiData, size);
 	}
 
 	void Scene::update(double delta, double time)
 	{
+		PROFILE_SCOPE("Scene Logic Update");
+
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
 			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
 		}
 
 		// Update systems
-		if (m_debugFly)
 		{
-			m_playerMovementSystem.update(m_ecs, delta);
-		}
-		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
+			if (m_debugFly)
+			{
+				m_playerMovementSystem.update(m_ecs, delta);
+			}
+			// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
 
-		m_cameraSystem.update(m_ecs);
+			m_cameraSystem.update(m_ecs);
+		}
 
 		// Buttons
 		{
@@ -348,15 +365,22 @@ namespace WeirdEngine
 			}
 		}
 
-		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
-		if (m_debugInput)
 		{
-			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+			PROFILE_SCOPE("Physics synchronization");
+			m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
+
+			if (m_debugInput)
+			{
+				m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+			}
+
+			m_simulation2D.update(delta);
 		}
 
-		m_simulation2D.update(delta);
-
-		onUpdate(delta);
+		{
+			PROFILE_SCOPE("Scene logic update");
+			onUpdate(delta);
+		}
 
 		m_ecs.freeRemovedComponents();
 	}

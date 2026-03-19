@@ -5,6 +5,7 @@
 #endif // !ENGINE_PATH
 
 #include "weird-engine/Input.h"
+#include "weird-engine/Profiler.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-engine/Utils.h"
 #include "weird-renderer/core/Renderer.h"
@@ -68,6 +69,14 @@ namespace WeirdEngine
 			// Capture window input
 			Input::update(renderer.getWindow());
 
+			if (Input::GetKeyDown(Input::T))
+			{
+				WeirdEngine::Profiler::Get().startRecording();
+			}
+			WeirdEngine::Profiler::Get().update();
+
+			PROFILE_SCOPE("Frame");
+
 			bool newResolution = false;
 			SDL_Event event;
 			while (SDL_PollEvent(&event))
@@ -103,7 +112,10 @@ namespace WeirdEngine
 			scene->update(delta, time);
 
 			// Audio
-			audioEngine.listen(*scene);
+			{
+				PROFILE_SCOPE("Audio Update");
+				audioEngine.listen(*scene);
+			}
 
 			// Render scene
 			if (newResolution)

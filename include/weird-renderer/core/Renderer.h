@@ -34,6 +34,8 @@ namespace WeirdEngine
 
 		private:
 
+			Texture& renderScene(Scene& scene, const double time, const double delta);
+
 			SDL_Window* m_window;
 			unsigned int m_windowWidth, m_windowHeight;
 			float m_distanceSampleScale;

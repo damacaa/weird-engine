@@ -22,6 +22,7 @@ private:
 	void onStart() override
 	{
 		m_debugInput = true;
+		m_debugFly = true;
 
 		constexpr int numBalls = 60;
 		constexpr int rowWidth = 30;

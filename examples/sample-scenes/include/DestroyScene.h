@@ -78,6 +78,9 @@ private:
 	// Inherited via Scene
 	void onStart() override
 	{
+		m_debugInput = true;
+		m_debugFly = true;
+
 		{
 			float variables[8]{ 0.0f, 0.0f };
 			addShape(DefaultShapes::SINE, variables, 3);

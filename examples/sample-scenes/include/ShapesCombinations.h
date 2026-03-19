@@ -30,7 +30,8 @@ private:
 
   void onStart() override
   {
-    m_debugInput = true;
+  	m_debugInput = true;
+  	m_debugFly = true;
 
     // Floor shape
     {

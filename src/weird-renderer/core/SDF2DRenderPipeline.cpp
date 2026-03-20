@@ -209,13 +209,13 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 			m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 			m_distanceShader.setUniform("u_blendIterations", 1);
-			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
 			m_distanceShader.setUniform("u_k", m_config.ballK);
 
 			m_distanceShader.setUniform("t_colorTexture", 0);
 			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
 
 			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
+			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
 			m_distanceShader.setUniform("t_shapeBuffer", 1);
 			m_shapeDataBuffer.uploadData<Dot2D>(shapeData, dataSize);
 			m_shapeDataBuffer.bind(1);

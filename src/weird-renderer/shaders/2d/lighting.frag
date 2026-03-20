@@ -270,13 +270,12 @@ void main()
     float aoBlendFactor = smoothstep(0.0, u_ambienOcclusionRadius / u_resolution.y, distance);
     float fadeToFull = smoothstep(u_ambienOcclusionStrength, 1.0, t);
     float ao = mix(aoBlendFactor, 1.0, fadeToFull);
-
+    // Apply ao
     shadows *= ao;
-
-
 
     float light = calculateLight(screenUV, rd, normal, shadows, -distance, 0.05);
 
+    shadows = mix(shadows, 1.0, shapeFactor); // Remove shadows inside shapes
 
 
     // Refraction

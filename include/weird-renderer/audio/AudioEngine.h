@@ -68,7 +68,6 @@ namespace WeirdEngine {
             std::mutex voiceMutex; // Essential for thread safety
 
             // Visualizer
-        private:
             // Add a mutex specifically for visual data to avoid locking the main audio processing too long
             std::mutex visualMutex;
             AudioVisualData visualSnapshot;

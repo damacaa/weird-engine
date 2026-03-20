@@ -9,8 +9,8 @@ using namespace WeirdEngine;
 class RopeScene : public Scene
 {
 public:
-	RopeScene()
-		: Scene()
+	RopeScene(const PhysicsSettings& settings)
+		: Scene(settings)
 	{
 	}
 

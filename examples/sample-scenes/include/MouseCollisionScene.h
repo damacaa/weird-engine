@@ -8,8 +8,8 @@ using namespace WeirdEngine;
 class MouseCollisionScene : public Scene
 {
 public:
-	MouseCollisionScene()
-		: Scene() {
+	MouseCollisionScene(const PhysicsSettings& settings)
+		: Scene(settings) {
 	};
 
 private:

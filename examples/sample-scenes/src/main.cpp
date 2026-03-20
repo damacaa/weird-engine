@@ -29,5 +29,14 @@ int main()
 	settings.height = 800;
 	settings.fullscreen = false;
 
-	start(sceneManager, settings);
+	WeirdEngine::PhysicsSettings physicsSettings{};
+	physicsSettings.gravity = -10.0f;
+	physicsSettings.damping = 0.001f;
+	physicsSettings.simulationFrequency = 100.0f;
+	physicsSettings.relaxationSteps = 10;
+
+	WeirdEngine::WeirdRenderer::AudioSettings audioSettings{};
+	audioSettings.mute = true;
+
+	start(sceneManager, settings, physicsSettings, audioSettings);
 }

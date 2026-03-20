@@ -8,8 +8,8 @@ using namespace WeirdEngine;
 class ImageScene : public Scene
 {
 public:
-	ImageScene()
-		: Scene() {
+	ImageScene(const PhysicsSettings& settings)
+		: Scene(settings) {
 	};
 
 private:

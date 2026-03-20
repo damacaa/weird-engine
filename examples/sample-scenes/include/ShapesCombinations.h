@@ -11,8 +11,8 @@ using namespace WeirdEngine;
 class ShapeCombinatiosScene : public Scene
 {
 public:
-  ShapeCombinatiosScene()
-      : Scene()
+  ShapeCombinatiosScene(const PhysicsSettings& settings)
+      : Scene(settings)
   {
   }
 

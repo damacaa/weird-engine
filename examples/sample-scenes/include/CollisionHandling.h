@@ -9,8 +9,8 @@ using namespace WeirdEngine;
 class CollisionHandlingScene : public Scene
 {
 public:
-  CollisionHandlingScene()
-      : Scene() {
+  CollisionHandlingScene(const PhysicsSettings& settings)
+      : Scene(settings) {
         };
 
 private:

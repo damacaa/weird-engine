@@ -21,18 +21,25 @@ extern "C"
 	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
 }
 
+#include "weird-physics/PhysicsSettings.h"
+#include "weird-renderer/audio/AudioSettings.h"
+
 namespace WeirdEngine
 {
 
-
 	using namespace WeirdRenderer;
-	void start(SceneManager& sceneManager, DisplaySettings displaySettings)
+	void start(SceneManager& sceneManager, DisplaySettings displaySettings, PhysicsSettings physicsSettings = {},
+			   AudioSettings audioSettings = {})
 	{
+		sceneManager.setPhysicsSettings(physicsSettings);
+
 		SDL_Window* window;
 		AudioEngine audioEngine;
+		audioEngine.mute = audioSettings.mute;
+
 		SDLInitializer m_sdlInitializer(displaySettings, window, audioEngine);
 		Renderer renderer(displaySettings, window);
-		
+
 		// Scenes
 		sceneManager.loadScene(0);
 
@@ -85,14 +92,10 @@ namespace WeirdEngine
 				{
 					quit = true;
 				}
-				else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-
-					// OPTION A: Get size directly from the event data
+				else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+				{
 					int newWidth = event.window.data1;
 					int newHeight = event.window.data2;
-
-					// OPTION B (Safer): Query the window explicitly to be sure
-					// SDL_GetWindowSizeInPixels(window, &newWidth, &newHeight);
 
 					std::cout << "Window resized to: " << newWidth << "x" << newHeight << std::endl;
 
@@ -104,7 +107,6 @@ namespace WeirdEngine
 					Input::handleEvent(event);
 				}
 			}
-
 
 			auto scene = sceneManager.getCurrentScene();
 
@@ -120,7 +122,7 @@ namespace WeirdEngine
 			// Render scene
 			if (newResolution)
 				scene->forceShaderRefresh();
-			
+
 			renderer.render(*scene, time, delta);
 
 			// Load next scene if requested
@@ -141,4 +143,4 @@ namespace WeirdEngine
 		std::cout << "Quitting..." << std::endl;
 		// audioEngine.close();
 	}
-}
+} // namespace WeirdEngine

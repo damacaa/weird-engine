@@ -20,6 +20,8 @@
 #include "weird-engine/math/MathExpressions.h"
 #include "weird-engine/vec.h"
 
+#include "PhysicsSettings.h"
+
 namespace WeirdEngine
 {
 
@@ -65,7 +67,7 @@ namespace WeirdEngine
 	{
 
 	public:
-		Simulation2D(size_t size);
+		Simulation2D(size_t size, const PhysicsSettings& settings);
 		~Simulation2D();
 
 		// Manage simulation
@@ -228,6 +230,10 @@ namespace WeirdEngine
 		};
 
 		int m_substeps; // TODO: implement substeps
+		float m_simulationFrequency;
+		double m_fixedDeltaTime;
+		float m_fixedDeltaTimeF;
+		int m_relaxationSteps;
 
 		bool m_isPaused;
 		bool m_simulating;

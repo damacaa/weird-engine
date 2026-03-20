@@ -4,13 +4,15 @@
 #include "ResourceManager.h"
 #include "weird-engine/math/Default2DSDFs.h"
 
-#include "weird-renderer/scene/Shape.h"
-#include "weird-renderer/resources/DrawCommand.h"
 #include "weird-renderer/core/RenderTarget.h"
+#include "weird-renderer/resources/DrawCommand.h"
+#include "weird-renderer/scene/Shape.h"
 
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
+#include "weird-renderer/audio/SimpleAudioRequest.h"
+
+#include "weird-physics/PhysicsSettings.h"
 
 namespace WeirdEngine
 {
@@ -21,11 +23,12 @@ namespace WeirdEngine
 	class Scene
 	{
 	public:
-		Scene();
+		Scene(const PhysicsSettings& settings);
 		~Scene();
 		void start();
 
-		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
+		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
+						  WeirdRenderer::Shader& instancingShader);
 
 		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
@@ -33,12 +36,12 @@ namespace WeirdEngine
 		void update(double delta, double time);
 
 		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount);
-		void getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size, uint32_t& customShapeCount);
+		void getUIData(WeirdRenderer::Dot2D*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
-		Scene(const Scene&) = default;						 // Deleted copy constructor
+		Scene(const Scene&) = default;			  // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
-		Scene(Scene&&) = default;								 // Defaulted move constructor
-		Scene& operator=(Scene&&) = default;			 // Defaulted move assignment operator
+		Scene(Scene&&) = default;				  // Defaulted move constructor
+		Scene& operator=(Scene&&) = default;	  // Defaulted move assignment operator
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
@@ -60,8 +63,14 @@ namespace WeirdEngine
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 
-		bool isSceneComplete() const { return m_isSceneComplete; };
-		std::string getNextScene() const {return m_nextScene; };
+		bool isSceneComplete() const
+		{
+			return m_isSceneComplete;
+		};
+		std::string getNextScene() const
+		{
+			return m_nextScene;
+		};
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
@@ -75,7 +84,7 @@ namespace WeirdEngine
 		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 
-		void setSceneComplete(std::string nextScene = "") 
+		void setSceneComplete(std::string nextScene = "")
 		{
 			m_isSceneComplete = true;
 			m_nextScene = nextScene;
@@ -88,8 +97,11 @@ namespace WeirdEngine
 
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
-		Entity addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, bool hasCollision = true, int group = 0);
-		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination = CombinationType::Addition, int group = 0);
+		Entity addShape(ShapeId shapeId, float* variables, uint16_t material,
+						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
+						int group = 0);
+		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
+						  CombinationType combination = CombinationType::Addition, int group = 0);
 		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
 
 		void lookAt(Entity entity);
@@ -113,13 +125,9 @@ namespace WeirdEngine
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
 
 	private:
-
-
 		void loadScene(std::string& sceneFileContent);
 
 		bool m_runSimulationInThread;
-
-		
 
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
 		float m_frictionSoundLevel{0.0f};
@@ -135,4 +143,4 @@ namespace WeirdEngine
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;
 	};
-}
+} // namespace WeirdEngine

@@ -169,7 +169,7 @@ private:
 			cs.isDirty = true;
 		}
 
-		auto audioVisualData = AudioEngine::getAudioVisuals();
+		auto audioVisualData = AudioEngine::getInstance().getAudioData();
 
 		if (audioVisualData.waveform.size() > 0)
 		{

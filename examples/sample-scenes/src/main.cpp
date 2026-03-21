@@ -24,19 +24,19 @@ int main()
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
 
-	DisplaySettings settings{};
-	settings.width = 800;
-	settings.height = 800;
-	settings.fullscreen = false;
+	DisplaySettings displaySettings{};
+	displaySettings.width = 800;
+	displaySettings.height = 800;
+	displaySettings.fullscreen = false;
 
 	WeirdEngine::PhysicsSettings physicsSettings{};
 	physicsSettings.gravity = -10.0f;
 	physicsSettings.damping = 0.001f;
-	physicsSettings.simulationFrequency = 100.0f;
+	physicsSettings.simulationFrequency = 250.0f;
 	physicsSettings.relaxationSteps = 10;
 
 	WeirdEngine::WeirdRenderer::AudioSettings audioSettings{};
-	audioSettings.mute = true;
+	audioSettings.mute = false;
 
-	start(sceneManager, settings, physicsSettings, audioSettings);
+	start(sceneManager, displaySettings, physicsSettings, audioSettings);
 }

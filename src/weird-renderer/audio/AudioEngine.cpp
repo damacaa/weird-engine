@@ -19,29 +19,31 @@
 #define M_PI 3.14159265359f
 #endif // !M_PI
 
-WeirdEngine::WeirdRenderer::AudioEngine* g_instance;
+
 
 namespace WeirdEngine {
     namespace WeirdRenderer {
 
         constexpr int MAX_ACTIVE_VOICES = 16;
 
-        AudioEngine::AudioEngine() : mute(false) {
-            g_instance = this;
-        }
+        AudioEngine::AudioEngine()
+			: m_mute(false)
+		{
+		}
 
         AudioEngine::~AudioEngine() {
 
         }
 
-        bool AudioEngine::init() {
+        bool AudioEngine::init(const AudioSettings& settings) {
+			m_mute = settings.mute;
             ma_result result;
             ma_engine_config engineConfig = ma_engine_config_init();
             engineConfig.noDevice = MA_TRUE;
             engineConfig.channels = CHANNELS;
             engineConfig.sampleRate = SAMPLE_RATE;
 
-            result = ma_engine_init(&engineConfig, &g_engine);
+            result = ma_engine_init(&engineConfig, &m_engine);
             if (result != MA_SUCCESS) {
                 std::cerr << "Failed to initialize audio engine" << std::endl;
                 return false;
@@ -56,7 +58,7 @@ namespace WeirdEngine {
                 1.0f // amplitude
             );
 
-            ma_result noiseResult = ma_noise_init(&noiseConfig, nullptr, &g_noise);
+            ma_result noiseResult = ma_noise_init(&noiseConfig, nullptr, &m_noise);
             if (noiseResult != MA_SUCCESS) {
                 std::cerr << "Failed to initialize noise generator" << std::endl;
                 return false;
@@ -67,29 +69,29 @@ namespace WeirdEngine {
 
         void AudioEngine::close()
         {
-            ma_noise_uninit(&g_noise, nullptr);
-            ma_sound_uninit(&g_sound);
-            ma_engine_uninit(&g_engine);
+            ma_noise_uninit(&m_noise, nullptr);
+            ma_sound_uninit(&m_sound);
+            ma_engine_uninit(&m_engine);
         }
 
         void AudioEngine::loadSound(const char *filePath) {
-            ma_result result = ma_sound_init_from_file(&g_engine, filePath, 0, NULL, NULL, &g_sound);
+            ma_result result = ma_sound_init_from_file(&m_engine, filePath, 0, NULL, NULL, &m_sound);
             if (result != MA_SUCCESS) {
-                ma_engine_uninit(&g_engine);
+                ma_engine_uninit(&m_engine);
                 throw std::runtime_error("Failed to initialize sound");
             }
 
-            ma_sound_set_looping(&g_sound, MA_TRUE);
-            ma_sound_set_volume(&g_sound, 0.0);
-            ma_sound_start(&g_sound);
+            ma_sound_set_looping(&m_sound, MA_TRUE);
+            ma_sound_set_volume(&m_sound, 0.0);
+            ma_sound_start(&m_sound);
         }
 
         ma_uint32 AudioEngine::getSampleRate() const {
-            return ma_engine_get_sample_rate(&g_engine);
+            return ma_engine_get_sample_rate(&m_engine);
         }
 
         ma_uint8 AudioEngine::getChannels() const {
-            return ma_engine_get_channels(&g_engine);
+            return ma_engine_get_channels(&m_engine);
         }
 
         // Standard Reference: A4 = 440Hz
@@ -163,7 +165,7 @@ namespace WeirdEngine {
 
         void AudioEngine::listen(Scene& scene)
         {
-            if (mute)
+            if (m_mute)
                 return;
 
             if (Input::GetKeyDown(Input::C))
@@ -258,7 +260,7 @@ namespace WeirdEngine {
         			accumulatedSoundData.beats = (std::max)(aux.beats, accumulatedSoundData.beats);
         		}
 
-        		if (time >= nextAllowedPlayTime && activeVoices.size() < MAX_ACTIVE_VOICES)
+        		if (time >= nextAllowedPlayTime && m_activeVoices.size() < MAX_ACTIVE_VOICES)
         		{
         			float invBufferedAmount = 1.0f / static_cast<float>(mergedCollisionCount + 1);
         			// buffered_request.volume *= invBufferedAmount;
@@ -379,19 +381,19 @@ namespace WeirdEngine {
                 float overshoot = initialAmplitude - COMPRESSION_THRESHOLD;
                 float compressedOvershoot = overshoot / COMPRESSION_RATIO;
                 float finalAmplitude = COMPRESSION_THRESHOLD + compressedOvershoot;
-                frictionLevel = finalAmplitude;
+                m_frictionLevel = finalAmplitude;
             } else
             {
-                frictionLevel = initialAmplitude;
+                m_frictionLevel = initialAmplitude;
             }
         }
 
         void AudioEngine::playSineSound(float freq, float amp, float decaySec) {
             // Lock the mutex so the audio thread doesn't read while we write
-            std::lock_guard<std::mutex> lock(voiceMutex);
+            std::lock_guard<std::mutex> lock(m_voiceMutex);
 
             // Optional: Limit max polyphony to prevent CPU overload
-            if (activeVoices.size() > MAX_ACTIVE_VOICES) return;
+            if (m_activeVoices.size() > MAX_ACTIVE_VOICES) return;
 
             CollisionVoice newVoice;
             newVoice.frequency = freq;
@@ -401,13 +403,13 @@ namespace WeirdEngine {
             newVoice.phase = 0.0f;
             newVoice.finished = false;
 
-            activeVoices.push_back(newVoice);
+            m_activeVoices.push_back(newVoice);
         }
 
-        AudioVisualData AudioEngine::getAudioVisuals()
+        AudioData AudioEngine::getAudioData()
         {
-            std::lock_guard<std::mutex> lock(g_instance->visualMutex);
-            return g_instance->visualSnapshot;
+            std::lock_guard<std::mutex> lock(m_visualMutex);
+            return m_visualSnapshot;
         }
 
         // ------------------- Updated Callback -------------------
@@ -424,14 +426,14 @@ namespace WeirdEngine {
             std::vector<float> temp(framesToWrite * CHANNELS);
 
             // --- 1. Mix background music (MiniAudio) ---
-            ma_engine_read_pcm_frames(&audio->g_engine, mix.data(), framesToWrite, NULL);
+            ma_engine_read_pcm_frames(&audio->m_engine, mix.data(), framesToWrite, NULL);
 
             // --- 2. Friction noise ---
-            audio->smoothedFriction += (audio->frictionLevel - audio->smoothedFriction) * 0.05f;
-            if (audio->smoothedFriction > 0.0001f) {
-                ma_noise_read_pcm_frames(&audio->g_noise, temp.data(), framesToWrite, NULL);
+            audio->m_smoothedFriction += (audio->m_frictionLevel - audio->m_smoothedFriction) * 0.05f;
+            if (audio->m_smoothedFriction > 0.0001f) {
+                ma_noise_read_pcm_frames(&audio->m_noise, temp.data(), framesToWrite, NULL);
                 for (ma_uint32 i = 0; i < framesToWrite * CHANNELS; ++i) {
-                    mix[i] += temp[i] * audio->smoothedFriction * 0.4f;
+                    mix[i] += temp[i] * audio->m_smoothedFriction * 0.4f;
                 }
             }
 
@@ -440,12 +442,12 @@ namespace WeirdEngine {
             // Lock mutex to safely access the vector
             // Lock mutex to safely access the vector
             {
-                std::lock_guard<std::mutex> lock(audio->voiceMutex);
+                std::lock_guard<std::mutex> lock(audio->m_voiceMutex);
 
                 // Define a short attack time (e.g., 10ms) to prevent popping
                 const float ATTACK_TIME = 0.01f;
 
-                for (auto& voice : audio->activeVoices) {
+                for (auto& voice : audio->m_activeVoices) {
                     if (voice.finished) continue;
 
                     const float phaseInc = 2.0f * M_PI * voice.frequency / SAMPLE_RATE;
@@ -480,10 +482,10 @@ namespace WeirdEngine {
 
                 // Cleanup finished voices to keep vector small
                 // Using remove_if idiom
-                audio->activeVoices.erase(
-                    std::remove_if(audio->activeVoices.begin(), audio->activeVoices.end(),
+                audio->m_activeVoices.erase(
+                    std::remove_if(audio->m_activeVoices.begin(), audio->m_activeVoices.end(),
                         [](const CollisionVoice& v) { return v.finished; }),
-                    audio->activeVoices.end()
+                    audio->m_activeVoices.end()
                 );
             }
 
@@ -511,16 +513,16 @@ namespace WeirdEngine {
                 {
                     // Try_lock allows us to skip an update if the render thread is currently reading.
                     // This prevents the audio thread from stuttering.
-                    if (audio->visualMutex.try_lock()) {
-                        audio->visualSnapshot.currentVolume = rms;
-                        audio->visualSnapshot.currentFriction = audio->smoothedFriction;
+                    if (audio->m_visualMutex.try_lock()) {
+                        audio->m_visualSnapshot.currentVolume = rms;
+                        audio->m_visualSnapshot.currentFriction = audio->m_smoothedFriction;
 
                         // Grab a small chunk of the wave for visuals (e.g., last 128 samples)
                         size_t captureSize = (std::min)((size_t)128, mix.size());
-                        audio->visualSnapshot.waveform.resize(captureSize);
-                        std::copy(mix.end() - captureSize, mix.end(), audio->visualSnapshot.waveform.begin());
+                        audio->m_visualSnapshot.waveform.resize(captureSize);
+                        std::copy(mix.end() - captureSize, mix.end(), audio->m_visualSnapshot.waveform.begin());
 
-                        audio->visualMutex.unlock();
+                        audio->m_visualMutex.unlock();
                     }
                 }
             }

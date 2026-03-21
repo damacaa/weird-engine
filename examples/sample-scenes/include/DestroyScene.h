@@ -8,8 +8,8 @@ using namespace WeirdEngine;
 class DestroyScene : public Scene
 {
 public:
-	DestroyScene()
-		: Scene() {
+	DestroyScene(const PhysicsSettings& settings)
+		: Scene(settings) {
 	};
 
 private:

@@ -31,5 +31,14 @@ int main()
 	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 
-	start(sceneManager, displaySettings);
+	WeirdEngine::PhysicsSettings physicsSettings{};
+	physicsSettings.gravity = -10.0f;
+	physicsSettings.damping = 0.001f;
+	physicsSettings.simulationFrequency = 250.0f;
+	physicsSettings.relaxationSteps = 10;
+
+	WeirdEngine::WeirdRenderer::AudioSettings audioSettings{};
+	audioSettings.mute = false;
+
+	start(sceneManager, displaySettings, physicsSettings, audioSettings);
 }

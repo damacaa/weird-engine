@@ -23,6 +23,7 @@ extern "C"
 
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-renderer/audio/AudioSettings.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 namespace WeirdEngine
 {
@@ -34,9 +35,9 @@ namespace WeirdEngine
 		sceneManager.setPhysicsSettings(physicsSettings);
 
 		SDL_Window* window;
-		AudioEngine audioEngine;
-		audioEngine.mute = audioSettings.mute;
-
+		AudioEngine& audioEngine = AudioEngine::getInstance();
+		audioEngine.init(audioSettings);
+		
 		SDLInitializer m_sdlInitializer(displaySettings, window, audioEngine);
 		Renderer renderer(displaySettings, window);
 

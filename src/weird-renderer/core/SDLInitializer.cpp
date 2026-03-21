@@ -28,8 +28,6 @@ namespace WeirdEngine
 
 		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine) : m_window(window)
         {
-            audioEngine.init();
-
             if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
             {
                 throw std::runtime_error("SDL could not initialize!");

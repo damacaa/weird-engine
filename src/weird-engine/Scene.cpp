@@ -1,10 +1,6 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
-#include "weird-engine/SceneManager.h"
 #include "weird-engine/Profiler.h"
-
-#include <random>
-
 
 namespace WeirdEngine
 {

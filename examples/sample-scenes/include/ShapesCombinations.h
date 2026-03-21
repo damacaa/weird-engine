@@ -177,7 +177,7 @@ private:
 
 
 
-    float volume = AudioEngine::getAudioVisuals().currentVolume;
+    float volume = AudioEngine::getInstance().getAudioData().currentVolume;
     glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
     float radius = 50.0f - (volume * 50.0f);    // Distance from center
     float speed = 1.0f;       // How fast they rotate

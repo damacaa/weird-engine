@@ -3,80 +3,102 @@
 #include <mutex>
 #include <vector>
 
-#include <SDL3/SDL.h>
 #include <miniaudio/miniaudio.h>
+#include <SDL3/SDL.h>
 
 #include "weird-engine/Scene.h"
+#include "weird-renderer/audio/AudioSettings.h"
 
-namespace WeirdEngine {
-    namespace WeirdRenderer {
+namespace WeirdEngine
+{
+	namespace WeirdRenderer
+	{
 
-        struct CollisionVoice {
-            float frequency;
-            float amplitude;
-            float decay;
-            float time = 0.0f;
-            float phase = 0.0f;
-            bool finished = false;
-        };
+		struct CollisionVoice
+		{
+			float frequency;
+			float amplitude;
+			float decay;
+			float time = 0.0f;
+			float phase = 0.0f;
+			bool finished = false;
+		};
 
-        struct AudioVisualData {
-            float currentVolume = 0.0f;     // For pulsing size
-            float currentFriction = 0.0f;   // For static/jitter
-            std::vector<float> waveform;    // For oscilloscope effects (snapshot of last 256 samples)
-        };
+		struct AudioData
+		{
+			float currentVolume = 0.0f;	  // For pulsing size
+			float currentFriction = 0.0f; // For static/jitter
+			std::vector<float> waveform;  // For oscilloscope effects (snapshot of last 256 samples)
+		};
 
-        class AudioEngine {
-        public:
-            AudioEngine();
-            ~AudioEngine();
+		class AudioEngine
+		{
+		public:
+			static AudioEngine& getInstance()
+			{
+				static AudioEngine instance;
+				return instance;
+			}
 
-            bool init();
-            void close();
-            void loadSound(const char* filePath);
-            static void data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount, int total_amount);
+			AudioEngine(const AudioEngine&) = delete;
+			AudioEngine& operator=(const AudioEngine&) = delete;
 
-            ma_uint32 getSampleRate() const;
-            ma_uint8 getChannels() const;
+			~AudioEngine();
 
-            void listen(Scene& scene);
+			bool init(const AudioSettings& settings);
+			void close();
+			void loadSound(const char* filePath);
+			static void data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount,
+									  int total_amount);
 
-            // --- Procedural control ---
-            void setFrictionLevel(float level);      // 0..1, continuous
-            void playSineSound(float freq, float amp, float decaySec = 0.3f);
+			ma_uint32 getSampleRate() const;
+			ma_uint8 getChannels() const;
 
-            bool mute;
+			void listen(Scene& scene);
 
-        private:
-            ma_engine g_engine;
-            ma_sound  g_sound;  // background music
+			void mute()
+			{
+				m_mute = true;
+			}
 
-            // Procedural state
-            ma_noise  g_noise;
-            float     frictionLevel = 0.0f; // modulated each frame
-            float     smoothedFriction = 0.0f;
+			void unmute()
+			{
+				m_mute = false;
+			}
 
-            // Collision tone
-            float     collisionFreq = 0.0f;
-            float     collisionAmp = 0.0f;
-            float     collisionPhase = 0.0f;
-            float     collisionDecay = 0.0f;
-            float     collisionTime = 0.0f;
+			AudioData getAudioData();
 
-            // 2. Replace the single float variables with a vector of voices
-            std::vector<CollisionVoice> activeVoices;
-            std::mutex voiceMutex; // Essential for thread safety
+		private:
+			AudioEngine();
+			ma_engine m_engine;
+			ma_sound m_sound; // background music
 
-            // Visualizer
-        private:
-            // Add a mutex specifically for visual data to avoid locking the main audio processing too long
-            std::mutex visualMutex;
-            AudioVisualData visualSnapshot;
+			bool m_mute;
 
-        public:
-            // Call this every frame in your Render loop
-            static AudioVisualData getAudioVisuals();
-        };
+			// Procedural state
+			ma_noise m_noise;
+			float m_frictionLevel = 0.0f; // modulated each frame
+			float m_smoothedFriction = 0.0f;
 
-    } // namespace WeirdRenderer
+			// Collision tone
+			float m_collisionFreq = 0.0f;
+			float m_collisionAmp = 0.0f;
+			float m_collisionPhase = 0.0f;
+			float m_collisionDecay = 0.0f;
+			float m_collisionTime = 0.0f;
+
+			// Vector of voices
+			std::vector<CollisionVoice> m_activeVoices;
+			std::mutex m_voiceMutex; // Essential for thread safety
+
+			// Visualizer
+			std::mutex m_visualMutex;
+			AudioData m_visualSnapshot;
+
+			// Procedural control
+			void setFrictionLevel(float level); // 0..1, continuous
+			void playSineSound(float freq, float amp, float decaySec = 0.3f);
+		};
+
+	} // namespace WeirdRenderer
 } // namespace WeirdEngine

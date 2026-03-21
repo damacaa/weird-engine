@@ -1,10 +1,6 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
-#include "weird-engine/SceneManager.h"
 #include "weird-engine/Profiler.h"
-
-#include <random>
-
 
 namespace WeirdEngine
 {
@@ -53,8 +49,8 @@ namespace WeirdEngine
 		}
 	}
 
-	Scene::Scene()
-		: m_simulation2D(MAX_ENTITIES)
+	Scene::Scene(const PhysicsSettings& settings)
+		: m_simulation2D(MAX_ENTITIES, settings)
 		, m_sdfRenderSystem(m_ecs)
 		, m_sdfRenderSystem2D(m_ecs)
 		, m_UIRenderSystem(m_ecs)

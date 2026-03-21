@@ -12,44 +12,41 @@ namespace WeirdEngine
 
 	using namespace std::chrono;
 
-	constexpr float SIMULATION_FREQUENCY = 100;
-	constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
-	constexpr float FIXED_DELTA_TIME_F = FIXED_DELTA_TIME;
-
 	constexpr size_t MAX_STEPS = 10;
-
 	const float EPSILON = 0.0001f;
-	constexpr int RELAXATION_ITERATIONS = 10; // Increase this for stiffer ropes (usually 4 to 10)
 
-
-
-	Simulation2D::Simulation2D(size_t size) : m_isPaused(false),
-		m_positions(new vec2[size]),
-		m_positionsRead(new vec2[size]),
-		m_positionsAux(new vec2[size]),
-		m_previousPositions(new vec2[size]),
-		m_velocities(new vec2[size]),
-		m_forces(new vec2[size]),
-		m_externalForcesSinceLastUpdate(false),
-		m_externalForces(new vec2[size]),
-		m_mass(new float[size]),
-		m_invMass(new float[size]),
-		m_maxSize(size),
-		m_size(0),
-		m_lastIdGiven(-1),
-		m_simulationDelay(0),
-		m_simulationTime(0),
-		m_substeps(1),
-		m_gravity(-10),
-		m_push(10.0f * SIMULATION_FREQUENCY),
-		m_damping(0.001f),
-		m_simulating(false),
-		m_collisionDetectionMethod(MethodNaive),
-		m_useSimdOperations(false),
-		m_diameter(1.0f),
-		m_diameterSquared(m_diameter* m_diameter),
-		m_radious(m_diameter / 2.0f),
-		m_collisionMap(size)
+	Simulation2D::Simulation2D(size_t size, const PhysicsSettings& settings)
+		: m_isPaused(false)
+		, m_positions(new vec2[size])
+		, m_positionsRead(new vec2[size])
+		, m_positionsAux(new vec2[size])
+		, m_previousPositions(new vec2[size])
+		, m_velocities(new vec2[size])
+		, m_forces(new vec2[size])
+		, m_externalForcesSinceLastUpdate(false)
+		, m_externalForces(new vec2[size])
+		, m_mass(new float[size])
+		, m_invMass(new float[size])
+		, m_maxSize(size)
+		, m_size(0)
+		, m_lastIdGiven(-1)
+		, m_simulationDelay(0)
+		, m_simulationTime(0)
+		, m_substeps(1)
+		, m_simulationFrequency(settings.simulationFrequency)
+		, m_fixedDeltaTime(1.0 / static_cast<double>(settings.simulationFrequency))
+		, m_fixedDeltaTimeF(static_cast<float>(m_fixedDeltaTime))
+		, m_relaxationSteps(settings.relaxationSteps)
+		, m_gravity(settings.gravity)
+		, m_push(10.0f * settings.simulationFrequency)
+		, m_damping(settings.damping)
+		, m_simulating(false)
+		, m_collisionDetectionMethod(MethodNaive)
+		, m_useSimdOperations(false)
+		, m_diameter(1.0f)
+		, m_diameterSquared(m_diameter * m_diameter)
+		, m_radious(m_diameter / 2.0f)
+		, m_collisionMap(size)
 	{
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
@@ -118,7 +115,7 @@ namespace WeirdEngine
 	{
 		int steps = 0;
 
-		while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
+		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
 		{
 #if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
@@ -131,22 +128,22 @@ namespace WeirdEngine
 				applyForces();
 
 				// 1. Predict where particles will go based on velocity and forces
-				integratePredict((float)FIXED_DELTA_TIME);
+				integratePredict((float)m_fixedDeltaTime);
 
 				// 2. Iteratively solve constraints (Push/Pull particles to their exact distances)
 
-				for (int iter = 0; iter < RELAXATION_ITERATIONS; iter++)
+				for (int iter = 0; iter < m_relaxationSteps; iter++)
 				{
 					solveConstraints();
 				}
 
 				// 3. Derive the exact velocity based on how much the constraints moved the particles
-				integrateVelocity((float)FIXED_DELTA_TIME);
+				integrateVelocity((float)m_fixedDeltaTime);
 
 				++steps;
 				{
-					// m_simulationTime += FIXED_DELTA_TIME;
-					m_simulationTime.fetch_add(FIXED_DELTA_TIME);
+					// m_simulationTime += m_fixedDeltaTime;
+					m_simulationTime.fetch_add(m_fixedDeltaTime);
 
 					// Notify collision callback
 					if (m_stepCallback)
@@ -158,10 +155,8 @@ namespace WeirdEngine
 
 			{
 				// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-				m_simulationDelay -= FIXED_DELTA_TIME;
+				m_simulationDelay -= m_fixedDeltaTime;
 			}
-
-
 
 #if MEASURE_PERFORMANCE
 			// Get the ending time
@@ -173,7 +168,7 @@ namespace WeirdEngine
 			g_simulationSteps++;
 			g_time += 1000 * duration.count();
 
-			if (g_simulationSteps == 20 * SIMULATION_FREQUENCY)
+			if (g_simulationSteps == 20 * m_simulationFrequency)
 			{
 				auto average = g_time / g_simulationSteps;
 				std::cout << average << "ms" << std::endl;
@@ -232,12 +227,14 @@ namespace WeirdEngine
 		float invCellSize = 1.0f / m_diameter;
 
 		// Fast hash function to convert a 2D grid coordinate into an array index
-		auto getHash =[](int gx, int gy) -> int {
+		auto getHash = [](int gx, int gy) -> int
+		{
 			constexpr int p1 = 73856093;
 			constexpr int p2 = 19349663;
 			int hash = (gx * p1) ^ (gy * p2);
 			hash = hash % TABLE_SIZE;
-			if (hash < 0) hash += TABLE_SIZE; // Handle negative coordinates safely
+			if (hash < 0)
+				hash += TABLE_SIZE; // Handle negative coordinates safely
 			return hash;
 		};
 
@@ -325,8 +322,9 @@ namespace WeirdEngine
 
 				collisionEvent.normal = normalize(vec2(d1, d2));
 
-				float distanceAtSurface = map(p - ((m_radious) * collisionEvent.normal));
-				if (distanceAtSurface <= 0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				float distanceAtSurface = map(p - ((m_radious)*collisionEvent.normal));
+				if (distanceAtSurface <=
+					0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
 				{
 					float penetration = (std::min)(-distanceAtSurface, m_radious - d);
 					currentCollision = true;
@@ -417,7 +415,6 @@ namespace WeirdEngine
 		for (int i = 0; i < m_objects.size(); i++)
 		{
 
-
 			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
@@ -445,24 +442,30 @@ namespace WeirdEngine
 			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
 
 			// Combination
-			switch (obj.combinationId) {
-				case CombinationType::Addition: {
+			switch (obj.combinationId)
+			{
+				case CombinationType::Addition:
+				{
 					currentMinDistance = std::min(currentMinDistance, dist);
 					break;
 				}
-				case CombinationType::Subtraction: {
+				case CombinationType::Subtraction:
+				{
 					currentMinDistance = std::max(currentMinDistance, -dist);
 					break;
 				}
-				case CombinationType::Intersection: {
+				case CombinationType::Intersection:
+				{
 					currentMinDistance = std::max(currentMinDistance, dist);
 					break;
 				}
-				case CombinationType::SmoothAddition: {
+				case CombinationType::SmoothAddition:
+				{
 					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
 					break;
 				}
-				case CombinationType::SmoothSubtraction: {
+				case CombinationType::SmoothSubtraction:
+				{
 					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
 					break;
 				}
@@ -476,9 +479,12 @@ namespace WeirdEngine
 				closestShape = i;
 			}
 
-			if (globalEffect) {
+			if (globalEffect)
+			{
 				d = currentMinDistance;
-			} else {
+			}
+			else
+			{
 				currentGroupMinDistance = currentMinDistance;
 			}
 		}
@@ -487,7 +493,6 @@ namespace WeirdEngine
 
 		return d - 0.05f;
 	}
-
 
 	void Simulation2D::applyForces()
 	{
@@ -538,7 +543,7 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				CollisionEvent event{ col.A, col.B };
+				CollisionEvent event{col.A, col.B};
 				m_collisionCallback(event, m_callbackUserData);
 			}
 
@@ -548,7 +553,7 @@ namespace WeirdEngine
 		}
 
 		// Shape collisions
-		for (auto &collisionEvent: m_collisionQueue)
+		for (auto& collisionEvent : m_collisionQueue)
 		{
 			// Send event
 			if (m_shapeCollisionCallback)
@@ -567,11 +572,12 @@ namespace WeirdEngine
 
 			// Apply friction
 			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.0f);
-			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * friction * velocityDirection; // Lose velocity on collision
+			m_velocities[collisionEvent.body] -=
+				m_fixedDeltaTimeF * friction * velocityDirection; // Lose velocity on collision
 
 			// Absortion
 			float absortionRate = std::max(0.0f, collisionEvent.absortion * velocityAlongNormal);
-			m_velocities[collisionEvent.body] -= FIXED_DELTA_TIME_F * absortionRate * speed * collisionEvent.normal;
+			m_velocities[collisionEvent.body] -= m_fixedDeltaTimeF * absortionRate * speed * collisionEvent.normal;
 
 			// Penalty
 			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;
@@ -581,7 +587,6 @@ namespace WeirdEngine
 		}
 
 		m_collisionQueue.clear();
-
 
 		// Apply extra forces
 		for (size_t i = 0; i < m_size; i++)
@@ -605,7 +610,8 @@ namespace WeirdEngine
 
 			vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
 			float distance = length(v);
-			if (distance <= EPSILON) continue; // Prevent division by zero
+			if (distance <= EPSILON)
+				continue; // Prevent division by zero
 
 			vec2 n = v / distance; // Normalized direction
 
@@ -614,7 +620,8 @@ namespace WeirdEngine
 			float wB = m_invMass[constraint.B];
 			float wSum = wA + wB;
 
-			if (wSum == 0.0f) continue; // Both objects are infinite mass/fixed
+			if (wSum == 0.0f)
+				continue; // Both objects are infinite mass/fixed
 
 			// How far off are we?
 			float error = distance - constraint.Distance;
@@ -726,17 +733,18 @@ namespace WeirdEngine
 
 		// Remove constraints that affect deleted object
 		auto RemoveByID = [toId](auto& container)
-			{
-				container.erase(
-					std::remove_if(container.begin(), container.end(), [toId](const auto& constraint)
-						{
-							if (constraint.A == toId || constraint.B == toId)
-							{
-								return true;
-							}
-							return false; }),
-					container.end());
-			};
+		{
+			container.erase(std::remove_if(container.begin(), container.end(),
+										   [toId](const auto& constraint)
+										   {
+											   if (constraint.A == toId || constraint.B == toId)
+											   {
+												   return true;
+											   }
+											   return false;
+										   }),
+							container.end());
+		};
 
 		RemoveByID(m_distanceConstraints);
 		RemoveByID(m_gravitationalConstraints);
@@ -746,23 +754,23 @@ namespace WeirdEngine
 
 		// If a constraint targeted the moved object, change it to its new id
 		auto ChangeByID = [fromId, toId](auto& container)
+		{
+			for (auto& constraint : container)
 			{
-				for (auto& constraint : container)
+				if (constraint.A == fromId)
 				{
-					if (constraint.A == fromId)
-					{
-						// Extra code goes here for when A is updated.
-						// For example, logging or updating related state.
-						constraint.A = toId;
-					}
-					if (constraint.B == fromId)
-					{
-						// Extra code goes here for when B is updated.
-						// For example, logging or updating related state.
-						constraint.B = toId;
-					}
+					// Extra code goes here for when A is updated.
+					// For example, logging or updating related state.
+					constraint.A = toId;
 				}
-			};
+				if (constraint.B == fromId)
+				{
+					// Extra code goes here for when B is updated.
+					// For example, logging or updating related state.
+					constraint.B = toId;
+				}
+			}
+		};
 
 		ChangeByID(m_distanceConstraints);
 		ChangeByID(m_gravitationalConstraints);
@@ -792,10 +800,11 @@ namespace WeirdEngine
 	{
 		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
-		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4 unity types
+		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4
+		// unity types
 
 		m_externalForcesSinceLastUpdate = true;
-		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
+		m_externalForces[id] += m_simulationFrequency * m_mass[id] * force;
 	}
 
 	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
@@ -803,7 +812,9 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
-		m_distanceConstraints.emplace_back(a, b, distance, std::pow(stiffness, std::sqrt(RELAXATION_ITERATIONS))); // Square to make stiffness more intuitive
+		m_distanceConstraints.emplace_back(
+			a, b, distance,
+			std::pow(stiffness, std::sqrt(m_relaxationSteps))); // Square to make stiffness more intuitive
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
@@ -871,7 +882,8 @@ namespace WeirdEngine
 		if (!shape.hasCollisions)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.distanceFieldId, shape.combination, shape.groupIdx,
+								  shape.parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);
@@ -922,19 +934,19 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::raycast(vec2 pos)
 	{
-			for (size_t i = 0; i < m_size; i++)
+		for (size_t i = 0; i < m_size; i++)
+		{
+			vec2 ij = pos - m_positions[i];
+
+			float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+			if (distanceSquared < m_radious * m_radious)
 			{
-				vec2 ij = pos - m_positions[i];
-
-				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-				if (distanceSquared < m_radious * m_radious)
-				{
-					return i;
-				}
+				return i;
 			}
+		}
 
-			return -1;
+		return -1;
 	}
 
 	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
@@ -966,14 +978,16 @@ namespace WeirdEngine
 	{
 		while (m_simulating)
 		{
-			if (m_simulationDelay >= FIXED_DELTA_TIME)
+			if (m_simulationDelay >= m_fixedDeltaTime)
 			{
 				process();
-			}else {
-				int delay = std::ceil((FIXED_DELTA_TIME - m_simulationDelay) * 1000); // ms
+			}
+			else
+			{
+				int delay = std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000); // ms
 				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 			}
 		}
 	}
 
-}
+} // namespace WeirdEngine

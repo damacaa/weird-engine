@@ -1,7 +1,6 @@
 #pragma once
 
 #include <weird-engine.h>
-#include <random>
 
 #include "globals.h"
 
@@ -9,8 +8,8 @@ using namespace WeirdEngine;
 class CollisionHandlingScene : public Scene
 {
 public:
-  CollisionHandlingScene()
-      : Scene() {
+  CollisionHandlingScene(const PhysicsSettings& settings)
+      : Scene(settings) {
         };
 
 private:

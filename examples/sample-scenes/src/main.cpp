@@ -11,6 +11,7 @@
 #include "ShapesCombinations.h"
 
 #include "globals.h"
+#include "weird-renderer/core/Display.h"
 
 WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 
@@ -24,10 +25,11 @@ int main()
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
 
-	DisplaySettings settings{};
-	settings.width = 800;
-	settings.height = 800;
-	settings.fullscreen = false;
+	DisplaySettings displaySettings{};
+	displaySettings.width = 800;
+	displaySettings.height = 800;
+	displaySettings.fullscreen = false;
+	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 
-	start(sceneManager, settings);
+	start(sceneManager, displaySettings);
 }

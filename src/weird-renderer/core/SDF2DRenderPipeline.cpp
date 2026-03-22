@@ -174,9 +174,7 @@ namespace WeirdEngine {
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
 			
-			if (m_config.useCorrectedDistance) {
-				applyJumpFloodCorrection(time);
-			}
+			applyJumpFloodCorrection(time); // To generate a corrected distance texture
 			
 			upscaleDistance();
 			renderMaterialColors(camera, time, delta);
@@ -235,6 +233,7 @@ namespace WeirdEngine {
 			m_jumpFloodInitRender.bind();
 			m_jumpFloodInitShader.use();
 
+			m_jumpFloodInitShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
 			m_distanceCorrectionShader.setUniform("t_distanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
@@ -385,7 +384,7 @@ namespace WeirdEngine {
 			}
 
 			// Distance
-			m_lightingShader.setUniform("t_distanceTexture", 1);
+			m_lightingShader.setUniform("t_distanceSampledTexture", 1);
 			m_distanceUpscaled.bind(1);
 
 			// Background
@@ -397,12 +396,8 @@ namespace WeirdEngine {
 			}
 
 			// Corrected distance for shadows
-			m_lightingShader.setUniform("t_shadowDistanceTexture", 3);
-			if (m_config.useCorrectedDistance) {
-				m_distanceTextureCorrected.bind(3);
-			} else {
-				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(3);
-			}
+			m_lightingShader.setUniform("t_distanceCorrectedTexture", 3);
+			m_distanceTextureCorrected.bind(3);
 
 			m_renderPlane.draw(m_lightingShader);
 		}

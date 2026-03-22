@@ -33,7 +33,6 @@ namespace WeirdEngine
 				bool enableAntialiasing;
 				bool enableMotionBlur;
 				bool enableDithering;
-				bool useCorrectedDistance;
 				int materialBlendIterations;
 				float materialBlendSpeed;
 				bool debugDistanceField;

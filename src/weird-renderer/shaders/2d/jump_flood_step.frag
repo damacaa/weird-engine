@@ -18,8 +18,12 @@ uniform vec2 u_texelSize;        // 1.0 / texture resolution (e.g., 1/width, 1/h
 
 float distanceSqrt(vec2 a, vec2 b)
 {
-    vec2 d = a - b;
-    return dot(d, d);   // or (d.x*d.x + d.y*d.y)
+    vec2 d = (a - b);
+
+    // Normalize Y scale to match X scale to fix the aspect ratio
+    d.y *= (u_texelSize.x / u_texelSize.y);
+
+    return dot(d, d);
 }
 
 void main()

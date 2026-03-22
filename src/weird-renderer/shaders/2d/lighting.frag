@@ -32,9 +32,9 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 uniform sampler2D t_colorTexture;
-uniform sampler2D t_distanceTexture;
+uniform sampler2D t_distanceSampledTexture; // Used for ineer lighting
 uniform sampler2D t_backgroundTexture;
-uniform sampler2D t_shadowDistanceTexture;
+uniform sampler2D t_distanceCorrectedTexture; // Used for shadows and AO
 
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 uniform float u_ambienOcclusionRadius = 0.005;
@@ -83,14 +83,14 @@ float Getu_bayer8(int x, int y)
 
 #endif
 
-float map(vec2 p)
+float mapOutside(vec2 p)
 {
-    return texture(t_shadowDistanceTexture, p).x;
+    return texture(t_distanceCorrectedTexture, p).x;
 }
 
 float mapInside(vec2 p)
 {
-    return texture(t_distanceTexture, p).x;
+    return texture(t_distanceSampledTexture, p).x;
 }
 
 float rayMarch(vec2 ro, vec2 rd, out float minDistance)
@@ -104,7 +104,7 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
     {
         vec2 p = ro + (traveled * rd);
 
-        d = map(p);
+        d = mapOutside(p);
 
         minDistance = min(d, minDistance);
 
@@ -170,7 +170,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
             break;
         }
 
-        float h = map(ro + rd * t) - 0.001; // Your SDF function
+        float h = mapOutside(ro + rd * t) - 0.001; // Your SDF function
 
         // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)
         res = min(res, k * h / t);
@@ -193,7 +193,7 @@ float renderShadows(vec2 uv, vec2 rd)
 {
     #ifdef SHADOWS_ENABLED
 
-    float mapDistance = map(uv);
+    float mapDistance = mapOutside(uv);
     float minD = mapDistance;
     vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
 
@@ -202,8 +202,6 @@ float renderShadows(vec2 uv, vec2 rd)
     float d = raymarchInfo.x;
     float shadowFactor = raymarchInfo.y;
     float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
-
-
 
     return shadowValue;
 
@@ -221,8 +219,10 @@ void main()
     vec4 colorSample = texture(t_colorTexture, screenUV);
     vec3 color = toSRGB(colorSample.rgb);// + (0.25 * floor(colorSample.a));
     float alpha = colorSample.a;// + (0.25 * floor(colorSample.a));
-    vec4 data = texture(t_distanceTexture, screenUV);
+    vec4 data = texture(t_distanceSampledTexture, screenUV);
     float distance = data.x;
+
+    float correctedDistance = mapOutside(screenUV);
 
     vec2 p = screenUV;
     float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
@@ -267,7 +267,7 @@ void main()
     #endif
 
     // Define the distance over which the ambient occlusion fades out
-    float aoBlendFactor = smoothstep(0.0, u_ambienOcclusionRadius / u_resolution.y, distance);
+    float aoBlendFactor = smoothstep(0.0, u_ambienOcclusionRadius / u_resolution.y, correctedDistance);
     float fadeToFull = smoothstep(u_ambienOcclusionStrength, 1.0, t);
     float ao = mix(aoBlendFactor, 1.0, fadeToFull);
     // Apply ao
@@ -351,8 +351,8 @@ void main()
     #endif
 
 
-    float debugDistance = distance;
-    // float debugDistance = texture(t_shadowDistanceTexture, screenUV).x;
+    // float debugDistance = 10.0 * distance;
+    float debugDistance = 0.5 * texture(t_distanceCorrectedTexture, screenUV).x;
 
     float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
     // value = debugDistance * 10.;

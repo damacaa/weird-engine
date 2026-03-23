@@ -27,7 +27,7 @@ int main()
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;
-	displaySettings.height = 300;
+	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 	displaySettings.distanceSampleScale = 0.33333f;

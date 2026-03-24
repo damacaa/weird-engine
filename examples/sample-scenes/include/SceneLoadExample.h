@@ -54,7 +54,7 @@ private:
     void onStart() override
     {
         m_debugInput = false; // disable PhysicsInteractionSystem so mouse is free
-        m_debugFly   = false;
+        m_debugFly   = true;
 
         m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 
@@ -64,16 +64,9 @@ private:
             float px = k_btnStartX + s * k_btnSpacing;
             float params[8] = { px, k_worldRowY, k_btnRadius, static_cast<float>(1 + s % 15) };
             Entity e = addUIShape(DefaultShapes::CIRCLE, params, static_cast<uint16_t>(1 + s % 15));
+            auto& button = m_ecs.addComponent<ShapeButton>(e);
+            button.modifierAmount = 1.0f;
             m_spawnButtons.push_back({ e, static_cast<uint16_t>(s), false });
-        }
-
-        // --- UI-shape spawn buttons (second row) ---
-        for (int s = 0; s < DefaultShapes::SIZE; s++)
-        {
-            float px = k_btnStartX + s * k_btnSpacing;
-            float params[8] = { px, k_uiRowY, k_btnRadius, static_cast<float>(4 + s % 12) };
-            Entity e = addUIShape(DefaultShapes::CIRCLE, params, static_cast<uint16_t>(4 + s % 12));
-            m_spawnButtons.push_back({ e, static_cast<uint16_t>(s), true });
         }
 
         // --- 16 material toggles (bottom row) ---
@@ -113,20 +106,10 @@ private:
         // --- Spawn-button left-click handling  (before isUIClick() is consumed) ---
         if (Input::GetMouseButtonDown(Input::LeftClick))
         {
-            float mx = Input::GetMouseX();
-            float my = Input::GetMouseY();
-
             for (auto& btn : m_spawnButtons)
             {
-                auto& shape = m_ecs.getComponent<UIShape>(btn.entity);
-                float p[11] = {};
-                std::copy(std::begin(shape.parameters), std::end(shape.parameters), p);
-                p[9]  = mx;
-                p[10] = my;
-                m_sdfs[shape.distanceFieldId]->propagateValues(p);
-                float dist = m_sdfs[shape.distanceFieldId]->getValue();
-
-                if (dist < k_btnRadius + 5.0f)
+                auto& shape = m_ecs.getComponent<ShapeButton>(btn.entity);
+                if (shape.state == ButtonState::Down)
                 {
                     if (btn.isUIShape)
                         spawnRandomUIShape(btn.shapeType);
@@ -137,11 +120,7 @@ private:
                     break;
                 }
             }
-        }
 
-        // --- Right-click handling ------------------------------------------
-        if (Input::GetMouseButtonDown(Input::RightClick))
-        {
             if (!Input::isUIClick())
             {
                 auto& cam    = m_ecs.getComponent<Transform>(m_mainCamera);

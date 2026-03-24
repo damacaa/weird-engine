@@ -22,8 +22,13 @@ namespace WeirdEngine
 
 	constexpr int SOUND_QUEUE_SIZE = 16;
 
+	// Forward declaration – full definition in SceneSerializer.h
+	class SceneSerializer;
+
 	class Scene
 	{
+		friend class SceneSerializer;
+
 	public:
 		Scene(const PhysicsSettings& settings);
 		~Scene();

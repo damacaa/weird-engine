@@ -14,6 +14,8 @@
 
 #include "weird-physics/PhysicsSettings.h"
 
+#include <string>
+
 namespace WeirdEngine
 {
 	using namespace ECS;
@@ -74,6 +76,9 @@ namespace WeirdEngine
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
+		// Set the path to a .weird file to load when the scene starts
+		void setSceneFilePath(const std::string& path) { m_sceneFilePath = path; }
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
@@ -124,8 +129,17 @@ namespace WeirdEngine
 
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
 
+		// Save the current scene state to a .weird JSON file
+		void saveScene(const std::string& filename);
+
+		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
+		std::string m_sceneFilePath;
+
 	private:
 		void loadScene(std::string& sceneFileContent);
+
+		// Load scene state from a .weird JSON file
+		void loadFromWeirdFile(const std::string& path);
 
 		bool m_runSimulationInThread;
 

@@ -11,6 +11,7 @@
 #include "ShapesCombinations.h"
 
 #include "globals.h"
+#include "SceneLoadExample.h"
 #include "weird-renderer/core/Display.h"
 
 WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
@@ -18,6 +19,7 @@ WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 int main()
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.registerScene<SceneLoadExample>("sceneLoad", "example.weird");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");

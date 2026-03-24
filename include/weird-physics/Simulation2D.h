@@ -113,43 +113,7 @@ namespace WeirdEngine
 		void setGravity(float gravity) { m_gravity = gravity; }
 		void setDamping(float damping) { m_damping = damping; }
 
-	private:
-		void process();
-		void checkCollisions();
-		void solveCollisionsPositionBased();
-		void applyForces();
-		void solveConstraints();
-		void integrateVelocity(float timeStep);
-		void integratePredict(float timeStep);
-
-
-		struct Collision
-		{
-		public:
-			Collision()
-			{
-				A = -1;
-				B = -1;
-				AB = vec2();
-			}
-
-			Collision(SimulationID a, SimulationID b, vec2 ab)
-			{
-				A = a;
-				B = b;
-				AB = ab;
-			}
-
-			bool operator==(const Collision& other) const
-			{
-				return (A == other.A && B == other.B) || (A == other.B && B == other.A);
-			}
-
-			SimulationID A;
-			SimulationID B;
-			vec2 AB;
-		};
-
+		// Constraint structs (public for serialization)
 		struct DistanceConstraint
 		{
 		public:
@@ -195,6 +159,55 @@ namespace WeirdEngine
 			int A;
 			int B;
 			float g;
+		};
+
+		// Serialization support: read constraint data
+		const std::vector<DistanceConstraint>& getDistanceConstraints() const { return m_distanceConstraints; }
+		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const { return m_gravitationalConstraints; }
+		const std::vector<SimulationID>& getFixedObjects() const { return m_fixedObjects; }
+
+		// Serialization support: load raw constraint (bypasses stiffness conversion)
+		void addRawDistanceConstraint(int a, int b, float distance, float k)
+		{
+			if (a == b) return;
+			m_distanceConstraints.emplace_back(a, b, distance, k);
+		}
+
+	private:
+		void process();
+		void checkCollisions();
+		void solveCollisionsPositionBased();
+		void applyForces();
+		void solveConstraints();
+		void integrateVelocity(float timeStep);
+		void integratePredict(float timeStep);
+
+
+		struct Collision
+		{
+		public:
+			Collision()
+			{
+				A = -1;
+				B = -1;
+				AB = vec2();
+			}
+
+			Collision(SimulationID a, SimulationID b, vec2 ab)
+			{
+				A = a;
+				B = b;
+				AB = ab;
+			}
+
+			bool operator==(const Collision& other) const
+			{
+				return (A == other.A && B == other.B) || (A == other.B && B == other.A);
+			}
+
+			SimulationID A;
+			SimulationID B;
+			vec2 AB;
 		};
 
 		struct CollisionHash

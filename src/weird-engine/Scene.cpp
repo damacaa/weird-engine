@@ -593,7 +593,7 @@ namespace WeirdEngine
 				ej["customShape"] = {
 					{"distanceFieldId", s.distanceFieldId},
 					{"combination",     static_cast<int>(s.combination)},
-					{"parameters",      json(std::begin(s.parameters), std::end(s.parameters))},
+					{"parameters",      json(s.parameters)},
 					{"hasCollisions",   s.hasCollisions},
 					{"groupIdx",        s.groupIdx},
 					{"material",        s.material},
@@ -611,7 +611,7 @@ namespace WeirdEngine
 				ej["uiShape"] = {
 					{"distanceFieldId", s.distanceFieldId},
 					{"combination",     static_cast<int>(s.combination)},
-					{"parameters",      json(std::begin(s.parameters), std::end(s.parameters))},
+					{"parameters",      json(s.parameters)},
 					{"hasCollisions",   s.hasCollisions},
 					{"groupIdx",        s.groupIdx},
 					{"material",        s.material},

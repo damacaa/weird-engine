@@ -30,7 +30,7 @@ private:
 		m_head = a.Owner;
 		g_id++;
 
-		m_ecs.getComponent<SDFRenderer>(m_head).materialId = 10;
+		m_ecs.getComponent<Dot>(m_head).materialId = 10;
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}

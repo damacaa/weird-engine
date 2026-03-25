@@ -35,7 +35,7 @@ namespace WeirdEngine
 			auto transformArray   = scene.m_ecs.getComponentArray<Transform>();
 			auto customShapeArray = scene.m_ecs.getComponentArray<CustomShape>();
 			auto uiShapeArray     = scene.m_ecs.getComponentArray<UIShape>();
-			auto sdfRendererArray = scene.m_ecs.getComponentArray<SDFRenderer>();
+			auto  dotArray = scene.m_ecs.getComponentArray<Dot>();
 			auto rigidBodyArray   = scene.m_ecs.getComponentArray<RigidBody2D>();
 			auto textArray        = scene.m_ecs.getComponentArray<TextRenderer>();
 
@@ -101,14 +101,14 @@ namespace WeirdEngine
 				};
 			}
 
-			// SDFRenderer
-			for (size_t i = 0; i < sdfRendererArray->getSize(); i++)
+			// Dot
+			for (size_t i = 0; i < dotArray->getSize(); i++)
 			{
-				Entity e = sdfRendererArray->getEntityAtIdx(i);
+				Entity e = dotArray->getEntityAtIdx(i);
 				if (isBlacklisted(e)) continue;
-				auto& r = sdfRendererArray->getDataAtIdx(i);
+				auto& r = dotArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
-				ej["sdfRenderer"] = {
+				ej["dot"] = {
 					{"isStatic",   r.isStatic},
 					{"materialId", r.materialId}
 				};
@@ -287,10 +287,10 @@ namespace WeirdEngine
 					scene.m_UIRenderSystem.shaderNeedsUpdate() = true;
 				}
 
-				if (ej.contains("sdfRenderer"))
+				if (ej.contains("dot"))
 				{
-					auto& r = scene.m_ecs.addComponent<SDFRenderer>(entity);
-					const auto& rj = ej["sdfRenderer"];
+					auto& r = scene.m_ecs.addComponent<Dot>(entity);
+					const auto& rj = ej["dot"];
 					r.isStatic   = rj.value("isStatic", false);
 					r.materialId = static_cast<unsigned int>(rj.value("materialId", 0));
 				}

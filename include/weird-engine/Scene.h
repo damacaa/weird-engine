@@ -122,7 +122,7 @@ namespace WeirdEngine
 		void blacklistEntity(Entity e) { m_serializationBlacklist.insert(e); }
 
 		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D<SDFRenderer, CustomShape, TextRenderer> m_sdfRenderSystem2D;
+		SDFRenderSystem2D<Dot, CustomShape, TextRenderer> m_sdfRenderSystem2D;
 		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;

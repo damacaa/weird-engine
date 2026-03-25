@@ -23,8 +23,13 @@ namespace WeirdEngine
 			j["camera"]["scale"]    = { camTransform.scale.x,    camTransform.scale.y,    camTransform.scale.z };
 		}
 
-		// Save entities (skip the main camera entity)
+		// Save entities (skip the main camera entity and blacklisted entities)
 		json entitiesJson = json::array();
+
+		const auto& blacklist = scene.m_serializationBlacklist;
+		auto isBlacklisted = [&](Entity e) {
+			return e == scene.m_mainCamera || blacklist.count(e);
+		};
 
 		{
 			auto transformArray   = scene.m_ecs.getComponentArray<Transform>();
@@ -45,11 +50,11 @@ namespace WeirdEngine
 				return entityMap[e];
 			};
 
-			// Transform (skip camera)
+			// Transform (skip camera and blacklisted)
 			for (size_t i = 0; i < transformArray->getSize(); i++)
 			{
 				Entity e = transformArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				auto& t = transformArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
 				ej["transform"] = {
@@ -63,7 +68,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < customShapeArray->getSize(); i++)
 			{
 				Entity e = customShapeArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				if (uiShapeArray->hasData(e)) continue;
 				auto& s = customShapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
@@ -82,7 +87,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < uiShapeArray->getSize(); i++)
 			{
 				Entity e = uiShapeArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				auto& s = uiShapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
 				ej["uiShape"] = {
@@ -100,7 +105,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < sdfRendererArray->getSize(); i++)
 			{
 				Entity e = sdfRendererArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				auto& r = sdfRendererArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
 				ej["sdfRenderer"] = {
@@ -113,7 +118,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < rigidBodyArray->getSize(); i++)
 			{
 				Entity e = rigidBodyArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				auto& rb = rigidBodyArray->getDataAtIdx(i);
 				vec2 simPos = scene.m_simulation2D.getPosition(rb.simulationId);
 				auto& ej = collectEntity(e);
@@ -127,7 +132,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < textArray->getSize(); i++)
 			{
 				Entity e = textArray->getEntityAtIdx(i);
-				if (e == scene.m_mainCamera) continue;
+				if (isBlacklisted(e)) continue;
 				auto& tr = textArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
 				ej["textRenderer"] = {

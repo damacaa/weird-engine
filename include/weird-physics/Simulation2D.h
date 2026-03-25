@@ -81,6 +81,7 @@ namespace WeirdEngine
 		void update(double delta);
 
 		double getSimulationTime();
+		double getDeltaTime() { return m_fixedDeltaTime; }
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
@@ -92,6 +93,7 @@ namespace WeirdEngine
 		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
+		bool setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance);
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);

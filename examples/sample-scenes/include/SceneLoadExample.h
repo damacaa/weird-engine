@@ -3,6 +3,8 @@
 #include <weird-engine.h>
 #include <random>
 #include <cmath>
+#include <iostream>
+#include <cstdio>
 
 #include "globals.h"
 
@@ -15,79 +17,65 @@ public:
         : Scene(settings), m_rng(12345) {}
 
 private:
-    // -------------------------------------------------------------------------
+    // =====================================================================
+    // Types
+    // =====================================================================
+    struct ShapeBtnInfo { Entity entity; uint16_t shapeType; };
+    struct CombBtnInfo  { Entity toggleEntity; CombinationType combType; };
+    struct ParamBtn     { Entity shapeEntity; Entity textEntity; };
+
+    // =====================================================================
     // State
-    // -------------------------------------------------------------------------
+    // =====================================================================
+    std::vector<ShapeBtnInfo> m_shapeButtons;
+    std::vector<CombBtnInfo>  m_combButtons;
+    std::array<Entity, 16>    m_materialToggles{};
+    std::array<ParamBtn, 8>   m_paramBtns{};
+    Entity                    m_selInfoText{};
 
-    // Each spawn button maps to a shape type and whether it spawns a UIShape
-    struct SpawnButton
-    {
-        Entity    entity;
-        uint16_t  shapeType;   // DefaultShapes::Type value
-        bool      isUIShape;
-    };
+    int              m_selectedMaterial    = 1;
+    int              m_selectedCombIdx     = 0;
+    CombinationType  m_selectedCombination = CombinationType::Addition;
 
-    std::vector<SpawnButton> m_spawnButtons;
-
-    // 16 material toggle entities
-    std::array<Entity, 16> m_materialToggles{};
-    int m_selectedMaterial = 1; // default: white (palette index 1)
+    Entity m_selectedEntity = static_cast<Entity>(-1);
+    bool   m_hasSelection   = false;
 
     std::mt19937 m_rng;
 
-    // -------------------------------------------------------------------------
-    // Layout constants (screen-pixel coordinates, 800×800 display)
-    // -------------------------------------------------------------------------
-    static constexpr float k_btnRadius   = 20.0f;
-    static constexpr float k_btnSpacing  = 52.0f;
-    static constexpr float k_btnStartX   = 35.0f;
-    static constexpr float k_worldRowY   = 775.0f; // world-shape spawn buttons
-    static constexpr float k_uiRowY      = 715.0f; // UI-shape spawn buttons
-    static constexpr float k_toggleY     = 50.0f;  // material toggles (bottom)
-    static constexpr float k_toggleSpacingX = 47.0f;
-    static constexpr float k_deletionThreshold = 5.0f; // world units
+    // =====================================================================
+    // Layout (800x800 screen)
+    // =====================================================================
+    static constexpr float BTN_SIZE      = 18.0f;
+    static constexpr float BTN_SPACING   = 56.0f;
+    static constexpr float START_X       = 40.0f;
+    static constexpr float SHAPE_Y       = 770.0f;
+    static constexpr float COMB_Y        = 706.0f;
+    static constexpr float MAT_Y         = 50.0f;
+    static constexpr float MAT_SPACING   = 47.0f;
 
-    // -------------------------------------------------------------------------
+    static constexpr float PANEL_X       = 750.0f;
+    static constexpr float PANEL_TOP_Y   = 620.0f;
+    static constexpr float PARAM_GAP     = 48.0f;
+    static constexpr float P_BTN_W       = 24.0f;
+    static constexpr float P_BTN_H       = 16.0f;
+
+    static constexpr float HIDDEN        = -5000.0f;
+    static constexpr int   COMB_GRP_BASE = 100;
+    static constexpr float SEL_THRESH    = 5.0f;
+
+    // =====================================================================
     // Lifecycle
-    // -------------------------------------------------------------------------
-
+    // =====================================================================
     void onStart() override
     {
-        m_debugInput = false; // disable PhysicsInteractionSystem so mouse is free
+        m_debugInput = true;
         m_debugFly   = true;
-
         m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 
-        // --- World-shape spawn buttons (top row) ---
-        for (int s = 0; s < DefaultShapes::SIZE; s++)
-        {
-            float px = k_btnStartX + s * k_btnSpacing;
-            float params[8] = { px, k_worldRowY, k_btnRadius, static_cast<float>(1 + s % 15) };
-            Entity e = addUIShape(DefaultShapes::CIRCLE, params, static_cast<uint16_t>(1 + s % 15));
-            auto& button = m_ecs.addComponent<ShapeButton>(e);
-            button.modifierAmount = 1.0f;
-            m_spawnButtons.push_back({ e, static_cast<uint16_t>(s), false });
-        }
-
-        // --- 16 material toggles (bottom row) ---
-        for (int m = 0; m < 16; m++)
-        {
-            float px = k_btnStartX + m * k_toggleSpacingX;
-            float params[8] = { px, k_toggleY, k_btnRadius - 2.0f, static_cast<float>(m) };
-            Entity e;
-            UIShape& shape = addUIShape(DefaultShapes::CIRCLE, params, e);
-            shape.material  = static_cast<uint16_t>(m);
-
-            ShapeToggle& toggle = m_ecs.addComponent<ShapeToggle>(e);
-            toggle.clickPadding         = k_btnRadius + 5.0f;
-            toggle.parameterModifierMask.set(2); // grow radius when active
-            toggle.modifierAmount       = 6.0f;
-
-            m_materialToggles[m] = e;
-        }
-
-        // Start with material 1 (white) active
-        m_ecs.getComponent<ShapeToggle>(m_materialToggles[m_selectedMaterial]).active = true;
+        buildShapeButtons();
+        buildCombToggles();
+        buildMaterialToggles();
+        buildParamPanel();
     }
 
     void onUpdate(float delta) override
@@ -96,306 +84,616 @@ private:
 
         if (Input::GetKeyDown(Input::Q))
             setSceneComplete();
-
         if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::S))
-            saveScene("example.weird");
+            saveScene(ASSETS_PATH "example.weird");
 
-        // --- Exclusive material toggle selection ---------------------------
         syncMaterialToggles();
+        syncCombToggles();
 
-        // --- Spawn-button left-click handling  (before isUIClick() is consumed) ---
         if (Input::GetMouseButtonDown(Input::LeftClick))
-        {
-            for (auto& btn : m_spawnButtons)
-            {
-                auto& shape = m_ecs.getComponent<ShapeButton>(btn.entity);
-                if (shape.state == ButtonState::Down)
-                {
-                    if (btn.isUIShape)
-                        spawnRandomUIShape(btn.shapeType);
-                    else
-                        spawnRandomWorldShape(btn.shapeType);
+            onLeftClick();
+        if (Input::GetMouseButtonDown(Input::RightClick))
+            onRightClick();
+        if (Input::GetKeyDown(Input::X) && m_hasSelection)
+            deleteSelected();
 
-                    Input::flagUIClick();
-                    break;
+        refreshPanel();
+    }
+
+    // =====================================================================
+    // Shape buttons (top row) — each uses its own SDF as a preview
+    // =====================================================================
+    void buildShapeButtons()
+    {
+        const uint16_t types[] = {
+            DefaultShapes::CIRCLE, DefaultShapes::BOX,
+            DefaultShapes::LINE,   DefaultShapes::RAMP,
+            DefaultShapes::STAR
+        };
+        const uint16_t colors[] = { 1, 5, 6, 8, 10 };
+
+        for (int i = 0; i < 5; i++)
+        {
+            float cx = START_X + i * BTN_SPACING;
+            float cy = SHAPE_Y;
+            float p[8]{};
+            previewParams(types[i], cx, cy, p);
+
+            Entity e = addUIShape(types[i], p, colors[i]);
+            auto& b  = m_ecs.addComponent<ShapeButton>(e);
+            b.modifierAmount = 1.0f;
+            b.clickPadding   = 8.0f;
+
+            m_shapeButtons.push_back({ e, types[i] });
+            blacklistEntity(e);
+        }
+    }
+
+    void previewParams(uint16_t t, float cx, float cy, float p[8])
+    {
+        const float s = BTN_SIZE;
+        switch (t)
+        {
+        case DefaultShapes::CIRCLE:
+            p[0] = cx; p[1] = cy; p[2] = s;
+            break;
+        case DefaultShapes::BOX:
+            p[0] = cx; p[1] = cy; p[2] = s; p[3] = s;
+            break;
+        case DefaultShapes::LINE:
+            p[0] = cx - s * 0.8f; p[1] = cy - s * 0.7f;
+            p[2] = cx + s * 0.8f; p[3] = cy + s * 0.7f;
+            p[4] = 4.0f;
+            break;
+        case DefaultShapes::RAMP:
+            p[0] = cx; p[1] = cy; p[2] = s; p[3] = s; p[4] = 0.0f;
+            break;
+        case DefaultShapes::STAR:
+            p[0] = cx; p[1] = cy; p[2] = s;
+            p[3] = 5.0f; p[4] = 5; p[5] = 0.0f;
+            break;
+        }
+    }
+
+    // =====================================================================
+    // Combination toggles (second row) — two overlapping circles per type
+    // =====================================================================
+    void buildCombToggles()
+    {
+        const CombinationType ct[] = {
+            CombinationType::Addition,
+            CombinationType::Subtraction,
+            CombinationType::Intersection,
+            CombinationType::SmoothAddition,
+            CombinationType::SmoothSubtraction
+        };
+        const char* label[] = { "Add", "Sub", "Int", "S+", "S-" };
+        constexpr float r   = 12.0f;
+        constexpr float off = 7.0f;
+
+        for (int i = 0; i < 5; i++)
+        {
+            float cx = START_X + i * BTN_SPACING;
+            float cy = COMB_Y;
+            int   g  = COMB_GRP_BASE + i;
+
+            float p1[8]{ cx - off * 0.5f, cy, r };
+            Entity e1 = addUIShape(DefaultShapes::CIRCLE, p1,
+                                   static_cast<uint16_t>(1),
+                                   CombinationType::Addition, g);
+
+            float p2[8]{ cx + off * 0.5f, cy, r };
+            Entity e2 = addUIShape(DefaultShapes::CIRCLE, p2,
+                                   static_cast<uint16_t>(1),
+                                   ct[i], g);
+
+            if (ct[i] == CombinationType::SmoothAddition ||
+                ct[i] == CombinationType::SmoothSubtraction)
+                m_ecs.getComponent<UIShape>(e2).smoothFactor = 5.0f;
+
+            auto& tog = m_ecs.addComponent<ShapeToggle>(e1);
+            tog.clickPadding = r + 10.0f;
+            tog.parameterModifierMask.set(2);
+            tog.modifierAmount = 3.0f;
+
+            Entity lbl = m_ecs.createEntity();
+            m_ecs.addComponent<Transform>(lbl).position =
+                vec3(cx, cy - 2600.0f, 0.0f);
+            auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
+            tx.text     = label[i];
+            tx.material = 1;
+            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+
+            m_combButtons.push_back({ e1, ct[i] });
+            blacklistEntity(e1);
+            blacklistEntity(e2);
+            blacklistEntity(lbl);
+        }
+        m_ecs.getComponent<ShapeToggle>(m_combButtons[0].toggleEntity).active = true;
+    }
+
+    // =====================================================================
+    // Material toggles (bottom row)
+    // =====================================================================
+    void buildMaterialToggles()
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            float px = START_X + i * MAT_SPACING;
+            float p[8]{ px, MAT_Y, BTN_SIZE - 4.0f };
+            Entity e;
+            UIShape& sh = addUIShape(DefaultShapes::CIRCLE, p, e);
+            sh.material  = static_cast<uint16_t>(i);
+
+            auto& tog = m_ecs.addComponent<ShapeToggle>(e);
+            tog.clickPadding = BTN_SIZE + 3.0f;
+            tog.parameterModifierMask.set(2);
+            tog.modifierAmount = 5.0f;
+
+            m_materialToggles[i] = e;
+            blacklistEntity(e);
+        }
+        m_ecs.getComponent<ShapeToggle>(m_materialToggles[m_selectedMaterial]).active = true;
+    }
+
+    // =====================================================================
+    // Parameter editing panel (right side, hidden until selection)
+    // =====================================================================
+    void buildParamPanel()
+    {
+        m_selInfoText = m_ecs.createEntity();
+        auto& selInfoTf = m_ecs.addComponent<Transform>(m_selInfoText);
+        selInfoTf.position = vec3(HIDDEN, PANEL_TOP_Y + 35.0f, 0.0f);
+        selInfoTf.isDirty = true;
+
+        auto& hdr = m_ecs.addComponent<UITextRenderer>(m_selInfoText);
+        hdr.material = 1;
+        hdr.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
+        blacklistEntity(m_selInfoText);
+
+        for (int i = 0; i < 8; i++)
+        {
+            float py = PANEL_TOP_Y - i * PARAM_GAP;
+
+            float bp[8]{ HIDDEN, py, P_BTN_W, P_BTN_H };
+            Entity be = addUIShape(DefaultShapes::BOX, bp,
+                                   static_cast<uint16_t>(3));
+            auto& btn = m_ecs.addComponent<ShapeButton>(be);
+            btn.modifierAmount = 1.0f;
+            btn.clickPadding   = 3.0f;
+
+            Entity te = m_ecs.createEntity();
+            auto& ttf = m_ecs.addComponent<Transform>(te);
+            ttf.position = vec3(HIDDEN, py, 0.0f);
+            ttf.isDirty = true;
+            auto& tx = m_ecs.addComponent<UITextRenderer>(te);
+            tx.material = 0;
+            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
+            tx.verticalAlignment   = TextRenderer::VerticalAlignment::Center;
+
+            m_paramBtns[i] = { be, te };
+            blacklistEntity(be);
+            blacklistEntity(te);
+        }
+    }
+
+    // =====================================================================
+    // Input
+    // =====================================================================
+    void onLeftClick()
+    {
+        for (auto& sb : m_shapeButtons)
+        {
+            if (m_ecs.getComponent<ShapeButton>(sb.entity).state == ButtonState::Down)
+            {
+                spawnShape(sb.shapeType);
+                return;
+            }
+        }
+
+        if (m_hasSelection)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                if (m_ecs.getComponent<ShapeButton>(m_paramBtns[i].shapeEntity)
+                        .state == ButtonState::Down)
+                {
+                    promptParam(i);
+                    return;
                 }
             }
+        }
 
-            if (!Input::isUIClick())
+        if (!Input::isUIClick())
+        {
+            auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+            vec2 wp   = ECS::Camera::screenPositionToWorldPosition2D(
+                cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+            spawnPhysicsEntity(wp);
+        }
+    }
+
+    void onRightClick()
+    {
+        auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+        vec2 wp   = ECS::Camera::screenPositionToWorldPosition2D(
+            cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+        selectNearest(wp);
+    }
+
+    // =====================================================================
+    // Selection
+    // =====================================================================
+    void selectNearest(vec2 pos)
+    {
+        auto cs = m_ecs.getComponentArray<CustomShape>();
+        auto ui = m_ecs.getComponentArray<UIShape>();
+
+        float  best = SEL_THRESH;
+        Entity hit  = static_cast<Entity>(-1);
+
+        for (size_t i = 0; i < cs->getSize(); i++)
+        {
+            Entity e = cs->getEntityAtIdx(i);
+            if (ui->hasData(e)) continue;
+
+            auto& s = cs->getDataAtIdx(i);
+            float p[11]{};
+            std::copy(std::begin(s.parameters), std::end(s.parameters), p);
+            p[9]  = pos.x;
+            p[10] = pos.y;
+            m_sdfs[s.distanceFieldId]->propagateValues(p);
+            float d = m_sdfs[s.distanceFieldId]->getValue();
+            if (d < best) { best = d; hit = e; }
+        }
+
+        (hit != static_cast<Entity>(-1)) ? doSelect(hit) : doDeselect();
+    }
+
+    void doSelect(Entity e)
+    {
+        m_selectedEntity = e;
+        m_hasSelection   = true;
+        showPanel();
+    }
+
+    void doDeselect()
+    {
+        m_selectedEntity = static_cast<Entity>(-1);
+        m_hasSelection   = false;
+        hidePanel();
+    }
+
+    void deleteSelected()
+    {
+        m_ecs.destroyEntity(m_selectedEntity);
+        m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+        doDeselect();
+    }
+
+    // =====================================================================
+    // Panel show / hide / refresh
+    // =====================================================================
+    void showPanel()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            float py = PANEL_TOP_Y - i * PARAM_GAP;
+            auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
+            u.parameters[0] = PANEL_X + (P_BTN_W) * 0.5f; 
+            u.parameters[1] = py;
+            u.isDirty = true;
+            
+            auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
+            t.position = vec3(PANEL_X - P_BTN_W - 10.0f, py, 0.0f);
+            t.isDirty = true;
+        }
+        auto& ht = m_ecs.getComponent<Transform>(m_selInfoText);
+        ht.position = vec3(PANEL_X, PANEL_TOP_Y + 35.0f, 0.0f);
+        ht.isDirty = true;
+        m_UIRenderSystem.shaderNeedsUpdate() = true;
+    }
+
+    void hidePanel()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
+            u.parameters[0] = HIDDEN; u.isDirty = true;
+            auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
+            t.position.x = HIDDEN; t.isDirty = true;
+        }
+        auto& ht = m_ecs.getComponent<Transform>(m_selInfoText);
+        ht.position.x = HIDDEN; 
+        ht.isDirty = true;
+        m_UIRenderSystem.shaderNeedsUpdate() = true;
+    }
+
+    void refreshPanel()
+    {
+        if (!m_hasSelection) 
+            return;
+        if (!entityHasShape(m_selectedEntity)) { doDeselect(); return; }
+
+        auto& cs = m_ecs.getComponent<CustomShape>(m_selectedEntity);
+
+        auto& hdr = m_ecs.getComponent<UITextRenderer>(m_selInfoText);
+        const char* name = shapeName(cs.distanceFieldId);
+        if (hdr.text != name) { hdr.text = name; hdr.dirty = true; }
+
+        int pc = paramCount(cs.distanceFieldId);
+        for (int i = 0; i < 8; i++)
+        {
+            auto& tx = m_ecs.getComponent<UITextRenderer>(m_paramBtns[i].textEntity);
+            if (i < pc)
             {
-                auto& cam    = m_ecs.getComponent<Transform>(m_mainCamera);
-                vec2 worldPos = ECS::Camera::screenPositionToWorldPosition2D(
-                    cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+                char buf[48];
+                std::snprintf(buf, sizeof(buf), "%s:%.2f",
+                              paramName(cs.distanceFieldId, i),
+                              cs.parameters[i]);
+                if (tx.text != buf) { tx.text = buf; tx.dirty = true; }
 
-                if (!tryDeleteCustomShapeAt(worldPos))
-                    spawnPhysicsEntity(worldPos);
+                auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
+                if (u.parameters[0] < 0.0f)
+                {
+                    u.parameters[0] = PANEL_X + (P_BTN_W) * 0.5f;
+                    u.parameters[1] = PANEL_TOP_Y - i * PARAM_GAP;
+                    u.isDirty = true;
+                }
+
+                auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
+                float py = PANEL_TOP_Y - i * PARAM_GAP;
+                float txX = PANEL_X - P_BTN_W - 10.0f;
+                if (t.position.x < 0.0f || std::abs(t.position.y - py) > 0.001f)
+                {
+                    t.position = vec3(txX, py, 0.0f);
+                    t.isDirty = true;
+                }
+            }
+            else
+            {
+                if (!tx.text.empty()) { tx.text.clear(); tx.dirty = true; }
+                auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
+                if (u.parameters[0] > 0.0f)
+                {
+                    u.parameters[0] = HIDDEN; u.isDirty = true;
+                    auto& t2 = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
+                    t2.position.x = HIDDEN; t2.isDirty = true;
+                }
             }
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
+    bool entityHasShape(Entity e)
+    {
+        auto arr = m_ecs.getComponentArray<CustomShape>();
+        for (size_t i = 0; i < arr->getSize(); i++)
+            if (arr->getEntityAtIdx(i) == e) return true;
+        return false;
+    }
 
-    // Enforce exclusive toggle selection and update m_selectedMaterial
+    // =====================================================================
+    // cin-based parameter input
+    // =====================================================================
+    void promptParam(int idx)
+    {
+        if (!m_hasSelection || !entityHasShape(m_selectedEntity)) return;
+
+        auto& cs = m_ecs.getComponent<CustomShape>(m_selectedEntity);
+        int pc   = paramCount(cs.distanceFieldId);
+        if (idx >= pc) return;
+
+        std::cout << "[" << shapeName(cs.distanceFieldId) << "] "
+                  << paramName(cs.distanceFieldId, idx)
+                  << " (now " << cs.parameters[idx] << "): " << std::flush;
+
+        float v;
+        if (std::cin >> v)
+        {
+            if (cs.distanceFieldId == DefaultShapes::STAR && idx == 4)
+                v = std::round(v);
+            cs.parameters[idx] = v;
+            cs.isDirty = true;
+            m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+        }
+        else
+        {
+            std::cin.clear();
+            std::cin.ignore(10000, '\n');
+        }
+    }
+
+    // =====================================================================
+    // Exclusive toggle sync
+    // =====================================================================
     void syncMaterialToggles()
     {
-        // Find first toggle that was just activated (active=true, state==Down)
-        // If found, disable all others
-        int justActivated = -1;
+        int activated = -1;
         for (int i = 0; i < 16; i++)
         {
             auto& t = m_ecs.getComponent<ShapeToggle>(m_materialToggles[i]);
             if (t.active && t.state == ButtonState::Down)
-            {
-                justActivated = i;
-                break;
-            }
+                { activated = i; break; }
         }
-
-        if (justActivated >= 0)
+        if (activated >= 0)
         {
-            m_selectedMaterial = justActivated;
+            m_selectedMaterial = activated;
             for (int i = 0; i < 16; i++)
-            {
-                if (i == justActivated) continue;
-                auto& t = m_ecs.getComponent<ShapeToggle>(m_materialToggles[i]);
-                t.active = false;
-            }
+                if (i != activated)
+                    m_ecs.getComponent<ShapeToggle>(m_materialToggles[i]).active = false;
         }
         else
         {
-            // Ensure something is always selected; find active one
             for (int i = 0; i < 16; i++)
-            {
                 if (m_ecs.getComponent<ShapeToggle>(m_materialToggles[i]).active)
-                {
-                    m_selectedMaterial = i;
-                    break;
-                }
-            }
+                    { m_selectedMaterial = i; break; }
         }
     }
 
-    // Returns a random float in [lo, hi]
+    void syncCombToggles()
+    {
+        int activated = -1;
+        for (int i = 0; i < (int)m_combButtons.size(); i++)
+        {
+            auto& t = m_ecs.getComponent<ShapeToggle>(m_combButtons[i].toggleEntity);
+            if (t.active && t.state == ButtonState::Down)
+                { activated = i; break; }
+        }
+        if (activated >= 0)
+        {
+            m_selectedCombIdx     = activated;
+            m_selectedCombination = m_combButtons[activated].combType;
+            for (int i = 0; i < (int)m_combButtons.size(); i++)
+                if (i != activated)
+                    m_ecs.getComponent<ShapeToggle>(m_combButtons[i].toggleEntity).active = false;
+        }
+        else
+        {
+            for (int i = 0; i < (int)m_combButtons.size(); i++)
+                if (m_ecs.getComponent<ShapeToggle>(m_combButtons[i].toggleEntity).active)
+                {
+                    m_selectedCombIdx     = i;
+                    m_selectedCombination = m_combButtons[i].combType;
+                    break;
+                }
+        }
+    }
+
+    // =====================================================================
+    // Spawning
+    // =====================================================================
+    void spawnShape(uint16_t type)
+    {
+        float p[8]{};
+        fillRandomParams(type, p);
+        Entity e = addShape(type, p,
+                            static_cast<uint16_t>(m_selectedMaterial),
+                            m_selectedCombination);
+        if (m_selectedCombination == CombinationType::SmoothAddition ||
+            m_selectedCombination == CombinationType::SmoothSubtraction)
+            m_ecs.getComponent<CustomShape>(e).smoothFactor = 1.5f;
+        doSelect(e);
+    }
+
+    void spawnPhysicsEntity(vec2 wp)
+    {
+        Entity e   = m_ecs.createEntity();
+        auto& t    = m_ecs.addComponent<Transform>(e);
+        t.position = vec3(wp.x, wp.y, 0.0f);
+        auto& sdf    = m_ecs.addComponent<SDFRenderer>(e);
+        sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
+        m_ecs.addComponent<RigidBody2D>(e);
+    }
+
+    // =====================================================================
+    // Shape metadata (covers all types for editing loaded scenes)
+    // =====================================================================
+    static const char* shapeName(uint16_t t)
+    {
+        switch (t) {
+        case DefaultShapes::CIRCLE:   return "Circle";
+        case DefaultShapes::BOX:      return "Box";
+        case DefaultShapes::BOX_LINE: return "BoxLine";
+        case DefaultShapes::LINE:     return "Line";
+        case DefaultShapes::RAMP:     return "Ramp";
+        case DefaultShapes::SINE:     return "Sine";
+        case DefaultShapes::STAR:     return "Star";
+        default: return "Shape";
+        }
+    }
+
+    static int paramCount(uint16_t t)
+    {
+        switch (t) {
+        case DefaultShapes::CIRCLE:   return 3;
+        case DefaultShapes::BOX:      return 4;
+        case DefaultShapes::BOX_LINE: return 5;
+        case DefaultShapes::LINE:     return 5;
+        case DefaultShapes::RAMP:     return 5;
+        case DefaultShapes::SINE:     return 4;
+        case DefaultShapes::STAR:     return 6;
+        default: return 3;
+        }
+    }
+
+    static const char* paramName(uint16_t t, int i)
+    {
+        static const char* C[]  = { "posX","posY","rad" };
+        static const char* B[]  = { "posX","posY","hW","hH" };
+        static const char* BL[] = { "posX","posY","hW","hH","thick" };
+        static const char* L[]  = { "Ax","Ay","Bx","By","w" };
+        static const char* R[]  = { "posX","posY","w","h","skew" };
+        static const char* SI[] = { "amp","per","spd","yOff" };
+        static const char* ST[] = { "posX","posY","rad","disp","pts","spin" };
+        switch (t) {
+        case DefaultShapes::CIRCLE:   return C[i];
+        case DefaultShapes::BOX:      return B[i];
+        case DefaultShapes::BOX_LINE: return BL[i];
+        case DefaultShapes::LINE:     return L[i];
+        case DefaultShapes::RAMP:     return R[i];
+        case DefaultShapes::SINE:     return SI[i];
+        case DefaultShapes::STAR:     return ST[i];
+        default: return "?";
+        }
+    }
+
+    // =====================================================================
+    // Random parameter generation
+    // =====================================================================
     float rnd(float lo, float hi)
     {
         std::uniform_real_distribution<float> dist(lo, hi);
         return dist(m_rng);
     }
 
-    // Camera centre in world coordinates
     vec2 camCentre()
     {
         auto& t = m_ecs.getComponent<Transform>(m_mainCamera);
         return vec2(t.position.x, t.position.y);
     }
 
-    // Fill 8 parameters with reasonable random values for each shape type,
-    // centred on the camera centre
-    void fillRandomParams(uint16_t shapeType, float params[8])
+    void fillRandomParams(uint16_t type, float p[8])
     {
-        std::memset(params, 0, sizeof(float) * 8);
+        std::memset(p, 0, sizeof(float) * 8);
         vec2 c = camCentre();
-
-        switch (shapeType)
+        switch (type)
         {
         case DefaultShapes::CIRCLE:
-            params[0] = c.x + rnd(-2.0f, 2.0f); // posX
-            params[1] = c.y + rnd(-2.0f, 2.0f); // posY
-            params[2] = rnd(0.6f, 2.5f);         // radius
+            p[0] = c.x + rnd(-2.0f, 2.0f);
+            p[1] = c.y + rnd(-2.0f, 2.0f);
+            p[2] = rnd(0.6f, 2.5f);
             break;
-
         case DefaultShapes::BOX:
-            params[0] = c.x + rnd(-3.0f, 3.0f); // posX
-            params[1] = c.y + rnd(-3.0f, 3.0f); // posY
-            params[2] = rnd(0.5f, 3.0f);         // half-sizeX
-            params[3] = rnd(0.5f, 3.0f);         // half-sizeY
+            p[0] = c.x + rnd(-3.0f, 3.0f);
+            p[1] = c.y + rnd(-3.0f, 3.0f);
+            p[2] = rnd(0.5f, 3.0f);
+            p[3] = rnd(0.5f, 3.0f);
             break;
-
-        case DefaultShapes::BOX_LINE:
-            params[0] = c.x + rnd(-3.0f, 3.0f); // posX
-            params[1] = c.y + rnd(-3.0f, 3.0f); // posY
-            params[2] = rnd(1.0f, 4.0f);         // half-sizeX
-            params[3] = rnd(1.0f, 4.0f);         // half-sizeY
-            params[4] = rnd(0.05f, 0.4f);        // thickness
-            break;
-
         case DefaultShapes::LINE:
-            params[0] = c.x + rnd(-3.0f, -0.5f); // A.x
-            params[1] = c.y + rnd(-2.0f, 2.0f);  // A.y
-            params[2] = c.x + rnd(0.5f, 3.0f);   // B.x
-            params[3] = c.y + rnd(-2.0f, 2.0f);  // B.y
-            params[4] = rnd(0.05f, 0.3f);         // width
+            p[0] = c.x + rnd(-3.0f, -0.5f);
+            p[1] = c.y + rnd(-2.0f, 2.0f);
+            p[2] = c.x + rnd(0.5f, 3.0f);
+            p[3] = c.y + rnd(-2.0f, 2.0f);
+            p[4] = rnd(0.05f, 0.3f);
             break;
-
         case DefaultShapes::RAMP:
-            params[0] = c.x + rnd(-2.0f, 2.0f); // posX
-            params[1] = c.y + rnd(-2.0f, 2.0f); // posY
-            params[2] = rnd(1.0f, 4.0f);         // width
-            params[3] = rnd(1.0f, 4.0f);         // height
-            params[4] = rnd(-1.5f, 1.5f);        // skew
+            p[0] = c.x + rnd(-2.0f, 2.0f);
+            p[1] = c.y + rnd(-2.0f, 2.0f);
+            p[2] = rnd(1.0f, 4.0f);
+            p[3] = rnd(1.0f, 4.0f);
+            p[4] = rnd(-1.5f, 1.5f);
             break;
-
-        case DefaultShapes::SINE:
-            params[0] = rnd(1.0f, 5.0f);         // amplitude (world units)
-            params[1] = rnd(0.05f, 0.25f);        // period
-            params[2] = rnd(0.3f, 1.5f);          // speed
-            params[3] = c.y + rnd(-5.0f, 5.0f);  // y-offset
-            break;
-
         case DefaultShapes::STAR:
-            params[0] = c.x + rnd(-2.0f, 2.0f); // posX
-            params[1] = c.y + rnd(-2.0f, 2.0f); // posY
-            params[2] = rnd(0.8f, 2.5f);         // radius
-            params[3] = rnd(0.1f, 0.6f);         // displacement strength
-            params[4] = rnd(3.0f, 8.0f);         // star points
-            params[5] = rnd(0.5f, 2.0f);         // spin speed
+            p[0] = c.x + rnd(-2.0f, 2.0f);
+            p[1] = c.y + rnd(-2.0f, 2.0f);
+            p[2] = rnd(0.8f, 2.5f);
+            p[3] = rnd(0.1f, 0.6f);
+            p[4] = static_cast<float>(static_cast<int>(rnd(3.0f, 8.0f)));
+            p[5] = rnd(0.5f, 2.0f);
             break;
-
         default:
-            params[0] = c.x;
-            params[1] = c.y;
-            params[2] = 1.0f;
+            p[0] = c.x; p[1] = c.y; p[2] = 1.0f;
             break;
         }
-    }
-
-    // Spawn a world CustomShape with random params
-    void spawnRandomWorldShape(uint16_t shapeType)
-    {
-        float params[8] = {};
-        fillRandomParams(shapeType, params);
-        addShape(shapeType, params, static_cast<uint16_t>(m_selectedMaterial));
-    }
-
-    // Spawn a UIShape with random params (screen-space circle buttons use pixel coords)
-    void spawnRandomUIShape(uint16_t shapeType)
-    {
-        // For UI shapes the coordinates are in screen pixels (0-800).
-        // Place it in the middle of the screen with moderate random offsets.
-        float params[8] = {};
-        std::memset(params, 0, sizeof(params));
-
-        constexpr float scr = 800.0f;
-        constexpr float mid = scr * 0.5f;
-
-        switch (shapeType)
-        {
-        case DefaultShapes::CIRCLE:
-            params[0] = mid + rnd(-100.0f, 100.0f);
-            params[1] = mid + rnd(-100.0f, 100.0f);
-            params[2] = rnd(20.0f, 80.0f);
-            break;
-
-        case DefaultShapes::BOX:
-            params[0] = mid + rnd(-100.0f, 100.0f);
-            params[1] = mid + rnd(-100.0f, 100.0f);
-            params[2] = rnd(15.0f, 80.0f);
-            params[3] = rnd(15.0f, 80.0f);
-            break;
-
-        case DefaultShapes::BOX_LINE:
-            params[0] = mid + rnd(-100.0f, 100.0f);
-            params[1] = mid + rnd(-100.0f, 100.0f);
-            params[2] = rnd(20.0f, 100.0f);
-            params[3] = rnd(20.0f, 100.0f);
-            params[4] = rnd(2.0f, 12.0f);
-            break;
-
-        case DefaultShapes::LINE:
-            params[0] = mid + rnd(-150.0f, -20.0f);
-            params[1] = mid + rnd(-80.0f, 80.0f);
-            params[2] = mid + rnd(20.0f, 150.0f);
-            params[3] = mid + rnd(-80.0f, 80.0f);
-            params[4] = rnd(2.0f, 10.0f);
-            break;
-
-        case DefaultShapes::RAMP:
-            params[0] = mid + rnd(-100.0f, 100.0f);
-            params[1] = mid + rnd(-100.0f, 100.0f);
-            params[2] = rnd(20.0f, 100.0f);
-            params[3] = rnd(20.0f, 100.0f);
-            params[4] = rnd(-40.0f, 40.0f);
-            break;
-
-        case DefaultShapes::SINE:
-            params[0] = rnd(30.0f, 100.0f);      // amplitude
-            params[1] = rnd(0.005f, 0.03f);       // period (smaller in screen space)
-            params[2] = rnd(0.3f, 1.5f);
-            params[3] = mid + rnd(-100.0f, 100.0f);
-            break;
-
-        case DefaultShapes::STAR:
-            params[0] = mid + rnd(-100.0f, 100.0f);
-            params[1] = mid + rnd(-100.0f, 100.0f);
-            params[2] = rnd(20.0f, 80.0f);
-            params[3] = rnd(5.0f, 25.0f);
-            params[4] = rnd(3.0f, 8.0f);
-            params[5] = rnd(0.5f, 2.0f);
-            break;
-
-        default:
-            params[0] = mid;
-            params[1] = mid;
-            params[2] = 30.0f;
-            break;
-        }
-
-        addUIShape(shapeType, params, static_cast<uint16_t>(m_selectedMaterial));
-    }
-
-    // Right-click: find the nearest world CustomShape under the cursor and delete it.
-    // Returns true if a shape was deleted.
-    bool tryDeleteCustomShapeAt(vec2 worldPos)
-    {
-        auto csArray  = m_ecs.getComponentArray<CustomShape>();
-        auto uiArray  = m_ecs.getComponentArray<UIShape>();
-
-        float  bestDist   = k_deletionThreshold;
-        Entity bestEntity = static_cast<Entity>(-1);
-
-        for (size_t i = 0; i < csArray->getSize(); i++)
-        {
-            Entity e = csArray->getEntityAtIdx(i);
-            if (uiArray->hasData(e)) continue; // skip UIShapes
-
-            auto& cs = csArray->getDataAtIdx(i);
-
-            float p[11] = {};
-            std::copy(std::begin(cs.parameters), std::end(cs.parameters), p);
-            p[9]  = worldPos.x;
-            p[10] = worldPos.y;
-            m_sdfs[cs.distanceFieldId]->propagateValues(p);
-            float dist = m_sdfs[cs.distanceFieldId]->getValue();
-
-            if (dist < bestDist)
-            {
-                bestDist   = dist;
-                bestEntity = e;
-            }
-        }
-
-        if (bestEntity != static_cast<Entity>(-1))
-        {
-            m_ecs.destroyEntity(bestEntity);
-            m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
-            return true;
-        }
-        return false;
-    }
-
-    // Right-click on empty world: spawn an SDFRenderer + RigidBody2D ball
-    void spawnPhysicsEntity(vec2 worldPos)
-    {
-        Entity e = m_ecs.createEntity();
-
-        Transform& t  = m_ecs.addComponent<Transform>(e);
-        t.position     = vec3(worldPos.x, worldPos.y, 0.0f);
-
-        SDFRenderer& sdf   = m_ecs.addComponent<SDFRenderer>(e);
-        sdf.materialId      = static_cast<unsigned int>(m_selectedMaterial);
-
-        m_ecs.addComponent<RigidBody2D>(e);
     }
 };

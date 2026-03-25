@@ -80,8 +80,8 @@ namespace WeirdEngine
 				Transform& t = ecs.addComponent<Transform>(entity);
 				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
 
-				auto& sdfRenderer = ecs.addComponent<SDFRenderer>(entity);
-				sdfRenderer.materialId = m_currentMaterial + 4;
+				auto& dot = ecs.addComponent<Dot>(entity);
+				dot.materialId = m_currentMaterial + 4;
 
 				
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);

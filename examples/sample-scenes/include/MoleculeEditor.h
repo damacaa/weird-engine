@@ -282,7 +282,7 @@ private:
         t.position = vec3(world.x, world.y, 0.0f);
         t.isDirty = true;
 
-        auto& sdf = m_ecs.addComponent<SDFRenderer>(e);
+        auto& sdf = m_ecs.addComponent<Dot>(e);
         sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
 
         auto& rb = m_ecs.addComponent<RigidBody2D>(e);

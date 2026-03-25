@@ -47,7 +47,7 @@ private:
             // auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
             // mr.mesh = id;
 
-            auto& sdf = m_ecs.addComponent<SDFRenderer>(entity);
+            auto& sdf = m_ecs.addComponent<Dot>(entity);
 			sdf.materialId = 0;
 
             m_monkey = entity;

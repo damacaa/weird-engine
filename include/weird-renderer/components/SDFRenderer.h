@@ -3,21 +3,21 @@
 
 namespace WeirdEngine
 {
-	struct SDFRenderer : public Component
+	struct Dot : public Component
 	{
 		bool isStatic = false;
 		unsigned int materialId;
 
-		SDFRenderer(unsigned int materialId)
+		Dot(unsigned int materialId)
 		{
 			this->materialId = materialId;
 		}
 
-		SDFRenderer()
+		Dot()
 		{
 			this->materialId = 0;
 		}
 	};
 
-	struct UIDot : public SDFRenderer{};
+	struct UIDot : public Dot{};
 }

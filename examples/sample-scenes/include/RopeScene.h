@@ -41,7 +41,7 @@ private:
 			auto& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0.0f);
 
-			auto& sdf = m_ecs.addComponent<SDFRenderer>(entity);
+			auto& sdf = m_ecs.addComponent<Dot>(entity);
 			sdf.materialId = material;
 
 			m_ecs.addComponent<RigidBody2D>(entity);
@@ -142,8 +142,8 @@ private:
 			auto& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(0.5f, y + 0.5f, 0.0f);
 
-			auto& sdf = ecs.addComponent<SDFRenderer>(entity);
-			sdf.materialId = 4 + ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+			auto& sdf = ecs.addComponent<Dot>(entity);
+			sdf.materialId = 4 + ecs.getComponentArray<Dot>()->getSize() % 12;
 
 			auto& rb = ecs.addComponent<RigidBody2D>(entity);
 			sim.addForce(rb.simulationId, vec2(20.0f, 0.0f));

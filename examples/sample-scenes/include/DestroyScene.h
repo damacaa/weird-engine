@@ -43,8 +43,8 @@ private:
 				t.position = vec3(15.0f + (i % 10), 30.0f + (i / 10), 0.0f);
 				t.isDirty = true;
 
-				SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-				sdfRenderer.materialId = 4 + m_ecs.getComponentArray<SDFRenderer>()->getSize() % 12;
+				Dot& dot = m_ecs.addComponent<Dot>(entity);
+				dot.materialId = 4 + m_ecs.getComponentArray<Dot>()->getSize() % 12;
 
 				RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 				m_simulation2D.addForce(rb.simulationId, vec2(0, -50));

@@ -26,7 +26,7 @@
         ],
         "simulationId": 0
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 4
       },

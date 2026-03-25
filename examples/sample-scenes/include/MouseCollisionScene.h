@@ -39,8 +39,8 @@ private:
 			{
 			}
 
-			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-			sdfRenderer.materialId = material;
+			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			dot.materialId = material;
 
 			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}

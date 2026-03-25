@@ -26,7 +26,7 @@
         ],
         "simulationId": 0
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },
@@ -57,7 +57,7 @@
         ],
         "simulationId": 1
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },
@@ -88,7 +88,7 @@
         ],
         "simulationId": 2
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },
@@ -119,7 +119,7 @@
         ],
         "simulationId": 3
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },
@@ -150,7 +150,7 @@
         ],
         "simulationId": 4
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -181,7 +181,7 @@
         ],
         "simulationId": 5
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -212,7 +212,7 @@
         ],
         "simulationId": 6
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -243,7 +243,7 @@
         ],
         "simulationId": 7
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -274,7 +274,7 @@
         ],
         "simulationId": 8
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -305,7 +305,7 @@
         ],
         "simulationId": 9
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -336,7 +336,7 @@
         ],
         "simulationId": 10
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 1
       },
@@ -367,7 +367,7 @@
         ],
         "simulationId": 11
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },
@@ -398,7 +398,7 @@
         ],
         "simulationId": 12
       },
-      "sdfRenderer": {
+      "dot": {
         "isStatic": false,
         "materialId": 6
       },

@@ -33,7 +33,7 @@ private:
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(0, 1, 0);
 
-			auto& sdf = m_ecs.addComponent<SDFRenderer>(entity);
+			auto& sdf = m_ecs.addComponent<Dot>(entity);
 			sdf.materialId = 0;
 
 			m_ball = entity;

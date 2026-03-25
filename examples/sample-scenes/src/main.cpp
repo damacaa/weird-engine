@@ -9,9 +9,11 @@
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
+#include "LifeScene.h"
 
 #include "globals.h"
 #include "SceneLoadExample.h"
+#include "MoleculeEditor.h"
 #include "weird-renderer/core/Display.h"
 
 WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
@@ -19,7 +21,9 @@ WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 int main()
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<SceneLoadExample>("sceneLoad", "example.weird");
+	sceneManager.registerScene<LifeScene>("fish", ASSETS_PATH "fish.weird");
+	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
+	sceneManager.registerScene<SceneLoadExample>("sceneLoad", ASSETS_PATH "example.weird");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");

@@ -15,6 +15,7 @@
 #include "weird-physics/PhysicsSettings.h"
 
 #include <string>
+#include <unordered_set>
 
 namespace WeirdEngine
 {
@@ -115,6 +116,10 @@ namespace WeirdEngine
 		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
 
 		void lookAt(Entity entity);
+
+		// Entities in this set will be skipped during scene serialization
+		std::unordered_set<Entity> m_serializationBlacklist;
+		void blacklistEntity(Entity e) { m_serializationBlacklist.insert(e); }
 
 		SDFRenderSystem m_sdfRenderSystem;
 		SDFRenderSystem2D<SDFRenderer, CustomShape, TextRenderer> m_sdfRenderSystem2D;

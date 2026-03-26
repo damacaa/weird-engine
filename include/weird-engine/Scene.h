@@ -142,6 +142,11 @@ namespace WeirdEngine
 		// Save the current scene state to a .weird JSON file
 		void saveScene(const std::string& filename);
 
+		// Dynamically load a .weird file and add its contents to the scene.
+		// If blacklistEntities is true, all entities created by the load will be
+		// excluded from future scene serialization.
+		void loadWeirdFile(const std::string& path, bool blacklistEntities = false);
+
 		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
 		std::string m_sceneFilePath;
 

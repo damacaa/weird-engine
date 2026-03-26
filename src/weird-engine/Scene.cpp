@@ -534,6 +534,18 @@ namespace WeirdEngine
 		SceneSerializer::save(*this, filename);
 	}
 
+	void Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	{
+		Entity firstNewEntity = m_ecs.getEntityCount();
+		SceneSerializer::load(*this, path);
+		if (blacklistEntities)
+		{
+			Entity lastNewEntity = m_ecs.getEntityCount();
+			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
+				m_serializationBlacklist.insert(entity);
+		}
+	}
+
 	void Scene::loadFromWeirdFile(const std::string& path)
 	{
 		SceneSerializer::load(*this, path);

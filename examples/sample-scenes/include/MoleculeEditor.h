@@ -30,6 +30,13 @@ private:
         Constraint
     };
 
+    enum class ToolMode
+    {
+        Drag,
+        Spring,
+        HeadSelect
+    };
+
     struct BallInfo
     {
         Entity entity;
@@ -59,6 +66,13 @@ private:
     RightMouseMode m_rightMouseMode = RightMouseMode::None;
     int m_selectedMaterial = 1;
 
+    ToolMode m_toolMode = ToolMode::Drag;
+    std::array<Entity, 3> m_toolToggles{};
+    Entity m_gravityToggleEntity = static_cast<Entity>(-1);
+    Entity m_headEntity = static_cast<Entity>(-1);
+    Entity m_headCircleOuter = static_cast<Entity>(-1);
+    Entity m_headCircleInner = static_cast<Entity>(-1);
+
     static constexpr float BALL_HIT_RADIUS = 0.9f;
     static constexpr float LINE_WIDTH = 3.5f;
     static constexpr float CONSTRAINT_STIFFNESS = 0.95f;
@@ -67,23 +81,42 @@ private:
     static constexpr float MAT_Y = 50.0f;
     static constexpr float MAT_SPACING = 47.0f;
 
+    static constexpr float TOOL_X = 30.0f;
+    static constexpr float TOOL_Y_START = 30.0f;
+    static constexpr float TOOL_SPACING = 60.0f;
+    static constexpr float TOOL_BTN_HALF = 12.0f;
+    static constexpr float GRAV_Y = 50.0f;
+    static constexpr float HEAD_OUTER_RADIUS = 30.0f;
+    static constexpr float HEAD_INNER_RADIUS = 25.0f;
+    static constexpr int   HEAD_RING_GROUP = 8;
+
     void onStart() override
     {
         m_debugInput = false;
         m_debugFly = true;
 
+        g_cameraPositon.x = 0.0f;
+        g_cameraPositon.y = 0.0f;
         m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 
         // Request neutral simulation behavior for this editor scene.
         m_simulation2D.setGravity(0.0f);
         m_simulation2D.setDamping(1.0f);
 
-        // Floor: width 30 (half-width 15), thin box near y = -1.
-        float floorVars[8]{15.0f, -1.0f, 15.0f, 1.0f, 0.0f};
-        addShape(DefaultShapes::BOX, floorVars, 3, CombinationType::Addition);
-
         buildMaterialPalette();
-    }
+        buildToolbar();
+
+		{
+			float boundsVars[8]{0.0f, 0.0f, 3000.0f};
+			Entity outside = addShape(DefaultShapes::CIRCLE, boundsVars, 17, CombinationType::Addition);
+
+            float boundsVars2[8]{0.0f, 0.0f, 20.0f, 20.0f};
+			Entity inside = addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::Black, CombinationType::Subtraction);
+
+            blacklistEntity(outside);
+            blacklistEntity(inside);
+		}
+	}
 
     void onUpdate(float delta) override
     {
@@ -115,30 +148,17 @@ private:
             }
         }
 
-        if (Input::GetKeyDown(Input::G))
-        {
-            m_gravityEnabled = !m_gravityEnabled;
-            if (m_gravityEnabled)
-            {
-                m_simulation2D.setGravity(-10.0f);
-                m_simulation2D.setDamping(0.001f);
-            }
-            else
-            {
-                m_simulation2D.setGravity(0.0f);
-                m_simulation2D.setDamping(1.0f);
-            }
-        }
-
         if (Input::GetMouseButtonDown(Input::LeftClick) && !Input::isUIClick())
         {
             spawnBallAtMouse();
         }
 
         syncMaterialPalette();
+        syncToolbar();
         handleRightMouseDragInput();
         handleConstraintLineClicks();
         updateConstraintLines();
+        updateHeadIndicator();
         removeFallenBalls();
     }
 
@@ -209,6 +229,11 @@ private:
         {
             m_constraintStartBall = static_cast<Entity>(-1);
         }
+
+        if (shouldDelete(m_headEntity))
+        {
+            m_headEntity = static_cast<Entity>(-1);
+        }
     }
 
     void buildMaterialPalette()
@@ -270,6 +295,85 @@ private:
         }
     }
 
+    void buildToolbar()
+    {
+        const char* labels[] = { "drag", "spring", "head" };
+        for (int i = 0; i < 3; i++)
+        {
+            float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
+            float p[8]{ TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF };
+            Entity e = addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+            auto& tog = m_ecs.addComponent<ShapeToggle>(e);
+            tog.clickPadding = TOOL_BTN_HALF + 8.0f;
+            tog.parameterModifierMask.set(2);
+            tog.parameterModifierMask.set(3);
+            tog.modifierAmount = 3.0f;
+            m_toolToggles[i] = e;
+            blacklistEntity(e);
+
+            Entity lbl = m_ecs.createEntity();
+            auto& lt = m_ecs.addComponent<Transform>(lbl);
+            lt.position = vec3(TOOL_X + TOOL_BTN_HALF + 20.0f, y, 0.0f);
+            auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
+            tx.text = labels[i];
+            tx.material = 1;
+            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
+            tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+            blacklistEntity(lbl);
+        }
+        m_ecs.getComponent<ShapeToggle>(m_toolToggles[0]).active = true;
+
+        float starP[8]{ Display::width - GRAV_Y, Display::height - GRAV_Y, GRAV_Y * 0.5f, 5.0f, 10.0f, 0.0f };
+        m_gravityToggleEntity = addUIShape(DefaultShapes::STAR, starP, static_cast<uint16_t>(2));
+        auto& gravTog = m_ecs.addComponent<ShapeToggle>(m_gravityToggleEntity);
+        gravTog.clickPadding = 18.0f;
+        // gravTog.parameterModifierMask.set(2);
+        gravTog.parameterModifierMask.set(5);
+        gravTog.modifierAmount = 10.0f;
+        blacklistEntity(m_gravityToggleEntity);
+    }
+
+    void syncToolbar()
+    {
+        int activated = -1;
+        for (int i = 0; i < 3; i++)
+        {
+            auto& t = m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]);
+            if (t.active && t.state == ButtonState::Down)
+            {
+                activated = i;
+                break;
+            }
+        }
+        if (activated >= 0)
+        {
+            m_toolMode = static_cast<ToolMode>(activated);
+            for (int i = 0; i < 3; i++)
+            {
+                if (i != activated)
+                    m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]).active = false;
+            }
+        }
+
+        auto& gravTog = m_ecs.getComponent<ShapeToggle>(m_gravityToggleEntity);
+        bool wantsGravity = gravTog.active;
+        if (wantsGravity != m_gravityEnabled)
+        {
+            m_gravityEnabled = wantsGravity;
+            auto& starShape = m_ecs.getComponent<UIShape>(m_gravityToggleEntity);
+            if (m_gravityEnabled)
+            {
+                m_simulation2D.setGravity(-10.0f);
+                m_simulation2D.setDamping(0.001f);
+            }
+            else
+            {
+                m_simulation2D.setGravity(0.0f);
+                m_simulation2D.setDamping(1.0f);
+            }
+        }
+    }
+
     void spawnBallAtMouse()
     {
         auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
@@ -303,15 +407,12 @@ private:
 
         if (rightDown && !m_rightWasDown)
         {
-            bool useConstraintMode = Input::GetKey(Input::LeftShift);
-            if (useConstraintMode)
-            {
+            if (m_toolMode == ToolMode::Spring)
                 onConstraintStart();
-            }
+            else if (m_toolMode == ToolMode::HeadSelect)
+                onHeadSelectRightClick();
             else
-            {
                 onRightDragStart();
-            }
         }
         else if (rightDown && m_rightWasDown)
         {
@@ -576,6 +677,62 @@ private:
                 return b.simulationId;
         }
         return -1;
+    }
+
+    void updateHeadIndicator()
+    {
+        if (m_headEntity == static_cast<Entity>(-1))
+        {
+            if (m_headCircleOuter != static_cast<Entity>(-1))
+            {
+                m_ecs.getComponent<UIShape>(m_headCircleOuter).parameters[2] = 0.0f;
+                m_ecs.getComponent<UIShape>(m_headCircleOuter).isDirty = true;
+                m_ecs.getComponent<UIShape>(m_headCircleInner).parameters[2] = 0.0f;
+                m_ecs.getComponent<UIShape>(m_headCircleInner).isDirty = true;
+            }
+            return;
+        }
+
+        if (!hasTransform(m_headEntity))
+        {
+            m_headEntity = static_cast<Entity>(-1);
+            return;
+        }
+
+        // Lazy-initialize the ring indicator shapes on first use
+		if (m_headCircleOuter == static_cast<Entity>(-1))
+		{
+			float p[8]{};
+			m_headCircleOuter = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+										   CombinationType::Addition, HEAD_RING_GROUP);
+			blacklistEntity(m_headCircleOuter);
+
+			m_headCircleInner = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+										   CombinationType::Subtraction, HEAD_RING_GROUP);
+			blacklistEntity(m_headCircleInner);
+		}
+
+		auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+        const auto& ht = m_ecs.getComponent<Transform>(m_headEntity);
+        vec2 world(ht.position.x, ht.position.y);
+        vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cam, world);
+
+        auto& outer = m_ecs.getComponent<UIShape>(m_headCircleOuter);
+        outer.parameters[0] = screen.x;
+        outer.parameters[1] = screen.y;
+        outer.parameters[2] = HEAD_OUTER_RADIUS;
+        outer.isDirty = true;
+
+        auto& inner = m_ecs.getComponent<UIShape>(m_headCircleInner);
+        inner.parameters[0] = screen.x;
+        inner.parameters[1] = screen.y;
+        inner.parameters[2] = HEAD_INNER_RADIUS;
+        inner.isDirty = true;
+    }
+
+    void onHeadSelectRightClick()
+    {
+        m_headEntity = pickBallAtMouse();
     }
 
     bool hasTransform(Entity e)

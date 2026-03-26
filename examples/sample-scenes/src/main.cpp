@@ -21,7 +21,7 @@ WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 int main()
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<LifeScene>("fish", ASSETS_PATH "fish.weird");
+	sceneManager.registerScene<LifeScene>("fish");
 	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
 	sceneManager.registerScene<SceneLoadExample>("sceneLoad", ASSETS_PATH "example.weird");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");

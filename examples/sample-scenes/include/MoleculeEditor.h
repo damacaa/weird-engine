@@ -553,8 +553,6 @@ private:
             ui.parameters[4] = LINE_WIDTH;
             ui.isDirty = true;
         }
-
-        m_UIRenderSystem.shaderNeedsUpdate() = true;
     }
 
     void computeScreenLineParams(const vec2& aWorld, const vec2& bWorld, float outParams[8])

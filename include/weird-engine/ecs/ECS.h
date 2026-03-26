@@ -29,6 +29,10 @@ namespace WeirdEngine
 			return m_entityCount++;
 		}
 
+		Entity getEntityCount() const {
+			return m_entityCount;
+		}
+
 		void destroyEntity(Entity entity) {
 			for (auto const& pair : m_componentManagers) {
 				const auto& manager = pair.second;

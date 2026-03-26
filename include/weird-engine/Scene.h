@@ -14,14 +14,22 @@
 
 #include "weird-physics/PhysicsSettings.h"
 
+#include <string>
+#include <unordered_set>
+
 namespace WeirdEngine
 {
 	using namespace ECS;
 
 	constexpr int SOUND_QUEUE_SIZE = 16;
 
+	// Forward declaration – full definition in SceneSerializer.h
+	class SceneSerializer;
+
 	class Scene
 	{
+		friend class SceneSerializer;
+
 	public:
 		Scene(const PhysicsSettings& settings);
 		~Scene();
@@ -74,6 +82,9 @@ namespace WeirdEngine
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
+		// Set the path to a .weird file to load when the scene starts
+		void setSceneFilePath(const std::string& path) { m_sceneFilePath = path; }
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
@@ -106,8 +117,12 @@ namespace WeirdEngine
 
 		void lookAt(Entity entity);
 
+		// Entities in this set will be skipped during scene serialization
+		std::unordered_set<Entity> m_serializationBlacklist;
+		void blacklistEntity(Entity e) { m_serializationBlacklist.insert(e); }
+
 		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D<SDFRenderer, CustomShape, TextRenderer> m_sdfRenderSystem2D;
+		SDFRenderSystem2D<Dot, CustomShape, TextRenderer> m_sdfRenderSystem2D;
 		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
 		RenderSystem m_renderSystem;
 		InstancedRenderSystem m_instancedRenderSystem;
@@ -124,8 +139,22 @@ namespace WeirdEngine
 
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
 
+		// Save the current scene state to a .weird JSON file
+		void saveScene(const std::string& filename);
+
+		// Dynamically load a .weird file and add its contents to the scene.
+		// If blacklistEntities is true, all entities created by the load will be
+		// excluded from future scene serialization.
+		void loadWeirdFile(const std::string& path, bool blacklistEntities = false);
+
+		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
+		std::string m_sceneFilePath;
+
 	private:
 		void loadScene(std::string& sceneFileContent);
+
+		// Load scene state from a .weird JSON file
+		void loadFromWeirdFile(const std::string& path);
 
 		bool m_runSimulationInThread;
 

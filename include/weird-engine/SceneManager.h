@@ -33,7 +33,7 @@ namespace WeirdEngine
 		void loadNextScene();
 
 		template <typename T>
-		void registerScene(const std::string& sceneName);
+		void registerScene(const std::string& sceneName, const std::string& sceneFilePath = "");
 
 		void loadScene(const std::string& sceneName);
 		void loadScene(int idx);
@@ -54,14 +54,19 @@ namespace WeirdEngine
 	// If the template is only in the static library and the client code doesn’t see its full definition, it won't be able to use it.
 	// That's why this is here...
 	template<typename T>
-	void SceneManager::registerScene(const std::string& sceneName)
+	void SceneManager::registerScene(const std::string& sceneName, const std::string& sceneFilePath)
 	{
 		static_assert(std::is_base_of<Scene, T>::value, "T must derive from Scene");
 
 		// TODO: check ECS for a similar
 		names.push_back(sceneName);
-		sceneFactories[sceneName] = [this]() {
-			return std::make_unique<T>(m_physicsSettings);
+		sceneFactories[sceneName] = [this, sceneFilePath]() {
+			auto scene = std::make_unique<T>(m_physicsSettings);
+			if (!sceneFilePath.empty())
+			{
+				scene->setSceneFilePath(sceneFilePath);
+			}
+			return scene;
 			};
 	}
 

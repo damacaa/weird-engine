@@ -1,6 +1,7 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
+#include "weird-engine/SceneSerializer.h"
 
 namespace WeirdEngine
 {
@@ -100,6 +101,14 @@ namespace WeirdEngine
 	void Scene::start()
 	{
 		onCreate();
+
+		// If a .weird file path was provided (via setSceneFilePath / registerScene),
+		// restore saved scene state before the derived class's onStart() runs.
+		if (!m_sceneFilePath.empty())
+		{
+			loadFromWeirdFile(m_sceneFilePath);
+		}
+
 		onStart();
 
 		switch (m_renderMode)
@@ -520,6 +529,26 @@ namespace WeirdEngine
 		m_simulation2D.setSDFs(m_sdfs);
 	}
 
+	void Scene::saveScene(const std::string& filename)
+	{
+		SceneSerializer::save(*this, filename);
+	}
 
+	void Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	{
+		Entity firstNewEntity = m_ecs.getEntityCount();
+		SceneSerializer::load(*this, path);
+		if (blacklistEntities)
+		{
+			Entity lastNewEntity = m_ecs.getEntityCount();
+			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
+				m_serializationBlacklist.insert(entity);
+		}
+	}
+
+	void Scene::loadFromWeirdFile(const std::string& path)
+	{
+		SceneSerializer::load(*this, path);
+	}
 
 }

@@ -3,12 +3,14 @@
 #include <array>
 #include <unordered_map>
 #include <stdexcept>
+#include <cstddef>
 
 #include "Entity.h"
 #include "Component.h"
 
 namespace WeirdEngine
 {
+    constexpr size_t INVALID_INDEX = static_cast<size_t>(-1);
 
     // ComponentArray to store components of a specific type
     template <typename T>
@@ -43,6 +45,7 @@ namespace WeirdEngine
             Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
             entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;
             indexToEntityMap[indexOfRemovedEntity] = entityOfLastElement;
+            entityToIndexMap[entity] = INVALID_INDEX;
 
             --size;
         }
@@ -69,7 +72,7 @@ namespace WeirdEngine
 
         bool hasData(Entity entity)
         {
-            return entityToIndexMap[entity] < size;
+            return entityToIndexMap[entity] != INVALID_INDEX;
         }
 
         // Overload [] operator for non-const objects (modifiable)
@@ -91,7 +94,11 @@ namespace WeirdEngine
         }
 
     private:
-        std::array<size_t, MAX_ENTITIES> entityToIndexMap = {};
+        std::array<size_t, MAX_ENTITIES> entityToIndexMap = []{
+            std::array<size_t, MAX_ENTITIES> arr;
+            arr.fill(INVALID_INDEX);
+            return arr;
+        }();
         std::array<Entity, MAX_ENTITIES> indexToEntityMap = {};
     };
 

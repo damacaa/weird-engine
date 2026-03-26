@@ -8,13 +8,13 @@ namespace WeirdEngine
 
 	class SDFRenderSystem : public System {
 	private:
-		std::shared_ptr<ComponentManager<SDFRenderer>> m_sdfRendererManager;
+		std::shared_ptr<ComponentManager<Dot>> m_sdfRendererManager;
 		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
 
 	public:
 
 		SDFRenderSystem(ECSManager& ecs) {
-			m_sdfRendererManager = ecs.getComponentManager<SDFRenderer>();
+			m_sdfRendererManager = ecs.getComponentManager<Dot>();
 			m_transformManager = ecs.getComponentManager<Transform>();
 		}
 

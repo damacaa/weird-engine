@@ -34,8 +34,8 @@ private:
       Transform &t = m_ecs.addComponent<Transform>(entity);
       t.position = vec3(x + 0.5f, y + 0.5f, z);
 
-      SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-      sdfRenderer.materialId = material;
+      Dot &dot = m_ecs.addComponent<Dot>(entity);
+      dot.materialId = material;
 
       RigidBody2D &rb = m_ecs.addComponent<RigidBody2D>(entity);
     }

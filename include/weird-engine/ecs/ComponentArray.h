@@ -57,6 +57,11 @@ namespace WeirdEngine
             return values[idx];
         }
 
+        Entity getEntityAtIdx(size_t idx) const
+        {
+            return indexToEntityMap[idx];
+        }
+
         T& getLastData()
         {
             return values[size - 1];

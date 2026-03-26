@@ -833,6 +833,25 @@ namespace WeirdEngine
 		m_gravitationalConstraints.emplace_back(a, b, gravity);
 	}
 
+	bool Simulation2D::setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance)
+	{
+		if (a == b)
+			return false;
+
+		for (auto& constraint : m_distanceConstraints)
+		{
+			bool sameDirection = (constraint.A == static_cast<int>(a) && constraint.B == static_cast<int>(b));
+			bool reverseDirection = (constraint.A == static_cast<int>(b) && constraint.B == static_cast<int>(a));
+			if (sameDirection || reverseDirection)
+			{
+				constraint.Distance = distance;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void Simulation2D::fix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);

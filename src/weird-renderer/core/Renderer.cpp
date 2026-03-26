@@ -134,7 +134,7 @@ namespace WeirdEngine
 			worldConfig.debugMaterialColors = false;
 			worldConfig.ambienOcclusionRadius = 5.0f;
 			worldConfig.ambienOcclusionStrength = 0.2f;
-			worldConfig.ballK = 0.0001f;
+			worldConfig.ballK = 0.5f;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline

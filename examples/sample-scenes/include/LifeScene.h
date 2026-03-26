@@ -6,6 +6,15 @@
 
 using namespace WeirdEngine;
 
+struct Head : public Component
+{
+	Head() {};
+
+	vec2 direction = vec2(0.0f, 1.0f);
+	float forceMagnitude = 10.0f;
+	bool directionChanged = false;
+};
+
 class LifeScene : public Scene
 {
 public:
@@ -13,9 +22,7 @@ public:
 		: Scene(settings) {};
 
 private:
-	Entity m_head;
 
-	inline static int g_id = 0;
 
 	// Inherited via Scene
 	void onStart() override
@@ -26,11 +33,27 @@ private:
 		m_simulation2D.setGravity(0.0f);
 		m_simulation2D.setDamping(0.05f);
 
-		auto& a = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(0);
-		m_head = a.Owner;
-		g_id++;
+		for (size_t i = 0; i < 3; i++)
+		{
+			Entity firstCreated = m_ecs.getEntityCount();
 
-		m_ecs.getComponent<Dot>(m_head).materialId = 10;
+			loadWeirdFile(ASSETS_PATH "fish.weird");
+
+			Entity lastCreated = m_ecs.getEntityCount() - 1;
+
+			for (size_t e = 0; e < (lastCreated - firstCreated); e++)
+			{
+				auto& t = m_ecs.getComponent<Transform>(firstCreated + e);
+				t.position += vec3(-10.0f + (float)(i * 10), 0.0f, 0.0f);
+			}
+			
+
+			
+			auto& a = m_ecs.getComponent<Dot>(firstCreated);
+			m_ecs.addComponent<Head>(a.Owner);
+		}
+		
+		
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
@@ -45,32 +68,40 @@ private:
 		}
 	}
 
-	float m_t = 0.0f;
-	vec2 m_direction = vec2(0.0f, 1.0f);
-	float m_forceMagnitude = 10.0f;
-  bool m_directionChanged = false;
+
 	void onPhysicsStep() override
 	{
 		float delta = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
 
-		m_t = getTime();
-		auto& rb = m_ecs.getComponent<RigidBody2D>(m_head);
-		m_simulation2D.addForce(rb.simulationId, m_forceMagnitude * m_direction * delta);
+		auto headArray = m_ecs.getComponentArray<Head>();
 
-		if (delta < 0.0f && !m_directionChanged)
-		{ // rotate direction by random amount between -45 and 45 degrees
-			float angle = (rand() / (float)RAND_MAX) * 90.0f - 45.0f;
-			float radians = angle * 3.14159265f / 180.0f;
-			float cosA = cos(radians);
-			float sinA = sin(radians);
-			m_direction =
-				vec2(cosA * m_direction.x - sinA * m_direction.y, sinA * m_direction.x + cosA * m_direction.y);
-			m_direction = normalize(m_direction);
-			m_directionChanged = true;
-		}
-		else
+		for (size_t i = 0; i < headArray->getSize(); i++)
 		{
-			m_directionChanged = false;
+			auto& head = headArray->getDataAtIdx(i);
+			Entity headEntity = head.Owner;
+
+			auto& rb = m_ecs.getComponent<RigidBody2D>(headEntity);
+			m_simulation2D.addForce(rb.simulationId, head.forceMagnitude * head.direction * delta);
+
+			if (delta < 0.0f && !head.directionChanged)
+			{ // rotate direction by random amount between -45 and 45 degrees
+				constexpr float MAX_ANGLE = 45.0f;
+				float angle = (rand() / (float)RAND_MAX) * MAX_ANGLE - (MAX_ANGLE / 2.0f);
+				float radians = angle * 3.14159265f / 180.0f;
+				float cosA = cos(radians);
+				float sinA = sin(radians);
+				head.direction =
+					vec2(cosA * head.direction.x - sinA * head.direction.y, sinA * head.direction.x + cosA * head.direction.y);
+				head.direction = normalize(head.direction);
+				head.directionChanged = true;
+			}
+			else
+			{
+				head.directionChanged = false;
+			}
 		}
+		
+
+		
 	}
 };

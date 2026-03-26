@@ -9,9 +9,27 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <cstddef>
 
 namespace WeirdEngine
 {
+	namespace internal
+	{
+		inline size_t nextComponentTypeId()
+		{
+			static size_t id = 0;
+			return id++;
+		}
+
+		template <typename T>
+		size_t getComponentTypeId()
+		{
+			// Each component type gets a unique ID at compile time
+			static const size_t id = nextComponentTypeId();
+			return id;
+		}
+	}
+
 	// System base class
 	class System {
 	protected:
@@ -34,9 +52,9 @@ namespace WeirdEngine
 		}
 
 		void destroyEntity(Entity entity) {
-			for (auto const& pair : m_componentManagers) {
-				const auto& manager = pair.second;
-				manager->removeData(entity);
+			for (auto const& manager : m_componentManagers) {
+				if (manager)
+					manager->removeData(entity);
 			}
 
 			for (auto sys : m_systems) {
@@ -46,10 +64,10 @@ namespace WeirdEngine
 
 		void freeRemovedComponents() 
 		{
-			for (auto const& pair : m_componentManagers) 
+			for (auto const& manager : m_componentManagers) 
 			{
-				const auto manager = pair.second;
-				manager->freeRemovedComponents();
+				if (manager)
+					manager->freeRemovedComponents();
 			}
 		}
 
@@ -72,7 +90,10 @@ namespace WeirdEngine
 
 		template <typename T>
 		bool hasComponent(Entity entity) const {
-			return getComponentManager<T>()->template hasComponent<T>(entity);
+			size_t id = internal::getComponentTypeId<T>();
+			if (id >= m_componentManagers.size() || !m_componentManagers[id])
+				return false;
+			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id])->hasComponent(entity);
 		}
 
 		template <typename T>
@@ -87,34 +108,32 @@ namespace WeirdEngine
 			manager.registerComponent();
 			auto pointerToManager = std::make_shared<ComponentManager<T>>(manager);
 
-			m_componentManagers[typeid(T).name()] = pointerToManager;
+			size_t id = internal::getComponentTypeId<T>();
+			if (id >= m_componentManagers.size())
+				m_componentManagers.resize(id + 1);
+			m_componentManagers[id] = pointerToManager;
 		}
 
 		template <typename T>
 		void registerComponent(std::shared_ptr<ComponentManager<T>> manager) 
 		{
 			manager->registerComponent();
-			m_componentManagers[typeid(T).name()] = manager;
+			size_t id = internal::getComponentTypeId<T>();
+			if (id >= m_componentManagers.size())
+				m_componentManagers.resize(id + 1);
+			m_componentManagers[id] = manager;
 		}
 
 		template <typename T>
 		std::shared_ptr<ComponentManager<T>> getComponentManager() {
 
-			auto key = typeid(T).name();
+			size_t id = internal::getComponentTypeId<T>();
 
-			// Attempt to find the key in the map
-			auto it = m_componentManagers.find(key);
-
-			// Check if the key was found
-			if (it == m_componentManagers.end()) {
+			if (id >= m_componentManagers.size() || !m_componentManagers[id]) {
 				registerComponent<T>();
 			}
 
-			
-
-			auto result = std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[key]);
-
-			return result;
+			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id]);
 		}
 
 		template <typename T>
@@ -124,20 +143,20 @@ namespace WeirdEngine
 		}
 
 	private:
-		std::unordered_map<std::string, std::shared_ptr<IComponentManager>> m_componentManagers;
+		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::vector<std::shared_ptr<System>> m_systems;
 		Entity m_entityCount = 0;
 
 	};
 }
 
-#include "../../weird-physics/components/RigidBody.h"
-#include "../../weird-renderer/components/Camera.h"
-#include "../../weird-renderer/components/InstancedMeshRenderer.h"
-#include "../../weird-renderer/components/MeshRenderer.h"
-#include "../components/FlyMovement.h"
-#include "../components/FlyMovement2D.h"
-#include "../components/Transform.h"
+#include "weird-physics/components/RigidBody.h"
+#include "weird-renderer/components/Camera.h"
+#include "weird-renderer/components/InstancedMeshRenderer.h"
+#include "weird-renderer/components/MeshRenderer.h"
+#include "weird-engine/components/FlyMovement.h"
+#include "weird-engine/components/FlyMovement2D.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-renderer/components/Button.h"
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/components/SDFRenderer.h"

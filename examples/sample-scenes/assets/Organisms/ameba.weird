@@ -1,0 +1,176 @@
+{
+  "camera": {
+    "position": [
+      0.9249999523162842,
+      2.9250001907348633,
+      25.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "entities": [
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 5
+      },
+      "id": 28,
+      "rigidBody2D": {
+        "physicsPosition": [
+          0.4990716576576233,
+          -2.883066415786743
+        ],
+        "simulationId": 0
+      },
+      "transform": {
+        "position": [
+          0.4990716576576233,
+          -2.883066415786743,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 5
+      },
+      "id": 29,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.37198033928871155,
+          -3.405163288116455
+        ],
+        "simulationId": 1
+      },
+      "transform": {
+        "position": [
+          -0.37198033928871155,
+          -3.405163288116455,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 5
+      },
+      "id": 30,
+      "rigidBody2D": {
+        "physicsPosition": [
+          1.3119221925735474,
+          -3.4724068641662598
+        ],
+        "simulationId": 2
+      },
+      "transform": {
+        "position": [
+          1.3119221925735474,
+          -3.4724068641662598,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 5
+      },
+      "id": 31,
+      "rigidBody2D": {
+        "physicsPosition": [
+          0.4484838545322418,
+          -3.9768612384796143
+        ],
+        "simulationId": 3
+      },
+      "transform": {
+        "position": [
+          0.4484838545322418,
+          -3.9768612384796143,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "physics": {
+    "distanceConstraints": [
+      {
+        "A": 1,
+        "B": 3,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 3,
+        "B": 2,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 2,
+        "B": 0,
+        "distance": 1.0040160417556763,
+        "k": 1.0
+      },
+      {
+        "A": 0,
+        "B": 1,
+        "distance": 1.0155376195907593,
+        "k": 1.0
+      }
+    ],
+    "fixedObjects": [],
+    "gravitationalConstraints": []
+  },
+  "version": 1
+}

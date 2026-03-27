@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include <filesystem>
+
 #include "globals.h"
 
 using namespace WeirdEngine;
@@ -33,24 +35,28 @@ private:
 		m_simulation2D.setGravity(0.0f);
 		m_simulation2D.setDamping(0.05f);
 
-		for (size_t i = 0; i < 3; i++)
+		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
+		int i = 0;
+		for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
 		{
-			Entity firstCreated = m_ecs.getEntityCount();
+			if (!entry.is_regular_file() || entry.path().extension() != ".weird")
+				continue;
 
-			loadWeirdFile(ASSETS_PATH "fish.weird");
+			Entity firstCreated = static_cast<Entity>(m_ecs.getEntityCount());
 
-			Entity lastCreated = m_ecs.getEntityCount() - 1;
+			loadWeirdFile(entry.path().string());
 
-			for (size_t e = 0; e < (lastCreated - firstCreated); e++)
+			Entity lastCreated = static_cast<Entity>(m_ecs.getEntityCount());
+
+			for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 			{
 				auto& t = m_ecs.getComponent<Transform>(firstCreated + e);
 				t.position += vec3(-10.0f + (float)(i * 10), 0.0f, 0.0f);
 			}
-			
 
-			
 			auto& a = m_ecs.getComponent<Dot>(firstCreated);
 			m_ecs.addComponent<Head>(a.Owner);
+			++i;
 		}
 		
 		

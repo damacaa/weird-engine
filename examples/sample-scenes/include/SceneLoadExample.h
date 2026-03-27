@@ -68,7 +68,7 @@ private:
     // =====================================================================
     void onStart() override
     {
-        m_debugInput = true;
+        m_debugInput = false;
         m_debugFly   = true;
         m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 
@@ -92,6 +92,13 @@ private:
 
         if (Input::GetMouseButtonDown(Input::LeftClick))
             onLeftClick();
+        if (Input::GetMouseButton(Input::LeftClick))
+        {
+            auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+            vec2 wp   = ECS::Camera::screenPositionToWorldPosition2D(
+                cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+            spawnPhysicsEntity(wp);
+        }
         if (Input::GetMouseButtonDown(Input::RightClick))
             onRightClick();
         if (Input::GetKeyDown(Input::X) && m_hasSelection)
@@ -304,13 +311,7 @@ private:
             }
         }
 
-        if (!Input::isUIClick())
-        {
-            auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
-            vec2 wp   = ECS::Camera::screenPositionToWorldPosition2D(
-                cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
-            spawnPhysicsEntity(wp);
-        }
+        
     }
 
     void onRightClick()
@@ -577,12 +578,13 @@ private:
 
     void spawnPhysicsEntity(vec2 wp)
     {
-        Entity e   = m_ecs.createEntity();
+        Entity e = m_ecs.createEntity();
         auto& t    = m_ecs.addComponent<Transform>(e);
         t.position = vec3(wp.x, wp.y, 0.0f);
         auto& sdf    = m_ecs.addComponent<Dot>(e);
         sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
         m_ecs.addComponent<RigidBody2D>(e);
+        blacklistEntity(e);
     }
 
     // =====================================================================

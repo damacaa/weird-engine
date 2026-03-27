@@ -19,6 +19,7 @@ namespace WeirdEngine
 		std::bitset<8> parameterModifierMask;
 		float modifierAmount = 0.0f;
 		float clickPadding = 10.0f;
+		bool hovered = false;
 	};
 
 	struct ShapeToggle : public Component
@@ -28,6 +29,7 @@ namespace WeirdEngine
 		float modifierAmount = 0.0f;
 		bool active = false;
 		float clickPadding = 10.0f;
+		bool hovered = false;
 	};
 
 

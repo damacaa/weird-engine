@@ -168,6 +168,7 @@ namespace WeirdEngine
 
 #include "weird-physics/components/RigidBodyManager.h"
 
+#include "../systems/ButtonSystem.h"
 #include "../systems/CameraSystem.h"
 #include "../systems/PhysicsInteractionSystem.h"
 #include "../systems/PhysicsSystem2D.h"

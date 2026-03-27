@@ -129,6 +129,7 @@ namespace WeirdEngine
 		PhysicsSystem2D m_rbPhysicsSystem2D;
 		PlayerMovementSystem m_playerMovementSystem;
 		CameraSystem m_cameraSystem;
+		ButtonSystem m_buttonSystem;
 
 		PhysicsInteractionSystem m_physicsInteractionSystem;
 

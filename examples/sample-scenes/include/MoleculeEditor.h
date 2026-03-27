@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -68,6 +69,12 @@ private:
     Entity m_draggedBall = static_cast<Entity>(-1);
     int m_draggedSimulationId = -1;
     Entity m_constraintStartBall = static_cast<Entity>(-1);
+    DistanceLink* m_draggedLink = nullptr;
+    float m_linkDragStartX = 0.0f;
+    float m_linkDragStartDist = 0.0f;
+    std::atomic<float> m_pendingLinkDistance{0.0f};
+    std::atomic<int> m_dragLinkSimIdA{-1};
+    std::atomic<int> m_dragLinkSimIdB{-1};
     bool m_keepFixedAfterDrag = false;
     bool m_rightWasDown = false;
     bool m_gravityEnabled = false;
@@ -171,6 +178,18 @@ private:
         removeFallenBalls();
     }
 
+    void onPhysicsStep() override
+    {
+        float dist = m_pendingLinkDistance.exchange(0.0f, std::memory_order_acq_rel);
+        if (dist >= 1.0f)
+        {
+            m_simulation2D.setDistanceConstraintDistance(
+                static_cast<SimulationID>(m_dragLinkSimIdA.load(std::memory_order_relaxed)),
+                static_cast<SimulationID>(m_dragLinkSimIdB.load(std::memory_order_relaxed)),
+                dist);
+        }
+    }
+
     void removeFallenBalls()
     {
         std::vector<Entity> toDelete;
@@ -211,6 +230,8 @@ private:
                                bool remove = shouldDelete(link.a) || shouldDelete(link.b);
                                if (remove)
                                {
+                                   if (m_draggedLink == &link)
+                                       m_draggedLink = nullptr;
                                    m_ecs.destroyEntity(link.lineEntity);
                                }
                                return remove;
@@ -614,34 +635,41 @@ private:
 
     void handleConstraintLineClicks()
     {
+        // Detect click-down via ShapeButton state.
+        // ButtonSystem already calls Input::flagUIClick() when a line is clicked,
+        // so ball spawning is suppressed automatically.
         for (auto& link : m_links)
         {
             if (!hasShapeButton(link.lineEntity))
                 continue;
-
             auto& btn = m_ecs.getComponent<ShapeButton>(link.lineEntity);
-            if (btn.state != ButtonState::Down)
-                continue;
-
-            std::cout << "Constraint distance (current " << link.restDistance << "): " << std::flush;
-
-            float v = 0.0f;
-            if (!(std::cin >> v))
+            if (btn.state == ButtonState::Down)
             {
-                std::cin.clear();
-                std::cin.ignore(10000, '\n');
-                continue;
+                m_draggedLink = &link;
+                m_linkDragStartX = Input::GetMouseX();
+                m_linkDragStartDist = link.restDistance;
+                m_dragLinkSimIdA.store(link.simulationIdA, std::memory_order_relaxed);
+                m_dragLinkSimIdB.store(link.simulationIdB, std::memory_order_relaxed);
+                break;
             }
-
-            if (v <= 0.0f)
-                continue;
-
-            link.restDistance = v;
-            m_simulation2D.setDistanceConstraintDistance(
-                static_cast<SimulationID>(link.simulationIdA),
-                static_cast<SimulationID>(link.simulationIdB),
-                link.restDistance);
         }
+
+        if (!Input::GetMouseButton(Input::LeftClick))
+        {
+            m_draggedLink = nullptr;
+            return;
+        }
+
+        if (m_draggedLink == nullptr)
+            return;
+
+        float dx = (Input::GetMouseX() - m_linkDragStartX) * 0.3f;
+        float newDist = std::round((m_linkDragStartDist + dx) * 10.0f) / 10.0f;
+        newDist = (std::clamp)(newDist, 1.0f, 10.0f);
+        m_draggedLink->restDistance = newDist;
+
+        // Release store: physics thread's acquire-exchange will see the sim ID writes above.
+        m_pendingLinkDistance.store(newDist, std::memory_order_release);
     }
 
     void updateConstraintLines()

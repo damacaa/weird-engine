@@ -36,30 +36,31 @@ private:
 		m_simulation2D.setDamping(0.05f);
 
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
-		int i = 0;
-		for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
+		for (size_t j = 0; j < 3; j++)
 		{
-			if (!entry.is_regular_file() || entry.path().extension() != ".weird")
-				continue;
-
-			Entity firstCreated = static_cast<Entity>(m_ecs.getEntityCount());
-
-			loadWeirdFile(entry.path().string());
-
-			Entity lastCreated = static_cast<Entity>(m_ecs.getEntityCount());
-
-			for (Entity e = 0; e < (lastCreated - firstCreated); e++)
+			int i = 0;
+			for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
 			{
-				auto& t = m_ecs.getComponent<Transform>(firstCreated + e);
-				t.position += vec3(-10.0f + (float)(i * 10), 0.0f, 0.0f);
-			}
+				if (!entry.is_regular_file() || entry.path().extension() != ".weird")
+					continue;
 
-			auto& a = m_ecs.getComponent<Dot>(firstCreated);
-			m_ecs.addComponent<Head>(a.Owner);
-			++i;
+				Entity firstCreated = static_cast<Entity>(m_ecs.getEntityCount());
+
+				loadWeirdFile(entry.path().string());
+
+				Entity lastCreated = static_cast<Entity>(m_ecs.getEntityCount());
+
+				for (Entity e = 0; e < (lastCreated - firstCreated); e++)
+				{
+					auto& t = m_ecs.getComponent<Transform>(firstCreated + e);
+					t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
+				}
+
+				auto& a = m_ecs.getComponent<Dot>(firstCreated);
+				m_ecs.addComponent<Head>(a.Owner);
+				++i;
+			}
 		}
-		
-		
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
@@ -104,6 +105,12 @@ private:
 			else
 			{
 				head.directionChanged = false;
+			}
+
+			vec2 positon = m_simulation2D.getPosition(rb.simulationId);
+			if(length(positon) > 50.0f)
+			{
+				head.direction = -normalize(positon);
 			}
 		}
 		

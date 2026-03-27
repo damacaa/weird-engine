@@ -27,16 +27,16 @@ int main()
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
-	sceneManager.registerScene<SceneLoadExample>("sceneLoad", ASSETS_PATH "example.weird");
+	sceneManager.registerScene<SceneLoadExample>("scene-editor", ASSETS_PATH "example.weird");
 	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
-	sceneManager.registerScene<LifeScene>("fish");
+	sceneManager.registerScene<LifeScene>("life");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
-	displaySettings.distanceSampleScale = 0.33333f;
+	displaySettings.distanceSampleScale = 0.5f;
 
 	PhysicsSettings physicsSettings{};
 

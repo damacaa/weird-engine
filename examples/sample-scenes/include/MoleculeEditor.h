@@ -34,7 +34,14 @@ private:
     {
         Drag,
         Spring,
+        Distance,
         HeadSelect
+    };
+
+    enum class LinkType
+    {
+        Spring,
+        Distance
     };
 
     struct BallInfo
@@ -51,6 +58,7 @@ private:
         int simulationIdB;
         float restDistance;
         Entity lineEntity;
+        LinkType type;
     };
 
     std::vector<BallInfo> m_balls;
@@ -67,7 +75,7 @@ private:
     int m_selectedMaterial = 1;
 
     ToolMode m_toolMode = ToolMode::Drag;
-    std::array<Entity, 3> m_toolToggles{};
+    std::array<Entity, 4> m_toolToggles{};
     Entity m_gravityToggleEntity = static_cast<Entity>(-1);
     Entity m_headEntity = static_cast<Entity>(-1);
     Entity m_headCircleOuter = static_cast<Entity>(-1);
@@ -75,6 +83,7 @@ private:
 
     static constexpr float BALL_HIT_RADIUS = 0.9f;
     static constexpr float LINE_WIDTH = 3.5f;
+    static constexpr float SPRING_STIFFNESS = 0.15f;
     static constexpr float CONSTRAINT_STIFFNESS = 0.95f;
     static constexpr float BTN_SIZE = 18.0f;
     static constexpr float START_X = 40.0f;
@@ -144,7 +153,7 @@ private:
                 {
                     fileName += ".weird";
                 }
-                saveScene(ASSETS_PATH + fileName);
+                saveScene(ASSETS_PATH "Organisms/" + fileName);
             }
         }
 
@@ -297,8 +306,8 @@ private:
 
     void buildToolbar()
     {
-        const char* labels[] = { "drag", "spring", "head" };
-        for (int i = 0; i < 3; i++)
+        const char* labels[] = { "drag", "spring", "distance", "head" };
+        for (int i = 0; i < 4; i++)
         {
             float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
             float p[8]{ TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF };
@@ -336,7 +345,7 @@ private:
     void syncToolbar()
     {
         int activated = -1;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 4; i++)
         {
             auto& t = m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]);
             if (t.active && t.state == ButtonState::Down)
@@ -348,7 +357,7 @@ private:
         if (activated >= 0)
         {
             m_toolMode = static_cast<ToolMode>(activated);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 if (i != activated)
                     m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]).active = false;
@@ -407,7 +416,7 @@ private:
 
         if (rightDown && !m_rightWasDown)
         {
-            if (m_toolMode == ToolMode::Spring)
+            if (m_toolMode == ToolMode::Spring || m_toolMode == ToolMode::Distance)
                 onConstraintStart();
             else if (m_toolMode == ToolMode::HeadSelect)
                 onHeadSelectRightClick();
@@ -517,7 +526,8 @@ private:
         Entity hit = pickBallAtMouse();
         if (hit != static_cast<Entity>(-1) && hit != m_constraintStartBall)
         {
-            addDistanceConstraint(m_constraintStartBall, hit);
+            LinkType type = (m_toolMode == ToolMode::Distance) ? LinkType::Distance : LinkType::Spring;
+            addConstraintLink(m_constraintStartBall, hit, type);
         }
 
         m_constraintStartBall = static_cast<Entity>(-1);
@@ -562,7 +572,7 @@ private:
         return false;
     }
 
-    void addDistanceConstraint(Entity a, Entity b)
+    void addConstraintLink(Entity a, Entity b, LinkType type)
     {
         if (linkExists(a, b))
             return;
@@ -582,11 +592,16 @@ private:
         float restDistance = length(pb - pa);
         restDistance = (std::max)(restDistance, 1.0f);
 
-        m_simulation2D.addSpring(idA, idB, CONSTRAINT_STIFFNESS, restDistance);
+        if (type == LinkType::Distance)
+            m_simulation2D.addPositionConstraint(idA, idB, restDistance);
+        else
+            m_simulation2D.addSpring(idA, idB, SPRING_STIFFNESS, restDistance);
+
+        auto lineColor = (type == LinkType::Distance) ? DisplaySettings::Cyan : DisplaySettings::Orange;
 
         float lineVars[8]{};
         computeScreenLineParams(pa, pb, lineVars);
-        Entity line = addUIShape(DefaultShapes::LINE, lineVars, DisplaySettings::Yellow);
+        Entity line = addUIShape(DefaultShapes::LINE, lineVars, lineColor);
 
         auto& btn = m_ecs.addComponent<ShapeButton>(line);
         btn.clickPadding = 8.0f;
@@ -594,7 +609,7 @@ private:
 
         blacklistEntity(line);
 
-        m_links.push_back({ a, b, idA, idB, restDistance, line });
+        m_links.push_back({ a, b, idA, idB, restDistance, line, type });
     }
 
     void handleConstraintLineClicks()

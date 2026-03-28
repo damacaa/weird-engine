@@ -29,9 +29,18 @@ namespace WeirdEngine
 {
 
 	using namespace WeirdRenderer;
-	void start(SceneManager& sceneManager, DisplaySettings displaySettings, PhysicsSettings physicsSettings = {},
-			   AudioSettings audioSettings = {})
+	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
+			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
 	{
+		for (int i = 1; i < argc; ++i)
+		{
+			const std::string_view arg(argv[i]);
+			if (arg == "--fullscreen" || arg == "-f")
+			{
+				displaySettings.fullscreen = true;
+			}
+		}
+
 		sceneManager.setPhysicsSettings(physicsSettings);
 
 		SDL_Window* window;

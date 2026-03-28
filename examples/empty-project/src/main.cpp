@@ -26,9 +26,9 @@ private:
 	void onDestroy() override{}
 };
 
-int main()
+int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<EmptyScene>("empty");
-	start(sceneManager);
+	start(sceneManager, {}, {}, {}, argc, argv);
 }

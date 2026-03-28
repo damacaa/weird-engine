@@ -7,7 +7,7 @@
 #include "Fire.h"
 #include "Lines.h"
 
-int main()
+int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<ClassicScene>("classic");
@@ -20,5 +20,5 @@ int main()
 	settings.height = 800;
 	settings.fullscreen = false;
 
-	start(sceneManager, settings);
+	start(sceneManager, settings, {}, {}, argc, argv);
 }

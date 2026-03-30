@@ -33,8 +33,8 @@ namespace WeirdEngine {
 			if (m_config.enableMotionBlur) {
 				m_distanceShader.addDefine("MOTION_BLUR");
 			}
-			if (m_config.originAtBottomLeft) {
-				m_distanceShader.addDefine("ORIGIN_AT_BOTTOM_LEFT");
+			if (m_config.isUI) {
+				m_distanceShader.addDefine("UI_PIPELINE");
 			}
 
 			m_jumpFloodInitShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_init.frag");
@@ -169,6 +169,66 @@ namespace WeirdEngine {
 			m_litSceneTexture.dispose();
 		}
 
+		void SDF2DRenderPipeline::resize(unsigned int newWidth, unsigned int newHeight)
+		{
+			m_config.renderWidth = newWidth;
+			m_config.renderHeight = newHeight;
+			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale);
+			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale);
+
+			// Dispose old textures
+			m_distanceTextureA.dispose();
+			m_distanceTextureB.dispose();
+			m_jumpFloodInitTexture.dispose();
+			m_jumpFloodTexturePing.dispose();
+			m_jumpFloodTexturePong.dispose();
+			m_distanceTextureCorrected.dispose();
+			m_distanceUpscaled.dispose();
+			m_colorTexture.dispose();
+			m_postProcessTextureFront.dispose();
+			m_postProcessTextureBack.dispose();
+			m_backgroundTexture.dispose();
+			m_litSceneTexture.dispose();
+
+			// Recreate textures with new dimensions and rebind to existing render targets
+			m_distanceTextureA = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceRenderA.bindColorTextureToFrameBuffer(m_distanceTextureA);
+
+			m_distanceTextureB = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
+
+			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
+
+			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
+
+			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
+
+			m_distanceTextureCorrected = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
+
+			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_distanceUpscaler.bindColorTextureToFrameBuffer(m_distanceUpscaled);
+
+			m_colorTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_colorRender.bindColorTextureToFrameBuffer(m_colorTexture);
+
+			m_postProcessTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
+
+			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
+
+			m_backgroundTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundRender.bindColorTextureToFrameBuffer(m_backgroundTexture);
+
+			m_litSceneTexture = Texture(m_config.renderWidth, m_config.renderHeight,
+				m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
+			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
+		}
+
 		Texture& SDF2DRenderPipeline::render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture)
 		{
 			// Execute all pipeline stages
@@ -206,7 +266,7 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_time", time);
 			m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 			m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
-			m_distanceShader.setUniform("u_blendIterations", 1);
+			m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 			m_distanceShader.setUniform("u_k", m_config.ballK);
 
 			m_distanceShader.setUniform("t_colorTexture", 0);

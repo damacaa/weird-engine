@@ -23,6 +23,50 @@ namespace WeirdEngine
 
 			setWindowSize(settings.width, settings.height);
 
+			// Initialize world 2D pipeline
+			SDF2DRenderPipeline::Config worldConfig;
+			worldConfig.renderWidth = m_renderWidth;
+			worldConfig.renderHeight = m_renderHeight;
+			worldConfig.distanceSampleScale = m_distanceSampleScale;
+			worldConfig.renderScale = m_renderScale;
+			worldConfig.isUI = false;
+			worldConfig.enableShadows = true;
+			worldConfig.enableRefraction = true;
+			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
+			worldConfig.enableMotionBlur = true;
+			worldConfig.enableDithering = false;
+			worldConfig.materialBlendIterations = 1;
+			worldConfig.materialBlendSpeed = 10.0f;
+			worldConfig.motionBlurBlendSpeed = 10.0f;
+			worldConfig.debugDistanceField = false;
+			worldConfig.debugMaterialColors = false;
+			worldConfig.ambienOcclusionRadius = 5.0f;
+			worldConfig.ambienOcclusionStrength = 0.2f;
+			worldConfig.ballK = 0.5f;
+			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
+
+			// Initialize UI 2D pipeline
+			SDF2DRenderPipeline::Config uiConfig;
+			uiConfig.renderWidth = m_renderWidth;
+			uiConfig.renderHeight = m_renderHeight;
+			uiConfig.distanceSampleScale = m_distanceSampleScale;
+			uiConfig.renderScale = m_renderScale;
+			uiConfig.isUI = true;
+			uiConfig.enableShadows = false;
+			uiConfig.enableRefraction = true;
+			uiConfig.enableAntialiasing = true;
+			uiConfig.enableMotionBlur = true;
+			uiConfig.enableDithering = true;
+			uiConfig.materialBlendIterations = 1;
+			uiConfig.materialBlendSpeed = 5.0f;
+			uiConfig.motionBlurBlendSpeed = 5.0f;
+			uiConfig.debugDistanceField = false;
+			uiConfig.debugMaterialColors = false;
+			uiConfig.ballK = 3.0f;
+			uiConfig.ambienOcclusionRadius = 7.0f;
+			uiConfig.ambienOcclusionStrength = 0.15f;
+			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+
 			// Load shaders
 			m_geometryShaderProgram = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "common/geometry.frag");
 
@@ -48,6 +92,8 @@ namespace WeirdEngine
 		Renderer::~Renderer()
 		{
 			freeAll();
+			delete m_worldPipeline;
+			delete m_uiPipeline;
 			// Delete all the other objects we've created
 			m_geometryShaderProgram.free();
 			m_instancedGeometryShaderProgram.free();
@@ -115,49 +161,12 @@ namespace WeirdEngine
 
 			m_renderPlane = RenderPlane();
 
-			// Initialize world 2D pipeline
-			SDF2DRenderPipeline::Config worldConfig;
-			worldConfig.renderWidth = m_renderWidth;
-			worldConfig.renderHeight = m_renderHeight;
-			worldConfig.distanceSampleScale = m_distanceSampleScale;
-			worldConfig.renderScale = m_renderScale;
-			worldConfig.dataMode = SDF2DRenderPipeline::DataMode::WORLD;
-			worldConfig.originAtBottomLeft = false;
-			worldConfig.enableShadows = true;
-			worldConfig.enableRefraction = true;
-			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
-			worldConfig.enableMotionBlur = true;
-			worldConfig.enableDithering = false;
-			worldConfig.materialBlendIterations = 1;
-			worldConfig.materialBlendSpeed = 10.0f;
-			worldConfig.debugDistanceField = false;
-			worldConfig.debugMaterialColors = false;
-			worldConfig.ambienOcclusionRadius = 5.0f;
-			worldConfig.ambienOcclusionStrength = 0.2f;
-			worldConfig.ballK = 0.5f;
-			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
-
-			// Initialize UI 2D pipeline
-			SDF2DRenderPipeline::Config uiConfig;
-			uiConfig.renderWidth = m_renderWidth;
-			uiConfig.renderHeight = m_renderHeight;
-			uiConfig.distanceSampleScale = m_distanceSampleScale;
-			uiConfig.renderScale = m_renderScale;
-			uiConfig.dataMode = SDF2DRenderPipeline::DataMode::UI;
-			uiConfig.originAtBottomLeft = true;
-			uiConfig.enableShadows = false;
-			uiConfig.enableRefraction = true;
-			uiConfig.enableAntialiasing = true;
-			uiConfig.enableMotionBlur = true;
-			uiConfig.enableDithering = true;
-			uiConfig.materialBlendIterations = 1;
-			uiConfig.materialBlendSpeed = 5.0f;
-			uiConfig.debugDistanceField = false;
-			uiConfig.debugMaterialColors = false;
-			uiConfig.ballK = 3.0f;
-			uiConfig.ambienOcclusionRadius = 7.0f;
-			uiConfig.ambienOcclusionStrength = 0.15f;
-			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+			// Resize pipelines if they've been initialized
+			if (m_worldPipeline)
+			{
+				m_worldPipeline->resize(m_renderWidth, m_renderHeight);
+				m_uiPipeline->resize(m_renderWidth, m_renderHeight);
+			}
 
 			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
 			glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -226,13 +235,6 @@ namespace WeirdEngine
 
 		void Renderer::freeAll()
 		{
-			if (!m_worldPipeline)
-				return;
-
-			// Delete pipelines
-			delete m_worldPipeline;
-			delete m_uiPipeline;
-
 			m_geometryRender.free();
 			m_3DSceneRender.free();
 			m_combinationRender.free();

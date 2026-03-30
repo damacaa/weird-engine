@@ -14,20 +14,13 @@ namespace WeirdEngine
 		class SDF2DRenderPipeline
 		{
 		public:
-			enum class DataMode
-			{
-				WORLD,
-				UI
-			};
-
 			struct Config
 			{
 				unsigned int renderWidth;
 				unsigned int renderHeight;
 				float distanceSampleScale;
 				float renderScale;
-				DataMode dataMode;
-				bool originAtBottomLeft;
+				bool isUI; // UI mode: origin at bottom-left, [0,1] UV space, UI-specific distance clamping
 				bool enableShadows;
 				bool enableRefraction;
 				bool enableAntialiasing;
@@ -35,6 +28,7 @@ namespace WeirdEngine
 				bool enableDithering;
 				int materialBlendIterations;
 				float materialBlendSpeed;
+				float motionBlurBlendSpeed;
 				bool debugDistanceField;
 				bool debugMaterialColors;
 				float ballK;
@@ -47,6 +41,7 @@ namespace WeirdEngine
 
 			Shader& getDistanceShader();
 			Texture& render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
+			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 
 		private:

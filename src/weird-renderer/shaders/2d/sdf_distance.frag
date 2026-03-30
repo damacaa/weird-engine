@@ -36,8 +36,8 @@ uniform vec3 u_camPositionChange;
 uniform vec3 u_staticColors[16];
 uniform vec3 u_directionalLightDirection;
 
-uniform int u_blendIterations;
 uniform float u_deltaTime;
+uniform float u_motionBlurBlendSpeed;
 
 uniform int u_customShapeCount;
 
@@ -109,7 +109,7 @@ vec3 getColor(vec2 p, vec2 uv)
         vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
         int materialId = int(positionSizeMaterial.w);
 
-        #ifdef ORIGIN_AT_BOTTOM_LEFT
+        #ifdef UI_PIPELINE
         float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
         #else
         float objectDist = shape_circle(p - positionSizeMaterial.xy);
@@ -145,8 +145,8 @@ vec3 getColor(vec2 p, vec2 uv)
 
     // minDist = min(minDist, shapeDist);
 
-#ifdef ORIGIN_AT_BOTTOM_LEFT
-    minDist = min(minDist, 10.0); // Clamp max distance
+#ifdef UI_PIPELINE
+    minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
 
     return vec3(minDist, max(finalMaterialId, 0), mask);
@@ -190,9 +190,11 @@ vec2 smoothSample(sampler2D tex, vec2 uv)
 
 void main()
 {
-    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    #ifdef UI_PIPELINE
+    // UI: origin at bottom-left, UV stays in [0,1] to match screen-space layout
     vec2 uv = v_texCoord;
     #else
+    // World: remap UV to [-1,1] so the origin is centred on screen
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
     #endif
 
@@ -205,7 +207,7 @@ void main()
     vec3 result = getColor(pos, v_texCoord);
     float d = result.x;
 
-#ifndef ORIGIN_AT_BOTTOM_LEFT
+#ifndef UI_PIPELINE
 
     float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
     distanceBonus = min(distanceBonus, 1.0 * zoom / u_resolution.y); // Cap distance bonus to prevent artifacts when zoomed out very far away
@@ -246,14 +248,14 @@ void main()
     // distanceChange = clamp(distanceChange, -0.1, 0.05);
 
     // qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
-    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * 10.0) * (distanceChange < 0.0 ? 5.0 : 1.0));
+    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) * (distanceChange < 0.0 ? 5.0 : 1.0));
 
     //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
 
     blendDistance = clamp(blendDistance, -0.1, 0.1);
 
 
-    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    #ifdef UI_PIPELINE
 
     finalDistance = blendDistance;
 
@@ -268,7 +270,7 @@ void main()
 
     #endif
 
-    #ifdef ORIGIN_AT_BOTTOM_LEFT
+    #ifdef UI_PIPELINE
     // float pixelSize = 0.3 / u_resolution.x;
     // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
     #endif

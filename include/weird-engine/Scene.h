@@ -9,6 +9,9 @@
 
 #include "ResourceManager.h"
 
+#include <map>
+#include <string>
+
 namespace WeirdEngine
 {
 	using namespace ECS;
@@ -19,6 +22,7 @@ namespace WeirdEngine
 		Scene();
 		~Scene();
 		void start();
+		void startFromFile(const std::string& path);
 
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader);
 
@@ -49,6 +53,9 @@ namespace WeirdEngine
 
 		RenderMode getRenderMode() const;
 
+		// Tag system: returns all tags currently assigned in this scene
+		const std::map<std::string, Entity>& getTags() const;
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart() = 0;
@@ -56,6 +63,8 @@ namespace WeirdEngine
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
 		virtual void onDestroy() {};
+		// Called after startFromFile() has loaded tags from a .weird file
+		virtual void onStartFromFile(const std::map<std::string, Entity>& tags) {};
 
 		ECSManager m_ecs;
 		Entity m_mainCamera;
@@ -89,7 +98,29 @@ namespace WeirdEngine
 		std::vector<std::vector<vec2>> m_letters;
 
 		void print(const std::string& text);
+		void printAtRow(const std::string& text, int row);
+		void clearText();
 		void loadFont(const char* imagePath, int charWidth, int charHeight, const char* characters);
+
+		// Entities created by print()/printAtRow(); cleared by clearText()
+		std::vector<Entity> m_textEntities;
+
+		// --- Tag system ---
+		// Assign a unique tag to an entity. If the tag is already used by another
+		// entity, it is removed from that entity first. Passing an empty name
+		// removes any existing tag from the entity.
+		void tag(Entity entity, const std::string& name);
+		// Remove the tag from an entity (no-op if the entity has no tag).
+		void removeTag(Entity entity);
+		// Return the tag assigned to an entity, or "" if none.
+		std::string getTag(Entity entity) const;
+		// Return the entity that owns a given tag, or MAX_ENTITIES if not found.
+		Entity getEntityByTag(const std::string& name) const;
+		// Save all current tags to a .weird file.
+		void saveTagsToFile(const std::string& path);
+		// Load tags from a .weird file and return them as a map.
+		// Does NOT automatically apply them to the scene; call tag() as needed.
+		std::map<std::string, Entity> loadTagsFromFile(const std::string& path);
 
 	private:
 		// Char lookup table
@@ -100,6 +131,10 @@ namespace WeirdEngine
 		{
 			return m_CharLookUpTable[static_cast<unsigned char>(c)];
 		}
+
+		// Bidirectional tag maps: tag name <-> entity
+		std::map<std::string, Entity> m_tagToEntity;
+		std::map<Entity, std::string> m_entityToTag;
 
 		void loadScene(std::string& sceneFileContent);
 

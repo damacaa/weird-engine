@@ -2,7 +2,9 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-engine/math/MathExpressionSerialzation.h"
+#include "weird-engine/Utils.h"
 
+#include <json/json.h>
 #include <random>
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
@@ -80,6 +82,132 @@ namespace WeirdEngine
 			}
 		}
 	}
+
+	void Scene::startFromFile(const std::string& path)
+	{
+		// Run normal startup first so all entities are created
+		start();
+
+		// Load saved tags from the .weird file
+		auto loadedTags = loadTagsFromFile(path);
+
+		// Apply loaded tags, respecting uniqueness invariant
+		for (const auto& [name, entity] : loadedTags)
+		{
+			tag(entity, name);
+		}
+
+		// Notify the derived scene about the loaded tags
+		onStartFromFile(loadedTags);
+	}
+
+	// ---- Tag system --------------------------------------------------------
+
+	void Scene::tag(Entity entity, const std::string& name)
+	{
+		if (name.empty())
+		{
+			removeTag(entity);
+			return;
+		}
+
+		// If the tag is already assigned to a different entity, remove it from there
+		auto it = m_tagToEntity.find(name);
+		if (it != m_tagToEntity.end() && it->second != entity)
+		{
+			m_entityToTag.erase(it->second);
+			it->second = entity;
+		}
+		else
+		{
+			m_tagToEntity[name] = entity;
+		}
+
+		// Remove any previous tag from the target entity
+		auto et = m_entityToTag.find(entity);
+		if (et != m_entityToTag.end() && et->second != name)
+		{
+			m_tagToEntity.erase(et->second);
+		}
+
+		m_entityToTag[entity] = name;
+	}
+
+	void Scene::removeTag(Entity entity)
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it != m_entityToTag.end())
+		{
+			m_tagToEntity.erase(it->second);
+			m_entityToTag.erase(it);
+		}
+	}
+
+	std::string Scene::getTag(Entity entity) const
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it != m_entityToTag.end())
+		{
+			return it->second;
+		}
+		return "";
+	}
+
+	Entity Scene::getEntityByTag(const std::string& name) const
+	{
+		auto it = m_tagToEntity.find(name);
+		if (it != m_tagToEntity.end())
+		{
+			return it->second;
+		}
+		return MAX_ENTITIES;
+	}
+
+	const std::map<std::string, Entity>& Scene::getTags() const
+	{
+		return m_tagToEntity;
+	}
+
+	void Scene::saveTagsToFile(const std::string& path)
+	{
+		nlohmann::json j;
+		j["tags"] = nlohmann::json::object();
+		for (const auto& [name, entity] : m_tagToEntity)
+		{
+			j["tags"][name] = entity;
+		}
+		WeirdEngine::saveToFile(path.c_str(), j.dump(4));
+		std::cout << "[Scene] Tags saved to " << path << "\n";
+	}
+
+	std::map<std::string, Entity> Scene::loadTagsFromFile(const std::string& path)
+	{
+		std::map<std::string, Entity> result;
+		bool success = false;
+		std::string content = WeirdEngine::get_file_contents_no_exception(path.c_str(), success);
+		if (!success)
+		{
+			return result;
+		}
+		try
+		{
+			nlohmann::json j = nlohmann::json::parse(content);
+			if (j.contains("tags") && j["tags"].is_object())
+			{
+				for (auto& [key, value] : j["tags"].items())
+				{
+					result[key] = value.get<Entity>();
+				}
+			}
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << "[Scene] Failed to parse tags file '" << path << "': " << e.what() << "\n";
+		}
+		return result;
+	}
+
+	// ---- Text helpers -------------------------------------------------------
 
 	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
 	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
@@ -505,6 +633,15 @@ namespace WeirdEngine
 
 	constexpr int INVALID_INDEX = -1;
 
+	void Scene::clearText()
+	{
+		for (Entity e : m_textEntities)
+		{
+			m_ecs.destroyEntity(e);
+		}
+		m_textEntities.clear();
+	}
+
 	void Scene::print(const std::string &text)
 	{
 		float offset = 0;
@@ -525,9 +662,44 @@ namespace WeirdEngine
 
 				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
 				sdfRenderer.materialId = 4 + idx % 12;
+
+				m_textEntities.push_back(entity);
 			}
 
 			offset += m_charWidth;
+		}
+	}
+
+	void Scene::printAtRow(const std::string &text, int row)
+	{
+		// Add 1 world unit of gap between rows so they don't touch
+		const float rowHeight = static_cast<float>(m_charHeight + 1);
+		float offset = 0.0f;
+		for (char c : text)
+		{
+			int idx = getIndex(c);
+			if (idx < 0 || idx >= static_cast<int>(m_letters.size()))
+			{
+				offset += m_charWidth;
+				continue;
+			}
+
+			for (const auto& v : m_letters[idx])
+			{
+				float x = 2.0f + v.x + offset;
+				float y = v.y + rowHeight * static_cast<float>(row);
+
+				Entity entity = m_ecs.createEntity();
+				Transform &t = m_ecs.addComponent<Transform>(entity);
+				t.position = vec3(x, y, -10.0f);
+
+				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
+				sdfRenderer.materialId = 4 + idx % 12;
+
+				m_textEntities.push_back(entity);
+			}
+
+			offset += static_cast<float>(m_charWidth);
 		}
 	}
 

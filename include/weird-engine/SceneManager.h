@@ -33,6 +33,9 @@ namespace WeirdEngine
 
 		void loadScene(const std::string& sceneName);
 		void loadScene(int idx);
+		// Load a scene and restore tags from a .weird file.
+		// Returns the map of tag -> entity after loading.
+		std::map<std::string, Entity> loadSceneFromFile(const std::string& sceneName, const std::string& filePath);
 
 	private:
 		std::map<std::string, std::function<std::unique_ptr<Scene>()>> sceneFactories;
@@ -46,7 +49,7 @@ namespace WeirdEngine
 
 	// ChatGPT: Template method declarations and definitions are usually placed in header files.
 	// The header files are then included in the source files that use the templates.
-	// If the template is only in the static library and the client code doesn’t see its full definition, it won't be able to use it.
+	// If the template is only in the static library and the client code doesnï¿½t see its full definition, it won't be able to use it.
 	// That's why this is here...
 	template<typename T>
 	void SceneManager::registerScene(const std::string& sceneName)

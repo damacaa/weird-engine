@@ -12,6 +12,7 @@
 #include "ImageScene.h"
 #include "Lines.h"
 #include "MouseCollisionScene.h"
+#include "MoleculeScene.h"
 #include "RopeScene.h"
 #include "Text.h"
 #include "Water.h"
@@ -25,6 +26,7 @@ int main()
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<FireScene>("fire");
 	sceneManager.registerScene<LinesScene>("lines");
+	sceneManager.registerScene<MoleculeScene>("molecules");
 
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	// sceneManager.registerScene<WaterScene>("water");

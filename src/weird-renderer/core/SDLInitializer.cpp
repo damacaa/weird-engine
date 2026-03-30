@@ -63,6 +63,10 @@ namespace WeirdEngine
 			const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(displayIndex);
 			settings.refreshRate = mode->refresh_rate;
 
+			if (settings.fullscreen) {
+				SDL_GetWindowSizeInPixels(window, reinterpret_cast<int*>(&settings.width), reinterpret_cast<int*>(&settings.height));
+			}
+
             m_window = window;
 
             m_glContext = SDL_GL_CreateContext(m_window);

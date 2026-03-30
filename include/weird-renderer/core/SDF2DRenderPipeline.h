@@ -103,6 +103,7 @@ namespace WeirdEngine
 			DataBuffer m_shapeDataBuffer;
 
 			glm::mat4 m_oldCameraMatrix;
+			glm::mat4 m_prevFrameCameraMatrix; // snapshot of m_oldCameraMatrix taken before renderDistanceField overwrites it
 			glm::vec3 m_lastCameraPosition;
 
 			bool horizontal = true;

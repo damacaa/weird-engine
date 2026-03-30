@@ -19,6 +19,7 @@ uniform float u_time;
 uniform float u_deltaTime;
 uniform float u_materialBlendSpeed = 60.0;
 
+uniform mat4 u_oldCamMatrix;
 uniform sampler2D t_materialDataTexture;
 uniform sampler2D t_currentColorTexture;
 uniform vec4 u_staticColors[16];
@@ -46,12 +47,17 @@ void main()
     c = vec4(toLinear(c.rgb), c.a);
 
     // Get current material color
-    float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
+    // Compensate for both camera translation and zoom change to find the same world point in the previous frame.
+    // prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom * [aspectRatio, 1])
+    float aspectRatio = u_resolution.x / u_resolution.y;
     float zoom = -u_camMatrix[3].z;
-    vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
-    previousDistanceOffset.x /= aspectRatio;
+    float oldZoom = -u_oldCamMatrix[3].z;
+    float zoomRatio = zoom / oldZoom;
+    vec2 prevTexCoord;
+    prevTexCoord.x = zoomRatio * (screenUV.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
+    prevTexCoord.y = zoomRatio * (screenUV.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
 
-    vec4 currentColor = texture(t_currentColorTexture, screenUV + previousDistanceOffset);
+    vec4 currentColor = texture(t_currentColorTexture, prevTexCoord);
     currentColor = clamp(currentColor, 0.0, 1.0);
 
     // Blend new color with current color

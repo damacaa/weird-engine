@@ -25,6 +25,7 @@ namespace WeirdEngine {
 			, m_distanceSampleHeight(config.renderHeight * config.distanceSampleScale)
 			, m_materialBlendIterations(config.materialBlendIterations)
 			, m_oldCameraMatrix(1.0f)
+			, m_prevFrameCameraMatrix(1.0f)
 			, m_lastCameraPosition(0.0f)
 		{
 			// Load shaders
@@ -254,6 +255,7 @@ namespace WeirdEngine {
 			m_distanceShader.use();
 
 			// Set uniforms
+			m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the true previous frame matrix
 			m_distanceShader.setUniform("u_camMatrix", camera.view);
 			m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 			m_oldCameraMatrix = camera.view;
@@ -368,6 +370,7 @@ namespace WeirdEngine {
 
 			m_materialColorShader.use();
 			m_materialColorShader.setUniform("u_camMatrix", camera.view);
+			m_materialColorShader.setUniform("u_oldCamMatrix", m_prevFrameCameraMatrix);
 			m_materialColorShader.setUniform("u_time", time);
 			m_materialColorShader.setUniform("u_deltaTime", delta);
 			m_materialColorShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));

@@ -323,6 +323,10 @@ void main()
     // Combine the material's alpha with shape factor
     float finalAlpha = clamp(alpha + 0.1, 0.0, 1.0) * shapeFactor;
 
+#ifdef DEBUG_SHOW_NORMALS
+    color = vec3(normal, 0.0);
+#endif
+
     color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
     vec3 col = color;
 

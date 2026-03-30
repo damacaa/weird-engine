@@ -223,17 +223,22 @@ void main()
 
     #ifdef MOTION_BLUR
 
-    // Compensate camera motion to achieve screen space motion blur
-    // TODO: implement zoom compensation
-    vec2 previousDistanceOffset = 0.5 * u_camPositionChange.xy / zoom;
-    previousDistanceOffset.x /= aspectRatio;
+    // For each fragment, find where the same world point was in the previous frame's texture,
+    // compensating for both camera translation and zoom change.
+    // Derivation: worldPos = zoom * uv + camPos, so prevUV = (worldPos - oldCamPos) / oldZoom
+    // which gives: prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom * [aspectRatio, 1])
+    float oldZoom = -u_oldCamMatrix[3].z;
+    float zoomRatio = zoom / oldZoom;
+    vec2 prevTexCoord;
+    prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
+    prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
 
     // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
-    vec2 previousData = smoothSample(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
+    vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
     float previousDistance = previousData.x;
 
 
-    vec4 previousDataExact = texture(t_colorTexture, v_texCoord.xy + previousDistanceOffset);
+    vec4 previousDataExact = texture(t_colorTexture, prevTexCoord);
     float previousDistanceExact = previousDataExact.x;
     float previousMaterial = previousDataExact.y;
     // Different material for object trail?

@@ -19,7 +19,7 @@ private:
 	double m_lastSpawnTime = 0.0;
 	std:: vector<Entity> m_audioEntities;
 
-	void onStart() override
+	void onStart(const TagMap& tags) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;

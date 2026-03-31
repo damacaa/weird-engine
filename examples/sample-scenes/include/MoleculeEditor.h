@@ -36,7 +36,7 @@ private:
         Drag,
         Spring,
         Distance,
-        HeadSelect
+        TagEditor
     };
 
     enum class LinkType
@@ -84,9 +84,14 @@ private:
     ToolMode m_toolMode = ToolMode::Drag;
     std::array<Entity, 4> m_toolToggles{};
     Entity m_gravityToggleEntity = static_cast<Entity>(-1);
-    Entity m_headEntity = static_cast<Entity>(-1);
-    Entity m_headCircleOuter = static_cast<Entity>(-1);
-    Entity m_headCircleInner = static_cast<Entity>(-1);
+
+    // Tag editor state
+    Entity m_tagSelectedEntity   = static_cast<Entity>(-1);
+    Entity m_tagCircleOuter      = static_cast<Entity>(-1);
+    Entity m_tagCircleInner      = static_cast<Entity>(-1);
+    Entity m_tagLabelEntity      = static_cast<Entity>(-1);
+    Entity m_tagEditButton       = static_cast<Entity>(-1);
+    Entity m_tagEditButtonLabel  = static_cast<Entity>(-1);
 
     static constexpr float BALL_HIT_RADIUS = 0.9f;
     static constexpr float LINE_WIDTH = 3.5f;
@@ -102,11 +107,11 @@ private:
     static constexpr float TOOL_SPACING = 60.0f;
     static constexpr float TOOL_BTN_HALF = 12.0f;
     static constexpr float GRAV_Y = 50.0f;
-    static constexpr float HEAD_OUTER_RADIUS = 30.0f;
-    static constexpr float HEAD_INNER_RADIUS = 25.0f;
-    static constexpr int   HEAD_RING_GROUP = 8;
+    static constexpr float TAG_OUTER_RADIUS = 30.0f;
+    static constexpr float TAG_INNER_RADIUS = 25.0f;
+    static constexpr int   TAG_RING_GROUP = 8;
 
-    void onStart() override
+    void onStart(const TagMap& tags) override
     {
         m_debugInput = false;
         m_debugFly = true;
@@ -121,6 +126,7 @@ private:
 
         buildMaterialPalette();
         buildToolbar();
+        buildTagEditorUI();
 
 		{
 			float boundsVars[8]{0.0f, 0.0f, 3000.0f};
@@ -174,7 +180,7 @@ private:
         handleRightMouseDragInput();
         handleConstraintLineClicks();
         updateConstraintLines();
-        updateHeadIndicator();
+        updateTagEditor();
         removeFallenBalls();
     }
 
@@ -260,9 +266,9 @@ private:
             m_constraintStartBall = static_cast<Entity>(-1);
         }
 
-        if (shouldDelete(m_headEntity))
+        if (shouldDelete(m_tagSelectedEntity))
         {
-            m_headEntity = static_cast<Entity>(-1);
+            m_tagSelectedEntity = static_cast<Entity>(-1);
         }
     }
 
@@ -327,7 +333,7 @@ private:
 
     void buildToolbar()
     {
-        const char* labels[] = { "drag", "spring", "distance", "head" };
+        const char* labels[] = { "drag", "spring", "distance", "tag" };
         for (int i = 0; i < 4; i++)
         {
             float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
@@ -439,8 +445,8 @@ private:
         {
             if (m_toolMode == ToolMode::Spring || m_toolMode == ToolMode::Distance)
                 onConstraintStart();
-            else if (m_toolMode == ToolMode::HeadSelect)
-                onHeadSelectRightClick();
+            else if (m_toolMode == ToolMode::TagEditor)
+                onTagEditorRightClick();
             else
                 onRightDragStart();
         }
@@ -722,60 +728,146 @@ private:
         return -1;
     }
 
-    void updateHeadIndicator()
+    // -----------------------------------------------------------------------
+    // Tag editor UI
+    // -----------------------------------------------------------------------
+
+    void buildTagEditorUI()
     {
-        if (m_headEntity == static_cast<Entity>(-1))
+        // Tag label – shows "tag: <name>" or "tag: (none)"
         {
-            if (m_headCircleOuter != static_cast<Entity>(-1))
+            Entity lbl = m_ecs.createEntity();
+            auto& lt = m_ecs.addComponent<Transform>(lbl);
+            lt.position = vec3(Display::width * 0.5f, 90.0f, 0.0f);
+            auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
+            tx.text = "";
+            tx.material = 1;
+            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+            tx.verticalAlignment   = TextRenderer::VerticalAlignment::Center;
+            m_tagLabelEntity = lbl;
+            blacklistEntity(lbl);
+        }
+
+        // "edit tag" button (a small box)
+        {
+            static constexpr float BW = 40.0f;
+            static constexpr float BH = 14.0f;
+            float p[8]{ Display::width * 0.5f, 65.0f, BW, BH };
+            m_tagEditButton = addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+            auto& btn = m_ecs.addComponent<ShapeButton>(m_tagEditButton);
+            btn.clickPadding = 6.0f;
+            btn.modifierAmount = 0.0f;
+            blacklistEntity(m_tagEditButton);
+
+            // Label for the button
+            Entity lbl = m_ecs.createEntity();
+            auto& lt = m_ecs.addComponent<Transform>(lbl);
+            lt.position = vec3(Display::width * 0.5f, 65.0f, 0.0f);
+            auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
+            tx.text = "edit tag";
+            tx.material = 1;
+            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+            tx.verticalAlignment   = TextRenderer::VerticalAlignment::Center;
+            m_tagEditButtonLabel = lbl;
+            blacklistEntity(lbl);
+        }
+    }
+
+    void updateTagEditor()
+    {
+        // Hide ring if no entity selected
+        if (m_tagSelectedEntity == static_cast<Entity>(-1))
+        {
+            if (m_tagCircleOuter != static_cast<Entity>(-1))
             {
-                m_ecs.getComponent<UIShape>(m_headCircleOuter).parameters[2] = 0.0f;
-                m_ecs.getComponent<UIShape>(m_headCircleOuter).isDirty = true;
-                m_ecs.getComponent<UIShape>(m_headCircleInner).parameters[2] = 0.0f;
-                m_ecs.getComponent<UIShape>(m_headCircleInner).isDirty = true;
+                m_ecs.getComponent<UIShape>(m_tagCircleOuter).parameters[2] = 0.0f;
+                m_ecs.getComponent<UIShape>(m_tagCircleOuter).isDirty = true;
+                m_ecs.getComponent<UIShape>(m_tagCircleInner).parameters[2] = 0.0f;
+                m_ecs.getComponent<UIShape>(m_tagCircleInner).isDirty = true;
+            }
+            if (m_tagLabelEntity != static_cast<Entity>(-1))
+            {
+                m_ecs.getComponent<UITextRenderer>(m_tagLabelEntity).text = "";
+                m_ecs.getComponent<UITextRenderer>(m_tagLabelEntity).dirty = true;
             }
             return;
         }
 
-        if (!hasTransform(m_headEntity))
+        if (!hasTransform(m_tagSelectedEntity))
         {
-            m_headEntity = static_cast<Entity>(-1);
+            m_tagSelectedEntity = static_cast<Entity>(-1);
             return;
         }
 
         // Lazy-initialize the ring indicator shapes on first use
-		if (m_headCircleOuter == static_cast<Entity>(-1))
-		{
-			float p[8]{};
-			m_headCircleOuter = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-										   CombinationType::Addition, HEAD_RING_GROUP);
-			blacklistEntity(m_headCircleOuter);
+        if (m_tagCircleOuter == static_cast<Entity>(-1))
+        {
+            float p[8]{};
+            m_tagCircleOuter = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+                                          CombinationType::Addition, TAG_RING_GROUP);
+            blacklistEntity(m_tagCircleOuter);
 
-			m_headCircleInner = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-										   CombinationType::Subtraction, HEAD_RING_GROUP);
-			blacklistEntity(m_headCircleInner);
-		}
+            m_tagCircleInner = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+                                          CombinationType::Subtraction, TAG_RING_GROUP);
+            blacklistEntity(m_tagCircleInner);
+        }
 
-		auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
-        const auto& ht = m_ecs.getComponent<Transform>(m_headEntity);
+        auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
+        const auto& ht = m_ecs.getComponent<Transform>(m_tagSelectedEntity);
         vec2 world(ht.position.x, ht.position.y);
         vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cam, world);
 
-        auto& outer = m_ecs.getComponent<UIShape>(m_headCircleOuter);
+        auto& outer = m_ecs.getComponent<UIShape>(m_tagCircleOuter);
         outer.parameters[0] = screen.x;
         outer.parameters[1] = screen.y;
-        outer.parameters[2] = HEAD_OUTER_RADIUS;
+        outer.parameters[2] = TAG_OUTER_RADIUS;
         outer.isDirty = true;
 
-        auto& inner = m_ecs.getComponent<UIShape>(m_headCircleInner);
+        auto& inner = m_ecs.getComponent<UIShape>(m_tagCircleInner);
         inner.parameters[0] = screen.x;
         inner.parameters[1] = screen.y;
-        inner.parameters[2] = HEAD_INNER_RADIUS;
+        inner.parameters[2] = TAG_INNER_RADIUS;
         inner.isDirty = true;
+
+        // Update the tag label text
+        if (m_tagLabelEntity != static_cast<Entity>(-1))
+        {
+            std::string currentTag = getEntityTag(m_tagSelectedEntity);
+            auto& tx = m_ecs.getComponent<UITextRenderer>(m_tagLabelEntity);
+            std::string newText = currentTag.empty() ? "tag: (none)" : ("tag: " + currentTag);
+            if (tx.text != newText)
+            {
+                tx.text = newText;
+                tx.dirty = true;
+            }
+        }
+
+        // Handle "edit tag" button click
+        // NOTE: std::cin is intentionally used here for console-based tag input
+        // as required by the design of this editor scene.
+        if (m_tagEditButton != static_cast<Entity>(-1))
+        {
+            auto& btn = m_ecs.getComponent<ShapeButton>(m_tagEditButton);
+            if (btn.state == ButtonState::Down)
+            {
+                std::cout << "Enter new tag (empty to remove): " << std::flush;
+                std::string newTag;
+                std::getline(std::cin, newTag);
+                if (newTag.empty())
+                {
+                    removeTag(m_tagSelectedEntity);
+                }
+                else
+                {
+                    tag(m_tagSelectedEntity, newTag);
+                }
+            }
+        }
     }
 
-    void onHeadSelectRightClick()
+    void onTagEditorRightClick()
     {
-        m_headEntity = pickBallAtMouse();
+        m_tagSelectedEntity = pickBallAtMouse();
     }
 
     bool hasTransform(Entity e)

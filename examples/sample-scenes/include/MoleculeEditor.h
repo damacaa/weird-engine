@@ -9,6 +9,8 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "globals.h"
@@ -167,6 +169,26 @@ private:
                     fileName += ".weird";
                 }
                 saveScene(ASSETS_PATH "Organisms/" + fileName);
+            }
+        }
+
+        if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
+        {
+            std::cout << "Load scene name: " << std::flush;
+
+            std::string fileName;
+            if (!(std::cin >> fileName))
+            {
+                std::cin.clear();
+                std::cin.ignore(10000, '\n');
+            }
+            else
+            {
+                if (!fileName.ends_with(".weird"))
+                {
+                    fileName += ".weird";
+                }
+                loadMolecule(ASSETS_PATH "Organisms/" + fileName);
             }
         }
 
@@ -738,7 +760,7 @@ private:
         {
             Entity lbl = m_ecs.createEntity();
             auto& lt = m_ecs.addComponent<Transform>(lbl);
-            lt.position = vec3(Display::width * 0.5f, 90.0f, 0.0f);
+            lt.position = vec3(Display::width * 0.5f, 150.0f, 0.0f);
             auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
             tx.text = "";
             tx.material = 1;
@@ -752,24 +774,12 @@ private:
         {
             static constexpr float BW = 40.0f;
             static constexpr float BH = 14.0f;
-            float p[8]{ Display::width * 0.5f, 65.0f, BW, BH };
+            float p[8]{ Display::width * 0.5f, 90.0f, BW, BH };
             m_tagEditButton = addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
             auto& btn = m_ecs.addComponent<ShapeButton>(m_tagEditButton);
             btn.clickPadding = 6.0f;
             btn.modifierAmount = 0.0f;
             blacklistEntity(m_tagEditButton);
-
-            // Label for the button
-            Entity lbl = m_ecs.createEntity();
-            auto& lt = m_ecs.addComponent<Transform>(lbl);
-            lt.position = vec3(Display::width * 0.5f, 65.0f, 0.0f);
-            auto& tx = m_ecs.addComponent<UITextRenderer>(lbl);
-            tx.text = "edit tag";
-            tx.material = 1;
-            tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-            tx.verticalAlignment   = TextRenderer::VerticalAlignment::Center;
-            m_tagEditButtonLabel = lbl;
-            blacklistEntity(lbl);
         }
     }
 
@@ -886,5 +896,90 @@ private:
     {
         auto arr = m_ecs.getComponentArray<ShapeButton>();
         return arr->hasData(e);
+    }
+
+    void loadMolecule(const std::string& path)
+    {
+        // Remember constraint count before loading so we can find new ones
+        size_t prevConstraintCount = m_simulation2D.getDistanceConstraints().size();
+
+        // Load the file — creates new entities / rigid bodies / constraints
+        TagMap loadedTags = loadWeirdFile(path);
+
+        // Apply loaded tags to the scene
+        for (const auto& [name, entity] : loadedTags)
+        {
+            tag(entity, name);
+        }
+
+        // Collect new balls: find entities with both Dot and RigidBody2D
+        // that are not already tracked
+        auto dotArray = m_ecs.getComponentArray<Dot>();
+        auto rbArray  = m_ecs.getComponentArray<RigidBody2D>();
+
+        // Build a set of already-tracked entities for fast lookup
+        std::unordered_set<Entity> existingBalls;
+        for (const auto& b : m_balls)
+            existingBalls.insert(b.entity);
+
+        // Map from simulationId → entity for newly loaded balls
+        std::unordered_map<int, Entity> simIdToEntity;
+
+        for (size_t i = 0; i < rbArray->getSize(); i++)
+        {
+            Entity e = rbArray->getEntityAtIdx(i);
+            if (existingBalls.count(e))
+                continue;
+            if (!dotArray->hasData(e))
+                continue;
+
+            auto& rb = rbArray->getDataAtIdx(i);
+            int simId = static_cast<int>(rb.simulationId);
+            m_balls.push_back({ e, simId });
+            simIdToEntity[simId] = e;
+        }
+
+        // Collect new constraints and create visual links
+        const auto& allConstraints = m_simulation2D.getDistanceConstraints();
+        for (size_t i = prevConstraintCount; i < allConstraints.size(); i++)
+        {
+            const auto& dc = allConstraints[i];
+
+            auto itA = simIdToEntity.find(dc.A);
+            auto itB = simIdToEntity.find(dc.B);
+            if (itA == simIdToEntity.end() || itB == simIdToEntity.end())
+                continue;
+
+            Entity a = itA->second;
+            Entity b = itB->second;
+
+            // K == 1.0 means distance constraint, otherwise spring
+            LinkType type = (dc.K >= 1.0f) ? LinkType::Distance : LinkType::Spring;
+            auto lineColor = (type == LinkType::Distance) ? DisplaySettings::Cyan : DisplaySettings::Orange;
+
+            vec2 pa(0.0f), pb(0.0f);
+            if (hasTransform(a) && hasTransform(b))
+            {
+                auto& ta = m_ecs.getComponent<Transform>(a);
+                auto& tb = m_ecs.getComponent<Transform>(b);
+                pa = vec2(ta.position.x, ta.position.y);
+                pb = vec2(tb.position.x, tb.position.y);
+            }
+
+            float lineVars[8]{};
+            computeScreenLineParams(pa, pb, lineVars);
+            Entity line = addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+
+            auto& btn = m_ecs.addComponent<ShapeButton>(line);
+            btn.clickPadding = 8.0f;
+            btn.modifierAmount = 0.0f;
+
+            blacklistEntity(line);
+
+            m_links.push_back({ a, b, dc.A, dc.B, dc.Distance, line, type });
+        }
+
+        std::cout << "[MoleculeEditor] Loaded " << simIdToEntity.size() << " balls and "
+                  << (allConstraints.size() - prevConstraintCount) << " links from " << path << "\n";
     }
 };

@@ -66,7 +66,7 @@ private:
     // =====================================================================
     // Lifecycle
     // =====================================================================
-    void onStart(const TagMap& tags) override
+    void onStart() override
     {
         m_debugInput = false;
         m_debugFly   = true;

@@ -207,7 +207,7 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(const TagMap& tags) override
+	void onStart() override
 	{
 		m_debugFly = false;
 	}
@@ -466,7 +466,7 @@ private:
 class FireSceneRayMarching : public FireScene
 {
 private:
-	void onStart(const TagMap& tags) override
+	void onStart() override
 	{
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 

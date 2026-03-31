@@ -111,7 +111,7 @@ private:
     static constexpr float TAG_INNER_RADIUS = 25.0f;
     static constexpr int   TAG_RING_GROUP = 8;
 
-    void onStart(const TagMap& tags) override
+    void onStart() override
     {
         m_debugInput = false;
         m_debugFly = true;

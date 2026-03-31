@@ -27,7 +27,7 @@ private:
 
 
 	// Inherited via Scene
-	void onStart(const TagMap& tags) override
+	void onStart() override
 	{
 		m_debugInput = true;
 		m_debugFly = true;

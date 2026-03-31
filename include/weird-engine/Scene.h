@@ -91,7 +91,12 @@ namespace WeirdEngine
 
 	protected:
 		virtual void onCreate() {};
-		virtual void onStart(const TagMap& tags) = 0;
+		// Override onStart(tags) to receive the map of tags→entities when the
+		// scene is loaded from a .weird file.  Override onStart() (no parameter)
+		// for scenes that don't need the tag map.  The default implementation of
+		// the tags overload simply calls onStart(), so you only need one.
+		virtual void onStart(const TagMap& tags) { onStart(); }
+		virtual void onStart() {}
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onPhysicsStep() {};

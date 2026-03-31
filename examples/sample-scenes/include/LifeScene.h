@@ -46,7 +46,7 @@ private:
 
 				Entity firstCreated = static_cast<Entity>(m_ecs.getEntityCount());
 
-				loadWeirdFile(entry.path().string());
+				auto tags = loadWeirdFile(entry.path().string());
 
 				Entity lastCreated = static_cast<Entity>(m_ecs.getEntityCount());
 
@@ -56,8 +56,17 @@ private:
 					t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
 				}
 
-				auto& a = m_ecs.getComponent<Dot>(firstCreated);
-				m_ecs.addComponent<Head>(a.Owner);
+				if (tags.contains("head"))
+				{
+					Entity headEntity = tags["head"];
+					m_ecs.addComponent<Head>(headEntity);
+				}
+				else
+				{
+					auto& a = m_ecs.getComponent<Dot>(firstCreated);
+					m_ecs.addComponent<Head>(a.Owner);
+				}
+
 				++i;
 			}
 		}

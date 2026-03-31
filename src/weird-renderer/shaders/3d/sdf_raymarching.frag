@@ -5,54 +5,7 @@
 layout (depth_less) out float gl_FragDepth;
 
 
-// #define DITHERING
 
-
-
-#ifdef DITHERING
-
-uniform float u_spread = 0.15f;
-uniform int u_colorCount = 10;
-
-// Dithering and posterizing
-uniform int u_bayer2[2 * 2] = int[2 * 2](
-    0, 2,
-    3, 1
-);
-
-uniform int u_bayer4[4 * 4] = int[4 * 4](
-    0, 8, 2, 10,
-    12, 4, 14, 6,
-    3, 11, 1, 9,
-    15, 7, 13, 5
-);
-
-uniform int u_bayer8[8 * 8] = int[8 * 8](
-    0, 32, 8, 40, 2, 34, 10, 42,
-    48, 16, 56, 24, 50, 18, 58, 26,  
-    12, 44,  4, 36, 14, 46,  6, 38, 
-    60, 28, 52, 20, 62, 30, 54, 22,  
-    3, 35, 11, 43,  1, 33,  9, 41,  
-    51, 19, 59, 27, 49, 17, 57, 25, 
-    15, 47,  7, 39, 13, 45,  5, 37, 
-    63, 31, 55, 23, 61, 29, 53, 21
-);
-
-float GetBayer2(int x, int y) {
-    return float(u_bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
-}
-
-float GetBayer4(int x, int y) {
-    return float(u_bayer4[(x % 4) + (y % 4) * 4]) * (1.0f / 16.0f) - 0.5f;
-}
-
-float GetBayer8(int x, int y) {
-    return float(u_bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
-}
-
-#endif
-
-// Operations
 float fOpUnionSoft(float a, float b, float r)
 {
     float e = max(r - abs(a - b), 0);
@@ -414,23 +367,4 @@ void main()
 
     col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 
-#ifdef DITHERING
-    int x = int(gl_FragCoord.x);
-    int y = int(gl_FragCoord.y);
-    col  = col + u_spread * GetBayer4(x, y);
-
-    col.r = floor((u_colorCount - 1.0f) * col.r + 0.5) / (u_colorCount - 1.0f);
-    col.g = floor((u_colorCount - 1.0f) * col.g + 0.5) / (u_colorCount - 1.0f);
-    col.b = floor((u_colorCount - 1.0f) * col.b + 0.5) / (u_colorCount - 1.0f);
-#endif 
-
-
-
-//    FragColor = vec4(0.5f * originalColor.xyz, 1.0);
-//
-//    FragColor = max( originalColor, col);
-//    FragColor = vec4(vec3(1.0f * depth), 1.0);
-
     FragColor = vec4(col.xyz, col.w);
-    //FragColor = vec4(originalColor.www, 1);
-}

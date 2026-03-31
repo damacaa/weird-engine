@@ -412,15 +412,16 @@ namespace WeirdEngine
 
 	Scene::TagMap Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
 	{
+		TagMap loadedTags;
 		Entity firstNewEntity = m_ecs.getEntityCount();
-		SceneSerializer::load(*this, path);
+		SceneSerializer::load(*this, path, &loadedTags);
 		if (blacklistEntities)
 		{
 			Entity lastNewEntity = m_ecs.getEntityCount();
 			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
 				m_serializationBlacklist.insert(entity);
 		}
-		return m_tagToEntity;
+		return loadedTags;
 	}
 
 	void Scene::loadFromWeirdFile(const std::string& path)

@@ -199,7 +199,7 @@ namespace WeirdEngine
 		std::cout << "[SceneSerializer] Scene saved to " << filename << "\n";
 	}
 
-	void SceneSerializer::load(Scene& scene, const std::string& path)	{
+	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags)	{
 		using json = nlohmann::json;
 
 		std::ifstream inFile(path);
@@ -354,8 +354,16 @@ namespace WeirdEngine
 				if (it != entityIdMap.end())
 				{
 					Entity newEntity = it->second;
-					// Use scene's tag() method to keep both maps in sync
-					scene.tag(newEntity, name);
+					if (outTags)
+					{
+						// Store in the caller-provided map instead of the scene
+						(*outTags)[name] = newEntity;
+					}
+					else
+					{
+						// Use scene's tag() method to keep both maps in sync
+						scene.tag(newEntity, name);
+					}
 				}
 			}
 		}

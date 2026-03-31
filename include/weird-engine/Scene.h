@@ -15,6 +15,7 @@
 #include "weird-physics/PhysicsSettings.h"
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace WeirdEngine
@@ -31,6 +32,9 @@ namespace WeirdEngine
 		friend class SceneSerializer;
 
 	public:
+		/// Map from tag name (std::string) to the entity that owns it.
+		using TagMap = std::unordered_map<std::string, Entity>;
+
 		Scene(const PhysicsSettings& settings);
 		~Scene();
 		void start();
@@ -87,7 +91,12 @@ namespace WeirdEngine
 
 	protected:
 		virtual void onCreate() {};
-		virtual void onStart() = 0;
+		// Override onStart(tags) to receive the map of tags→entities when the
+		// scene is loaded from a .weird file.  Override onStart() (no parameter)
+		// for scenes that don't need the tag map.  The default implementation of
+		// the tags overload simply calls onStart(), so you only need one.
+		virtual void onStart(const TagMap& tags) { onStart(); }
+		virtual void onStart() {}
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onPhysicsStep() {};
@@ -121,6 +130,18 @@ namespace WeirdEngine
 		std::unordered_set<Entity> m_serializationBlacklist;
 		void blacklistEntity(Entity e) { m_serializationBlacklist.insert(e); }
 
+		// Tag management
+		// Assign a unique tag to an entity. If the tag is already owned by
+		// another entity, it is moved to this one.  An empty name is treated
+		// as a removal request (equivalent to calling removeTag).
+		void tag(Entity entity, const std::string& name);
+		// Remove any tag currently assigned to an entity.
+		void removeTag(Entity entity);
+		// Return the tag of an entity, or "" if none.
+		std::string getEntityTag(Entity entity) const;
+		// Return the entity that owns a tag, or MAX_ENTITIES if none.
+		Entity getEntityByTag(const std::string& name) const;
+
 		SDFRenderSystem m_sdfRenderSystem;
 		SDFRenderSystem2D<Dot, CustomShape, TextRenderer> m_sdfRenderSystem2D;
 		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
@@ -146,7 +167,8 @@ namespace WeirdEngine
 		// Dynamically load a .weird file and add its contents to the scene.
 		// If blacklistEntities is true, all entities created by the load will be
 		// excluded from future scene serialization.
-		void loadWeirdFile(const std::string& path, bool blacklistEntities = false);
+		// Returns a map of tag names to their corresponding entities.
+		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false);
 
 		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
 		std::string m_sceneFilePath;
@@ -172,5 +194,9 @@ namespace WeirdEngine
 
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;
+
+		// Entity tag storage (bidirectional maps kept in sync)
+		TagMap m_tagToEntity;
+		std::unordered_map<Entity, std::string> m_entityToTag;
 	};
 } // namespace WeirdEngine

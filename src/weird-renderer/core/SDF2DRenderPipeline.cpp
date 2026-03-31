@@ -53,9 +53,6 @@ namespace WeirdEngine {
 			if (m_config.enableRefraction) {
 				m_lightingShader.addDefine("REFRACTION");
 			}
-			if (m_config.enableDithering) {
-				m_lightingShader.addDefine("DITHERING");
-			}
 			if (m_config.enableAntialiasing) {
 				m_lightingShader.addDefine("ANTIALIASING");
 			}

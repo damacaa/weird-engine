@@ -25,7 +25,7 @@ namespace WeirdEngine
 				bool enableRefraction;
 				bool enableAntialiasing;
 				bool enableMotionBlur;
-				bool enableDithering;
+
 				int materialBlendIterations;
 				float materialBlendSpeed;
 				float motionBlurBlendSpeed;

@@ -3,7 +3,6 @@
 #include "../common/utils.glsl"
 
 // #define SHADOWS_ENABLED
-// #define DITHERING
 // #define ANTIALIASING
 
 // #define DEBUG_SHOW_DISTANCE
@@ -39,49 +38,6 @@ uniform sampler2D t_distanceCorrectedTexture; // Used for shadows and AO
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 uniform float u_ambienOcclusionRadius = 0.005;
 uniform float u_ambienOcclusionStrength = 0.5;
-
-#ifdef DITHERING
-
-uniform float u_spread = .05;
-uniform int u_colorCount = 16;
-
-// Dithering and posterizing
-uniform int u_bayer2[2 * 2] = int[2 * 2](
-0, 2,
-3, 1);
-
-uniform int u_bayer4[4 * 4] = int[4 * 4](
-0, 8, 2, 10,
-12, 4, 14, 6,
-3, 11, 1, 9,
-15, 7, 13, 5);
-
-uniform int u_bayer8[8 * 8] = int[8 * 8](
-0, 32, 8, 40, 2, 34, 10, 42,
-48, 16, 56, 24, 50, 18, 58, 26,
-12, 44, 4, 36, 14, 46, 6, 38,
-60, 28, 52, 20, 62, 30, 54, 22,
-3, 35, 11, 43, 1, 33, 9, 41,
-51, 19, 59, 27, 49, 17, 57, 25,
-15, 47, 7, 39, 13, 45, 5, 37,
-63, 31, 55, 23, 61, 29, 53, 21);
-
-float Getu_bayer2(int x, int y)
-{
-    return float(u_bayer2[(x % 2) + (y % 2) * 2]) * (1.0f / 4.0f) - 0.5f;
-}
-
-float Getu_bayer4(int x, int y)
-{
-    return float(u_bayer4[(x % 4) + (y % 4) * 4]) * (1.0f / 16.0f) - 0.5f;
-}
-
-float Getu_bayer8(int x, int y)
-{
-    return float(u_bayer8[(x % 8) + (y % 8) * 8]) * (1.0f / 64.0f) - 0.5f;
-}
-
-#endif
 
 float mapOutside(vec2 p)
 {
@@ -328,23 +284,8 @@ void main()
 #endif
 
     color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
-    vec3 col = color;
 
-    #ifdef DITHERING
-
-    int x = int(gl_FragCoord.x);
-    int y = int(gl_FragCoord.y);
-    col = col + u_spread * Getu_bayer4(x, y);
-
-    col.r = floor((u_colorCount - 1.0f) * col.r + 0.5) / (u_colorCount - 1.0f);
-    col.g = floor((u_colorCount - 1.0f) * col.g + 0.5) / (u_colorCount - 1.0f);
-    col.b = floor((u_colorCount - 1.0f) * col.b + 0.5) / (u_colorCount - 1.0f);
-
-    #endif
-
-    FragColor = vec4(col.xyz, 1.0);
-
-
+    FragColor = vec4(color, 1.0);
 
     // Distance debug
     #ifdef DEBUG_SHOW_DISTANCE

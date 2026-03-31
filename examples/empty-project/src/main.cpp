@@ -13,7 +13,7 @@ public:
 	}
 
 private:
-	void onStart() override
+	void onStart(const TagMap& tags) override
 	{
 		m_renderMode = RenderMode::RayMarching2D;
 	}

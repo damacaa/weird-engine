@@ -38,7 +38,8 @@ private:
         Drag,
         Spring,
         Distance,
-        TagEditor
+        TagEditor,
+        Material
     };
 
     enum class LinkType
@@ -80,12 +81,14 @@ private:
     bool m_keepFixedAfterDrag = false;
     bool m_rightWasDown = false;
     bool m_gravityEnabled = false;
+    bool m_gridMode = false;
     RightMouseMode m_rightMouseMode = RightMouseMode::None;
     int m_selectedMaterial = 1;
 
     ToolMode m_toolMode = ToolMode::Drag;
-    std::array<Entity, 4> m_toolToggles{};
+    std::array<Entity, 5> m_toolToggles{};
     Entity m_gravityToggleEntity = static_cast<Entity>(-1);
+    Entity m_gridToggleEntity = static_cast<Entity>(-1);
 
     // Tag editor state
     Entity m_tagSelectedEntity   = static_cast<Entity>(-1);
@@ -109,6 +112,8 @@ private:
     static constexpr float TOOL_SPACING = 60.0f;
     static constexpr float TOOL_BTN_HALF = 12.0f;
     static constexpr float GRAV_Y = 50.0f;
+    static constexpr float GRID_Y = 110.0f;
+    static constexpr float GRID_CELL = 1.0f;
     static constexpr float TAG_OUTER_RADIUS = 30.0f;
     static constexpr float TAG_INNER_RADIUS = 25.0f;
     static constexpr int   TAG_RING_GROUP = 8;
@@ -355,8 +360,8 @@ private:
 
     void buildToolbar()
     {
-        const char* labels[] = { "drag", "spring", "distance", "tag" };
-        for (int i = 0; i < 4; i++)
+        const char* labels[] = { "drag", "spring", "distance", "tag", "material" };
+        for (int i = 0; i < 5; i++)
         {
             float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
             float p[8]{ TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF };
@@ -389,12 +394,21 @@ private:
         gravTog.parameterModifierMask.set(5);
         gravTog.modifierAmount = 10.0f;
         blacklistEntity(m_gravityToggleEntity);
+
+        float gridP[8]{ Display::width - GRAV_Y, Display::height - GRID_Y, 12.0f, 12.0f };
+        m_gridToggleEntity = addUIShape(DefaultShapes::BOX, gridP, static_cast<uint16_t>(2));
+        auto& gridTog = m_ecs.addComponent<ShapeToggle>(m_gridToggleEntity);
+        gridTog.clickPadding = 18.0f;
+        gridTog.parameterModifierMask.set(2);
+        gridTog.parameterModifierMask.set(3);
+        gridTog.modifierAmount = 3.0f;
+        blacklistEntity(m_gridToggleEntity);
     }
 
     void syncToolbar()
     {
         int activated = -1;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 5; i++)
         {
             auto& t = m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]);
             if (t.active && t.state == ButtonState::Down)
@@ -406,7 +420,7 @@ private:
         if (activated >= 0)
         {
             m_toolMode = static_cast<ToolMode>(activated);
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 5; i++)
             {
                 if (i != activated)
                     m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]).active = false;
@@ -422,7 +436,7 @@ private:
             if (m_gravityEnabled)
             {
                 m_simulation2D.setGravity(-10.0f);
-                m_simulation2D.setDamping(0.001f);
+                m_simulation2D.setDamping(0.01f);
             }
             else
             {
@@ -430,6 +444,8 @@ private:
                 m_simulation2D.setDamping(1.0f);
             }
         }
+
+        m_gridMode = m_ecs.getComponent<ShapeToggle>(m_gridToggleEntity).active;
     }
 
     void spawnBallAtMouse()
@@ -437,6 +453,9 @@ private:
         auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
         vec2 world = ECS::Camera::screenPositionToWorldPosition2D(
             cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+
+        if (m_gridMode)
+            world = snapToGrid(world);
 
         Entity e = m_ecs.createEntity();
 
@@ -459,6 +478,70 @@ private:
             cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
     }
 
+    vec2 snapToGrid(vec2 pos, Entity exclude = static_cast<Entity>(-1))
+    {
+        vec2 nearest(
+            std::round(pos.x / GRID_CELL) * GRID_CELL,
+            std::round(pos.y / GRID_CELL) * GRID_CELL);
+
+        if (!isCellOccupied(nearest, exclude))
+            return nearest;
+
+        // Spiral outward to find the closest free cell.
+        for (int radius = 1; radius <= 50; ++radius)
+        {
+            float bestDist = (std::numeric_limits<float>::max)();
+            vec2 bestCell = nearest;
+            bool found = false;
+
+            for (int dx = -radius; dx <= radius; ++dx)
+            {
+                for (int dy = -radius; dy <= radius; ++dy)
+                {
+                    if (std::abs(dx) != radius && std::abs(dy) != radius)
+                        continue; // only check the outer ring
+
+                    vec2 candidate(
+                        nearest.x + dx * GRID_CELL,
+                        nearest.y + dy * GRID_CELL);
+
+                    if (isCellOccupied(candidate, exclude))
+                        continue;
+
+                    float d = glm::length(candidate - pos);
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        bestCell = candidate;
+                        found = true;
+                    }
+                }
+            }
+
+            if (found)
+                return bestCell;
+        }
+
+        return nearest; // fallback
+    }
+
+    bool isCellOccupied(vec2 cell, Entity exclude)
+    {
+        const float threshold = GRID_CELL * 0.25f;
+        for (const auto& b : m_balls)
+        {
+            if (b.entity == exclude)
+                continue;
+            if (!m_ecs.hasComponent<Transform>(b.entity))
+                continue;
+            const auto& t = m_ecs.getComponent<Transform>(b.entity);
+            vec2 p(t.position.x, t.position.y);
+            if (std::abs(p.x - cell.x) < threshold && std::abs(p.y - cell.y) < threshold)
+                return true;
+        }
+        return false;
+    }
+
     void handleRightMouseDragInput()
     {
         bool rightDown = Input::GetMouseButton(Input::RightClick);
@@ -469,6 +552,8 @@ private:
                 onConstraintStart();
             else if (m_toolMode == ToolMode::TagEditor)
                 onTagEditorRightClick();
+            else if (m_toolMode == ToolMode::Material)
+                onMaterialRightClick();
             else
                 onRightDragStart();
         }
@@ -526,7 +611,9 @@ private:
 
         // Dragging starts by fixing and snapping the particle under the mouse.
         m_simulation2D.fix(static_cast<SimulationID>(m_draggedSimulationId));
-        m_simulation2D.setPosition(static_cast<SimulationID>(m_draggedSimulationId), getMouseWorldPosition());
+        vec2 startPos = getMouseWorldPosition();
+        if (m_gridMode) startPos = snapToGrid(startPos, m_draggedBall);
+        m_simulation2D.setPosition(static_cast<SimulationID>(m_draggedSimulationId), startPos);
     }
 
     void onRightDragUpdate()
@@ -539,7 +626,9 @@ private:
             m_keepFixedAfterDrag = true;
         }
 
-        m_simulation2D.setPosition(static_cast<SimulationID>(m_draggedSimulationId), getMouseWorldPosition());
+        vec2 dragPos = getMouseWorldPosition();
+        if (m_gridMode) dragPos = snapToGrid(dragPos, m_draggedBall);
+        m_simulation2D.setPosition(static_cast<SimulationID>(m_draggedSimulationId), dragPos);
     }
 
     void onRightDragEnd()
@@ -880,6 +969,16 @@ private:
         m_tagSelectedEntity = pickBallAtMouse();
     }
 
+    void onMaterialRightClick()
+    {
+        Entity hit = pickBallAtMouse();
+        if (hit == static_cast<Entity>(-1))
+            return;
+
+        auto& dot = m_ecs.getComponent<Dot>(hit);
+        dot.materialId = static_cast<unsigned int>(m_selectedMaterial);
+    }
+
     bool hasTransform(Entity e)
     {
         auto arr = m_ecs.getComponentArray<Transform>();
@@ -982,4 +1081,11 @@ private:
         std::cout << "[MoleculeEditor] Loaded " << simIdToEntity.size() << " balls and "
                   << (allConstraints.size() - prevConstraintCount) << " links from " << path << "\n";
     }
+
+    void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) override
+    {
+        event.friction *= 100.0f;
+    }
+
+    
 };

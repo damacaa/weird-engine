@@ -1,110 +1,44 @@
 #version 330 core
 
-// #define CRT
-
-// Outputs colors in RGBA
 out vec3 FragColor;
 
 uniform vec2 u_resolution;
-uniform float u_renderScale;
-
-uniform float u_time;
-
 uniform sampler2D t_colorTexture;
-uniform sampler2D t_uiTexture;
-uniform sampler2D t_uiColorTexture;
 
-float rand(vec2 co)
+#ifdef DITHERING
+
+uniform float u_spread = 0.05;
+uniform int u_colorCount = 16;
+
+uniform int u_bayer4[4 * 4] = int[4 * 4](
+0, 8, 2, 10,
+12, 4, 14, 6,
+3, 11, 1, 9,
+15, 7, 13, 5);
+
+float getBayer4(int x, int y)
 {
-	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+	return float(u_bayer4[(x % 4) + (y % 4) * 4]) * (1.0 / 16.0) - 0.5;
 }
 
-uniform float weights[9] = float[9](
-	// 1,2,1,2,4,2,1,2,1
-	// 0.5, 1, 0.5, 1, 10, 1, 0.5, 1, 0.5
-	0, 0, 0, 4, 8, 4, 0, 0, 0);
+#endif
 
 void main()
 {
-	vec2 screenUV = (gl_FragCoord.xy / u_resolution.xy);
+	vec2 screenUV = gl_FragCoord.xy / u_resolution.xy;
+	vec3 col = texture(t_colorTexture, screenUV).rgb;
 
-#ifdef CRT
+	#ifdef DITHERING
 
-	vec3 col = vec3(0.0);
-	float pixelSizedStep = 1.0 / (u_resolution.x);
+	int x = int(gl_FragCoord.x);
+	int y = int(gl_FragCoord.y);
+	col += u_spread * getBayer4(x, y);
 
-	// for(int i = -1; i <= 1; i++)
-	// {
-	//     for(int j = -1; j <= 1; j++)
-	//     {
-	//         float weight = weights[((j+1)*3)+(i+1)];
-	//         vec3 colorValue = texture(u_colorTexture, screenUV + (pixelSizedStep * vec2(i, j))).xyz;
-	//         col += weight * colorValue;
-	//     }
-	// }
+	col.r = floor((u_colorCount - 1.0) * col.r + 0.5) / (u_colorCount - 1.0);
+	col.g = floor((u_colorCount - 1.0) * col.g + 0.5) / (u_colorCount - 1.0);
+	col.b = floor((u_colorCount - 1.0) * col.b + 0.5) / (u_colorCount - 1.0);
 
-	// col = col / 16.0;
-
-	float maxValue = 0.0;
-	for (int i = -5; i <= 5; i++)
-	{
-
-		float weight = 2.5;
-		vec3 colorValue = texture(t_colorTexture, screenUV + (0.0005 * vec2(i, 0))).xyz;
-		col += weight * colorValue;
-
-		float value = 0.3333 * (colorValue.x + colorValue.y + colorValue.z);
-		maxValue = max(maxValue, value);
-	}
-
-	col = col / 30.0;
-
-	col = mix(col, texture(t_colorTexture, screenUV).xyz, 1.0 - (0.5 * maxValue));
-
-	// CRT Line effect
-	float lineOffset = 0;
-	float t = 2.0 * (gl_FragCoord.y - lineOffset);
-	float sine = sin(3.14 * t * u_renderScale);
-	float mask = 0.5 * (sine + 1.0);
-
-	// mask = 1 - mask;
-	// mask = mask * mask * mask;
-	// mask = 1 - mask;
-
-	// mask = mask > 0.25 ? 1.0 : .5;
-
-	// mask += 0.2;
-	// mask = min(1.5, 1.0 * mask);
-
-	// mask = smoothstep(0.0, 1.0, mask * mask);
-	// mask = max(mask, 0.85);
-
-	mask = mix(1.0, 1.1, mask);
-
-	col *= mask;
-
-	// col = vec3(mask);
-
-#else
-	vec3 col = texture(t_colorTexture, screenUV).xyz;
-#endif
-
-	// Dot effect
-	// vec2 TexCoords = fract(gl_FragCoord.xy * u_renderScale);
-	// vec2 dist = TexCoords - vec2(0.5f, 0.5f);
-	// float mask = ((1.0 -length(dist)) - 0.25) * 2;
-
-	// FragColor = color.xyz * mask;
-	// FragColor = color.wwww;
-
-	vec4 ui = texture(t_uiColorTexture, screenUV);
-	float distance = texture(t_uiTexture, screenUV).x;
-	float smoothing = 1.0 * fwidth(distance);
-	float factor = 1.0 - smoothstep(-smoothing, smoothing, distance);
-
-
-	// col = mix(col, ui.rgb, factor);
-	// 	col = mix(col, vec3(texture(t_uiTexture, screenUV).y / 16.0), factor);
+	#endif
 
 	FragColor = col;
 }

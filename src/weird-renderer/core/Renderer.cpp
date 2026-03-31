@@ -34,7 +34,6 @@ namespace WeirdEngine
 			worldConfig.enableRefraction = true;
 			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			worldConfig.enableMotionBlur = true;
-			worldConfig.enableDithering = false;
 			worldConfig.materialBlendIterations = 1;
 			worldConfig.materialBlendSpeed = 10.0f;
 			worldConfig.motionBlurBlendSpeed = 10.0f;
@@ -56,7 +55,6 @@ namespace WeirdEngine
 			uiConfig.enableRefraction = true;
 			uiConfig.enableAntialiasing = true;
 			uiConfig.enableMotionBlur = true;
-			uiConfig.enableDithering = true;
 			uiConfig.materialBlendIterations = 1;
 			uiConfig.materialBlendSpeed = 5.0f;
 			uiConfig.motionBlurBlendSpeed = 5.0f;
@@ -81,6 +79,8 @@ namespace WeirdEngine
 
 			m_outputShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/screen_output.frag");
+			if (settings.enableDithering)
+				m_outputShaderProgram.addDefine("DITHERING");
 
 			m_3DShapeDataBuffer = new DataBuffer();
 

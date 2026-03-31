@@ -11,7 +11,7 @@ private:
 	Entity m_ball;
 
 	// Inherited via Scene
-	void onStart(const TagMap& tags) override
+	void onStart() override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 

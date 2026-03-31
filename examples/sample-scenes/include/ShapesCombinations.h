@@ -28,7 +28,7 @@ private:
 
   std::vector<Entity> m_uiPoints;
 
-  void onStart(const TagMap& tags) override
+  void onStart() override
   {
   	m_debugInput = true;
   	m_debugFly = true;

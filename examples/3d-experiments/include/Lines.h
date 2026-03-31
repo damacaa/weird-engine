@@ -32,7 +32,7 @@ private:
     }
 
     // Inherited via Scene
-    void onStart(const TagMap& tags) override
+    void onStart() override
     {
         m_renderMode = RenderMode::RayMarching3D;
         m_debugFly = false;

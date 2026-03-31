@@ -105,12 +105,14 @@ namespace WeirdEngine
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
 		// restore saved scene state before the derived class's onStart() runs.
+		TagMap loadedTags;
 		if (!m_sceneFilePath.empty())
 		{
-			loadFromWeirdFile(m_sceneFilePath);
+			SceneSerializer::load(*this, m_sceneFilePath);
+			loadedTags = m_tagToEntity;
 		}
 
-		onStart();
+		onStart(loadedTags);
 
 		switch (m_renderMode)
 		{
@@ -325,6 +327,57 @@ namespace WeirdEngine
 		m_audioQueue.push(audio);
 	}
 
+	void Scene::tag(Entity entity, const std::string& name)
+	{
+		if (name.empty())
+		{
+			removeTag(entity);
+			return;
+		}
+
+		// If the tag is already owned by another entity, remove it from that entity
+		auto existingOwner = m_tagToEntity.find(name);
+		if (existingOwner != m_tagToEntity.end() && existingOwner->second != entity)
+		{
+			m_entityToTag.erase(existingOwner->second);
+		}
+
+		// Remove any previous tag this entity had
+		auto existingTag = m_entityToTag.find(entity);
+		if (existingTag != m_entityToTag.end() && existingTag->second != name)
+		{
+			m_tagToEntity.erase(existingTag->second);
+		}
+
+		m_tagToEntity[name] = entity;
+		m_entityToTag[entity] = name;
+	}
+
+	void Scene::removeTag(Entity entity)
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it == m_entityToTag.end())
+			return;
+		m_tagToEntity.erase(it->second);
+		m_entityToTag.erase(it);
+	}
+
+	std::string Scene::getEntityTag(Entity entity) const
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it == m_entityToTag.end())
+			return "";
+		return it->second;
+	}
+
+	Entity Scene::getEntityByTag(const std::string& name) const
+	{
+		auto it = m_tagToEntity.find(name);
+		if (it == m_tagToEntity.end())
+			return MAX_ENTITIES;
+		return it->second;
+	}
+
 	void Scene::loadScene(std::string &sceneFileContent)
 	{
 		// json scene = json::parse(sceneFileContent);
@@ -357,16 +410,18 @@ namespace WeirdEngine
 		SceneSerializer::save(*this, filename);
 	}
 
-	void Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	Scene::TagMap Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
 	{
+		TagMap loadedTags;
 		Entity firstNewEntity = m_ecs.getEntityCount();
-		SceneSerializer::load(*this, path);
+		SceneSerializer::load(*this, path, &loadedTags);
 		if (blacklistEntities)
 		{
 			Entity lastNewEntity = m_ecs.getEntityCount();
 			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
 				m_serializationBlacklist.insert(entity);
 		}
+		return loadedTags;
 	}
 
 	void Scene::loadFromWeirdFile(const std::string& path)

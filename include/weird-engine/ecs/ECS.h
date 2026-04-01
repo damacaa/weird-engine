@@ -117,8 +117,16 @@ namespace WeirdEngine
 		template <typename T>
 		void registerComponent(std::shared_ptr<ComponentManager<T>> manager) 
 		{
-			manager->registerComponent();
 			size_t id = internal::getComponentTypeId<T>();
+			if (id < m_componentManagers.size() && m_componentManagers[id]) {
+				// A default manager already exists (e.g. cached by a system).
+				// Adopt its ComponentArray so both the cached and new manager
+				// share the same data.
+				auto existing = std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id]);
+				manager->adoptComponentArray(existing);
+			} else {
+				manager->registerComponent();
+			}
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = manager;

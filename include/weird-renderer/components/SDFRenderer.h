@@ -8,16 +8,20 @@ namespace WeirdEngine
 		bool isStatic = false;
 		unsigned int materialId;
 
-		Dot(unsigned int materialId)
-		{
-			this->materialId = materialId;
-		}
-
 		Dot()
 		{
 			this->materialId = 0;
 		}
 	};
 
-	struct UIDot : public Dot{};
+	struct UIDot : public Component
+	{
+		bool isStatic = false;
+		unsigned int materialId;
+
+		UIDot()
+		{
+			this->materialId = 0;
+		}
+	};
 }

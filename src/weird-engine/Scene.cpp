@@ -2,6 +2,7 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
+#include "weird-physics/components/CustomShapeManager.h"
 
 namespace WeirdEngine
 {
@@ -70,6 +71,9 @@ namespace WeirdEngine
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
+
+		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
+		m_ecs.registerComponent<CustomShape>(shapeManager);
 
 		// Read content from file
 		std::string content = "";

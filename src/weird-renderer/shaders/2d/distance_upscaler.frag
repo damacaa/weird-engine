@@ -13,6 +13,7 @@ in vec2 v_texCoord;
 
 uniform vec2 u_originalResolution;
 uniform vec2 u_targetResolution;
+uniform float u_overscan;
 uniform sampler2D t_data;
 
 // Bilinear
@@ -52,11 +53,14 @@ float smoothSample(sampler2D tex, vec2 uv)
 
 void main()
 {
-    vec4 data = texture(t_data, v_texCoord.xy);
+    vec2 adjustedUV = 0.5 + (v_texCoord.xy - 0.5) / (1.0 + u_overscan);
+    adjustedUV = clamp(adjustedUV, vec2(0.0), vec2(1.0));
+
+    vec4 data = texture(t_data, adjustedUV);
 
     // Sample just the Y component using texelFetch (No filtering)
     // textureSize(t_data, 0) gets the resolution of the texture at mip level 0
-    ivec2 texelCoords = ivec2(v_texCoord.xy * textureSize(t_data, 0));
+    ivec2 texelCoords = ivec2(adjustedUV * textureSize(t_data, 0));
     data.y = texelFetch(t_data, texelCoords, 0).y;
 
 

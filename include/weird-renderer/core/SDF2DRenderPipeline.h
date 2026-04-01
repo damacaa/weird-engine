@@ -18,8 +18,9 @@ namespace WeirdEngine
 			{
 				unsigned int renderWidth;
 				unsigned int renderHeight;
-				float distanceSampleScale;
-				float renderScale;
+				float distanceSampleScale = 1.0f;
+				float distanceOverscan = 0.0f; // fraction added each side ([0.0..0.5]), e.g. 0.05 gives +5% world margin per side
+				float renderScale = 1.0f;
 				bool isUI; // UI mode: origin at bottom-left, [0,1] UV space, UI-specific distance clamping
 				bool enableShadows;
 				bool enableRefraction;

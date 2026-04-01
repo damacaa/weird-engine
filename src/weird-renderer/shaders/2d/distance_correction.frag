@@ -17,6 +17,7 @@ in vec2 v_texCoord;
 // Uniforms
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform float u_overscan;
 uniform sampler2D t_originalDistanceTexture;
 uniform sampler2D t_distanceTexture;
 

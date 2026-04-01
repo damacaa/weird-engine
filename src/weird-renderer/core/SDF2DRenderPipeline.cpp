@@ -21,13 +21,18 @@ namespace WeirdEngine {
 			: m_config(config)
 			, m_colorPalette(colorPalette)
 			, m_renderPlane(renderPlane)
-			, m_distanceSampleWidth(config.renderWidth * config.distanceSampleScale)
-			, m_distanceSampleHeight(config.renderHeight * config.distanceSampleScale)
+			, m_distanceSampleWidth(0)
+			, m_distanceSampleHeight(0)
 			, m_materialBlendIterations(config.materialBlendIterations)
 			, m_oldCameraMatrix(1.0f)
 			, m_prevFrameCameraMatrix(1.0f)
 			, m_lastCameraPosition(0.0f)
 		{
+			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
+			float overscanScale = 1.0f + 2.0f * overscan;
+			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale * overscanScale);
+			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
+
 			// Load shaders
 			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_distance.frag");
 			m_distanceShader.addDefine("BLEND_SHAPES");
@@ -90,7 +95,7 @@ namespace WeirdEngine {
 			m_jumpFloodDoubleBuffer[0] = &m_jumpFloodRenderPing;
 			m_jumpFloodDoubleBuffer[1] = &m_jumpFloodRenderPong;
 
-			m_distanceTextureCorrected = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_distanceCorrectionRender = RenderTarget(false);
 			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
@@ -171,8 +176,10 @@ namespace WeirdEngine {
 		{
 			m_config.renderWidth = newWidth;
 			m_config.renderHeight = newHeight;
-			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale);
-			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale);
+			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
+			float overscanScale = 1.0f + 2.0f * overscan;
+			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale * overscanScale);
+			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
 
 			// Dispose old textures
 			m_distanceTextureA.dispose();
@@ -204,7 +211,7 @@ namespace WeirdEngine {
 			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
 
-			m_distanceTextureCorrected = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
 			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
@@ -265,6 +272,7 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_time", time);
 			m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 			m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+			m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 			m_distanceShader.setUniform("u_k", m_config.ballK);
 
@@ -336,6 +344,7 @@ namespace WeirdEngine {
 			m_distanceCorrectionShader.use();
 			m_distanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 			m_distanceCorrectionShader.setUniform("u_time", time);
+			m_distanceCorrectionShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 
 			m_distanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
@@ -354,6 +363,7 @@ namespace WeirdEngine {
 			m_distanceUpscalerShader.use();
 			m_distanceUpscalerShader.setUniform("u_originalResolution", vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 			m_distanceUpscalerShader.setUniform("u_targetResolution", vec2(m_config.renderWidth, m_config.renderHeight));
+			m_distanceUpscalerShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_distanceUpscalerShader.setUniform("t_data", 0);
 
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
@@ -433,6 +443,7 @@ namespace WeirdEngine {
 			m_lightingShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			m_lightingShader.setUniform("u_ambienOcclusionRadius", m_config.ambienOcclusionRadius);
 			m_lightingShader.setUniform("u_ambienOcclusionStrength", m_config.ambienOcclusionStrength);
+			m_lightingShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);

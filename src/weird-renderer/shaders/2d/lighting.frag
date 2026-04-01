@@ -38,10 +38,13 @@ uniform sampler2D t_distanceCorrectedTexture; // Used for shadows and AO
 uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 uniform float u_ambienOcclusionRadius = 0.005;
 uniform float u_ambienOcclusionStrength = 0.5;
+uniform float u_overscan = 0.0;
 
 float mapOutside(vec2 p)
 {
-    return texture(t_distanceCorrectedTexture, p).x;
+    // Remap screen UV to overscan texture UV
+    vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
+    return texture(t_distanceCorrectedTexture, overscanUV).x;
 }
 
 float mapInside(vec2 p)
@@ -67,7 +70,8 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
         if (d <= EPSILON)
         break;
 
-        if (p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0)
+        float overscanMargin = 0.5 * u_overscan;
+        if (p.x <= -overscanMargin || p.x >= 1.0 + overscanMargin || p.y <= -overscanMargin || p.y >= 1.0 + overscanMargin)
         return FAR;
 
         // traveled += 0.01;
@@ -119,10 +123,10 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
     {
         vec2 p = ro + rd * t;
 
-        // Center the coordinates at 0.5, take absolute value
-        // If result > 0.5, it was outside [0, 1]
+        // Check if ray has left the overscan texture bounds
+        float overscanMargin = 0.5 * u_overscan;
         vec2 dist = abs(p - 0.5);
-        if (max(dist.x, dist.y) > 0.5) {
+        if (max(dist.x, dist.y) > 0.5 + overscanMargin) {
             break;
         }
 

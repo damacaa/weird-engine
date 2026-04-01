@@ -3,6 +3,7 @@
 #include "../common/utils.glsl"
 
 // #define SHADOWS_ENABLED
+// #define LONG_SHADOWS  // Uses FAR as max distance with no fade; comment out for zoom-aware short shadows
 // #define ANTIALIASING
 
 // #define DEBUG_SHOW_DISTANCE
@@ -16,6 +17,7 @@ const float FAR = 1.4f;
 const float NORMAL_EPSILON = 0.001;
 
 const float SHADOW_VALUE = 0.9;
+const float SHADOW_WORLD_DISTANCE = 0.5; // Max shadow cast distance in world-space units
 
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
@@ -115,8 +117,11 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) {
+    if (minD >= far) return vec2(far, 1.0); // Already beyond max distance, fully lit
+
     float res = 1.0;
     float t = minD;
+    float closestT = far; // t at the point of closest approach to any occluder
     iter = 0;
 
     for(int i = 0; i < MAX_STEPS; i++)
@@ -132,10 +137,14 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
 
         float h = mapOutside(ro + rd * t) - 0.001; // Your SDF function
 
-        // Improve shadow quality by comparing distance to object (h) vs distance traveled (t)
-        res = min(res, k * h / t);
+        // Track where the shadow is strongest (closest approach to an occluder)
+        float newRes = k * h / t;
+        if (newRes < res) {
+            res = newRes;
+            closestT = t;
+        }
 
-        if(h <= 0.0 || res < EPSILON) return vec2(0.0); // Fully in shadow
+        if(h <= 0.0 || res < EPSILON) return vec2(t, 0.0); // Fully in shadow – keep t so fade works
         if(t > far) break;          // Missed everything
 
         t += h;
@@ -143,8 +152,8 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
         iter++;
     }
 
-    // Clamp result to prevent weird artifacts
-    return vec2(t, clamp(res, 0.0, 1.0));
+    // Return closest-approach distance so callers can fade by shadow-caster distance
+    return vec2(closestT, clamp(res, 0.0, 1.0));
 }
 
 
@@ -155,12 +164,26 @@ float renderShadows(vec2 uv, vec2 rd)
 
     float mapDistance = mapOutside(uv);
     float minD = mapDistance;
-    vec2 offsetPosition = uv + (2.0 / u_resolution) * rd;// 2 pixels towards the light
+
+    #ifdef LONG_SHADOWS
+    float shadowFar = FAR;
+    #else
+    float zoom = -u_camMatrix[3].z;
+    // Scale max shadow distance by zoom so shadows have a consistent world-space extent
+    float shadowFar = min(FAR, SHADOW_WORLD_DISTANCE / zoom);
+    #endif
 
     int iter;
-    vec2 raymarchInfo = softShadow(uv, rd, minD, FAR, 8.0, iter);
+    vec2 raymarchInfo = softShadow(uv, rd, minD, shadowFar, 2.0, iter);
     float d = raymarchInfo.x;
     float shadowFactor = raymarchInfo.y;
+
+    #ifndef LONG_SHADOWS
+    // Smooth fade-out as the shadow approaches the max distance
+    float fadeFactor = 1.0 - smoothstep(shadowFar * 0.2, shadowFar, d);
+    shadowFactor = mix(1.0, shadowFactor, fadeFactor);
+    #endif
+
     float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
     return shadowValue;

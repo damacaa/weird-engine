@@ -29,6 +29,7 @@ uniform int u_loadedObjects;
 uniform samplerBuffer t_shapeBuffer;
 
 uniform vec2 u_resolution;
+uniform float u_overscan;
 
 uniform mat4 u_camMatrix;
 uniform mat4 u_oldCamMatrix;
@@ -196,6 +197,7 @@ void main()
     #else
     // World: remap UV to [-1,1] so the origin is centred on screen
     vec2 uv = (2.0f * v_texCoord) - 1.0f;
+    uv *= (1.0 + u_overscan);
     #endif
 
     float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform

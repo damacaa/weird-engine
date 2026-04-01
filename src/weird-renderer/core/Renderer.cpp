@@ -28,6 +28,7 @@ namespace WeirdEngine
 			worldConfig.renderWidth = m_renderWidth;
 			worldConfig.renderHeight = m_renderHeight;
 			worldConfig.distanceSampleScale = m_distanceSampleScale;
+			worldConfig.distanceOverscan = settings.worldDistanceOverscan;
 			worldConfig.renderScale = m_renderScale;
 			worldConfig.isUI = false;
 			worldConfig.enableShadows = true;
@@ -49,6 +50,7 @@ namespace WeirdEngine
 			uiConfig.renderWidth = m_renderWidth;
 			uiConfig.renderHeight = m_renderHeight;
 			uiConfig.distanceSampleScale = m_distanceSampleScale;
+			uiConfig.distanceOverscan = 0.0f;
 			uiConfig.renderScale = m_renderScale;
 			uiConfig.isUI = true;
 			uiConfig.enableShadows = false;

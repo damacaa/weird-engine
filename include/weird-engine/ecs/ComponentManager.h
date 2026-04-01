@@ -44,6 +44,11 @@ namespace WeirdEngine
 			m_componentArray = std::make_shared<ComponentArray<T>>();
 		}
 
+		void adoptComponentArray(const std::shared_ptr<ComponentManager<T>>& source)
+		{
+			m_componentArray = source->m_componentArray;
+		}
+
 
 		T& getNewComponent(Entity entity)
 		{

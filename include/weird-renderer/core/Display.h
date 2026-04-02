@@ -38,7 +38,7 @@ namespace WeirdEngine
 				vec4(0.025f, 0.025f, 0.05f, 1.0f), // Black
 				vec4(1.0f, 1.0f, 1.0f, 1.0f), // White
 				vec4(0.484f, 0.484f, 0.584f, 1.0f), // Dark Gray
-				vec4(0.752f, 0.762f, 0.74f, 1.0f), // Light Gray
+				vec4(0.752f, 0.762f, 0.78f, 1.0f), // Light Gray
 				vec4(.8f, 0.2f, 0.2f, 1.0f), // Red
 				vec4(0.1f, .95f, 0.1f, 1.0f), // Green
 				vec4(0.15f, 0.25f, .85f, 1.0f), // Blue

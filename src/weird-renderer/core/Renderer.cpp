@@ -209,7 +209,7 @@ namespace WeirdEngine
 
 			static uint32_t dataSize;
 			static uint32_t shapeCount;
-			static WeirdRenderer::Dot2D* uiData = nullptr;
+			static vec4* uiData = nullptr;
 			scene.getUIData(uiData, dataSize, shapeCount);
 
 			double time = scene.getTime();
@@ -320,10 +320,10 @@ namespace WeirdEngine
 
 					// Upload and bind shapes for ray marching
 					static uint32_t DataSize3D = 0;
-					static WeirdRenderer::Dot2D* Data3D = nullptr;
+					static vec4* Data3D = nullptr;
 					// scene.get2DShapesData(Data3D, DataSize3D);
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-					m_3DShapeDataBuffer->uploadData<Dot2D>(Data3D, DataSize3D);
+					m_3DShapeDataBuffer->uploadData<vec4>(Data3D, DataSize3D);
 					m_3DShapeDataBuffer->bind(2);
 
 					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
@@ -366,11 +366,11 @@ namespace WeirdEngine
 			Texture* lit2DSceneTexture = nullptr;
 			static uint32_t dataSize;
 			static uint32_t shapeCount;
-			static WeirdRenderer::Dot2D* data = nullptr;
+			static vec4* data = nullptr;
 			if (enable2D)
 			{
 				m_worldPipeline->getDistanceShader().use();
-				scene.updateRayMarchingShader(m_worldPipeline->getDistanceShader());
+				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
 				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,

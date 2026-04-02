@@ -3,6 +3,8 @@
 #include <weird-engine.h>
 
 #include "globals.h"
+#include <glm/gtx/norm.hpp>
+#include "weird-engine/math/Default2DSDFs.h"
 
 using namespace WeirdEngine;
 class ImageScene : public Scene
@@ -146,6 +148,27 @@ private:
 		);
 	}
 
+	// Function to find the closest color in the palette
+	inline int findClosestColorInPalette(vec4 colorPalette[16], const glm::vec3& color)
+	{
+		int closestIndex = 0;
+		float minDistance = std::numeric_limits<float>::max(); // start with maximum possible distance
+
+		for (int i = 0; i < 16; ++i)
+		{
+			// Use length2 for efficiency (avoids computing square root)
+			float distance = glm::length2(color - glm::vec3(colorPalette[i]));
+
+			if (distance < minDistance)
+			{
+				minDistance = distance;
+				closestIndex = i;
+			}
+		}
+
+		return closestIndex;
+	}
+
 	void onUpdate(float delta) override
 	{
 		if (Input::GetKeyDown(Input::Q))
@@ -172,7 +195,12 @@ private:
 				vec2 uv = vec2(x, y) / 30.0f;
 
 				vec3 color = getColor(imagePath.c_str(), uv.x, uv.y);
-				int id = m_sdfRenderSystem2D.findClosestColorInPalette(color);
+
+
+				DisplaySettings displaySettings;
+	
+
+				int id = findClosestColorInPalette(displaySettings.colorPalette, color);
 
 				result += std::to_string(id) + "-";
 			}

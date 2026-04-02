@@ -10,21 +10,18 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
-	class ButtonSystem
+	namespace ButtonSystem
 	{
-	public:
-		ButtonSystem(ECSManager& ecs)
-		{
-		}
+		inline void updateButtons(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
+		inline void updateToggles(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
 
-		void update(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void update(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
 			updateButtons(ecs, sdfs, time);
 			updateToggles(ecs, sdfs, time);
 		}
 
-	private:
-		void updateButtons(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void updateButtons(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
 			auto componentArray = ecs.getComponentArray<ShapeButton>();
 			unsigned int size = componentArray->getSize();
@@ -105,7 +102,7 @@ namespace WeirdEngine
 			}
 		}
 
-		void updateToggles(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void updateToggles(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
 			auto componentArray = ecs.getComponentArray<ShapeToggle>();
 			unsigned int size = componentArray->getSize();
@@ -192,5 +189,5 @@ namespace WeirdEngine
 				}
 			}
 		}
-	};
+	}
 }

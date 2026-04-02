@@ -7,7 +7,6 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneManager.h"
-#include "weird-engine/Utils.h"
 #include "weird-renderer/core/Renderer.h"
 
 #ifdef _WIN32

@@ -2,10 +2,152 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
+#include "weird-engine/math/Default2DSDFs.h"
 #include "weird-physics/components/CustomShapeManager.h"
+
+
+
+#include "weird-physics/components/RigidBodyManager.h"
+
+#include "weird-engine/systems/ButtonSystem.h"
+#include "weird-engine/systems/CameraSystem.h"
+#include "weird-engine/systems/PhysicsInteractionSystem.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-engine/systems/PlayerMovementSystem.h"
+#include "weird-engine/systems/SDFRenderSystem2D.h"
+#include "weird-engine/systems/RenderSystem.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
+#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
 
 namespace WeirdEngine
 {
+	
+
+	Scene::Scene(const PhysicsSettings& settings)
+		: m_simulation2D(MAX_ENTITIES, settings)
+		, m_runSimulationInThread(true)
+	{
+		// Custom component managers
+		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
+		m_ecs.registerComponent<RigidBody2D>(rbManager);
+
+		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
+		m_ecs.registerComponent<CustomShape>(shapeManager);
+
+		// Create camera
+		m_mainCamera = m_ecs.createEntity();
+		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
+		t.rotation = vec3(0, 0, -1.0f);
+		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+
+		// Shapes
+		m_sdfs = DefaultShapes::getSDFS();
+		m_simulation2D.setSDFs(m_sdfs);
+
+		// Initialize simulation
+		PhysicsSystem2D::init(m_ecs, m_simulation2D);
+
+		// Start simulation if different thread
+		if (m_runSimulationInThread)
+		{
+			m_simulation2D.startSimulationThread();
+		}
+
+		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
+		m_simulation2D.setCollisionCallback(&handleCollision, this);
+		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
+
+		// Initialize 2D world render context
+		m_2DWorldRenderContext.m_dotRadious = 0.5f;
+		m_2DWorldRenderContext.m_charSpacing = 1.0f;
+	}
+
+	Scene::~Scene()
+	{
+		m_simulation2D.stopSimulationThread();
+
+		// TODO: Free resources from all entities
+		m_resourceManager.freeResources(0);
+	}
+
+	void Scene::start()
+	{
+		onCreate();
+
+		// If a .weird file path was provided (via setSceneFilePath / registerScene),
+		// restore saved scene state before the derived class's onStart() runs.
+		TagMap loadedTags;
+		if (!m_sceneFilePath.empty())
+		{
+			SceneSerializer::load(*this, m_sceneFilePath);
+			loadedTags = m_tagToEntity;
+		}
+
+		onStart(loadedTags);
+
+		switch (m_renderMode)
+		{
+			case WeirdEngine::Scene::RenderMode::RayMarching3D: {
+				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				break;
+			}
+			case WeirdEngine::Scene::RenderMode::RayMarching2D:
+			case WeirdEngine::Scene::RenderMode::RayMarchingBoth: {
+				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	void Scene::update(double delta, double time)
+	{
+		PROFILE_SCOPE("Scene Logic Update");
+
+		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
+		{
+			m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		}
+
+		// Update systems
+		{
+			if (m_debugFly)
+			{
+				PlayerMovementSystem::update(m_ecs, delta);
+			}
+
+			CameraSystem::update(m_ecs);
+		}
+
+		ButtonSystem::update(m_ecs, m_sdfs, getTime());
+
+		{
+			PROFILE_SCOPE("Physics synchronization");
+			PhysicsSystem2D::update(m_ecs, m_simulation2D);
+
+			if (m_debugInput)
+			{
+				PhysicsInteractionSystem::update(m_ecs, m_simulation2D);
+			}
+
+			m_simulation2D.update(delta);
+		}
+
+		{
+			PROFILE_SCOPE("Scene logic update");
+			onUpdate(delta);
+		}
+
+		m_ecs.freeRemovedComponents();
+	}
+
+	float Scene::getTime()
+	{
+		return m_simulation2D.getSimulationTime();
+	}
+
 	void Scene::handlePhysicsStep(void *userData)
 	{
 		Scene *self = static_cast<Scene *>(userData);
@@ -51,204 +193,46 @@ namespace WeirdEngine
 		}
 	}
 
-	Scene::Scene(const PhysicsSettings& settings)
-		: m_simulation2D(MAX_ENTITIES, settings)
-		, m_sdfRenderSystem(m_ecs)
-		, m_sdfRenderSystem2D(m_ecs)
-		, m_UIRenderSystem(m_ecs)
-		, m_renderSystem(m_ecs)
-		, m_instancedRenderSystem(m_ecs)
-		, m_rbPhysicsSystem2D(m_ecs)
-		, m_physicsInteractionSystem(m_ecs)
-		, m_playerMovementSystem(m_ecs)
-		, m_cameraSystem(m_ecs)
-		, m_buttonSystem(m_ecs)
-		, m_runSimulationInThread(true)
-	{
-		m_sdfRenderSystem2D.m_dotRadious = 0.5f;
-		m_sdfRenderSystem2D.m_charSpacing = 1.0f;
-
-		// Custom component managers
-		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
-		m_ecs.registerComponent<RigidBody2D>(rbManager);
-
-		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
-		m_ecs.registerComponent<CustomShape>(shapeManager);
-
-		// Read content from file
-		std::string content = "";
-
-		// Read scene file and load everything
-		loadScene(content);
-
-		// Initialize simulation
-		m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
-
-		// Start simulation if different thread
-		if (m_runSimulationInThread)
-		{
-			m_simulation2D.startSimulationThread();
-		}
-
-		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
-		m_simulation2D.setCollisionCallback(&handleCollision, this);
-		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
-	}
-
-	Scene::~Scene()
-	{
-		m_simulation2D.stopSimulationThread();
-
-		// TODO: Free resources from all entities
-		m_resourceManager.freeResources(0);
-	}
-
-	void Scene::start()
-	{
-		onCreate();
-
-		// If a .weird file path was provided (via setSceneFilePath / registerScene),
-		// restore saved scene state before the derived class's onStart() runs.
-		TagMap loadedTags;
-		if (!m_sceneFilePath.empty())
-		{
-			SceneSerializer::load(*this, m_sceneFilePath);
-			loadedTags = m_tagToEntity;
-		}
-
-		onStart(loadedTags);
-
-		switch (m_renderMode)
-		{
-			case WeirdEngine::Scene::RenderMode::RayMarching3D: {
-				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
-				break;
-			}
-			case WeirdEngine::Scene::RenderMode::RayMarching2D:
-			case WeirdEngine::Scene::RenderMode::RayMarchingBoth: {
-				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
-				break;
-			}
-			default:
-				break;
-		}
-	}
-
-	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
-	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
-	{
-		PROFILE_SCOPE("Render Models");
-		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
-		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
-
-		onRender(renderTarget);
-
-		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
-	}
-
-	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
-	{
-		m_sdfRenderSystem2D.updateCustomShapesShader(shader, m_sdfs);
-	}
-	
-	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
-	{
-		m_UIRenderSystem.updateCustomShapesShader(shader, m_sdfs);
-	}
-
-	void Scene::forceShaderRefresh()
-	{
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
-		m_UIRenderSystem.shaderNeedsUpdate() = true;
-	}
-
-	void Scene::get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount)
-	{
-		PROFILE_SCOPE("Fetch World Data");
-		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
-		m_sdfRenderSystem2D.fillDataBuffer(data, size);
-	}
-
-	void Scene::getUIData(WeirdRenderer::Dot2D *&uiData, uint32_t &size, uint32_t& customShapeCount)
-	{
-		PROFILE_SCOPE("Fetch UI Data");
-		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
-		m_UIRenderSystem.fillDataBuffer(uiData, size);
-	}
-
-	void Scene::update(double delta, double time)
-	{
-		PROFILE_SCOPE("Scene Logic Update");
-
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
-		{
-			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
-		}
-
-		// Update systems
-		{
-			if (m_debugFly)
-			{
-				m_playerMovementSystem.update(m_ecs, delta);
-			}
-			// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
-
-			m_cameraSystem.update(m_ecs);
-		}
-
-		m_buttonSystem.update(m_ecs, m_sdfs, getTime());
-
-		{
-			PROFILE_SCOPE("Physics synchronization");
-			m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
-
-			if (m_debugInput)
-			{
-				m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
-			}
-
-			m_simulation2D.update(delta);
-		}
-
-		{
-			PROFILE_SCOPE("Scene logic update");
-			onUpdate(delta);
-		}
-
-		m_ecs.freeRemovedComponents();
-	}
-
-	
-
-	WeirdRenderer::Camera &Scene::getCamera()
-	{
-		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
-	}
-
-	std::vector<WeirdRenderer::Light> &Scene::getLigths()
-	{
-		return m_lights;
-	}
-
-	float Scene::getTime()
-	{
-		return m_simulation2D.getSimulationTime();
-	}
-
-	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D *&data, uint32_t &size)
-	{
-		m_sdfRenderSystem2D.fillDataBuffer(data, size);
-	}
+	// RENDER
 
 	Scene::RenderMode Scene::getRenderMode() const
 	{
 		return m_renderMode;
 	}
 
-	float Scene::getFrictionSound()
+	WeirdRenderer::Camera &Scene::getCamera()
 	{
-		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
+		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
+	}
+
+	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch World Data");
+		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem2D::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+	}
+
+	void Scene::getUIData(vec4 *&uiData, uint32_t &size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch UI Data");
+		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
+		SDFRenderSystem2D::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
+	}
+
+	void Scene::update2DWorldShader(WeirdRenderer::Shader &shader)
+	{
+		SDFShaderGenerationSystem2D::update<Dot, CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+	}
+	
+	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
+	{
+		SDFShaderGenerationSystem2D::update<UIDot, UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
+	}
+
+	void Scene::forceShaderRefresh()
+	{
+		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_UIRenderContext.m_shapesNeedUpdate = true;
 	}
 
 	const std::vector<WeirdRenderer::DrawCommand> & Scene::getDrawQueue() const
@@ -256,10 +240,22 @@ namespace WeirdEngine
 		return m_drawQueue;
 	}
 
-	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
+	std::vector<WeirdRenderer::Light> &Scene::getLigths()
 	{
-		return m_audioQueue;
+		return m_lights;
 	}
+
+	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
+	{
+		PROFILE_SCOPE("Render Models");
+		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
+
+		onRender(renderTarget);
+	}
+
+
+	// SDFs
 
 	ShapeId Scene::registerSDF(std::shared_ptr<IMathExpression> sdf)
 	{
@@ -268,68 +264,27 @@ namespace WeirdEngine
 
 		return m_sdfs.size() - 1;
 	}
+	
 
-	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
+	// AUDIO
+
+	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
 	{
-		Entity entity = m_ecs.createEntity();
-		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.distanceFieldId = shapeId;
-		shape.combination = combination;
-		shape.hasCollisions = hasCollision;
-		shape.groupIdx = group;
-		shape.material = material;
-		std::copy(variables, variables + 8, shape.parameters);
-
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
-
-		return entity;
+		return m_audioQueue;
 	}
 
-	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, int group)
+	float Scene::getFrictionSound()
 	{
-		Entity entity = m_ecs.createEntity();
-		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
-		shape.distanceFieldId = shapeId;
-		shape.combination = combination;
-		shape.hasCollisions = false;
-		shape.groupIdx = group;
-		shape.material = material;
-		std::copy(variables, variables + 8, shape.parameters);
-
-		m_UIRenderSystem.shaderNeedsUpdate() = true;
-
-		return entity;
+		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
 	}
-
-	UIShape& Scene::addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group)
-	{
-		entity = m_ecs.createEntity();
-		UIShape& component = m_ecs.addComponent<UIShape>(entity);
-		component.distanceFieldId = shapeId;
-		component.hasCollisions = false;
-		component.groupIdx = group;
-		component.smoothFactor = 100.0f;
-		std::copy(variables, variables + 8, component.parameters);
-
-		m_UIRenderSystem.shaderNeedsUpdate() = true;
-
-		return component;
-	}
-
-	void Scene::lookAt(Entity entity)
-	{
-		FlyMovement2D &fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
-		Transform &target = m_ecs.getComponent<Transform>(entity);
-		float oldZ = fly.targetPosition.z;
-
-		fly.targetPosition = target.position;
-		fly.targetPosition.z = oldZ;
-	};
 
 	void Scene::playSound(const WeirdRenderer::SimpleAudioRequest& audio)
 	{
 		m_audioQueue.push(audio);
 	}
+
+
+	// Serialization
 
 	void Scene::tag(Entity entity, const std::string& name)
 	{
@@ -382,33 +337,6 @@ namespace WeirdEngine
 		return it->second;
 	}
 
-	void Scene::loadScene(std::string &sceneFileContent)
-	{
-		// json scene = json::parse(sceneFileContent);
-
-		// load font
-		// loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
-
-		std::string projectDir = fs::current_path().string() + "/SampleProject";
-
-		// Create camera object
-		m_mainCamera = m_ecs.createEntity();
-
-		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
-		t.rotation = vec3(0, 0, -1.0f);
-
-		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
-
-		// Add a light
-		WeirdRenderer::Light light;
-		light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
-		m_lights.push_back(light);
-
-		// Shapes
-		m_sdfs = DefaultShapes::getSDFS();
-		m_simulation2D.setSDFs(m_sdfs);
-	}
-
 	void Scene::saveScene(const std::string& filename)
 	{
 		SceneSerializer::save(*this, filename);
@@ -433,4 +361,51 @@ namespace WeirdEngine
 		SceneSerializer::load(*this, path);
 	}
 
+
+	// Utils
+
+	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
+	{
+		Entity entity = m_ecs.createEntity();
+		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.hasCollisions = hasCollision;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
+
+		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+
+		return entity;
+	}
+
+	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, int group)
+	{
+		Entity entity = m_ecs.createEntity();
+		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
+
+		m_UIRenderContext.m_shapesNeedUpdate = true;
+
+		return entity;
+	}
+
+	UIShape& Scene::addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group)
+	{
+		entity = m_ecs.createEntity();
+		UIShape& component = m_ecs.addComponent<UIShape>(entity);
+		component.distanceFieldId = shapeId;
+		component.groupIdx = group;
+		component.smoothFactor = 100.0f;
+		std::copy(variables, variables + 8, component.parameters);
+
+		m_UIRenderContext.m_shapesNeedUpdate = true;
+
+		return component;
+	}
 }

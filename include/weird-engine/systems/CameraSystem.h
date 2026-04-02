@@ -6,18 +6,9 @@ namespace WeirdEngine
 {
 	namespace ECS
 	{
-		class CameraSystem : public System
+		namespace CameraSystem
 		{
-		private:
-
-		public:
-
-			CameraSystem(ECSManager& ecs)
-			{
-
-			}
-
-			void update(ECSManager& ecs)
+			inline void update(ECSManager& ecs)
 			{
 				auto& componentArray = *ecs.getComponentManager<Camera>()->getComponentArray();
 				unsigned int size = componentArray.getSize();
@@ -30,6 +21,6 @@ namespace WeirdEngine
 					c.camera.orientation = t.rotation;
 				}
 			}
-		};
+		}
 	}
 }

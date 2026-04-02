@@ -368,7 +368,6 @@ private:
     void deleteSelected()
     {
         m_ecs.destroyEntity(m_selectedEntity);
-        m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
         doDeselect();
     }
 
@@ -383,7 +382,6 @@ private:
             auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
             u.parameters[0] = PANEL_X + (P_BTN_W) * 0.5f; 
             u.parameters[1] = py;
-            u.isDirty = true;
             
             auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
             t.position = vec3(PANEL_X - P_BTN_W - 10.0f, py, 0.0f);
@@ -392,7 +390,7 @@ private:
         auto& ht = m_ecs.getComponent<Transform>(m_selInfoText);
         ht.position = vec3(PANEL_X, PANEL_TOP_Y + 35.0f, 0.0f);
         ht.isDirty = true;
-        m_UIRenderSystem.shaderNeedsUpdate() = true;
+        // m_UIRenderSystem.shaderNeedsUpdate() = true;
     }
 
     void hidePanel()
@@ -400,14 +398,14 @@ private:
         for (int i = 0; i < 8; i++)
         {
             auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
-            u.parameters[0] = HIDDEN; u.isDirty = true;
+            u.parameters[0] = HIDDEN;
             auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
             t.position.x = HIDDEN; t.isDirty = true;
         }
         auto& ht = m_ecs.getComponent<Transform>(m_selInfoText);
         ht.position.x = HIDDEN; 
         ht.isDirty = true;
-        m_UIRenderSystem.shaderNeedsUpdate() = true;
+        // m_UIRenderSystem.shaderNeedsUpdate() = true;
     }
 
     void refreshPanel()
@@ -439,7 +437,6 @@ private:
                 {
                     u.parameters[0] = PANEL_X + (P_BTN_W) * 0.5f;
                     u.parameters[1] = PANEL_TOP_Y - i * PARAM_GAP;
-                    u.isDirty = true;
                 }
 
                 auto& t = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
@@ -457,7 +454,7 @@ private:
                 auto& u = m_ecs.getComponent<UIShape>(m_paramBtns[i].shapeEntity);
                 if (u.parameters[0] > 0.0f)
                 {
-                    u.parameters[0] = HIDDEN; u.isDirty = true;
+                    u.parameters[0] = HIDDEN;
                     auto& t2 = m_ecs.getComponent<Transform>(m_paramBtns[i].textEntity);
                     t2.position.x = HIDDEN; t2.isDirty = true;
                 }
@@ -495,7 +492,6 @@ private:
                 v = std::round(v);
             cs.parameters[idx] = v;
             cs.isDirty = true;
-            m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
         }
         else
         {

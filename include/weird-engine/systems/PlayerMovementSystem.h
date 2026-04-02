@@ -6,44 +6,25 @@ namespace WeirdEngine
 {
 	namespace ECS
 	{
-		class PlayerMovementSystem : public System
+		namespace PlayerMovementSystem
 		{
-		private:
 
 			// Prevents the camera from jumping around when first clicking left click
-			bool firstClick = true;
-			bool m_locked = false;
+			inline bool firstClick = true;
+			inline bool m_locked = false;
 
 			// Adjust the speed of the camera and it's sensitivity when looking around
 
+			inline void updateMovement2D(ECSManager& ecs, float delta);
+			inline void updateFly(ECSManager& ecs, float delta);
 
-
-		public:
-
-			PlayerMovementSystem(ECSManager& ecs)
-			{
-
-			}
-
-			~PlayerMovementSystem()
-			{
-				if (m_locked)
-				{
-					Input::ShowMouse();
-				}
-			}
-
-			void update(ECSManager& ecs, float delta)
+			inline void update(ECSManager& ecs, float delta)
 			{
 				updateMovement2D(ecs, delta);
 				updateFly(ecs, delta);
 			}
 
-		private:
-
-
-
-			void updateMovement2D(ECSManager& ecs, float delta)
+			inline void updateMovement2D(ECSManager& ecs, float delta)
 			{
 				auto componentArray = ecs.getComponentManager<FlyMovement2D>()->getComponentArray();
 				unsigned int size = componentArray->getSize();
@@ -161,7 +142,7 @@ namespace WeirdEngine
 				}
 			}
 
-			void updateFly(ECSManager& ecs, float delta)
+			inline void updateFly(ECSManager& ecs, float delta)
 			{
 				auto& componentArray = *ecs.getComponentManager<FlyMovement>()->getComponentArray();
 				unsigned int size = componentArray.getSize();
@@ -279,6 +260,6 @@ namespace WeirdEngine
 				}
 			}
 
-		};
+		}
 	}
 }

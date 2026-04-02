@@ -237,7 +237,7 @@ namespace WeirdEngine {
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
 		}
 
-		Texture& SDF2DRenderPipeline::render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture)
+		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture)
 		{
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
@@ -253,7 +253,7 @@ namespace WeirdEngine {
 			return m_litSceneTexture;
 		}
 
-		void SDF2DRenderPipeline::renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta)
+		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta)
 		{
 			int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 			m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
@@ -285,7 +285,7 @@ namespace WeirdEngine {
 			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
 			m_distanceShader.setUniform("t_shapeBuffer", 1);
-			m_shapeDataBuffer.uploadData<Dot2D>(shapeData, dataSize);
+			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
 			m_shapeDataBuffer.bind(1);
 
 			m_renderPlane.draw(m_distanceShader);

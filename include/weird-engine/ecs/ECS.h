@@ -30,14 +30,7 @@ namespace WeirdEngine
 		}
 	}
 
-	// System base class
-	class System {
-	protected:
 
-	public:
-
-
-	};
 
 	// ECSManager Manager
 	class ECSManager {
@@ -55,10 +48,6 @@ namespace WeirdEngine
 			for (auto const& manager : m_componentManagers) {
 				if (manager)
 					manager->removeData(entity);
-			}
-
-			for (auto sys : m_systems) {
-
 			}
 		}
 
@@ -96,10 +85,7 @@ namespace WeirdEngine
 			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id])->hasComponent(entity);
 		}
 
-		template <typename T>
-		void addSystem(std::shared_ptr<System> system) {
-			m_systems.push_back(system);
-		}
+
 
 		template <typename T>
 		void registerComponent() {
@@ -152,7 +138,6 @@ namespace WeirdEngine
 
 	private:
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
-		std::vector<std::shared_ptr<System>> m_systems;
 		Entity m_entityCount = 0;
 
 	};
@@ -169,16 +154,3 @@ namespace WeirdEngine
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/components/SDFRenderer.h"
 #include "weird-renderer/components/TextRenderer.h"
-
-#include "../systems/InstancedRenderSystem.h"
-#include "../systems/RenderSystem.h"
-#include "../systems/SDFRenderSystem.h"
-
-#include "weird-physics/components/RigidBodyManager.h"
-
-#include "../systems/ButtonSystem.h"
-#include "../systems/CameraSystem.h"
-#include "../systems/PhysicsInteractionSystem.h"
-#include "../systems/PhysicsSystem2D.h"
-#include "../systems/PlayerMovementSystem.h"
-#include "../systems/SDFRenderSystem2D.h"

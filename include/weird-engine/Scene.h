@@ -2,16 +2,15 @@
 
 #include "ecs/ECS.h"
 #include "ResourceManager.h"
-#include "weird-engine/math/Default2DSDFs.h"
+
+#include "weird-engine/systems/SDFRenderSystem2D.h"
 
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
-#include "weird-renderer/scene/Shape.h"
-
-#include "weird-physics/Simulation2D.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
 
+#include "weird-physics/Simulation2D.h"
 #include "weird-physics/PhysicsSettings.h"
 
 #include <string>
@@ -42,13 +41,13 @@ namespace WeirdEngine
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
 						  WeirdRenderer::Shader& instancingShader);
 
-		void updateRayMarchingShader(WeirdRenderer::Shader& shader);
+		void update2DWorldShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
 		void forceShaderRefresh();
 		void update(double delta, double time);
 
-		void get2DShapesData(WeirdRenderer::Dot2D*& data, uint32_t& size, uint32_t& customShapeCount);
-		void getUIData(WeirdRenderer::Dot2D*& uiData, uint32_t& size, uint32_t& customShapeCount);
+		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
+		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
 		Scene(const Scene&) = default;			  // Deleted copy constructor
 		Scene& operator=(const Scene&) = default; // Deleted copy assignment operator
@@ -59,8 +58,6 @@ namespace WeirdEngine
 		std::vector<WeirdRenderer::Light>& getLigths();
 
 		float getTime();
-
-		void fillShapeDataBuffer(WeirdRenderer::Dot2D*& data, uint32_t& size);
 
 		enum class RenderMode
 		{
@@ -142,17 +139,8 @@ namespace WeirdEngine
 		// Return the entity that owns a tag, or MAX_ENTITIES if none.
 		Entity getEntityByTag(const std::string& name) const;
 
-		SDFRenderSystem m_sdfRenderSystem;
-		SDFRenderSystem2D<Dot, CustomShape, TextRenderer> m_sdfRenderSystem2D;
-		SDFRenderSystem2D<UIDot, UIShape, UITextRenderer> m_UIRenderSystem;
-		RenderSystem m_renderSystem;
-		InstancedRenderSystem m_instancedRenderSystem;
-		PhysicsSystem2D m_rbPhysicsSystem2D;
-		PlayerMovementSystem m_playerMovementSystem;
-		CameraSystem m_cameraSystem;
-		ButtonSystem m_buttonSystem;
-
-		PhysicsInteractionSystem m_physicsInteractionSystem;
+		SDFRenderSystem2DContext m_2DWorldRenderContext;
+		SDFRenderSystem2DContext m_UIRenderContext;
 
 		bool m_debugFly = false;
 		bool m_debugInput = false;
@@ -174,8 +162,6 @@ namespace WeirdEngine
 		std::string m_sceneFilePath;
 
 	private:
-		void loadScene(std::string& sceneFileContent);
-
 		// Load scene state from a .weird JSON file
 		void loadFromWeirdFile(const std::string& path);
 

@@ -94,7 +94,6 @@ namespace WeirdEngine
 					{"distanceFieldId", s.distanceFieldId},
 					{"combination",     static_cast<int>(s.combination)},
 					{"parameters",      json(s.parameters)},
-					{"hasCollisions",   s.hasCollisions},
 					{"groupIdx",        s.groupIdx},
 					{"material",        s.material},
 					{"smoothFactor",    s.smoothFactor}
@@ -281,7 +280,7 @@ namespace WeirdEngine
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
 					s.isDirty = true;
-					scene.m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+					scene.m_2DWorldRenderContext.m_shapesNeedUpdate = true;
 				}
 
 				if (ej.contains("uiShape"))
@@ -290,7 +289,6 @@ namespace WeirdEngine
 					const auto& sj = ej["uiShape"];
 					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
 					s.combination     = static_cast<CombinationType>(sj.value("combination", 0));
-					s.hasCollisions   = sj.value("hasCollisions", false);
 					s.groupIdx        = static_cast<uint16_t>(sj.value("groupIdx", 0));
 					s.material        = static_cast<uint16_t>(sj.value("material", 0));
 					s.smoothFactor    = sj.value("smoothFactor", 10.0f);
@@ -299,8 +297,7 @@ namespace WeirdEngine
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
-					s.isDirty = true;
-					scene.m_UIRenderSystem.shaderNeedsUpdate() = true;
+					scene.m_UIRenderContext.m_shapesNeedUpdate = true;
 				}
 
 				if (ej.contains("dot"))

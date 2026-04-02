@@ -16,7 +16,7 @@ const float NEAR = 0.1f;
 const float FAR = 1.4f;
 const float NORMAL_EPSILON = 0.001;
 
-const float SHADOW_VALUE = 0.9;
+const float SHADOW_VALUE = 0.85;
 const float SHADOW_WORLD_DISTANCE = 0.5; // Max shadow cast distance in world-space units
 
 // Outputs u_staticColors in RGBA
@@ -41,6 +41,7 @@ uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
 uniform float u_ambienOcclusionRadius = 0.005;
 uniform float u_ambienOcclusionStrength = 0.5;
 uniform float u_overscan = 0.0;
+uniform vec3 u_shadowTint;
 
 float mapOutside(vec2 p)
 {
@@ -173,8 +174,14 @@ float renderShadows(vec2 uv, vec2 rd)
     float shadowFar = min(FAR, SHADOW_WORLD_DISTANCE / zoom);
     #endif
 
+    #ifdef LONG_SHADOWS
+    float softShadowK = 16.0;
+    #else
+    float softShadowK = 2.0;
+    #endif
+
     int iter;
-    vec2 raymarchInfo = softShadow(uv, rd, minD, shadowFar, 2.0, iter);
+    vec2 raymarchInfo = softShadow(uv, rd, minD, shadowFar, softShadowK, iter);
     float d = raymarchInfo.x;
     float shadowFactor = raymarchInfo.y;
 
@@ -310,8 +317,7 @@ void main()
     color = vec3(normal, 0.0);
 #endif
 
-    vec3 shadowTint = vec3(0.05, 0.1, 0.8);
-    vec3 shadowTransmittance = mix(shadowTint, vec3(1.0), shadows);
+    vec3 shadowTransmittance = mix(u_shadowTint, vec3(1.0), shadows);
     vec3 shadedBackground = backgroundColor * shadowTransmittance;
 
     color = mix(color * light, shadedBackground, 1.0 - finalAlpha);

@@ -23,6 +23,8 @@ namespace WeirdEngine
 				float renderScale = 1.0f;
 				bool isUI; // UI mode: origin at bottom-left, [0,1] UV space, UI-specific distance clamping
 				bool enableShadows;
+				bool enableLongShadows = false;
+				glm::vec3 shadowTint = glm::vec3(0.4f, 0.6f, 0.8f);
 				bool enableRefraction;
 				bool enableAntialiasing;
 				bool enableMotionBlur;

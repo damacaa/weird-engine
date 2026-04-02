@@ -55,6 +55,9 @@ namespace WeirdEngine {
 			if (m_config.enableShadows) {
 				m_lightingShader.addDefine("SHADOWS_ENABLED");
 			}
+			if (m_config.enableLongShadows) {
+				m_lightingShader.addDefine("LONG_SHADOWS");
+			}
 			if (m_config.enableRefraction) {
 				m_lightingShader.addDefine("REFRACTION");
 			}
@@ -444,6 +447,7 @@ namespace WeirdEngine {
 			m_lightingShader.setUniform("u_ambienOcclusionRadius", m_config.ambienOcclusionRadius);
 			m_lightingShader.setUniform("u_ambienOcclusionStrength", m_config.ambienOcclusionStrength);
 			m_lightingShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
+			m_lightingShader.setUniform("u_shadowTint", m_config.shadowTint);
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);

@@ -1,31 +1,22 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
+#include "weird-engine/vec.h"
 #include "weird-renderer/core/RenderTarget.h"
 
 namespace WeirdEngine
 {
 	using namespace ECS;
 
-	class SDFRenderSystem : public System {
-	private:
-		std::shared_ptr<ComponentManager<Dot>> m_sdfRendererManager;
-		std::shared_ptr<ComponentManager<Transform>> m_transformManager;
+	namespace SDFRenderSystem {
 
-	public:
+		inline void update(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderTarget& rp, const std::vector< WeirdRenderer::Light>& lights) {
 
-		SDFRenderSystem(ECSManager& ecs) {
-			m_sdfRendererManager = ecs.getComponentManager<Dot>();
-			m_transformManager = ecs.getComponentManager<Transform>();
-		}
-
-		void render(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderTarget& rp, const std::vector< WeirdRenderer::Light>& lights) {
-
-			auto componentArray = m_sdfRendererManager->getComponentArray();
-			auto transformArray = m_transformManager->getComponentArray();
+			auto componentArray = ecs.getComponentManager<Dot>()->getComponentArray();
+			auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
 
 			unsigned int size = componentArray->getSize();
 
-			WeirdRenderer::Shape* data = new WeirdRenderer::Shape[size];
+			vec4* data = new vec4[size];
 
 			for (size_t i = 0; i < size; i++)
 			{
@@ -33,8 +24,10 @@ namespace WeirdEngine
 				//auto& t = ecs.getComponent<Transform>(mr.Owner);
 				auto& t = transformArray->getDataFromEntity(mr.Owner);
 
-				data[i].position = t.position;// +glm::vec3(0, mr.Owner, 0);
-				//data[i].size = t.scale.x;
+				data[i].x = t.position.x;
+				data[i].y = t.position.y;
+				data[i].z = t.position.z;
+				data[i].w = mr.materialId;
 			}
 
 			shader.setUniform("directionalLightDirection", lights[0].rotation);
@@ -44,5 +37,5 @@ namespace WeirdEngine
 
 			//rp->draw(shader, m_data, m_shapes);
 		}
-	};
+	}
 }

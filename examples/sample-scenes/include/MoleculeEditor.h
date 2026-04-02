@@ -812,7 +812,6 @@ private:
             ui.parameters[2] = bScreen.x;
             ui.parameters[3] = bScreen.y;
             ui.parameters[4] = LINE_WIDTH;
-            ui.isDirty = true;
         }
     }
 
@@ -880,14 +879,11 @@ private:
             if (m_tagCircleOuter != static_cast<Entity>(-1))
             {
                 m_ecs.getComponent<UIShape>(m_tagCircleOuter).parameters[2] = 0.0f;
-                m_ecs.getComponent<UIShape>(m_tagCircleOuter).isDirty = true;
                 m_ecs.getComponent<UIShape>(m_tagCircleInner).parameters[2] = 0.0f;
-                m_ecs.getComponent<UIShape>(m_tagCircleInner).isDirty = true;
             }
             if (m_tagLabelEntity != static_cast<Entity>(-1))
             {
                 m_ecs.getComponent<UITextRenderer>(m_tagLabelEntity).text = "";
-                m_ecs.getComponent<UITextRenderer>(m_tagLabelEntity).dirty = true;
             }
             return;
         }
@@ -920,13 +916,11 @@ private:
         outer.parameters[0] = screen.x;
         outer.parameters[1] = screen.y;
         outer.parameters[2] = TAG_OUTER_RADIUS;
-        outer.isDirty = true;
 
         auto& inner = m_ecs.getComponent<UIShape>(m_tagCircleInner);
         inner.parameters[0] = screen.x;
         inner.parameters[1] = screen.y;
         inner.parameters[2] = TAG_INNER_RADIUS;
-        inner.isDirty = true;
 
         // Update the tag label text
         if (m_tagLabelEntity != static_cast<Entity>(-1))

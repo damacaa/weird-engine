@@ -1,7 +1,6 @@
 #pragma once
-#include "weird-renderer/resources/Mesh.h"
-#include "weird-renderer/scene/Shape.h"
-#include "weird-renderer/scene/Shape2D.h"
+
+#include "weird-renderer/resources/Texture.h"
 
 namespace WeirdEngine
 {

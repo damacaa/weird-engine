@@ -134,7 +134,6 @@ float map(vec3 p)
     {
         vec4 positionSize = texelFetch(t_shapeBuffer, i);
         // float objectDist = fSphere(p - data[i].position, data[i].size);
-        //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
         float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
         
 
@@ -174,8 +173,6 @@ vec3 getColor(vec3 p)
         int id = i % 2 == 0 ? 1 : 2;
 
         vec4 positionSize = texelFetch(t_shapeBuffer, i);
-        // float objectDist = fSphere(p - data[i].position, data[i].size);
-        //float objectDist = fSphere(p - vec3(2.0f * sin(-u_time), 1.0f, 2.0f * cos(-u_time)), 0.5f);
         float objectDist = fSphere(p - positionSize.xyz, 0.5f);
         
         //float delta = objectDist / (objectDist + d); // Calculate using old d

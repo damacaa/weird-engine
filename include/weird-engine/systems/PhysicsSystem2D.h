@@ -10,25 +10,18 @@ namespace WeirdEngine
 
 
 
-		// Example Systems
-		class PhysicsSystem2D : public System
+		namespace PhysicsSystem2D
 		{
-		private:
-			std::shared_ptr<ComponentManager<RigidBody2D>> m_rbManager;
 
-		public:
-
-			PhysicsSystem2D(ECSManager& ecs) {
-			}
-
-			void init(ECSManager& ecs, Simulation2D& simulation)
+			inline void init(ECSManager& ecs, Simulation2D& simulation)
 			{
-				m_rbManager = ecs.getComponentManager<RigidBody2D>();
+				auto m_rbManager = ecs.getComponentManager<RigidBody2D>();
 				auto componentArray = m_rbManager->getComponentArray();
 			}
 
-			void update(ECSManager& ecs, Simulation2D& simulation)
+			inline void update(ECSManager& ecs, Simulation2D& simulation)
 			{
+				auto m_rbManager = ecs.getComponentManager<RigidBody2D>();
 				auto componentArray = m_rbManager->getComponentArray();
 				auto transformArray = ecs.getComponentArray<Transform>();
 
@@ -59,6 +52,6 @@ namespace WeirdEngine
 
 				}
 			}
-		};
+		}
 	}
 }

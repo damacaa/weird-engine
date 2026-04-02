@@ -7,20 +7,19 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
-	class PhysicsInteractionSystem
+	namespace PhysicsInteractionSystem
 	{
-	private:
 
-		bool m_loadingImpulse = false;
-		vec2 m_loadStartPosition;
+		inline bool m_loadingImpulse = false;
+		inline vec2 m_loadStartPosition;
 
-		SimulationID m_dragId = -1;
+		inline SimulationID m_dragId = -1;
 
-		int m_currentMaterial = 0;
+		inline int m_currentMaterial = 0;
 
-		SimulationID m_firstIdInSpring = -1;
+		inline SimulationID m_firstIdInSpring = -1;
 
-		SimulationID m_selectedId = -1;
+		inline SimulationID m_selectedId = -1;
 
 		enum class InteractionMode
 		{
@@ -31,7 +30,7 @@ namespace WeirdEngine
 			DistanceConstraint = 4,
 		};
 
-		std::string m_interactionModeToString[5]
+		inline std::string m_interactionModeToString[5] =
 		{
 			"Drag",
 			"Impulse",
@@ -40,17 +39,16 @@ namespace WeirdEngine
 			"DistanceConstraint"
 		};
 
-		InteractionMode m_currentInteractionMode = InteractionMode::Drag;
+		inline InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
+		inline vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation);
+		inline void drag(ECSManager& ecs, Simulation2D& simulation);
+		inline void impulse(ECSManager& ecs, Simulation2D& simulation);
+		inline void fix(ECSManager& ecs, Simulation2D& simulation);
+		inline void spring(ECSManager& ecs, Simulation2D& simulation);
+		inline void positionConstraint(ECSManager& ecs, Simulation2D& simulation);
 
-	public:
-
-		PhysicsInteractionSystem(ECSManager& ecs) : m_loadingImpulse(false)
-		{
-
-		}
-
-		void reset()
+		inline void reset()
 		{
 			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
 
@@ -66,7 +64,7 @@ namespace WeirdEngine
 		}
 
 
-		void update(ECSManager& ecs, Simulation2D& simulation)
+		inline void update(ECSManager& ecs, Simulation2D& simulation)
 		{
 			// Spawn ball
 			if (Input::GetMouseButtonDown(Input::LeftClick))
@@ -173,9 +171,7 @@ namespace WeirdEngine
 		}
 
 
-	private:
-
-		vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation)
+		inline vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation)
 		{
 			// Get mouse coordinates
 			auto& cameraTransform = ecs.getComponent<Transform>(0);// m_mainCamera
@@ -190,7 +186,7 @@ namespace WeirdEngine
 
 
 
-		void drag(ECSManager& ecs, Simulation2D& simulation)
+		inline void drag(ECSManager& ecs, Simulation2D& simulation)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
@@ -223,7 +219,7 @@ namespace WeirdEngine
 		}
 
 
-		void impulse(ECSManager& ecs, Simulation2D& simulation)
+		inline void impulse(ECSManager& ecs, Simulation2D& simulation)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
@@ -269,7 +265,7 @@ namespace WeirdEngine
 		}
 
 
-		void fix(ECSManager& ecs, Simulation2D& simulation)
+		inline void fix(ECSManager& ecs, Simulation2D& simulation)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
@@ -282,7 +278,7 @@ namespace WeirdEngine
 		}
 
 
-		void spring(ECSManager& ecs, Simulation2D& simulation)
+		inline void spring(ECSManager& ecs, Simulation2D& simulation)
 		{
 
 			if (Input::GetMouseButtonDown(Input::RightClick))
@@ -315,7 +311,7 @@ namespace WeirdEngine
 			}
 		}
 
-		void positionConstraint(ECSManager& ecs, Simulation2D& simulation)
+		inline void positionConstraint(ECSManager& ecs, Simulation2D& simulation)
 		{
 
 			if (Input::GetMouseButtonDown(Input::RightClick))
@@ -347,5 +343,5 @@ namespace WeirdEngine
 				m_firstIdInSpring = -1;
 			}
 		}
-	};
+	}
 }

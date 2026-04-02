@@ -6,6 +6,7 @@
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/scene/Camera.h"
+#include "weird-engine/vec.h"
 
 namespace WeirdEngine
 {
@@ -43,7 +44,7 @@ namespace WeirdEngine
 			~SDF2DRenderPipeline();
 
 			Shader& getDistanceShader();
-			Texture& render(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
+			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 
@@ -112,7 +113,7 @@ namespace WeirdEngine
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
 
-			void renderDistanceField(WeirdRenderer::Dot2D* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta);
+			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);

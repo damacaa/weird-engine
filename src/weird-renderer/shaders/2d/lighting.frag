@@ -135,7 +135,7 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter) 
             break;
         }
 
-        float h = mapOutside(ro + rd * t) - 0.001; // Your SDF function
+        float h = mapOutside(ro + rd * t); // Your SDF function
 
         // Track where the shadow is strongest (closest approach to an occluder)
         float newRes = k * h / t;
@@ -310,7 +310,11 @@ void main()
     color = vec3(normal, 0.0);
 #endif
 
-    color = mix(color * light, backgroundColor * shadows, 1.0 - finalAlpha);
+    vec3 shadowTint = vec3(0.05, 0.1, 0.8);
+    vec3 shadowTransmittance = mix(shadowTint, vec3(1.0), shadows);
+    vec3 shadedBackground = backgroundColor * shadowTransmittance;
+
+    color = mix(color * light, shadedBackground, 1.0 - finalAlpha);
 
     FragColor = vec4(color, 1.0);
 

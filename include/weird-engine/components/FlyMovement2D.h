@@ -1,5 +1,6 @@
 #pragma once
 #include "weird-engine/ecs/Component.h"
+#include "weird-engine/vec.h"
 
 namespace WeirdEngine
 {

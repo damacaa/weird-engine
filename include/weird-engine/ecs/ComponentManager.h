@@ -73,7 +73,7 @@ namespace WeirdEngine
 			return componentArray;
 		}
 
-		void freeRemovedComponents()
+		void freeRemovedComponents() override
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
 

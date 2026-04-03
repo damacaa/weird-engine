@@ -4,6 +4,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// #define LOG_SHADER_COMPILATION
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -381,7 +383,10 @@ namespace WeirdEngine
 			const char* vertexSource = vertexCode.c_str();
 			const char* fragmentSource = fragmentCodeAfterIncludes.c_str();
 
+#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
 			auto startTime = std::chrono::high_resolution_clock::now();
+#endif
+
 			// Create Vertex Shader Object and get its reference
 			GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 			// Attach Vertex Shader source to the Vertex Shader Object
@@ -416,7 +421,7 @@ namespace WeirdEngine
 			glDeleteShader(vertexShader);
 			glDeleteShader(fragmentShader);
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 			std::cout << "Compiling program: \n   V -> " << m_vertexFile << "\n   F -> " << m_fragmentFile << "\n";

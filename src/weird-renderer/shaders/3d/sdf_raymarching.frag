@@ -75,8 +75,8 @@ uniform float u_time;
 
 const int MAX_STEPS = 256;
 const float EPSILON = 0.01;
-const float NEAR = 0.1f;
-const float FAR = 100.0f;
+const float NEAR = 0.1;
+const float FAR = 100.0;
 
 const float OVERSHOOT = 1.0;
 
@@ -128,7 +128,7 @@ float map(vec3 p)
 	{
 		vec4 positionSize = texelFetch(t_shapeBuffer, i);
 		// float objectDist = fSphere(p - data[i].position, data[i].size);
-		float objectDist = fSphere(p - positionSize.xyz, 0.5f); // positionSize.w);
+		float objectDist = fSphere(p - positionSize.xyz, 0.5); // positionSize.w);
 
 		res = fOpUnionSoft(objectDist, res, 0.5);
 	}
@@ -165,7 +165,7 @@ vec3 getColor(vec3 p)
 		int id = i % 2 == 0 ? 1 : 2;
 
 		vec4 positionSize = texelFetch(t_shapeBuffer, i);
-		float objectDist = fSphere(p - positionSize.xyz, 0.5f);
+		float objectDist = fSphere(p - positionSize.xyz, 0.5);
 
 		// float delta = objectDist / (objectDist + d); // Calculate using old d
 		d = fOpUnionSoft(objectDist, d, k);
@@ -310,9 +310,9 @@ vec4 render(in vec2 uv)
 		// float a = minDepth - (FAR - 980);
 		// alpha = max(0.0, 0.001 * a * a *a );
 
-		// alpha = 1.0f;
+		// alpha = 1.0;
 
-		alpha = 1.0f - smoothstep(FAR * 0.5, FAR, minDepth);
+		alpha = 1.0 - smoothstep(FAR * 0.5, FAR, minDepth);
 	}
 
 	return vec4(col, alpha);
@@ -331,7 +331,7 @@ void main()
 {
 	vec2 screenUV = v_texCoord;
 
-	vec2 uv = (2.0f * v_texCoord) - 1.0f;
+	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
 	uv.x *= aspectRatio;
 
@@ -347,3 +347,5 @@ void main()
 	col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
 
 	FragColor = vec4(col.xyz, col.w);
+}
+

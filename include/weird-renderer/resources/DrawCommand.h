@@ -6,15 +6,16 @@
 
 namespace WeirdEngine
 {
-    namespace WeirdRenderer
-    {
-        // The data structure
-        struct DrawCommand {
-            Mesh* mesh;
-            // Material* material; // TODO
-            glm::mat4 transform;
-        };
-    }
-}
+	namespace WeirdRenderer
+	{
+		// The data structure
+		struct DrawCommand
+		{
+			Mesh* mesh;
+			// Material* material; // TODO
+			glm::mat4 transform;
+		};
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
-#endif //DRAWCOMMAND_H
+#endif // DRAWCOMMAND_H

@@ -21,8 +21,8 @@ extern "C"
 }
 
 #include "weird-physics/PhysicsSettings.h"
-#include "weird-renderer/audio/AudioSettings.h"
 #include "weird-renderer/audio/AudioEngine.h"
+#include "weird-renderer/audio/AudioSettings.h"
 
 namespace WeirdEngine
 {
@@ -45,7 +45,7 @@ namespace WeirdEngine
 		SDL_Window* window;
 		AudioEngine& audioEngine = AudioEngine::getInstance();
 		audioEngine.init(audioSettings);
-		
+
 		SDLInitializer m_sdlInitializer(displaySettings, window, audioEngine);
 		Renderer renderer(displaySettings, window);
 

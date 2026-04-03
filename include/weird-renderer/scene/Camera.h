@@ -39,7 +39,7 @@ namespace WeirdEngine
 			// Updates the camera matrix to the Vertex Shader
 			void updateMatrix(float nearPlane, float farPlane, int width, int height);
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
 #endif

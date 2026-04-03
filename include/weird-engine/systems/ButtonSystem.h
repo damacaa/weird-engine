@@ -189,5 +189,5 @@ namespace WeirdEngine
 				}
 			}
 		}
-	}
-}
+	} // namespace ButtonSystem
+} // namespace WeirdEngine

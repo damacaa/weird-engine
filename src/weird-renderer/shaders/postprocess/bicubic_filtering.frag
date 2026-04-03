@@ -33,12 +33,12 @@ vec4 CatmullRomWeights(float t)
 	float t2 = t * t;
 	float t3 = t2 * t;
 
-	// Catmull-Rom basis: [-0.5*t^3 + t^2 - 0.5*t, 1.5*t^3 - 2.5*t^2 + 1.0, -1.5*t^3 + 2.0*t^2 + 0.5*t, 0.5*t^3 - 0.5*t^2]
-	return vec4(
-	-0.5 * t3 + t2 - 0.5 * t, // P0 (i-1)
-	1.5 * t3 - 2.5 * t2 + 1.0, // P1 (i)
-	-1.5 * t3 + 2.0 * t2 + 0.5 * t, // P2 (i+1)
-	0.5 * t3 - 0.5 * t2        // P3 (i+2)
+	// Catmull-Rom basis: [-0.5*t^3 + t^2 - 0.5*t, 1.5*t^3 - 2.5*t^2 + 1.0, -1.5*t^3 + 2.0*t^2 + 0.5*t, 0.5*t^3 -
+	// 0.5*t^2]
+	return vec4(-0.5 * t3 + t2 - 0.5 * t,		// P0 (i-1)
+				1.5 * t3 - 2.5 * t2 + 1.0,		// P1 (i)
+				-1.5 * t3 + 2.0 * t2 + 0.5 * t, // P2 (i+1)
+				0.5 * t3 - 0.5 * t2				// P3 (i+2)
 	);
 }
 
@@ -48,9 +48,9 @@ float BicubicInterpolate(sampler2D tex, vec2 uv, vec2 size)
 	vec2 texelSize = 1.0 / size;
 
 	// 1. Determine the 4x4 grid of texel indices and fractional distance
-	vec2 P = uv * size - 0.5; // Offset to center the interpolation region
+	vec2 P = uv * size - 0.5;	 // Offset to center the interpolation region
 	ivec2 i_j = ivec2(floor(P)); // Top-left index of the 4x4 grid is effectively i-1, j-1
-	vec2 f = fract(P); // Fractional distance (weights)
+	vec2 f = fract(P);			 // Fractional distance (weights)
 
 	// 2. Calculate the Catmull-Rom weights for X and Y
 	vec4 weightsX = CatmullRomWeights(f.x);
@@ -81,7 +81,6 @@ float BicubicInterpolate(sampler2D tex, vec2 uv, vec2 size)
 
 	return d;
 }
-
 
 void main()
 {

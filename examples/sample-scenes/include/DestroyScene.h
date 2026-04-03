@@ -9,8 +9,7 @@ class DestroyScene : public Scene
 {
 public:
 	DestroyScene(const PhysicsSettings& settings)
-		: Scene(settings) {
-	};
+		: Scene(settings) {};
 
 private:
 	std::vector<Entity> m_testBalls;
@@ -20,7 +19,7 @@ private:
 
 	float m_countDown = -1.0f;
 
-		// Inherited via Scene
+	// Inherited via Scene
 	void onStart() override
 	{
 		m_debugInput = true;
@@ -76,7 +75,7 @@ private:
 			ui.materialId = 4 + (e % 12);
 			auto& rb = m_ecs.addComponent<RigidBody2D>(e);
 
-			if(i > 0)
+			if (i > 0)
 				m_simulation2D.addPositionConstraint(rb.simulationId, rb.simulationId - 1, 3.0f);
 
 			m_testBalls.push_back(e);
@@ -84,7 +83,7 @@ private:
 
 		float y = -5.0f + (static_cast<int>(std::floor(getTime() * 12345.6789f)) % 10);
 		std::cout << "Spawning shape at y = " << y << std::endl;
-		float variables[4]{ 15, y, 15, 5 };
+		float variables[4]{15, y, 15, 5};
 		m_testShape = addShape(DefaultShapes::BOX, variables, 2, CombinationType::Addition);
 	}
 

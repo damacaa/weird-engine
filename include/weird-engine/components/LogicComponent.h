@@ -5,6 +5,5 @@ namespace WeirdEngine
 {
 	struct LogicComponent : public Component
 	{
-
 	};
-}
+} // namespace WeirdEngine

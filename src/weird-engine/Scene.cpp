@@ -1,27 +1,24 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
+#include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
-#include "weird-engine/math/Default2DSDFs.h"
 #include "weird-physics/components/CustomShapeManager.h"
-
-
 
 #include "weird-physics/components/RigidBodyManager.h"
 
+#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"
 #include "weird-engine/systems/PhysicsInteractionSystem.h"
 #include "weird-engine/systems/PhysicsSystem2D.h"
 #include "weird-engine/systems/PlayerMovementSystem.h"
-#include "weird-engine/systems/SDFRenderSystem2D.h"
 #include "weird-engine/systems/RenderSystem.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
-#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
+#include "weird-engine/systems/SDFRenderSystem2D.h"
 
 namespace WeirdEngine
 {
-	
 
 	Scene::Scene(const PhysicsSettings& settings)
 		: m_simulation2D(MAX_ENTITIES, settings)
@@ -36,9 +33,9 @@ namespace WeirdEngine
 
 		// Create camera
 		m_mainCamera = m_ecs.createEntity();
-		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
+		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
-		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		// Shapes
 		m_sdfs = DefaultShapes::getSDFS();
@@ -87,13 +84,15 @@ namespace WeirdEngine
 
 		switch (m_renderMode)
 		{
-			case WeirdEngine::Scene::RenderMode::RayMarching3D: {
-				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+			case WeirdEngine::Scene::RenderMode::RayMarching3D:
+			{
+				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
-			case WeirdEngine::Scene::RenderMode::RayMarchingBoth: {
-				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
+			{
+				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
 				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 				break;
 			}
@@ -148,33 +147,34 @@ namespace WeirdEngine
 		return m_simulation2D.getSimulationTime();
 	}
 
-	void Scene::handlePhysicsStep(void *userData)
+	void Scene::handlePhysicsStep(void* userData)
 	{
-		Scene *self = static_cast<Scene *>(userData);
+		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsStep();
 
 		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
 		self->m_frictionSoundLevel = 0.0f;
 	}
 
-	void Scene::handleCollision(CollisionEvent &event, void *userData)
+	void Scene::handleCollision(CollisionEvent& event, void* userData)
 	{
 		// Unsafe cast! Prone to error.
-		Scene *self = static_cast<Scene *>(userData);
+		Scene* self = static_cast<Scene*>(userData);
 		self->onCollision(event);
 	}
 
-	void Scene::handleShapeCollision(ShapeCollisionEvent &event, void *userData)
+	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
-		Scene *self = static_cast<Scene*>(userData);
+		Scene* self = static_cast<Scene*>(userData);
 		self->onShapeCollision(event);
 
 		const float m_soundFalloff = 0.1f;
 		bool spatialAudio = false;
 		auto camPosition = self->getCamera().position; // Mutex?
 		float speed = glm::length2(event.velocity);
-		float distanceMultiplier = 1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
-		float frictionSample =event.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
+		float distanceMultiplier =
+			1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
+		float frictionSample = event.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
 
 		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
 
@@ -183,13 +183,14 @@ namespace WeirdEngine
 			// float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
 			float penetrationFactor = std::sqrt((std::min)(2.0f * event.penetration, 1.0f));
 			float volume = penetrationFactor;
-			
+
 			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
 			freqFactor *= 0.01f;
 			// freqFactor = freqFactor * freqFactor;
 			float frequency = 200.0f + (freqFactor * 300.0f);
 
-			self->m_audioQueue.push(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(event.position, 0.0f) });
+			self->m_audioQueue.push(
+				WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(event.position, 0.0f)});
 		}
 	}
 
@@ -200,7 +201,7 @@ namespace WeirdEngine
 		return m_renderMode;
 	}
 
-	WeirdRenderer::Camera &Scene::getCamera()
+	WeirdRenderer::Camera& Scene::getCamera()
 	{
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
 	}
@@ -212,19 +213,19 @@ namespace WeirdEngine
 		SDFRenderSystem2D::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
 	}
 
-	void Scene::getUIData(vec4 *&uiData, uint32_t &size, uint32_t& customShapeCount)
+	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem2D::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
 	}
 
-	void Scene::update2DWorldShader(WeirdRenderer::Shader &shader)
+	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
 		SDFShaderGenerationSystem2D::update<Dot, CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
 	}
-	
-	void Scene::updateUIShader(WeirdRenderer::Shader &shader)
+
+	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
 		SDFShaderGenerationSystem2D::update<UIDot, UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
 	}
@@ -235,25 +236,25 @@ namespace WeirdEngine
 		m_UIRenderContext.m_shapesNeedUpdate = true;
 	}
 
-	const std::vector<WeirdRenderer::DrawCommand> & Scene::getDrawQueue() const
+	const std::vector<WeirdRenderer::DrawCommand>& Scene::getDrawQueue() const
 	{
 		return m_drawQueue;
 	}
 
-	std::vector<WeirdRenderer::Light> &Scene::getLigths()
+	std::vector<WeirdRenderer::Light>& Scene::getLigths()
 	{
 		return m_lights;
 	}
 
-	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
+	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
+							 WeirdRenderer::Shader& instancingShader)
 	{
 		PROFILE_SCOPE("Render Models");
-		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
 
 		onRender(renderTarget);
 	}
-
 
 	// SDFs
 
@@ -264,7 +265,6 @@ namespace WeirdEngine
 
 		return m_sdfs.size() - 1;
 	}
-	
 
 	// AUDIO
 
@@ -282,7 +282,6 @@ namespace WeirdEngine
 	{
 		m_audioQueue.push(audio);
 	}
-
 
 	// Serialization
 
@@ -361,13 +360,13 @@ namespace WeirdEngine
 		SceneSerializer::load(*this, path);
 	}
 
-
 	// Utils
 
-	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
+	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
+						   bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
+		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
 		shape.distanceFieldId = shapeId;
 		shape.combination = combination;
 		shape.hasCollisions = hasCollision;
@@ -380,7 +379,8 @@ namespace WeirdEngine
 		return entity;
 	}
 
-	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, int group)
+	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
+							 int group)
 	{
 		Entity entity = m_ecs.createEntity();
 		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
@@ -408,4 +408,4 @@ namespace WeirdEngine
 
 		return component;
 	}
-}
+} // namespace WeirdEngine

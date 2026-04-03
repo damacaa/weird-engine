@@ -2,22 +2,28 @@
 #include "weird-engine/vec.h"
 #include <algorithm>
 
-namespace WeirdEngine {
-	namespace WeirdRenderer {
+namespace WeirdEngine
+{
+	namespace WeirdRenderer
+	{
 
-		static int largestPowerOfTwoBelow(int n) {
+		static int largestPowerOfTwoBelow(int n)
+		{
 			int p = 1;
-			while (p * 2 <= n) {
+			while (p * 2 <= n)
+			{
 				p *= 2;
 			}
 			return p;
 		}
 
-		int SDF2DRenderPipeline::largestPowerOfTwoBelow(int n) {
+		int SDF2DRenderPipeline::largestPowerOfTwoBelow(int n)
+		{
 			return ::WeirdEngine::WeirdRenderer::largestPowerOfTwoBelow(n);
 		}
 
-		SDF2DRenderPipeline::SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane)
+		SDF2DRenderPipeline::SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette,
+												 RenderPlane& renderPlane)
 			: m_config(config)
 			, m_colorPalette(colorPalette)
 			, m_renderPlane(renderPlane)
@@ -31,53 +37,71 @@ namespace WeirdEngine {
 			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
 			float overscanScale = 1.0f + 2.0f * overscan;
 			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale * overscanScale);
-			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
+			m_distanceSampleHeight =
+				(unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
 
 			// Load shaders
 			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_distance.frag");
 			m_distanceShader.addDefine("BLEND_SHAPES");
-			if (m_config.enableMotionBlur) {
+			if (m_config.enableMotionBlur)
+			{
 				m_distanceShader.addDefine("MOTION_BLUR");
 			}
-			if (m_config.isUI) {
+			if (m_config.isUI)
+			{
 				m_distanceShader.addDefine("UI_PIPELINE");
 			}
 
-			m_jumpFloodInitShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_init.frag");
-			m_jumpFloodStepShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_step.frag");
-			m_distanceCorrectionShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_correction.frag");
-			m_distanceUpscalerShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_upscaler.frag");
-			m_materialColorShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_color.frag");
-			m_materialBlendShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_blend.frag");
-			m_defaultBackgroundShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/background.frag");
-			
+			m_jumpFloodInitShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_init.frag");
+			m_jumpFloodStepShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_step.frag");
+			m_distanceCorrectionShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_correction.frag");
+			m_distanceUpscalerShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_upscaler.frag");
+			m_materialColorShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_color.frag");
+			m_materialBlendShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_blend.frag");
+			m_defaultBackgroundShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/background.frag");
+
 			m_lightingShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/lighting.frag");
-			if (m_config.enableShadows) {
+			if (m_config.enableShadows)
+			{
 				m_lightingShader.addDefine("SHADOWS_ENABLED");
 			}
-			if (m_config.enableLongShadows) {
+			if (m_config.enableLongShadows)
+			{
 				m_lightingShader.addDefine("LONG_SHADOWS");
 			}
-			if (m_config.enableRefraction) {
+			if (m_config.enableRefraction)
+			{
 				m_lightingShader.addDefine("REFRACTION");
 			}
-			if (m_config.enableAntialiasing) {
+			if (m_config.enableAntialiasing)
+			{
 				m_lightingShader.addDefine("ANTIALIASING");
 			}
 
-			if(m_config.debugDistanceField) {
+			if (m_config.debugDistanceField)
+			{
 				m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
 			}
-			if(m_config.debugMaterialColors) {
+			if (m_config.debugMaterialColors)
+			{
 				m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
 			}
 
 			// Initialize textures and render targets
-			m_distanceTextureA = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceTextureA =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderA = RenderTarget(false);
 			m_distanceRenderA.bindColorTextureToFrameBuffer(m_distanceTextureA);
 
-			m_distanceTextureB = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceTextureB =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderB = RenderTarget(false);
 			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
 
@@ -89,8 +113,10 @@ namespace WeirdEngine {
 			m_jumpFloodInitRender = RenderTarget(false);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePing =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePong =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_jumpFloodRenderPing = RenderTarget(false);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 			m_jumpFloodRenderPong = RenderTarget(false);
@@ -98,7 +124,8 @@ namespace WeirdEngine {
 			m_jumpFloodDoubleBuffer[0] = &m_jumpFloodRenderPing;
 			m_jumpFloodDoubleBuffer[1] = &m_jumpFloodRenderPong;
 
-			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_distanceTextureCorrected =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_distanceCorrectionRender = RenderTarget(false);
 			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
@@ -110,7 +137,8 @@ namespace WeirdEngine {
 			m_colorRender = RenderTarget(false);
 			m_colorRender.bindColorTextureToFrameBuffer(m_colorTexture);
 
-			m_postProcessTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessTextureFront =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderFront = RenderTarget(false);
 			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
 
@@ -125,8 +153,9 @@ namespace WeirdEngine {
 			m_backgroundRender = RenderTarget(false);
 			m_backgroundRender.bindColorTextureToFrameBuffer(m_backgroundTexture);
 
-			m_litSceneTexture = Texture(m_config.renderWidth, m_config.renderHeight, 
-				m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
+			m_litSceneTexture =
+				Texture(m_config.renderWidth, m_config.renderHeight,
+						m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_litSceneRender = RenderTarget(false);
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
 		}
@@ -182,7 +211,8 @@ namespace WeirdEngine {
 			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
 			float overscanScale = 1.0f + 2.0f * overscan;
 			m_distanceSampleWidth = (unsigned int)(m_config.renderWidth * m_config.distanceSampleScale * overscanScale);
-			m_distanceSampleHeight = (unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
+			m_distanceSampleHeight =
+				(unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
 
 			// Dispose old textures
 			m_distanceTextureA.dispose();
@@ -199,22 +229,27 @@ namespace WeirdEngine {
 			m_litSceneTexture.dispose();
 
 			// Recreate textures with new dimensions and rebind to existing render targets
-			m_distanceTextureA = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceTextureA =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderA.bindColorTextureToFrameBuffer(m_distanceTextureA);
 
-			m_distanceTextureB = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_distanceTextureB =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePing =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 
-			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePong =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
 
-			m_distanceTextureCorrected = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_distanceTextureCorrected =
+				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
 			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
@@ -223,7 +258,8 @@ namespace WeirdEngine {
 			m_colorTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_colorRender.bindColorTextureToFrameBuffer(m_colorTexture);
 
-			m_postProcessTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessTextureFront =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
 
 			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
@@ -232,18 +268,21 @@ namespace WeirdEngine {
 			m_backgroundTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
 			m_backgroundRender.bindColorTextureToFrameBuffer(m_backgroundTexture);
 
-			m_litSceneTexture = Texture(m_config.renderWidth, m_config.renderHeight,
-				m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
+			m_litSceneTexture =
+				Texture(m_config.renderWidth, m_config.renderHeight,
+						m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
 		}
 
-		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture)
+		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+											 const Camera& camera, double time, double delta,
+											 Texture* backgroundTexture)
 		{
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
-			
+
 			applyJumpFloodCorrection(time); // To generate a corrected distance texture
-			
+
 			upscaleDistance();
 			renderMaterialColors(camera, time, delta);
 			blendMaterials(time);
@@ -253,7 +292,8 @@ namespace WeirdEngine {
 			return m_litSceneTexture;
 		}
 
-		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta)
+		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+													  const Camera& camera, double time, double delta)
 		{
 			int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 			m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
@@ -262,12 +302,12 @@ namespace WeirdEngine {
 			m_distanceShader.use();
 
 			// Set uniforms
-			m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the true previous frame matrix
+			m_prevFrameCameraMatrix =
+				m_oldCameraMatrix; // save before overwrite so other shaders can access the true previous frame matrix
 			m_distanceShader.setUniform("u_camMatrix", camera.view);
 			m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 			m_oldCameraMatrix = camera.view;
 
-			
 			cameraPositionChange = camera.position - m_lastCameraPosition;
 			m_lastCameraPosition = camera.position;
 			m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
@@ -303,7 +343,8 @@ namespace WeirdEngine {
 			m_jumpFloodInitRender.bind();
 			m_jumpFloodInitShader.use();
 
-			m_jumpFloodInitShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
+			m_jumpFloodInitShader.setUniform("u_texelSize",
+											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
 			m_distanceCorrectionShader.setUniform("t_distanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
@@ -312,7 +353,8 @@ namespace WeirdEngine {
 			// Jump flood passes
 			m_jumpFloodStepShader.use();
 			m_jumpFloodStepShader.setUniform("t_prevSeeds", 0);
-			m_jumpFloodStepShader.setUniform("u_texelSize", glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
+			m_jumpFloodStepShader.setUniform("u_texelSize",
+											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
 
 			float jump = jumpFloodIterations;
 			bool first = true;
@@ -345,7 +387,8 @@ namespace WeirdEngine {
 			// Distance correction
 			m_distanceCorrectionRender.bind();
 			m_distanceCorrectionShader.use();
-			m_distanceCorrectionShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+			m_distanceCorrectionShader.setUniform("u_resolution",
+												  glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 			m_distanceCorrectionShader.setUniform("u_time", time);
 			m_distanceCorrectionShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 
@@ -364,8 +407,10 @@ namespace WeirdEngine {
 			m_distanceUpscaler.bind();
 
 			m_distanceUpscalerShader.use();
-			m_distanceUpscalerShader.setUniform("u_originalResolution", vec2(m_distanceSampleWidth, m_distanceSampleHeight));
-			m_distanceUpscalerShader.setUniform("u_targetResolution", vec2(m_config.renderWidth, m_config.renderHeight));
+			m_distanceUpscalerShader.setUniform("u_originalResolution",
+												vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+			m_distanceUpscalerShader.setUniform("u_targetResolution",
+												vec2(m_config.renderWidth, m_config.renderHeight));
 			m_distanceUpscalerShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_distanceUpscalerShader.setUniform("t_data", 0);
 
@@ -387,7 +432,6 @@ namespace WeirdEngine {
 			m_materialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
 			m_materialColorShader.setUniform("u_materialBlendSpeed", m_config.materialBlendSpeed);
 			m_materialColorShader.setUniform("u_camPositionChange", cameraPositionChange);
-
 
 			m_materialColorShader.setUniform("t_materialDataTexture", 0);
 			m_distanceUpscaled.bind(0);
@@ -431,7 +475,8 @@ namespace WeirdEngine {
 			m_defaultBackgroundShader.use();
 			m_defaultBackgroundShader.setUniform("u_camMatrix", camera.view);
 			m_defaultBackgroundShader.setUniform("u_time", time);
-			m_defaultBackgroundShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
+			m_defaultBackgroundShader.setUniform("u_resolution",
+												 glm::vec2(m_config.renderWidth, m_config.renderHeight));
 
 			m_renderPlane.draw(m_defaultBackgroundShader);
 		}
@@ -452,9 +497,12 @@ namespace WeirdEngine {
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);
 
-			if (m_materialBlendIterations > 0) {
+			if (m_materialBlendIterations > 0)
+			{
 				m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(0);
-			} else {
+			}
+			else
+			{
 				m_colorTexture.bind(0);
 			}
 
@@ -464,9 +512,12 @@ namespace WeirdEngine {
 
 			// Background
 			m_lightingShader.setUniform("t_backgroundTexture", 2);
-			if (backgroundTexture) {
+			if (backgroundTexture)
+			{
 				backgroundTexture->bind(2);
-			} else {
+			}
+			else
+			{
 				m_backgroundTexture.bind(2);
 			}
 
@@ -524,5 +575,5 @@ namespace WeirdEngine {
 		{
 			return m_distanceShader;
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

@@ -14,7 +14,7 @@ void main()
 {
 	// Sample scene texture and bright texture after applying blur
 	vec4 scene = texture(t_sceneTexture, v_texCoord.xy + u_pixelOffset);
-	vec4 blur =  texture(t_blurTexture, v_texCoord.xy + u_pixelOffset);
+	vec4 blur = texture(t_blurTexture, v_texCoord.xy + u_pixelOffset);
 
 	// Mask blur texture to only be applied to dark parts of the scene texture
 	// Avoids making bright parts too bright
@@ -27,8 +27,8 @@ void main()
 	vec4 color = (scene + (blur * blurMask));
 
 	// Color correction
-  	color = vec4(pow(color.xyz, vec3(0.9)), color.w);
-	
+	color = vec4(pow(color.xyz, vec3(0.9)), color.w);
+
 	FragColor = color.xyzw;
 	// FragColor = vec4(vec3(blurMask), 1.0);
 }

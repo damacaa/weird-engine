@@ -7,9 +7,12 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
-	namespace SDFRenderSystem {
+	namespace SDFRenderSystem
+	{
 
-		inline void update(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderTarget& rp, const std::vector< WeirdRenderer::Light>& lights) {
+		inline void update(ECSManager& ecs, WeirdRenderer::Shader& shader, WeirdRenderer::RenderTarget& rp,
+						   const std::vector<WeirdRenderer::Light>& lights)
+		{
 
 			auto componentArray = ecs.getComponentManager<Dot>()->getComponentArray();
 			auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
@@ -21,7 +24,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < size; i++)
 			{
 				auto& mr = componentArray->getDataAtIdx(i);
-				//auto& t = ecs.getComponent<Transform>(mr.Owner);
+				// auto& t = ecs.getComponent<Transform>(mr.Owner);
 				auto& t = transformArray->getDataFromEntity(mr.Owner);
 
 				data[i].x = t.position.x;
@@ -31,11 +34,11 @@ namespace WeirdEngine
 			}
 
 			shader.setUniform("directionalLightDirection", lights[0].rotation);
-			//rp.draw(shader, data, size);
+			// rp.draw(shader, data, size);
 
 			delete[] data;
 
-			//rp->draw(shader, m_data, m_shapes);
+			// rp->draw(shader, m_data, m_shapes);
 		}
-	}
-}
+	} // namespace SDFRenderSystem
+} // namespace WeirdEngine

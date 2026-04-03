@@ -8,8 +8,6 @@ namespace WeirdEngine
 	namespace ECS
 	{
 
-
-
 		namespace PhysicsSystem2D
 		{
 
@@ -49,9 +47,8 @@ namespace WeirdEngine
 						simulation.updateShape(shape);
 						shape.isDirty = false;
 					}
-
 				}
 			}
-		}
-	}
-}
+		} // namespace PhysicsSystem2D
+	} // namespace ECS
+} // namespace WeirdEngine

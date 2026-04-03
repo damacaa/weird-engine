@@ -1,16 +1,16 @@
 #ifndef WEIRDSAMPLES_DEFAULT2DSDFS_H
 #define WEIRDSAMPLES_DEFAULT2DSDFS_H
 
-#include <vector>
-#include <string>
-#include <memory>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
 
+#include "CompiledMathExpressions.h"
 #include "MathExpressions.h"
 #include "StarShape.h"
-#include "CompiledMathExpressions.h"
 
 namespace WeirdEngine
 {
@@ -25,22 +25,23 @@ namespace WeirdEngine
 		std::array<float, VALUES_SIZE> m_values;
 
 	public:
-		ShapeMacro()
-		{
-		}
+		ShapeMacro() {}
 
 		~ShapeMacro() override = default;
 
-		void propagateValues(float *values) override
+		void propagateValues(float* values) override
 		{
-			for (int i = 0; i < VALUES_SIZE; i++) {
+			for (int i = 0; i < VALUES_SIZE; i++)
+			{
 				m_values[i] = values[i];
 			}
 		}
 
-		[[nodiscard]] float getValue() const override = 0;
+		[[nodiscard]]
+		float getValue() const override = 0;
 
-		[[nodiscard]] std::string print() const override = 0;
+		[[nodiscard]]
+		std::string print() const override = 0;
 	};
 
 	// OLD STYLE
@@ -69,7 +70,6 @@ namespace WeirdEngine
 			std::shared_ptr<IMathExpression> m_worldY;
 
 		public:
-
 			static constexpr uint8_t POS_X = 0;
 			static constexpr uint8_t POS_Y = 1;
 			static constexpr uint8_t RADIUS = 2;
@@ -79,11 +79,11 @@ namespace WeirdEngine
 			static constexpr uint8_t WORLD_X = 9;
 			static constexpr uint8_t WORLD_Y = 10;
 
-			CircleNode(
-				std::shared_ptr<IMathExpression> px,
-				std::shared_ptr<IMathExpression> py,
-				std::shared_ptr<IMathExpression> r)
-				: m_px(std::move(px)), m_py(std::move(py)), m_r(std::move(r))
+			CircleNode(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
+					   std::shared_ptr<IMathExpression> r)
+				: m_px(std::move(px))
+				, m_py(std::move(py))
+				, m_r(std::move(r))
 			{
 				// Can I reuse these?
 				m_time = std::make_shared<FloatVariable>(TIME);
@@ -102,15 +102,18 @@ namespace WeirdEngine
 				m_worldY->propagateValues(values);
 			}
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
 				return length(p) - m_r->getValue();
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "(length(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " + m_py->print() + ")) - " + m_r->print() + ")";
+				return "(length(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
+					   m_py->print() + ")) - " + m_r->print() + ")";
 			}
 		};
 
@@ -120,15 +123,18 @@ namespace WeirdEngine
 			static constexpr uint8_t POS_Y = 1;
 			static constexpr uint8_t RADIUS = 2;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
 				return length(p) - m_values[RADIUS];
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "length(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + ")) - var" + std::to_string(RADIUS);
+				return "length(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + ")) - var" +
+					   std::to_string(RADIUS);
 			}
 		};
 
@@ -141,13 +147,14 @@ namespace WeirdEngine
 			std::shared_ptr<IMathExpression> m_h;
 
 		public:
-
-			BoxNode(
-				std::shared_ptr<IMathExpression> px,
-				std::shared_ptr<IMathExpression> py,
-				std::shared_ptr<IMathExpression> w,
-				std::shared_ptr<IMathExpression> h)
-				: m_px(std::move(px)), m_py(std::move(py)), m_w(std::move(w)), m_h(std::move(h)) {}
+			BoxNode(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
+					std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h)
+				: m_px(std::move(px))
+				, m_py(std::move(py))
+				, m_w(std::move(w))
+				, m_h(std::move(h))
+			{
+			}
 
 			void propagateValues(float* values) override
 			{
@@ -157,7 +164,8 @@ namespace WeirdEngine
 				m_h->propagateValues(values);
 			}
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_px->getValue(), m_py->getValue());
 				vec2 b = vec2(m_w->getValue(), m_h->getValue());
@@ -165,9 +173,11 @@ namespace WeirdEngine
 				return length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "sdBox(vec2(" + m_px->print() + ", " + m_py->print() + "), vec2(" + m_w->print() + ", " + m_h->print() + "))";
+				return "sdBox(vec2(" + m_px->print() + ", " + m_py->print() + "), vec2(" + m_w->print() + ", " +
+					   m_h->print() + "))";
 			}
 		};
 
@@ -178,7 +188,8 @@ namespace WeirdEngine
 			static constexpr uint8_t SIZE_X = 2;
 			static constexpr uint8_t SIZE_Y = 3;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
 				vec2 b = vec2(m_values[SIZE_X], m_values[SIZE_Y]);
@@ -186,9 +197,11 @@ namespace WeirdEngine
 				return length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + "), vec2(var" + std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))";
+				return "sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + "), vec2(var" +
+					   std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))";
 			}
 		};
 
@@ -200,7 +213,8 @@ namespace WeirdEngine
 			static constexpr uint8_t SIZE_Y = 3;
 			static constexpr uint8_t THICKNESS = 4;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
 				vec2 b = vec2(m_values[SIZE_X], m_values[SIZE_Y]);
@@ -209,9 +223,12 @@ namespace WeirdEngine
 				return std::abs(boxSdf) - m_values[THICKNESS];
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "abs(sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) + "), vec2(var" + std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))) - var" + std::to_string(THICKNESS);
+				return "abs(sdBox(p - vec2(var" + std::to_string(POS_X) + ", var" + std::to_string(POS_Y) +
+					   "), vec2(var" + std::to_string(SIZE_X) + ", var" + std::to_string(SIZE_Y) + "))) - var" +
+					   std::to_string(THICKNESS);
 			}
 		};
 
@@ -222,7 +239,8 @@ namespace WeirdEngine
 			static constexpr uint8_t SPEED = 2;
 			static constexpr uint8_t OFFSET = 3;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				float x = m_values[WORLD_X];
 				float y = m_values[WORLD_Y];
@@ -236,13 +254,13 @@ namespace WeirdEngine
 				return (y - offset) - amplitude * sinf(period * x + speed * time);
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "(p.y - var" + std::to_string(OFFSET) + ") - var" + std::to_string(AMPLITUDE) +
-				       " * sin(var" + std::to_string(PERIOD) + " * p.x + var" + std::to_string(SPEED) + " * u_time)";
+				return "(p.y - var" + std::to_string(OFFSET) + ") - var" + std::to_string(AMPLITUDE) + " * sin(var" +
+					   std::to_string(PERIOD) + " * p.x + var" + std::to_string(SPEED) + " * u_time)";
 			}
 		};
-
 
 		struct Ramp : ShapeMacro
 		{
@@ -252,7 +270,8 @@ namespace WeirdEngine
 			static constexpr uint8_t HEIGHT = 3;
 			static constexpr uint8_t SKEW = 4;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X] - m_values[POS_X], m_values[WORLD_Y] - m_values[POS_Y]);
 				float wi = m_values[WIDTH];
@@ -260,24 +279,26 @@ namespace WeirdEngine
 				float sk = m_values[SKEW];
 
 				glm::vec2 e(wi, sk);
-				if (p.x < 0.0f) p = -p;
+				if (p.x < 0.0f)
+					p = -p;
 				glm::vec2 w = p - e;
 				w.y -= std::clamp(w.y, -he, he);
 				glm::vec2 d(glm::dot(w, w), -w.x);
 				float s = p.y * e.x - p.x * e.y;
-				if (s < 0.0f) p = -p;
+				if (s < 0.0f)
+					p = -p;
 				glm::vec2 v = p - glm::vec2(0.0f, he);
 				v -= e * std::clamp(glm::dot(v, e) / glm::dot(e, e), -1.0f, 1.0f);
 				d = glm::min(d, glm::vec2(glm::dot(v, v), wi * he - std::abs(s)));
 				return std::sqrt(d.x) * std::copysign(1.0f, -d.y);
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "sdParallelogramVertical(p - vec2(var"
-					+ std::to_string(POS_X) +
-					", var" + std::to_string(POS_Y) + "), var" + std::to_string(WIDTH) + ", var" + std::to_string(HEIGHT)
-					+ ", var" + std::to_string(SKEW) + ")";
+				return "sdParallelogramVertical(p - vec2(var" + std::to_string(POS_X) + ", var" +
+					   std::to_string(POS_Y) + "), var" + std::to_string(WIDTH) + ", var" + std::to_string(HEIGHT) +
+					   ", var" + std::to_string(SKEW) + ")";
 			}
 		};
 
@@ -289,7 +310,8 @@ namespace WeirdEngine
 			static constexpr uint8_t POS_B_Y = 3;
 			static constexpr uint8_t WIDTH = 4;
 
-			[[nodiscard]] float getValue() const override
+			[[nodiscard]]
+			float getValue() const override
 			{
 				vec2 p = vec2(m_values[WORLD_X], m_values[WORLD_Y]);
 
@@ -303,15 +325,18 @@ namespace WeirdEngine
 				return length(pa - ba * h) - width;
 			}
 
-			[[nodiscard]] std::string print() const override
+			[[nodiscard]]
+			std::string print() const override
 			{
-				return "sdSegment(p, vec2(var" + std::to_string(POS_A_X) + ", var" + std::to_string(POS_A_Y) + "), vec2(var" + std::to_string(POS_B_X) + ", var" + std::to_string(POS_B_Y) + ")) - var" + std::to_string(WIDTH);
+				return "sdSegment(p, vec2(var" + std::to_string(POS_A_X) + ", var" + std::to_string(POS_A_Y) +
+					   "), vec2(var" + std::to_string(POS_B_X) + ", var" + std::to_string(POS_B_Y) + ")) - var" +
+					   std::to_string(WIDTH);
 			}
 		};
 
-		inline std::vector<std::shared_ptr<IMathExpression> > getSDFS()
+		inline std::vector<std::shared_ptr<IMathExpression>> getSDFS()
 		{
-			std::vector<std::shared_ptr<IMathExpression> > m_sdfs;
+			std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 			m_sdfs.resize(DefaultShapes::SIZE);
 
 			// Sine
@@ -337,6 +362,6 @@ namespace WeirdEngine
 
 			return m_sdfs;
 		}
-	}
-}
-#endif //WEIRDSAMPLES_DEFAULT2DSDFS_H
+	} // namespace DefaultShapes
+} // namespace WeirdEngine
+#endif // WEIRDSAMPLES_DEFAULT2DSDFS_H

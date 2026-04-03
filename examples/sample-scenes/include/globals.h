@@ -7,4 +7,4 @@
 
 extern WeirdEngine::vec3 g_cameraPositon;
 
-#endif //WEIRDSAMPLES_GLOBALS_H
+#endif // WEIRDSAMPLES_GLOBALS_H

@@ -13,7 +13,9 @@ namespace WeirdEngine
 
 	public:
 		CustomShapeManager(Simulation2D& simulation)
-			: m_simulation(&simulation) {}
+			: m_simulation(&simulation)
+		{
+		}
 
 		void handleDestroyedComponent(Entity entity) override
 		{
@@ -22,4 +24,4 @@ namespace WeirdEngine
 			m_simulation->removeShape(removedShape);
 		}
 	};
-}
+} // namespace WeirdEngine

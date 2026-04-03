@@ -1,12 +1,12 @@
 #pragma once
 
+#include "weird-engine/vec.h"
+#include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DataBuffer.h"
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
-#include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/scene/Camera.h"
-#include "weird-engine/vec.h"
 
 namespace WeirdEngine
 {
@@ -20,7 +20,8 @@ namespace WeirdEngine
 				unsigned int renderWidth;
 				unsigned int renderHeight;
 				float distanceSampleScale = 1.0f;
-				float distanceOverscan = 0.0f; // fraction added each side ([0.0..0.5]), e.g. 0.05 gives +5% world margin per side
+				float distanceOverscan =
+					0.0f; // fraction added each side ([0.0..0.5]), e.g. 0.05 gives +5% world margin per side
 				float renderScale = 1.0f;
 				bool isUI; // UI mode: origin at bottom-left, [0,1] UV space, UI-specific distance clamping
 				bool enableShadows;
@@ -44,7 +45,8 @@ namespace WeirdEngine
 			~SDF2DRenderPipeline();
 
 			Shader& getDistanceShader();
-			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta, Texture* backgroundTexture = nullptr);
+			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time,
+							double delta, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 
@@ -107,13 +109,15 @@ namespace WeirdEngine
 			DataBuffer m_shapeDataBuffer;
 
 			glm::mat4 m_oldCameraMatrix;
-			glm::mat4 m_prevFrameCameraMatrix; // snapshot of m_oldCameraMatrix taken before renderDistanceField overwrites it
+			glm::mat4
+				m_prevFrameCameraMatrix; // snapshot of m_oldCameraMatrix taken before renderDistanceField overwrites it
 			glm::vec3 m_lastCameraPosition;
 
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
 
-			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time, double delta);
+			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+									 double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);
@@ -124,5 +128,5 @@ namespace WeirdEngine
 
 			static int largestPowerOfTwoBelow(int n);
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

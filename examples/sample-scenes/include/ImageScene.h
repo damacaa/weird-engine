@@ -3,16 +3,15 @@
 #include <weird-engine.h>
 
 #include "globals.h"
-#include <glm/gtx/norm.hpp>
 #include "weird-engine/math/Default2DSDFs.h"
+#include <glm/gtx/norm.hpp>
 
 using namespace WeirdEngine;
 class ImageScene : public Scene
 {
 public:
 	ImageScene(const PhysicsSettings& settings)
-		: Scene(settings) {
-	};
+		: Scene(settings) {};
 
 private:
 	std::string binaryString;
@@ -74,19 +73,19 @@ private:
 
 		// Floor
 		{
-			float variables[8]{ 15, -5, 25.0f, 5.0f, 0.0f };
+			float variables[8]{15, -5, 25.0f, 5.0f, 0.0f};
 			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall right
 		{
-			float variables[8]{ 30 + 5, 20, 5.0f, 30.0f, 0.0f };
+			float variables[8]{30 + 5, 20, 5.0f, 30.0f, 0.0f};
 			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall left
 		{
-			float variables[8]{ 0 - 5, 20, 5.0f, 30.0f, 0.0f };
+			float variables[8]{0 - 5, 20, 5.0f, 30.0f, 0.0f};
 			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
@@ -115,11 +114,15 @@ private:
 
 		// 3. Clamp values (Clamp to Edge)
 		// This handles cases where x/y might be < 0.0 or >= 1.0 (like exactly 1.0)
-		if (pixelX < 0)       pixelX = 0;
-		if (pixelX >= width)  pixelX = width - 1;
+		if (pixelX < 0)
+			pixelX = 0;
+		if (pixelX >= width)
+			pixelX = width - 1;
 
-		if (pixelY < 0)       pixelY = 0;
-		if (pixelY >= height) pixelY = height - 1;
+		if (pixelY < 0)
+			pixelY = 0;
+		if (pixelY >= height)
+			pixelY = height - 1;
 
 		// 4. Calculate index
 		int index = (pixelY * width + pixelX) * channels;
@@ -141,11 +144,7 @@ private:
 		wstbi_image_free(img);
 
 		// 7. Return normalized color
-		return vec3(
-			static_cast<int>(r) / 255.0f,
-			static_cast<int>(g) / 255.0f,
-			static_cast<int>(b) / 255.0f
-		);
+		return vec3(static_cast<int>(r) / 255.0f, static_cast<int>(g) / 255.0f, static_cast<int>(b) / 255.0f);
 	}
 
 	// Function to find the closest color in the palette
@@ -175,7 +174,7 @@ private:
 		{
 			setSceneComplete();
 		}
-		
+
 		// Get colors
 		if (Input::GetKeyDown(Input::P))
 		{
@@ -196,9 +195,7 @@ private:
 
 				vec3 color = getColor(imagePath.c_str(), uv.x, uv.y);
 
-
 				DisplaySettings displaySettings;
-	
 
 				int id = findClosestColorInPalette(displaySettings.colorPalette, color);
 

@@ -2,12 +2,12 @@
 
 #include <vector>
 
-#include "weird-renderer/core/RenderTarget.h"
-#include "weird-renderer/resources/DataBuffer.h"
-#include "weird-renderer/core/Display.h"
-#include "weird-renderer/core/SDLInitializer.h"
 #include "weird-renderer/audio/AudioEngine.h"
+#include "weird-renderer/core/Display.h"
+#include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
+#include "weird-renderer/core/SDLInitializer.h"
+#include "weird-renderer/resources/DataBuffer.h"
 
 #include "weird-engine/Scene.h"
 #include "weird-renderer/core/RenderPlane.h"
@@ -21,7 +21,6 @@ namespace WeirdEngine
 	{
 		class Renderer
 		{
-		
 
 		public:
 			Renderer(const DisplaySettings& settings, SDL_Window*& window);
@@ -33,7 +32,6 @@ namespace WeirdEngine
 			SDL_Window* getWindow();
 
 		private:
-
 			Texture& renderScene(Scene& scene, const double time, const double delta);
 
 			SDL_Window* m_window;
@@ -81,6 +79,5 @@ namespace WeirdEngine
 			void freeAll();
 		};
 
-
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

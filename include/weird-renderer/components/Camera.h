@@ -1,12 +1,11 @@
 #pragma once
-#include "weird-engine/vec.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/Component.h"
+#include "weird-engine/vec.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/scene/Camera.h"
-#include "weird-engine/components/Transform.h"
 
-
-namespace WeirdEngine 
+namespace WeirdEngine
 {
 	namespace ECS
 	{
@@ -14,14 +13,14 @@ namespace WeirdEngine
 		{
 			WeirdRenderer::Camera camera;
 
-			Camera() : camera(vec3(0.0f))
+			Camera()
+				: camera(vec3(0.0f))
 			{
-
 			}
 
-			Camera(vec3 v) : camera(v)
+			Camera(vec3 v)
+				: camera(v)
 			{
-
 			}
 
 			static glm::vec2 screenPositionToWorldPosition2D(Transform cameraTransform, vec2 screenPosition)
@@ -30,7 +29,8 @@ namespace WeirdEngine
 				vec2 halfResolution(0.5f * resolution);
 
 				vec2 screenPositionCorrected(screenPosition.x, screenPosition.y);
-				vec2 position = (vec2)cameraTransform.position + ((screenPositionCorrected - halfResolution) * (cameraTransform.position.z / halfResolution.y));
+				vec2 position = (vec2)cameraTransform.position + ((screenPositionCorrected - halfResolution) *
+																  (cameraTransform.position.z / halfResolution.y));
 
 				return position;
 			}
@@ -53,7 +53,6 @@ namespace WeirdEngine
 
 				return screenPosition;
 			}
-
 		};
-	}
-}
+	} // namespace ECS
+} // namespace WeirdEngine

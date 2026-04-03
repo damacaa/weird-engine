@@ -6,9 +6,12 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
-	namespace RenderSystem {
+	namespace RenderSystem
+	{
 
-		inline void update(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader, WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights) {
+		inline void update(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader,
+						   WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights)
+		{
 
 			shader.use();
 
@@ -22,5 +25,5 @@ namespace WeirdEngine
 				resourceManager.getMesh(mr.mesh).draw(shader, camera, t.position, t.rotation, t.scale);
 			}
 		}
-	}
-}
+	} // namespace RenderSystem
+} // namespace WeirdEngine

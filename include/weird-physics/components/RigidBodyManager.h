@@ -4,7 +4,6 @@
 #include "weird-engine/ecs/ComponentManager.h"
 #include "weird-physics/Simulation2D.h"
 
-
 namespace WeirdEngine
 {
 	class RigidBodyManager : public ComponentManager<RigidBody2D>
@@ -13,9 +12,10 @@ namespace WeirdEngine
 		Simulation2D* m_simulation;
 
 	public:
-
 		RigidBodyManager(Simulation2D& simulation)
-			: m_simulation(&simulation) {}
+			: m_simulation(&simulation)
+		{
+		}
 
 		void handleNewComponent(Entity entity, RigidBody2D& component) override
 		{
@@ -42,4 +42,4 @@ namespace WeirdEngine
 			// TODO: lastRb.simulationId might not match the lastId used in m_simulation->removeObject !!!!
 		}
 	};
-}
+} // namespace WeirdEngine

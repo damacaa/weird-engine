@@ -16,26 +16,25 @@ namespace WeirdEngine
 			// Reads the image from a file and stores it in bytes
 			unsigned char* bytes = wstbi_load(image, &width, &height, &numColCh, 0);
 
-			
 			switch (numColCh)
 			{
-			case 4:
-			{
-				createTexture((float*)bytes, width, height, TextureType::ColorAlpha);
-				break;
-			}
-			case 3: 
-			{
-				createTexture((float*)bytes, width, height, TextureType::Color);
-				break;
-			}
-			case 1: 
-			{
-				createTexture((float*)bytes, width, height, TextureType::SingleChannel);
-				break;
-			}
-			default:
-				break;
+				case 4:
+				{
+					createTexture((float*)bytes, width, height, TextureType::ColorAlpha);
+					break;
+				}
+				case 3:
+				{
+					createTexture((float*)bytes, width, height, TextureType::Color);
+					break;
+				}
+				case 1:
+				{
+					createTexture((float*)bytes, width, height, TextureType::SingleChannel);
+					break;
+				}
+				default:
+					break;
 			}
 
 			// Generates MipMaps
@@ -48,9 +47,9 @@ namespace WeirdEngine
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
-
 		Texture::Texture(glm::vec4 color)
-			: width(1), height(1)
+			: width(1)
+			, height(1)
 		{
 			unsigned char* textureData = new unsigned char[4];
 
@@ -65,9 +64,9 @@ namespace WeirdEngine
 			delete[] textureData;
 		}
 
-
 		Texture::Texture(int width, int height, TextureType type)
-			: width(width), height(height)
+			: width(width)
+			, height(height)
 		{
 			createTexture(nullptr, width, height, type);
 		}
@@ -82,156 +81,113 @@ namespace WeirdEngine
 
 			switch (type)
 			{
-			case TextureType::Color:
-			{
-				// Handle color texture
+				case TextureType::Color:
+				{
+					// Handle color texture
 
-				glTexImage2D(
-					GL_TEXTURE_2D,
-					0,
-					GL_RGB,
-					width,
-					height,
-					0,
-					GL_RGB,
-					GL_UNSIGNED_BYTE,
-					data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-				numColCh = 3;
+					numColCh = 3;
 
-				break;
-			}
-			case TextureType::ColorAlpha:
-			{
-				// Handle color with alpha texture
+					break;
+				}
+				case TextureType::ColorAlpha:
+				{
+					// Handle color with alpha texture
 
-				glTexImage2D(
-					GL_TEXTURE_2D,
-					0,
-					GL_RGBA,
-					width,
-					height,
-					0,
-					GL_RGBA,
-					GL_UNSIGNED_BYTE,
-					data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-				numColCh = 4;
+					numColCh = 4;
 
-				break;
-			}
-			case TextureType::SingleChannel:
-			{
+					break;
+				}
+				case TextureType::SingleChannel:
+				{
 
-				glTexImage2D(
-					GL_TEXTURE_2D,
-					0,
-					GL_R8,
-					width,
-					height,
-					0,
-					GL_RED,
-					GL_UNSIGNED_BYTE,
-					data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-				numColCh = 1;
+					numColCh = 1;
 
-				break;
-			}
-			case TextureType::Depth:
-			{
-				// Handle depth texture
-				glTexImage2D(
-					GL_TEXTURE_2D,
-					0,
-					GL_DEPTH_COMPONENT24, // 24-bit depth
-					width,
-					height,
-					0,
-					GL_DEPTH_COMPONENT,
-					GL_FLOAT,
-					nullptr);
+					break;
+				}
+				case TextureType::Depth:
+				{
+					// Handle depth texture
+					glTexImage2D(GL_TEXTURE_2D, 0,
+								 GL_DEPTH_COMPONENT24, // 24-bit depth
+								 width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
-				// Set texture parameters
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					// Set texture parameters
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-				// Prevent sampling artifacts in shadow mapping
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE); // or GL_COMPARE_REF_TO_TEXTURE
+					// Prevent sampling artifacts in shadow mapping
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE); // or GL_COMPARE_REF_TO_TEXTURE
 
-				numColCh = 1;
-				break;
-			}
-			case TextureType::Data:
-			{
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					numColCh = 1;
+					break;
+				}
+				case TextureType::Data:
+				{
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-				numColCh = 4;
-				break;
-			}
-			case TextureType::LinearData:
-			{
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					numColCh = 4;
+					break;
+				}
+				case TextureType::LinearData:
+				{
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-				numColCh = 4;
-				break;
-			}
-			case TextureType::RetroColor:
-			{
-				glTexImage2D(
-					GL_TEXTURE_2D,
-					0,
-					GL_RGB,
-					width,
-					height,
-					0,
-					GL_RGB,
-					GL_UNSIGNED_BYTE,
-					data);
+					numColCh = 4;
+					break;
+				}
+				case TextureType::RetroColor:
+				{
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-				numColCh = 3;
-				break;
-			}
-			case TextureType::IntData:
-			{
-				// Handle integer data texture
-				break;
-			}
-			default:
-			{
-				// Handle unknown type
-				break;
-			}
+					numColCh = 3;
+					break;
+				}
+				case TextureType::IntData:
+				{
+					// Handle integer data texture
+					break;
+				}
+				default:
+				{
+					// Handle unknown type
+					break;
+				}
 			}
 
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -306,9 +262,12 @@ namespace WeirdEngine
 					size_t dest_idx = dest_row_start + pixel_size * x;
 
 					// Clamp and scale the R, G, B components
-					pixels_uchar[dest_idx]     = static_cast<unsigned char>(glm::clamp(pixels[src_idx],     0.0f, 1.0f) * 255.0f);
-					pixels_uchar[dest_idx + 1] = static_cast<unsigned char>(glm::clamp(pixels[src_idx + 1], 0.0f, 1.0f) * 255.0f);
-					pixels_uchar[dest_idx + 2] = static_cast<unsigned char>(glm::clamp(pixels[src_idx + 2], 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[dest_idx] =
+						static_cast<unsigned char>(glm::clamp(pixels[src_idx], 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[dest_idx + 1] =
+						static_cast<unsigned char>(glm::clamp(pixels[src_idx + 1], 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[dest_idx + 2] =
+						static_cast<unsigned char>(glm::clamp(pixels[src_idx + 2], 0.0f, 1.0f) * 255.0f);
 
 					// Set the Alpha component
 					pixels_uchar[dest_idx + 3] = 255;
@@ -323,5 +282,5 @@ namespace WeirdEngine
 			delete[] pixels_uchar;
 		}
 
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

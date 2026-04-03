@@ -17,9 +17,9 @@ in vec2 v_texCoord;
 uniform sampler2D u_diffuse;
 uniform sampler2D u_specular;
 
-uniform vec4  u_lightColor;
-uniform vec3  u_lightPos;
-uniform vec3  u_camPos;
+uniform vec4 u_lightColor;
+uniform vec3 u_lightPos;
+uniform vec3 u_camPos;
 
 uniform float u_time;
 uniform float u_k;
@@ -54,8 +54,8 @@ const float FAR = 100.0f;
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
-#define var11 u_uiScale * uv.x
-#define var12 u_uiScale * uv.y
+#define var11 u_uiScale* uv.x
+#define var12 u_uiScale* uv.y
 
 #define var0 parameters0.x
 #define var1 parameters0.y
@@ -67,224 +67,219 @@ const float FAR = 100.0f;
 #define var7 parameters1.w
 
 const int SEGMENTS = 9;
-float sdPolygon( in vec2[SEGMENTS] v, in vec2 p )
+float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
 {
-    float d = dot(p-v[0],p-v[0]);
-    float s = 1.0;
-    for( int i=0, j=SEGMENTS-1; i<SEGMENTS; j=i, i++ )
-    {
-        vec2 e = v[j] - v[i];
-        vec2 w =    p - v[i];
-        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
-        d = min( d, dot(b,b) );
-        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
-        if( all(c) || all(not(c)) ) s*=-1.0;
-    }
-    return s*sqrt(d);
+	float d = dot(p - v[0], p - v[0]);
+	float s = 1.0;
+	for (int i = 0, j = SEGMENTS - 1; i < SEGMENTS; j = i, i++)
+	{
+		vec2 e = v[j] - v[i];
+		vec2 w = p - v[i];
+		vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
+		d = min(d, dot(b, b));
+		bvec3 c = bvec3(p.y >= v[i].y, p.y<v[j].y, e.x * w.y> e.y * w.x);
+		if (all(c) || all(not(c)))
+			s *= -1.0;
+	}
+	return s * sqrt(d);
 }
 
 vec3 getColor(vec2 p, vec2 uv)
 {
-    float minDist = 100000.0;
-    float minColorDist = minDist;
+	float minDist = 100000.0;
+	float minColorDist = minDist;
 
-    int finalMaterialId = 16;
-    float mask = 0.0;
+	int finalMaterialId = 16;
+	float mask = 0.0;
 
-    #include "custom_shapes"
+#include "custom_shapes"
 
-    if (minDist <= 0.0)
-    {
-        // return vec3(minDist, finalMaterialId, 0.0);
-    }
+	if (minDist <= 0.0)
+	{
+		// return vec3(minDist, finalMaterialId, 0.0);
+	}
 
-    minColorDist = minDist;
+	minColorDist = minDist;
 
-    // float shapeDist = minDist;
-    // minDist = 1.0; // Disable blending between balls and shapes
+	// float shapeDist = minDist;
+	// minDist = 1.0; // Disable blending between balls and shapes
 
-    float inv_k = 1.0 / u_k;
+	float inv_k = 1.0 / u_k;
 
-    for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
-    {
-        vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
-        int materialId = int(positionSizeMaterial.w);
-
-        #ifdef UI_PIPELINE
-        float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
-        #else
-        float objectDist = shape_circle(p - positionSizeMaterial.xy);
-        #endif
-
-        // Inside ball mask is set to 0
-        mask = objectDist <= 0 ? -objectDist * 4.0 : mask;
-        // mask = objectDist <= 0 ? 1.0 : mask;
-
-        #ifdef BLEND_SHAPES
-
-        finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-
-        #else
-
-        finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-
-        #endif
-
-
-        #ifdef BLEND_SHAPES
-
-        minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
-        minColorDist = min(minColorDist, objectDist);
-
-        #else
-
-        minDist = min(minDist, objectDist);
-
-        #endif
-
-    }
-
-    // minDist = min(minDist, shapeDist);
+	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
+	{
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
+		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
-    minDist = min(minDist, 10.0); // Clamp max distance in UI mode
+		float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+#else
+		float objectDist = shape_circle(p - positionSizeMaterial.xy);
 #endif
 
-    return vec3(minDist, max(finalMaterialId, 0), mask);
+		// Inside ball mask is set to 0
+		mask = objectDist <= 0 ? -objectDist * 4.0 : mask;
+		// mask = objectDist <= 0 ? 1.0 : mask;
+
+#ifdef BLEND_SHAPES
+
+		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
+
+#else
+
+		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
+
+#endif
+
+#ifdef BLEND_SHAPES
+
+		minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
+		minColorDist = min(minColorDist, objectDist);
+
+#else
+
+		minDist = min(minDist, objectDist);
+
+#endif
+	}
+
+	// minDist = min(minDist, shapeDist);
+
+#ifdef UI_PIPELINE
+	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
+#endif
+
+	return vec3(minDist, max(finalMaterialId, 0), mask);
 }
 
 // Bilinear
 vec2 smoothSample(sampler2D tex, vec2 uv)
 {
-    vec2 texelSize = 1.0 / u_resolution;
+	vec2 texelSize = 1.0 / u_resolution;
 
-    vec2 P = uv * u_resolution - 0.5;
+	vec2 P = uv * u_resolution - 0.5;
 
-    // 3. Get the integer indices of the top-left texel (i, j)
-    ivec2 i_j = ivec2(floor(P));
+	// 3. Get the integer indices of the top-left texel (i, j)
+	ivec2 i_j = ivec2(floor(P));
 
-    // 4. Calculate the fractional distance (weights) from the top-left center
-    // This gives the interpolation factors (fx, fy) between 0.0 and 1.0
-    vec2 f = fract(P);
+	// 4. Calculate the fractional distance (weights) from the top-left center
+	// This gives the interpolation factors (fx, fy) between 0.0 and 1.0
+	vec2 f = fract(P);
 
-    // 5. Calculate the indices for the four texels (i, j), (i+1, j), (i, j+1), (i+1, j+1)
-    // We add 0.5 to center the sampling point inside the texel
-    vec2 uv00 = (vec2(i_j) + 0.5) * texelSize;
-    vec2 uv10 = (vec2(i_j) + vec2(1.5, 0.5)) * texelSize;
-    vec2 uv01 = (vec2(i_j) + vec2(0.5, 1.5)) * texelSize;
-    vec2 uv11 = (vec2(i_j) + vec2(1.5, 1.5)) * texelSize;
+	// 5. Calculate the indices for the four texels (i, j), (i+1, j), (i, j+1), (i+1, j+1)
+	// We add 0.5 to center the sampling point inside the texel
+	vec2 uv00 = (vec2(i_j) + 0.5) * texelSize;
+	vec2 uv10 = (vec2(i_j) + vec2(1.5, 0.5)) * texelSize;
+	vec2 uv01 = (vec2(i_j) + vec2(0.5, 1.5)) * texelSize;
+	vec2 uv11 = (vec2(i_j) + vec2(1.5, 1.5)) * texelSize;
 
-    // 6. Sample the four texels (d00, d10, d01, d11)
-    vec2 d00 = texture(tex, uv00).xy;
-    float d10 = texture(tex, uv10).x;
-    float d01 = texture(tex, uv01).x;
-    float d11 = texture(tex, uv11).x;
+	// 6. Sample the four texels (d00, d10, d01, d11)
+	vec2 d00 = texture(tex, uv00).xy;
+	float d10 = texture(tex, uv10).x;
+	float d01 = texture(tex, uv01).x;
+	float d11 = texture(tex, uv11).x;
 
-    // 7. Perform the Bilinear Interpolation
-    float d_top = mix(d00.x, d10, f.x);
-    float d_bottom = mix(d01, d11, f.x);
-    float d = mix(d_top, d_bottom, f.y);
+	// 7. Perform the Bilinear Interpolation
+	float d_top = mix(d00.x, d10, f.x);
+	float d_bottom = mix(d01, d11, f.x);
+	float d = mix(d_top, d_bottom, f.y);
 
-    return vec2(d, d00.y);
+	return vec2(d, d00.y);
 }
-
 
 void main()
 {
-    #ifdef UI_PIPELINE
-    // UI: origin at bottom-left, UV stays in [0,1] to match screen-space layout
-    vec2 uv = v_texCoord;
-    #else
-    // World: remap UV to [-1,1] so the origin is centred on screen
-    vec2 uv = (2.0f * v_texCoord) - 1.0f;
-    uv *= (1.0 + u_overscan);
-    #endif
+#ifdef UI_PIPELINE
+	// UI: origin at bottom-left, UV stays in [0,1] to match screen-space layout
+	vec2 uv = v_texCoord;
+#else
+	// World: remap UV to [-1,1] so the origin is centred on screen
+	vec2 uv = (2.0f * v_texCoord) - 1.0f;
+	uv *= (1.0 + u_overscan);
+#endif
 
-    float aspectRatio = u_resolution.x / u_resolution.y;// TODO: uniform
-    uv.x *= aspectRatio;
+	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
+	uv.x *= aspectRatio;
 
-    float zoom = -u_camMatrix[3].z;
-    vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
+	float zoom = -u_camMatrix[3].z;
+	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-    vec3 result = getColor(pos, v_texCoord);
-    float d = result.x;
+	vec3 result = getColor(pos, v_texCoord);
+	float d = result.x;
 
 #ifndef UI_PIPELINE
 
-    float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
-    distanceBonus = min(distanceBonus, 1.0 * zoom / u_resolution.y); // Cap distance bonus to prevent artifacts when zoomed out very far away
-    d -= distanceBonus; 
-    
+	float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
+	distanceBonus =
+		min(distanceBonus,
+			1.0 * zoom / u_resolution.y); // Cap distance bonus to prevent artifacts when zoomed out very far away
+	d -= distanceBonus;
+
 #endif
 
-    float finalDistance = d / zoom;
-    finalDistance *= 0.5 / aspectRatio;
+	float finalDistance = d / zoom;
+	finalDistance *= 0.5 / aspectRatio;
 
-    float material = result.y;
-    float mask = result.z;
+	float material = result.y;
+	float mask = result.z;
 
-    #ifdef MOTION_BLUR
+#ifdef MOTION_BLUR
 
-    // For each fragment, find where the same world point was in the previous frame's texture,
-    // compensating for both camera translation and zoom change.
-    // Derivation: worldPos = zoom * uv + camPos, so prevUV = (worldPos - oldCamPos) / oldZoom
-    // which gives: prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom * [aspectRatio, 1])
-    float oldZoom = -u_oldCamMatrix[3].z;
-    float zoomRatio = zoom / oldZoom;
-    vec2 prevTexCoord;
-    prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
-    prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
+	// For each fragment, find where the same world point was in the previous frame's texture,
+	// compensating for both camera translation and zoom change.
+	// Derivation: worldPos = zoom * uv + camPos, so prevUV = (worldPos - oldCamPos) / oldZoom
+	// which gives: prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom *
+	// [aspectRatio, 1])
+	float oldZoom = -u_oldCamMatrix[3].z;
+	float zoomRatio = zoom / oldZoom;
+	vec2 prevTexCoord;
+	prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
+	prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
 
-    // Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
-    vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
-    float previousDistance = previousData.x;
+	// Sample previous texture with bilinear filtering because aliasing causes this effect to accumulate error
+	vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
+	float previousDistance = previousData.x;
 
+	vec4 previousDataExact = texture(t_colorTexture, prevTexCoord);
+	float previousDistanceExact = previousDataExact.x;
+	float previousMaterial = previousDataExact.y;
+	// Different material for object trail?
+	material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
-    vec4 previousDataExact = texture(t_colorTexture, prevTexCoord);
-    float previousDistanceExact = previousDataExact.x;
-    float previousMaterial = previousDataExact.y;
-    // Different material for object trail?
-    material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
+	// finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
 
+	// finalDistance = step(previousDistance, finalDistance - previousDistance);
+	float distanceChange = finalDistance - previousDistanceExact;
+	// distanceChange = clamp(distanceChange, -0.1, 0.05);
 
+	// qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
+	float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) *
+											  (distanceChange < 0.0 ? 5.0 : 1.0));
 
-    // finalDistance = finalDistance <= 0.0 ? 2.0 * finalDistance : finalDistance;
+	// blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
 
-    // finalDistance = step(previousDistance, finalDistance - previousDistance);
-    float distanceChange = finalDistance - previousDistanceExact;
-    // distanceChange = clamp(distanceChange, -0.1, 0.05);
+	blendDistance = clamp(blendDistance, -0.1, 0.1);
 
-    // qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
-    float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) * (distanceChange < 0.0 ? 5.0 : 1.0));
+#ifdef UI_PIPELINE
 
-    //blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
+	finalDistance = blendDistance;
 
-    blendDistance = clamp(blendDistance, -0.1, 0.1);
+#else
 
+	finalDistance = mix(blendDistance, finalDistance, mask);
 
-    #ifdef UI_PIPELINE
+#endif
 
-    finalDistance = blendDistance;
+#endif
 
-    #else
+#ifdef UI_PIPELINE
+// float pixelSize = 0.3 / u_resolution.x;
+// finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
+#endif
 
+	FragColor = vec4(finalDistance, material, mask, 0);
 
-    finalDistance = mix(blendDistance, finalDistance, mask);
-
-    #endif
-
-
-
-    #endif
-
-    #ifdef UI_PIPELINE
-    // float pixelSize = 0.3 / u_resolution.x;
-    // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
-    #endif
-
-    FragColor = vec4(finalDistance, material, mask, 0);
-
-    // This has no visual effect (multiplying by zero), but it forces
-    // the compiler to keep u_time because it's used to calculate FragColor.
-    FragColor.a += u_time * 0.001;
+	// This has no visual effect (multiplying by zero), but it forces
+	// the compiler to keep u_time because it's used to calculate FragColor.
+	FragColor.a += u_time * 0.001;
 }

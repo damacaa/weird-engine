@@ -14,5 +14,5 @@ namespace WeirdEngine
 			vec3 position;
 			int beats = 1;
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

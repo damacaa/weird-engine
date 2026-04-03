@@ -1,17 +1,15 @@
 #pragma once
 
-#include <queue>
 #include <memory>
+#include <queue>
 
+#include "Component.h"
 #include "ComponentArray.h"
 #include "Entity.h"
-#include "Component.h"
-
-
 
 namespace WeirdEngine
 {
-	class IComponentManager 
+	class IComponentManager
 	{
 	public:
 		virtual ~IComponentManager() = default;
@@ -19,12 +17,9 @@ namespace WeirdEngine
 		virtual void removeData(Entity entity) = 0;
 	};
 
-
-	template <typename T>
-	class ComponentManager : public IComponentManager
+	template <typename T> class ComponentManager : public IComponentManager
 	{
 	protected:
-
 		std::shared_ptr<void> m_componentArray;
 		std::queue<Entity> m_removedEntities;
 
@@ -32,14 +27,9 @@ namespace WeirdEngine
 		virtual void handleDestroyedComponent(Entity entity) {}
 
 	public:
+		ComponentManager() {}
 
-		ComponentManager()
-		{
-
-		}
-
-
-		void registerComponent() 
+		void registerComponent()
 		{
 			m_componentArray = std::make_shared<ComponentArray<T>>();
 		}
@@ -48,7 +38,6 @@ namespace WeirdEngine
 		{
 			m_componentArray = source->m_componentArray;
 		}
-
 
 		T& getNewComponent(Entity entity)
 		{
@@ -63,31 +52,26 @@ namespace WeirdEngine
 			return component;
 		}
 
-
-		T& getComponent(Entity entity) 
+		T& getComponent(Entity entity)
 		{
 			return getComponentArray()->getDataFromEntity(entity);
 		}
 
-
-		bool hasComponent(Entity entity) 
+		bool hasComponent(Entity entity)
 		{
 			return getComponentArray()->hasData(entity);
 		}
-
 
 		void removeData(Entity entity) override
 		{
 			m_removedEntities.push(entity);
 		}
 
-
-		std::shared_ptr<ComponentArray<T>> getComponentArray() 
+		std::shared_ptr<ComponentArray<T>> getComponentArray()
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
 			return componentArray;
 		}
-
 
 		void freeRemovedComponents()
 		{
@@ -107,4 +91,4 @@ namespace WeirdEngine
 			}
 		}
 	};
-}
+} // namespace WeirdEngine

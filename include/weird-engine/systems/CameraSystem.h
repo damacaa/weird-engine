@@ -21,6 +21,6 @@ namespace WeirdEngine
 					c.camera.orientation = t.rotation;
 				}
 			}
-		}
-	}
-}
+		} // namespace CameraSystem
+	} // namespace ECS
+} // namespace WeirdEngine

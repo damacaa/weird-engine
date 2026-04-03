@@ -4,122 +4,120 @@
 #include "weird-engine/systems/SDFRenderSystem2D.h"
 #include <memory>
 
-namespace WeirdEngine::SDFShaderGenerationSystem2D 
+namespace WeirdEngine::SDFShaderGenerationSystem2D
 {
 
-    // Update shader code with SDF data
-		template<typename DotClass, typename ShapeClass>
-		inline void update(ECSManager& ecs, SDFRenderSystem2DContext& ctx, WeirdRenderer::Shader& shader, std::vector<std::shared_ptr<IMathExpression>> sdfs)
+	// Update shader code with SDF data
+	template <typename DotClass, typename ShapeClass>
+	inline void update(ECSManager& ecs, SDFRenderSystem2DContext& ctx, WeirdRenderer::Shader& shader,
+					   std::vector<std::shared_ptr<IMathExpression>> sdfs)
+	{
+		const auto sdfBalls = ecs.getComponentManager<DotClass>()->getComponentArray();
+		const auto componentArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
+
+		if (!ctx.m_shapesNeedUpdate)
 		{
-			const auto sdfBalls = ecs.getComponentManager<DotClass>()->getComponentArray();
-			const auto componentArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
+			return;
+		}
 
-			if (!ctx.m_shapesNeedUpdate)
+		ctx.m_shapesNeedUpdate = false;
+
+		std::ostringstream oss;
+
+		oss << "///////////////////////////////////////////\n";
+
+		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
+
+		oss << "int currentGroupColor = -1;\n";
+
+		int currentGroup = -1;
+		std::string groupDistanceVariable;
+
+		ShapeClass dummyShape;
+		dummyShape.groupIdx = CustomShape::GLOBAL_GROUP - 1;
+
+		// TODO: do this for physics too
+		// Sort Shapes by group
+		std::vector<size_t> orderedIndices;
+		orderedIndices.reserve(componentArray->getSize());
+
+		for (size_t i = 0; i < componentArray->getSize(); i++)
+		{
+			orderedIndices.push_back(i);
+		}
+
+		// Sort indices by the shape's group value
+		std::sort(orderedIndices.begin(), orderedIndices.end(), [&](size_t a, size_t b)
+				  { return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx; });
+
+		for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
+		{
+			size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
+
+			// Get shape
+			const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape : componentArray->getDataAtIdx(i);
+
+			// Get group
+			const int group = shape.groupIdx;
+
+			// Start new group if necessary
+			if (group != currentGroup)
 			{
-				return;
-			}
-
-			ctx.m_shapesNeedUpdate = false;
-
-			std::ostringstream oss;
-
-			oss << "///////////////////////////////////////////\n";
-
-			oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
-
-			oss << "int currentGroupColor = -1;\n";
-
-			int currentGroup = -1;
-			std::string groupDistanceVariable;
-
-			ShapeClass dummyShape;
-			dummyShape.groupIdx = CustomShape::GLOBAL_GROUP - 1;
-
-			// TODO: do this for physics too
-			// Sort Shapes by group
-			std::vector<size_t> orderedIndices;
-			orderedIndices.reserve(componentArray->getSize());
-
-			for (size_t i = 0; i < componentArray->getSize(); i++) {
-				orderedIndices.push_back(i);
-			}
-
-			// Sort indices by the shape's group value
-			std::sort(orderedIndices.begin(), orderedIndices.end(),
-				[&](size_t a, size_t b) {
-					return componentArray->getDataAtIdx(a).groupIdx <
-						   componentArray->getDataAtIdx(b).groupIdx;
-				}
-			);
-
-			for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
-			{
-				size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
-
-				// Get shape
-				const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape :  componentArray->getDataAtIdx(i);
-
-				// Get group
-				const int group = shape.groupIdx;
-
-				// Start new group if necessary
-				if (group != currentGroup)
+				// If this is not the first group, combine current group distance with global minDistance
+				if (currentGroup != -1)
 				{
-					// If this is not the first group, combine current group distance with global minDistance
-					if (currentGroup != -1)
-					{
-						oss << "if(" << groupDistanceVariable << " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
-						// oss << "{ finalMaterialId = currentGroupColor;}\n";
-						oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-					}
-
-					// Next group
-					currentGroup = group;
-					groupDistanceVariable = "d" + std::to_string(currentGroup);
-
-					// Initialize distance with big value
-					oss << "float " << groupDistanceVariable << "= 10000;\n";
+					oss << "if(" << groupDistanceVariable
+						<< " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
+					// oss << "{ finalMaterialId = currentGroupColor;}\n";
+					oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable
+						<< ";}\n";
 				}
 
-				if (group == CustomShape::GLOBAL_GROUP - 1)
-					break;
+				// Next group
+				currentGroup = group;
+				groupDistanceVariable = "d" + std::to_string(currentGroup);
 
-				// Start shape
-				oss << "{\n";
+				// Initialize distance with big value
+				oss << "float " << groupDistanceVariable << "= 10000;\n";
+			}
 
-				// Calculate data position in array
-				oss << "int idx = dataOffset + " << 2 * i << ";\n";
+			if (group == CustomShape::GLOBAL_GROUP - 1)
+				break;
 
-				// Fetch parameters
-				oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-				oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+			// Start shape
+			oss << "{\n";
 
-				// Get distance function
-				auto fragmentCode = sdfs[shape.distanceFieldId]->print();
+			// Calculate data position in array
+			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
-				bool globalEffect = group == CustomShape::GLOBAL_GROUP;
+			// Fetch parameters
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
 
-				// Shape distance calculation
-				oss << "float dist = " << fragmentCode << ";" << std::endl;
+			// Get distance function
+			auto fragmentCode = sdfs[shape.distanceFieldId]->print();
 
-				// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
-				// oss << "float pixelSize = 10.0; dist = abs(dist - pixelSize) - (pixelSize);" << std::endl;
-				// oss << "#endif" << std::endl;
+			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
+			// Shape distance calculation
+			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
+			// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
+			// oss << "float pixelSize = 10.0; dist = abs(dist - pixelSize) - (pixelSize);" << std::endl;
+			// oss << "#endif" << std::endl;
 
+			// Apply globalEffect logic
+			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";"
+				<< std::endl;
 
-
-				// Apply globalEffect logic
-				oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
-
-				// Combine shape distance
-				switch (shape.combination)
-				{
+			// Combine shape distance
+			switch (shape.combination)
+			{
 				case CombinationType::Addition:
 				{
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material << ": currentGroupColor;" << std::endl;
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
+						<< ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::Subtraction:
@@ -134,8 +132,10 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << shape.smoothFactor << ");\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material << ": currentGroupColor;" << std::endl;
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << shape.smoothFactor
+						<< ");\n";
+					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
+						<< ": currentGroupColor;" << std::endl;
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
@@ -149,40 +149,41 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				}
 				default:
 					break;
-				}
-
-				// Assign back to the correct target
-				oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
-				oss << "}\n\n";
 			}
 
-			// Combine last group
-			// if (componentArray->getSize() > 0)
-			// {
-			// 	oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-			// }
-
-			// Get string
-			std::string replacement = oss.str();
-
-			// Set new source code and recompile shader
-			shader.setFragmentIncludeCode(1, replacement);
-
-			// std::cout << replacement << std::endl;
-
-#ifndef NDEBUG
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
-			{
-				std::cout << replacement << std::endl;
-
-				// Broken
-				std::ofstream outFile("generated_shader.frag");
-				if (outFile.is_open()) {
-					outFile << shader.getFragmentCode();
-					outFile.close();
-				}
-			}
-#endif
+			// Assign back to the correct target
+			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+			oss << "}\n\n";
 		}
 
-}
+		// Combine last group
+		// if (componentArray->getSize() > 0)
+		// {
+		// 	oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
+		// }
+
+		// Get string
+		std::string replacement = oss.str();
+
+		// Set new source code and recompile shader
+		shader.setFragmentIncludeCode(1, replacement);
+
+		// std::cout << replacement << std::endl;
+
+#ifndef NDEBUG
+		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
+		{
+			std::cout << replacement << std::endl;
+
+			// Broken
+			std::ofstream outFile("generated_shader.frag");
+			if (outFile.is_open())
+			{
+				outFile << shader.getFragmentCode();
+				outFile.close();
+			}
+		}
+#endif
+	}
+
+} // namespace WeirdEngine::SDFShaderGenerationSystem2D

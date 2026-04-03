@@ -17,5 +17,5 @@ namespace WeirdEngine
 		private:
 			GLuint VAO, VBO, EBO;
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

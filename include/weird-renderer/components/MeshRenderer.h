@@ -1,6 +1,6 @@
 #pragma once
 #include "weird-engine/ecs/Component.h"
-#include"weird-renderer/resources/Mesh.h"
+#include "weird-renderer/resources/Mesh.h"
 
 namespace WeirdEngine
 {
@@ -14,6 +14,7 @@ namespace WeirdEngine
 
 		MeshRenderer() {};
 
-		MeshRenderer(MeshID mesh) : mesh(mesh) {};
+		MeshRenderer(MeshID mesh)
+			: mesh(mesh) {};
 	};
-}
+} // namespace WeirdEngine

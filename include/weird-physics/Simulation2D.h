@@ -1,17 +1,17 @@
 #pragma once
 
 #include <atomic>
-#include <vector>
-#include <thread>
-#include <unordered_set>
-#include <unordered_map>
-#include <cstdint>
 #include <bitset>
 #include <chrono>
+#include <cstdint>
 #include <immintrin.h>
 #include <mutex>
 #include <queue>
 #include <set>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "../weird-engine/components/Transform.h"
 #include "../weird-renderer/components/CustomShape.h"
@@ -81,7 +81,10 @@ namespace WeirdEngine
 		void update(double delta);
 
 		double getSimulationTime();
-		double getDeltaTime() { return m_fixedDeltaTime; }
+		double getDeltaTime()
+		{
+			return m_fixedDeltaTime;
+		}
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
@@ -112,8 +115,14 @@ namespace WeirdEngine
 		SimulationID raycast(vec2 pos);
 		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
 
-		void setGravity(float gravity) { m_gravity = gravity; }
-		void setDamping(float damping) { m_damping = damping; }
+		void setGravity(float gravity)
+		{
+			m_gravity = gravity;
+		}
+		void setDamping(float damping)
+		{
+			m_damping = damping;
+		}
 
 		// Constraint structs (public for serialization)
 		struct DistanceConstraint
@@ -164,14 +173,24 @@ namespace WeirdEngine
 		};
 
 		// Serialization support: read constraint data
-		const std::vector<DistanceConstraint>& getDistanceConstraints() const { return m_distanceConstraints; }
-		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const { return m_gravitationalConstraints; }
-		const std::vector<SimulationID>& getFixedObjects() const { return m_fixedObjects; }
+		const std::vector<DistanceConstraint>& getDistanceConstraints() const
+		{
+			return m_distanceConstraints;
+		}
+		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const
+		{
+			return m_gravitationalConstraints;
+		}
+		const std::vector<SimulationID>& getFixedObjects() const
+		{
+			return m_fixedObjects;
+		}
 
 		// Serialization support: load raw constraint (bypasses stiffness conversion)
 		void addRawDistanceConstraint(int a, int b, float distance, float k)
 		{
-			if (a == b) return;
+			if (a == b)
+				return;
 			m_distanceConstraints.emplace_back(a, b, distance, k);
 		}
 
@@ -183,7 +202,6 @@ namespace WeirdEngine
 		void solveConstraints();
 		void integrateVelocity(float timeStep);
 		void integratePredict(float timeStep);
-
 
 		struct Collision
 		{
@@ -238,7 +256,12 @@ namespace WeirdEngine
 			uint16_t groupId;
 			float parameters[11];
 
-			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId, float* params) : distanceFieldId(id), combinationId(combinationId), groupId(groupId), owner(owner)
+			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
+								  float* params)
+				: distanceFieldId(id)
+				, combinationId(combinationId)
+				, groupId(groupId)
+				, owner(owner)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
 			}
@@ -253,13 +276,15 @@ namespace WeirdEngine
 		bool m_isPaused;
 		bool m_simulating;
 		double m_simulationDelay;
-		std::atomic<double> m_simulationTime {0.0};
+		std::atomic<double> m_simulationTime{0.0};
 
 		bool m_useSimdOperations;
 
 		vec2* m_positions;
-		vec2* m_positionsRead;;
-		vec2* m_positionsAux;;
+		vec2* m_positionsRead;
+		;
+		vec2* m_positionsAux;
+		;
 
 		vec2* m_previousPositions;
 		vec2* m_velocities;
@@ -344,4 +369,4 @@ namespace WeirdEngine
 		}
 	};
 
-}
+} // namespace WeirdEngine

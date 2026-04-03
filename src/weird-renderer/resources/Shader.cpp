@@ -248,8 +248,8 @@ namespace WeirdEngine
 					// *However*, to keep the code linear and simple:
 					// If syntax is wrong, treat it as raw text.
 					// We only "consume" it if it matches perfectly.
-					// Since we are iterating via `find`, we just need to advance `lastPos` past this point ONLY if we replace.
-					// If we don't replace, we leave `lastPos` alone, but we need to tell `find` to skip this.
+					// Since we are iterating via `find`, we just need to advance `lastPos` past this point ONLY if we
+					// replace. If we don't replace, we leave `lastPos` alone, but we need to tell `find` to skip this.
 					// Optimization: Just allow loose matching or strict? Let's stay strict.
 
 					// Simple fix: if invalid, we create a temp search offset.
@@ -272,8 +272,8 @@ namespace WeirdEngine
 					if (nextInc != std::string_view::npos)
 					{
 						// Hacky way to skip current iteration logic without goto
-						// Ideally we restructure, but let's just break/continue with a specialized search offset variable
-						// For performance in 99% of cases, valid shaders work.
+						// Ideally we restructure, but let's just break/continue with a specialized search offset
+						// variable For performance in 99% of cases, valid shaders work.
 					}
 					// If we hit here, we skip replacing this instance.
 					// We treat it as part of the normal string.

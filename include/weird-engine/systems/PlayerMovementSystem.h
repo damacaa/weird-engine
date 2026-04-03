@@ -31,7 +31,6 @@ namespace WeirdEngine
 				for (size_t i = 0; i < size; i++)
 				{
 
-
 					auto& flyComponent = componentArray->getDataAtIdx(i);
 					Entity target = flyComponent.Owner;
 
@@ -43,7 +42,8 @@ namespace WeirdEngine
 
 					vec3 targetPosition = flyComponent.targetPosition;
 
-					if (Input::GetMouseButtonDown(Input::MiddleClick) || (Input::GetMouseButton(Input::MiddleClick) && !m_locked))
+					if (Input::GetMouseButtonDown(Input::MiddleClick) ||
+						(Input::GetMouseButton(Input::MiddleClick) && !m_locked))
 					{
 						firstClick = true;
 						m_locked = true;
@@ -61,13 +61,13 @@ namespace WeirdEngine
 					}
 					else if (m_locked)
 					{
-						targetPosition += 100.0f * t.position.z * delta * flyComponent.speed * vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
+						targetPosition += 100.0f * t.position.z * delta * flyComponent.speed *
+										  vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
 						Input::SetMousePosition((m_width / 2), (m_height / 2));
 					}
 
 					if (Input::GetMouseButtonDown(Input::LeftClick))
 					{
-
 					}
 
 					// Handles key inputs
@@ -79,7 +79,8 @@ namespace WeirdEngine
 						}
 						if (Input::GetKey(Input::A))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
+							targetPosition += t.position.z * delta * flyComponent.speed *
+											  -glm::normalize(glm::cross(t.rotation, c.camera.up));
 						}
 						if (Input::GetKey(Input::S))
 						{
@@ -87,10 +88,10 @@ namespace WeirdEngine
 						}
 						if (Input::GetKey(Input::D))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
+							targetPosition += t.position.z * delta * flyComponent.speed *
+											  glm::normalize(glm::cross(t.rotation, c.camera.up));
 						}
 					}
-
 
 					if (Input::GetMouseButton(Input::WheelDown))
 					{
@@ -98,9 +99,11 @@ namespace WeirdEngine
 						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * -t.rotation;
 
 						// Move camera towards the cursor
-						vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
+						vec2 cursorPosition =
+							Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
 						vec2 travel = cursorPosition - (vec2)t.position;
-						targetPosition -= flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+						targetPosition -= flyComponent.scrollSpeed * flyComponent.speed *
+										  vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
 					}
 					else if (Input::GetMouseButton(Input::WheelUp))
 					{
@@ -108,9 +111,11 @@ namespace WeirdEngine
 						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * c.camera.orientation;
 
 						// Move camera towards the cursor
-						vec2 cursorPosition = Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
+						vec2 cursorPosition =
+							Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
 						vec2 travel = cursorPosition - (vec2)t.position;
-						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed *
+										  vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
 					}
 
 					if (targetPosition.z < 5.0f)
@@ -129,12 +134,12 @@ namespace WeirdEngine
 
 					flyComponent.targetPosition = targetPosition;
 
-					if (flyComponent.isSmooth) 
+					if (flyComponent.isSmooth)
 					{
 						vec3 a = flyComponent.targetPosition - t.position;
 						flyComponent.v += (500.0f * delta * a) - (0.5f * flyComponent.v);
 						t.position += delta * flyComponent.v;
-					} 
+					}
 					else
 					{
 						t.position = targetPosition;
@@ -207,14 +212,14 @@ namespace WeirdEngine
 						firstClick = true;
 					}
 
-
-					if (Input::GetMouseButton(Input::LeftClick)) {
+					if (Input::GetMouseButton(Input::LeftClick))
+					{
 						m_locked = true;
 						Input::HideMouse();
 					}
 
-
-					if (m_locked) {
+					if (m_locked)
+					{
 
 						// Stores the coordinates of the cursor
 						double mouseX = Input::GetMouseX();
@@ -229,15 +234,19 @@ namespace WeirdEngine
 							Input::SetMousePosition(mouseX, mouseY);
 						}
 
-
-						// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
-						// and then "transforms" them into degrees 
+						// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the
+						// screen and then "transforms" them into degrees
 						float fovMultiplier = c.camera.fov / 90.0f;
-						float rotX = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseY - (WeirdRenderer::Display::height / 2.0)) / WeirdRenderer::Display::height;
-						float rotY = delta * fovMultiplier * flyComponent.sensitivity * (float)(mouseX - (WeirdRenderer::Display::width / 2.0)) / WeirdRenderer::Display::width;
+						float rotX = delta * fovMultiplier * flyComponent.sensitivity *
+									 (float)(mouseY - (WeirdRenderer::Display::height / 2.0)) /
+									 WeirdRenderer::Display::height;
+						float rotY = delta * fovMultiplier * flyComponent.sensitivity *
+									 (float)(mouseX - (WeirdRenderer::Display::width / 2.0)) /
+									 WeirdRenderer::Display::width;
 
 						// Calculates upcoming vertical change in the Orientation
-						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), glm::normalize(glm::cross(t.rotation, c.camera.up)));
+						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX),
+															   glm::normalize(glm::cross(t.rotation, c.camera.up)));
 
 						// Decides whether or not the next vertical Orientation is legal or not
 						if (abs(glm::angle(newOrientation, c.camera.up) - glm::radians(90.0f)) <= glm::radians(85.0f))
@@ -245,21 +254,24 @@ namespace WeirdEngine
 							t.rotation = newOrientation;
 						}
 
-						if (rotY > 1) {
+						if (rotY > 1)
+						{
 							int a = 0;
 						}
 
 						// Rotates the Orientation left and right
 						t.rotation = glm::rotate(t.rotation, glm::radians(-rotY), c.camera.up);
 
-						//std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " << std::endl;
+						// std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " <<
+						// std::endl;
 
 						// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-						Input::SetMousePosition((WeirdRenderer::Display::width / 2.0), (WeirdRenderer::Display::height / 2.0));
+						Input::SetMousePosition((WeirdRenderer::Display::width / 2.0),
+												(WeirdRenderer::Display::height / 2.0));
 					}
 				}
 			}
 
-		}
-	}
-}
+		} // namespace PlayerMovementSystem
+	} // namespace ECS
+} // namespace WeirdEngine

@@ -15,7 +15,6 @@ namespace WeirdEngine
 		class Texture
 		{
 		public:
-
 			enum class TextureType
 			{
 				Color,
@@ -30,7 +29,9 @@ namespace WeirdEngine
 
 			GLuint ID = -1;
 
-			Texture(): width(0), height(0) {};
+			Texture()
+				: width(0)
+				, height(0) {};
 
 			Texture(const char* image);
 
@@ -54,11 +55,20 @@ namespace WeirdEngine
 			void createTexture(void* data, int width, int height, TextureType type);
 
 		public:
-			int getWidth() const {return width;};
-			int getHeight() const {return height;};
-			int getNumColChannels() const {return numColCh;};
+			int getWidth() const
+			{
+				return width;
+			};
+			int getHeight() const
+			{
+				return height;
+			};
+			int getNumColChannels() const
+			{
+				return numColCh;
+			};
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
 #endif

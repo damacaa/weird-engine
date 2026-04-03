@@ -4,20 +4,20 @@ namespace WeirdEngine
 {
 	ResourceManager::ResourceManager()
 	{
-		//Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, 0);
-		//m_textureMap[MISSING_TEXTURE] = defaultDiffuse;
+		// Texture defaultDiffuse = Texture(glm::vec4(255, 0, 255, 255), DIFFUSE, 0);
+		// m_textureMap[MISSING_TEXTURE] = defaultDiffuse;
 	}
-
-
 
 	MeshID ResourceManager::getMeshId(const char* file, const Entity entity, bool instancing)
 	{
 		// If file exists
-		if (m_meshPathMap.find(file) != m_meshPathMap.end()) {
+		if (m_meshPathMap.find(file) != m_meshPathMap.end())
+		{
 			auto id = m_meshPathMap[file];
 
 			// And id is loaded
-			if (m_meshIdMap.find(id) != m_meshIdMap.end()) {
+			if (m_meshIdMap.find(id) != m_meshIdMap.end())
+			{
 				// Return existing id
 				m_resourceReferenceCount[id]++;
 				m_resourcesUsedByEntity[id].insert(entity);
@@ -45,7 +45,6 @@ namespace WeirdEngine
 		std::vector<std::string> loadedTexName;
 		std::vector<Texture> loadedTex;
 
-
 		// Traverse all nodes
 		traverseNode(file, 0, meshes);
 
@@ -72,21 +71,20 @@ namespace WeirdEngine
 	void ResourceManager::freeResources(const Entity entity)
 	{
 		std::unordered_set<MeshID>& resources = m_resourcesUsedByEntity[entity];
-		for (auto& resourceId : resources) {
-			if (--m_resourceReferenceCount[resourceId] == 0) {
+		for (auto& resourceId : resources)
+		{
+			if (--m_resourceReferenceCount[resourceId] == 0)
+			{
 				// Remove resource from memory
 
 				m_meshIdMap[resourceId]->free();
 				delete m_meshIdMap[resourceId];
 				m_meshIdMap.erase(resourceId);
-
 			}
 		}
 
-
 		resources.clear();
 		m_resourcesUsedByEntity.erase(entity);
-
 	}
 
 	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes)
@@ -109,14 +107,14 @@ namespace WeirdEngine
 		std::vector<Vertex> vertices = assembleVertices(positions, normals, texUVs);
 		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
 
-
 		std::vector<Texture> textures = getTextures(file);
 
 		// Combine the vertices, indices, and textures into a mesh
 		meshes.push_back(new Mesh(m_loadedMeshesCount++, vertices, indices, textures));
 	}
 
-	void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes, glm::mat4 matrix)
+	void ResourceManager::traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes,
+									   glm::mat4 matrix)
 	{
 		// Current node
 		json node = m_json["nodes"][nextNode];
@@ -134,13 +132,7 @@ namespace WeirdEngine
 		glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 		if (node.find("rotation") != node.end())
 		{
-			float rotValues[4] =
-			{
-				node["rotation"][3],
-				node["rotation"][0],
-				node["rotation"][1],
-				node["rotation"][2]
-			};
+			float rotValues[4] = {node["rotation"][3], node["rotation"][0], node["rotation"][1], node["rotation"][2]};
 			rotation = glm::make_quat(rotValues);
 		}
 		// Get scale if it exists
@@ -194,7 +186,6 @@ namespace WeirdEngine
 			for (unsigned int i = 0; i < node["children"].size(); i++)
 				traverseNode(file, node["children"][i], matNextNode);
 		}*/
-
 	}
 
 	std::vector<unsigned char> ResourceManager::getData(const char* file)
@@ -229,18 +220,23 @@ namespace WeirdEngine
 
 		// Interpret the type and store it into numPerVert
 		unsigned int numPerVert;
-		if (type == "SCALAR") numPerVert = 1;
-		else if (type == "VEC2") numPerVert = 2;
-		else if (type == "VEC3") numPerVert = 3;
-		else if (type == "VEC4") numPerVert = 4;
-		else throw std::invalid_argument("Type is invalid (not SCALAR, VEC2, VEC3, or VEC4)");
+		if (type == "SCALAR")
+			numPerVert = 1;
+		else if (type == "VEC2")
+			numPerVert = 2;
+		else if (type == "VEC3")
+			numPerVert = 3;
+		else if (type == "VEC4")
+			numPerVert = 4;
+		else
+			throw std::invalid_argument("Type is invalid (not SCALAR, VEC2, VEC3, or VEC4)");
 
 		// Go over all the bytes in the data at the correct place using the properties from above
 		unsigned int beginningOfData = byteOffset + accByteOffset;
 		unsigned int lengthOfData = count * 4 * numPerVert;
 		for (unsigned int i = beginningOfData; i < beginningOfData + lengthOfData; i)
 		{
-			unsigned char bytes[] = { m_data[i++], m_data[i++], m_data[i++], m_data[i++] };
+			unsigned char bytes[] = {m_data[i++], m_data[i++], m_data[i++], m_data[i++]};
 			float value;
 			std::memcpy(&value, bytes, sizeof(float));
 			floatVec.push_back(value);
@@ -269,7 +265,7 @@ namespace WeirdEngine
 		{
 			for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 4; i)
 			{
-				unsigned char bytes[] = { m_data[i++], m_data[i++], m_data[i++], m_data[i++] };
+				unsigned char bytes[] = {m_data[i++], m_data[i++], m_data[i++], m_data[i++]};
 				unsigned int value;
 				std::memcpy(&value, bytes, sizeof(unsigned int));
 				indices.push_back((GLuint)value);
@@ -279,7 +275,7 @@ namespace WeirdEngine
 		{
 			for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i)
 			{
-				unsigned char bytes[] = { m_data[i++], m_data[i++] };
+				unsigned char bytes[] = {m_data[i++], m_data[i++]};
 				unsigned short value;
 				std::memcpy(&value, bytes, sizeof(unsigned short));
 				indices.push_back((GLuint)value);
@@ -289,7 +285,7 @@ namespace WeirdEngine
 		{
 			for (unsigned int i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i)
 			{
-				unsigned char bytes[] = { m_data[i++], m_data[i++] };
+				unsigned char bytes[] = {m_data[i++], m_data[i++]};
 				short value;
 				std::memcpy(&value, bytes, sizeof(short));
 				indices.push_back((GLuint)value);
@@ -317,42 +313,43 @@ namespace WeirdEngine
 		}
 	}
 
-
 	std::vector<Texture> ResourceManager::getTextures(const char* file)
 	{
 		std::vector<Texture> textures;
 
 		// If mesh doesn't contain any texture, use 1x1 white textures
-		if (m_json["images"].size() == 0) {
+		if (m_json["images"].size() == 0)
+		{
 			std::cout << "No textures";
 
 			std::string key = "default" + DIFFUSE;
-			if (m_textureMap.find(key) != m_textureMap.end()) {
+			if (m_textureMap.find(key) != m_textureMap.end())
+			{
 
 				textures.push_back(m_textureMap[key]);
 			}
-			else {
+			else
+			{
 				Texture defaultDiffuse = Texture(glm::vec4(255));
 				textures.push_back(defaultDiffuse);
 				m_textureMap[key] = defaultDiffuse;
 			}
 
-
 			key = "default" + SPECULAR;
-			if (m_textureMap.find(key) != m_textureMap.end()) {
+			if (m_textureMap.find(key) != m_textureMap.end())
+			{
 
 				textures.push_back(m_textureMap[key]);
 			}
-			else {
+			else
+			{
 				Texture defaultSpecular = Texture(glm::vec4(0));
 				textures.push_back(defaultSpecular);
 				m_textureMap[key] = defaultSpecular;
 			}
 
-
 			return textures;
 		}
-
 
 		bool hasSpecular = false;
 
@@ -364,7 +361,8 @@ namespace WeirdEngine
 			// uri of current texture
 			std::string texPath = m_json["images"][i]["uri"];
 
-			if (m_textureMap.find(texPath) != m_textureMap.end()) {
+			if (m_textureMap.find(texPath) != m_textureMap.end())
+			{
 				// Texture already loaded!
 				textures.push_back(m_textureMap[texPath]);
 				continue;
@@ -372,7 +370,8 @@ namespace WeirdEngine
 
 			// If the texture already exists in map, get it from there
 			// Load diffuse texture
-			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos || texPath.find("albedo") != std::string::npos)
+			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos ||
+				texPath.find("albedo") != std::string::npos)
 			{
 				textures.push_back(getTexture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size()));
 			}
@@ -382,18 +381,19 @@ namespace WeirdEngine
 				textures.push_back(getTexture((fileDirectory + texPath).c_str(), SPECULAR, textures.size()));
 				hasSpecular = true;
 			}
-
 		}
 
-
-		if (!hasSpecular) {
+		if (!hasSpecular)
+		{
 			const std::string SPECULAR = "specular";
 			std::string key = "default" + SPECULAR;
-			if (m_textureMap.find(key) != m_textureMap.end()) {
+			if (m_textureMap.find(key) != m_textureMap.end())
+			{
 
 				textures.push_back(m_textureMap[key]);
 			}
-			else {
+			else
+			{
 				Texture defaultSpecular = Texture(glm::vec4(0));
 				textures.push_back(defaultSpecular);
 				m_textureMap[key] = defaultSpecular;
@@ -421,32 +421,17 @@ namespace WeirdEngine
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		// Define the texture image (1x1 white pixel)
-		unsigned char whitePixel[3] = { 255, 255, 255 }; // RGB
+		unsigned char whitePixel[3] = {255, 255, 255}; // RGB
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, whitePixel);
-
-
 	}
 
-	std::vector<Vertex> ResourceManager::assembleVertices
-	(
-		std::vector<glm::vec3> positions,
-		std::vector<glm::vec3> normals,
-		std::vector<glm::vec2> texUVs
-	)
+	std::vector<Vertex> ResourceManager::assembleVertices(std::vector<glm::vec3> positions,
+														  std::vector<glm::vec3> normals, std::vector<glm::vec2> texUVs)
 	{
 		std::vector<Vertex> vertices;
 		for (int i = 0; i < positions.size(); i++)
 		{
-			vertices.push_back
-			(
-				Vertex
-				{
-					positions[i],
-					normals[i],
-					glm::vec3(1.0f, 1.0f, 1.0f),
-					texUVs[i]
-				}
-			);
+			vertices.push_back(Vertex{positions[i], normals[i], glm::vec3(1.0f, 1.0f, 1.0f), texUVs[i]});
 		}
 		return vertices;
 	}
@@ -479,5 +464,4 @@ namespace WeirdEngine
 		return vectors;
 	}
 
-
-}
+} // namespace WeirdEngine

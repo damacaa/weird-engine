@@ -17,19 +17,19 @@ uniform float u_time;
 
 void main()
 {
-    vec2 uv = (2.0 * v_texCoord) - 1.0;
-    uv.x *= (u_resolution.x / u_resolution.y);
+	vec2 uv = (2.0 * v_texCoord) - 1.0;
+	uv.x *= (u_resolution.x / u_resolution.y);
 
-    float zoom = -2.0 * u_camMatrix[3].z;
-    vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
-    float aspectRatio = u_resolution.x / u_resolution.y;
-    vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
+	float zoom = -2.0 * u_camMatrix[3].z;
+	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
+	float aspectRatio = u_resolution.x / u_resolution.y;
+	vec2 zoomVec = vec2((zoom * aspectRatio) - 1.0, zoom);
 
-    vec2 pixel = 0.2 * zoom / u_resolution;
-    pixel.x *= aspectRatio;
+	vec2 pixel = 0.2 * zoom / u_resolution;
+	pixel.x *= aspectRatio;
 
-    vec3 background = mix(vec3(0.55, 0.55, 0.58), vec3(0.7, 0.7, 0.71),
-    (fract(0.1 * pos.x) >= pixel.x && fract(0.1 * pos.y) >= pixel.y) ? 1.0 : 0.0);
+	vec3 background = mix(vec3(0.55, 0.55, 0.58), vec3(0.7, 0.7, 0.71),
+						  (fract(0.1 * pos.x) >= pixel.x && fract(0.1 * pos.y) >= pixel.y) ? 1.0 : 0.0);
 
-    FragColor = vec4(background, 1.0);
+	FragColor = vec4(background, 1.0);
 }

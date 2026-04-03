@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <weird-engine.h>
 
@@ -6,7 +6,6 @@ using namespace WeirdEngine;
 class ClassicScene : public Scene
 {
 private:
-
 	Entity m_monkey;
 	Entity m_ball;
 
@@ -18,7 +17,7 @@ private:
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
-			t.position = vec3(0,0,0);
+			t.position = vec3(0, 0, 0);
 
 			MeshRenderer& mr = m_ecs.addComponent<MeshRenderer>(entity);
 
@@ -39,7 +38,7 @@ private:
 			m_ball = entity;
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0,2,10);
+		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
 	}
 
 	void onUpdate(float delta) override
@@ -48,7 +47,7 @@ private:
 		{
 			setSceneComplete();
 		}
-		
+
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
 		{
@@ -63,7 +62,6 @@ private:
 			// t.position.z = 10 * sinf(getTime());
 			t.position.x = 2.0f * sinf(-getTime());
 			t.position.z = 2.0f * cosf(-getTime());
-			
 		}
 
 		// t.position = cameraTransform.position + vec3(-10, -6, -20);

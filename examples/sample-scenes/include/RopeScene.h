@@ -17,7 +17,7 @@ public:
 private:
 	Entity m_star;
 	double m_lastSpawnTime = 0.0;
-	std:: vector<Entity> m_audioEntities;
+	std::vector<Entity> m_audioEntities;
 
 	void onStart() override
 	{
@@ -87,16 +87,16 @@ private:
 		}
 
 		// Add base shapes (walls, ground, custom)
-		float vars0[8] = { 1.0f, 0.5f, 1.0f}; // Floor shape
+		float vars0[8] = {1.0f, 0.5f, 1.0f}; // Floor shape
 		addShape(DefaultShapes::SINE, vars0, 3);
 
-		float vars1[8] = { 25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f }; // Custom shape
+		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
 		m_star = addShape(DefaultShapes::STAR, vars1, 3);
 
-		float vars2[8] = { 30.5f, 3.5f, 30.0f, 3.0f };
+		float vars2[8] = {30.5f, 3.5f, 30.0f, 3.0f};
 		// addScreenSpaceShape(3, vars2); // UI overlay shape
 
-		float vars3[8] = { 15.0f, -98.0f, 15.0f, 100.0f };
+		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
 		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
 
 		{
@@ -177,7 +177,7 @@ private:
 			for (int i = 0; i < m_audioEntities.size(); ++i)
 			{
 				float value = audioVisualData.waveform[i * skip];
-				auto&t = m_ecs.getComponent<Transform>(m_audioEntities[i]);
+				auto& t = m_ecs.getComponent<Transform>(m_audioEntities[i]);
 				float nextPos = Display::rHeight - ((50.0f * value) + 20.0f);
 				// t.position.y += (std::min)(nextPos - t.position.y, 100.0f * delta);
 				t.position.y = nextPos;
@@ -194,8 +194,8 @@ private:
 		if (Input::GetKeyDown(Input::M))
 		{
 			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
-			
+			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+
 			if (createBoxInUI)
 			{
 				boxStart = vec2(screen.x, screen.y);
@@ -209,7 +209,7 @@ private:
 		else if (Input::GetKeyUp(Input::M))
 		{
 			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
+			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			vec2 boxEnd;
@@ -226,12 +226,13 @@ private:
 			float y = (boxStart.y + boxEnd.y) / 2.0f;
 			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
 			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
-			float vars[8] = { x, y, w, h, 1.2f};
+			float vars[8] = {x, y, w, h, 1.2f};
 
-			if(createBoxInUI)
+			if (createBoxInUI)
 				addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
 			else
-				addShape(DefaultShapes::BOX, vars, 4 + m_ecs.getComponentArray<CustomShape>()->getSize() % 12, CombinationType::SmoothAddition, true,  m_ecs.getComponentArray<CustomShape>()->getSize());
+				addShape(DefaultShapes::BOX, vars, 4 + m_ecs.getComponentArray<CustomShape>()->getSize() % 12,
+						 CombinationType::SmoothAddition, true, m_ecs.getComponentArray<CustomShape>()->getSize());
 		}
 
 		if (Input::GetKeyDown(Input::N))
@@ -241,10 +242,10 @@ private:
 			m_simulation2D.setSDFs(m_sdfs);
 
 			auto& cam = m_ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = { Input::GetMouseX(), Input::GetMouseY() };
+			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			float vars[8] = { world.x, world.y, 5.0f, 7.5f, 1.0f };
+			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
 			addShape(m_sdfs.size() - 1, vars, 3);
 		}
 
@@ -269,10 +270,12 @@ private:
 		{
 			auto p = m_simulation2D.getPosition(i);
 
-			if (p.x > 29.5f) {
+			if (p.x > 29.5f)
+			{
 				p.x = 29.5f;
 				m_simulation2D.setPosition(i, p);
-			}else if (p.x < 0.5f)
+			}
+			else if (p.x < 0.5f)
 			{
 				p.x = 0.5f;
 				m_simulation2D.setPosition(i, p);

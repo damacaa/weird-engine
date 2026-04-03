@@ -9,8 +9,7 @@ class MouseCollisionScene : public Scene
 {
 public:
 	MouseCollisionScene(const PhysicsSettings& settings)
-		: Scene(settings) {
-	};
+		: Scene(settings) {};
 
 private:
 	Entity m_cursorShape;
@@ -47,7 +46,7 @@ private:
 
 		// Floor
 		{
-			float variables[8]{ 0.0f, 1.5f, 1.0f};
+			float variables[8]{0.0f, 1.5f, 1.0f};
 			addShape(DefaultShapes::SINE, variables, 3);
 		}
 
@@ -64,7 +63,7 @@ private:
 		}
 
 		{
-			float variables[8]{ -15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f };
+			float variables[8]{-15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f};
 			Entity star = addShape(DefaultShapes::CIRCLE, variables, 7);
 
 			m_cursorShape = star;
@@ -97,6 +96,4 @@ private:
 			cs.isDirty = true;
 		}
 	}
-
-
 };

@@ -12,14 +12,14 @@ namespace WeirdEngine
 			GLfloat vertices[] = {
 				// positions        // UVs
 				-f, -f, 0.999999f, 0.0f, 0.0f, // Lower left corner
-				-f, f,0.999999f, 0.0f, 1.0f, // Upper left corner
-				f, f, 0.999999f, 1.0f, 1.0f, // Upper right corner
-				f, -f, 0.999999f, 1.0f, 0.0f // Lower right corner
+				-f, f,	0.999999f, 0.0f, 1.0f, // Upper left corner
+				f,	f,	0.999999f, 1.0f, 1.0f, // Upper right corner
+				f,	-f, 0.999999f, 1.0f, 0.0f  // Lower right corner
 			};
 
 			GLuint indices[] = {
 				0, 1, 2, // First triangle
-				0, 2, 3 // Second triangle
+				0, 2, 3	 // Second triangle
 			};
 
 			glGenVertexArrays(1, &VAO);
@@ -47,7 +47,6 @@ namespace WeirdEngine
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		}
 
-
 		void RenderPlane::draw(Shader& shader) const
 		{
 			// Bind the VAO so OpenGL knows to use it
@@ -56,11 +55,10 @@ namespace WeirdEngine
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		}
 
-
 		void RenderPlane::free()
 		{
 			glDeleteVertexArrays(1, &VAO);
 			glDeleteBuffers(1, &VBO);
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

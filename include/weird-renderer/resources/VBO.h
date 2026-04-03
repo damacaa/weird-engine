@@ -1,9 +1,9 @@
 #ifndef VBO_CLASS_H
 #define VBO_CLASS_H
 
-#include<glm/glm.hpp>
-#include<glad/glad.h>
-#include<vector>
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -37,7 +37,7 @@ namespace WeirdEngine
 			void free();
 		};
 
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
 #endif

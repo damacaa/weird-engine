@@ -32,5 +32,5 @@ namespace WeirdEngine
 
 			int m_width, m_height;
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

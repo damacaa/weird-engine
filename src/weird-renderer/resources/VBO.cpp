@@ -29,5 +29,5 @@ namespace WeirdEngine
 		{
 			glDeleteBuffers(1, &ID);
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

@@ -6,14 +6,14 @@
 #include "CollisionHandling.h"
 #include "DestroyScene.h"
 #include "ImageScene.h"
+#include "LifeScene.h"
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
-#include "LifeScene.h"
 
 #include "globals.h"
-#include "SceneLoadExample.h"
 #include "MoleculeEditor.h"
+#include "SceneLoadExample.h"
 #include "weird-renderer/core/Display.h"
 
 WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);

@@ -1,8 +1,8 @@
 #ifndef EBO_CLASS_H
 #define EBO_CLASS_H
 
-#include<glad/glad.h>
-#include<vector>
+#include <glad/glad.h>
+#include <vector>
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -23,7 +23,7 @@ namespace WeirdEngine
 			// Deletes the EBO
 			void free();
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
 #endif

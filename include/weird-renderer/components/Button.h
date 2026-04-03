@@ -6,7 +6,8 @@
 
 namespace WeirdEngine
 {
-	enum class ButtonState {
+	enum class ButtonState
+	{
 		Off,
 		Down,
 		Hold,
@@ -32,5 +33,4 @@ namespace WeirdEngine
 		bool hovered = false;
 	};
 
-
-}
+} // namespace WeirdEngine

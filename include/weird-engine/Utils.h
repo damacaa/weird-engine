@@ -1,19 +1,20 @@
 #pragma once
 
-#include <sstream>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
-#include <string>
+#include <sstream>
 #include <stdexcept>
-#include <filesystem>
+#include <string>
 
+namespace WeirdEngine
+{
 
-namespace WeirdEngine {
+	namespace fs = std::filesystem;
 
-namespace fs = std::filesystem;
-
-	static unsigned int hash(unsigned int x) {
+	static unsigned int hash(unsigned int x)
+	{
 		x = ((x >> 16) ^ x) * 0x119de1f3;
 		x = ((x >> 16) ^ x) * 0x119de1f3;
 		x = (x >> 16) ^ x;
@@ -31,7 +32,7 @@ namespace fs = std::filesystem;
 			in.seekg(0, std::ios::beg);
 			in.read(&contents[0], contents.size());
 			in.close();
-			return(contents);
+			return (contents);
 		}
 
 		std::cout << "Can't find " << filename << "\n";
@@ -49,7 +50,7 @@ namespace fs = std::filesystem;
 			in.seekg(0, std::ios::beg);
 			in.read(&contents[0], contents.size());
 			in.close();
-			return(contents);
+			return (contents);
 		}
 
 		return "";
@@ -68,9 +69,9 @@ namespace fs = std::filesystem;
 			in.close();
 
 			success = true;
-			return(contents);
+			return (contents);
 		}
-		
+
 		success = false;
 		return "";
 	}
@@ -105,4 +106,4 @@ namespace fs = std::filesystem;
 		return file.good();
 	}
 
-}
+} // namespace WeirdEngine

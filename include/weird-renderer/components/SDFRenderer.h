@@ -24,4 +24,4 @@ namespace WeirdEngine
 			this->materialId = 0;
 		}
 	};
-}
+} // namespace WeirdEngine

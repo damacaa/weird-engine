@@ -37,5 +37,5 @@ namespace WeirdEngine
 			// Sets new camera matrix
 			cameraMatrix = projection * view;
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

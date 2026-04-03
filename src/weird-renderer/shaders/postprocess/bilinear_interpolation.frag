@@ -64,7 +64,6 @@ void main()
 	// width = max(width, 0.001); // Optional, for stability
 	float alpha = smoothstep(width, -width, d);
 
-
 	// Final color (e.g., white shape on a black background)
 	vec3 col = vec3(alpha);
 

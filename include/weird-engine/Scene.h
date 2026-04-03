@@ -5,13 +5,13 @@
 
 #include "weird-engine/systems/SDFRenderSystem2D.h"
 
-#include "weird-renderer/core/RenderTarget.h"
-#include "weird-renderer/resources/DrawCommand.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
+#include "weird-renderer/core/RenderTarget.h"
+#include "weird-renderer/resources/DrawCommand.h"
 
-#include "weird-physics/Simulation2D.h"
 #include "weird-physics/PhysicsSettings.h"
+#include "weird-physics/Simulation2D.h"
 
 #include <string>
 #include <unordered_map>
@@ -84,7 +84,10 @@ namespace WeirdEngine
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
 		// Set the path to a .weird file to load when the scene starts
-		void setSceneFilePath(const std::string& path) { m_sceneFilePath = path; }
+		void setSceneFilePath(const std::string& path)
+		{
+			m_sceneFilePath = path;
+		}
 
 	protected:
 		virtual void onCreate() {};
@@ -92,7 +95,10 @@ namespace WeirdEngine
 		// scene is loaded from a .weird file.  Override onStart() (no parameter)
 		// for scenes that don't need the tag map.  The default implementation of
 		// the tags overload simply calls onStart(), so you only need one.
-		virtual void onStart(const TagMap& tags) { onStart(); }
+		virtual void onStart(const TagMap& tags)
+		{
+			onStart();
+		}
 		virtual void onStart() {}
 		virtual void onUpdate(float delta) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
@@ -125,7 +131,10 @@ namespace WeirdEngine
 
 		// Entities in this set will be skipped during scene serialization
 		std::unordered_set<Entity> m_serializationBlacklist;
-		void blacklistEntity(Entity e) { m_serializationBlacklist.insert(e); }
+		void blacklistEntity(Entity e)
+		{
+			m_serializationBlacklist.insert(e);
+		}
 
 		// Tag management
 		// Assign a unique tag to an entity. If the tag is already owned by

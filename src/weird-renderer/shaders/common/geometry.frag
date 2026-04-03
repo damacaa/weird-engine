@@ -12,13 +12,13 @@ in vec2 v_texCoord;
 uniform sampler2D u_diffuse0;
 uniform sampler2D u_specular0;
 
-uniform vec3  u_camPos;
-uniform vec3  u_lightPos;
-uniform vec3  u_lightDirection;
-uniform vec4  u_lightColor;
+uniform vec3 u_camPos;
+uniform vec3 u_lightPos;
+uniform vec3 u_lightDirection;
+uniform vec4 u_lightColor;
 
 float u_near = 0.1f;
-float u_far  = 100.0f;
+float u_far = 100.0f;
 
 vec4 pointLight()
 {
@@ -33,12 +33,12 @@ vec4 pointLight()
 	vec3 viewDir = normalize(u_camPos - v_worldPos);
 	vec3 reflectDir = reflect(-lightDir, normal);
 
-	float ambient  = 0.01;
-	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float ambient = 0.01;
+	float diffuse = max(dot(normal, lightDir), 0.0);
 	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
 
-	vec4 texColor  = texture(u_diffuse0, v_texCoord);
-	float specVal  = texture(u_specular0, v_texCoord).r;
+	vec4 texColor = texture(u_diffuse0, v_texCoord);
+	float specVal = texture(u_specular0, v_texCoord).r;
 
 	return (texColor * (diffuse * intensity + ambient) + specVal * specular * intensity) * u_lightColor;
 }
@@ -50,8 +50,8 @@ vec4 directionalLight()
 	vec3 viewDir = normalize(u_camPos - v_worldPos);
 	vec3 reflectDir = reflect(-lightDir, normal);
 
-	float ambient  = 0.0001;
-	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float ambient = 0.0001;
+	float diffuse = max(dot(normal, lightDir), 0.0);
 	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
 
 	vec4 texColor = texture(u_diffuse0, v_texCoord);
@@ -70,11 +70,11 @@ vec4 spotLight()
 	vec3 viewDir = normalize(u_camPos - v_worldPos);
 	vec3 reflectDir = reflect(-lightDir, normal);
 
-	float diffuse  = max(dot(normal, lightDir), 0.0);
+	float diffuse = max(dot(normal, lightDir), 0.0);
 	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
-	float angle    = dot(vec3(0.0, -1.0, 0.0), -lightDir);
+	float angle = dot(vec3(0.0, -1.0, 0.0), -lightDir);
 	float intensity = clamp((angle - outerCone) / (innerCone - outerCone), 0.0, 1.0);
-	float ambient   = 0.2;
+	float ambient = 0.2;
 
 	vec4 texColor = texture(u_diffuse0, v_texCoord);
 	float specVal = texture(u_specular0, v_texCoord).r;

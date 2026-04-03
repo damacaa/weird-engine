@@ -42,7 +42,7 @@ void main()
 	vec2 f = (v_texCoord - uv_i_j) / texelSize;
 
 	// 5. Calculate the UVs for the four corner texels T_ij, T_i+1,j, T_i,j+1, T_i+1,j+1
-	vec2 uv00 = texel_i_j * texelSize; // (i, j) - Note: Using corner for simpler lookup
+	vec2 uv00 = texel_i_j * texelSize;					  // (i, j) - Note: Using corner for simpler lookup
 	vec2 uv10 = (texel_i_j + vec2(1.0, 0.0)) * texelSize; // (i+1, j)
 	vec2 uv01 = (texel_i_j + vec2(0.0, 1.0)) * texelSize; // (i, j+1)
 	vec2 uv11 = (texel_i_j + vec2(1.0, 1.0)) * texelSize; // (i+1, j+1)

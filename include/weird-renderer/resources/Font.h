@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "weird-engine/vec.h"
 #include <array>
 #include <iostream>

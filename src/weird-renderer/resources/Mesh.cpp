@@ -4,7 +4,8 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		Mesh::Mesh(MeshID id, std::vector<Vertex>& vertices, std::vector<GLuint>& indices, std::vector<Texture>& textures)
+		Mesh::Mesh(MeshID id, std::vector<Vertex>& vertices, std::vector<GLuint>& indices,
+				   std::vector<Texture>& textures)
 			: id(id)
 		{
 			Mesh::vertices = vertices;
@@ -37,13 +38,8 @@ namespace WeirdEngine
 		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
 		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		void Mesh::draw(
-			Shader& shader,
-			Camera& camera,
-			glm::vec3 translation,
-			glm::vec3 rotation,
-			glm::vec3 scale
-		) const
+		void Mesh::draw(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation,
+						glm::vec3 scale) const
 		{
 			UploadUniforms(shader, camera, translation, rotation, scale);
 
@@ -51,13 +47,8 @@ namespace WeirdEngine
 			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		}
 
-		void Mesh::drawInstances(
-			Shader& shader,
-			Camera& camera,
-			unsigned int instances,
-			glm::vec3 translation,
-			glm::vec3 rotation,
-			glm::vec3 scale) const
+		void Mesh::drawInstances(Shader& shader, Camera& camera, unsigned int instances, glm::vec3 translation,
+								 glm::vec3 rotation, glm::vec3 scale) const
 		{
 			UploadUniforms(shader, camera, translation, rotation, scale);
 
@@ -72,7 +63,8 @@ namespace WeirdEngine
 			m_ebo.free();
 		}
 
-		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) const
+		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation,
+								  glm::vec3 scale) const
 		{
 			// Bind shader to be able to access uniforms
 			shader.use();
@@ -127,7 +119,8 @@ namespace WeirdEngine
 
 			// Compute and send normal matrix
 			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-			glUniformMatrix3fv(glGetUniformLocation(shader.ID, "u_normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
+			glUniformMatrix3fv(glGetUniformLocation(shader.ID, "u_normalMatrix"), 1, GL_FALSE,
+							   glm::value_ptr(normalMatrix));
 		}
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine

@@ -1,32 +1,36 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
-#include "weird-renderer/resources/Font.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/resources/Font.h"
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 
 namespace WeirdEngine
 {
 	// Make this a component?
-	struct SDFRenderSystem2DContext 
+	struct SDFRenderSystem2DContext
 	{
-		float m_dotRadious = 5.0f; 
+		float m_dotRadious = 5.0f;
 		float m_charSpacing = 10.0f;
 		WeirdRenderer::Font m_font;
 
 		bool m_shapesNeedUpdate = true;
 
-        SDFRenderSystem2DContext() : m_font(FONTS_PATH "small.bmp", 3, 4, 1,
-		                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;") {}
-    };
+		SDFRenderSystem2DContext()
+			: m_font(FONTS_PATH "small.bmp", 3, 4, 1,
+					 "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
+		{
+		}
+	};
 
 	namespace SDFRenderSystem2D
 	{
 
-		template<typename DotClass, typename ShapeClass, typename TextClass>
+		template <typename DotClass, typename ShapeClass, typename TextClass>
 		inline void update(ECSManager& ecs, SDFRenderSystem2DContext& ctx, vec4*& data, uint32_t& size)
 		{
-			auto updateText = [&](TextClass& text) {
+			auto updateText = [&](TextClass& text)
+			{
 				if (text.dirty)
 				{
 					// Update dot count
@@ -38,7 +42,8 @@ namespace WeirdEngine
 					}
 
 					int charCount = text.text.length();
-					text.width = (charCount * ctx.m_font.getCharWidth() * 2 * ctx.m_dotRadious) + ((charCount - 1) * ctx.m_charSpacing);
+					text.width = (charCount * ctx.m_font.getCharWidth() * 2 * ctx.m_dotRadious) +
+								 ((charCount - 1) * ctx.m_charSpacing);
 					text.height = ctx.m_font.getCharHeight() * 2 * ctx.m_dotRadious;
 
 					text.dirty = false;
@@ -99,13 +104,15 @@ namespace WeirdEngine
 
 			// Text
 			int dotIndex = 0;
-			for (size_t i = 0; i < textClassArray->getSize(); i++) {
-				auto &text = textClassArray->getDataAtIdx(i);
-				auto &t = transformArray->getDataFromEntity(text.Owner);
+			for (size_t i = 0; i < textClassArray->getSize(); i++)
+			{
+				auto& text = textClassArray->getDataAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(text.Owner);
 				int charCount = text.text.length();
 
 				float horizontalOffset = 0.0f;
-				switch (text.horizontalAlignment) {
+				switch (text.horizontalAlignment)
+				{
 					case TextRenderer::HorizontalAlignment::Left:
 						horizontalOffset = 0.0f;
 						break;
@@ -118,7 +125,8 @@ namespace WeirdEngine
 				}
 
 				float verticalOffset = 0.0f;
-				switch (text.verticalAlignment) {
+				switch (text.verticalAlignment)
+				{
 					case TextRenderer::VerticalAlignment::Bottom:
 						verticalOffset = 0.0f;
 						break;
@@ -132,13 +140,16 @@ namespace WeirdEngine
 
 				vec2 alignmentOffset(horizontalOffset, verticalOffset);
 
-				for (size_t c = 0; c < charCount; c++) {
+				for (size_t c = 0; c < charCount; c++)
+				{
 					auto charData = ctx.m_font.getCharData(text.text[c]);
-					for (size_t j = 0; j < charData.dotCount; j++) {
+					for (size_t j = 0; j < charData.dotCount; j++)
+					{
 						int idx = normalDots + dotIndex;
 						dotIndex++;
 
-						vec2 charOffset = vec2(((charWidth + ctx.m_charSpacing) * c) + ctx.m_dotRadious, ctx.m_dotRadious); // TODO: different lines
+						vec2 charOffset = vec2(((charWidth + ctx.m_charSpacing) * c) + ctx.m_dotRadious,
+											   ctx.m_dotRadious); // TODO: different lines
 						vec2 scaledDotPosition = 2 * ctx.m_dotRadious * charData.positions[j];
 						vec2 position = (vec2)t.position + charOffset + scaledDotPosition + alignmentOffset; // + letter
 						data[idx].x = position.x;
@@ -168,7 +179,5 @@ namespace WeirdEngine
 			}
 		}
 
-		
-
-	}
-}
+	} // namespace SDFRenderSystem2D
+} // namespace WeirdEngine

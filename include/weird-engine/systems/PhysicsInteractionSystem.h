@@ -30,14 +30,7 @@ namespace WeirdEngine
 			DistanceConstraint = 4,
 		};
 
-		inline std::string m_interactionModeToString[5] =
-		{
-			"Drag",
-			"Impulse",
-			"Fix",
-			"Spring",
-			"DistanceConstraint"
-		};
+		inline std::string m_interactionModeToString[5] = {"Drag", "Impulse", "Fix", "Spring", "DistanceConstraint"};
 
 		inline InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
@@ -63,7 +56,6 @@ namespace WeirdEngine
 			m_selectedId = -1;
 		}
 
-
 		inline void update(ECSManager& ecs, Simulation2D& simulation)
 		{
 			// Spawn ball
@@ -72,8 +64,7 @@ namespace WeirdEngine
 				// Get mouse coordinates world space
 				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
 
-				
-				//t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
+				// t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
 				Entity entity = ecs.createEntity();
 				Transform& t = ecs.addComponent<Transform>(entity);
 				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
@@ -81,7 +72,6 @@ namespace WeirdEngine
 				auto& dot = ecs.addComponent<Dot>(entity);
 				dot.materialId = m_currentMaterial + 4;
 
-				
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 				simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 
@@ -95,23 +85,23 @@ namespace WeirdEngine
 
 			switch (m_currentInteractionMode)
 			{
-			case PhysicsInteractionSystem::InteractionMode::Drag:
-				drag(ecs, simulation);
-				break;
-			case PhysicsInteractionSystem::InteractionMode::Impulse:
-				impulse(ecs, simulation);
-				break;
-			case PhysicsInteractionSystem::InteractionMode::Fix:
-				fix(ecs, simulation);
-				break;
-			case PhysicsInteractionSystem::InteractionMode::Spring:
-				spring(ecs, simulation);
-				break;
-			case PhysicsInteractionSystem::InteractionMode::DistanceConstraint:
-				positionConstraint(ecs, simulation);
-				break;
-			default:
-				break;
+				case PhysicsInteractionSystem::InteractionMode::Drag:
+					drag(ecs, simulation);
+					break;
+				case PhysicsInteractionSystem::InteractionMode::Impulse:
+					impulse(ecs, simulation);
+					break;
+				case PhysicsInteractionSystem::InteractionMode::Fix:
+					fix(ecs, simulation);
+					break;
+				case PhysicsInteractionSystem::InteractionMode::Spring:
+					spring(ecs, simulation);
+					break;
+				case PhysicsInteractionSystem::InteractionMode::DistanceConstraint:
+					positionConstraint(ecs, simulation);
+					break;
+				default:
+					break;
 			}
 
 			if (Input::GetKeyDown(Input::Num1))
@@ -170,11 +160,10 @@ namespace WeirdEngine
 			}
 		}
 
-
 		inline vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation)
 		{
 			// Get mouse coordinates
-			auto& cameraTransform = ecs.getComponent<Transform>(0);// m_mainCamera
+			auto& cameraTransform = ecs.getComponent<Transform>(0); // m_mainCamera
 			float x = Input::GetMouseX();
 			float y = Input::GetMouseY();
 
@@ -183,8 +172,6 @@ namespace WeirdEngine
 
 			return mousePositionInWorld;
 		}
-
-
 
 		inline void drag(ECSManager& ecs, Simulation2D& simulation)
 		{
@@ -218,7 +205,6 @@ namespace WeirdEngine
 			}
 		}
 
-
 		inline void impulse(ECSManager& ecs, Simulation2D& simulation)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
@@ -229,7 +215,6 @@ namespace WeirdEngine
 				m_loadingImpulse = true;
 				m_loadStartPosition = getMousePositionInWorld(ecs, simulation);
 			}
-
 
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
@@ -247,7 +232,6 @@ namespace WeirdEngine
 				vec2 direction = (mousePositionInWorld - m_loadStartPosition);
 				float dragDistance = length(direction);
 
-
 				for (size_t i = 0; i < componentArray->getSize(); i++)
 				{
 
@@ -257,13 +241,12 @@ namespace WeirdEngine
 					float distance = glm::length(static_cast<vec2>(t.position) - m_loadStartPosition);
 					// float maxDistance = (0.5f * dragDistance);
 					float maxDistance = 5.0f;
-					vec2 force = 1.0f * glm::clamp(maxDistance- distance, 0.0f, 1.0f) * direction;
+					vec2 force = 1.0f * glm::clamp(maxDistance - distance, 0.0f, 1.0f) * direction;
 
 					simulation.addForce(rb.simulationId, force);
 				}
 			}
 		}
-
 
 		inline void fix(ECSManager& ecs, Simulation2D& simulation)
 		{
@@ -276,7 +259,6 @@ namespace WeirdEngine
 				}
 			}
 		}
-
 
 		inline void spring(ECSManager& ecs, Simulation2D& simulation)
 		{
@@ -294,12 +276,11 @@ namespace WeirdEngine
 				}
 			}
 
-
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
 				if (m_firstIdInSpring < simulation.getSize())
 				{
-					// Check 
+					// Check
 					SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 					if (id < simulation.getSize())
 					{
@@ -327,12 +308,11 @@ namespace WeirdEngine
 				}
 			}
 
-
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
 				if (m_firstIdInSpring < simulation.getSize())
 				{
-					// Check 
+					// Check
 					SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 					if (id < simulation.getSize())
 					{
@@ -343,5 +323,5 @@ namespace WeirdEngine
 				m_firstIdInSpring = -1;
 			}
 		}
-	}
-}
+	} // namespace PhysicsInteractionSystem
+} // namespace WeirdEngine

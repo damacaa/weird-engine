@@ -6,7 +6,8 @@ namespace WeirdEngine
 {
 	struct RigidBody : public Component
 	{
-		RigidBody() : simulationId(-1) {};
+		RigidBody()
+			: simulationId(-1) {};
 		unsigned int simulationId;
 	};
 
@@ -16,4 +17,4 @@ namespace WeirdEngine
 			: simulationId(-1) {};
 		unsigned int simulationId;
 	};
-}
+} // namespace WeirdEngine

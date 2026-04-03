@@ -16,21 +16,21 @@ private:
 	Shader m_brightFilterShader;
 	Shader m_backgroundShader;
 
-	Mesh *m_quad = nullptr;
-	Mesh *m_cube = nullptr;
+	Mesh* m_quad = nullptr;
+	Mesh* m_cube = nullptr;
 
-	Texture *m_noiseTexture = nullptr;
-	Texture *m_flameShape = nullptr;
-	Texture *m_sceneTextureBeforeFire = nullptr; // Copy of scene texture for heat effect
-	Texture	*m_postProcessTextureFront = nullptr;
-	Texture *m_postProcessTextureBack = nullptr;
-	Texture *m_brightPassTexture = nullptr;
+	Texture* m_noiseTexture = nullptr;
+	Texture* m_flameShape = nullptr;
+	Texture* m_sceneTextureBeforeFire = nullptr; // Copy of scene texture for heat effect
+	Texture* m_postProcessTextureFront = nullptr;
+	Texture* m_postProcessTextureBack = nullptr;
+	Texture* m_brightPassTexture = nullptr;
 
-	RenderTarget *m_postProcessRenderFront;
-	RenderTarget *m_postProcessRenderBack;
-	RenderTarget *m_bloomRenderTarget;
+	RenderTarget* m_postProcessRenderFront;
+	RenderTarget* m_postProcessRenderBack;
+	RenderTarget* m_bloomRenderTarget;
 
-	RenderTarget *m_postProcessDoubleBuffer[2];
+	RenderTarget* m_postProcessDoubleBuffer[2];
 
 	RenderPlane m_renderPlane;
 
@@ -49,17 +49,14 @@ private:
 
 		// Custom shaders
 		m_flameShader = Shader(SHADERS_PATH "default.vert", ASSETS_PATH "fire/shaders/flame.frag");
-		m_particlesShader = Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
-		m_smokeShader = Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
+		m_particlesShader =
+			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
+		m_smokeShader =
+			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
 		m_heatDistortionShader = Shader(SHADERS_PATH "default.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
 		m_lights.push_back(
-			Light{
-				0,
-				glm::vec3(0.0f, 1.0f, 0.0f),
-				0,
-				glm::vec3(0.0f),
-				glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		// Load meshes
 		// Quad geom
@@ -125,19 +122,18 @@ private:
 				{{-size, -size, size}, {0.f, -1.f, 0.f}, {1.f, 1.f, 1.f}, {0.f, 1.f}},
 			};
 
-			std::vector<GLuint> indices = {
-				// Front face
-				0, 2, 1, 2, 0, 3,
-				// Back face
-				7, 5, 6, 5, 7, 4,
-				// Left face
-				11, 10, 9, 9, 8, 11,
-				// Right face
-				12, 14, 13, 15, 14, 12,
-				// Top face
-				19, 18, 17, 17, 16, 19,
-				// Bottom face
-				22, 21, 20, 20, 23, 22};
+			std::vector<GLuint> indices = {// Front face
+										   0, 2, 1, 2, 0, 3,
+										   // Back face
+										   7, 5, 6, 5, 7, 4,
+										   // Left face
+										   11, 10, 9, 9, 8, 11,
+										   // Right face
+										   12, 14, 13, 15, 14, 12,
+										   // Top face
+										   19, 18, 17, 17, 16, 19,
+										   // Bottom face
+										   22, 21, 20, 20, 23, 22};
 
 			std::vector<Texture> textures = {};
 			m_cube = new Mesh(2, vertices, indices, textures);
@@ -219,7 +215,7 @@ private:
 		{
 			setSceneComplete();
 		}
-		
+
 		if (m_debugFly)
 		{
 			return;
@@ -238,7 +234,7 @@ private:
 			}
 		}
 
-		Transform &cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
 		static float amplitude = 10.0f;
 
@@ -249,18 +245,14 @@ private:
 		cameraTransform.rotation = -cameraTransform.position + vec3(0.0f, 1.0f, 0.0f);
 	}
 
-	void renderFire(WeirdRenderer::Camera &camera, float time)
+	void renderFire(WeirdRenderer::Camera& camera, float time)
 	{
 		// Particles
 		m_particlesShader.use();
 		m_particlesShader.setUniform("u_camMatrix", camera.cameraMatrix);
 		m_particlesShader.setUniform("u_camPos", camera.position);
 		m_particlesShader.setUniform("u_time", time);
-		m_quad->drawInstances(m_particlesShader, camera,
-							  10,
-							  vec3(0, 1.0f, 0),
-							  vec3(0, 0, time),
-							  vec3(0.01f));
+		m_quad->drawInstances(m_particlesShader, camera, 10, vec3(0, 1.0f, 0), vec3(0, 0, time), vec3(0.01f));
 
 		glEnable(GL_BLEND);
 
@@ -272,11 +264,7 @@ private:
 		m_smokeShader.setUniform("u_camMatrix", camera.cameraMatrix);
 		m_smokeShader.setUniform("u_camPos", camera.position);
 		m_smokeShader.setUniform("u_time", time);
-		m_quad->drawInstances(m_smokeShader, camera,
-							  50,
-							  vec3(0, 1.0f, -0.1f),
-							  vec3(0, 0, time),
-							  vec3(1.0f));
+		m_quad->drawInstances(m_smokeShader, camera, 50, vec3(0, 1.0f, -0.1f), vec3(0, 0, time), vec3(1.0f));
 
 		glDepthMask(GL_TRUE);
 
@@ -301,10 +289,10 @@ private:
 		glDisable(GL_BLEND);
 	}
 
-	void onRender(WeirdRenderer::RenderTarget &renderTarget) override
+	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
 	{
 
-		WeirdRenderer::Camera &sceneCamera = getCamera();
+		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();
 
 		glDepthMask(GL_FALSE);
@@ -339,7 +327,8 @@ private:
 		m_litShader.setUniform("u_lightColor", color);
 
 		// bind current FBO
-		// m_sceneRender->bind(); // TODO: keep rendering to the same fbo. Should pass the render target and the color and depth textures
+		// m_sceneRender->bind(); // TODO: keep rendering to the same fbo. Should pass the render target and the color
+		// and depth textures
 
 		// Floor
 		m_cube->draw(m_litShader, sceneCamera, vec3(0, -500.0f, 0), vec3(0), vec3(4, 1000, 4));
@@ -353,9 +342,6 @@ private:
 
 		m_cube->draw(m_litShader, sceneCamera, vec3(-2.0f, 2.75f, 0.9f), vec3(-0.75f, 0.0f, 0), vec3(1));
 
-
-		
-
 		// m_cube->draw(m_litShader, sceneCamera, vec3(0, 0.0f, 0), vec3(0), vec3(0.1f, 2.0f, 0.1f));
 
 		// Heat effect
@@ -363,11 +349,11 @@ private:
 		// Don't write to depth buffer
 		glDepthMask(GL_FALSE);
 
-		// Copy scene texture // TODO: replace with glCopyTexSubImage which copies from the current read framebuffer attachment to the given image
-		glCopyImageSubData(
-			renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
-			m_sceneTextureBeforeFire->ID, GL_TEXTURE_2D, 0, 0, 0, 0,
-			Display::rWidth, Display::rHeight, 1);
+		// Copy scene texture // TODO: replace with glCopyTexSubImage which copies from the current read framebuffer
+		// attachment to the given image
+		glCopyImageSubData(renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
+						   m_sceneTextureBeforeFire->ID, GL_TEXTURE_2D, 0, 0, 0, 0, Display::rWidth, Display::rHeight,
+						   1);
 
 		// Heat effect shader
 		m_heatDistortionShader.use();
@@ -383,8 +369,6 @@ private:
 		// Flame texture
 		m_heatDistortionShader.setUniform("t_flameShape", 2);
 		m_flameShape->bind(2);
-
-		
 
 		// Time to animate effect
 		m_heatDistortionShader.setUniform("u_time", (float)time);
@@ -449,7 +433,7 @@ private:
 		renderTarget.getColorAttachment()->bind(0);
 
 		m_bloomShader.setUniform("t_blurTexture", 1);
-		RenderTarget *finalTarget = m_postProcessDoubleBuffer[!horizontal];
+		RenderTarget* finalTarget = m_postProcessDoubleBuffer[!horizontal];
 		finalTarget->getColorAttachment()->bind(1);
 
 		if (Input::GetKey(Input::B))

@@ -24,8 +24,6 @@ public:
 		: Scene(settings) {};
 
 private:
-
-
 	// Inherited via Scene
 	void onStart() override
 	{
@@ -84,7 +82,6 @@ private:
 		}
 	}
 
-
 	void onPhysicsStep() override
 	{
 		float delta = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
@@ -106,8 +103,8 @@ private:
 				float radians = angle * 3.14159265f / 180.0f;
 				float cosA = cos(radians);
 				float sinA = sin(radians);
-				head.direction =
-					vec2(cosA * head.direction.x - sinA * head.direction.y, sinA * head.direction.x + cosA * head.direction.y);
+				head.direction = vec2(cosA * head.direction.x - sinA * head.direction.y,
+									  sinA * head.direction.x + cosA * head.direction.y);
 				head.direction = normalize(head.direction);
 				head.directionChanged = true;
 			}
@@ -117,13 +114,10 @@ private:
 			}
 
 			vec2 positon = m_simulation2D.getPosition(rb.simulationId);
-			if(length(positon) > 50.0f)
+			if (length(positon) > 50.0f)
 			{
 				head.direction = -normalize(positon);
 			}
 		}
-		
-
-		
 	}
 };

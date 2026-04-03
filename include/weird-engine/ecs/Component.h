@@ -1,13 +1,12 @@
 #pragma once
 #include "Entity.h"
 
-
-namespace WeirdEngine 
+namespace WeirdEngine
 {
-    // Component base class
-    class Component {
-    public:
-        Entity Owner;
-    };
-}
-
+	// Component base class
+	class Component
+	{
+	public:
+		Entity Owner;
+	};
+} // namespace WeirdEngine

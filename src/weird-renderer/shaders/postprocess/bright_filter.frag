@@ -14,7 +14,7 @@ void main()
 
 	// If any channel is above the threshold, it is written to the bright texture
 	float value = max(color.x, max(color.y, color.z));
-	value = value >= u_threshold ? value: 0.0;
+	value = value >= u_threshold ? value : 0.0;
 
 	vec4 bloomColor = value * color;
 	bloomColor.a = color.a;

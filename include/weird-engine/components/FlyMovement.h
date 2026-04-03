@@ -11,13 +11,10 @@ namespace WeirdEngine
 			float speed;
 			float sensitivity = 50000.0f;
 
-			FlyMovement() : speed(10.0f)
+			FlyMovement()
+				: speed(10.0f)
 			{
-
 			}
-
-
-
 		};
-	}
-}
+	} // namespace ECS
+} // namespace WeirdEngine

@@ -1,8 +1,8 @@
 #ifndef VAO_CLASS_H
 #define VAO_CLASS_H
 
-#include<glad/glad.h>
 #include "weird-renderer/resources/VBO.h"
+#include <glad/glad.h>
 
 namespace WeirdEngine
 {
@@ -17,7 +17,8 @@ namespace WeirdEngine
 			VAO();
 
 			// Links a VBO Attribute such as a position or color to the quadVAO
-			void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
+			void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride,
+							void* offset);
 			// Binds the quadVAO
 			void bind() const;
 			// Unbinds the quadVAO
@@ -25,7 +26,7 @@ namespace WeirdEngine
 			// Deletes the quadVAO
 			void free() const;
 		};
-	}
-}
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
 
 #endif

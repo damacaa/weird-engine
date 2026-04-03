@@ -14,13 +14,10 @@ namespace WeirdEngine
 			float speed;
 			bool isSmooth = true;
 
-			FlyMovement2D() : speed(1.0f)
+			FlyMovement2D()
+				: speed(1.0f)
 			{
-
 			}
-
-
-
 		};
-	}
-}
+	} // namespace ECS
+} // namespace WeirdEngine

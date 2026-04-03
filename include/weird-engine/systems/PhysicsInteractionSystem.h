@@ -181,7 +181,7 @@ namespace WeirdEngine
 				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
 
 				// No prior target and new target is good
-				if (!m_dragId < simulation.getSize() && id < simulation.getSize())
+				if (m_dragId >= simulation.getSize() && id < simulation.getSize())
 				{
 					m_dragId = id;
 					simulation.fix(m_dragId);

@@ -49,6 +49,9 @@ struct CompiledMathExpression
 				case OpCode::PUSH_VAR:
 					stack[sp++] = variables[(int)inst.operand]; // Grab MouseX, Time, etc.
 					break;
+				case OpCode::PUSH_CONST:
+					stack[sp++] = inst.operand;
+					break;
 				case OpCode::SUBTRACT:
 					sp--;
 					stack[sp - 1] = stack[sp - 1] - stack[sp];

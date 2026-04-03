@@ -214,7 +214,7 @@ namespace WeirdEngine
 		virtual float getValue() const override = 0;
 
 		[[nodiscard]]
-		virtual std::string print() const = 0;
+		virtual std::string print() const override = 0;
 	};
 
 	// Add

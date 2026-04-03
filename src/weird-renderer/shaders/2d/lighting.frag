@@ -100,17 +100,19 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
 
 	float lightNormalDot = -(dot(-rd, normal));
 
-	float zoom = -u_camMatrix[3].z;
+	// Fade shadow value for interior pixels from SHADOW_VALUE at depth to the computed custom shadow.
+	float innerShapeFade = clamp(innerDistance / edgeThickness, 0.0, 1.0);
+	float innerShadowValue = mix(shadows, SHADOW_VALUE, innerShapeFade);
 
 	float extraLight = max(0.0, 0.5 * lightNormalDot);
-	float lightVisibility = smoothstep(SHADOW_VALUE, 1.0, shadows);
+	float lightVisibility = smoothstep(SHADOW_VALUE, 1.0, innerShadowValue);
 	extraLight *= lightVisibility;
 
 	float extraShadow = max(0.0, 0.2 * -lightNormalDot);
 
-	// Define how thick you want the edge light effect to be
-	float borderFactor = 1.0 - smoothstep(0.0, edgeThickness, innerDistance * zoom);
-	float borderFactorShadows = 1.0 - smoothstep(0.0, 0.5 * edgeThickness, innerDistance * zoom);
+	// Define the edge glow/falloff range in the distance field coordinate system.
+	float borderFactor = 		1.0 - smoothstep(0.0, edgeThickness, innerDistance);
+	float borderFactorShadows = 1.0 - smoothstep(0.0, edgeThickness, innerDistance);
 
 	float lightOnBorderOnly = extraLight * borderFactor;
 
@@ -166,8 +168,6 @@ vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter)
 
 float renderShadows(vec2 uv, vec2 rd)
 {
-#ifdef SHADOWS_ENABLED
-
 	float mapDistance = mapOutside(uv);
 	float minD = mapDistance;
 
@@ -199,12 +199,6 @@ float renderShadows(vec2 uv, vec2 rd)
 	float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
 
 	return shadowValue;
-
-#else // No shadows
-
-	return 1.0;
-
-#endif
 }
 
 void main()
@@ -216,8 +210,14 @@ void main()
 	vec4 data = texture(t_distanceSampledTexture, screenUV);
 	float distance = data.x;
 
+	float zoom = -u_camMatrix[3].z;
+	float aspectRatio = u_resolution.x / u_resolution.y;
+	float overscanScale = 1.0 + u_overscan;
+
+	// Corrected distance, used for out shadows and AO
 	float correctedDistance = mapOutside(screenUV);
 
+	// Calculate normal
 	vec2 p = screenUV;
 	float d1 = mapInside(p + vec2(NORMAL_EPSILON, 0.0)) - mapInside(p - vec2(NORMAL_EPSILON, 0.0));
 	float d2 = mapInside(p + vec2(0.0, NORMAL_EPSILON)) - mapInside(p - vec2(0.0, NORMAL_EPSILON));
@@ -244,7 +244,7 @@ void main()
 	shapeFactor = 1.0;
 #endif
 
-	float zoom = -u_camMatrix[3].z;
+
 
 	// Point light
 	// vec2 rd = normalize(vec2(1.0) - screenUV);
@@ -252,12 +252,21 @@ void main()
 	// Directional light
 	vec2 rd = u_directionalLightDirection.xy;
 
-	float shadows = renderShadows(screenUV + ((0.05 / zoom) * rd), rd);
+	// World-space base offset used for the shadow edge
+	// We raymarch from a slightly shifted pixel in the opposite light direction to expose bright edge
+	float baseLightShadowOffset = min(0.01 * zoom, 0.3);
+	float lightShadowOffset = baseLightShadowOffset / (zoom * overscanScale);
 
 #ifdef SHADOWS_ENABLED
+
+	float shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 	float t = shadows;
+
 #else
-	float t = SHADOW_VALUE;
+
+	float shadows = 1.0;
+	float t = SHADOW_VALUE; // Force ambient occlusion to be fully applied when shadows are disabled, so we can still get darkening without directional light
+
 #endif
 
 	// Define the distance over which the ambient occlusion fades out
@@ -267,44 +276,55 @@ void main()
 	// Apply ao
 	shadows *= ao;
 
-	float light = calculateLight(screenUV, rd, normal, shadows, -distance, 0.05);
+	// Edge thickness should use the distance field normalization used by mapInside / mapOutside.
+	// in this shader, t_distanceSampledTexture is in world-distance units, so we keep world-space edge thickness
+	// with a small adjustment for aspect and overscan so it stays resolution-independent.
+	float lightEdgeThickness = (baseLightShadowOffset / zoom) * (0.5 / aspectRatio) * overscanScale;
 
-	shadows = mix(shadows, 1.0, shapeFactor); // Remove shadows inside shapes
+	float light = calculateLight(screenUV, rd, normal, shadows, -distance, lightEdgeThickness);
 
-// Refraction
+	// Only apply extra shadow if the opposite side of the light
+	if(mapOutside(screenUV - (lightShadowOffset * rd)) <= 0.0) 
+	{
+		light = max(1.0, light);
+		// light = 0;
+	}
+
+	// Remove shadows for interior pixels, but keep the shape factor for fading out the edge
+	shadows = mix(shadows, 1.0, shapeFactor);
+
+	// Refraction
 #ifdef REFRACTION
 
 	// Sample background with refraction
 	float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
 	refractionDistance = max(0.0, refractionDistance - 0.1);
-	// refractionDistance = sqrt(refractionDistance);
-	// refractionDistance = 1.0;
 	vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
 	backgroundOffset.x *= u_resolution.y / u_resolution.x;
 
-	// 1. Calculate the base UV
+	// Calculate the base UV
 	vec2 finalUV = screenUV + backgroundOffset;
 
-	// 2. Get the size of one texel (pixel) in UV space
-	// If t_backgroundTexture is the screen, you can use vec2(1.0) / viewPortSize
-	// Otherwise use textureSize(t_backgroundTexture, 0)
+	// Get the size of one texel (pixel) in UV space
 	ivec2 texSize = textureSize(t_backgroundTexture, 0);
 	vec2 texelSize = 1.0 / vec2(texSize);
 
-	// 3. Define a Rotated Grid pattern (approx 0.5 pixel radius)
+	// Define a Rotated Grid pattern (approx 0.5 pixel radius)
 	// This pattern breaks grid alignment artifacts better than a simple + shape
 	vec2 uv0 = finalUV + vec2(-0.125, -0.375) * texelSize; // Top-Left
 	vec2 uv1 = finalUV + vec2(0.375, -0.125) * texelSize;  // Top-Right
 	vec2 uv2 = finalUV + vec2(0.125, 0.375) * texelSize;   // Bottom-Right
 	vec2 uv3 = finalUV + vec2(-0.375, 0.125) * texelSize;  // Bottom-Left
 
-	// 4. Sample and Average
+	// Sample and Average
 	vec3 col0 = texture(t_backgroundTexture, uv0).rgb;
 	vec3 col1 = texture(t_backgroundTexture, uv1).rgb;
 	vec3 col2 = texture(t_backgroundTexture, uv2).rgb;
 	vec3 col3 = texture(t_backgroundTexture, uv3).rgb;
 
 	vec3 backgroundColor = (col0 + col1 + col2 + col3) * 0.25;
+
+	// Blend with the non-refraction-sampled background color based on shape factor to show refraction only inside shapes
 	backgroundColor = mix(texture(t_backgroundTexture, screenUV).rgb, backgroundColor, shapeFactor);
 
 #else
@@ -323,6 +343,7 @@ void main()
 	vec3 shadowTransmittance = mix(u_shadowTint, vec3(1.0), shadows);
 	vec3 shadedBackground = backgroundColor * shadowTransmittance;
 
+	// Apply lighting to the shapes, cast shadows on the background, and mix both based on shape factor
 	color = mix(color * light, shadedBackground, 1.0 - finalAlpha);
 
 	FragColor = vec4(color, 1.0);

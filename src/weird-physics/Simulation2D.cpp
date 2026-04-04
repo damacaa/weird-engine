@@ -383,18 +383,18 @@ namespace WeirdEngine
 		}
 	}
 
-	static float fOpUnionSoft(float a, float b, float r)
-	{
-		r *= 1.0f; // 4.0f orignal wtf
-		float h = std::max(r - abs(a - b), 0.0f);
-		return std::min(a, b) - h * h * 0.25f / r;
-	}
+	// static float fOpUnionSoft(float a, float b, float r)
+	// {
+	// 	r *= 1.0f; // 4.0f orignal wtf
+	// 	float h = std::max(r - abs(a - b), 0.0f);
+	// 	return std::min(a, b) - h * h * 0.25f / r;
+	// }
 
-	// Smooth subtraction (a - b), 2D SDF
-	static float fOpSubSoft(float a, float b, float r)
-	{
-		return -fOpUnionSoft(b, -a, r);
-	}
+	// // Smooth subtraction (a - b), 2D SDF
+	// static float fOpSubSoft(float a, float b, float r)
+	// {
+	// 	return -fOpUnionSoft(b, -a, r);
+	// }
 
 	float Simulation2D::map(vec2 p)
 	{

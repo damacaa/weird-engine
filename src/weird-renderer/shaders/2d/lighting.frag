@@ -94,29 +94,24 @@ float rayMarch(vec2 ro, vec2 rd, out float minDistance)
 
 float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance, float edgeThickness)
 {
-	//    #ifndef SHADOWS_ENABLED
-	//    return 1.0;
-	//    #endif
-
 	float lightNormalDot = -(dot(-rd, normal));
 
-	// Fade shadow value for interior pixels from SHADOW_VALUE at depth to the computed custom shadow.
+	// Fade shadow value for interior pixels from SHADOW_VALUE at depth to the computed custom shadow
 	float innerShapeFade = clamp(innerDistance / edgeThickness, 0.0, 1.0);
 	float innerShadowValue = mix(shadows, SHADOW_VALUE, innerShapeFade);
 
+	// Extra light on the lit side, scaled by the angle to the light and shadow visibility
 	float extraLight = max(0.0, 0.5 * lightNormalDot);
 	float lightVisibility = smoothstep(SHADOW_VALUE, 1.0, innerShadowValue);
 	extraLight *= lightVisibility;
 
-	float extraShadow = max(0.0, 0.2 * -lightNormalDot);
-
 	// Define the edge glow/falloff range in the distance field coordinate system.
-	float borderFactor = 		1.0 - smoothstep(0.0, edgeThickness, innerDistance);
-	float borderFactorShadows = 1.0 - smoothstep(0.0, edgeThickness, innerDistance);
+	float borderMask = 1.0 - smoothstep(0.0, edgeThickness, innerDistance);
 
-	float lightOnBorderOnly = extraLight * borderFactor;
-
-	float light = 1.0 + lightOnBorderOnly - (extraShadow * borderFactorShadows);
+	// Apply border mask
+	float lightOnBorderOnly = extraLight * borderMask;
+	float light = 1.0 + lightOnBorderOnly;
+	
 	return clamp(light, 0.0, 10.0);
 }
 
@@ -254,7 +249,7 @@ void main()
 
 	// World-space base offset used for the shadow edge
 	// We raymarch from a slightly shifted pixel in the opposite light direction to expose bright edge
-	float baseLightShadowOffset = min(0.01 * zoom, 0.3);
+	float baseLightShadowOffset = min(0.005 * zoom, 0.3);
 	float lightShadowOffset = baseLightShadowOffset / (zoom * overscanScale);
 
 #ifdef SHADOWS_ENABLED
@@ -281,14 +276,7 @@ void main()
 	// with a small adjustment for aspect and overscan so it stays resolution-independent.
 	float lightEdgeThickness = (baseLightShadowOffset / zoom) * (0.5 / aspectRatio) * overscanScale;
 
-	float light = calculateLight(screenUV, rd, normal, shadows, -distance, lightEdgeThickness);
-
-	// Only apply extra shadow if the opposite side of the light
-	if(mapOutside(screenUV - (lightShadowOffset * rd)) <= 0.0) 
-	{
-		light = max(1.0, light);
-		// light = 0;
-	}
+	float light = calculateLight(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
 
 	// Remove shadows for interior pixels, but keep the shape factor for fading out the edge
 	shadows = mix(shadows, 1.0, shapeFactor);

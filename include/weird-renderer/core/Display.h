@@ -29,6 +29,8 @@ namespace WeirdEngine
 			bool enableDithering = true;
 			bool enableLongShadows = false;
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
+			float worldSmoothFactor = 0.5f;
+			float uiSmoothFactor = 3.0f;
 
 			enum DefaultColors
 			{

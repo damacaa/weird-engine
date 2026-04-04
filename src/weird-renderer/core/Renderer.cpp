@@ -44,7 +44,7 @@ namespace WeirdEngine
 			worldConfig.debugMaterialColors = false;
 			worldConfig.ambienOcclusionRadius = 5.0f;
 			worldConfig.ambienOcclusionStrength = 0.2f;
-			worldConfig.ballK = 0.5f;
+			worldConfig.ballK = settings.worldSmoothFactor;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize UI 2D pipeline
@@ -65,7 +65,7 @@ namespace WeirdEngine
 			uiConfig.motionBlurBlendSpeed = 5.0f;
 			uiConfig.debugDistanceField = false;
 			uiConfig.debugMaterialColors = false;
-			uiConfig.ballK = 3.0f;
+			uiConfig.ballK = settings.uiSmoothFactor;
 			uiConfig.ambienOcclusionRadius = 7.0f;
 			uiConfig.ambienOcclusionStrength = 0.15f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);

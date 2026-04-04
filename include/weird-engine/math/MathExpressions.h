@@ -350,5 +350,172 @@ namespace WeirdEngine
 		}
 	};
 
+	struct SDFAddition : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+
+			return std::min(a, b);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "min(" + valueA->print() + ", " + valueB->print() + ")";
+		}
+	};
+
+	struct SDFSubtraction : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+
+			return std::max(a, -b);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "max(" + valueA->print() + ", -" + valueB->print() + ")";
+		}
+	};
+
+	struct SDFIntersection : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+
+			return std::max(a, b);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "max(" + valueA->print() + ", " + valueB->print() + ")";
+		}
+	};
+
+	// Three float operation
+	struct ThreeFloatOperation : IMathExpression
+	{
+	protected:
+		std::shared_ptr<IMathExpression> valueA;
+		std::shared_ptr<IMathExpression> valueB;
+		std::shared_ptr<IMathExpression> valueC;
+
+	public:
+		ThreeFloatOperation()
+			: valueA()
+			, valueB()
+			, valueC()
+		{
+		}
+
+		ThreeFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, std::shared_ptr<IMathExpression> c)
+			: valueA(std::move(a))
+			, valueB(std::move(b))
+			, valueC(std::move(c))
+		{
+		}
+
+		ThreeFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, float constant)
+			: valueA(std::move(a))
+			, valueB(std::move(b))
+			, valueC(std::make_shared<FloatConstant>(constant))
+		{
+		}
+
+		void propagateValues(float* values) override
+		{
+			valueA->propagateValues(values);
+			valueB->propagateValues(values);
+			valueC->propagateValues(values);
+		}
+
+		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, std::shared_ptr<IMathExpression> c)
+		{
+			valueA = (std::move(a));
+			valueB = (std::move(b));
+			valueC = (std::move(c));
+		}
+
+		[[nodiscard]]
+		virtual float getValue() const override = 0;
+
+		[[nodiscard]]
+		virtual std::string print() const override = 0;
+	};
+
+	// TODO: reuse the same ones from physics engine
+	static float fOpUnionSoft(float a, float b, float r)
+	{
+		r *= 1.0f; // 4.0f orignal wtf
+		float h = std::max(r - abs(a - b), 0.0f);
+		return std::min(a, b) - h * h * 0.25f / r;
+	}
+
+	// Smooth subtraction (a - b), 2D SDF
+	static float fOpSubSoft(float a, float b, float r)
+	{
+		return -fOpUnionSoft(b, -a, r);
+	}
+
+	struct SDFSmoothAddition : ThreeFloatOperation
+	{
+		using ThreeFloatOperation::ThreeFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+			float r = valueC->getValue();
+
+			return fOpUnionSoft(a, b, r);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "fOpUnionSoft(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+		}
+	};
+
+	struct SDFSmoothSubtraction : ThreeFloatOperation
+	{
+		using ThreeFloatOperation::ThreeFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+			float r = valueC->getValue();
+
+			return fOpSubSoft(a, b, r);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "fOpSubSoft(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+		}
+	};
+
 #pragma endregion TwoFloatOperations
 } // namespace WeirdEngine

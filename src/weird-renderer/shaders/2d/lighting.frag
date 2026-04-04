@@ -43,6 +43,8 @@ uniform float u_ambienOcclusionStrength = 0.5;
 uniform float u_overscan = 0.0;
 uniform vec3 u_shadowTint;
 
+// For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union artifacts
+// Real distance in screen UV space
 float mapOutside(vec2 p)
 {
 	// Remap screen UV to overscan texture UV
@@ -50,46 +52,89 @@ float mapOutside(vec2 p)
 	return texture(t_distanceCorrectedTexture, overscanUV).x;
 }
 
-float mapInside(vec2 p)
+vec2 softShadow(vec2 ro, vec2 rd, float initialDistance, float far, float k)
 {
-	return texture(t_distanceSampledTexture, p).x;
-}
+	if (initialDistance >= far)
+		return vec2(far, 1.0); // Already beyond max distance, fully lit
 
-float rayMarch(vec2 ro, vec2 rd, out float minDistance)
-{
-	float d;
-	minDistance = 10000.0;
-
-	float traveled = 0.0;
+	float res = 1.0;
+	float t = initialDistance;
+	float closestT = far; // t at the point of closest approach to any occluder
 
 	for (int i = 0; i < MAX_STEPS; i++)
 	{
-		vec2 p = ro + (traveled * rd);
+		vec2 p = ro + rd * t;
 
-		d = mapOutside(p);
-
-		minDistance = min(d, minDistance);
-
-		if (d <= EPSILON)
-			break;
-
+		// Check if ray has left the overscan texture bounds
 		float overscanMargin = 0.5 * u_overscan;
-		if (p.x <= -overscanMargin || p.x >= 1.0 + overscanMargin || p.y <= -overscanMargin ||
-			p.y >= 1.0 + overscanMargin)
-			return FAR;
-
-		// traveled += 0.01;
-		traveled += d;
-		// traveled += min(d, 0.01);
-
-		if (traveled >= FAR)
+		vec2 dist = abs(p - 0.5);
+		if (max(dist.x, dist.y) > 0.5 + overscanMargin)
 		{
-			return FAR;
+			break;
 		}
+
+		// Sample distance in screen UV space, which is the same space we're raymarching through, so no correction needed
+		float h = mapOutside(ro + rd * t);
+
+		// Track where the shadow is strongest (closest approach to an occluder)
+		float newRes = k * h / t;
+		if (newRes < res)
+		{
+			res = newRes;
+			closestT = t;
+		}
+
+		if (h <= 0.0 || res < EPSILON)
+			return vec2(t, 0.0); // Fully in shadow – keep t so fade works
+		if (t > far)
+			break; // Missed everything
+
+		t += h;
 	}
 
-	minDistance = 0.0;
-	return traveled;
+	// Return closest-approach distance so callers can fade by shadow-caster distance
+	return vec2(closestT, clamp(res, 0.0, 1.0));
+}
+
+float renderShadows(vec2 uv, vec2 rd)
+{
+	float mapDistance = mapOutside(uv);
+
+#ifdef LONG_SHADOWS
+
+	float softShadowK = 16.0;
+	float shadowFar = FAR;
+
+#else
+
+	float softShadowK = 2.0;
+	float zoom = -u_camMatrix[3].z;
+	// Scale max shadow distance by zoom so shadows have a consistent world-space extent
+	float shadowFar = min(FAR, SHADOW_WORLD_DISTANCE / zoom);
+
+#endif
+
+	vec2 raymarchInfo = softShadow(uv, rd, mapDistance, shadowFar, softShadowK);
+	float d = raymarchInfo.x;
+	float shadowFactor = raymarchInfo.y;
+
+#ifndef LONG_SHADOWS
+	// Smooth fade-out as the shadow approaches the max distance
+	float fadeFactor = 1.0 - smoothstep(shadowFar * 0.2, shadowFar, d);
+	shadowFactor = mix(1.0, shadowFactor, fadeFactor);
+#endif
+
+	float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
+
+	return shadowValue;
+}
+
+
+// Ligthing inside shapes uses the original distance field, without correction (world coordinates)
+// Only really used for normals, but it also gives a more consistent light falloff near edges that isn't affected by zoom level
+float mapInside(vec2 p)
+{
+	return texture(t_distanceSampledTexture, p).x;
 }
 
 float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance, float edgeThickness)
@@ -115,86 +160,6 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
 	return clamp(light, 0.0, 10.0);
 }
 
-vec2 softShadow(vec2 ro, vec2 rd, float minD, float far, float k, out int iter)
-{
-	if (minD >= far)
-		return vec2(far, 1.0); // Already beyond max distance, fully lit
-
-	float res = 1.0;
-	float t = minD;
-	float closestT = far; // t at the point of closest approach to any occluder
-	iter = 0;
-
-	for (int i = 0; i < MAX_STEPS; i++)
-	{
-		vec2 p = ro + rd * t;
-
-		// Check if ray has left the overscan texture bounds
-		float overscanMargin = 0.5 * u_overscan;
-		vec2 dist = abs(p - 0.5);
-		if (max(dist.x, dist.y) > 0.5 + overscanMargin)
-		{
-			break;
-		}
-
-		float h = mapOutside(ro + rd * t); // Your SDF function
-
-		// Track where the shadow is strongest (closest approach to an occluder)
-		float newRes = k * h / t;
-		if (newRes < res)
-		{
-			res = newRes;
-			closestT = t;
-		}
-
-		if (h <= 0.0 || res < EPSILON)
-			return vec2(t, 0.0); // Fully in shadow – keep t so fade works
-		if (t > far)
-			break; // Missed everything
-
-		t += h;
-
-		iter++;
-	}
-
-	// Return closest-approach distance so callers can fade by shadow-caster distance
-	return vec2(closestT, clamp(res, 0.0, 1.0));
-}
-
-float renderShadows(vec2 uv, vec2 rd)
-{
-	float mapDistance = mapOutside(uv);
-	float minD = mapDistance;
-
-#ifdef LONG_SHADOWS
-	float shadowFar = FAR;
-#else
-	float zoom = -u_camMatrix[3].z;
-	// Scale max shadow distance by zoom so shadows have a consistent world-space extent
-	float shadowFar = min(FAR, SHADOW_WORLD_DISTANCE / zoom);
-#endif
-
-#ifdef LONG_SHADOWS
-	float softShadowK = 16.0;
-#else
-	float softShadowK = 2.0;
-#endif
-
-	int iter;
-	vec2 raymarchInfo = softShadow(uv, rd, minD, shadowFar, softShadowK, iter);
-	float d = raymarchInfo.x;
-	float shadowFactor = raymarchInfo.y;
-
-#ifndef LONG_SHADOWS
-	// Smooth fade-out as the shadow approaches the max distance
-	float fadeFactor = 1.0 - smoothstep(shadowFar * 0.2, shadowFar, d);
-	shadowFactor = mix(1.0, shadowFactor, fadeFactor);
-#endif
-
-	float shadowValue = mix(SHADOW_VALUE, 1.0, shadowFactor);
-
-	return shadowValue;
-}
 
 void main()
 {

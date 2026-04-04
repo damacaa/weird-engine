@@ -339,6 +339,111 @@ namespace WeirdEngine::Primitives
 			}
 		};
 
+		struct Triangle : IMathExpression
+		{
+		protected:
+			std::shared_ptr<IMathExpression> m_px;
+			std::shared_ptr<IMathExpression> m_py;
+			std::shared_ptr<IMathExpression> m_w;
+			std::shared_ptr<IMathExpression> m_h;
+			std::shared_ptr<IMathExpression> m_rotation;
+			std::shared_ptr<IMathExpression> m_worldX;
+			std::shared_ptr<IMathExpression> m_worldY;
+
+		public:
+			static constexpr uint8_t POS_X = 0;
+			static constexpr uint8_t POS_Y = 1;
+			static constexpr uint8_t SIZE_X = 2;
+			static constexpr uint8_t SIZE_Y = 3;
+			static constexpr uint8_t ROTATION = 4;
+
+			static constexpr uint8_t WORLD_X = 9;
+			static constexpr uint8_t WORLD_Y = 10;
+
+			Triangle(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
+				 std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h,
+				 std::shared_ptr<IMathExpression> rotation)
+				: m_px(std::move(px))
+				, m_py(std::move(py))
+				, m_w(std::move(w))
+				, m_h(std::move(h))
+				, m_rotation(std::move(rotation))
+			{
+				m_worldX = std::make_shared<FloatVariable>(WORLD_X);
+				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
+			}
+
+			void propagateValues(float* values) override
+			{
+				m_px->propagateValues(values);
+				m_py->propagateValues(values);
+				m_w->propagateValues(values);
+				m_h->propagateValues(values);
+				m_rotation->propagateValues(values);
+
+				m_worldX->propagateValues(values);
+				m_worldY->propagateValues(values);
+			}
+
+			static float cross(const vec2& a, const vec2& b)
+			{
+				return a.x * b.y - a.y * b.x;
+			}
+
+			static float distanceToSegment(const vec2& p, const vec2& a, const vec2& b)
+			{
+				vec2 pa = p - a;
+				vec2 ba = b - a;
+				float h = glm::clamp(glm::dot(pa, ba) / glm::dot(ba, ba), 0.0f, 1.0f);
+				return length(pa - ba * h);
+			}
+
+			static float signedDistanceToTriangle(const vec2& p, const vec2& a, const vec2& b, const vec2& c)
+			{
+				float d = std::min(std::min(distanceToSegment(p, a, b), distanceToSegment(p, b, c)),
+							 distanceToSegment(p, c, a));
+
+				float c0 = cross(b - a, p - a);
+				float c1 = cross(c - b, p - b);
+				float c2 = cross(a - c, p - c);
+
+				bool inside = (c0 >= 0.0f && c1 >= 0.0f && c2 >= 0.0f) ||
+						(c0 <= 0.0f && c1 <= 0.0f && c2 <= 0.0f);
+
+				return inside ? -d : d;
+			}
+
+			[[nodiscard]]
+			float getValue() const override
+			{
+				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
+				float angle = m_rotation->getValue();
+				float c = cosf(angle);
+				float s = sinf(angle);
+
+				auto rotate = [&](const vec2& v) {
+					return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
+				};
+
+				float halfWidth = m_w->getValue() * 0.5f;
+				float height = m_h->getValue();
+
+				vec2 a = rotate(vec2(-halfWidth, -height / 3.0f));
+				vec2 b = rotate(vec2(halfWidth, -height / 3.0f));
+				vec2 c2 = rotate(vec2(0.0f, 2.0f * height / 3.0f));
+
+				return signedDistanceToTriangle(p, a, b, c2);
+			}
+
+			[[nodiscard]]
+			std::string print() const override
+			{
+				return "sdTriangle(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " +
+					   m_worldY->print() + " - " + m_py->print() + "), " + m_w->print() + ", " +
+					   m_h->print() + ", " + m_rotation->print() + ")";
+			}
+		};
+
 		struct Line : IMathExpression
 		{
 		protected:

@@ -37,6 +37,27 @@ float sdSegment(in vec2 p, in vec2 a, in vec2 b)
 	return length(pa - ba * h);
 }
 
+float sdTriangle(in vec2 p, float w, float h, float angle)
+{
+	float c = cos(angle);
+	float s = sin(angle);
+	vec2 q = vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+
+	vec2 a = vec2(-w * 0.5, -h / 3.0);
+	vec2 b = vec2(w * 0.5, -h / 3.0);
+	vec2 c2 = vec2(0.0, 2.0 * h / 3.0);
+
+	float d = min(min(sdSegment(q, a, b), sdSegment(q, b, c2)), sdSegment(q, c2, a));
+
+	float cross0 = (b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x);
+	float cross1 = (c2.x - b.x) * (q.y - b.y) - (c2.y - b.y) * (q.x - b.x);
+	float cross2 = (a.x - c2.x) * (q.y - c2.y) - (a.y - c2.y) * (q.x - c2.x);
+	bool inside = (cross0 >= 0.0 && cross1 >= 0.0 && cross2 >= 0.0) ||
+				(cross0 <= 0.0 && cross1 <= 0.0 && cross2 <= 0.0);
+
+	return inside ? -d : d;
+}
+
 float sdBox(in vec2 p, in vec2 b)
 {
 	vec2 d = abs(p) - b;

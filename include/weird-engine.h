@@ -69,6 +69,7 @@ namespace WeirdEngine
 			prevTime = time;
 			frameCounter++;
 
+#ifndef NDEBUG
 			if (timeDiff >= 1.0)
 			{
 				// Creates new title
@@ -81,7 +82,7 @@ namespace WeirdEngine
 				timeDiff = 0;
 				frameCounter = 0;
 			}
-
+#endif
 			// Capture window input
 			Input::update(renderer.getWindow());
 

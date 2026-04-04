@@ -271,6 +271,23 @@ namespace WeirdEngine
 		}
 	};
 
+	struct Division : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			return valueA->getValue() / valueB->getValue();
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "(" + valueA->print() + " / " + valueB->print() + ")";
+		}
+	};
+
 	// Atan2
 	struct Atan2 : TwoFloatOperation
 	{

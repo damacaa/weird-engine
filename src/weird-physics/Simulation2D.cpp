@@ -29,7 +29,6 @@ namespace WeirdEngine
 		, m_invMass(new float[size])
 		, m_maxSize(size)
 		, m_size(0)
-		, m_lastIdGiven(-1)
 		, m_simulationDelay(0)
 		, m_simulationTime(0)
 		, m_substeps(1)
@@ -113,6 +112,7 @@ namespace WeirdEngine
 
 	void Simulation2D::process()
 	{
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
 		int steps = 0;
 
 		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
@@ -499,7 +499,7 @@ namespace WeirdEngine
 		// External forces
 		{
 			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-			if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
+			if (m_externalForcesSinceLastUpdate)
 			{
 				m_externalForcesSinceLastUpdate = false;
 				for (size_t i = 0; i < m_size; i++)
@@ -711,23 +711,55 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::generateSimulationID()
 	{
-		// std::cout << (m_lastIdGiven + 1) << std::endl;
-		return ++m_lastIdGiven;
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
+
+		SimulationID id = m_size;
+
+		// Initialize particle with safe defaults so the physics
+		// thread never processes stale/garbage data.
+		m_positions[id] = vec2(0.0f);
+		m_positionsRead[id] = vec2(0.0f);
+		m_positionsAux[id] = vec2(0.0f);
+		m_previousPositions[id] = vec2(0.0f);
+		m_velocities[id] = vec2(0.0f);
+		m_forces[id] = vec2(0.0f);
+		m_externalForces[id] = vec2(0.0f);
+		m_mass[id] = 1.0f;
+		m_invMass[id] = 1.0f;
+
+		m_size++;
+		return id;
 	}
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		auto toId = id;
-		auto fromId = m_lastIdGiven;
+		std::scoped_lock lock(m_objectMutex, m_externalForcesMutex, m_fixMutex);
 
-		m_positions[toId] = m_positions[fromId];
-		m_positions[toId] = m_positions[fromId];
-		m_previousPositions[toId] = m_previousPositions[fromId];
-		m_velocities[toId] = m_velocities[fromId];
-		m_mass[toId] = m_mass[fromId];
-		m_invMass[toId] = m_invMass[fromId];
-		m_forces[toId] = m_forces[fromId];
-		m_externalForces[toId] = m_externalForces[fromId];
+		if (m_size == 0 || id >= m_size)
+		{
+			return;
+		}
+
+		auto toId = id;
+		auto fromId = m_size - 1;
+
+		if (toId != fromId)
+		{
+			m_positions[toId] = m_positions[fromId];
+			m_positionsRead[toId] = m_positionsRead[fromId];
+			m_positionsAux[toId] = m_positionsAux[fromId];
+			m_previousPositions[toId] = m_previousPositions[fromId];
+			m_velocities[toId] = m_velocities[fromId];
+			m_forces[toId] = m_forces[fromId];
+			m_externalForces[toId] = m_externalForces[fromId];
+			m_mass[toId] = m_mass[fromId];
+			m_invMass[toId] = m_invMass[fromId];
+
+			if (toId < m_collisionMap.size() && fromId < m_collisionMap.size())
+			{
+				m_collisionMap[toId] = m_collisionMap[fromId];
+			}
+		}
 
 		// Fix constraints (potentially slow...)
 
@@ -735,15 +767,11 @@ namespace WeirdEngine
 		auto RemoveByID = [toId](auto& container)
 		{
 			container.erase(std::remove_if(container.begin(), container.end(),
-										   [toId](const auto& constraint)
-										   {
-											   if (constraint.A == toId || constraint.B == toId)
-											   {
-												   return true;
-											   }
-											   return false;
-										   }),
-							container.end());
+											[toId](const auto& constraint)
+											{
+												return constraint.A == toId || constraint.B == toId;
+											}),
+						container.end());
 		};
 
 		RemoveByID(m_distanceConstraints);
@@ -759,14 +787,10 @@ namespace WeirdEngine
 			{
 				if (constraint.A == fromId)
 				{
-					// Extra code goes here for when A is updated.
-					// For example, logging or updating related state.
 					constraint.A = toId;
 				}
 				if (constraint.B == fromId)
 				{
-					// Extra code goes here for when B is updated.
-					// For example, logging or updating related state.
 					constraint.B = toId;
 				}
 			}
@@ -781,13 +805,11 @@ namespace WeirdEngine
 		// If it is, fix it at its new id
 		if (it != m_fixedObjects.end())
 		{
-			// Compute the index by subtracting the beginning iterator
-			int index = it - m_fixedObjects.begin();
+			int index = static_cast<int>(it - m_fixedObjects.begin());
 			m_fixedObjects[index] = toId;
 		}
 
 		// Adjust size
-		m_lastIdGiven--;
 		m_size--;
 	}
 
@@ -875,8 +897,6 @@ namespace WeirdEngine
 		m_positionsRead[id] = pos;
 		m_previousPositions[id] = pos;
 		m_velocities[id] = vec2(0.0f);
-		// m_forces[entity] = vec2(0.0f);
-		m_size = std::max((uint32_t)m_size, id + 1);
 	}
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)

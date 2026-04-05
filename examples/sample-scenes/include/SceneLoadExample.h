@@ -126,18 +126,17 @@ private:
 	// =====================================================================
 	void buildShapeButtons()
 	{
-		const uint16_t types[] = {DefaultShapes::CIRCLE, DefaultShapes::BOX, DefaultShapes::LINE, DefaultShapes::RAMP,
+		const uint16_t types[] = {DefaultShapes::CIRCLE, DefaultShapes::BOX, DefaultShapes::TRIANGLE, DefaultShapes::LINE, DefaultShapes::RAMP,
 								  DefaultShapes::STAR};
-		const uint16_t colors[] = {1, 5, 6, 8, 10};
 
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 6; i++)
 		{
 			float cx = START_X + i * BTN_SPACING;
 			float cy = SHAPE_Y;
 			float p[8]{};
 			previewParams(types[i], cx, cy, p);
 
-			Entity e = addUIShape(types[i], p, colors[i]);
+			Entity e = addUIShape(types[i], p, 2);
 			auto& b = m_ecs.addComponent<ShapeButton>(e);
 			b.modifierAmount = 1.0f;
 			b.clickPadding = 8.0f;
@@ -162,6 +161,13 @@ private:
 				p[1] = cy;
 				p[2] = s;
 				p[3] = s;
+				break;
+			case DefaultShapes::TRIANGLE:
+				p[0] = cx;
+				p[1] = cy;
+				p[2] = 2.0f * s;
+				p[3] = 2.0f * s;
+				p[4] = 0.0f;
 				break;
 			case DefaultShapes::LINE:
 				p[0] = cx - s * 0.8f;
@@ -637,6 +643,10 @@ private:
 				return "Box";
 			case DefaultShapes::BOX_LINE:
 				return "BoxLine";
+			case DefaultShapes::TRIANGLE:
+				return "Triangle";
+			case DefaultShapes::TRIANGLE_LINE:
+				return "TriangleLine";
 			case DefaultShapes::LINE:
 				return "Line";
 			case DefaultShapes::RAMP:
@@ -660,6 +670,10 @@ private:
 				return 4;
 			case DefaultShapes::BOX_LINE:
 				return 5;
+			case DefaultShapes::TRIANGLE:
+				return 5;
+			case DefaultShapes::TRIANGLE_LINE:
+				return 6;
 			case DefaultShapes::LINE:
 				return 5;
 			case DefaultShapes::RAMP:
@@ -678,6 +692,8 @@ private:
 		static const char* C[] = {"posX", "posY", "rad"};
 		static const char* B[] = {"posX", "posY", "hW", "hH"};
 		static const char* BL[] = {"posX", "posY", "hW", "hH", "thick"};
+		static const char* T[] = {"posX", "posY", "w", "h", "angle"};
+		static const char* TL[] = {"posX", "posY", "w", "h", "angle", "thick"};
 		static const char* L[] = {"Ax", "Ay", "Bx", "By", "w"};
 		static const char* R[] = {"posX", "posY", "w", "h", "skew"};
 		static const char* SI[] = {"amp", "per", "spd", "yOff"};
@@ -690,6 +706,10 @@ private:
 				return B[i];
 			case DefaultShapes::BOX_LINE:
 				return BL[i];
+			case DefaultShapes::TRIANGLE:
+				return T[i];
+			case DefaultShapes::TRIANGLE_LINE:
+				return TL[i];
 			case DefaultShapes::LINE:
 				return L[i];
 			case DefaultShapes::RAMP:
@@ -761,6 +781,8 @@ private:
 				p[0] = c.x;
 				p[1] = c.y;
 				p[2] = 1.0f;
+				p[3] = 1.0f;
+				p[4] = 0.0f;
 				break;
 		}
 	}

@@ -645,6 +645,7 @@ private:
 		Entity e = m_ecs.createEntity();
 		auto& t = m_ecs.addComponent<Transform>(e);
 		t.position = vec3(wp.x, wp.y, 0.0f);
+		t.isDirty = true;
 		auto& sdf = m_ecs.addComponent<Dot>(e);
 		sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
 		m_ecs.addComponent<RigidBody2D>(e);

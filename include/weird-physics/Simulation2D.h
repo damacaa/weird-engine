@@ -295,7 +295,6 @@ namespace WeirdEngine
 
 		size_t m_maxSize;
 		size_t m_size;
-		size_t m_lastIdGiven;
 
 		float* m_mass;
 		float* m_invMass;
@@ -342,6 +341,7 @@ namespace WeirdEngine
 
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
+		std::recursive_mutex m_objectMutex;
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

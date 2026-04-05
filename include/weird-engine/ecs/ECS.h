@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <queue>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +36,12 @@ namespace WeirdEngine
 	public:
 		Entity createEntity()
 		{
+			if (!m_freeEntities.empty())
+			{
+				Entity e = m_freeEntities.front();
+				m_freeEntities.pop();
+				return e;
+			}
 			return m_entityCount++;
 		}
 
@@ -50,6 +57,7 @@ namespace WeirdEngine
 				if (manager)
 					manager->removeData(entity);
 			}
+			m_freeEntities.push(entity);
 		}
 
 		void freeRemovedComponents()
@@ -137,6 +145,7 @@ namespace WeirdEngine
 
 	private:
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
+		std::queue<Entity> m_freeEntities;
 		Entity m_entityCount = 0;
 	};
 } // namespace WeirdEngine

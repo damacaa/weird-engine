@@ -119,6 +119,27 @@ private:
 			deleteSelected();
 
 		refreshPanel();
+		destroyOffscreenEntities();
+	}
+
+	void destroyOffscreenEntities()
+	{
+		auto transformArray = m_ecs.getComponentArray<Transform>();
+		if (!transformArray)
+			return;
+
+		for (size_t i = 0; i < transformArray->getSize(); ++i)
+		{
+			auto& transform = transformArray->getDataAtIdx(i);
+			Entity entity = transform.Owner;
+			if (entity == m_mainCamera)
+				continue;
+
+			if (transform.position.y < -10.0f)
+			{
+				m_ecs.destroyEntity(entity);
+			}
+		}
 	}
 
 	// =====================================================================

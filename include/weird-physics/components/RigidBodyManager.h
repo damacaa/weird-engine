@@ -20,7 +20,6 @@ namespace WeirdEngine
 		void handleNewComponent(Entity entity, RigidBody2D& component) override
 		{
 			component.simulationId = m_simulation->generateSimulationID();
-			auto componentArray = std::static_pointer_cast<ComponentArray<RigidBody2D>>(m_componentArray);
 		}
 
 		void handleDestroyedComponent(Entity entity) override
@@ -37,9 +36,10 @@ namespace WeirdEngine
 
 			m_simulation->removeObject(removedId);
 
+			// The simulation swapped its last particle into slot removedId,
+			// and removeData (called next) will swap the last ECS component
+			// into the removed slot — so update the last component's ID to match.
 			lastRb.simulationId = removedId;
-
-			// TODO: lastRb.simulationId might not match the lastId used in m_simulation->removeObject !!!!
 		}
 	};
 } // namespace WeirdEngine

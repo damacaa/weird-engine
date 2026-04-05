@@ -20,8 +20,11 @@ namespace WeirdEngine
 		enum Type
 		{
 			CIRCLE,
+			CIRCLE_LINE,
 			BOX,
 			BOX_LINE,
+			TRIANGLE,
+			TRIANGLE_LINE,
 			LINE,
 			RAMP,
 			SINE,
@@ -49,11 +52,23 @@ namespace WeirdEngine
 
 			// Circle
 			{
-				auto m_px = std::make_shared<FloatVariable>(Primitives::Circle::POS_X);
-				auto m_py = std::make_shared<FloatVariable>(Primitives::Circle::POS_Y);
-				auto m_r = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS);
+				auto px = std::make_shared<FloatVariable>(Primitives::Circle::POS_X);
+				auto py = std::make_shared<FloatVariable>(Primitives::Circle::POS_Y);
+				auto r = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS);
 
-				m_sdfs[CIRCLE] = std::make_shared<Primitives::Circle>(m_px, m_py, m_r);
+				m_sdfs[CIRCLE] = std::make_shared<Primitives::Circle>(px, py, r);
+			}
+
+			// Circle line
+			{
+				auto px = std::make_shared<FloatVariable>(Primitives::Circle::POS_X);
+				auto py = std::make_shared<FloatVariable>(Primitives::Circle::POS_Y);
+				auto r = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS);
+				auto thickness = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS + 1);
+
+				auto circle = std::make_shared<Primitives::Circle>(px, py, r);
+
+				m_sdfs[CIRCLE_LINE] = std::make_shared<SDFOnion>(circle, thickness);
 			}
 
 			// Box
@@ -68,13 +83,41 @@ namespace WeirdEngine
 
 			// Box line
 			{
-				auto px = std::make_shared<FloatVariable>(Primitives::BoxLine::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::BoxLine::POS_Y);
-				auto sx = std::make_shared<FloatVariable>(Primitives::BoxLine::SIZE_X);
-				auto sy = std::make_shared<FloatVariable>(Primitives::BoxLine::SIZE_Y);
-				auto thickness = std::make_shared<FloatVariable>(Primitives::BoxLine::THICKNESS);
+				auto px = std::make_shared<FloatVariable>(Primitives::Box::POS_X);
+				auto py = std::make_shared<FloatVariable>(Primitives::Box::POS_Y);
+				auto sx = std::make_shared<FloatVariable>(Primitives::Box::SIZE_X);
+				auto sy = std::make_shared<FloatVariable>(Primitives::Box::SIZE_Y);
+				auto thickness = std::make_shared<FloatVariable>(Primitives::Box::SIZE_Y + 1);
 
-				m_sdfs[BOX_LINE] = std::make_shared<Primitives::BoxLine>(px, py, sx, sy, thickness);
+				auto box = std::make_shared<Primitives::Box>(px, py, sx, sy);
+
+				m_sdfs[BOX_LINE] = std::make_shared<SDFOnion>(box, thickness);
+			}
+
+			// Triangle
+			{
+				auto px = std::make_shared<FloatVariable>(Primitives::Triangle::POS_X);
+				auto py = std::make_shared<FloatVariable>(Primitives::Triangle::POS_Y);
+				auto sx = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_X);
+				auto sy = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_Y);
+				auto rotation = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION);
+
+				m_sdfs[TRIANGLE] = std::make_shared<Primitives::Triangle>(px, py, sx, sy, rotation);
+			}
+
+
+			// Triangle line
+			{
+				auto px = std::make_shared<FloatVariable>(Primitives::Triangle::POS_X);
+				auto py = std::make_shared<FloatVariable>(Primitives::Triangle::POS_Y);
+				auto sx = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_X);
+				auto sy = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_Y);
+				auto rotation = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION);
+				auto thickness = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION + 1);
+
+				auto triangle = std::make_shared<Primitives::Triangle>(px, py, sx, sy, rotation);
+
+				m_sdfs[TRIANGLE_LINE] = std::make_shared<SDFOnion>(triangle, thickness);
 			}
 
 			// Line

@@ -427,6 +427,27 @@ namespace WeirdEngine
 		}
 	};
 
+	struct SDFOnion : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue() const override
+		{
+			float a = valueA->getValue();
+			float b = valueB->getValue();
+
+			return abs(a) - b;
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "abs(" + valueA->print() + ") - " + valueB->print();
+		}
+	};
+
+
 	// Three float operation
 	struct ThreeFloatOperation : IMathExpression
 	{

@@ -132,8 +132,21 @@ namespace WeirdEngine
 					{"text", tr.text}, {"material", tr.material}, {"width", tr.width}, {"height", tr.height}};
 			}
 
-			for (auto& [id, ej] : entityMap)
-				entitiesJson.push_back(ej);
+			// Save entities in order of their ID
+			// Entity order is very important for correct SDF operations
+			// BIG TODO: when entities are added/removed, ensure this order is maintained
+			// (deleted entitiy ids can be reused)
+			for (Entity e = 0; e < scene.m_ecs.getEntityCount(); ++e)
+			{
+				if (isBlacklisted(e))
+					continue;
+
+				auto it = entityMap.find(e);
+				if (it == entityMap.end())
+					continue;
+
+				entitiesJson.push_back(it->second);
+			}
 		}
 
 		j["entities"] = entitiesJson;

@@ -2,13 +2,14 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+
 using namespace WeirdEngine;
 class MouseCollisionScene : public Scene
 {
 public:
-	MouseCollisionScene()
-		: Scene() {
-	};
+	MouseCollisionScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
 
 private:
 	Entity m_cursorShape;
@@ -16,6 +17,9 @@ private:
 	// Inherited via Scene
 	void onStart() override
 	{
+		m_debugInput = true;
+		m_debugFly = true;
+
 		for (size_t i = 0; i < 600; i++)
 		{
 
@@ -34,28 +38,49 @@ private:
 			{
 			}
 
-			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-			sdfRenderer.materialId = material;
+			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			dot.materialId = material;
 
 			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
 		{
-			float variables[8]{ 0.5f, 1.5f, -1.0f };
-			addShape(0, variables, 3);
+			float variables[8]{0.0f, 1.5f, 1.0f};
+			addShape(DefaultShapes::SINE, variables, 3);
+		}
+
+		// Wall right
+		{
+			float variables[8]{30 + 5, 0, 5.0f, 30.0f, 0.0f};
+			addShape(DefaultShapes::BOX, variables, 3);
+		}
+
+		// Wall left
+		{
+			float variables[8]{-5, 0, 5.0f, 30.0f, 0.0f};
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		{
-			float variables[8]{ -15.0f, 50.0f, 5.0f, 5.0f, 2.0f, 10.0f };
-			Entity star = addShape(1, variables, 3);
+			float variables[8]{-15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f};
+			Entity star = addShape(DefaultShapes::CIRCLE, variables, 7);
 
 			m_cursorShape = star;
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
 	void onUpdate(float delta) override
 	{
+		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+
 		// Move wall to mouse
 		{
 			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_cursorShape);
@@ -66,9 +91,9 @@ private:
 			// Transform mouse coordinates to world space
 			vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-			cs.m_parameters[0] = mousePositionInWorld.x;
-			cs.m_parameters[1] = mousePositionInWorld.y;
-			cs.m_isDirty = true;
+			cs.parameters[0] = mousePositionInWorld.x;
+			cs.parameters[1] = mousePositionInWorld.y;
+			cs.isDirty = true;
 		}
 	}
 };

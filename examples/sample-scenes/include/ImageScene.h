@@ -2,22 +2,28 @@
 
 #include <weird-engine.h>
 
+#include "globals.h"
+#include "weird-engine/math/Default2DSDFs.h"
+#include <glm/gtx/norm.hpp>
+
 using namespace WeirdEngine;
 class ImageScene : public Scene
 {
 public:
-	ImageScene()
-		: Scene() {
-	};
+	ImageScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
 
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
-	std::string imagePath = "SampleProject/Resources/Textures/image.jpg";
+	std::string imagePath = ASSETS_PATH "jimmy.jpg";
 
 	// Inherited via Scene
 	void onStart() override
 	{
+		m_debugInput = true;
+		m_debugFly = true;
+
 		// Check if the folder exists
 		if (!std::filesystem::exists("cache/"))
 		{
@@ -59,34 +65,38 @@ private:
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			SDFRenderer& sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-			sdfRenderer.materialId = material;
+			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			dot.materialId = material;
 
 			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
 		{
-			float variables[8]{ 15, -5, 25.0f, 5.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			float variables[8]{15, -5, 25.0f, 5.0f, 0.0f};
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall right
 		{
-			float variables[8]{ 30 + 5, 20, 5.0f, 30.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			float variables[8]{30 + 5, 20, 5.0f, 30.0f, 0.0f};
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall left
 		{
-			float variables[8]{ 0 - 5, 20, 5.0f, 30.0f, 0.0f };
-			addShape(m_sdfs.size() - 1, variables, 3);
+			float variables[8]{0 - 5, 20, 5.0f, 30.0f, 0.0f};
+			addShape(DefaultShapes::BOX, variables, 3);
 		}
+
+		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	vec3 getColor(const char* path, int x, int y)
+	vec3 getColor(const char* path, float x, float y)
 	{
-		// Load the image
+		y = 1.0f - y;
+
+		// 1. Load the image to get dimensions
 		int width, height, channels;
 		unsigned char* img = wstbi_load(path, &width, &height, &channels, 0);
 
@@ -96,49 +106,75 @@ private:
 			return vec3();
 		}
 
-		if (x < 0)
-		{
-			x = 0;
-		}
-		else if (x >= width)
-		{
-			x = width - 1;
-		}
+		// 2. Convert Normalized UV (0.0 - 1.0) to Pixel Coordinates
+		// We multiply by width/height.
+		// Example: x=0.5, width=100 -> pixel=50
+		int pixelX = static_cast<int>(x * width);
+		int pixelY = static_cast<int>(y * height);
 
-		if (y < 0)
-		{
-			y = 0;
-		}
-		else if (y >= height)
-		{
-			y = height - 1;
-		}
+		// 3. Clamp values (Clamp to Edge)
+		// This handles cases where x/y might be < 0.0 or >= 1.0 (like exactly 1.0)
+		if (pixelX < 0)
+			pixelX = 0;
+		if (pixelX >= width)
+			pixelX = width - 1;
 
-		// Calculate the index of the pixel in the image data
-		int index = (y * width + x) * channels;
+		if (pixelY < 0)
+			pixelY = 0;
+		if (pixelY >= height)
+			pixelY = height - 1;
 
+		// 4. Calculate index
+		int index = (pixelY * width + pixelX) * channels;
+
+		// Safety check (though clamping above should prevent this)
 		if (index < 0 || index >= width * height * channels)
 		{
+			wstbi_image_free(img);
 			return vec3();
 		}
 
-		// Get the color values
+		// 5. Get color values
 		unsigned char r = img[index];
 		unsigned char g = img[index + 1];
 		unsigned char b = img[index + 2];
-		unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
+		// Alpha is available at index+3 if channels==4, but vec3 usually ignores it.
 
-		// Free the image memory
+		// 6. Free memory
 		wstbi_image_free(img);
 
-		return vec3(
-			static_cast<int>(r) / 255.0f,
-			static_cast<int>(g) / 255.0f,
-			static_cast<int>(b) / 255.0f);
+		// 7. Return normalized color
+		return vec3(static_cast<int>(r) / 255.0f, static_cast<int>(g) / 255.0f, static_cast<int>(b) / 255.0f);
+	}
+
+	// Function to find the closest color in the palette
+	inline int findClosestColorInPalette(vec4 colorPalette[16], const glm::vec3& color)
+	{
+		int closestIndex = 0;
+		float minDistance = std::numeric_limits<float>::max(); // start with maximum possible distance
+
+		for (int i = 0; i < 16; ++i)
+		{
+			// Use length2 for efficiency (avoids computing square root)
+			float distance = glm::length2(color - glm::vec3(colorPalette[i]));
+
+			if (distance < minDistance)
+			{
+				minDistance = distance;
+				closestIndex = i;
+			}
+		}
+
+		return closestIndex;
 	}
 
 	void onUpdate(float delta) override
 	{
+		if (Input::GetKeyDown(Input::Q))
+		{
+			setSceneComplete();
+		}
+
 		// Get colors
 		if (Input::GetKeyDown(Input::P))
 		{
@@ -155,8 +191,13 @@ private:
 				int x = floor(t.position.x);
 				int y = floor(30 - t.position.y);
 
-				vec3 color = getColor(imagePath.c_str(), x * 10, y * 10);
-				int id = m_sdfRenderSystem2D.findClosestColorInPalette(color);
+				vec2 uv = vec2(x, y) / 30.0f;
+
+				vec3 color = getColor(imagePath.c_str(), uv.x, uv.y);
+
+				DisplaySettings displaySettings;
+
+				int id = findClosestColorInPalette(displaySettings.colorPalette, color);
 
 				result += std::to_string(id) + "-";
 			}

@@ -1,7 +1,7 @@
 #pragma once
-#include "weird-renderer/Mesh.h"
-#include "weird-engine/Utils.h"
 #include "ecs/Entity.h"
+#include "weird-engine/Utils.h"
+#include "weird-renderer/resources/Mesh.h"
 #include <json/json.h>
 #include <set>
 #include <unordered_set>
@@ -11,26 +11,21 @@ namespace WeirdEngine
 	using json = nlohmann::json;
 
 	using WeirdRenderer::Mesh;
-	using WeirdRenderer::Texture;
 	using WeirdRenderer::MeshID;
+	using WeirdRenderer::Texture;
 	using WeirdRenderer::TextureID;
 	using WeirdRenderer::Vertex;
 
 	using namespace ECS;
 
-	class ResourceManager {
+	class ResourceManager
+	{
 	private:
-
 		const std::string MISSING_TEXTURE = "missing";
 		const std::string DIFFUSE = "diffuse";
 		const std::string SPECULAR = "specular";
 
-		const std::vector<std::string> m_diffuseNames{
-			"diffuse",
-			"Diffuse",
-			"Albedo",
-			"albedo"
-		};
+		const std::vector<std::string> m_diffuseNames{"diffuse", "Diffuse", "Albedo", "albedo"};
 
 		MeshID m_meshCount = 0;
 
@@ -47,12 +42,12 @@ namespace WeirdEngine
 		std::vector<unsigned char> m_data;
 		json m_json;
 
-
 		// Loads a single mesh by its index
 		void loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes);
 
 		// Traverses a node recursively, so it essentially traverses all connected nodes
-		void traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes, glm::mat4 matrix = glm::mat4(1.0f));
+		void traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes,
+						  glm::mat4 matrix = glm::mat4(1.0f));
 
 		// Gets the binary data from a file
 		std::vector<unsigned char> getData(const char* file);
@@ -62,13 +57,9 @@ namespace WeirdEngine
 		std::vector<Texture> getTextures(const char* file);
 		void addDefaultTextures(std::vector<Texture>& textures);
 
-
 		// Assembles all the floats into vertices
-		std::vector<Vertex> assembleVertices(
-			std::vector<glm::vec3> positions,
-			std::vector<glm::vec3> normals,
-			std::vector<glm::vec2> texUVs
-		);
+		std::vector<Vertex> assembleVertices(std::vector<glm::vec3> positions, std::vector<glm::vec3> normals,
+											 std::vector<glm::vec2> texUVs);
 
 		// Helps with the assembly from above by grouping floats
 		std::vector<glm::vec2> groupFloatsVec2(std::vector<float> floatVec);
@@ -78,7 +69,6 @@ namespace WeirdEngine
 		Texture& getTexture(std::string path, std::string textureType, GLuint slot);
 
 	public:
-
 		ResourceManager();
 
 		MeshID getMeshId(const char* path, const Entity entity, bool instancing = false);
@@ -86,4 +76,4 @@ namespace WeirdEngine
 		void freeResources(const Entity entity);
 	};
 
-}
+} // namespace WeirdEngine

@@ -1,93 +1,105 @@
 #pragma once
 
-#include "Entity.h"
+#include <array>
+#include <cstddef>
+#include <stdexcept>
+#include <unordered_map>
+
 #include "Component.h"
+#include "Entity.h"
 
 namespace WeirdEngine
 {
+	constexpr size_t INVALID_INDEX = static_cast<size_t>(-1);
 
-		// ComponentArray to store components of a specific type
-		template <typename T>
-		class ComponentArray
+	// ComponentArray to store components of a specific type
+	template <typename T> class ComponentArray
+	{
+	public:
+		std::array<T, MAX_ENTITIES> values;
+		size_t size = 0;
+
+		void insertData(Entity entity, T component)
 		{
-		public:
-			std::array<T, MAX_ENTITIES> values;
-			size_t size = 0;
+			entityToIndexMap[entity] = size;
+			indexToEntityMap[size] = entity;
+			values[size] = component;
+			++size;
+		}
 
-			void insertData(Entity entity, T component)
+		T& getNewComponent(Entity entity)
+		{
+			entityToIndexMap[entity] = size;
+			indexToEntityMap[size] = entity;
+
+			return values[size++];
+		}
+
+		void removeData(Entity entity)
+		{
+			size_t indexOfRemovedEntity = entityToIndexMap[entity];
+			size_t indexOfLastElement = size - 1;
+			values[indexOfRemovedEntity] = values[indexOfLastElement];
+
+			Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
+			entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;
+			indexToEntityMap[indexOfRemovedEntity] = entityOfLastElement;
+			entityToIndexMap[entity] = INVALID_INDEX;
+
+			--size;
+		}
+
+		T& getDataFromEntity(Entity entity)
+		{
+			return values[entityToIndexMap[entity]];
+		}
+
+		T& getDataAtIdx(size_t idx)
+		{
+			return values[idx];
+		}
+
+		Entity getEntityAtIdx(size_t idx) const
+		{
+			return indexToEntityMap[idx];
+		}
+
+		T& getLastData()
+		{
+			return values[size - 1];
+		}
+
+		bool hasData(Entity entity)
+		{
+			return entityToIndexMap[entity] != INVALID_INDEX;
+		}
+
+		// Overload [] operator for non-const objects (modifiable)
+		T& operator[](unsigned int index)
+		{
+
+			if (index < 0 || index >= size)
 			{
-				entityToIndexMap[entity] = size; // ERROR: this is null
-				indexToEntityMap[size] = entity;
-				values[size] = component;
-				++size;
+				throw std::out_of_range("Index out of range");
 			}
 
-			T& getNewComponent(Entity entity)
-			{
-				entityToIndexMap[entity] = size;
-				indexToEntityMap[size] = entity;
+			return values[index];
+		}
 
-				return values[size++];
-			}
+		// Function to get the size of the array
+		int getSize() const
+		{
+			return size;
+		}
 
-			void removeData(Entity entity)
-			{
-				size_t indexOfRemovedEntity = entityToIndexMap[entity];
-				size_t indexOfLastElement = size - 1;
-				values[indexOfRemovedEntity] = values[indexOfLastElement];
-				values[indexOfLastElement] = T(); // This might be a mistake...
+	private:
+		std::array<size_t, MAX_ENTITIES> entityToIndexMap = []
+		{
+			std::array<size_t, MAX_ENTITIES> arr;
+			arr.fill(INVALID_INDEX);
+			return arr;
+		}();
+		std::array<Entity, MAX_ENTITIES> indexToEntityMap = {};
+	};
 
-				Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
-				entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;
-				indexToEntityMap[indexOfRemovedEntity] = entityOfLastElement;
-
-				entityToIndexMap.erase(entity);
-				indexToEntityMap.erase(indexOfLastElement);
-
-				--size;
-			}
-
-			T& getDataFromEntity(Entity entity)
-			{
-				return values[entityToIndexMap[entity]];
-			}
-
-			T& getDataAtIdx(size_t idx)
-			{
-				return values[idx];
-			}
-
-			T& getLastData()
-			{
-				return values[size - 1];
-			}
-
-			bool hasData(Entity entity)
-			{
-				return entityToIndexMap.size() > 0 && entityToIndexMap.find(entity) != entityToIndexMap.end();
-			}
-
-			// Overload [] operator for non-const objects (modifiable)
-			T& operator[](unsigned int index)
-			{
-
-				if (index < 0 || index >= size)
-				{
-					throw std::out_of_range("Index out of range");
-				}
-
-				return values[index];
-			}
-
-			// Function to get the size of the array
-			int getSize() const
-			{
-				return size;
-			}
-
-		private:
-			std::unordered_map<Entity, size_t> entityToIndexMap;
-			std::unordered_map<size_t, Entity> indexToEntityMap;
-		};
-	
-}
+} // namespace WeirdEngine

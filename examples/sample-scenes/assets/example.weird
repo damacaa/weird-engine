@@ -1,0 +1,48 @@
+{
+  "camera": {
+    "position": [
+      14.332503318786621,
+      11.496243476867676,
+      35.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "entities": [
+    {
+      "customShape": {
+        "combination": 0,
+        "distanceFieldId": 4,
+        "groupIdx": 0,
+        "hasCollisions": true,
+        "material": 1,
+        "parameters": [
+          16.718463897705078,
+          9.06061840057373,
+          1.9491267204284668,
+          1.3921217918395996,
+          0.5,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "smoothFactor": 1.0
+      },
+      "id": 2
+    }
+  ],
+  "physics": {
+    "distanceConstraints": [],
+    "fixedObjects": [],
+    "gravitationalConstraints": []
+  },
+  "version": 1
+}

@@ -8,14 +8,15 @@
 // but it's not required for the input handling itself.
 #include <SDL/include/SDL3/SDL.h>
 // #include <SDL/src/events/SDL_mouse_c.h>
+#include "weird-renderer/core/Display.h"
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
 /// States are:
 #define RELEASED_THIS_FRAME -1 /// Button released this frame.
-#define NOT_PRESSED 0 /// Button not pressed.
-#define IS_PRESSED 1 /// Button has been pressed down for at least one previous frame.
-#define FIRST_PRESSED 2 /// Started pressing the button in current frame.
+#define NOT_PRESSED 0		   /// Button not pressed.
+#define IS_PRESSED 1		   /// Button has been pressed down for at least one previous frame.
+#define FIRST_PRESSED 2		   /// Started pressing the button in current frame.
 /// </summary>
 
 // Replaced hardcoded key count with SDL's constant for the number of scancodes.
@@ -44,11 +45,13 @@ namespace WeirdEngine
 		int* m_keyTable;
 		int* m_mouseKeysTable;
 
+		bool m_uiFlag = false;
+
 		Input()
 		{
 			// Use SDL_NUM_SCANCODES for the key table size
-			m_keyTable = new int[SDL_SCANCODE_COUNT] { 0 };
-			m_mouseKeysTable = new int[5] { 0 };
+			m_keyTable = new int[SDL_SCANCODE_COUNT]{0};
+			m_mouseKeysTable = new int[5]{0};
 		}
 
 		~Input()
@@ -152,10 +155,33 @@ namespace WeirdEngine
 
 #pragma region MouseMovement
 
-		static float GetMouseX() { return getInstance().m_mouseX; };
-		static float GetMouseY() { return getInstance().m_mouseY; };
-		static float GetMouseDeltaX() { return getInstance().m_deltaX / getInstance().m_width; };
-		static float GetMouseDeltaY() { return getInstance().m_deltaY / getInstance().m_height; };
+		static float GetMouseX()
+		{
+			return getInstance().m_mouseX;
+		}
+
+		static void flagUIClick()
+		{
+			getInstance().m_uiFlag = true;
+		}
+
+		static bool isUIClick()
+		{
+			return getInstance().m_uiFlag;
+		}
+
+		static float GetMouseY()
+		{
+			return static_cast<float>(WeirdRenderer::Display::height) - getInstance().m_mouseY;
+		}
+		static float GetMouseDeltaX()
+		{
+			return getInstance().m_deltaX / getInstance().m_width;
+		}
+		static float GetMouseDeltaY()
+		{
+			return getInstance().m_deltaY / getInstance().m_height;
+		}
 
 		static void SetMousePosition(float x, float y)
 		{
@@ -229,6 +255,7 @@ namespace WeirdEngine
 			instance.m_window = window;
 			SDL_GetWindowSize(window, &instance.m_width, &instance.m_height);
 			instance.pollEventsAndUpdateTables();
+			instance.m_uiFlag = false;
 		}
 
 		// Main update function, to be called once per frame.
@@ -245,22 +272,22 @@ namespace WeirdEngine
 
 		switch (event.type)
 		{
-			// Handle mouse wheel separately as it's an event, not a persistent state.
-		case SDL_EVENT_MOUSE_WHEEL:
-			if (event.wheel.y > 0)
-			{
-				m_mouseKeysTable[(int)MouseButton::WheelUp] = FIRST_PRESSED;
-			}
-			else if (event.wheel.y < 0)
-			{
-				m_mouseKeysTable[(int)MouseButton::WheelDown] = FIRST_PRESSED;
-			}
-			break;
-			// We can also handle quit events here if desired, though that's typically
-			// done in the main application loop.
-			// case SDL_EVENT_QUIT:
-			//     ...
-			//     break;
+				// Handle mouse wheel separately as it's an event, not a persistent state.
+			case SDL_EVENT_MOUSE_WHEEL:
+				if (event.wheel.y > 0)
+				{
+					m_mouseKeysTable[(int)MouseButton::WheelUp] = FIRST_PRESSED;
+				}
+				else if (event.wheel.y < 0)
+				{
+					m_mouseKeysTable[(int)MouseButton::WheelDown] = FIRST_PRESSED;
+				}
+				break;
+				// We can also handle quit events here if desired, though that's typically
+				// done in the main application loop.
+				// case SDL_EVENT_QUIT:
+				//     ...
+				//     break;
 		}
 	}
 
@@ -309,8 +336,8 @@ namespace WeirdEngine
 		const Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
 
 		// Map SDL mouse buttons to our table
-		int sdlButtons[3] = { SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, SDL_BUTTON_MMASK };
-		int ourButtons[3] = { (int)MouseButton::LeftClick, (int)MouseButton::RightClick, (int)MouseButton::MiddleClick };
+		int sdlButtons[3] = {SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, SDL_BUTTON_MMASK};
+		int ourButtons[3] = {(int)MouseButton::LeftClick, (int)MouseButton::RightClick, (int)MouseButton::MiddleClick};
 
 		for (int i = 0; i < 3; i++)
 		{
@@ -358,4 +385,4 @@ namespace WeirdEngine
 			}
 		}
 	}
-}
+} // namespace WeirdEngine

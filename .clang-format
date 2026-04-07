@@ -1,0 +1,45 @@
+Language:        Cpp
+# Start with the Microsoft base style
+BasedOnStyle:    Microsoft
+
+# Visual Studio Standard: Allman style (curly braces on new lines)
+BreakBeforeBraces: Allman
+
+# USE TABS INSTEAD OF SPACES
+# UseTab: Always tells clang-format to use tab characters (\t)
+# IndentWidth and TabWidth ensure the tabs appear as 4 columns wide
+UseTab:          Always
+IndentWidth:     4
+TabWidth:        4
+
+# Align pointers to the type (int* p)
+PointerAlignment: Left
+
+# Access Modifiers (public/private)
+# We pull modifiers back by 1 tab (4 columns) to align with the class definition
+AccessModifierOffset: -4
+
+# Indentation logic
+IndentCaseLabels: true
+IndentRequires:  true
+NamespaceIndentation: All
+
+# Line breaking and Column limits
+# Set to 0 to disable line wrapping, or keep 120 as a guideline
+ColumnLimit:     120
+
+# C++ Version
+Standard:        Latest
+
+# Sort includes (mimics VS "Organize Imports" behavior)
+SortIncludes:    CaseInsensitive
+
+# Specific Visual Studio nuances
+AllowShortFunctionsOnASingleLine: Empty
+BreakAfterAttributes: Always
+BreakBeforeBinaryOperators: None
+BreakConstructorInitializers: BeforeComma
+FixNamespaceComments: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false

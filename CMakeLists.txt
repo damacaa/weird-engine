@@ -2,14 +2,17 @@ cmake_minimum_required(VERSION 3.10)
 
 project(WeirdEngine)
 
-set(CMAKE_CXX_STANDARD 17)
+execute_process(COMMAND git submodule update --init --recursive)
+
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
 
 message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.vert" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.frag")
+file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.vert" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.frag" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.glsl")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp")
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
@@ -31,6 +34,11 @@ target_include_directories(glad
 
 
 # SDL3 setup
+# FORCE SDL3 to build as a STATIC library.
+# This prevents the creation of libSDL3.so and embeds the code
+# directly into your engine/game.
+set(SDL_SHARED OFF CACHE BOOL "Build SDL shared library" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
 # Add dependencies
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL_image)
@@ -68,17 +76,33 @@ target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3)
     
 
 # Shaders
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-    ENGINE_PATH="${CMAKE_CURRENT_SOURCE_DIR}"
-    SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/"
+option(WEIRD_ENGINE_USE_RUNTIME_ASSETS
+    "Load shaders/assets from runtime folder instead of source tree"
+    OFF
 )
 
-#
+if (WEIRD_ENGINE_USE_RUNTIME_ASSETS)
+    set(WEIRD_ENGINE_FONTS_PATH "./fonts/")
+    set(WEIRD_ENGINE_SHADERS_PATH "./shaders/")
+else()
+    set(WEIRD_ENGINE_FONTS_PATH
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/fonts/"
+    )
+    set(WEIRD_ENGINE_SHADERS_PATH
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/weird-renderer/shaders/"
+    )
+endif()
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    FONTS_PATH="${WEIRD_ENGINE_FONTS_PATH}"
+    SHADERS_PATH="${WEIRD_ENGINE_SHADERS_PATH}"
+)
+
+# target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
-
-
 
 function(assign_source_groups TARGET)
     foreach(source_file IN LISTS ARGN)

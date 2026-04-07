@@ -1,5 +1,9 @@
 #include "weird-physics/Simulation2D.h"
 
+#include <algorithm>
+
+#include "glm/gtx/norm.hpp"
+
 namespace WeirdEngine
 {
 
@@ -8,45 +12,47 @@ namespace WeirdEngine
 
 	using namespace std::chrono;
 
-	constexpr float SIMULATION_FREQUENCY = 250;
-	constexpr double FIXED_DELTA_TIME = 1.f / SIMULATION_FREQUENCY;
-
 	constexpr size_t MAX_STEPS = 10;
+	const float EPSILON = 0.0001f;
 
-	std::mutex g_simulationTimeMutex;
-	std::mutex g_externalForcesMutex;
-	std::mutex g_fixMutex;
-	std::mutex g_collisionTreeUpdateMutex;
-
-	Simulation2D::Simulation2D(size_t size) : m_isPaused(false),
-		m_positions(new vec2[size]),
-		m_previousPositions(new vec2[size]),
-		m_velocities(new vec2[size]),
-		m_forces(new vec2[size]),
-		m_externalForcesSinceLastUpdate(false),
-		m_externalForces(new vec2[size]),
-		m_mass(new float[size]),
-		m_invMass(new float[size]),
-		m_maxSize(size),
-		m_size(0),
-		m_lastIdGiven(-1),
-		m_simulationDelay(0),
-		m_simulationTime(0),
-		m_substeps(1),
-		m_gravity(-10),
-		m_push(20.0f * SIMULATION_FREQUENCY),
-		m_damping(0.001f),
-		m_simulating(false),
-		m_collisionDetectionMethod(MethodNaive),
-		m_useSimdOperations(false),
-		m_diameter(1.0f),
-		m_diameterSquared(m_diameter* m_diameter),
-		m_radious(m_diameter / 2.0f)
+	Simulation2D::Simulation2D(size_t size, const PhysicsSettings& settings)
+		: m_isPaused(false)
+		, m_positions(new vec2[size])
+		, m_positionsRead(new vec2[size])
+		, m_positionsAux(new vec2[size])
+		, m_previousPositions(new vec2[size])
+		, m_velocities(new vec2[size])
+		, m_forces(new vec2[size])
+		, m_externalForcesSinceLastUpdate(false)
+		, m_externalForces(new vec2[size])
+		, m_mass(new float[size])
+		, m_invMass(new float[size])
+		, m_maxSize(size)
+		, m_size(0)
+		, m_simulationDelay(0)
+		, m_simulationTime(0)
+		, m_substeps(1)
+		, m_simulationFrequency(settings.simulationFrequency)
+		, m_fixedDeltaTime(1.0 / static_cast<double>(settings.simulationFrequency))
+		, m_fixedDeltaTimeF(static_cast<float>(m_fixedDeltaTime))
+		, m_relaxationSteps(settings.relaxationSteps)
+		, m_gravity(settings.gravity)
+		, m_push(10.0f * settings.simulationFrequency)
+		, m_damping(settings.damping)
+		, m_simulating(false)
+		, m_collisionDetectionMethod(MethodNaive)
+		, m_useSimdOperations(false)
+		, m_diameter(1.0f)
+		, m_diameterSquared(m_diameter * m_diameter)
+		, m_radious(m_diameter / 2.0f)
+		, m_collisionMap(size)
 	{
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
 			m_positions[i] = vec2(0.0f, 0.0f);
+			m_positionsRead[i] = vec2(0.0f, 0.0f);
 			m_previousPositions[i] = vec2(0.0f, 0.0f);
+
 			m_velocities[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
 
@@ -60,6 +66,8 @@ namespace WeirdEngine
 	Simulation2D::~Simulation2D()
 	{
 		delete[] m_positions;
+		delete[] m_positionsRead;
+		delete[] m_positionsAux;
 		delete[] m_previousPositions;
 		delete[] m_velocities;
 		delete[] m_forces;
@@ -87,7 +95,6 @@ namespace WeirdEngine
 	void Simulation2D::update(double delta)
 	{
 		{
-			std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 			m_simulationDelay += delta;
 		}
 
@@ -105,30 +112,50 @@ namespace WeirdEngine
 
 	void Simulation2D::process()
 	{
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
 		int steps = 0;
 
-		while (m_simulationDelay >= FIXED_DELTA_TIME && steps < MAX_STEPS)
+		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
 		{
 #if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
 #endif
-			checkCollisions();
 
 			if (!m_isPaused)
 			{
+
+				checkCollisions();
 				applyForces();
-				solveConstraints();
-				step((float)FIXED_DELTA_TIME);
+
+				// 1. Predict where particles will go based on velocity and forces
+				integratePredict((float)m_fixedDeltaTime);
+
+				// 2. Iteratively solve constraints (Push/Pull particles to their exact distances)
+
+				for (int iter = 0; iter < m_relaxationSteps; iter++)
+				{
+					solveConstraints();
+				}
+
+				// 3. Derive the exact velocity based on how much the constraints moved the particles
+				integrateVelocity((float)m_fixedDeltaTime);
+
 				++steps;
 				{
-					std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-					m_simulationTime += FIXED_DELTA_TIME;
+					// m_simulationTime += m_fixedDeltaTime;
+					m_simulationTime.fetch_add(m_fixedDeltaTime);
+
+					// Notify collision callback
+					if (m_stepCallback)
+					{
+						m_stepCallback(m_callbackUserData);
+					}
 				}
 			}
 
 			{
-				std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
-				m_simulationDelay -= FIXED_DELTA_TIME;
+				// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
+				m_simulationDelay -= m_fixedDeltaTime;
 			}
 
 #if MEASURE_PERFORMANCE
@@ -141,7 +168,7 @@ namespace WeirdEngine
 			g_simulationSteps++;
 			g_time += 1000 * duration.count();
 
-			if (g_simulationSteps == 20 * SIMULATION_FREQUENCY)
+			if (g_simulationSteps == 20 * m_simulationFrequency)
 			{
 				auto average = g_time / g_simulationSteps;
 				std::cout << average << "ms" << std::endl;
@@ -153,7 +180,7 @@ namespace WeirdEngine
 
 	double Simulation2D::getSimulationTime()
 	{
-		std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
+		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
 	}
 
@@ -173,10 +200,6 @@ namespace WeirdEngine
 		m_simulationThread.join();
 	}
 
-	// Track previous positions for lazy updates
-	std::vector<AABB> previousAABBs;
-	std::vector<vec2> previousAABBPositions;
-
 	void Simulation2D::checkCollisions()
 	{
 		// Detect collisions
@@ -185,139 +208,166 @@ namespace WeirdEngine
 #endif
 		m_collisions.clear();
 
-		switch (m_collisionDetectionMethod)
+		// Spatial hash grid (broadphase)
+		// Static arrays to avoid memory allocation overhead each frame
+		static const int TABLE_SIZE = 8191; // A prime number for better hashing
+		static std::vector<int> head(TABLE_SIZE, -1);
+		static std::vector<int> next;
+
+		// Reset the head array for this frame
+		std::fill(head.begin(), head.end(), -1);
+
+		// Ensure the next array is large enough to hold all particles
+		if (next.size() < m_size)
 		{
-		case Simulation2D::None:
-			break;
-		case Simulation2D::MethodNaive:
-		{
-			for (size_t i = 0; i < m_size; i++)
-			{
-				// Simple collisions
-				for (size_t j = i + 1; j < m_size; j++)
-				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared < m_diameterSquared)
-					{
-						m_collisions.emplace_back(Collision(i, j, ij));
-					}
-
-#if MEASURE_PERFORMANCE
-					checks++;
-#endif
-				}
-			}
-			break;
+			next.resize(std::max((size_t)m_size, m_maxSize), -1);
 		}
-		case Simulation2D::MethodTree:
+
+		// Cell size should be exactly the maximum interaction distance (the diameter)
+		float invCellSize = 1.0f / m_diameter;
+
+		// Fast hash function to convert a 2D grid coordinate into an array index
+		auto getHash = [](int gx, int gy) -> int
 		{
+			constexpr int p1 = 73856093;
+			constexpr int p2 = 19349663;
+			int hash = (gx * p1) ^ (gy * p2);
+			hash = hash % TABLE_SIZE;
+			if (hash < 0)
+				hash += TABLE_SIZE; // Handle negative coordinates safely
+			return hash;
+		};
 
-			// std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
+		// Insert all particles into the spatial grid
+		for (int i = 0; i < m_size; i++)
+		{
+			// Calculate which grid cell the particle is in
+			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
+			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
 
-			// Add new objects
-			for (size_t i = m_tree.count; i < m_size; i++)
+			int hash = getHash(gx, gy);
+
+			// Insert at the head of the linked list for this cell
+			next[i] = head[hash];
+			head[hash] = i;
+		}
+
+		// Check for collisions using the grid
+		for (int i = 0; i < m_size; i++)
+		{
+			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
+			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
+
+			// Only check the 9 neighboring cells (including the particle's own cell)
+			for (int dx = -1; dx <= 1; dx++)
 			{
-				AABB boundinBox(0, 0, 0, 0);
-				auto id = m_tree.insertObject(boundinBox);
-				m_treeIDs.push_back(id);
-				m_treeIdToSimulationID[id] = i;
-				previousAABBs.push_back(boundinBox);
-				previousAABBPositions.push_back(vec2(0.0f));
-			}
-
-			float scale = 1.5f;
-			const float speedThreshold = 0.5f;
-			// Update the objects' positions
-			for (size_t i = 0; i < m_treeIDs.size(); ++i)
-			{
-				auto& p = m_positions[i];
-
-				float halfw = m_radious, halfh = m_radious;
-
-				AABB updatedBox(
-					p.x - halfw,
-					p.y - halfw,
-					p.x + halfh,
-					p.y + halfh);
-
-				// Update the object in the tree
-				m_tree.updateObject(m_treeIDs[i], updatedBox);
-
-				// Optimization ideas
-				// Lazy update: only update the tree if the object has moved significantly
-				// if (!previousAABBs[i].overlaps(updatedBox))
-				//{
-				//	m_tree.updateObject(m_treeIDs[i], updatedBox);
-				//	previousAABBs[i] = updatedBox;
-				//}
-				// else {
-				//	//std::cout << "Nope: " << i << std::endl;
-				//}
-
-				/*loat maxMovement = (scale - 1) * halfw;
-				if (fabs(p.x - previousAABBPositions[i].x) > maxMovement || fabs(p.y - previousAABBPositions[i].y) > maxMovement)
+				for (int dy = -1; dy <= 1; dy++)
 				{
-					AABB updatedBox(
-						p.x - (scale * halfw),
-						p.y - (scale * halfw),
-						p.x + (scale * halfh),
-						p.y + (scale * halfh)
-					);
+					int hash = getHash(gx + dx, gy + dy);
+					int j = head[hash];
 
-					m_tree.updateObject(m_treeIDs[i], updatedBox);
-					previousAABBPositions[i] = p;
-				}*/
-			}
-
-			std::vector<int> possibleCollisions;
-			// Perform collision queries
-			for (size_t i = 0; i < m_treeIDs.size(); ++i)
-			{
-				possibleCollisions.clear();
-				m_tree.query(m_tree.nodes[m_treeIDs[i]].box, possibleCollisions);
-
-				// Check actual collisions
-				for (int id : possibleCollisions)
-				{
-					if (id != m_treeIDs[i] && m_tree.nodes[id].box.overlaps(m_tree.nodes[m_treeIDs[i]].box))
+					// Traverse the linked list of particles in this cell
+					while (j != -1)
 					{
-						// std::cout << "Object " << m_treeIDs[i] << " is colliding with object " << id << std::endl;
-
-						int a = i;
-						int b = m_treeIdToSimulationID[id];
-
-						if (a >= b)
-							continue;
-
-						vec2 ab = m_positions[b] - m_positions[a];
-
-						float distanceSquared = (ab.x * ab.x) + (ab.y * ab.y);
-
-						if (distanceSquared < m_diameterSquared)
+						// Prevents checking a particle against itself
+						// Ensures we only check each pair once
+						if (i < j)
 						{
-							vec2 vRel = m_velocities[b] - m_velocities[a];
-							m_collisions.emplace_back(Collision(a, b, ab));
-						}
+							vec2 ij = m_positions[j] - m_positions[i];
+							float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+							if (distanceSquared < m_diameterSquared)
+							{
+								m_collisions.emplace_back(Collision(i, j, ij));
+							}
 #if MEASURE_PERFORMANCE
-						checks++;
+							checks++;
 #endif
+						}
+
+						j = next[j]; // Move to the next particle in the cell
 					}
 				}
 			}
-
-			break;
-		}
-		default:
-			break;
 		}
 
 #if MEASURE_PERFORMANCE
 		if (g_simulationSteps == 0)
 			std::cout << "First frame checks: " << checks << std::endl;
 #endif
+
+		// Shape collisions
+		for (size_t i = 0; i < m_size; i++)
+		{
+			vec2& p = m_positions[i];
+
+			// Check
+			bool currentCollision = false;
+			ShapeCollisionEvent collisionEvent;
+			collisionEvent.body = i;
+
+			// Static shapes
+			int shapeIdx;
+			float d = map(p, shapeIdx);
+			collisionEvent.shape = shapeIdx;
+
+			if (d < m_radious)
+			{
+				// Collision normal calculation
+				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
+				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
+
+				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
+				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
+
+				collisionEvent.normal = normalize(vec2(d1, d2));
+
+				float distanceAtSurface = map(p - ((m_radious)*collisionEvent.normal));
+				if (distanceAtSurface <=
+					0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				{
+					float penetration = (std::min)(-distanceAtSurface, m_radious - d);
+					currentCollision = true;
+
+					collisionEvent.penetration = penetration;
+					collisionEvent.position = p - (0.5f * collisionEvent.normal);
+					collisionEvent.velocity = m_velocities[i];
+
+					// TODO: Pre-calculate target plane for relaxation
+					// collisionEvent.targetPos = p + (penetration * collisionEvent.normal);
+
+					constexpr float DYNAMIC_FRICTION = 0.1f;
+					collisionEvent.friction = DYNAMIC_FRICTION;
+
+					constexpr float ABSORTION = 10.0f;
+					collisionEvent.absortion = ABSORTION;
+				}
+			}
+
+			bool previousCollision = m_collisionMap[i];
+			if (currentCollision != previousCollision)
+			{
+				if (currentCollision)
+				{
+					// Inform of new collision
+					collisionEvent.state = CollisionState::START;
+					m_collisionQueue.push_back(collisionEvent);
+				}
+				else
+				{
+					// Inform of end of collision
+					collisionEvent.state = CollisionState::END;
+					m_collisionQueue.push_back(collisionEvent);
+				}
+
+				m_collisionMap[i] = currentCollision;
+			}
+			else if (currentCollision)
+			{
+				collisionEvent.state = CollisionState::CONTINUE;
+				m_collisionQueue.push_back(collisionEvent);
+			}
+		}
 	}
 
 	void Simulation2D::solveCollisionsPositionBased()
@@ -333,22 +383,37 @@ namespace WeirdEngine
 		}
 	}
 
-	static float fOpUnionSoft(float a, float b, float r)
-	{
-		float e = std::max(r - std::abs(a - b), 0.0f);
-		return std::min(a, b) - e * e * 0.25 / r;
-	}
+	// static float fOpUnionSoft(float a, float b, float r)
+	// {
+	// 	r *= 1.0f; // 4.0f orignal wtf
+	// 	float h = std::max(r - abs(a - b), 0.0f);
+	// 	return std::min(a, b) - h * h * 0.25f / r;
+	// }
+
+	// // Smooth subtraction (a - b), 2D SDF
+	// static float fOpSubSoft(float a, float b, float r)
+	// {
+	// 	return -fOpUnionSoft(b, -a, r);
+	// }
 
 	float Simulation2D::map(vec2 p)
 	{
-		float d = 1.0f;
-		float currentGroupMinDistance = 1.0f;
+		int dummy;
+		return map(p, dummy);
+	}
+
+	float Simulation2D::map(vec2 p, int& closestShape)
+	{
+		closestShape = 0;
+
+		float d = 1000.0f;
+		float minD = d;
+		float currentGroupMinDistance = 1000.0f;
 
 		auto currentGroup = 0;
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
-
 
 			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
@@ -377,100 +442,72 @@ namespace WeirdEngine
 			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
 
 			// Combination
-			switch (obj.combinationId) {
-				case CombinationType::Addition: {
+			switch (obj.combinationId)
+			{
+				case CombinationType::Addition:
+				{
 					currentMinDistance = std::min(currentMinDistance, dist);
 					break;
 				}
-				case CombinationType::Subtraction: {
+				case CombinationType::Subtraction:
+				{
 					currentMinDistance = std::max(currentMinDistance, -dist);
 					break;
 				}
-				case CombinationType::Intersection: {
+				case CombinationType::Intersection:
+				{
 					currentMinDistance = std::max(currentMinDistance, dist);
 					break;
 				}
-				case CombinationType::SmoothAddition: {
+				case CombinationType::SmoothAddition:
+				{
 					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				case CombinationType::SmoothSubtraction:
+				{
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
 					break;
 				}
 				default:
 					break;
 			}
 
-			if (globalEffect) {
+			if (currentMinDistance < minD)
+			{
+				minD = currentMinDistance;
+				closestShape = i;
+			}
+
+			if (globalEffect)
+			{
 				d = currentMinDistance;
-			} else {
+			}
+			else
+			{
 				currentGroupMinDistance = currentMinDistance;
 			}
 		}
 
 		d = std::min(d, currentGroupMinDistance);
 
-		return d;
+		return d - 0.05f;
 	}
 
-	const float EPSILON = 0.0001f;
 	void Simulation2D::applyForces()
 	{
 		// External forces
-		if (m_externalForcesSinceLastUpdate && m_size - 1 == m_lastIdGiven)
 		{
-			m_externalForcesSinceLastUpdate = false;
-			for (size_t i = 0; i < m_size; i++)
+			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+			if (m_externalForcesSinceLastUpdate)
 			{
-				vec2& f = m_externalForces[i];
-				m_forces[i] = f;
-				m_externalForces[i] = vec2(0);
-			}
-		}
-
-		// Attraction force
-		if (m_attracttionEnabled)
-		{
-			for (size_t i = 0; i < m_size; i++)
-			{
-				for (size_t j = i + 1; j < m_size; j++)
+				m_externalForcesSinceLastUpdate = false;
+				for (size_t i = 0; i < m_size; i++)
 				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared > m_diameterSquared)
-					{
-						vec2 attractionForce = (0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
-						m_forces[i] += attractionForce;
-						m_forces[j] -= attractionForce;
-					}
+					vec2& f = m_externalForces[i];
+					m_forces[i] = f;
+					m_externalForces[i] = vec2(0);
 				}
-			}
-		}
-
-		if (m_repulsionEnabled)
-		{
-			for (size_t i = 0; i < m_size; i++)
-			{
-				for (size_t j = i + 1; j < m_size; j++)
-				{
-					vec2 ij = m_positions[j] - m_positions[i];
-
-					float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-					if (distanceSquared > m_diameterSquared)
-					{
-						vec2 attractionForce = -(0.1f * (m_mass[i] * m_mass[j]) / distanceSquared) * normalize(ij);
-						m_forces[i] += attractionForce;
-						m_forces[j] -= attractionForce;
-					}
-				}
-			}
-		}
-
-		if (m_liftEnabled)
-		{
-			for (size_t i = 0; i < m_size / 2; i++)
-			{
-				m_forces[i] += vec2(0, 100000.0f);
 			}
 		}
 
@@ -479,7 +516,7 @@ namespace WeirdEngine
 		{
 			Collision col = *it;
 
-			float lengthSquared = length2(col.AB);
+			float lengthSquared = glm::length2(col.AB);
 			vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
 			float penetration = (m_radious + m_radious) - length(col.AB);
 
@@ -506,7 +543,7 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				CollisionEvent event{ col.A, col.B };
+				CollisionEvent event{col.A, col.B};
 				m_collisionCallback(event, m_callbackUserData);
 			}
 
@@ -514,6 +551,42 @@ namespace WeirdEngine
 			g_collisionCount++;
 #endif
 		}
+
+		// Shape collisions
+		for (auto& collisionEvent : m_collisionQueue)
+		{
+			// Send event
+			if (m_shapeCollisionCallback)
+			{
+				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify values
+			}
+
+			if (collisionEvent.state == CollisionState::END)
+				continue;
+
+			vec2 vel = collisionEvent.velocity;
+			float speed = length(vel);
+
+			vec2 velocityDirection = speed > 0.0f ? vel / speed : vec2(0.0f); // Avoid NaN
+			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
+
+			// Apply friction
+			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.0f);
+			m_velocities[collisionEvent.body] -=
+				m_fixedDeltaTimeF * friction * velocityDirection; // Lose velocity on collision
+
+			// Absortion
+			float absortionRate = std::max(0.0f, collisionEvent.absortion * velocityAlongNormal);
+			m_velocities[collisionEvent.body] -= m_fixedDeltaTimeF * absortionRate * speed * collisionEvent.normal;
+
+			// Penalty
+			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;
+			vec2 force = m_mass[collisionEvent.body] * m_push * v;
+
+			m_forces[collisionEvent.body] += force;
+		}
+
+		m_collisionQueue.clear();
 
 		// Apply extra forces
 		for (size_t i = 0; i < m_size; i++)
@@ -526,118 +599,60 @@ namespace WeirdEngine
 			{
 				m_forces[i].y += m_mass[i] * m_gravity;
 			}
-
-			// Static shapes
-			float d = map(p);
-			if (d < m_radious)
-			{
-
-				float penetration = (m_radious - d);
-
-				// Collision normal calculation
-
-				float d1 = map(vec2(p.x - EPSILON, p.y));
-				float d2 = map(vec2(p.x, p.y - EPSILON));
-
-				vec2 normal = vec2(d - d1, d - d2);
-				normal = normalize(normal);
-
-				if (map(p - (m_radious * normal)) <= EPSILON) // Bad solution?
-				{
-					// Position
-					p += penetration * normal;
-
-					// Impulse
-					float restitution = 0.5f;
-					vec2 vRel = -m_velocities[i];
-					float velocityAlongNormal = glm::dot(normal, vRel);
-					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal; // * m_mass[i]; -> cancels out later
-					vec2 impulse = impulseMagnitude * normal;
-
-					// m_velocities[i] -= impulse; // * m_invMass[i]
-
-					// Penalty
-					vec2 v = penetration * normal;
-					vec2 force = m_mass[i] * m_push * v;
-
-					// force -= (10000.0f * m_damping * m_velocities[i]); // Drag ???
-
-					m_forces[i] += force;
-				}
-			}
-
-			// Old walls
-			if (Input::GetKey(Input::R))
-			{
-				if (p.x < m_radious)
-				{
-					p.x += m_radious - p.x;
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
-				else if (p.x > 30.0f - m_radious)
-				{
-					p.x -= m_radious - (30.0f - p.x);
-					m_velocities[i].x = -0.5f * m_velocities[i].x;
-				}
-			}
 		}
 	}
 
 	void Simulation2D::solveConstraints()
 	{
-		for (auto it = m_springs.begin(); it != m_springs.end(); ++it)
-		{
-			Spring spring = *it;
-
-			vec2 v = m_positions[spring.B] - m_positions[spring.A];
-			vec2 n = normalize(v);
-			float distance = length(v);
-			float d = spring.Distance - distance;
-			// d = std::clamp(d, -10.0f, 10.0f);
-
-			vec2 springForce = 0.5f * spring.K * d * n;
-			vec2 damping = spring.Damping * (m_velocities[spring.B] - m_velocities[spring.A]);
-
-			vec2 f = springForce - damping;
-
-			m_forces[spring.A] -= f;
-			m_forces[spring.B] += f;
-		}
-
 		for (auto it = m_distanceConstraints.begin(); it != m_distanceConstraints.end(); ++it)
 		{
-			DistanceConstraint spring = *it;
-
-			vec2 v = m_positions[spring.B] - m_positions[spring.A];
-			vec2 n = normalize(v);
-			float distance = length(v);
-
-			float correction = (distance - spring.Distance);
-			vec2 correctionVector = -correction * 0.5f * n;
-
-			vec2 pA = m_positions[spring.A] - correctionVector;
-			vec2 pB = m_positions[spring.B] + correctionVector;
-
-			m_positions[spring.A] = pA;
-			m_positions[spring.B] = pB;
-		}
-
-		for (auto it = m_gravitationalConstraints.begin(); it != m_gravitationalConstraints.end(); ++it)
-		{
-			GravitationalConstraint constraint = *it;
+			DistanceConstraint constraint = *it;
 
 			vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
-			vec2 n = normalize(v);
 			float distance = length(v);
+			if (distance <= EPSILON)
+				continue; // Prevent division by zero
 
-			float f = constraint.g * (m_mass[constraint.A] * m_mass[constraint.B]) / (distance * distance);
+			vec2 n = v / distance; // Normalized direction
 
-			m_forces[constraint.A] += f * n;
-			m_forces[constraint.B] -= f * n;
+			// Get inverse masses
+			float wA = m_invMass[constraint.A];
+			float wB = m_invMass[constraint.B];
+			float wSum = wA + wB;
+
+			if (wSum == 0.0f)
+				continue; // Both objects are infinite mass/fixed
+
+			// How far off are we?
+			float error = distance - constraint.Distance;
+
+			// Calculate correction proportional to mass
+			vec2 correctionVector = n * (error / wSum);
+
+			float stiffness = constraint.K; // 1.0f -> 100% correction per iteration
+
+			m_positions[constraint.A] += wA * correctionVector * stiffness;
+			m_positions[constraint.B] -= wB * correctionVector * stiffness;
 		}
 
+		// TODO: implement this position based or move out of relaxation
+		// for (auto it = m_gravitationalConstraints.begin(); it != m_gravitationalConstraints.end(); ++it)
+		// {
+		// 	GravitationalConstraint constraint = *it;
+		//
+		// 	vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
+		// 	vec2 n = normalize(v);
+		// 	float distance = length(v);
+		//
+		// 	float f = constraint.g * (m_mass[constraint.A] * m_mass[constraint.B]) / (distance * distance);
+		//
+		// 	m_forces[constraint.A] += f * n;
+		// 	m_forces[constraint.B] -= f * n;
+		// }
+
+		// TODO: instead of this, set m_invMass[i] to 0 outside the relaxation loop, less mutex and less calculations
 		{
-			std::lock_guard<std::mutex> lock(g_fixMutex);
+			std::lock_guard<std::mutex> lock(m_fixMutex);
 			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
 			{
 				SimulationID id = *it;
@@ -649,88 +664,116 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::step(float timeStep)
+	void Simulation2D::integratePredict(const float timeStep)
 	{
-#if INTEGRATION_METHOD == 0
-
-		// Integrate with euler
 		for (size_t i = 0; i < m_size; i++)
 		{
-			vec2 acc = m_forces[i] * m_invMass[i];
-			m_velocities[i] += timeStep * (acc - (m_damping * m_velocities[i]));
-			m_positions[i] += timeStep * m_velocities[i];
+			// Store current position
+			m_previousPositions[i] = m_positions[i];
 
-			// Reset forces
+			// Apply forces to velocity (v = v + a*dt)
+			vec2 acc = m_forces[i] * m_invMass[i];
+			m_velocities[i] += acc * timeStep;
+
+			// Predict new position (p = p + v*dt)
+			m_positions[i] += m_velocities[i] * timeStep;
+
+			// Clear forces for next frame
 			m_forces[i] = vec2(0.0f);
 		}
+	}
 
-#elif INTEGRATION_METHOD == 1
-
-		// Integrate with verlet
+	void Simulation2D::integrateVelocity(const float timeStep)
+	{
 		float invTimeStep = 1.0f / timeStep;
 		for (size_t i = 0; i < m_size; i++)
 		{
-			// Acceleration
-			vec2 acc = m_forces[i] * m_invMass[i] * timeStep * timeStep;
+			// How much did the particle actually move after constraints pushed it around?
+			vec2 newVelocity = (m_positions[i] - m_previousPositions[i]) * invTimeStep;
 
-			// Store the current position
-			vec2 currentPosition = m_positions[i];
-
-			// Update the position using Verlet integration
-			vec2 newPosition = m_positions[i] + (m_velocities[i]) * timeStep * (1.0f - m_damping) + (acc);
-			m_positions[i] = newPosition;
-
-			// Update the previous position
-			m_previousPositions[i] = currentPosition;
-
-			// Reset forces
-			m_forces[i] = vec2(0.0f);
-
-			vec2 newVelocity = (newPosition - currentPosition) * invTimeStep;
-			m_velocities[i] = newVelocity;
+			// Apply damping and store
+			m_velocities[i] = newVelocity * (1.0f - m_damping);
 		}
 
-#endif
+		// Restore your original rendering buffer logic
+		for (size_t i = 0; i < m_size; i++)
+		{
+			m_positionsAux[i] = m_positions[i];
+		}
+
+		// swap buffers
+		vec2* aux = m_positionsAux;
+		m_positionsAux = m_positionsRead;
+		m_positionsRead = aux;
 	}
 
 #pragma endregion
 
 	SimulationID Simulation2D::generateSimulationID()
 	{
-		// std::cout << (m_lastIdGiven + 1) << std::endl;
-		return ++m_lastIdGiven;
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
+
+		SimulationID id = m_size;
+
+		// Initialize particle with safe defaults so the physics
+		// thread never processes stale/garbage data.
+		m_positions[id] = vec2(0.0f);
+		m_positionsRead[id] = vec2(0.0f);
+		m_positionsAux[id] = vec2(0.0f);
+		m_previousPositions[id] = vec2(0.0f);
+		m_velocities[id] = vec2(0.0f);
+		m_forces[id] = vec2(0.0f);
+		m_externalForces[id] = vec2(0.0f);
+		m_mass[id] = 1.0f;
+		m_invMass[id] = 1.0f;
+
+		m_size++;
+		return id;
 	}
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		auto toId = id;
-		auto fromId = m_lastIdGiven;
+		std::scoped_lock lock(m_objectMutex, m_externalForcesMutex, m_fixMutex);
 
-		m_positions[toId] = m_positions[fromId];
-		m_previousPositions[toId] = m_previousPositions[fromId];
-		m_velocities[toId] = m_velocities[fromId];
-		m_mass[toId] = m_mass[fromId];
-		m_invMass[toId] = m_invMass[fromId];
-		m_forces[toId] = m_forces[fromId];
-		m_externalForces[toId] = m_externalForces[fromId];
+		if (m_size == 0 || id >= m_size)
+		{
+			return;
+		}
+
+		auto toId = id;
+		auto fromId = m_size - 1;
+
+		if (toId != fromId)
+		{
+			m_positions[toId] = m_positions[fromId];
+			m_positionsRead[toId] = m_positionsRead[fromId];
+			m_positionsAux[toId] = m_positionsAux[fromId];
+			m_previousPositions[toId] = m_previousPositions[fromId];
+			m_velocities[toId] = m_velocities[fromId];
+			m_forces[toId] = m_forces[fromId];
+			m_externalForces[toId] = m_externalForces[fromId];
+			m_mass[toId] = m_mass[fromId];
+			m_invMass[toId] = m_invMass[fromId];
+
+			if (toId < m_collisionMap.size() && fromId < m_collisionMap.size())
+			{
+				m_collisionMap[toId] = m_collisionMap[fromId];
+			}
+		}
 
 		// Fix constraints (potentially slow...)
 
 		// Remove constraints that affect deleted object
 		auto RemoveByID = [toId](auto& container)
-			{
-				container.erase(
-					std::remove_if(container.begin(), container.end(), [toId](const auto& constraint)
-						{
-							if (constraint.A == toId || constraint.B == toId)
-							{
-								return true;
-							}
-							return false; }),
-					container.end());
-			};
+		{
+			container.erase(std::remove_if(container.begin(), container.end(),
+											[toId](const auto& constraint)
+											{
+												return constraint.A == toId || constraint.B == toId;
+											}),
+						container.end());
+		};
 
-		RemoveByID(m_springs);
 		RemoveByID(m_distanceConstraints);
 		RemoveByID(m_gravitationalConstraints);
 
@@ -739,25 +782,20 @@ namespace WeirdEngine
 
 		// If a constraint targeted the moved object, change it to its new id
 		auto ChangeByID = [fromId, toId](auto& container)
+		{
+			for (auto& constraint : container)
 			{
-				for (auto& constraint : container)
+				if (constraint.A == fromId)
 				{
-					if (constraint.A == fromId)
-					{
-						// Extra code goes here for when A is updated.
-						// For example, logging or updating related state.
-						constraint.A = toId;
-					}
-					if (constraint.B == fromId)
-					{
-						// Extra code goes here for when B is updated.
-						// For example, logging or updating related state.
-						constraint.B = toId;
-					}
+					constraint.A = toId;
 				}
-			};
+				if (constraint.B == fromId)
+				{
+					constraint.B = toId;
+				}
+			}
+		};
 
-		ChangeByID(m_springs);
 		ChangeByID(m_distanceConstraints);
 		ChangeByID(m_gravitationalConstraints);
 
@@ -767,13 +805,11 @@ namespace WeirdEngine
 		// If it is, fix it at its new id
 		if (it != m_fixedObjects.end())
 		{
-			// Compute the index by subtracting the beginning iterator
-			int index = it - m_fixedObjects.begin();
+			int index = static_cast<int>(it - m_fixedObjects.begin());
 			m_fixedObjects[index] = toId;
 		}
 
 		// Adjust size
-		m_lastIdGiven--;
 		m_size--;
 	}
 
@@ -782,22 +818,25 @@ namespace WeirdEngine
 		return m_size;
 	}
 
-	void Simulation2D::addForce(SimulationID id, vec2 force)
+	void Simulation2D::addForce(SimulationID id, const vec2& force)
 	{
-		std::lock_guard<std::mutex> lock(g_externalForcesMutex);
+		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
-		// TODO: create two buffers (contnious forces and impulses), depending on type multiply by mass imitating 4 unity types
+		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4
+		// unity types
 
 		m_externalForcesSinceLastUpdate = true;
-		m_externalForces[id] += SIMULATION_FREQUENCY * m_mass[id] * force;
+		m_externalForces[id] += m_simulationFrequency * m_mass[id] * force;
 	}
 
-	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance, float damping)
+	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
 	{
 		if (a == b)
 			return;
 
-		m_springs.emplace_back(a, b, stiffness, distance, damping);
+		m_distanceConstraints.emplace_back(
+			a, b, distance,
+			std::pow(stiffness, std::sqrt(m_relaxationSteps))); // Square to make stiffness more intuitive
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
@@ -805,7 +844,7 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
-		m_distanceConstraints.emplace_back(a, b, distance);
+		m_distanceConstraints.emplace_back(a, b, distance, 1.0f);
 	}
 
 	void Simulation2D::addGravitationalConstraint(SimulationID a, SimulationID b, float gravity)
@@ -816,37 +855,54 @@ namespace WeirdEngine
 		m_gravitationalConstraints.emplace_back(a, b, gravity);
 	}
 
+	bool Simulation2D::setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance)
+	{
+		if (a == b)
+			return false;
+
+		for (auto& constraint : m_distanceConstraints)
+		{
+			bool sameDirection = (constraint.A == static_cast<int>(a) && constraint.B == static_cast<int>(b));
+			bool reverseDirection = (constraint.A == static_cast<int>(b) && constraint.B == static_cast<int>(a));
+			if (sameDirection || reverseDirection)
+			{
+				constraint.Distance = distance;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void Simulation2D::fix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
+		std::lock_guard<std::mutex> lock(m_fixMutex);
 		m_fixedObjects.emplace_back(id);
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(g_fixMutex);
+		std::lock_guard<std::mutex> lock(m_fixMutex);
 		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
 	}
 
 	vec2 Simulation2D::getPosition(SimulationID entity)
 	{
-		return m_positions[entity];
+		return m_positionsRead[entity];
 	}
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
-
 		m_positions[id] = pos;
+		m_positionsRead[id] = pos;
 		m_previousPositions[id] = pos;
 		m_velocities[id] = vec2(0.0f);
-		// m_forces[entity] = vec2(0.0f);
-		m_size = std::max((uint32_t)m_size, id + 1);
 	}
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
 	{
-		transform.position.x = m_positions[id].x;
-		transform.position.y = m_positions[id].y;
+		transform.position.x = m_positionsRead[id].x;
+		transform.position.y = m_positionsRead[id].y;
 	}
 
 	void Simulation2D::setMass(SimulationID id, float mass)
@@ -862,10 +918,11 @@ namespace WeirdEngine
 
 	void Simulation2D::updateShape(CustomShape& shape)
 	{
-		if (shape.m_screenSpace || !shape.m_hasCollision)
+		if (!shape.hasCollisions)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.m_distanceFieldId, shape.m_combination, shape.m_groupId, shape.m_parameters);
+		DistanceFieldObject2D sdf(shape.Owner, shape.distanceFieldId, shape.combination, shape.groupIdx,
+								  shape.parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(shape.Owner);
@@ -879,7 +936,9 @@ namespace WeirdEngine
 		{
 			// Key does not exist
 			m_objects.push_back(sdf);
-			m_entityToObjectsIdx[shape.Owner] = m_objects.size() - 1;
+			ShapeId id = m_objects.size() - 1;
+			m_entityToObjectsIdx[shape.Owner] = id;
+			shape.simulationId = id;
 		}
 	}
 
@@ -914,46 +973,60 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::raycast(vec2 pos)
 	{
-		if (m_collisionDetectionMethod == None || m_collisionDetectionMethod == MethodNaive)
+		for (size_t i = 0; i < m_size; i++)
 		{
+			vec2 ij = pos - m_positions[i];
 
-			for (size_t i = 0; i < m_size; i++)
+			float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
+
+			if (distanceSquared < m_radious * m_radious)
 			{
-
-				vec2 ij = pos - m_positions[i];
-
-				float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
-
-				if (distanceSquared < m_radious * m_radious)
-				{
-					return i;
-				}
+				return i;
 			}
-
-			return -1;
 		}
-		else
+
+		return -1;
+	}
+
+	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
+	{
+		float d;
+		float traveled = 0.0;
+
+		for (int i = 0; i < 100; i++)
 		{
-			float size = 0.001f;
-			std::lock_guard<std::mutex> lock(g_collisionTreeUpdateMutex);
-			AABB boundinBox(pos.x - size, pos.y - size, pos.x + size, pos.y + size);
-			std::vector<int> possibleCollisions;
-			// possibleCollisions.reserve(3);
-			m_tree.query(boundinBox, possibleCollisions);
+			vec2 p = pos + (traveled * direction);
 
-			if (possibleCollisions.size() == 0)
-				return -1;
+			d = map(p);
 
-			return m_treeIdToSimulationID[possibleCollisions[0]];
+			if (d <= -EPSILON)
+				break;
+
+			traveled += std::abs(d) + EPSILON;
+
+			if (traveled >= FAR)
+			{
+				return FAR;
+			}
 		}
+
+		return traveled - EPSILON;
 	}
 
 	void Simulation2D::runSimulationThread()
 	{
 		while (m_simulating)
 		{
-			process();
+			if (m_simulationDelay >= m_fixedDeltaTime)
+			{
+				process();
+			}
+			else
+			{
+				int delay = std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000); // ms
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+			}
 		}
 	}
 
-}
+} // namespace WeirdEngine

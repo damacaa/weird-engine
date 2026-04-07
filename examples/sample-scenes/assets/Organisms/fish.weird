@@ -1,0 +1,398 @@
+{
+  "camera": {
+    "position": [
+      -0.9749999642372131,
+      1.5624998807907104,
+      20.16900634765625
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "entities": [
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 28,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.534393310546875,
+          2.6893749237060547
+        ],
+        "simulationId": 0
+      },
+      "transform": {
+        "position": [
+          -0.534393310546875,
+          2.6893749237060547,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 29,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -1.4389582872390747,
+          2.2334482669830322
+        ],
+        "simulationId": 1
+      },
+      "transform": {
+        "position": [
+          -1.4389582872390747,
+          2.2334482669830322,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 30,
+      "rigidBody2D": {
+        "physicsPosition": [
+          0.26977378129959106,
+          2.0667569637298584
+        ],
+        "simulationId": 2
+      },
+      "transform": {
+        "position": [
+          0.26977378129959106,
+          2.0667569637298584,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 31,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.6343950033187866,
+          1.639581561088562
+        ],
+        "simulationId": 3
+      },
+      "transform": {
+        "position": [
+          -0.6343950033187866,
+          1.639581561088562,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 1
+      },
+      "id": 32,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.5206915736198425,
+          0.6460669040679932
+        ],
+        "simulationId": 4
+      },
+      "transform": {
+        "position": [
+          -0.5206915736198425,
+          0.6460669040679932,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 1
+      },
+      "id": 33,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.6114899516105652,
+          -0.44849878549575806
+        ],
+        "simulationId": 5
+      },
+      "transform": {
+        "position": [
+          -0.6114899516105652,
+          -0.44849878549575806,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 1
+      },
+      "id": 34,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.4678502082824707,
+          -1.4381288290023804
+        ],
+        "simulationId": 6
+      },
+      "transform": {
+        "position": [
+          -0.4678502082824707,
+          -1.4381288290023804,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 1
+      },
+      "id": 35,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -0.4707748293876648,
+          -2.4713010787963867
+        ],
+        "simulationId": 7
+      },
+      "transform": {
+        "position": [
+          -0.4707748293876648,
+          -2.4713010787963867,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 36,
+      "rigidBody2D": {
+        "physicsPosition": [
+          -1.7313377857208252,
+          -0.10144317150115967
+        ],
+        "simulationId": 8
+      },
+      "transform": {
+        "position": [
+          -1.7313377857208252,
+          -0.10144317150115967,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 6
+      },
+      "id": 37,
+      "rigidBody2D": {
+        "physicsPosition": [
+          0.27265286445617676,
+          0.018717901781201363
+        ],
+        "simulationId": 9
+      },
+      "transform": {
+        "position": [
+          0.27265286445617676,
+          0.018717901781201363,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "physics": {
+    "distanceConstraints": [
+      {
+        "A": 0,
+        "B": 1,
+        "distance": 1.0129692554473877,
+        "k": 1.0
+      },
+      {
+        "A": 1,
+        "B": 3,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 0,
+        "B": 2,
+        "distance": 1.0170239210128784,
+        "k": 1.0
+      },
+      {
+        "A": 2,
+        "B": 3,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 3,
+        "B": 4,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 4,
+        "B": 5,
+        "distance": 1.0983253717422485,
+        "k": 1.0
+      },
+      {
+        "A": 5,
+        "B": 6,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 6,
+        "B": 7,
+        "distance": 1.0331764221191406,
+        "k": 1.0
+      },
+      {
+        "A": 8,
+        "B": 4,
+        "distance": 1.4228266477584839,
+        "k": 1.0
+      },
+      {
+        "A": 4,
+        "B": 9,
+        "distance": 1.011415958404541,
+        "k": 1.0
+      }
+    ],
+    "fixedObjects": [],
+    "gravitationalConstraints": []
+  },
+  "version": 1
+}

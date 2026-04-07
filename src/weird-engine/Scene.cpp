@@ -1,40 +1,48 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/Input.h"
-#include "weird-engine/SceneManager.h"
-#include "weird-engine/math/MathExpressionSerialzation.h"
+#include "weird-engine/math/Default2DSDFs.h"
+#include "weird-engine/Profiler.h"
+#include "weird-engine/SceneSerializer.h"
+#include "weird-physics/components/CustomShapeManager.h"
 
-#include <random>
-#include <stb/stb_image.h>
-#include <stb/stb_image_write.h>
+#include "weird-physics/components/RigidBodyManager.h"
+
+#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
+#include "weird-engine/systems/ButtonSystem.h"
+#include "weird-engine/systems/CameraSystem.h"
+#include "weird-engine/systems/PhysicsInteractionSystem.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-engine/systems/PlayerMovementSystem.h"
+#include "weird-engine/systems/RenderSystem.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
+#include "weird-engine/systems/SDFRenderSystem2D.h"
 
 namespace WeirdEngine
 {
 
-	void Scene::handleCollision(CollisionEvent &event, void *userData)
-	{
-		// Unsafe cast! Prone to error.
-		Scene *self = static_cast<Scene *>(userData);
-		self->onCollision(event);
-	}
-
-	// vec3 g_cameraPosition(15.0f, 50.f, 60.0f);
-	vec3 g_cameraPosition(0, 1, 20);
-
-	Scene::Scene()
-			: m_simulation2D(MAX_ENTITIES), m_sdfRenderSystem(m_ecs), m_sdfRenderSystem2D(m_ecs), m_renderSystem(m_ecs), m_instancedRenderSystem(m_ecs), m_rbPhysicsSystem2D(m_ecs), m_physicsInteractionSystem(m_ecs), m_playerMovementSystem(m_ecs), m_cameraSystem(m_ecs), m_runSimulationInThread(true)
+	Scene::Scene(const PhysicsSettings& settings)
+		: m_simulation2D(MAX_ENTITIES, settings)
+		, m_runSimulationInThread(true)
 	{
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
 
-		// Read content from file
-		std::string content = "";
+		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
+		m_ecs.registerComponent<CustomShape>(shapeManager);
 
-		// Read scene file and load everything
-		loadScene(content);
+		// Create camera
+		m_mainCamera = m_ecs.createEntity();
+		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
+		t.rotation = vec3(0, 0, -1.0f);
+		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+
+		// Shapes
+		m_sdfs = DefaultShapes::getSDFS();
+		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation
-		m_rbPhysicsSystem2D.init(m_ecs, m_simulation2D);
+		PhysicsSystem2D::init(m_ecs, m_simulation2D);
 
 		// Start simulation if different thread
 		if (m_runSimulationInThread)
@@ -42,7 +50,13 @@ namespace WeirdEngine
 			m_simulation2D.startSimulationThread();
 		}
 
+		m_simulation2D.setStepCallback(&handlePhysicsStep, this);
 		m_simulation2D.setCollisionCallback(&handleCollision, this);
+		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
+
+		// Initialize 2D world render context
+		m_2DWorldRenderContext.m_dotRadious = 0.5f;
+		m_2DWorldRenderContext.m_charSpacing = 1.0f;
 	}
 
 	Scene::~Scene()
@@ -56,259 +70,76 @@ namespace WeirdEngine
 	void Scene::start()
 	{
 		onCreate();
-		onStart();
 
-		if (m_debugFly)
+		// If a .weird file path was provided (via setSceneFilePath / registerScene),
+		// restore saved scene state before the derived class's onStart() runs.
+		TagMap loadedTags;
+		if (!m_sceneFilePath.empty())
 		{
-			switch (m_renderMode)
-			{
-			case WeirdEngine::Scene::RenderMode::Simple3D:
+			SceneSerializer::load(*this, m_sceneFilePath);
+			loadedTags = m_tagToEntity;
+		}
+
+		onStart(loadedTags);
+
+		switch (m_renderMode)
+		{
 			case WeirdEngine::Scene::RenderMode::RayMarching3D:
-			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
 			{
-				FlyMovement &fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
+			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
 			{
-				FlyMovement2D &fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				// fly.targetPosition = g_cameraPosition;
+				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
+				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
 				break;
 			}
 			default:
 				break;
-			}
 		}
-	}
-
-	//  TODO: pass render target instead of shader. Shaders should be accessed in a different way, through the resource manager
-	void Scene::renderModels(WeirdRenderer::RenderTarget &renderTarget, WeirdRenderer::Shader &shader, WeirdRenderer::Shader &instancingShader)
-	{
-		WeirdRenderer::Camera &camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
-		m_renderSystem.render(m_ecs, m_resourceManager, shader, camera, m_lights);
-
-		onRender(renderTarget);
-
-		// m_instancedRenderSystem.render(m_ecs, m_resourceManager, instancingShader, camera, m_lights);
-	}
-
-	void replaceSubstring(std::string &str, const std::string &from, const std::string &to)
-	{
-		size_t start_pos = str.find(from);
-		if (start_pos != std::string::npos)
-		{
-			str.replace(start_pos, from.length(), to);
-		}
-	}
-
-	void Scene::updateCustomShapesShader(WeirdRenderer::Shader &shader)
-	{
-		const auto sdfBalls = m_ecs.getComponentManager<SDFRenderer>()->getComponentArray();
-		int32_t ballsCount = sdfBalls->getSize();
-		const auto componentArray = m_ecs.getComponentManager<CustomShape>()->getComponentArray();
-		shader.setUniform("u_customShapeCount", componentArray->getSize());
-
-		if (!m_sdfRenderSystem2D.shaderNeedsUpdate())
-		{
-			return;
-		}
-
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = false;
-
-		std::string str = shader.getFragmentCode();
-
-		const std::string toReplace("/*ADD_SHAPES_HERE*/");
-
-		std::ostringstream oss;
-
-
-
-		oss << "///////////////////////////////////////////\n";
-
-		oss << "int dataOffset =  u_loadedObjects - (2 * u_customShapeCount);\n";
-
-		int currentGroup = -1;
-		std::string groupDistanceVariable;
-
-		for (size_t i = 0; i < componentArray->getSize(); i++)
-		{
-			// Get shape
-			const auto &shape = componentArray->getDataAtIdx(i);
-
-			// Get group
-			const int group = shape.m_groupId;
-
-			// Start new group if necessary
-			if(group != currentGroup)
-			{
-				// If this is not the first group, combine current group distance with global minDistance
-				if(currentGroup != -1)
-				{
-					oss << "if(minDist >"<< groupDistanceVariable <<"){ minDist = "<< groupDistanceVariable <<";}\n";
-				}
-
-				// Next group
-				currentGroup = group;
-				groupDistanceVariable = "d" + std::to_string(currentGroup);
-
-				// Initialize distance with big value
-				oss << "float " << groupDistanceVariable << "= 10000;\n";
-			}
-
-			// Start shape
-			oss << "{\n";
-
-			// Calculate data position in array
-			oss << "int idx = dataOffset + " << 2 * i << ";\n";
-
-			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
-
-			// Get distance function
-			auto fragmentCode = m_sdfs[shape.m_distanceFieldId]->print();
-
-			// Use screen space coords (DEPRECATED)
-			if (shape.m_screenSpace)
-			{
-				replaceSubstring(fragmentCode, "var9", "var11");
-				replaceSubstring(fragmentCode, "var10", "var12");
-			}
-
-			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
-
-			// Shape distance calculation
-			oss << "float dist = " << fragmentCode << ";" << std::endl;
-
-
-
-
-			// Apply globalEffect logic
-			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";" << std::endl;
-
-			// Combine shape distance
-			switch (shape.m_combination)
-			{
-				case CombinationType::Addition:
-				{
-					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				case CombinationType::Subtraction:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, -dist);\n";
-					break;
-				}
-				case CombinationType::Intersection:
-				{
-					oss << "currentMinDistance = max(currentMinDistance, dist);\n";
-					break;
-				}
-				case CombinationType::SmoothAddition:
-				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0);\n";
-					oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "  << shape.m_material << ": finalMaterialId;" << std::endl;
-					break;
-				}
-				default:
-					break;
-			}
-
-			// Assign back to the correct target
-			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
-			oss << "}\n\n";
-		}
-
-		// Combine last group
-		if (componentArray->getSize() > 0) 
-		{
-			oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable << ";}\n";
-		}
-
-		// Scale negative distances
-		oss << "minDist = minDist > 0 ? minDist : 0.1 * minDist;" << std::endl;
-
-		// oss << "col.x = minDist; col.y = 5;" << std::endl;
-
-		// oss << "minDist -= 1.5;\n";
-
-		// Get string
-		std::string replacement = oss.str();
-
-		// Print
-		std::cout << replacement << std::endl;
-
-		// Replace in shader source code
-		size_t pos = str.find(toReplace);
-		// Check if the substring was found
-		if (pos != std::string::npos)
-		{
-			// Replace the substring
-			str.replace(pos, toReplace.length(), replacement);
-		}
-
-		// Set new source code and recompile shader
-		shader.setFragmentCode(str);
-
-		// TODO: only debug
-		std::ofstream outFile("generated_shader.frag");
-		if (outFile.is_open()) {
-			outFile << str;
-			outFile.close();
-		}
-	}
-
-	void Scene::updateRayMarchingShader(WeirdRenderer::Shader &shader)
-	{
-		// m_sdfRenderSystem2D.updatePalette(shader);
-
-		updateCustomShapesShader(shader);
-	}
-
-	void Scene::get2DShapesData(WeirdRenderer::Dot2D *&data, uint32_t &size)
-	{
-		m_sdfRenderSystem2D.fillDataBuffer(data, size);
 	}
 
 	void Scene::update(double delta, double time)
 	{
-		if (Input::GetKeyDown((Input::V)))
+		PROFILE_SCOPE("Scene Logic Update");
+
+		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
-			m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+			m_2DWorldRenderContext.m_shapesNeedUpdate = true;
 		}
 
 		// Update systems
-		if (m_debugFly)
 		{
-			m_playerMovementSystem.update(m_ecs, delta);
-		}
-		// m_cameraSystem.follow(m_ecs, m_mainCamera, 10);
+			if (m_debugFly)
+			{
+				PlayerMovementSystem::update(m_ecs, delta);
+			}
 
-		m_cameraSystem.update(m_ecs);
-		g_cameraPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
-
-		m_rbPhysicsSystem2D.update(m_ecs, m_simulation2D);
-		if (m_debugInput)
-		{
-			m_physicsInteractionSystem.update(m_ecs, m_simulation2D);
+			CameraSystem::update(m_ecs);
 		}
 
-		m_simulation2D.update(delta);
+		ButtonSystem::update(m_ecs, m_sdfs, getTime());
 
-		onUpdate(delta);
+		{
+			PROFILE_SCOPE("Physics synchronization");
+			PhysicsSystem2D::update(m_ecs, m_simulation2D);
+
+			if (m_debugInput)
+			{
+				PhysicsInteractionSystem::update(m_ecs, m_simulation2D);
+			}
+
+			m_simulation2D.update(delta);
+		}
+
+		{
+			PROFILE_SCOPE("Scene logic update");
+			onUpdate(delta);
+		}
 
 		m_ecs.freeRemovedComponents();
-	}
-
-	WeirdRenderer::Camera &Scene::getCamera()
-	{
-		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
-	}
-
-	std::vector<WeirdRenderer::Light> &Scene::getLigths()
-	{
-		return m_lights;
 	}
 
 	float Scene::getTime()
@@ -316,296 +147,265 @@ namespace WeirdEngine
 		return m_simulation2D.getSimulationTime();
 	}
 
-	void Scene::fillShapeDataBuffer(WeirdRenderer::Dot2D *&data, uint32_t &size)
+	void Scene::handlePhysicsStep(void* userData)
 	{
-		m_sdfRenderSystem2D.fillDataBuffer(data, size);
+		Scene* self = static_cast<Scene*>(userData);
+		self->onPhysicsStep();
+
+		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
+		self->m_frictionSoundLevel = 0.0f;
 	}
+
+	void Scene::handleCollision(CollisionEvent& event, void* userData)
+	{
+		// Unsafe cast! Prone to error.
+		Scene* self = static_cast<Scene*>(userData);
+		self->onCollision(event);
+	}
+
+	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
+	{
+		Scene* self = static_cast<Scene*>(userData);
+		self->onShapeCollision(event);
+
+		const float m_soundFalloff = 0.1f;
+		bool spatialAudio = false;
+		auto camPosition = self->getCamera().position; // Mutex?
+		float speed = glm::length2(event.velocity);
+		float distanceMultiplier =
+			1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
+		float frictionSample = event.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
+
+		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
+
+		if (event.state == CollisionState::START)
+		{
+			// float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
+			float penetrationFactor = std::sqrt((std::min)(2.0f * event.penetration, 1.0f));
+			float volume = penetrationFactor;
+
+			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
+			freqFactor *= 0.01f;
+			// freqFactor = freqFactor * freqFactor;
+			float frequency = 200.0f + (freqFactor * 300.0f);
+
+			self->m_audioQueue.push(
+				WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(event.position, 0.0f)});
+		}
+	}
+
+	// RENDER
 
 	Scene::RenderMode Scene::getRenderMode() const
 	{
 		return m_renderMode;
 	}
 
-	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination, bool hasCollision, int group)
+	WeirdRenderer::Camera& Scene::getCamera()
+	{
+		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
+	}
+
+	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch World Data");
+		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem2D::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+	}
+
+	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch UI Data");
+		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
+		SDFRenderSystem2D::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
+	}
+
+	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
+	{
+		SDFShaderGenerationSystem2D::update<Dot, CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+	}
+
+	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
+	{
+		SDFShaderGenerationSystem2D::update<UIDot, UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
+	}
+
+	void Scene::forceShaderRefresh()
+	{
+		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_UIRenderContext.m_shapesNeedUpdate = true;
+	}
+
+	const std::vector<WeirdRenderer::DrawCommand>& Scene::getDrawQueue() const
+	{
+		return m_drawQueue;
+	}
+
+	std::vector<WeirdRenderer::Light>& Scene::getLigths()
+	{
+		return m_lights;
+	}
+
+	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
+							 WeirdRenderer::Shader& instancingShader)
+	{
+		PROFILE_SCOPE("Render Models");
+		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
+		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
+
+		onRender(renderTarget);
+	}
+
+	// SDFs
+
+	ShapeId Scene::registerSDF(std::shared_ptr<IMathExpression> sdf)
+	{
+		m_sdfs.push_back(sdf);
+		m_simulation2D.setSDFs(m_sdfs);
+
+		return m_sdfs.size() - 1;
+	}
+
+	// AUDIO
+
+	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
+	{
+		return m_audioQueue;
+	}
+
+	float Scene::getFrictionSound()
+	{
+		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
+	}
+
+	void Scene::playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+	{
+		m_audioQueue.push(audio);
+	}
+
+	// Serialization
+
+	void Scene::tag(Entity entity, const std::string& name)
+	{
+		if (name.empty())
+		{
+			removeTag(entity);
+			return;
+		}
+
+		// If the tag is already owned by another entity, remove it from that entity
+		auto existingOwner = m_tagToEntity.find(name);
+		if (existingOwner != m_tagToEntity.end() && existingOwner->second != entity)
+		{
+			m_entityToTag.erase(existingOwner->second);
+		}
+
+		// Remove any previous tag this entity had
+		auto existingTag = m_entityToTag.find(entity);
+		if (existingTag != m_entityToTag.end() && existingTag->second != name)
+		{
+			m_tagToEntity.erase(existingTag->second);
+		}
+
+		m_tagToEntity[name] = entity;
+		m_entityToTag[entity] = name;
+	}
+
+	void Scene::removeTag(Entity entity)
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it == m_entityToTag.end())
+			return;
+		m_tagToEntity.erase(it->second);
+		m_entityToTag.erase(it);
+	}
+
+	std::string Scene::getEntityTag(Entity entity) const
+	{
+		auto it = m_entityToTag.find(entity);
+		if (it == m_entityToTag.end())
+			return "";
+		return it->second;
+	}
+
+	Entity Scene::getEntityByTag(const std::string& name) const
+	{
+		auto it = m_tagToEntity.find(name);
+		if (it == m_tagToEntity.end())
+			return MAX_ENTITIES;
+		return it->second;
+	}
+
+	void Scene::saveScene(const std::string& filename)
+	{
+		SceneSerializer::save(*this, filename);
+	}
+
+	Scene::TagMap Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	{
+		TagMap loadedTags;
+		Entity firstNewEntity = m_ecs.getEntityCount();
+		SceneSerializer::load(*this, path, &loadedTags);
+		if (blacklistEntities)
+		{
+			Entity lastNewEntity = m_ecs.getEntityCount();
+			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
+				m_serializationBlacklist.insert(entity);
+		}
+		return loadedTags;
+	}
+
+	void Scene::loadFromWeirdFile(const std::string& path)
+	{
+		SceneSerializer::load(*this, path);
+	}
+
+	// Utils
+
+	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
+						   bool hasCollision, int group)
 	{
 		Entity entity = m_ecs.createEntity();
-		CustomShape &shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.m_distanceFieldId = shapeId;
-		shape.m_combination = combination;
-		shape.m_hasCollision = hasCollision;
-		shape.m_groupId = group;
-		shape.m_material = material;
-		std::copy(variables, variables + 8, shape.m_parameters);
+		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.hasCollisions = hasCollision;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
 
-		// CustomShape shape(shapeId, variables); // check old constructor for references
-
-		m_sdfRenderSystem2D.shaderNeedsUpdate() = true;
+		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
 
 		return entity;
 	}
 
-	void Scene::lookAt(Entity entity)
+	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
+							 int group)
 	{
-		FlyMovement2D &fly = m_ecs.getComponent<FlyMovement2D>(m_mainCamera);
-		Transform &target = m_ecs.getComponent<Transform>(entity);
-		float oldZ = fly.targetPosition.z;
+		Entity entity = m_ecs.createEntity();
+		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
+		shape.distanceFieldId = shapeId;
+		shape.combination = combination;
+		shape.groupIdx = group;
+		shape.material = material;
+		std::copy(variables, variables + 8, shape.parameters);
 
-		fly.targetPosition = target.position;
-		fly.targetPosition.z = oldZ;
-	};
+		m_UIRenderContext.m_shapesNeedUpdate = true;
 
-	void Scene::loadScene(std::string &sceneFileContent)
-	{
-		// json scene = json::parse(sceneFileContent);
-
-		// load font
-		loadFont(ENGINE_PATH "/src/weird-renderer/fonts/default.bmp", 7, 7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:?!-_'#\"\\/<>() ");
-
-		std::string projectDir = fs::current_path().string() + "/SampleProject";
-
-		// Create camera object
-		m_mainCamera = m_ecs.createEntity();
-
-		Transform &t = m_ecs.addComponent<Transform>(m_mainCamera);
-		t.position = g_cameraPosition;
-		t.rotation = vec3(0, 0, -1.0f);
-
-		ECS::Camera &c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
-
-		// Add a light
-		WeirdRenderer::Light light;
-		light.rotation = normalize(vec3(1.f, 0.5f, 0.f));
-		m_lights.push_back(light);
-
-		// Shapes
-
-		// Floor
-		{
-			// p.y - a * sinf(0.5f * p.x + u_time);
-
-			// Define variables
-			auto amplitude = std::make_shared<FloatVariable>(0);
-			auto period = std::make_shared<FloatVariable>(1);
-
-			auto time = std::make_shared<FloatVariable>(8);
-			auto x = std::make_shared<FloatVariable>(9);
-			auto y = std::make_shared<FloatVariable>(10);
-
-			// Define function
-			auto sineContent = std::make_shared<Addition>(std::make_shared<Multiplication>(period, x), time);
-			std::shared_ptr<IMathExpression> waveFormula = std::make_shared<Substraction>(y, std::make_shared<Multiplication>(amplitude, std::make_shared<Sine>(sineContent)));
-
-			// Store function
-			m_sdfs.push_back(waveFormula);
-		}
-
-		// Star
-		{
-
-			// vec2 starPosition = p - vec2(25.0f, 30.0f);
-			// float infiniteShereDist = length(starPosition) - 5.0f;
-			// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
-
-			// Define variables
-			auto offsetX = std::make_shared<FloatVariable>(0);
-			auto offsetY = std::make_shared<FloatVariable>(1);
-			auto radious = std::make_shared<FloatVariable>(2);
-			auto displacementStrength = std::make_shared<FloatVariable>(3);
-			auto starPoints = std::make_shared<FloatVariable>(4);
-			auto speed = std::make_shared<FloatVariable>(5);
-
-			auto time = std::make_shared<FloatVariable>(8);
-			auto x = std::make_shared<FloatVariable>(9);
-			auto y = std::make_shared<FloatVariable>(10);
-
-			// Define function
-			std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-			std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-			// Circle
-			std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(std::make_shared<Length>(positionX, positionY), radious);
-
-			std::shared_ptr<IMathExpression> angularDisplacement = std::make_shared<Multiplication>(starPoints, std::make_shared<Atan2>(positionY, positionX));
-			std::shared_ptr<IMathExpression> animationTime = std::make_shared<Multiplication>(speed, time);
-
-			std::shared_ptr<IMathExpression> sinContent = std::make_shared<Sine>(std::make_shared<Substraction>(angularDisplacement, animationTime));
-			std::shared_ptr<IMathExpression> displacement = std::make_shared<Multiplication>(displacementStrength, sinContent);
-
-			std::shared_ptr<IMathExpression> starDistance = std::make_shared<Addition>(circleDistance, displacement);
-
-			// Store function
-			m_sdfs.push_back(starDistance);
-		}
-
-		// Circle
-		{
-
-			// vec2 starPosition = p - vec2(25.0f, 30.0f);
-			// float infiniteShereDist = length(starPosition) - 5.0f;
-			// float displacement = 5.0 * sin(5.0f * atan2f(starPosition.y, starPosition.x) - 5.0f * u_time);
-
-			// Define variables
-			auto offsetX = std::make_shared<FloatVariable>(0);
-			auto offsetY = std::make_shared<FloatVariable>(1);
-			auto radious = std::make_shared<FloatVariable>(2);
-			auto displacementStrength = std::make_shared<FloatVariable>(3);
-			auto starPoints = std::make_shared<FloatVariable>(4);
-			auto speed = std::make_shared<FloatVariable>(5);
-
-			auto time = std::make_shared<FloatVariable>(8);
-			auto x = std::make_shared<FloatVariable>(9);
-			auto y = std::make_shared<FloatVariable>(10);
-
-			// Define function
-			std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-			std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-			// Circle
-			std::shared_ptr<IMathExpression> circleDistance = std::make_shared<Substraction>(std::make_shared<Length>(positionX, positionY), radious);
-
-			// Store function
-			m_sdfs.push_back(circleDistance);
-		}
-
-		// Box
-		{
-			// Define variables
-			auto offsetX = std::make_shared<FloatVariable>(0);
-			auto offsetY = std::make_shared<FloatVariable>(1);
-			auto bX = std::make_shared<FloatVariable>(2);
-			auto bY = std::make_shared<FloatVariable>(3);
-			auto r = std::make_shared<FloatVariable>(4);
-
-			auto time = std::make_shared<FloatVariable>(8);
-			auto x = std::make_shared<FloatVariable>(9);
-			auto y = std::make_shared<FloatVariable>(10);
-
-			// Define function
-			std::shared_ptr<IMathExpression> positionX = std::make_shared<Substraction>(x, offsetX);
-			std::shared_ptr<IMathExpression> positionY = std::make_shared<Substraction>(y, offsetY);
-
-			std::shared_ptr<IMathExpression> dX = std::make_shared<Substraction>(std::make_shared<Abs>(positionX), bX);
-			std::shared_ptr<IMathExpression> dY = std::make_shared<Substraction>(std::make_shared<Abs>(positionY), bY);
-
-			std::shared_ptr<IMathExpression> aX = std::make_shared<Max>(0.0f, dX);
-			std::shared_ptr<IMathExpression> aY = std::make_shared<Max>(0.0f, dY);
-
-			std::shared_ptr<IMathExpression> length = std::make_shared<Length>(aX, aY);
-
-			std::shared_ptr<IMathExpression> minMax = std::make_shared<Min>(0.0f, std::make_shared<Max>(dX, dY));
-
-			std::shared_ptr<IMathExpression> boxDistance = std::make_shared<Addition>(length, minMax);
-
-			// Store function
-			m_sdfs.push_back(boxDistance);
-		}
-
-		m_simulation2D.setSDFs(m_sdfs);
+		return entity;
 	}
 
-	constexpr int INVALID_INDEX = -1;
-
-	void Scene::print(const std::string &text)
+	UIShape& Scene::addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group)
 	{
-		float offset = 0;
-		for (auto i : text)
-		{
-			int idx = getIndex(i);
+		entity = m_ecs.createEntity();
+		UIShape& component = m_ecs.addComponent<UIShape>(entity);
+		component.distanceFieldId = shapeId;
+		component.groupIdx = group;
+		component.smoothFactor = 100.0f;
+		std::copy(variables, variables + 8, component.parameters);
 
-			// std::cout << idx << std::endl;
+		m_UIRenderContext.m_shapesNeedUpdate = true;
 
-			for (auto vec2 : m_letters[idx])
-			{
-				float x = 2 + vec2.x + offset;
-				float y = vec2.y;
-
-				Entity entity = m_ecs.createEntity();
-				Transform &t = m_ecs.addComponent<Transform>(entity);
-				t.position = vec3(x, y, -10.0f);
-
-				SDFRenderer &sdfRenderer = m_ecs.addComponent<SDFRenderer>(entity);
-				sdfRenderer.materialId = 4 + idx % 12;
-			}
-
-			offset += m_charWidth;
-		}
+		return component;
 	}
-
-	void Scene::loadFont(const char *imagePath, int charWidth, int charHeight, const char *characters)
-	{
-		// Set all to INVALID_INDEX initially
-		for (int &val : m_CharLookUpTable)
-		{
-			val = INVALID_INDEX;
-		}
-
-		// Fill look up table
-		for (size_t i = 0; characters[i] != '\0'; ++i)
-		{
-			m_CharLookUpTable[characters[i]] = i;
-		}
-
-		// Store char dimensions
-		m_charWidth = charWidth;
-		m_charHeight = charHeight;
-
-		// Load the image
-		int width, height, channels;
-		unsigned char *img = wstbi_load(imagePath, &width, &height, &channels, 0);
-
-		if (img == nullptr)
-		{
-			std::cerr << "Error: could not load image." << std::endl;
-			return;
-		}
-
-		int columns = width / charWidth;
-		int rows = height / charHeight;
-
-		int charCount = columns * rows;
-
-		m_letters.clear();
-		m_letters.resize(charCount);
-
-		for (size_t i = 0; i < charCount; i++)
-		{
-			int startX = charWidth * (i % columns);
-			int startY = (charHeight * (i / columns));
-
-			for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
-			{
-				for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
-				{
-
-					int x = startX + offsetX;
-					int y = startY + offsetY;
-
-					// Calculate the index of the pixel in the image data
-					int index = (y * width + x) * channels;
-
-					if (index < 0 || index >= width * height * channels)
-					{
-						continue;
-					}
-
-					// Get the color values
-					unsigned char r = img[index];
-					unsigned char g = img[index + 1];
-					unsigned char b = img[index + 2];
-					unsigned char a = (channels == 4) ? img[index + 3] : 255; // Alpha channel (if present)
-
-					if (r < 50)
-					{
-						float localX = offsetX;
-						float localY = charHeight - offsetY;
-
-						m_letters[i].emplace_back(localX, localY);
-					}
-				}
-			}
-		}
-
-		// Free the image memory
-		wstbi_image_free(img);
-	}
-}
+} // namespace WeirdEngine

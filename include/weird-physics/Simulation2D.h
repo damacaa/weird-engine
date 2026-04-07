@@ -1,30 +1,26 @@
 #pragma once
 
-#include <vector>
-#include <thread>
-#include <unordered_set>
-#include <unordered_map>
-#include <cstdint>
+#include <atomic>
 #include <bitset>
 #include <chrono>
+#include <cstdint>
 #include <immintrin.h>
 #include <mutex>
+#include <queue>
 #include <set>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-#include <glm/glm.hpp>
-#include <glm/gtx/norm.hpp>
-
+#include "../weird-engine/components/Transform.h"
+#include "../weird-renderer/components/CustomShape.h"
 #include "weird-engine/ecs/Entity.h"
-#include "weird-engine/ecs/Components/Transform.h"
-#include "weird-engine/ecs/Components/CustomShape.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-engine/vec.h"
 
-#include "CollisionDetection/UniformGrid2D.h"
-#include "CollisionDetection/DynamicAABBTree2D.h"
-#include "CollisionDetection/SpatialHash.h"
-#include "CollisionDetection/Octree.h"
-
+#include "PhysicsSettings.h"
 
 namespace WeirdEngine
 {
@@ -33,58 +29,45 @@ namespace WeirdEngine
 
 	using SimulationID = std::uint32_t;
 
-	using vec2 = glm::vec2;
-
-	class CustomBitset
+	enum class CollisionState
 	{
-	public:
-		CustomBitset(size_t size) : bits((size + 63) / 64, 0), size(size) {}
-
-		void set(SimulationID pos)
-		{
-			if (pos < size)
-			{
-				bits[pos / 64] |= (1ULL << (pos % 64));
-			}
-		}
-
-		void clear(SimulationID pos)
-		{
-			if (pos < size)
-			{
-				bits[pos / 64] &= ~(1ULL << (pos % 64));
-			}
-		}
-
-		bool test(SimulationID pos) const
-		{
-			if (pos < size)
-			{
-				return bits[pos / 64] & (1ULL << (pos % 64));
-			}
-			return false;
-		}
-
-	private:
-		std::vector<uint64_t> bits;
-		size_t size;
+		START,
+		CONTINUE,
+		END
 	};
 
 	struct CollisionEvent
 	{
+		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
-		// bool firstContact; TODO
+	};
+
+	struct ShapeCollisionEvent
+	{
+		CollisionState state;
+		SimulationID body;
+		ShapeId shape;
+		float penetration;
+		float friction;
+		float absortion;
+		vec2 position;
+		vec2 velocity;
+		vec2 normal;
 	};
 
 	// Define the function pointer type and include a user data pointer
+	using StepCallbackFn = void (*)(void*);
+
+	// Define the function pointer type and include a user data pointer
 	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
+	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
 
 	class Simulation2D
 	{
 
 	public:
-		Simulation2D(size_t size);
+		Simulation2D(size_t size, const PhysicsSettings& settings);
 		~Simulation2D();
 
 		// Manage simulation
@@ -98,6 +81,10 @@ namespace WeirdEngine
 		void update(double delta);
 
 		double getSimulationTime();
+		double getDeltaTime()
+		{
+			return m_fixedDeltaTime;
+		}
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
@@ -105,10 +92,11 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
-		void addForce(SimulationID id, vec2 force);
-		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f, float daping = 1000.0f);
+		void addForce(SimulationID id, const vec2& force);
+		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
+		bool setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance);
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
@@ -125,9 +113,86 @@ namespace WeirdEngine
 		void removeShape(CustomShape& shape);
 
 		SimulationID raycast(vec2 pos);
+		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
 
-		void setGravity(float gravity) { m_gravity = gravity; }
-		void setDamping(float damping) { m_damping = damping; }
+		void setGravity(float gravity)
+		{
+			m_gravity = gravity;
+		}
+		void setDamping(float damping)
+		{
+			m_damping = damping;
+		}
+
+		// Constraint structs (public for serialization)
+		struct DistanceConstraint
+		{
+		public:
+			DistanceConstraint()
+			{
+				A = -1;
+				B = -1;
+				Distance = 1.0f;
+				K = 0.0f;
+			}
+
+			DistanceConstraint(int a, int b, float distance, float k = 1.0f)
+			{
+				A = a;
+				B = b;
+				Distance = distance;
+				K = k;
+			}
+
+			int A;
+			int B;
+			float Distance;
+			float K;
+		};
+
+		struct GravitationalConstraint
+		{
+		public:
+			GravitationalConstraint()
+			{
+				A = -1;
+				B = -1;
+				g = 1.0f;
+			}
+
+			GravitationalConstraint(int a, int b, float gravity)
+			{
+				A = a;
+				B = b;
+				g = gravity;
+			}
+
+			int A;
+			int B;
+			float g;
+		};
+
+		// Serialization support: read constraint data
+		const std::vector<DistanceConstraint>& getDistanceConstraints() const
+		{
+			return m_distanceConstraints;
+		}
+		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const
+		{
+			return m_gravitationalConstraints;
+		}
+		const std::vector<SimulationID>& getFixedObjects() const
+		{
+			return m_fixedObjects;
+		}
+
+		// Serialization support: load raw constraint (bypasses stiffness conversion)
+		void addRawDistanceConstraint(int a, int b, float distance, float k)
+		{
+			if (a == b)
+				return;
+			m_distanceConstraints.emplace_back(a, b, distance, k);
+		}
 
 	private:
 		void process();
@@ -135,7 +200,8 @@ namespace WeirdEngine
 		void solveCollisionsPositionBased();
 		void applyForces();
 		void solveConstraints();
-		void step(float timeStep);
+		void integrateVelocity(float timeStep);
+		void integratePredict(float timeStep);
 
 		struct Collision
 		{
@@ -164,76 +230,6 @@ namespace WeirdEngine
 			vec2 AB;
 		};
 
-		struct Spring
-		{
-		public:
-			Spring()
-			{
-				A = -1;
-				B = -1;
-				K = 0;
-			}
-
-			Spring(int a, int b, float k, float distance, float damping)
-			{
-				A = a;
-				B = b;
-				K = k;
-				Distance = distance;
-				Damping = damping;
-			}
-
-			int A;
-			int B;
-			float K;
-			float Distance;
-			float Damping;
-		};
-
-		struct DistanceConstraint
-		{
-		public:
-			DistanceConstraint()
-			{
-				A = -1;
-				B = -1;
-				Distance = 1.0f;
-			}
-
-			DistanceConstraint(int a, int b, float distance)
-			{
-				A = a;
-				B = b;
-				Distance = distance;
-			}
-
-			int A;
-			int B;
-			float Distance;
-		};
-
-		struct GravitationalConstraint
-		{
-		public:
-			GravitationalConstraint()
-			{
-				A = -1;
-				B = -1;
-				g = 1.0f;
-			}
-
-			GravitationalConstraint(int a, int b, float gravity)
-			{
-				A = a;
-				B = b;
-				g = gravity;
-			}
-
-			int A;
-			int B;
-			float g;
-		};
-
 		struct CollisionHash
 		{
 			std::size_t operator()(const Collision& s) const
@@ -260,22 +256,36 @@ namespace WeirdEngine
 			uint16_t groupId;
 			float parameters[11];
 
-			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId, float* params) : distanceFieldId(id), combinationId(combinationId), groupId(groupId), owner(owner)
+			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
+								  float* params)
+				: distanceFieldId(id)
+				, combinationId(combinationId)
+				, groupId(groupId)
+				, owner(owner)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
 			}
 		};
 
 		int m_substeps; // TODO: implement substeps
+		float m_simulationFrequency;
+		double m_fixedDeltaTime;
+		float m_fixedDeltaTimeF;
+		int m_relaxationSteps;
 
 		bool m_isPaused;
 		bool m_simulating;
 		double m_simulationDelay;
-		double m_simulationTime;
+		std::atomic<double> m_simulationTime{0.0};
 
 		bool m_useSimdOperations;
 
 		vec2* m_positions;
+		vec2* m_positionsRead;
+		;
+		vec2* m_positionsAux;
+		;
+
 		vec2* m_previousPositions;
 		vec2* m_velocities;
 		vec2* m_forces;
@@ -285,7 +295,6 @@ namespace WeirdEngine
 
 		size_t m_maxSize;
 		size_t m_size;
-		size_t m_lastIdGiven;
 
 		float* m_mass;
 		float* m_invMass;
@@ -304,19 +313,21 @@ namespace WeirdEngine
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 		std::vector<DistanceFieldObject2D> m_objects;
 
+		std::vector<uint8_t> m_collisionMap;
+		std::vector<ShapeCollisionEvent> m_collisionQueue;
+
 		float map(vec2 p);
+		float map(vec2 p, int& closestShape);
 
 		// Collision
 		CollisionDetectionMethod m_collisionDetectionMethod;
 
 		std::vector<Collision> m_collisions;
-		DynamicAABBTree m_tree;
 		std::vector<int> m_treeIDs;
 		std::unordered_map<int, SimulationID> m_treeIdToSimulationID;
 
 		// Constraints
 		std::vector<SimulationID> m_fixedObjects;
-		std::vector<Spring> m_springs;
 		std::vector<DistanceConstraint> m_distanceConstraints;
 		std::vector<GravitationalConstraint> m_gravitationalConstraints;
 
@@ -328,16 +339,34 @@ namespace WeirdEngine
 		bool m_repulsionEnabled = false;
 		bool m_liftEnabled = false;
 
+		std::mutex m_fixMutex;
+		std::mutex m_externalForcesMutex;
+		std::recursive_mutex m_objectMutex;
+
 	private:
+		StepCallbackFn m_stepCallback = nullptr;
 		CollisionCallbackFn m_collisionCallback = nullptr;
+		ShapeCollisionCallbackFn m_shapeCollisionCallback = nullptr;
 		void* m_callbackUserData = nullptr;
 
 	public:
+		void setStepCallback(StepCallbackFn callback, void* userData)
+		{
+			m_stepCallback = callback;
+			m_callbackUserData = userData;
+		}
+
 		void setCollisionCallback(CollisionCallbackFn callback, void* userData)
 		{
 			m_collisionCallback = callback;
 			m_callbackUserData = userData;
 		}
+
+		void setShapeCollisionCallback(ShapeCollisionCallbackFn callback, void* userData)
+		{
+			m_shapeCollisionCallback = callback;
+			m_callbackUserData = userData;
+		}
 	};
 
-}
+} // namespace WeirdEngine

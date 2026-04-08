@@ -34,9 +34,9 @@ namespace WeirdEngine
 				throw std::runtime_error("SDL could not initialize!");
 			}
 
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
@@ -84,7 +84,7 @@ namespace WeirdEngine
 
 			SDL_GL_MakeCurrent(m_window, m_glContext);
 
-			if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
 			{
 				throw std::runtime_error("Failed to initialize GLAD.");
 			}

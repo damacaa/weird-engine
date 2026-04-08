@@ -168,7 +168,7 @@ vec3 getColor(vec3 p)
 
 		// float delta = objectDist / (objectDist + d); // Calculate using old d
 		d = fOpUnionSoft(objectDist, d, k);
-		float delta = 1 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
+		float delta = 1.0 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
 
 		col = mix(getMaterial(p, id), col, delta);
 	}

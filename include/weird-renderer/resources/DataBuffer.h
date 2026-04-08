@@ -7,69 +7,53 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 
+		// DataBuffer stores an array of vec4 values and exposes it as a plain 2D texture
+		// (GL_RGBA32F, width = element count, height = 1) so that shaders can access it
+		// via a highp sampler2D without requiring GL_OES_texture_buffer.
 		class DataBuffer
 		{
 		public:
 			DataBuffer()
 			{
-				// Create buffer and texture for samplerBuffer
-				glGenBuffers(1, &m_buffer);
 				glGenTextures(1, &m_texture);
-
-				// Bind texture and buffer to the correct targets
-				glBindTexture(GL_TEXTURE_BUFFER_OES, m_texture);		  // Bind the texture to the buffer type
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, m_buffer);			  // Bind the buffer to the texture
-				glTexBufferOES(GL_TEXTURE_BUFFER_OES, GL_RGBA32F, m_buffer); // Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER_OES, 0);				  // Unbind texture
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, 0);					  // Unbind buffer
 			}
 
-			explicit DataBuffer(GLuint bindingPoint)
-				: m_bindingPoint(bindingPoint)
+			explicit DataBuffer(GLuint /*bindingPoint*/)
 			{
-				// Create buffer and texture for samplerBuffer
-				glGenBuffers(1, &m_buffer);
 				glGenTextures(1, &m_texture);
-
-				// Bind texture and buffer to the correct targets
-				glBindTexture(GL_TEXTURE_BUFFER_OES, m_texture);		  // Bind the texture to the buffer type
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, m_buffer);			  // Bind the buffer to the texture
-				glTexBufferOES(GL_TEXTURE_BUFFER_OES, GL_RGBA32F, m_buffer); // Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER_OES, 0);				  // Unbind texture
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, 0);					  // Unbind buffer
 			}
 
 			~DataBuffer()
 			{
-				glDeleteBuffers(1, &m_buffer);
 				glDeleteTextures(1, &m_texture);
 			}
 
 			void bind(GLuint unit) const
 			{
-				glActiveTexture(GL_TEXTURE0 + unit);		 // Use the unit passed into the function
-				glBindTexture(GL_TEXTURE_BUFFER_OES, m_texture); // Bind the texture for the specific unit
+				glActiveTexture(GL_TEXTURE0 + unit);
+				glBindTexture(GL_TEXTURE_2D, m_texture);
 			}
 
 			void unbind()
 			{
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, 0); // Unbind the buffer
+				glBindTexture(GL_TEXTURE_2D, 0);
 			}
 
 			void uploadRawData(const void* data, size_t byteSize) const
 			{
-				if (byteSize == 0 || (byteSize % (4 * sizeof(float)) != 0))
-				{
-					// Avoid invalid upload (alignment check)
+				const size_t texelBytes = 4 * sizeof(float); // one RGBA32F texel
+				if (byteSize == 0 || (byteSize % texelBytes != 0))
 					return;
-				}
 
-				glBindBuffer(GL_TEXTURE_BUFFER_OES, m_buffer); // Bind the buffer before uploading data
-				glBufferData(GL_TEXTURE_BUFFER_OES, byteSize, data, GL_STREAM_DRAW); // Upload the buffer data
+				GLsizei width = static_cast<GLsizei>(byteSize / texelBytes);
 
-				// Attach the buffer to the texture
-				glBindTexture(GL_TEXTURE_BUFFER_OES, m_texture);		  // Bind the texture
-				glTexBufferOES(GL_TEXTURE_BUFFER_OES, GL_RGBA32F, m_buffer); // Attach the buffer to the texture
+				glBindTexture(GL_TEXTURE_2D, m_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, 1, 0, GL_RGBA, GL_FLOAT, data);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glBindTexture(GL_TEXTURE_2D, 0);
 			}
 
 			template <typename T> void uploadData(const T* data, size_t count) const
@@ -77,19 +61,13 @@ namespace WeirdEngine
 				uploadRawData(data, count * sizeof(T));
 			}
 
-			GLuint getBuffer() const
-			{
-				return m_buffer;
-			}
 			GLuint getTexture() const
 			{
 				return m_texture;
 			}
 
 		private:
-			GLuint m_buffer = 0;
 			GLuint m_texture = 0;
-			GLuint m_bindingPoint = 0; // This is unused, so it can be removed if not needed
 		};
 
 	} // namespace WeirdRenderer

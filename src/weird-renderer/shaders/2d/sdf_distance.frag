@@ -1,8 +1,7 @@
 #version 300 es
-#extension GL_OES_texture_buffer : require
 precision highp float;
 precision highp int;
-precision highp samplerBuffer;
+precision highp sampler2D;
 
 #include "../common/shapes.glsl"
 
@@ -30,7 +29,7 @@ uniform float u_k;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
-uniform samplerBuffer t_shapeBuffer;
+uniform highp sampler2D t_shapeBuffer;
 
 uniform vec2 u_resolution;
 uniform float u_overscan;
@@ -112,7 +111,7 @@ vec3 getColor(vec2 p, vec2 uv)
 
 	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
 	{
-		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE

@@ -1,8 +1,7 @@
 #version 300 es
-#extension GL_OES_texture_buffer : require
 precision highp float;
 precision highp int;
-precision highp samplerBuffer;
+precision highp sampler2D;
 
 // Vertex attributes
 layout(location = 0) in vec3 in_position;
@@ -21,15 +20,15 @@ out vec2 v_texCoord;
 uniform mat4 u_camMatrix;
 // uniform mat3 u_normalMatrix;
 
-uniform samplerBuffer t_modelMatrices;
+uniform sampler2D t_modelMatrices;
 
 void main()
 {
 	int index = gl_InstanceID;
-	vec4 r0 = texelFetch(t_modelMatrices, index + 0);
-	vec4 r1 = texelFetch(t_modelMatrices, index + 1);
-	vec4 r2 = texelFetch(t_modelMatrices, index + 2);
-	vec4 r3 = texelFetch(t_modelMatrices, index + 3);
+	vec4 r0 = texelFetch(t_modelMatrices, ivec2(index + 0, 0), 0);
+	vec4 r1 = texelFetch(t_modelMatrices, ivec2(index + 1, 0), 0);
+	vec4 r2 = texelFetch(t_modelMatrices, ivec2(index + 2, 0), 0);
+	vec4 r3 = texelFetch(t_modelMatrices, ivec2(index + 3, 0), 0);
 	mat4 model = mat4(r0, r1, r2, r3);
 
 	// calculates current position

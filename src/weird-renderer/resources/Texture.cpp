@@ -211,6 +211,11 @@ namespace WeirdEngine
 
 		void Texture::saveToDisk(const char* fileName)
 		{
+#if defined(GL_ES_VERSION_2_0)
+			(void)fileName;
+			// OpenGL ES does not support glGetTexImage. Texture save-to-disk is disabled for GLES builds.
+			return;
+#else
 			glBindTexture(GL_TEXTURE_2D, ID);
 
 			// float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
@@ -280,6 +285,7 @@ namespace WeirdEngine
 			// Free the allocated memory.
 			delete[] pixels;
 			delete[] pixels_uchar;
+#endif
 		}
 
 	} // namespace WeirdRenderer

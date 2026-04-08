@@ -152,7 +152,7 @@ vec3 getColor(vec2 p, vec2 uv)
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
 
-	return vec3(minDist, max(finalMaterialId, 0), mask);
+	return vec3(minDist, float(max(finalMaterialId, 0)), mask);
 }
 
 // Bilinear
@@ -280,7 +280,7 @@ void main()
 // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
 #endif
 
-	FragColor = vec4(finalDistance, material, mask, 0);
+	FragColor = vec4(finalDistance, material, mask, 0.0);
 
 	// This has no visual effect (multiplying by zero), but it forces
 	// the compiler to keep u_time because it's used to calculate FragColor.

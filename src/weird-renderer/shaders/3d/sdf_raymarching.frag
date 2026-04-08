@@ -135,7 +135,7 @@ float map(vec3 p)
 	// float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
 	//  float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
 	float planeDist =
-		fPlane(p, vec3(0, 1, 0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
+		fPlane(p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
 
 	res = min(res, planeDist);
 
@@ -173,7 +173,7 @@ vec3 getColor(vec3 p)
 		col = mix(getMaterial(p, id), col, delta);
 	}
 
-	float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
+	float planeDist = fPlane(p, vec3(0.0, 1.0, 0.0), 0.0);
 
 	d = min(d, planeDist);
 	col = d >= planeDist ? getMaterial(p, 0) : col;
@@ -265,7 +265,7 @@ vec4 render(in vec2 uv)
 	ro = vec3(dot(u_camMatrix[0].xyz, ro), dot(u_camMatrix[1].xyz, ro), dot(u_camMatrix[2].xyz, ro));
 
 	// Ray direction
-	vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0) * u_camMatrix).xyz;
+	vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0.0) * u_camMatrix).xyz;
 
 	// Fish eye
 	// float z = pow(1.0 - (uv.x * uv.x) - (uv.y * uv.y), 0.5);

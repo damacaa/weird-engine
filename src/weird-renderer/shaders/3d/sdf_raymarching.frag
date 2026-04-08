@@ -1,12 +1,12 @@
-#version 330 core
-#extension GL_ARB_conservative_depth : enable
-#extension GL_EXT_conservative_depth : enable
-
-layout(depth_less) out float gl_FragDepth;
+#version 300 es
+#extension GL_OES_texture_buffer : require
+precision highp float;
+precision highp int;
+precision highp samplerBuffer;
 
 float fOpUnionSoft(float a, float b, float r)
 {
-	float e = max(r - abs(a - b), 0);
+	float e = max(r - abs(a - b), 0.0);
 	return min(a, b) - e * e * 0.25 / r;
 }
 
@@ -38,7 +38,7 @@ float vmax(vec3 v)
 float fBox(vec3 p, vec3 b)
 {
 	vec3 d = abs(p) - b;
-	return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
+	return length(max(d, vec3(0.0))) + vmax(min(d, vec3(0.0)));
 }
 
 float fPlane(vec3 p, vec3 n, float distanceFromOrigin)
@@ -64,7 +64,7 @@ uniform samplerBuffer t_shapeBuffer;
 uniform int u_loadedObjects;
 
 uniform mat4 u_camMatrix;
-uniform float u_fov = 2.5;
+uniform float u_fov;
 uniform vec2 u_resolution;
 
 uniform vec3 u_lightPos;

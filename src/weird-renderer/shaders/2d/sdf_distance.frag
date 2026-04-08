@@ -1,4 +1,8 @@
-#version 330 core
+#version 300 es
+#extension GL_OES_texture_buffer : require
+precision highp float;
+precision highp int;
+precision highp samplerBuffer;
 
 #include "../common/shapes.glsl"
 
@@ -42,13 +46,13 @@ uniform float u_motionBlurBlendSpeed;
 
 uniform int u_customShapeCount;
 
-uniform float u_uiScale = 50.0f;
+const float u_uiScale = 50.0;
 
 // Constants
 const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
-const float NEAR = 0.1f;
-const float FAR = 100.0f;
+const float NEAR = 0.1;
+const float FAR = 100.0;
 
 // Custom shape variables
 #define var8 u_time
@@ -118,7 +122,7 @@ vec3 getColor(vec2 p, vec2 uv)
 #endif
 
 		// Inside ball mask is set to 0
-		mask = objectDist <= 0 ? -objectDist * 4.0 : mask;
+		mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
 		// mask = objectDist <= 0 ? 1.0 : mask;
 
 #ifdef BLEND_SHAPES
@@ -194,7 +198,7 @@ void main()
 	vec2 uv = v_texCoord;
 #else
 	// World: remap UV to [-1,1] so the origin is centred on screen
-	vec2 uv = (2.0f * v_texCoord) - 1.0f;
+	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	uv *= (1.0 + u_overscan);
 #endif
 

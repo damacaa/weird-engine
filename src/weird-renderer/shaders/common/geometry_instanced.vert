@@ -1,4 +1,8 @@
-#version 330 core
+#version 300 es
+#extension GL_OES_texture_buffer : require
+precision highp float;
+precision highp int;
+precision highp samplerBuffer;
 
 // Vertex attributes
 layout(location = 0) in vec3 in_position;
@@ -29,7 +33,7 @@ void main()
 	mat4 model = mat4(r0, r1, r2, r3);
 
 	// calculates current position
-	v_worldPos = vec3(model * vec4(in_position, 1.0f));
+	v_worldPos = vec3(model * vec4(in_position, 1.0));
 	v_normal = in_normal;
 	v_color = in_color;
 	v_texCoord = mat2(0.0, -1.0, 1.0, 0.0) * in_texCoord;

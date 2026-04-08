@@ -90,23 +90,26 @@ if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
 			}
 
 #ifndef NDEBUG
-			// Enable debug output
-			glEnable(GL_DEBUG_OUTPUT);
+			// Enable debug output via KHR_debug extension if supported
+			if (GLAD_GL_KHR_debug)
+			{
+				glEnable(GL_DEBUG_OUTPUT);
 
-			// Forces the callback to happen on the same thread, immediately during the offending call
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+				// Forces the callback to happen on the same thread, immediately during the offending call
+				glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
-			// Set the callback function
-			glDebugMessageCallback(MessageCallback, 0);
+				// Set the callback function
+				glDebugMessageCallback(MessageCallback, 0);
 
-			GLuint ignoreIDs[] = {
-				131185, // Buffer object successfully created
-				131218, // Material/Shader state info
-				131204	// Texture state info
-			};
+				GLuint ignoreIDs[] = {
+					131185, // Buffer object successfully created
+					131218, // Material/Shader state info
+					131204	// Texture state info
+				};
 
-			// Ignore non-significant error/warning codes
-			glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 3, ignoreIDs, GL_FALSE);
+				// Ignore non-significant error/warning codes
+				glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 3, ignoreIDs, GL_FALSE);
+			}
 #endif
 
 			// Audio Stream Setup

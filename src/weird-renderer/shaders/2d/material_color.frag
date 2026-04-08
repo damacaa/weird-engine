@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 #include "../common/utils.glsl"
 
@@ -17,7 +19,7 @@ uniform mat4 u_camMatrix;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_deltaTime;
-uniform float u_materialBlendSpeed = 60.0;
+uniform float u_materialBlendSpeed;
 
 uniform mat4 u_oldCamMatrix;
 uniform sampler2D t_materialDataTexture;

@@ -1,16 +1,18 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
-out vec3 FragColor;
+out vec4 FragColor;
 
 uniform vec2 u_resolution;
 uniform sampler2D t_colorTexture;
 
 #ifdef DITHERING
 
-uniform float u_spread = 0.05;
-uniform int u_colorCount = 16;
+const float u_spread = 0.05;
+const float u_colorCount = 16.0;
 
-uniform int u_bayer4[4 * 4] = int[4 * 4](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+const int u_bayer4[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
 
 float getBayer4(int x, int y)
 {
@@ -36,5 +38,5 @@ void main()
 
 #endif
 
-	FragColor = col;
+	FragColor = vec4(col, 1.0);
 }

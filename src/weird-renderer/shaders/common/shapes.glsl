@@ -3,14 +3,14 @@
 float fOpUnionSoft(float a, float b, float r)
 {
 	r *= 1.0;
-	float h = max(r - abs(a - b), 0.0f);
+	float h = max(r - abs(a - b), 0.0);
 	return min(a, b) - h * h * 0.25 / r;
 }
 
 float fOpUnionSoft(float a, float b, float r, float invR)
 {
 	r *= 1.0;
-	float h = max(r - abs(a - b), 0.0f);
+	float h = max(r - abs(a - b), 0.0);
 	return min(a, b) - h * h * 0.25 * invR;
 }
 

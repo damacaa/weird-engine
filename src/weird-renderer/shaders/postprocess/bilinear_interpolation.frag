@@ -1,9 +1,11 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 in vec2 v_texCoord;
 
 // Outputs colors in RGBA
-out vec3 FragColor;
+out vec4 FragColor;
 
 uniform vec2 u_resolution;
 uniform vec2 u_textureSize;
@@ -18,10 +20,10 @@ float rand(vec2 co)
 	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-uniform float weights[9] = float[9](
+const float weights[9] = float[9](
 	// 1,2,1,2,4,2,1,2,1
 	// 0.5, 1, 0.5, 1, 10, 1, 0.5, 1, 0.5
-	0, 0, 0, 4, 8, 4, 0, 0, 0);
+	0.0, 0.0, 0.0, 4.0, 8.0, 4.0, 0.0, 0.0, 0.0);
 
 void main()
 {
@@ -67,5 +69,5 @@ void main()
 	// Final color (e.g., white shape on a black background)
 	vec3 col = vec3(alpha);
 
-	FragColor = col;
+	FragColor = vec4(col, 1.0);
 }

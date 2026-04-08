@@ -1,10 +1,12 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 // #define CRT
 in vec2 v_texCoord;
 
 // Outputs colors in RGBA
-out vec3 FragColor;
+out vec4 FragColor;
 
 uniform vec2 u_resolution;
 uniform vec2 u_textureSize;
@@ -96,5 +98,5 @@ void main()
 	// Final color (e.g., white shape on a black background)
 	vec3 col = vec3(alpha);
 
-	FragColor = col;
+	FragColor = vec4(col, 1.0);
 }

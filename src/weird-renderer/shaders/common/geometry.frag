@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 out vec4 FragColor;
 
@@ -17,8 +19,8 @@ uniform vec3 u_lightPos;
 uniform vec3 u_lightDirection;
 uniform vec4 u_lightColor;
 
-float u_near = 0.1f;
-float u_far = 100.0f;
+float u_near = 0.1;
+float u_far = 100.0;
 
 vec4 pointLight()
 {
@@ -35,7 +37,7 @@ vec4 pointLight()
 
 	float ambient = 0.01;
 	float diffuse = max(dot(normal, lightDir), 0.0);
-	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16.0) * 0.5;
 
 	vec4 texColor = texture(u_diffuse0, v_texCoord);
 	float specVal = texture(u_specular0, v_texCoord).r;
@@ -52,7 +54,7 @@ vec4 directionalLight()
 
 	float ambient = 0.0001;
 	float diffuse = max(dot(normal, lightDir), 0.0);
-	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16.0) * 0.5;
 
 	vec4 texColor = texture(u_diffuse0, v_texCoord);
 	float specVal = texture(u_specular0, v_texCoord).r;
@@ -71,7 +73,7 @@ vec4 spotLight()
 	vec3 reflectDir = reflect(-lightDir, normal);
 
 	float diffuse = max(dot(normal, lightDir), 0.0);
-	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16) * 0.5;
+	float specular = pow(max(dot(viewDir, reflectDir), 0.0), 16.0) * 0.5;
 	float angle = dot(vec3(0.0, -1.0, 0.0), -lightDir);
 	float intensity = clamp((angle - outerCone) / (innerCone - outerCone), 0.0, 1.0);
 	float ambient = 0.2;

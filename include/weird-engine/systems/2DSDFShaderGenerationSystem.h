@@ -91,8 +91,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, ivec2(idx, 0), 0);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, ivec2(idx + 1, 0), 0);\n";
 
 			// Get distance function
 			auto fragmentCode = sdfs[shape.distanceFieldId]->print();

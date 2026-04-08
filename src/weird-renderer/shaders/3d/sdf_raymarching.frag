@@ -1,8 +1,7 @@
 #version 300 es
-#extension GL_OES_texture_buffer : require
 precision highp float;
 precision highp int;
-precision highp samplerBuffer;
+precision highp sampler2D;
 
 float fOpUnionSoft(float a, float b, float r)
 {
@@ -60,7 +59,7 @@ in vec2 v_texCoord;
 
 uniform sampler2D t_colorTexture;
 uniform sampler2D t_depthTexture;
-uniform samplerBuffer t_shapeBuffer;
+uniform highp sampler2D t_shapeBuffer;
 uniform int u_loadedObjects;
 
 uniform mat4 u_camMatrix;
@@ -126,7 +125,7 @@ float map(vec3 p)
 
 	for (int i = 0; i < u_loadedObjects; i++)
 	{
-		vec4 positionSize = texelFetch(t_shapeBuffer, i);
+		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		// float objectDist = fSphere(p - data[i].position, data[i].size);
 		float objectDist = fSphere(p - positionSize.xyz, 0.5); // positionSize.w);
 
@@ -164,7 +163,7 @@ vec3 getColor(vec3 p)
 	{
 		int id = i % 2 == 0 ? 1 : 2;
 
-		vec4 positionSize = texelFetch(t_shapeBuffer, i);
+		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		float objectDist = fSphere(p - positionSize.xyz, 0.5);
 
 		// float delta = objectDist / (objectDist + d); // Calculate using old d

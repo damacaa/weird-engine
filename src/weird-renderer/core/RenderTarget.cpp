@@ -1,5 +1,7 @@
 #include "weird-renderer/core/RenderTarget.h"
 
+#include <stdexcept>
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -37,7 +39,7 @@ namespace WeirdEngine
 			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			{
 				std::cerr << "Framebuffer is not complete!" << std::endl;
-				throw;
+				throw std::runtime_error("Framebuffer is not complete!");
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);

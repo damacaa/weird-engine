@@ -84,8 +84,9 @@ namespace WeirdEngine
 				case TextureType::Color:
 				{
 					// Handle color texture
-
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -99,8 +100,9 @@ namespace WeirdEngine
 				case TextureType::ColorAlpha:
 				{
 					// Handle color with alpha texture
-
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGBA8; GL_RGBA (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -128,9 +130,11 @@ namespace WeirdEngine
 				case TextureType::Depth:
 				{
 					// Handle depth texture
+					// In GLES 3.0, GL_DEPTH_COMPONENT24 requires type GL_UNSIGNED_INT (not GL_FLOAT).
+					// Use GL_DEPTH_COMPONENT32F + GL_FLOAT if a float depth buffer is needed.
 					glTexImage2D(GL_TEXTURE_2D, 0,
 								 GL_DEPTH_COMPONENT24, // 24-bit depth
-								 width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
 
 					// Set texture parameters
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -168,7 +172,9 @@ namespace WeirdEngine
 				}
 				case TextureType::RetroColor:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

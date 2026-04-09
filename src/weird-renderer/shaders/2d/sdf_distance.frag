@@ -152,7 +152,7 @@ vec3 getColor(vec2 p, vec2 uv)
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
 
-	return vec3(minDist, float(max(finalMaterialId, 0)), mask);
+	return vec3(minDist, max(float(finalMaterialId), 0.0), mask);
 }
 
 // Bilinear

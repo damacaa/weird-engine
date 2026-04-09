@@ -2,7 +2,9 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/systems/SDFRenderSystem2D.h"
+#include <iomanip>
 #include <memory>
+#include <regex>
 
 namespace WeirdEngine::SDFShaderGenerationSystem2D
 {
@@ -21,6 +23,15 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 		}
 
 		ctx.m_shapesNeedUpdate = false;
+
+		auto toGlslFloat = [](float value) {
+			std::ostringstream ss;
+			ss << std::fixed << std::setprecision(6) << value;
+			return ss.str();
+		};
+
+		// ECMAScript std::regex does not support lookbehind assertions.
+		static const std::regex integerLiteralRegex(R"((^|[^A-Za-z0-9_.])(\d+)([^A-Za-z0-9_.]|$))");
 
 		std::ostringstream oss;
 
@@ -67,7 +78,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				if (currentGroup != -1)
 				{
 					oss << "if(" << groupDistanceVariable
-						<< " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
+						<< " <= max(minDist, 0.0)){ finalMaterialId = currentGroupColor;}\n";
 					// oss << "{ finalMaterialId = currentGroupColor;}\n";
 					oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable
 						<< ";}\n";
@@ -78,7 +89,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				groupDistanceVariable = "d" + std::to_string(currentGroup);
 
 				// Initialize distance with big value
-				oss << "float " << groupDistanceVariable << "= 10000;\n";
+				oss << "float " << groupDistanceVariable << "= 10000.0;\n";
 			}
 
 			if (group == CustomShape::GLOBAL_GROUP - 1)
@@ -91,11 +102,12 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, ivec2(idx, 0), 0);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, ivec2(idx + 1, 0), 0);\n";
 
 			// Get distance function
 			auto fragmentCode = sdfs[shape.distanceFieldId]->print();
+			fragmentCode = std::regex_replace(fragmentCode, integerLiteralRegex, "$1$2.0$3");
 
 			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
@@ -132,7 +144,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << shape.smoothFactor
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << toGlslFloat(shape.smoothFactor)
 						<< ");\n";
 					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
 						<< ": currentGroupColor;" << std::endl;
@@ -141,7 +153,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				case CombinationType::SmoothSubtraction:
 				{
 					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << shape.smoothFactor << ");\n";
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << toGlslFloat(shape.smoothFactor)
+						<< ");\n";
 					// Material belongs to the *a* shape if it still �wins� after subtraction
 					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
 					//	<< shape.m_material << " : finalMaterialId;" << std::endl;

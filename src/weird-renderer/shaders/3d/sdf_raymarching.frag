@@ -1,12 +1,11 @@
-#version 330 core
-#extension GL_ARB_conservative_depth : enable
-#extension GL_EXT_conservative_depth : enable
-
-layout(depth_less) out float gl_FragDepth;
+#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
 
 float fOpUnionSoft(float a, float b, float r)
 {
-	float e = max(r - abs(a - b), 0);
+	float e = max(r - abs(a - b), 0.0);
 	return min(a, b) - e * e * 0.25 / r;
 }
 
@@ -38,7 +37,7 @@ float vmax(vec3 v)
 float fBox(vec3 p, vec3 b)
 {
 	vec3 d = abs(p) - b;
-	return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
+	return length(max(d, vec3(0.0))) + vmax(min(d, vec3(0.0)));
 }
 
 float fPlane(vec3 p, vec3 n, float distanceFromOrigin)
@@ -60,11 +59,11 @@ in vec2 v_texCoord;
 
 uniform sampler2D t_colorTexture;
 uniform sampler2D t_depthTexture;
-uniform samplerBuffer t_shapeBuffer;
+uniform highp sampler2D t_shapeBuffer;
 uniform int u_loadedObjects;
 
 uniform mat4 u_camMatrix;
-uniform float u_fov = 2.5;
+uniform float u_fov;
 uniform vec2 u_resolution;
 
 uniform vec3 u_lightPos;
@@ -126,7 +125,7 @@ float map(vec3 p)
 
 	for (int i = 0; i < u_loadedObjects; i++)
 	{
-		vec4 positionSize = texelFetch(t_shapeBuffer, i);
+		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		// float objectDist = fSphere(p - data[i].position, data[i].size);
 		float objectDist = fSphere(p - positionSize.xyz, 0.5); // positionSize.w);
 
@@ -136,7 +135,7 @@ float map(vec3 p)
 	// float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
 	//  float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
 	float planeDist =
-		fPlane(p, vec3(0, 1, 0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
+		fPlane(p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
 
 	res = min(res, planeDist);
 
@@ -164,17 +163,17 @@ vec3 getColor(vec3 p)
 	{
 		int id = i % 2 == 0 ? 1 : 2;
 
-		vec4 positionSize = texelFetch(t_shapeBuffer, i);
+		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		float objectDist = fSphere(p - positionSize.xyz, 0.5);
 
 		// float delta = objectDist / (objectDist + d); // Calculate using old d
 		d = fOpUnionSoft(objectDist, d, k);
-		float delta = 1 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
+		float delta = 1.0 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
 
 		col = mix(getMaterial(p, id), col, delta);
 	}
 
-	float planeDist = fPlane(p, vec3(0, 1, 0), 0.0);
+	float planeDist = fPlane(p, vec3(0.0, 1.0, 0.0), 0.0);
 
 	d = min(d, planeDist);
 	col = d >= planeDist ? getMaterial(p, 0) : col;
@@ -266,7 +265,7 @@ vec4 render(in vec2 uv)
 	ro = vec3(dot(u_camMatrix[0].xyz, ro), dot(u_camMatrix[1].xyz, ro), dot(u_camMatrix[2].xyz, ro));
 
 	// Ray direction
-	vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0) * u_camMatrix).xyz;
+	vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0.0) * u_camMatrix).xyz;
 
 	// Fish eye
 	// float z = pow(1.0 - (uv.x * uv.x) - (uv.y * uv.y), 0.5);

@@ -24,67 +24,59 @@ extern "C"
 #include "weird-renderer/audio/AudioEngine.h"
 #include "weird-renderer/audio/AudioSettings.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 namespace WeirdEngine
 {
 
 	using namespace WeirdRenderer;
-	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
-			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
+
+	namespace Detail
 	{
-		for (int i = 1; i < argc; ++i)
+		inline SDL_Window* gWindowHandle = nullptr;
+
+		struct RuntimeContext
 		{
-			const std::string_view arg(argv[i]);
-			if (arg == "--fullscreen" || arg == "-f")
-			{
-				displaySettings.fullscreen = true;
-			}
-		}
+			SceneManager& sceneManager;
+			Renderer& renderer;
+			AudioEngine& audioEngine;
 
-		sceneManager.setPhysicsSettings(physicsSettings);
+			double time = 0.0;
+			double prevTime = 0.0;
+			double delta = 0.0;
+			double timeDiff = 0.0;
+			unsigned int frameCounter = 0;
+			bool quit = false;
+		};
 
-		SDL_Window* window;
-		AudioEngine& audioEngine = AudioEngine::getInstance();
-		audioEngine.init(audioSettings);
-
-		SDLInitializer m_sdlInitializer(displaySettings, window, audioEngine);
-		Renderer renderer(displaySettings, window);
-
-		// Scenes
-		sceneManager.loadScene(0);
-
-		// Time
-		double time = static_cast<double>(SDL_GetTicks()) / 1000.0;
-		double prevTime = time;
-		double delta = 0;
-		double timeDiff = 0;
-		unsigned int frameCounter = 0;
-
-		bool quit = false;
-		while (!quit)
+		inline void runFrame(RuntimeContext& ctx)
 		{
 			// Measure time
-			time = static_cast<double>(SDL_GetTicks()) / 1000.0;
-			delta = time - prevTime;
-			timeDiff += delta;
-			prevTime = time;
-			frameCounter++;
+			ctx.time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+			ctx.delta = ctx.time - ctx.prevTime;
+			ctx.timeDiff += ctx.delta;
+			ctx.prevTime = ctx.time;
+			ctx.frameCounter++;
 
 #ifndef NDEBUG
-			if (timeDiff >= 1.0)
+			if (ctx.timeDiff >= 1.0)
 			{
 				// Creates new title
-				std::string FPS = std::to_string(frameCounter / timeDiff);
-				std::string ms = std::to_string((timeDiff / frameCounter) * 1000);
+				std::string FPS = std::to_string(ctx.frameCounter / ctx.timeDiff);
+				std::string ms = std::to_string((ctx.timeDiff / ctx.frameCounter) * 1000);
 				std::string newTitle = FPS + "FPS / " + ms + "ms";
-				renderer.setWindowTitle(newTitle.c_str());
+				ctx.renderer.setWindowTitle(newTitle.c_str());
 
 				// Resets times and frameCounter
-				timeDiff = 0;
-				frameCounter = 0;
+				ctx.timeDiff = 0;
+				ctx.frameCounter = 0;
 			}
 #endif
+
 			// Capture window input
-			Input::update(renderer.getWindow());
+			Input::update(ctx.renderer.getWindow());
 
 			if (Input::GetKeyDown(Input::T))
 			{
@@ -100,7 +92,7 @@ namespace WeirdEngine
 			{
 				if (event.type == SDL_EVENT_QUIT)
 				{
-					quit = true;
+					ctx.quit = true;
 				}
 				else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
 				{
@@ -109,7 +101,7 @@ namespace WeirdEngine
 
 					std::cout << "Window resized to: " << newWidth << "x" << newHeight << std::endl;
 
-					renderer.setWindowSize(newWidth, newHeight);
+					ctx.renderer.setWindowSize(newWidth, newHeight);
 					newResolution = true;
 				}
 				else
@@ -118,22 +110,22 @@ namespace WeirdEngine
 				}
 			}
 
-			auto scene = sceneManager.getCurrentScene();
+			auto scene = ctx.sceneManager.getCurrentScene();
 
 			// Update scene logic and physics
-			scene->update(delta, time);
+			scene->update(ctx.delta, ctx.time);
 
 			// Audio
 			{
 				PROFILE_SCOPE("Audio Update");
-				audioEngine.listen(*scene);
+				ctx.audioEngine.listen(*scene);
 			}
 
 			// Render scene
 			if (newResolution)
 				scene->forceShaderRefresh();
 
-			renderer.render(*scene, time, delta);
+			ctx.renderer.render(*scene, ctx.time, ctx.delta);
 
 			// Load next scene if requested
 			if (scene->isSceneComplete())
@@ -141,16 +133,77 @@ namespace WeirdEngine
 				const auto& nextScene = scene->getNextScene();
 				if (!nextScene.empty())
 				{
-					sceneManager.loadScene(nextScene);
+					ctx.sceneManager.loadScene(nextScene);
 				}
 				else
 				{
-					sceneManager.loadNextScene();
+					ctx.sceneManager.loadNextScene();
 				}
 			}
 		}
 
+#ifdef __EMSCRIPTEN__
+		inline RuntimeContext* gRuntimeContext = nullptr;
+
+		inline void runFrameEmscripten()
+		{
+			if (gRuntimeContext == nullptr)
+			{
+				return;
+			}
+
+			runFrame(*gRuntimeContext);
+
+			if (gRuntimeContext->quit)
+			{
+				std::cout << "Quitting..." << std::endl;
+				delete gRuntimeContext;
+				gRuntimeContext = nullptr;
+				emscripten_cancel_main_loop();
+			}
+		}
+#endif
+	} // namespace Detail
+
+	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
+			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
+	{
+		for (int i = 1; i < argc; ++i)
+		{
+			const std::string_view arg(argv[i]);
+			if (arg == "--fullscreen" || arg == "-f")
+			{
+				displaySettings.fullscreen = true;
+			}
+		}
+
+		sceneManager.setPhysicsSettings(physicsSettings);
+
+		AudioEngine& audioEngine = AudioEngine::getInstance();
+		audioEngine.init(audioSettings);
+
+		SDLInitializer m_sdlInitializer(displaySettings, Detail::gWindowHandle, audioEngine);
+		Renderer renderer(displaySettings, Detail::gWindowHandle);
+
+		// Scenes
+		sceneManager.loadScene(0);
+
+		// Time
+		Detail::RuntimeContext runtimeContext{sceneManager, renderer, audioEngine};
+		runtimeContext.time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+		runtimeContext.prevTime = runtimeContext.time;
+
+#ifdef __EMSCRIPTEN__
+		Detail::gRuntimeContext = new Detail::RuntimeContext(runtimeContext);
+		emscripten_set_main_loop(Detail::runFrameEmscripten, 0, 1);
+#else
+		while (!runtimeContext.quit)
+		{
+			Detail::runFrame(runtimeContext);
+		}
+
 		std::cout << "Quitting..." << std::endl;
+#endif
 		// audioEngine.close();
 	}
 } // namespace WeirdEngine

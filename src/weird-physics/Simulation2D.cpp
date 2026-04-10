@@ -419,10 +419,17 @@ namespace WeirdEngine
 		std::vector<GroupState> groups;
 		groups.reserve(16);
 
+		std::vector<int> globalShapes;
+
 		for (int i = 0; i < m_objects.size(); i++)
 		{
+			DistanceFieldObject2D& obj = m_objects[i];	
+			if(obj.groupId == CustomShape::GLOBAL_GROUP)
+			{
+				globalShapes.push_back(i);
+				continue;
+			}
 
-			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
@@ -437,30 +444,25 @@ namespace WeirdEngine
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			bool globalEffect = obj.groupId == CustomShape::GLOBAL_GROUP;
-
 			float currentMinDistance = d;
 			GroupState* groupState = nullptr;
 
-			if (!globalEffect)
+			for (auto& group : groups)
 			{
-				for (auto& group : groups)
+				if (group.id == obj.groupId)
 				{
-					if (group.id == obj.groupId)
-					{
-						groupState = &group;
-						break;
-					}
+					groupState = &group;
+					break;
 				}
-
-				if (groupState == nullptr)
-				{
-					groups.push_back({obj.groupId, 100000.0f});
-					groupState = &groups.back();
-				}
-
-				currentMinDistance = groupState->minDistance;
 			}
+
+			if (groupState == nullptr)
+			{
+				groups.push_back({obj.groupId, 100000.0f});
+				groupState = &groups.back();
+			}
+
+			currentMinDistance = groupState->minDistance;
 
 			// Combination
 			switch (obj.combinationId)
@@ -500,19 +502,75 @@ namespace WeirdEngine
 				closestShape = i;
 			}
 
-			if (globalEffect)
-			{
-				d = currentMinDistance;
-			}
-			else
-			{
-				groupState->minDistance = currentMinDistance;
-			}
+			groupState->minDistance = currentMinDistance;
 		}
+
 
 		for (const auto& group : groups)
 		{
 			d = std::min(d, group.minDistance);
+		}
+
+		// Apply global shapes as well, but without grouping (they affect everything)
+		for (int shapeIdx : globalShapes)
+		{
+			DistanceFieldObject2D& obj = m_objects[shapeIdx];	
+
+			if (obj.distanceFieldId >= m_sdfs->size())
+			{
+				continue;
+			}
+
+			obj.parameters[8] = m_simulationTime;
+			obj.parameters[9] = p.x;
+			obj.parameters[10] = p.y;
+
+			// Distance
+			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
+
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
+
+			float currentMinDistance = d;
+
+			// Combination
+			switch (obj.combinationId)
+			{
+				case CombinationType::Addition:
+				{
+					currentMinDistance = std::min(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::Subtraction:
+				{
+					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					currentMinDistance = std::max(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				case CombinationType::SmoothSubtraction:
+				{
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				default:
+					break;
+			}
+
+			if (currentMinDistance < minD)
+			{
+				minD = currentMinDistance;
+				closestShape = shapeIdx;
+			}
+
+			d = currentMinDistance;
 		}
 
 		return d - 0.05f;

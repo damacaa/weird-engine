@@ -408,9 +408,16 @@ namespace WeirdEngine
 
 		float d = 1000.0f;
 		float minD = d;
-		float currentGroupMinDistance = 1000.0f;
 
-		auto currentGroup = 0;
+		struct GroupState
+		{
+			uint16_t id;
+			float minDistance;
+		};
+
+		// We typically have very few groups; linear lookup avoids hash overhead.
+		std::vector<GroupState> groups;
+		groups.reserve(16);
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
@@ -425,13 +432,6 @@ namespace WeirdEngine
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
-			if (obj.groupId != currentGroup)
-			{
-				currentGroup = obj.groupId;
-				d = std::min(d, currentGroupMinDistance);
-				currentGroupMinDistance = 100000.0f;
-			}
-
 			// Distance
 			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
@@ -439,7 +439,28 @@ namespace WeirdEngine
 
 			bool globalEffect = obj.groupId == CustomShape::GLOBAL_GROUP;
 
-			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
+			float currentMinDistance = d;
+			GroupState* groupState = nullptr;
+
+			if (!globalEffect)
+			{
+				for (auto& group : groups)
+				{
+					if (group.id == obj.groupId)
+					{
+						groupState = &group;
+						break;
+					}
+				}
+
+				if (groupState == nullptr)
+				{
+					groups.push_back({obj.groupId, 100000.0f});
+					groupState = &groups.back();
+				}
+
+				currentMinDistance = groupState->minDistance;
+			}
 
 			// Combination
 			switch (obj.combinationId)
@@ -485,11 +506,14 @@ namespace WeirdEngine
 			}
 			else
 			{
-				currentGroupMinDistance = currentMinDistance;
+				groupState->minDistance = currentMinDistance;
 			}
 		}
 
-		d = std::min(d, currentGroupMinDistance);
+		for (const auto& group : groups)
+		{
+			d = std::min(d, group.minDistance);
+		}
 
 		return d - 0.05f;
 	}

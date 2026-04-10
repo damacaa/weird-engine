@@ -31,7 +31,9 @@ namespace WeirdEngine
 		{
 			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
 			{
-				throw std::runtime_error("SDL could not initialize!");
+				std::string errorMsg = "SDL could not initialize! SDL_Error: ";
+				errorMsg += SDL_GetError();
+				throw std::runtime_error(errorMsg);
 			}
 
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);

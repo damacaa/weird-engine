@@ -111,7 +111,68 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 
 			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
+			// GLES workaround: some drivers don't propagate default float precision
+			// to array types (e.g. vec2[9]), causing compilation errors on mobile WebGL.
+			// Extract inline array constructors into local variables with explicit precision.
+			std::string arrayPreamble;
+			{
+				const std::string arrayPattern = "vec2[](";
+				size_t arrayPos = fragmentCode.find(arrayPattern);
+				if (arrayPos != std::string::npos)
+				{
+					// Find matching closing paren for the constructor
+					size_t parenStart = arrayPos + arrayPattern.length() - 1;
+					int depth = 0;
+					size_t end = parenStart;
+					for (; end < fragmentCode.size(); end++)
+					{
+						if (fragmentCode[end] == '(')
+							depth++;
+						else if (fragmentCode[end] == ')')
+						{
+							depth--;
+							if (depth == 0)
+							{
+								end++;
+								break;
+							}
+						}
+					}
+
+					// Parse individual vec2 elements from the constructor
+					std::vector<std::string> elements;
+					size_t elemStart = parenStart + 1;
+					int elemDepth = 0;
+					for (size_t k = elemStart; k < end - 1; k++)
+					{
+						if (fragmentCode[k] == '(')
+							elemDepth++;
+						else if (fragmentCode[k] == ')')
+							elemDepth--;
+						else if (fragmentCode[k] == ',' && elemDepth == 0)
+						{
+							elements.push_back(fragmentCode.substr(elemStart, k - elemStart));
+							elemStart = k + 1;
+						}
+					}
+					elements.push_back(fragmentCode.substr(elemStart, end - 1 - elemStart));
+
+					// Replace inline constructor with variable reference
+					fragmentCode.replace(arrayPos, end - arrayPos, "_sdfPoly");
+
+					// Emit element-by-element initialization (avoids array constructor syntax)
+					arrayPreamble =
+						"highp vec2 _sdfPoly[" + std::to_string(elements.size()) + "];\n";
+					for (size_t k = 0; k < elements.size(); k++)
+					{
+						arrayPreamble +=
+							"_sdfPoly[" + std::to_string(k) + "] = " + elements[k] + ";\n";
+					}
+				}
+			}
+
 			// Shape distance calculation
+			oss << arrayPreamble;
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
 			// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
@@ -184,7 +245,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 		// std::cout << replacement << std::endl;
 
 #ifndef NDEBUG
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
+		if (true)
 		{
 			std::cout << replacement << std::endl;
 

@@ -1072,6 +1072,13 @@ namespace WeirdEngine
 
 	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
 	{
+		int closestShape;
+
+		return raymarch(pos, direction, FAR, closestShape);
+	}
+
+	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR, int& closestShape)
+	{
 		float d;
 		float traveled = 0.0;
 
@@ -1079,7 +1086,7 @@ namespace WeirdEngine
 		{
 			vec2 p = pos + (traveled * direction);
 
-			d = map(p);
+			d = map(p, closestShape);
 
 			if (d <= -EPSILON)
 				break;

@@ -130,12 +130,6 @@ if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
 
 			SDL_AudioDeviceID deviceID = SDL_GetAudioStreamDevice(m_audioStream);
 			SDL_ResumeAudioDevice(deviceID);
-
-			SDL_Event event;
-			while (SDL_PollEvent(&event))
-			{
-				// Ignore events
-			}
 		}
 
 		SDLInitializer::~SDLInitializer()

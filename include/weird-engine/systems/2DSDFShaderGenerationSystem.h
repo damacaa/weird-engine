@@ -245,7 +245,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 		// std::cout << replacement << std::endl;
 
 #ifndef NDEBUG
-		if (true)
+		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
 		{
 			std::cout << replacement << std::endl;
 

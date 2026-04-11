@@ -408,14 +408,28 @@ namespace WeirdEngine
 
 		float d = 1000.0f;
 		float minD = d;
-		float currentGroupMinDistance = 1000.0f;
 
-		auto currentGroup = 0;
+		struct GroupState
+		{
+			uint16_t id;
+			float minDistance;
+		};
+
+		// We typically have very few groups; linear lookup avoids hash overhead.
+		std::vector<GroupState> groups;
+		groups.reserve(16);
+
+		std::vector<int> globalShapes;
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
+			DistanceFieldObject2D& obj = m_objects[i];	
+			if(obj.groupId == CustomShape::GLOBAL_GROUP)
+			{
+				globalShapes.push_back(i);
+				continue;
+			}
 
-			DistanceFieldObject2D& obj = m_objects[i];
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
@@ -425,21 +439,30 @@ namespace WeirdEngine
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
-			if (obj.groupId != currentGroup)
-			{
-				currentGroup = obj.groupId;
-				d = std::min(d, currentGroupMinDistance);
-				currentGroupMinDistance = 100000.0f;
-			}
-
 			// Distance
 			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
 			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
 
-			bool globalEffect = obj.groupId == CustomShape::GLOBAL_GROUP;
+			float currentMinDistance = d;
+			GroupState* groupState = nullptr;
 
-			float currentMinDistance = globalEffect ? d : currentGroupMinDistance;
+			for (auto& group : groups)
+			{
+				if (group.id == obj.groupId)
+				{
+					groupState = &group;
+					break;
+				}
+			}
+
+			if (groupState == nullptr)
+			{
+				groups.push_back({obj.groupId, 100000.0f});
+				groupState = &groups.back();
+			}
+
+			currentMinDistance = groupState->minDistance;
 
 			// Combination
 			switch (obj.combinationId)
@@ -479,17 +502,76 @@ namespace WeirdEngine
 				closestShape = i;
 			}
 
-			if (globalEffect)
-			{
-				d = currentMinDistance;
-			}
-			else
-			{
-				currentGroupMinDistance = currentMinDistance;
-			}
+			groupState->minDistance = currentMinDistance;
 		}
 
-		d = std::min(d, currentGroupMinDistance);
+
+		for (const auto& group : groups)
+		{
+			d = std::min(d, group.minDistance);
+		}
+
+		// Apply global shapes as well, but without grouping (they affect everything)
+		for (int shapeIdx : globalShapes)
+		{
+			DistanceFieldObject2D& obj = m_objects[shapeIdx];	
+
+			if (obj.distanceFieldId >= m_sdfs->size())
+			{
+				continue;
+			}
+
+			obj.parameters[8] = m_simulationTime;
+			obj.parameters[9] = p.x;
+			obj.parameters[10] = p.y;
+
+			// Distance
+			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
+
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
+
+			float currentMinDistance = d;
+
+			// Combination
+			switch (obj.combinationId)
+			{
+				case CombinationType::Addition:
+				{
+					currentMinDistance = std::min(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::Subtraction:
+				{
+					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				}
+				case CombinationType::Intersection:
+				{
+					currentMinDistance = std::max(currentMinDistance, dist);
+					break;
+				}
+				case CombinationType::SmoothAddition:
+				{
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				case CombinationType::SmoothSubtraction:
+				{
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
+					break;
+				}
+				default:
+					break;
+			}
+
+			if (currentMinDistance < minD)
+			{
+				minD = currentMinDistance;
+				closestShape = shapeIdx;
+			}
+
+			d = currentMinDistance;
+		}
 
 		return d - 0.05f;
 	}

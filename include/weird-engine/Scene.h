@@ -35,7 +35,7 @@ namespace WeirdEngine
 		using TagMap = std::unordered_map<std::string, Entity>;
 
 		Scene(const PhysicsSettings& settings);
-		~Scene();
+		virtual ~Scene();
 		void start();
 
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,

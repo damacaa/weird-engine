@@ -220,6 +220,7 @@ namespace WeirdEngine
 #if defined(GL_ES_VERSION_2_0)
 			(void)fileName;
 			// OpenGL ES does not support glGetTexImage. Texture save-to-disk is disabled for GLES builds.
+			std::cout << "Texture saving is not supported on OpenGL ES platforms." << std::endl;
 			return;
 #else
 			glBindTexture(GL_TEXTURE_2D, ID);

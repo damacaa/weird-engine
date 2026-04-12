@@ -348,7 +348,7 @@ namespace WeirdEngine
 
 			m_jumpFloodInitShader.setUniform("u_texelSize",
 											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
-			m_distanceCorrectionShader.setUniform("t_distanceTexture", 0);
+			m_jumpFloodInitShader.setUniform("t_distanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_jumpFloodInitShader);

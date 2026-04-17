@@ -1100,8 +1100,8 @@ private:
 				  << (allConstraints.size() - prevConstraintCount) << " links from " << path << "\n";
 	}
 
-	void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) override
+	void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.friction *= 100.0f;
+		event.raw.friction *= 100.0f;
 	}
 };

@@ -113,7 +113,6 @@ namespace WeirdEngine
 		virtual void onPhysicsStep() {};
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
 		virtual void onEntityCollision(WeirdEngine::EntityCollisionEvent& event) {};
-		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
 		virtual void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 

@@ -38,6 +38,7 @@ private:
 		Drag,
 		Spring,
 		Distance,
+		Remove,
 		TagEditor,
 		Material
 	};
@@ -86,7 +87,7 @@ private:
 	int m_selectedMaterial = 1;
 
 	ToolMode m_toolMode = ToolMode::Drag;
-	std::array<Entity, 5> m_toolToggles{};
+	std::array<Entity, 6> m_toolToggles{};
 	Entity m_gravityToggleEntity = static_cast<Entity>(-1);
 	Entity m_gridToggleEntity = static_cast<Entity>(-1);
 
@@ -353,8 +354,8 @@ private:
 
 	void buildToolbar()
 	{
-		const char* labels[] = {"drag", "spring", "distance", "tag", "material"};
-		for (int i = 0; i < 5; i++)
+		const char* labels[] = {"drag", "spring", "distance", "remove", "tag", "material"};
+		for (int i = 0; i < 6; i++)
 		{
 			float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
 			float p[8]{TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF};
@@ -401,7 +402,7 @@ private:
 	void syncToolbar()
 	{
 		int activated = -1;
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 6; i++)
 		{
 			auto& t = m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]);
 			if (t.active && t.state == ButtonState::Down)
@@ -413,7 +414,7 @@ private:
 		if (activated >= 0)
 		{
 			m_toolMode = static_cast<ToolMode>(activated);
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < 6; i++)
 			{
 				if (i != activated)
 					m_ecs.getComponent<ShapeToggle>(m_toolToggles[i]).active = false;
@@ -535,7 +536,7 @@ private:
 
 		if (rightDown && !m_rightWasDown)
 		{
-			if (m_toolMode == ToolMode::Spring || m_toolMode == ToolMode::Distance)
+			if (m_toolMode == ToolMode::Spring || m_toolMode == ToolMode::Distance || m_toolMode == ToolMode::Remove)
 				onConstraintStart();
 			else if (m_toolMode == ToolMode::TagEditor)
 				onTagEditorRightClick();
@@ -653,8 +654,15 @@ private:
 		Entity hit = pickBallAtMouse();
 		if (hit != static_cast<Entity>(-1) && hit != m_constraintStartBall)
 		{
-			LinkType type = (m_toolMode == ToolMode::Distance) ? LinkType::Distance : LinkType::Spring;
-			addConstraintLink(m_constraintStartBall, hit, type);
+			if (m_toolMode == ToolMode::Remove)
+			{
+				removeConstraintLink(m_constraintStartBall, hit);
+			}
+			else
+			{
+				LinkType type = (m_toolMode == ToolMode::Distance) ? LinkType::Distance : LinkType::Spring;
+				addConstraintLink(m_constraintStartBall, hit, type);
+			}
 		}
 
 		m_constraintStartBall = static_cast<Entity>(-1);
@@ -736,6 +744,34 @@ private:
 		blacklistEntity(line);
 
 		m_links.push_back({a, b, idA, idB, restDistance, line, type});
+	}
+
+	void removeConstraintLink(Entity a, Entity b)
+	{
+		for (size_t i = 0; i < m_links.size();)
+		{
+			DistanceLink& link = m_links[i];
+			bool sameDir = (link.a == a && link.b == b);
+			bool reverseDir = (link.a == b && link.b == a);
+			if (!sameDir && !reverseDir)
+			{
+				++i;
+				continue;
+			}
+
+			if (m_draggedLink == &link)
+				m_draggedLink = nullptr;
+
+			m_ecs.destroyEntity(link.lineEntity);
+			m_links.erase(m_links.begin() + i);
+		}
+
+		int idA = getSimulationId(a);
+		int idB = getSimulationId(b);
+		if (idA < 0 || idB < 0)
+			return;
+
+		m_simulation2D.removeDistanceConstraint(static_cast<SimulationID>(idA), static_cast<SimulationID>(idB));
 	}
 
 	void handleConstraintLineClicks()

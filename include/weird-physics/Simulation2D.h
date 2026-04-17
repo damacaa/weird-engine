@@ -97,6 +97,7 @@ namespace WeirdEngine
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
 		bool setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance);
+		bool removeDistanceConstraint(SimulationID a, SimulationID b);
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);

@@ -168,6 +168,8 @@ namespace WeirdEngine
 	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
 			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
 	{
+		std::cout << "Starting Weird Engine..." << std::endl;
+
 		for (int i = 1; i < argc; ++i)
 		{
 			const std::string_view arg(argv[i]);

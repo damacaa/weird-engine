@@ -143,7 +143,14 @@ namespace WeirdEngine
 				++steps;
 				{
 					// m_simulationTime += m_fixedDeltaTime;
-					m_simulationTime.fetch_add(m_fixedDeltaTime);
+					// m_simulationTime.fetch_add(m_fixedDeltaTime);
+					double current = m_simulationTime.load();
+					while (!m_simulationTime.compare_exchange_weak(current, current + m_fixedDeltaTime))
+					{
+						// If another thread modifies m_simulationTime before we do,
+						// compare_exchange_weak fails, updates 'current' to the new value,
+						// and the loop tries again.
+					}
 
 					// Notify collision callback
 					if (m_stepCallback)

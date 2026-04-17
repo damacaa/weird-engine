@@ -170,8 +170,6 @@ namespace WeirdEngine
 	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onShapeCollision(event);
-
 		EntityShapeCollisionEvent entityEvent{event, self->getEntityForSimulationId(event.body)};
 		self->onEntityShapeCollision(entityEvent);
 

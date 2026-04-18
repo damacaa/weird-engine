@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 // Outputs colors in RGBA
 out vec4 FragColor;
@@ -9,13 +11,13 @@ uniform sampler2D t_scene;
 uniform sampler2D t_lines;
 
 const int NUM_STOPS = 4;
-uniform vec3 colors[4] = vec3[](vec3(0.82, 0.74, 0.88), // Muted lavender
-								vec3(0.78, 0.94, 0.76), // Pale pistachio
-								vec3(0.98, 0.85, 0.72), // Dusty pastel orange
-								vec3(0.68, 0.96, 0.95)	// Soft cyan mist
+const vec3 colors[NUM_STOPS] = vec3[](vec3(0.82, 0.74, 0.88), // Muted lavender
+								  vec3(0.78, 0.94, 0.76), // Pale pistachio
+								  vec3(0.98, 0.85, 0.72), // Dusty pastel orange
+								  vec3(0.68, 0.96, 0.95)	// Soft cyan mist
 );
 
-uniform float stops[NUM_STOPS] = float[](0.0, 0.33, 0.66, 1.0);
+const float stops[NUM_STOPS] = float[](0.0, 0.33, 0.66, 1.0);
 
 vec3 getGradientColor(float t)
 {

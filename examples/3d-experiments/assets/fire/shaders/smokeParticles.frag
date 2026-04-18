@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 out vec4 FragColor;
 
@@ -10,7 +12,7 @@ in vec2 v_texCoord;
 in float v_delta;
 
 uniform float u_time;
-uniform vec3 u_smokeColor = vec3(0.12);
+const vec3 u_smokeColor = vec3(0.12);
 
 void main()
 {

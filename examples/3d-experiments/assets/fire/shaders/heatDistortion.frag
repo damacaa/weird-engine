@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 out vec4 FragColor;
 
@@ -12,7 +14,7 @@ uniform sampler2D t_texture;
 uniform sampler2D t_noise;
 uniform sampler2D t_flameShape;
 
-uniform float u_time = 0.1f;
+uniform float u_time;
 uniform vec2 u_resolution;
 
 // Fog calculations used to modulate distortion with distance
@@ -40,13 +42,13 @@ void main()
 	float depthMask = max(1.0 - (linearDepth(gl_FragCoord.z, 0.1, 100.0) * 1.5), 0.0);
 
 	// Reduce strength when the flame is looking up
-	float dotWorldY = 1.0f - abs(dot(normalize(v_normal), vec3(0, 1, 0)));
+	float dotWorldY = 1.0f - abs(dot(normalize(v_normal), vec3(0.0, 1.0, 0.0)));
 
 	// Combine all masks
 	float mask = bottomFade * depthMask * dotWorldY;
 
 	// Calculate scene texture uv offset
-	vec2 offset = vec2(0, mask * 0.1f * ((texture(t_noise, (2.0f * uv) - (1.0f * u_time)).x) - 0.5));
+	vec2 offset = vec2(0.0, mask * 0.1f * ((texture(t_noise, (2.0f * uv) - (1.0f * u_time)).x) - 0.5));
 
 	FragColor = texture(t_texture, screenUV + offset);
 	// FragColor = vec4(vec3(mask), 1.0); // Debug mask

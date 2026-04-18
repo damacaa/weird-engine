@@ -1,4 +1,4 @@
-#version 330 core
+#version 300 es
 
 // Vertex attributes
 layout(location = 0) in vec3 in_position;
@@ -27,16 +27,18 @@ float plateauFunction(float x, float maxValue, float growthRate)
 
 void main()
 {
-	// Animation delta
-	float delta = fract((10.0 * gl_InstanceID * 3.14) + (1.1 * u_time));
+	float instanceId = float(gl_InstanceID);
 
-	float maxHeight = 1.5 + (fract(gl_InstanceID * 123.45678) - 0.5); // Constant + random offset
+	// Animation delta
+	float delta = fract((10.0 * instanceId * 3.14) + (1.1 * u_time));
+
+	float maxHeight = 1.5 + (fract(instanceId * 123.45678) - 0.5); // Constant + random offset
 	float y = plateauFunction(2.0 * delta, maxHeight, 0.8);
 
-	float distanceToCenterXZ = 0.1 + (0.3 * smoothstep(0, 1, sqrt(1.5 * delta))); // TODO: find an alternative to sqrt
+	float distanceToCenterXZ = 0.1 + (0.3 * smoothstep(0.0, 1.0, sqrt(1.5 * delta))); // TODO: find an alternative to sqrt
 
 	vec3 offset =
-		vec3(distanceToCenterXZ * sin(u_time + gl_InstanceID), y, distanceToCenterXZ * cos(u_time + gl_InstanceID));
+		vec3(distanceToCenterXZ * sin(u_time + instanceId), y, distanceToCenterXZ * cos(u_time + instanceId));
 
 	v_worldPos = vec3(u_model * vec4(2.0 * (1.0 - delta * delta) * in_position, 1.0)) + offset;
 	v_normal = u_normalMatrix * in_normal;

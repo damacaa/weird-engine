@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 // Outputs colors in RGBA
 out vec4 FragColor;

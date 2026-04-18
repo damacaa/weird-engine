@@ -1,4 +1,4 @@
-#version 330 core
+#version 300 es
 
 // Vertex attributes
 layout(location = 0) in vec3 in_position;
@@ -34,13 +34,15 @@ float rand(float x)
 
 void main()
 {
+	float instanceId = float(gl_InstanceID);
+
 	// Animation delta
-	float delta = fract((gl_InstanceID * 123.45678f) + (0.1f * u_time));
+	float delta = fract((instanceId * 123.45678f) + (0.1f * u_time));
 
 	// Position
 	vec3 offset =
-		vec3(delta * 5.0f * (rand(gl_InstanceID * 1.2345) - 0.5f), delta * (7.0 + (3.0 * rand(gl_InstanceID * 1.2345))),
-			 delta * 5.0f * (rand(gl_InstanceID * 0.9876) - 0.5f));
+		vec3(delta * 5.0f * (rand(instanceId * 1.2345) - 0.5f), delta * (7.0 + (3.0 * rand(instanceId * 1.2345))),
+			 delta * 5.0f * (rand(instanceId * 0.9876) - 0.5f));
 
 	// Scale
 	float scale = 1.0 + (3.0 * delta);

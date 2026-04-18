@@ -234,11 +234,6 @@ namespace WeirdEngine
 			glBindTexture(GL_TEXTURE_2D, ID);
 		}
 
-		void Texture::unbind() const
-		{
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-
 		void Texture::dispose() const
 		{
 			glDeleteTextures(1, &ID);

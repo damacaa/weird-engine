@@ -330,11 +330,6 @@ namespace WeirdEngine
 
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);
-
-					// Unbind textures and buffers
-					m_geometryTexture.unbind();
-					m_geometryDepthTexture.unbind();
-					m_3DShapeDataBuffer->unbind();
 				}
 
 				// Render 3D geometry objects (with depth writing)

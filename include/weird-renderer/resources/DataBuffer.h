@@ -34,11 +34,6 @@ namespace WeirdEngine
 				glBindTexture(GL_TEXTURE_2D, m_texture);
 			}
 
-			void unbind()
-			{
-				glBindTexture(GL_TEXTURE_2D, 0);
-			}
-
 			void uploadRawData(const void* data, size_t byteSize) const
 			{
 				const size_t texelBytes = 4 * sizeof(float); // one RGBA32F texel

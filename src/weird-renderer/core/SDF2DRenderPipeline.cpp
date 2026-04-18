@@ -329,8 +329,6 @@ namespace WeirdEngine
 			m_shapeDataBuffer.bind(1);
 
 			m_renderPlane.draw(m_distanceShader);
-
-			m_shapeDataBuffer.unbind();
 		}
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)

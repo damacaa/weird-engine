@@ -5,6 +5,10 @@
 using namespace WeirdEngine;
 class LinesScene : public Scene
 {
+public:
+	LinesScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
+
 private:
 	Texture* m_colorTextureCopy;
 
@@ -22,13 +26,14 @@ private:
 	{
 		m_renderPlane = new RenderPlane();
 		m_colorTextureCopy = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
-		m_lineShader = new Shader(SHADERS_PATH "renderPlane.vert", ASSETS_PATH "lines/lines.frag");
+		m_lineShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/lines.frag");
 
 		m_lineRender = new RenderTarget(false);
 		m_lineTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_lineRender->bindColorTextureToFrameBuffer(*m_lineTexture);
 
-		m_combinationShader = new Shader(SHADERS_PATH "renderPlane.vert", ASSETS_PATH "lines/combination.frag");
+		m_combinationShader =
+			new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/combination.frag");
 	}
 
 	// Inherited via Scene
@@ -36,6 +41,7 @@ private:
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = false;
+		getLigths().push_back(Light{});
 
 		{
 			Entity entity = m_ecs.createEntity();
@@ -76,9 +82,23 @@ private:
 		glClearColor(0, 0, 0, 0);							// Set clear color
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear both buffers
 
-		// Copy
-		glCopyImageSubData(renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
-						   m_colorTextureCopy->ID, GL_TEXTURE_2D, 0, 0, 0, 0, Display::rWidth, Display::rHeight, 1);
+		// GLES 3.0-compatible copy: source color attachment -> destination texture.
+		GLint prevReadFbo = 0;
+		GLint prevReadBuffer = 0;
+		GLint prevTexture2D = 0;
+		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
+		glGetIntegerv(GL_READ_BUFFER, &prevReadBuffer);
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexture2D);
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.getFrameBuffer());
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+		glBindTexture(GL_TEXTURE_2D, m_colorTextureCopy->ID);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, Display::rWidth, Display::rHeight);
+
+		glBindTexture(GL_TEXTURE_2D, (GLuint)prevTexture2D);
+		glReadBuffer(prevReadBuffer);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)prevReadFbo);
 
 		// --- Line detection ---
 		m_lineShader->use();

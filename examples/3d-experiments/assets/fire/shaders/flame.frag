@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 out vec4 FragColor;
 
@@ -14,13 +16,13 @@ uniform sampler2D t_noise;
 uniform sampler2D t_flameShape;
 
 const int NUM_STOPS = 4;
-uniform vec3 colors[NUM_STOPS] = vec3[](vec3(0.1, 0.1, 0.1), // Grey
-										vec3(0.8, 0.3, 0.2), // Red
-										vec3(1.1, 0.7, 0.2), // Orange
-										vec3(1.2, 1.2, 1.2)	 // White
+const vec3 colors[NUM_STOPS] = vec3[](vec3(0.1, 0.1, 0.1), // Grey
+								  vec3(0.8, 0.3, 0.2), // Red
+								  vec3(1.1, 0.7, 0.2), // Orange
+								  vec3(1.2, 1.2, 1.2)	 // White
 );
 
-uniform float stops[NUM_STOPS] = float[](0.0, 0.7, 0.9, 1.0);
+const float stops[NUM_STOPS] = float[](0.0, 0.7, 0.9, 1.0);
 
 vec3 getGradientColor(float t)
 {
@@ -51,7 +53,7 @@ void main()
 	float sumNoise = noise0 + noise1;
 
 	// Reduce noise at the bottom of the flame
-	float noiseMask = clamp(3.0f * (v_texCoord.y - 0.35f), 0, 1);
+	float noiseMask = clamp(3.0f * (v_texCoord.y - 0.35f), 0.0, 1.0);
 	sumNoise *= noiseMask;
 
 	// Reduce overall noise strength
@@ -59,7 +61,7 @@ void main()
 	sumNoise *= noiseIntensity;
 
 	// Sample texture with noise applied to uv coordinates
-	float alpha = texture(t_flameShape, clamp(uv + sumNoise, 0, 1)).x;
+	float alpha = texture(t_flameShape, clamp(uv + sumNoise, 0.0, 1.0)).x;
 
 	alpha = smoothstep(.3, 1.0, alpha);
 	alpha = alpha * (alpha + 0.01f);

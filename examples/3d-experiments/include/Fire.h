@@ -5,6 +5,10 @@
 using namespace WeirdEngine;
 class FireScene : public Scene
 {
+public:
+	FireScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
+
 private:
 	Shader m_flameShader;
 	Shader m_particlesShader;
@@ -34,28 +38,29 @@ private:
 
 	RenderPlane m_renderPlane;
 
-	std::vector<WeirdRenderer::Light> m_lights;
-
 	void onCreate() override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 
 		// Base shaders
-		m_backgroundShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "backgroundGrid.frag");
-		m_litShader = Shader(SHADERS_PATH "default.vert", SHADERS_PATH "lit.frag");
-		m_bloomShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "bloom.frag");
-		m_blurShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "blur.frag");
-		m_brightFilterShader = Shader(SHADERS_PATH "renderPlane.vert", SHADERS_PATH "brightFilter.frag");
+		m_backgroundShader =
+			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "misc/background_spherical_grid.frag");
+		m_litShader = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "3d/lit.frag");
+		m_bloomShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bloom.frag");
+		m_blurShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/blur.frag");
+		m_brightFilterShader =
+			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bright_filter.frag");
 
 		// Custom shaders
-		m_flameShader = Shader(SHADERS_PATH "default.vert", ASSETS_PATH "fire/shaders/flame.frag");
+		m_flameShader = Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
 		m_particlesShader =
 			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
 		m_smokeShader =
 			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
-		m_heatDistortionShader = Shader(SHADERS_PATH "default.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
+		m_heatDistortionShader =
+			Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
-		m_lights.push_back(
+		getLigths().push_back(
 			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		// Load meshes
@@ -284,8 +289,6 @@ private:
 		// draw flame
 		m_quad->draw(m_flameShader, camera, vec3(0, 1.15f, 0), vec3(0, 0, 0), vec3(6));
 
-		m_noiseTexture->unbind();
-
 		glDisable(GL_BLEND);
 	}
 
@@ -319,11 +322,12 @@ private:
 		m_litShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
 
 		// Pass light rotation
-		glm::vec3 position = m_lights[0].position;
+		auto& lights = getLigths();
+		glm::vec3 position = lights[0].position;
 		m_litShader.setUniform("u_lightPos", position);
-		glm::vec3 direction = m_lights[0].rotation;
+		glm::vec3 direction = lights[0].rotation;
 		m_litShader.setUniform("u_directionalLightDir", direction);
-		glm::vec4 color = m_lights[0].color;
+		glm::vec4 color = lights[0].color;
 		m_litShader.setUniform("u_lightColor", color);
 
 		// bind current FBO
@@ -349,11 +353,23 @@ private:
 		// Don't write to depth buffer
 		glDepthMask(GL_FALSE);
 
-		// Copy scene texture // TODO: replace with glCopyTexSubImage which copies from the current read framebuffer
-		// attachment to the given image
-		glCopyImageSubData(renderTarget.getColorAttachment()->ID, GL_TEXTURE_2D, 0, 0, 0, 0, // 2 = scene texture
-						   m_sceneTextureBeforeFire->ID, GL_TEXTURE_2D, 0, 0, 0, 0, Display::rWidth, Display::rHeight,
-						   1);
+		// GLES 3.0-compatible copy: source color attachment -> destination texture.
+		GLint prevReadFbo = 0;
+		GLint prevReadBuffer = 0;
+		GLint prevTexture2D = 0;
+		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
+		glGetIntegerv(GL_READ_BUFFER, &prevReadBuffer);
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTexture2D);
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.getFrameBuffer());
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+		glBindTexture(GL_TEXTURE_2D, m_sceneTextureBeforeFire->ID);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, Display::rWidth, Display::rHeight);
+
+		glBindTexture(GL_TEXTURE_2D, (GLuint)prevTexture2D);
+		glReadBuffer(prevReadBuffer);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)prevReadFbo);
 
 		// Heat effect shader
 		m_heatDistortionShader.use();
@@ -449,6 +465,10 @@ private:
 
 class FireSceneRayMarching : public FireScene
 {
+public:
+	FireSceneRayMarching(const PhysicsSettings& settings)
+		: FireScene(settings) {};
+
 private:
 	void onStart() override
 	{

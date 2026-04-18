@@ -5,6 +5,10 @@
 using namespace WeirdEngine;
 class ClassicScene : public Scene
 {
+public:
+	ClassicScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
+
 private:
 	Entity m_monkey;
 	Entity m_ball;
@@ -37,6 +41,10 @@ private:
 
 			m_ball = entity;
 		}
+
+		WeirdRenderer::Light light;
+
+		getLigths().push_back(light);
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
 	}

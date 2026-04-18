@@ -319,17 +319,14 @@ namespace WeirdEngine
 			m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 			m_distanceShader.setUniform("u_k", m_config.ballK);
 
-			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
-			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
-			m_distanceShader.setUniform("t_shapeBuffer", 1);
-			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
-			m_shapeDataBuffer.bind(1);
-
-			// Bind t_colorTexture AFTER the DataBuffer upload, because uploadData
-			// calls glBindTexture(GL_TEXTURE_2D, ...) without setting glActiveTexture,
-			// which would clobber whatever GL_TEXTURE_2D binding is on the active unit.
 			m_distanceShader.setUniform("t_colorTexture", 0);
 			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
+
+			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
+			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
+			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
+			m_distanceShader.setUniform("t_shapeBuffer", 1);
+			m_shapeDataBuffer.bind(1);
 
 			m_renderPlane.draw(m_distanceShader);
 

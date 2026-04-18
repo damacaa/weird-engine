@@ -8,6 +8,7 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/core/Renderer.h"
+#include "weird-renderer/core/SDLInitializer.h"
 
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
@@ -35,7 +36,7 @@ namespace WeirdEngine
 
 	namespace Detail
 	{
-		inline SDL_Window* gWindowHandle = nullptr;
+		inline SDL_Window* g_windowHandle = nullptr;
 
 		struct RuntimeContext
 		{
@@ -143,22 +144,46 @@ namespace WeirdEngine
 		}
 
 #ifdef __EMSCRIPTEN__
-		inline RuntimeContext* gRuntimeContext = nullptr;
+		// Wrapper struct to own heap-allocated resources for Emscripten
+		struct EmscriptenRuntimeEnvironment
+		{
+			SDLInitializer* sdlInitializer = nullptr;
+			Renderer* renderer = nullptr;
+			RuntimeContext* runtimeContext = nullptr;
+		};
+
+		inline EmscriptenRuntimeEnvironment* g_emscriptenEnv = nullptr;
 
 		inline void runFrameEmscripten()
 		{
-			if (gRuntimeContext == nullptr)
+			if (g_emscriptenEnv == nullptr || g_emscriptenEnv->runtimeContext == nullptr)
 			{
 				return;
 			}
 
-			runFrame(*gRuntimeContext);
+			runFrame(*g_emscriptenEnv->runtimeContext);
 
-			if (gRuntimeContext->quit)
+			if (g_emscriptenEnv->runtimeContext->quit)
 			{
 				std::cout << "Quitting..." << std::endl;
-				delete gRuntimeContext;
-				gRuntimeContext = nullptr;
+				// Clean up heap-allocated resources
+				if (g_emscriptenEnv->runtimeContext != nullptr)
+				{
+					delete g_emscriptenEnv->runtimeContext;
+					g_emscriptenEnv->runtimeContext = nullptr;
+				}
+				if (g_emscriptenEnv->renderer != nullptr)
+				{
+					delete g_emscriptenEnv->renderer;
+					g_emscriptenEnv->renderer = nullptr;
+				}
+				if (g_emscriptenEnv->sdlInitializer != nullptr)
+				{
+					delete g_emscriptenEnv->sdlInitializer;
+					g_emscriptenEnv->sdlInitializer = nullptr;
+				}
+				delete g_emscriptenEnv;
+				g_emscriptenEnv = nullptr;
 				emscripten_cancel_main_loop();
 			}
 		}
@@ -184,8 +209,48 @@ namespace WeirdEngine
 		AudioEngine& audioEngine = AudioEngine::getInstance();
 		audioEngine.init(audioSettings);
 
-		SDLInitializer m_sdlInitializer(displaySettings, Detail::gWindowHandle, audioEngine);
-		Renderer renderer(displaySettings, Detail::gWindowHandle);
+#ifdef __EMSCRIPTEN__
+		// In Emscripten, allocate all resources on the heap to prevent stack unwinding issues
+		Detail::g_emscriptenEnv = new Detail::EmscriptenRuntimeEnvironment();
+		
+		// Create SDLInitializer and Renderer on the heap
+		try
+		{
+			Detail::g_emscriptenEnv->sdlInitializer = new SDLInitializer(displaySettings, Detail::g_windowHandle, audioEngine);
+			Detail::g_emscriptenEnv->renderer = new Renderer(displaySettings, Detail::g_windowHandle);
+		}
+		catch (...)
+		{
+			std::cerr << "Failed to initialize SDL/Renderer" << std::endl;
+			if (Detail::g_emscriptenEnv->sdlInitializer != nullptr)
+			{
+				delete Detail::g_emscriptenEnv->sdlInitializer;
+			}
+			if (Detail::g_emscriptenEnv->renderer != nullptr)
+			{
+				delete Detail::g_emscriptenEnv->renderer;
+			}
+			delete Detail::g_emscriptenEnv;
+			Detail::g_emscriptenEnv = nullptr;
+			return;
+		}
+
+		// Scenes
+		sceneManager.loadScene(0);
+
+		// Time - create RuntimeContext with references to heap-allocated objects
+		Detail::g_emscriptenEnv->runtimeContext = new Detail::RuntimeContext{
+			sceneManager,
+			*Detail::g_emscriptenEnv->renderer,
+			audioEngine
+		};
+		Detail::g_emscriptenEnv->runtimeContext->time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+		Detail::g_emscriptenEnv->runtimeContext->prevTime = Detail::g_emscriptenEnv->runtimeContext->time;
+
+		emscripten_set_main_loop(Detail::runFrameEmscripten, 0, 1);
+#else
+		SDLInitializer m_sdlInitializer(displaySettings, Detail::g_windowHandle, audioEngine);
+		Renderer renderer(displaySettings, Detail::g_windowHandle);
 
 		// Scenes
 		sceneManager.loadScene(0);
@@ -195,10 +260,6 @@ namespace WeirdEngine
 		runtimeContext.time = static_cast<double>(SDL_GetTicks()) / 1000.0;
 		runtimeContext.prevTime = runtimeContext.time;
 
-#ifdef __EMSCRIPTEN__
-		Detail::gRuntimeContext = new Detail::RuntimeContext(runtimeContext);
-		emscripten_set_main_loop(Detail::runFrameEmscripten, 0, 1);
-#else
 		while (!runtimeContext.quit)
 		{
 			Detail::runFrame(runtimeContext);

@@ -2,6 +2,7 @@
 
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -73,6 +74,34 @@ namespace WeirdEngine
 
 		void Texture::createTexture(void* data, int width, int height, TextureType type)
 		{
+			std::vector<unsigned char> zeroDataU8;
+			std::vector<float> zeroDataF32;
+			std::vector<unsigned int> zeroDataU32;
+
+			auto getUploadDataU8 = [&](int channels) -> const void*
+			{
+				if (data != nullptr)
+					return data;
+
+				zeroDataU8.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0u);
+				return zeroDataU8.data();
+			};
+
+			auto getUploadDataF32 = [&](int channels) -> const void*
+			{
+				if (data != nullptr)
+					return data;
+
+				zeroDataF32.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0.0f);
+				return zeroDataF32.data();
+			};
+
+			auto getUploadDataDepth = [&]() -> const void*
+			{
+				zeroDataU32.assign(static_cast<size_t>(width) * static_cast<size_t>(height), 0u);
+				return zeroDataU32.data();
+			};
+
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
 			// Assigns the texture to a Texture Unit
@@ -86,7 +115,7 @@ namespace WeirdEngine
 					// Handle color texture
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -102,7 +131,7 @@ namespace WeirdEngine
 					// Handle color with alpha texture
 					// Use sized internal format GL_RGBA8; GL_RGBA (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, getUploadDataU8(4));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -116,7 +145,7 @@ namespace WeirdEngine
 				case TextureType::SingleChannel:
 				{
 
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, getUploadDataU8(1));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -134,7 +163,7 @@ namespace WeirdEngine
 					// Use GL_DEPTH_COMPONENT32F + GL_FLOAT if a float depth buffer is needed.
 					glTexImage2D(GL_TEXTURE_2D, 0,
 								 GL_DEPTH_COMPONENT24, // 24-bit depth
-								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, getUploadDataDepth());
 
 					// Set texture parameters
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -150,7 +179,7 @@ namespace WeirdEngine
 				}
 				case TextureType::Data:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -161,7 +190,7 @@ namespace WeirdEngine
 				}
 				case TextureType::LinearData:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -174,7 +203,7 @@ namespace WeirdEngine
 				{
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

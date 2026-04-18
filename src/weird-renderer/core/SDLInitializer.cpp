@@ -86,7 +86,7 @@ namespace WeirdEngine
 
 			SDL_GL_MakeCurrent(m_window, m_glContext);
 
-if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
+			if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
 			{
 				throw std::runtime_error("Failed to initialize GLAD.");
 			}

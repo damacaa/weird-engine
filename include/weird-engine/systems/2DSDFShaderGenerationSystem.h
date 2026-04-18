@@ -2,9 +2,14 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/systems/SDFRenderSystem2D.h"
+#include <algorithm>
+#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <regex>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace WeirdEngine::SDFShaderGenerationSystem2D
 {

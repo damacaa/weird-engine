@@ -17,21 +17,6 @@ namespace WeirdEngine
 			return p;
 		}
 
-		static void clearRenderTarget(RenderTarget& renderTarget)
-		{
-			GLint previousFbo = 0;
-			GLfloat previousClearColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-			glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previousFbo);
-			glGetFloatv(GL_COLOR_CLEAR_VALUE, previousClearColor);
-
-			renderTarget.bind();
-			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, previousFbo);
-			glClearColor(previousClearColor[0], previousClearColor[1], previousClearColor[2], previousClearColor[3]);
-		}
-
 		int SDF2DRenderPipeline::largestPowerOfTwoBelow(int n)
 		{
 			return ::WeirdEngine::WeirdRenderer::largestPowerOfTwoBelow(n);
@@ -123,8 +108,6 @@ namespace WeirdEngine
 			m_distanceTextureDoubleBuffer[0] = &m_distanceRenderA;
 			m_distanceTextureDoubleBuffer[1] = &m_distanceRenderB;
 			m_distanceTextureDoubleBufferIdx = 0;
-			clearRenderTarget(m_distanceRenderA);
-			clearRenderTarget(m_distanceRenderB);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender = RenderTarget(false);
@@ -253,8 +236,6 @@ namespace WeirdEngine
 			m_distanceTextureB =
 				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
-			clearRenderTarget(m_distanceRenderA);
-			clearRenderTarget(m_distanceRenderB);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);

@@ -1,5 +1,6 @@
 #include "weird-renderer/core/RenderTarget.h"
 
+#include <iostream>
 #include <stdexcept>
 
 namespace WeirdEngine

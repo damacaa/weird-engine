@@ -195,14 +195,22 @@ namespace WeirdEngine
 	{
 		std::cout << "Starting Weird Engine..." << std::endl;
 
+		std::string startupScene;
 		for (int i = 1; i < argc; ++i)
 		{
 			const std::string_view arg(argv[i]);
 			if (arg == "--fullscreen" || arg == "-f")
 			{
 				displaySettings.fullscreen = true;
+			}else if ((arg == "--scene" || arg == "-s") && i + 1 < argc)
+			{
+				startupScene = argv[++i]; // Get the next argument as the scene name
+				std::cout << "Startup scene set to: " << startupScene << std::endl;
 			}
 		}
+
+		
+
 
 		sceneManager.setPhysicsSettings(physicsSettings);
 
@@ -236,7 +244,14 @@ namespace WeirdEngine
 		}
 
 		// Scenes
-		sceneManager.loadScene(0);
+		if (!startupScene.empty())
+		{
+			sceneManager.loadScene(startupScene);
+		}
+		else
+		{
+			sceneManager.loadScene(0);
+		}
 
 		// Time - create RuntimeContext with references to heap-allocated objects
 		Detail::g_emscriptenEnv->runtimeContext = new Detail::RuntimeContext{
@@ -253,7 +268,14 @@ namespace WeirdEngine
 		Renderer renderer(displaySettings, Detail::g_windowHandle);
 
 		// Scenes
-		sceneManager.loadScene(0);
+		if (!startupScene.empty())
+		{
+			sceneManager.loadScene(startupScene);
+		}
+		else
+		{
+			sceneManager.loadScene(0);
+		}
 
 		// Time
 		Detail::RuntimeContext runtimeContext{sceneManager, renderer, audioEngine};

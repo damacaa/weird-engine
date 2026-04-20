@@ -12,7 +12,6 @@ int main(int argc, char* argv[])
 	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<ClassicScene>("classic");
 	sceneManager.registerScene<FireScene>("fire");
-	sceneManager.registerScene<FireSceneRayMarching>("fireRayMarching");
 	sceneManager.registerScene<LinesScene>("lines");
 
 	DisplaySettings displaySettings{};

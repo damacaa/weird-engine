@@ -73,7 +73,8 @@ uniform vec4 u_lightColor;
 uniform float u_time;
 
 const int MAX_STEPS = 256;
-const float EPSILON = 0.01;
+const float RAYMARCH_EPSILON = 0.001;
+const float NORMAL_EPSILON = 0.00001;
 const float NEAR = 0.1;
 const float FAR = 100.0;
 
@@ -193,7 +194,7 @@ float rayMarch(vec3 ro, vec3 rd)
 
 		hit = map(p);
 
-		if (abs(hit) < EPSILON || traveled > FAR)
+		if (abs(hit) < RAYMARCH_EPSILON || traveled > FAR)
 			break;
 
 		traveled += hit;
@@ -204,7 +205,7 @@ float rayMarch(vec3 ro, vec3 rd)
 
 vec3 getNormal(vec3 p)
 {
-	vec2 e = vec2(EPSILON, 0.0);
+	vec2 e = vec2(NORMAL_EPSILON, 0.0);
 	vec3 n = vec3(map(p)) - vec3(map(p - e.xyy), map(p - e.yxy), map(p - e.yyx));
 	return normalize(n);
 }

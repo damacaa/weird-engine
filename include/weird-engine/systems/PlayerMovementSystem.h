@@ -2,6 +2,9 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace WeirdEngine
 {
 	namespace ECS
@@ -9,11 +12,16 @@ namespace WeirdEngine
 		namespace PlayerMovementSystem
 		{
 
-			// Prevents the camera from jumping around when first clicking left click
-			inline bool firstClick = true;
-			inline bool m_locked = false;
+			inline bool m_locked2D = false;
+			inline bool m_locked3D = false;
+			inline bool m_skipMouseDelta2D = false;
+			inline bool m_skipMouseDelta3D = false;
+			inline constexpr float MAX_DEBUG_CAMERA_DELTA = 1.0f / 30.0f;
 
-			// Adjust the speed of the camera and it's sensitivity when looking around
+			inline float clampMovementDelta(float delta)
+			{
+				return std::clamp(delta, 0.0f, MAX_DEBUG_CAMERA_DELTA);
+			}
 
 			inline void updateMovement2D(ECSManager& ecs, float delta);
 			inline void updateFly(ECSManager& ecs, float delta);
@@ -26,6 +34,8 @@ namespace WeirdEngine
 
 			inline void updateMovement2D(ECSManager& ecs, float delta)
 			{
+				float safeDelta = clampMovementDelta(delta);
+
 				auto componentArray = ecs.getComponentManager<FlyMovement2D>()->getComponentArray();
 				unsigned int size = componentArray->getSize();
 				for (size_t i = 0; i < size; i++)
@@ -37,33 +47,36 @@ namespace WeirdEngine
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);
 
-					uint32_t m_width = 1200; // Todo get real screen size
-					uint32_t m_height = 800;
-
 					vec3 targetPosition = flyComponent.targetPosition;
 
 					if (Input::GetMouseButtonDown(Input::MiddleClick) ||
-						(Input::GetMouseButton(Input::MiddleClick) && !m_locked))
+						(Input::GetMouseButton(Input::MiddleClick) && !m_locked2D))
 					{
-						firstClick = true;
-						m_locked = true;
+						m_locked2D = true;
+						m_skipMouseDelta2D = true;
 						Input::HideMouse();
 					}
 					else if (Input::GetMouseButtonUp(Input::MiddleClick))
 					{
-						m_locked = false;
+						m_locked2D = false;
 						Input::ShowMouse();
 					}
 
-					if (firstClick)
+					if (m_locked2D)
 					{
-						firstClick = false;
-					}
-					else if (m_locked)
-					{
-						targetPosition += 100.0f * t.position.z * delta * flyComponent.speed *
-										  vec3(-Input::GetMouseDeltaX(), Input::GetMouseDeltaY(), 0.f);
-						Input::SetMousePosition((m_width / 2), (m_height / 2));
+						if (m_skipMouseDelta2D)
+						{
+							m_skipMouseDelta2D = false;
+						}
+						else
+						{
+							float zoom = std::max(t.position.z, 5.0f);
+							float worldUnitsPerPixel =
+								zoom / (0.5f * static_cast<float>(std::max(1, WeirdRenderer::Display::height)));
+							targetPosition += flyComponent.speed *
+										  vec3(-Input::GetMouseDeltaXRaw() * worldUnitsPerPixel,
+											   Input::GetMouseDeltaYRaw() * worldUnitsPerPixel, 0.0f);
+						}
 					}
 
 					if (Input::GetMouseButtonDown(Input::LeftClick))
@@ -75,20 +88,20 @@ namespace WeirdEngine
 					{
 						if (Input::GetKey(Input::W))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed * c.camera.up;
+							targetPosition += t.position.z * safeDelta * flyComponent.speed * c.camera.up;
 						}
 						if (Input::GetKey(Input::A))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed *
+							targetPosition += t.position.z * safeDelta * flyComponent.speed *
 											  -glm::normalize(glm::cross(t.rotation, c.camera.up));
 						}
 						if (Input::GetKey(Input::S))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed * -c.camera.up;
+							targetPosition += t.position.z * safeDelta * flyComponent.speed * -c.camera.up;
 						}
 						if (Input::GetKey(Input::D))
 						{
-							targetPosition += t.position.z * delta * flyComponent.speed *
+							targetPosition += t.position.z * safeDelta * flyComponent.speed *
 											  glm::normalize(glm::cross(t.rotation, c.camera.up));
 						}
 					}
@@ -102,20 +115,22 @@ namespace WeirdEngine
 						vec2 cursorPosition =
 							Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
 						vec2 travel = cursorPosition - (vec2)t.position;
+						float safeZoom = std::max(std::abs(t.position.z), 0.001f);
 						targetPosition -= flyComponent.scrollSpeed * flyComponent.speed *
-										  vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+										  vec3(travel.x / safeZoom, travel.y / safeZoom, 0);
 					}
 					else if (Input::GetMouseButton(Input::WheelUp))
 					{
 						// Move camera forwards
-						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * c.camera.orientation;
+						targetPosition += flyComponent.scrollSpeed * flyComponent.speed * t.rotation;
 
 						// Move camera towards the cursor
 						vec2 cursorPosition =
 							Camera::screenPositionToWorldPosition2D(t, vec2(Input::GetMouseX(), Input::GetMouseY()));
 						vec2 travel = cursorPosition - (vec2)t.position;
+						float safeZoom = std::max(std::abs(t.position.z), 0.001f);
 						targetPosition += flyComponent.scrollSpeed * flyComponent.speed *
-										  vec3(travel.x / abs(t.position.z), travel.y / abs(t.position.z), 0);
+										  vec3(travel.x / safeZoom, travel.y / safeZoom, 0);
 					}
 
 					if (targetPosition.z < 5.0f)
@@ -136,9 +151,10 @@ namespace WeirdEngine
 
 					if (flyComponent.isSmooth)
 					{
-						vec3 a = flyComponent.targetPosition - t.position;
-						flyComponent.v += (500.0f * delta * a) - (0.5f * flyComponent.v);
-						t.position += delta * flyComponent.v;
+						// Exponential smoothing is frame-rate independent and resilient to occasional large frame times.
+						float smoothing = 14.0f;
+						float alpha = 1.0f - std::exp(-smoothing * safeDelta);
+						t.position = glm::mix(t.position, flyComponent.targetPosition, alpha);
 					}
 					else
 					{
@@ -149,6 +165,8 @@ namespace WeirdEngine
 
 			inline void updateFly(ECSManager& ecs, float delta)
 			{
+				float safeDelta = clampMovementDelta(delta);
+
 				auto& componentArray = *ecs.getComponentManager<FlyMovement>()->getComponentArray();
 				unsigned int size = componentArray.getSize();
 				for (size_t i = 0; i < size; i++)
@@ -158,116 +176,96 @@ namespace WeirdEngine
 
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);
+					glm::vec3 forward = glm::normalize(t.rotation);
+					glm::vec3 right = glm::normalize(glm::cross(forward, c.camera.up));
 
 					// Handles key inputs
 					if (Input::GetKey(Input::W))
 					{
-						t.position += delta * flyComponent.speed * c.camera.orientation;
+						t.position += safeDelta * flyComponent.speed * forward;
 					}
 					if (Input::GetKey(Input::A))
 					{
-						t.position += delta * flyComponent.speed * -glm::normalize(glm::cross(t.rotation, c.camera.up));
+						t.position += safeDelta * flyComponent.speed * -right;
 					}
 					if (Input::GetKey(Input::S))
 					{
-						t.position += delta * flyComponent.speed * -t.rotation;
+						t.position += safeDelta * flyComponent.speed * -forward;
 					}
 					if (Input::GetKey(Input::D))
 					{
-						t.position += delta * flyComponent.speed * glm::normalize(glm::cross(t.rotation, c.camera.up));
+						t.position += safeDelta * flyComponent.speed * right;
 					}
 					if (Input::GetKey(Input::Space))
 					{
-						t.position += delta * flyComponent.speed * c.camera.up;
+						t.position += safeDelta * flyComponent.speed * c.camera.up;
 					}
 					if (Input::GetKey(Input::LeftCtrl))
 					{
-						t.position += delta * flyComponent.speed * -c.camera.up;
+						t.position += safeDelta * flyComponent.speed * -c.camera.up;
 					}
 
-					if (Input::GetKeyDown(Input::Space))
+					if (Input::GetKeyDown(Input::LeftShift))
 					{
 						flyComponent.speed *= 4.0f;
 					}
-					else if (Input::GetKeyUp(Input::Space))
+					else if (Input::GetKeyUp(Input::LeftShift))
 					{
 						flyComponent.speed *= 0.25f;
 					}
 
 					if (Input::GetMouseButton(Input::WheelDown))
 					{
-						c.camera.fov += delta * 300.0f;
+						c.camera.fov = std::min(120.0f, c.camera.fov + 2.0f);
 					}
 					else if (Input::GetMouseButton(Input::WheelUp))
 					{
-						c.camera.fov -= delta * 200.0f;
+						c.camera.fov = std::max(20.0f, c.camera.fov - 2.0f);
 					}
 
 					if (Input::GetKey(Input::KeyCode::Esc))
 					{
-						m_locked = false;
+						m_locked3D = false;
 						// Unhides cursor since camera is not looking around anymore
 						Input::ShowMouse();
-						// Makes sure the next time the camera looks around it doesn't jump
-						firstClick = true;
+						m_skipMouseDelta3D = true;
 					}
 
-					if (Input::GetMouseButton(Input::LeftClick))
+					if (Input::GetMouseButtonDown(Input::LeftClick) ||
+						(Input::GetMouseButton(Input::LeftClick) && !m_locked3D))
 					{
-						m_locked = true;
+						m_locked3D = true;
+						m_skipMouseDelta3D = true;
 						Input::HideMouse();
 					}
 
-					if (m_locked)
+					if (m_locked3D)
 					{
-
-						// Stores the coordinates of the cursor
-						double mouseX = Input::GetMouseX();
-						double mouseY = Input::GetMouseY();
-
-						// Prevents camera from jumping on the first click
-						if (firstClick)
+						if (m_skipMouseDelta3D)
 						{
-							firstClick = false;
-							mouseX = WeirdRenderer::Display::width / 2.0;
-							mouseY = WeirdRenderer::Display::height / 2.0;
-							Input::SetMousePosition(mouseX, mouseY);
+							m_skipMouseDelta3D = false;
+							continue;
 						}
 
-						// Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the
-						// screen and then "transforms" them into degrees
+						// Relative mouse deltas already include frame-time; do not multiply by delta.
 						float fovMultiplier = c.camera.fov / 90.0f;
-						float rotX = delta * fovMultiplier * flyComponent.sensitivity *
-									 (float)(mouseY - (WeirdRenderer::Display::height / 2.0)) /
-									 WeirdRenderer::Display::height;
-						float rotY = delta * fovMultiplier * flyComponent.sensitivity *
-									 (float)(mouseX - (WeirdRenderer::Display::width / 2.0)) /
-									 WeirdRenderer::Display::width;
+						float rotX = fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaYRaw();
+						float rotY = fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaXRaw();
 
 						// Calculates upcoming vertical change in the Orientation
-						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX),
-															   glm::normalize(glm::cross(t.rotation, c.camera.up)));
+						glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), right);
+						newOrientation = glm::normalize(newOrientation);
 
 						// Decides whether or not the next vertical Orientation is legal or not
-						if (abs(glm::angle(newOrientation, c.camera.up) - glm::radians(90.0f)) <= glm::radians(85.0f))
+						if (std::abs(glm::angle(newOrientation, c.camera.up) - glm::radians(90.0f)) <=
+							glm::radians(85.0f))
 						{
 							t.rotation = newOrientation;
 						}
 
-						if (rotY > 1)
-						{
-							int a = 0;
-						}
-
 						// Rotates the Orientation left and right
 						t.rotation = glm::rotate(t.rotation, glm::radians(-rotY), c.camera.up);
-
-						// std::cout << Orientation.x << " " << Orientation.y << " " << Orientation.z << " " <<
-						// std::endl;
-
-						// Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-						Input::SetMousePosition((WeirdRenderer::Display::width / 2.0),
-												(WeirdRenderer::Display::height / 2.0));
+						t.rotation = glm::normalize(t.rotation);
 					}
 				}
 			}

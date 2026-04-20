@@ -462,30 +462,3 @@ private:
 		m_renderPlane.draw(m_bloomShader);
 	}
 };
-
-class FireSceneRayMarching : public FireScene
-{
-public:
-	FireSceneRayMarching(const PhysicsSettings& settings)
-		: FireScene(settings) {};
-
-private:
-	void onStart() override
-	{
-		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
-
-		cameraTransform.position = vec3(0.0f, 2.0f, 10.0f);
-		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
-
-		{
-			Entity text = m_ecs.createEntity();
-			auto& t = m_ecs.addComponent<Transform>(text);
-			t.position = vec3(Display::width / 2.0f, Display::height / 2.0f, 0.0f);
-			auto& textRenderer = m_ecs.addComponent<UITextRenderer>(text);
-			textRenderer.text = "Fire Scene";
-			textRenderer.material = 10; // UI material
-			textRenderer.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-			textRenderer.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-		}
-	}
-};

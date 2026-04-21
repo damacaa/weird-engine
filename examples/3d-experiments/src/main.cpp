@@ -19,6 +19,9 @@ int main(int argc, char* argv[])
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 
+	displaySettings.colorPalette[DisplaySettings::LightBlue].a = 0.25f;
+	displaySettings.colorPalette[DisplaySettings::Orange].a = 0.5f;
+
 	PhysicsSettings physicsSettings{};
 
 	AudioSettings audioSettings{};

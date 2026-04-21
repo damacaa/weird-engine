@@ -150,6 +150,10 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 			oss << arrayPreamble;
 			oss << "float dist = " << fragmentCode << ";\n";
+			
+      // 3D shader uses this to apply dithering to the distance of shapes with transparent materials, this creates paterns where the shape is partially rendered, which creates the illusion of transparency without needing to sort objects or use alpha blending, which can be costly in raymarching shaders. The 2D shader ignores this step for now, but it could be used in the future if we decide to add transparency to 2D shapes as well.
+			oss << "dist = modifyDistanceBasedOnMaterial(dist, " << shape.material << ", idx);\n";
+
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";\n";
 
 			switch (shape.combination)

@@ -87,6 +87,12 @@ float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
 	return s * sqrt(d);
 }
 
+// Make it compatible with 3D shader, could be used in the future
+float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
+{
+	return dist;
+}
+
 vec3 getColor(vec2 p, vec2 uv)
 {
 	float minDist = 100000.0;

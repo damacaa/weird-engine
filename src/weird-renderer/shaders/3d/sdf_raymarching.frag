@@ -135,18 +135,71 @@ float perlin(vec2 p)
 	return mix(ab, cd, f.y);
 }
 
+// ==========================================
+// STYLIZED DITHERING TRANSPARENCY
+// ==========================================
+const int bayer4x4[16] = int[16](
+	0, 8, 2, 10,
+	12, 4, 14, 6,
+	3, 11, 1, 9,
+	15, 7, 13, 5
+);
+
+float GetBayerThreshold(vec2 coord) 
+{
+	int x = int(coord.x) % 4;
+	int y = int(coord.y) % 4;
+	float bayerValue = float(bayer4x4[y * 4 + x]) + 0.5;
+	return bayerValue / 16.0; 
+}
+
+// Generates a consistent 2D offset based on an object ID to prevent Dither Correlation
+vec2 HashID(float id) 
+{
+	return vec2(
+		fract(sin(id * 12.9898) * 43758.5453) * 100.0,
+		fract(sin(id * 78.233) * 43758.5453) * 100.0
+	);
+}
+
+// The reusable Transparency Dither Function
+float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
+{
+	float alpha = materialId < 16 ? u_staticColors[materialId].a : 1.0;
+	
+	if (alpha < 1.0) 
+	{
+		vec2 offset = HashID(float(objectId));
+		
+		// Note: Change 1.0 to 2.0 or 4.0 here if you want chunkier retro dither pixels
+		float bayer = GetBayerThreshold((gl_FragCoord.xy + offset) / 1.0); 
+		
+		if (alpha <= bayer) 
+		{
+			return FAR + 100.0; // Skip surface by pushing distance past the FAR plane
+		}
+	}
+	return dist;
+}
+// ==========================================
+
 vec2 sceneSdf(vec3 p)
 {
 	float minDist = FAR;
 	int finalMaterialId = 16;
 
+	// Custom shapes
 #include "custom_shapes"
 
+	// These are just spheres
 	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
 	{
 		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		int materialId = int(positionSizeMaterial.w);
 		float objectDist = fSphere(p - positionSizeMaterial.xyz, 0.5);
+
+		// Apply the dither function!
+		objectDist = modifyDistanceBasedOnMaterial(objectDist, materialId, i);
 
 		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
 		minDist = fOpUnionSoft(objectDist, minDist, DOT_BLEND_K);

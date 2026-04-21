@@ -276,6 +276,13 @@ namespace WeirdEngine
 			// Render geometry
 			if (enable3D)
 			{
+				// TODO: implement a deferred renderer that handles transparency
+				// Chosen method: Dithered (Screen-Door) Transparency
+				// Instead of truly blending a transparent object, the shader uses an alpha-test to selectively discard pixels in a stippled or checkerboard noise pattern based on the transparency level (e.g., if it's 50% transparent, it discards every other pixel).
+				// - To the G-buffer, the object is treated as 100% opaque, but it has tiny "holes" in it letting the background show through.
+				// - (Optional) Temporal Anti-Aliasing (TAA) is then used to blur these pixels across multiple frames, creating the illusion of smooth transparency.
+				// https://digitalrune.github.io/DigitalRune-Documentation/html/fa431d48-b457-4c70-a590-d44b0840ab1e.htm
+
 				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
 
 				// Set up framebuffer for 3D scene rendering
@@ -296,6 +303,8 @@ namespace WeirdEngine
 				// TODO: render meshes before ray marching to reduce overdraw
 				if (enable3DSDFs)
 				{
+					scene.update3DWorldShader(m_3DsdfShaderProgram);
+
 					// Draw ray marching stuff
 					m_3DsdfShaderProgram.use();
 
@@ -305,6 +314,7 @@ namespace WeirdEngine
 					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
 					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
 					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					m_3DsdfShaderProgram.setUniform("u_staticColors", m_colorPalette, 16);
 
 					auto& lights = scene.getLigths();
 					m_3DsdfShaderProgram.setUniform("u_lightPos", lights[0].position);
@@ -319,14 +329,17 @@ namespace WeirdEngine
 					m_geometryDepthTexture.bind(1);
 
 					// Upload and bind shapes for ray marching
-					static uint32_t DataSize3D = 0;
-					static vec4* Data3D = nullptr;
-					// scene.get2DShapesData(Data3D, DataSize3D);
+					static uint32_t dataSize3D = 0;
+					static uint32_t shapeCount3D = 0;
+					static vec4* data3D = nullptr;
+					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
+					
 					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-					m_3DShapeDataBuffer->uploadData<vec4>(Data3D, DataSize3D);
+					m_3DShapeDataBuffer->uploadData<vec4>(data3D, dataSize3D);
 					m_3DShapeDataBuffer->bind(2);
 
-					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
+					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)dataSize3D);
+					m_3DsdfShaderProgram.setUniform("u_customShapeCount", (int)shapeCount3D);
 
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);

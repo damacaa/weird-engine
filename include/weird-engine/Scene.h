@@ -3,7 +3,7 @@
 #include "ecs/ECS.h"
 #include "ResourceManager.h"
 
-#include "weird-engine/systems/SDFRenderSystem2D.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
 
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
@@ -42,11 +42,13 @@ namespace WeirdEngine
 						  WeirdRenderer::Shader& instancingShader);
 
 		void update2DWorldShader(WeirdRenderer::Shader& shader);
+		void update3DWorldShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
 		void forceShaderRefresh();
 		void update(double delta, double time);
 
 		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
+		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
 		WeirdRenderer::Camera& getCamera();
@@ -143,8 +145,9 @@ namespace WeirdEngine
 		// Return the entity that owns a tag, or MAX_ENTITIES if none.
 		Entity getEntityByTag(const std::string& name) const;
 
-		SDFRenderSystem2DContext m_2DWorldRenderContext;
-		SDFRenderSystem2DContext m_UIRenderContext;
+		SDFRenderSystemContext m_2DWorldRenderContext;
+		SDFRenderSystemContext m_3DWorldRenderContext;
+		SDFRenderSystemContext m_UIRenderContext;
 
 		bool m_debugFly = false;
 		bool m_debugInput = false;

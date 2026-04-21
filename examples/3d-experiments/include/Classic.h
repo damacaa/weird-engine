@@ -1,6 +1,9 @@
 #pragma once
 
 #include <weird-engine.h>
+#include <weird-engine/math/Default2DSDFs.h>
+
+#include "DebugPlanes.h"
 
 using namespace WeirdEngine;
 class ClassicScene : public Scene
@@ -38,9 +41,22 @@ private:
 			t.position = vec3(0, 1, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = 0;
+			sdf.materialId = DisplaySettings::LightBlue;
 
 			m_ball = entity;
+		}
+
+		{
+			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
+			Entity start = addShape(DefaultShapes::STAR, vars1, DisplaySettings::Orange, CombinationType::Addition, true, 0);
+		}
+
+		{
+			std::shared_ptr<IMathExpression> plane = std::make_shared<Plane>(0.0f);
+			auto planeId = registerSDF(plane);
+
+			float vars1[8] = {}; // Custom shape
+			Entity start = addShape(planeId, vars1, 0);
 		}
 
 		getLigths().push_back(

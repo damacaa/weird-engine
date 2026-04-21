@@ -7,7 +7,7 @@
 
 #include "weird-physics/components/RigidBodyManager.h"
 
-#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
+#include "weird-engine/systems/SDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"
 #include "weird-engine/systems/PhysicsInteractionSystem.h"
@@ -15,7 +15,7 @@
 #include "weird-engine/systems/PlayerMovementSystem.h"
 #include "weird-engine/systems/RenderSystem.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
-#include "weird-engine/systems/SDFRenderSystem2D.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
 
 namespace WeirdEngine
 {
@@ -210,29 +210,42 @@ namespace WeirdEngine
 	{
 		PROFILE_SCOPE("Fetch World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem2D::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+	}
+
+	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch 3D World Data");
+		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_3DWorldRenderContext, data, size);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
-		SDFRenderSystem2D::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
+		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem2D::update<Dot, CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+	}
+
+	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
+	{
+		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_3DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem2D::update<UIDot, UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::forceShaderRefresh()
 	{
 		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
 		m_UIRenderContext.m_shapesNeedUpdate = true;
 	}
 
@@ -375,6 +388,7 @@ namespace WeirdEngine
 		std::copy(variables, variables + 8, shape.parameters);
 
 		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
 
 		return entity;
 	}

@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include "DebugPlanes.h"
+
 using namespace WeirdEngine;
 class LinesScene : public Scene
 {
@@ -24,6 +26,16 @@ private:
 
 	void onCreate() override
 	{
+		m_renderMode = RenderMode::RayMarching3D;
+		
+		{
+			std::shared_ptr<IMathExpression> plane = std::make_shared<PerlinPlane>(0.0f);
+			auto planeId = registerSDF(plane);
+
+			float vars1[8] = {}; // Custom shape
+			Entity start = addShape(planeId, vars1, 0);
+		}
+
 		m_renderPlane = new RenderPlane();
 		m_colorTextureCopy = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_lineShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/lines.frag");

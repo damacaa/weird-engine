@@ -3,11 +3,7 @@ precision highp float;
 precision highp int;
 precision highp sampler2D;
 
-float fOpUnionSoft(float a, float b, float r)
-{
-	float e = max(r - abs(a - b), 0.0);
-	return min(a, b) - e * e * 0.25 / r;
-}
+#include "../common/shapes.glsl"
 
 vec2 fOpUnionSoft2(float a, float b, float k)
 {
@@ -61,10 +57,12 @@ uniform sampler2D t_colorTexture;
 uniform sampler2D t_depthTexture;
 uniform highp sampler2D t_shapeBuffer;
 uniform int u_loadedObjects;
+uniform int u_customShapeCount;
 
 uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
+uniform vec4 u_staticColors[16];
 
 uniform vec3 u_lightPos;
 uniform vec3 u_lightDirection;
@@ -79,8 +77,25 @@ const float NEAR = 0.1;
 const float FAR = 100.0;
 
 const float OVERSHOOT = 1.0;
+const float DOT_BLEND_K = 0.5;
 
 const vec3 background = vec3(0.0);
+
+// Custom shape variables. In 3D these are evaluated on the XZ plane,
+// producing vertically extruded SDFs from the existing 2D math expressions.
+#define var8 u_time
+#define var9 p.x
+#define var10 p.y
+#define var11 p.z
+
+#define var0 parameters0.x
+#define var1 parameters0.y
+#define var2 parameters0.z
+#define var3 parameters0.w
+#define var4 parameters1.x
+#define var5 parameters1.y
+#define var6 parameters1.z
+#define var7 parameters1.w
 
 // Hash
 float hash(vec2 p)
@@ -120,66 +135,42 @@ float perlin(vec2 p)
 	return mix(ab, cd, f.y);
 }
 
-float map(vec3 p)
+vec2 sceneSdf(vec3 p)
 {
-	float res = FAR;
+	float minDist = FAR;
+	int finalMaterialId = 16;
 
-	for (int i = 0; i < u_loadedObjects; i++)
+#include "custom_shapes"
+
+	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
 	{
-		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
-		// float objectDist = fSphere(p - data[i].position, data[i].size);
-		float objectDist = fSphere(p - positionSize.xyz, 0.5); // positionSize.w);
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
+		int materialId = int(positionSizeMaterial.w);
+		float objectDist = fSphere(p - positionSizeMaterial.xyz, 0.5);
 
-		res = fOpUnionSoft(objectDist, res, 0.5);
+		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
+		minDist = fOpUnionSoft(objectDist, minDist, DOT_BLEND_K);
 	}
 
-	// float planeDist = fPlane(p, vec3(0, 1, 0), 0.2 * sin(length(p) + u_time) + 0.5);
-	//  float planeDist = fPlane(p, vec3(0, 1, 0), 0.5 * ((sin(2 * p.x) + sin(2 * p.z)) * sin(u_time)) + 0.5);
-	float planeDist =
-		fPlane(p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))));
-
-	res = min(res, planeDist);
-
-	return res;
+	return vec2(minDist, max(float(finalMaterialId), 0.0));
 }
 
 vec3 getMaterial(vec3 p, int id)
 {
-	vec3 colors[3];
-	colors[0] = vec3(0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0));
-	colors[1] = vec3(1.0, 0.05, 0.01);
-	colors[2] = vec3(0.1, 0.05, 0.80);
+	vec3 color = id < 16 ? u_staticColors[id].xyz : (0.83 * vec3(1.0));
+	if (id == 0)
+	{
+		float checker = 0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0);
+		return color * (0.8 + checker);
+	}
 
-	return colors[id];
+	return color;
 }
 
 vec3 getColor(vec3 p)
 {
-	float d = FAR;
-	vec3 col = vec3(0.0);
-
-	float k = 0.5;
-
-	for (int i = 0; i < u_loadedObjects; i++)
-	{
-		int id = i % 2 == 0 ? 1 : 2;
-
-		vec4 positionSize = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
-		float objectDist = fSphere(p - positionSize.xyz, 0.5);
-
-		// float delta = objectDist / (objectDist + d); // Calculate using old d
-		d = fOpUnionSoft(objectDist, d, k);
-		float delta = 1.0 - (max(k - abs(objectDist - d), 0.0) / k); // After new d is calculated
-
-		col = mix(getMaterial(p, id), col, delta);
-	}
-
-	float planeDist = fPlane(p, vec3(0.0, 1.0, 0.0), 0.0);
-
-	d = min(d, planeDist);
-	col = d >= planeDist ? getMaterial(p, 0) : col;
-
-	return col;
+	vec2 scene = sceneSdf(p);
+	return getMaterial(p, int(scene.y));
 }
 
 float rayMarch(vec3 ro, vec3 rd)
@@ -192,7 +183,7 @@ float rayMarch(vec3 ro, vec3 rd)
 	{
 		vec3 p = ro + (traveled * rd);
 
-		hit = map(p);
+		hit = sceneSdf(p).x;
 
 		if (abs(hit) < RAYMARCH_EPSILON || traveled > FAR)
 			break;
@@ -206,7 +197,7 @@ float rayMarch(vec3 ro, vec3 rd)
 vec3 getNormal(vec3 p)
 {
 	vec2 e = vec2(NORMAL_EPSILON, 0.0);
-	vec3 n = vec3(map(p)) - vec3(map(p - e.xyy), map(p - e.yxy), map(p - e.yyx));
+	vec3 n = vec3(sceneSdf(p).x) - vec3(sceneSdf(p - e.xyy).x, sceneSdf(p - e.yxy).x, sceneSdf(p - e.yyx).x);
 	return normalize(n);
 }
 
@@ -342,10 +333,13 @@ void main()
 
 	// vec4 originalColor = texture(t_colorTexture, screenUV);
 
-	vec4 col = render(uv);
+	vec4 data = render(uv);
+	float fog = data.a;
 
-	col = vec4(pow(col.xyz, vec3(0.4545)), col.w);
+	vec3 col = mix(background, data.xyz, fog);
 
-	FragColor = vec4(col.xyz, col.w);
+	col = pow(col.xyz, vec3(0.4545));
+
+	FragColor = vec4(col.xyz, 1.0);
 }
 

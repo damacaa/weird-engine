@@ -45,7 +45,7 @@ void main()
 	float mask = color.z;
 
 	// New material color
-	vec4 c = materialId < 16 ? u_staticColors[materialId] : 0.83 * vec4(1.0, 1.0, 1.0, 0.0);
+	vec4 c = materialId < 16 ? u_staticColors[materialId] : vec4(1.0, 1.0, 1.0, 0.0);
 	c = vec4(toLinear(c.rgb), c.a);
 
 	// Get current material color

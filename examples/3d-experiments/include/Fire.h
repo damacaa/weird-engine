@@ -45,20 +45,20 @@ private:
 		// Base shaders
 		m_backgroundShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "misc/background_spherical_grid.frag");
-		m_litShader = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "3d/lit.frag");
+		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/lit.frag");
 		m_bloomShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bloom.frag");
 		m_blurShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/blur.frag");
 		m_brightFilterShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bright_filter.frag");
 
 		// Custom shaders
-		m_flameShader = Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
+		m_flameShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
 		m_particlesShader =
 			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
 		m_smokeShader =
 			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
 		m_heatDistortionShader =
-			Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
+			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
 		getLigths().push_back(
 			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});

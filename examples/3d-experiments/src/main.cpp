@@ -18,8 +18,9 @@ int main(int argc, char* argv[])
 	displaySettings.width = 800;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
+	displaySettings.internalResolutionScale = 1.0f;
 
-	displaySettings.colorPalette[DisplaySettings::LightBlue].a = 0.25f;
+	displaySettings.colorPalette[DisplaySettings::Red].a = 0.75f;
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 0.5f;
 
 	PhysicsSettings physicsSettings{};

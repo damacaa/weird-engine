@@ -318,6 +318,7 @@ namespace WeirdEngine
 			m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 			m_distanceShader.setUniform("u_k", m_config.ballK);
+			m_distanceShader.setUniform("u_staticColors", m_colorPalette, 16);
 
 			m_distanceShader.setUniform("t_colorTexture", 0);
 			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);

@@ -71,10 +71,10 @@ namespace WeirdEngine
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			// Load shaders
-			m_geometryShaderProgram = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "common/geometry.frag");
+			m_geometryShaderProgram = Shader(SHADERS_PATH "3d/geometry.vert", SHADERS_PATH "3d/geometry.frag");
 
 			m_instancedGeometryShaderProgram =
-				Shader(SHADERS_PATH "common/geometry_instanced.vert", SHADERS_PATH "common/geometry.frag");
+				Shader(SHADERS_PATH "3d/geometry_instanced.vert", SHADERS_PATH "3d/geometry.frag");
 
 			m_3DsdfShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "3d/sdf_raymarching.frag");

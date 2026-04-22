@@ -82,6 +82,24 @@ float sdPolygon(in vec2[N] v, in vec2 p)
 	return s * sqrt(d);
 }
 
+const int SEGMENTS = 9;
+float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
+{
+	float d = dot(p - v[0], p - v[0]);
+	float s = 1.0;
+	for (int i = 0, j = SEGMENTS - 1; i < SEGMENTS; j = i, i++)
+	{
+		vec2 e = v[j] - v[i];
+		vec2 w = p - v[i];
+		vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
+		d = min(d, dot(b, b));
+		bvec3 c = bvec3(p.y >= v[i].y, p.y<v[j].y, e.x * w.y> e.y * w.x);
+		if (all(c) || all(not(c)))
+			s *= -1.0;
+	}
+	return s * sqrt(d);
+}
+
 // y = sin(5x + t) / 5
 // 0 = sin(5x + t) / 5 - y
 float shape_sine(vec2 p, float time)
@@ -148,4 +166,37 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
 	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
 	return sqrt(d.x) * sign(-d.y);
+}
+
+float dot2(vec3 v)
+{
+	return dot(v, v);
+}
+
+float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
+{
+  vec3 ba = b - a; vec3 pa = p - a;
+  vec3 cb = c - b; vec3 pb = p - b;
+  vec3 ac = a - c; vec3 pc = p - c;
+  vec3 nor = cross( ba, ac );
+
+  return sqrt(
+    (sign(dot(cross(ba,nor),pa)) +
+     sign(dot(cross(cb,nor),pb)) +
+     sign(dot(cross(ac,nor),pc))<2.0)
+     ?
+     min( min(
+     dot2(ba*clamp(dot(ba,pa)/dot2(ba),0.0,1.0)-pa),
+     dot2(cb*clamp(dot(cb,pb)/dot2(cb),0.0,1.0)-pb) ),
+     dot2(ac*clamp(dot(ac,pc)/dot2(ac),0.0,1.0)-pc) )
+     :
+     dot(nor,pa)*dot(nor,pa)/dot2(nor) );
+}
+
+
+float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
+{
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+  return length( pa - ba*h ) - r;
 }

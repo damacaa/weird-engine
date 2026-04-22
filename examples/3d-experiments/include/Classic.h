@@ -41,7 +41,7 @@ private:
 			t.position = vec3(0, 1, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::LightBlue;
+			sdf.materialId = DisplaySettings::Red;
 
 			m_ball = entity;
 		}
@@ -60,7 +60,7 @@ private:
 		}
 
 		getLigths().push_back(
-			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+			Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
 	}

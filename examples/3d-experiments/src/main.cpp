@@ -6,10 +6,12 @@
 #include "Classic.h"
 #include "Fire.h"
 #include "Lines.h"
+#include "GlobalIlumination.h"
 
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.registerScene<GlobalIluminationScene>("global_illumination");
 	sceneManager.registerScene<ClassicScene>("classic");
 	sceneManager.registerScene<FireScene>("fire");
 	sceneManager.registerScene<LinesScene>("lines");
@@ -19,8 +21,12 @@ int main(int argc, char* argv[])
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.internalResolutionScale = 1.0f;
+	displaySettings.worldSmoothFactor = 0.0f;
+	displaySettings.vSyncEnabled = true;
 
-	displaySettings.colorPalette[DisplaySettings::Red].a = 0.75f;
+	displaySettings.colorPalette[DisplaySettings::Red].r = 2.0f;
+	displaySettings.colorPalette[DisplaySettings::Red].a = .25f;
+
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 0.5f;
 
 	PhysicsSettings physicsSettings{};

@@ -70,6 +70,13 @@ namespace WeirdEngine
 
 			Texture m_combineResultTexture;
 
+			// Path tracing accumulation
+			Texture m_rayMarchAccumTexture[2];
+			RenderTarget m_rayMarchAccumRender[2];
+			int m_rayMarchAccumIdx;
+			glm::mat4 m_oldCameraMatrixWorld;
+			int m_frameCounter;
+
 			void output(Scene& scene, Texture& texture, const double delta);
 
 			glm::vec4 m_colorPalette[16];

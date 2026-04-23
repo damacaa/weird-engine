@@ -53,20 +53,27 @@ layout(location = 0) out vec4 FragColor;
 
 in vec2 v_texCoord;
 
-uniform sampler2D t_colorTexture;
+uniform sampler2D t_previousColor;
 uniform sampler2D t_depthTexture;
 uniform highp sampler2D t_shapeBuffer;
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
+uniform int u_frameCounter;
 
 uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
 uniform vec4 u_staticColors[16];
 
-uniform vec3 u_lightPos;
-uniform vec3 u_lightDirection;
-uniform vec4 u_lightColor;
+struct Light {
+	vec3 position;
+	vec3 direction;
+	vec4 color;
+	int type;
+};
+#define MAX_LIGHTS 8
+uniform int u_numLights;
+uniform Light u_lights[MAX_LIGHTS];
 
 uniform float u_time;
 
@@ -74,12 +81,10 @@ const int MAX_STEPS = 256;
 const float RAYMARCH_EPSILON = 0.001;
 const float NORMAL_EPSILON = 0.00001;
 const float NEAR = 0.1;
-const float FAR = 100.0;
+const float FAR = 500.0;
 
 const float OVERSHOOT = 1.0;
-const float DOT_BLEND_K = 0.5;
-
-const vec3 background = vec3(0.0);
+const float DOT_BLEND_K = 0.2;
 
 // Custom shape variables. In 3D these are evaluated on the XZ plane,
 // producing vertically extruded SDFs from the existing 2D math expressions.
@@ -169,11 +174,16 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 	
 	if (alpha < 1.0) 
 	{
-		vec2 offset = HashID(float(objectId));
+		vec2 offset = HashID(float(objectId)); // +1 to avoid zero ID correlation
 		
+		// Step through all 16 states of the 4x4 Bayer matrix using the frame counter.
+		// Since we have Temporal Accumulation (TAA), this perfectly averages out the dither noise 
+		// into smooth glass-like transparency over 16 frames!
+		offset += vec2(float(u_frameCounter % 4), float((u_frameCounter / 4) % 4));
+
 		// Note: Change 1.0 to 2.0 or 4.0 here if you want chunkier retro dither pixels
 		float bayer = GetBayerThreshold((gl_FragCoord.xy + offset) / 1.0); 
-		
+
 		if (alpha <= bayer) 
 		{
 			return FAR + 100.0; // Skip surface by pushing distance past the FAR plane
@@ -254,17 +264,15 @@ vec3 getNormal(vec3 p)
 	return normalize(n);
 }
 
-vec3 getLight(vec3 p, vec3 rd, vec3 color)
+vec3 getPointLight(vec3 p, vec3 rd, vec3 color)
 {
 
-	vec3 lightPos = u_lightPos;
+	vec3 lightPos = u_lights[0].position;
 
 	vec3 L = normalize(lightPos - p);
 	vec3 N = getNormal(p);
 	vec3 V = -rd;
 	vec3 R = reflect(-L, N);
-
-	// color = vec3(0.0);
 
 	vec3 specColor = vec3(0.5);
 	vec3 specular = specColor * pow(clamp(dot(R, V), 0.0, 1.0), 100.0);
@@ -279,14 +287,154 @@ vec3 getLight(vec3 p, vec3 rd, vec3 color)
 	return (d > length(lightPos - p)) ? diffuse + ambient + specular + fresnel : ambient + fresnel;
 }
 
+// Random functions for path tracing
+// Based on typical hash
+vec2 hash2(inout float seed) {
+    seed += 1.0;
+    return fract(sin(vec2(seed, seed + 1.0)*vec2(12.9898, 78.233)) * 43758.5453);
+}
+
+vec3 cosineSampleHemisphere(vec3 N, inout float seed) {
+    vec2 xi = hash2(seed);
+    float phi = 2.0 * 3.14159265359 * xi.x;
+    float cosTheta = sqrt(xi.y);
+    float sinTheta = sqrt(1.0 - xi.y);
+    
+    vec3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+    
+    vec3 up = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, N));
+    vec3 bitangent = cross(N, tangent);
+    
+    return tangent * H.x + bitangent * H.y + N * H.z;
+}
+
+vec3 getSkyColor(vec3 dir) {
+    // Atmospheric fade from horizon to zenith based on the direction's Y coordinate
+    float t = max(dir.y, 0.0);
+    vec3 zenithColor = vec3(0.05, 0.25, 0.7);
+    vec3 horizonColor = vec3(0.7, 0.8, 0.95);
+    vec3 groundColor = vec3(0.1, 0.1, 0.12);
+    
+    vec3 sky = mix(horizonColor, zenithColor, pow(t, 0.6));
+    if (dir.y < 0.0) {
+        // Fake ground bounce color below horizon
+        sky = mix(horizonColor, groundColor, pow(-dir.y, 0.5));
+    }
+    
+    // Procedural pseudo-Sun using the first directional light
+    if (u_numLights > 0 && u_lights[0].type == 0) {
+        float sun = max(dot(dir, normalize(u_lights[0].direction)), 0.0);
+        sky += vec3(1.0, 0.85, 0.6) * pow(sun, 4000.0) * 2.0; // Sun core (much smaller, tight exponent)
+        sky += vec3(1.0, 0.6, 0.2) * pow(sun, 200.0) * 0.4;   // Sun outer glow (restrained exponent)
+    }
+    
+    return sky;
+}
+
+// Common Path Tracing Function running multiple lights!
+vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
+{
+	vec3 throughput = vec3(1.0);
+	
+	// Energy Conservation: Base color > 1.0 acts as light emission!
+	vec3 finalColor = max(initialColor - vec3(1.0), vec3(0.0)); 
+	vec3 currentAlbedo = min(initialColor, vec3(1.0)); // Albedo reflects 100% light max
+	
+	// Perform up to 2 bounces
+	for (int bounce = 0; bounce < 2; bounce++) {
+		vec3 N = getNormal(p);
+		
+		// 1. Accumulate Direct Lighting from all active lights
+		vec3 directLighting = vec3(0.0);
+		
+		for(int i = 0; i < u_numLights; i++) {
+			Light light = u_lights[i];
+			
+			vec3 L;
+			float lightDist;
+			float attenuation = 1.0;
+			
+			if (light.type == 0) {
+				// Directional
+				L = normalize(light.direction + (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.05);
+				lightDist = FAR * 0.5;
+			} else if (light.type == 1) {
+				// Point
+				vec3 lightVec = light.position - p;
+				lightDist = length(lightVec);
+				vec3 jitter = (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.25;
+				L = normalize(lightVec + jitter);
+				
+				float a = 3.0; float b = 0.7;
+				attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+			} else {
+				// Cone
+				vec3 lightVec = light.position - p;
+				lightDist = length(lightVec);
+				vec3 jitter = (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.15;
+				L = normalize(lightVec + jitter);
+				
+				float a = 3.0; float b = 0.7;
+				attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+				
+				// Cone falloff (spot effect)
+				vec3 surfaceToLight = normalize(light.position - p);
+				float spotEffect = dot(surfaceToLight, normalize(light.direction));
+				
+				float innerCone = 0.95; 
+				float outerCone = 0.80;
+				
+				attenuation *= smoothstep(outerCone, innerCone, spotEffect);
+			}
+
+			// Direct shadow ray for this specific light
+			float dLight = rayMarch(p + N * 0.01, L);
+			
+			// Check if we hit nothing before reaching the light
+			if (dLight >= lightDist * 0.95) {
+				vec3 diffuse = currentAlbedo * max(dot(N, L), 0.0);
+				directLighting += diffuse * attenuation * light.color.xyz * light.color.w;
+			}
+		}
+		
+		// Add all direct light contributions for this bounce
+		finalColor += throughput * directLighting;
+		
+		// 2. Indirect bounce (Calculated once per bounce path)
+		vec3 bounceDir = cosineSampleHemisphere(N, seed);
+		float d = rayMarch(p + N * 0.01, bounceDir);
+		
+		throughput *= currentAlbedo; // modulate throughput by CURRENT capped color
+		
+		if (d >= FAR) {
+			// Hit sky (ambient bounding)
+			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome! 
+			finalColor += throughput * getSkyColor(bounceDir) * 0.5;
+			break;
+		} else {
+			p = p + N * 0.01 + d * bounceDir;
+			vec3 bounceMaterial = getColor(p);
+			
+			vec3 emission = max(bounceMaterial - vec3(1.0), vec3(0.0));
+			currentAlbedo = min(bounceMaterial, vec3(1.0));
+			
+			finalColor += throughput * emission; // Emit light from the glowing object!
+		}
+	}
+	
+	return finalColor;
+}
+
 vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 {
-	vec3 L = u_lightDirection;
+	vec3 L = u_lights[0].direction;
 	vec3 N = getNormal(p);
 	vec3 V = -rd;
 	vec3 R = reflect(-L, N);
-
-	// color = vec3(0.0);
 
 	vec3 specColor = vec3(1.0);
 	vec3 specular = specColor * pow(clamp(dot(R, V), 0.0, 1.0), 100.0);
@@ -329,41 +477,25 @@ vec4 render(in vec2 uv)
 
 	gl_FragDepth = depth;
 
-	//    if(handleTransparency)
-	//        return vec4(1,0,0,1);
+	// Output color (initialized to sky passing the primary ray direction)
+	vec3 col = getSkyColor(rd);
 
-	// Output color
-	vec3 col;
+	float seed = uv.x * 1234.5 + uv.y * 6789.0 + float(u_frameCounter) * 111.0;
 
-	// Scene alpha over background
-	float alpha = 0.0;
+	// Scene alpha over background is abandoned, evaluate objects fully opaque against sky
 	if (minDepth < FAR)
 	{
-
 		vec3 p = ro + object * rd;
 		vec3 material = getColor(p);
-		col = getDirectionalLight(p, rd, material);
-
-		// fog
-
-		// minDepth -= 0.85;
-		// alpha = exp(-0.0004 * minDepth * minDepth);
-
-		// col = mix(col, background, alpha);
-
-		// float a = minDepth - (FAR - 980);
-		// alpha = max(0.0, 0.001 * a * a *a );
-
-		// alpha = 1.0;
-
-		alpha = 1.0 - smoothstep(FAR * 0.5, FAR, minDepth);
+		col = pathTrace(p, rd, material, seed);
+		
+		// Apply distance fog to smoothly blend the object into the sky using the view ray (rd) color
+		float fog = smoothstep(FAR * 0.0, FAR, minDepth);
+		col = mix(col, getSkyColor(rd), fog);
 	}
 
-	return vec4(col, alpha);
-
-	// col = mix(col, background, alpha);
-
-	// return col;
+	// Always return 1.0 alpha now
+	return vec4(col, 1.0);
 }
 
 float rand(vec2 co)
@@ -377,22 +509,26 @@ void main()
 
 	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
+	
+	// Temporal jitter for anti-aliasing
+	if(u_frameCounter > 0) {
+		uv += (vec2(rand(uv + u_time), rand(uv + u_time * 1.5)) - 0.5) * 2.0 / u_resolution;
+	}
+	
 	uv.x *= aspectRatio;
 
-	// Calculate true z value from the depth buffer:
-	// https://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer float depth =
-	// texture(t_depthTexture, screenUV).r; float z_n = 2.0 * depth - 1.0; float z_e = 2.0 * NEAR * FAR / (FAR + NEAR -
-	// z_n * (FAR - NEAR));
-
-	// vec4 originalColor = texture(t_colorTexture, screenUV);
-
+	// Because AA jitter is baked into the original UVs being sent to render(),
+	// we just evaluate the render directly to extract the jittered target color.
 	vec4 data = render(uv);
-	float fog = data.a;
+	vec3 col = data.xyz;
 
-	vec3 col = mix(background, data.xyz, fog);
+	if(u_frameCounter > 0) {
+		vec4 prevColor = texture(t_previousColor, screenUV);
+        prevColor.xyz = pow(prevColor.xyz, vec3(2.2)); // to linear
+		col = mix(prevColor.xyz, col, 1.0 / float(u_frameCounter + 1));
+	}
 
-	col = pow(col.xyz, vec3(0.4545));
-
-	FragColor = vec4(col.xyz, 1.0);
+	FragColor = vec4(pow(col, vec3(0.4545)), 1.0); // to sRGB
+	// FragColor = vec4(1.0); // all white
 }
 

@@ -47,7 +47,7 @@ private:
 		}
 
 		{
-			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
+			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f}; // Custom shape
 			Entity start = addShape(DefaultShapes::STAR, vars1, DisplaySettings::Orange, CombinationType::Addition, true, 0);
 		}
 

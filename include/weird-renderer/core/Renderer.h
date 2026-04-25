@@ -42,6 +42,8 @@ namespace WeirdEngine
 
 			bool m_vSyncEnabled;
 			float m_targetRefreshRate;
+			float m_ditheringSpread;
+			int m_ditheringColorCount;
 
 			// Pipelines for 2D SDF rendering
 			SDF2DRenderPipeline* m_worldPipeline;

@@ -27,6 +27,8 @@ namespace WeirdEngine
 			float distanceSampleScale = 0.5f, internalResolutionScale = 1.0f, refreshRate = 60.0f;
 			float worldDistanceOverscan = 0.1f;
 			bool enableDithering = true;
+			float ditheringSpread = 0.05f;
+			int ditheringColorCount = 16;
 			bool enableLongShadows = false;
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;

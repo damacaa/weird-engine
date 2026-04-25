@@ -14,6 +14,8 @@ namespace WeirdEngine
 			, m_distanceSampleScale(settings.distanceSampleScale)
 			, m_renderScale(settings.internalResolutionScale)
 			, m_vSyncEnabled(settings.vSyncEnabled)
+			, m_ditheringSpread(std::max(0.0f, settings.ditheringSpread))
+			, m_ditheringColorCount(std::max(2, settings.ditheringColorCount))
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
@@ -239,6 +241,8 @@ namespace WeirdEngine
 			m_outputShaderProgram.setUniform("u_time", scene.getTime());
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
+			m_outputShaderProgram.setUniform("u_ditheringSpread", m_ditheringSpread);
+			m_outputShaderProgram.setUniform("u_ditheringColorCount", m_ditheringColorCount);
 
 			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			m_finalResultTexture.bind(0);

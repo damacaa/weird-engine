@@ -65,6 +65,8 @@ namespace WeirdEngine
 		// Activates the Shader Program
 		void Shader::use()
 		{
+			m_hasRecompiled = false;
+
 			if (isFileModified(m_fragmentFile, m_lastModifiedTime))
 			{
 				m_needsRecompile = true;
@@ -74,6 +76,7 @@ namespace WeirdEngine
 			{
 				m_needsRecompile = false;
 				recompile();
+				m_hasRecompiled = true;
 			}
 
 			glUseProgram(ID);

@@ -80,8 +80,8 @@ uniform float u_time;
 const int MAX_STEPS = 256;
 const float RAYMARCH_EPSILON = 0.001;
 const float NORMAL_EPSILON = 0.00001;
-const float NEAR = 0.1;
-const float FAR = 500.0;
+uniform float u_near;
+uniform float u_far;
 
 const float OVERSHOOT = 1.0;
 const float DOT_BLEND_K = 0.2;
@@ -186,7 +186,7 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 
 		if (alpha <= bayer) 
 		{
-			return FAR + 100.0; // Skip surface by pushing distance past the FAR plane
+			return u_far + 100.0; // Skip surface by pushing distance past the FAR plane
 		}
 	}
 	return dist;
@@ -195,9 +195,18 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 
 vec2 sceneSdf(vec3 p)
 {
-	float minDist = FAR;
+	float minDist = u_far;
 	int finalMaterialId = 16;
 
+	// Runtime-generated custom-shape SDF code is injected at this include point.
+	// SDFShaderGenerationSystem walks the ECS custom shape components when they are marked dirty,
+	// sorts them by group, fetches each shape's math-expression tree from the SDF registry, and
+	// turns that tree into GLSL by calling IMathExpression::print(). The generated block also emits
+	// parameter loads from t_shapeBuffer, expands any array literals the expression needs, applies
+	// the shape's boolean/smooth combination operator, and updates minDist/finalMaterialId for the
+	// current group. Shader::setFragmentIncludeCode(1, replacement) then replaces this include with
+	// the final GLSL string, so every custom shape becomes part of sceneSdf() without a static branch
+	// per shape type in this source file.
 	// Custom shapes
 #include "custom_shapes"
 
@@ -240,7 +249,7 @@ float rayMarch(vec3 ro, vec3 rd)
 {
 	float hit;
 
-	float traveled = NEAR;
+	float traveled = u_near;
 
 	for (int i = 0; i < MAX_STEPS; i++)
 	{
@@ -248,7 +257,7 @@ float rayMarch(vec3 ro, vec3 rd)
 
 		hit = sceneSdf(p).x;
 
-		if (abs(hit) < RAYMARCH_EPSILON || traveled > FAR)
+		if (abs(hit) < RAYMARCH_EPSILON || traveled > u_far)
 			break;
 
 		traveled += hit;
@@ -361,7 +370,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 			if (light.type == 0) {
 				// Directional
 				L = normalize(light.direction + (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.05);
-				lightDist = FAR * 0.5;
+				lightDist = u_far * 0.5;
 			} else if (light.type == 1) {
 				// Point
 				vec3 lightVec = light.position - p;
@@ -410,7 +419,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 		
 		throughput *= currentAlbedo; // modulate throughput by CURRENT capped color
 		
-		if (d >= FAR) {
+		if (d >= u_far) {
 			// Hit sky (ambient bounding)
 			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome! 
 			finalColor += throughput * getSkyColor(bounceDir) * 0.5;
@@ -446,8 +455,10 @@ vec3 getDirectionalLight(vec3 p, vec3 rd, vec3 color)
 
 	float d = rayMarch(p - rd * 0.02, L);
 
-	return (d >= FAR * length(L)) ? diffuse + ambient + specular + fresnel : ambient + fresnel;
+	return (d >= u_far * length(L)) ? diffuse + ambient + specular + fresnel : ambient + fresnel;
 }
+
+// #define FISH_EYE
 
 vec4 render(in vec2 uv)
 {
@@ -461,9 +472,11 @@ vec4 render(in vec2 uv)
 	vec3 rd = (vec4(normalize(vec3(uv, -u_fov)), 0.0) * u_camMatrix).xyz;
 
 	// Fish eye
-	// float z = pow(1.0 - (uv.x * uv.x) - (uv.y * uv.y), 0.5);
-	// vec3 rd = vec3(uv, -z);
-	// rd = (vec4(rd, 0) * u_camMatrix).xyz;
+#ifdef FISH_EYE
+	float z = pow(1.0 - (uv.x * uv.x) - (uv.y * uv.y), 0.5);
+	rd = vec3(uv, -z);
+	rd = (vec4(rd, 0) * u_camMatrix).xyz;
+#endif
 
 	// Ray march to find closest SDF
 	float object = rayMarch(ro, rd);
@@ -472,7 +485,7 @@ vec4 render(in vec2 uv)
 	float minDepth = object;
 
 	float z_e = object;
-	float z_n = (FAR + NEAR - (2.0 * NEAR * FAR) / z_e) / (FAR - NEAR);
+	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near); // Convert to non-linear depth
 	float depth = (z_n + 1.0) * 0.5;
 
 	gl_FragDepth = depth;
@@ -483,14 +496,14 @@ vec4 render(in vec2 uv)
 	float seed = uv.x * 1234.5 + uv.y * 6789.0 + float(u_frameCounter) * 111.0;
 
 	// Scene alpha over background is abandoned, evaluate objects fully opaque against sky
-	if (minDepth < FAR)
+	if (minDepth < u_far)
 	{
 		vec3 p = ro + object * rd;
 		vec3 material = getColor(p);
 		col = pathTrace(p, rd, material, seed);
 		
 		// Apply distance fog to smoothly blend the object into the sky using the view ray (rd) color
-		float fog = smoothstep(FAR * 0.0, FAR, minDepth);
+		float fog = smoothstep(u_far * 0.0, u_far, minDepth);
 		col = mix(col, getSkyColor(rd), fog);
 	}
 

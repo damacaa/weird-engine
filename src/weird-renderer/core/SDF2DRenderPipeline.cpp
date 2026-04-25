@@ -324,13 +324,11 @@ namespace WeirdEngine
 
 			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
-			m_distanceShader.setUniform("t_shapeBuffer", 1);
 			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
+			m_distanceShader.setUniform("t_shapeBuffer", 1);
 			m_shapeDataBuffer.bind(1);
 
 			m_renderPlane.draw(m_distanceShader);
-
-			m_shapeDataBuffer.unbind();
 		}
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)
@@ -345,7 +343,7 @@ namespace WeirdEngine
 
 			m_jumpFloodInitShader.setUniform("u_texelSize",
 											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
-			m_distanceCorrectionShader.setUniform("t_distanceTexture", 0);
+			m_jumpFloodInitShader.setUniform("t_distanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_jumpFloodInitShader);

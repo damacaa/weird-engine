@@ -2,6 +2,7 @@
 
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -73,6 +74,34 @@ namespace WeirdEngine
 
 		void Texture::createTexture(void* data, int width, int height, TextureType type)
 		{
+			std::vector<unsigned char> zeroDataU8;
+			std::vector<float> zeroDataF32;
+			std::vector<unsigned int> zeroDataU32;
+
+			auto getUploadDataU8 = [&](int channels) -> const void*
+			{
+				if (data != nullptr)
+					return data;
+
+				zeroDataU8.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0u);
+				return zeroDataU8.data();
+			};
+
+			auto getUploadDataF32 = [&](int channels) -> const void*
+			{
+				if (data != nullptr)
+					return data;
+
+				zeroDataF32.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0.0f);
+				return zeroDataF32.data();
+			};
+
+			auto getUploadDataDepth = [&]() -> const void*
+			{
+				zeroDataU32.assign(static_cast<size_t>(width) * static_cast<size_t>(height), 0u);
+				return zeroDataU32.data();
+			};
+
 			// Generates an OpenGL texture object
 			glGenTextures(1, &ID);
 			// Assigns the texture to a Texture Unit
@@ -84,8 +113,9 @@ namespace WeirdEngine
 				case TextureType::Color:
 				{
 					// Handle color texture
-
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -99,8 +129,9 @@ namespace WeirdEngine
 				case TextureType::ColorAlpha:
 				{
 					// Handle color with alpha texture
-
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGBA8; GL_RGBA (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, getUploadDataU8(4));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -114,7 +145,7 @@ namespace WeirdEngine
 				case TextureType::SingleChannel:
 				{
 
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, getUploadDataU8(1));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -128,9 +159,11 @@ namespace WeirdEngine
 				case TextureType::Depth:
 				{
 					// Handle depth texture
+					// In GLES 3.0, GL_DEPTH_COMPONENT24 requires type GL_UNSIGNED_INT (not GL_FLOAT).
+					// Use GL_DEPTH_COMPONENT32F + GL_FLOAT if a float depth buffer is needed.
 					glTexImage2D(GL_TEXTURE_2D, 0,
 								 GL_DEPTH_COMPONENT24, // 24-bit depth
-								 width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, getUploadDataDepth());
 
 					// Set texture parameters
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -146,7 +179,7 @@ namespace WeirdEngine
 				}
 				case TextureType::Data:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -157,7 +190,7 @@ namespace WeirdEngine
 				}
 				case TextureType::LinearData:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -168,7 +201,9 @@ namespace WeirdEngine
 				}
 				case TextureType::RetroColor:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
+					// to be color-renderable as a framebuffer attachment in GLES 3.0.
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -199,11 +234,6 @@ namespace WeirdEngine
 			glBindTexture(GL_TEXTURE_2D, ID);
 		}
 
-		void Texture::unbind() const
-		{
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-
 		void Texture::dispose() const
 		{
 			glDeleteTextures(1, &ID);
@@ -211,66 +241,156 @@ namespace WeirdEngine
 
 		void Texture::saveToDisk(const char* fileName)
 		{
-			glBindTexture(GL_TEXTURE_2D, ID);
+#if defined(GL_ES_VERSION_2_0)
+			GLuint prevFBO = 0;
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*)&prevFBO);
 
-			// float* data = new  float[width * height * 4];  // Assuming 4 channels (RGBA)
-			//
-			// glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, data);
+			GLuint fbo;
+			glGenFramebuffers(1, &fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ID, 0);
 
-			// for (size_t i = 0; i < width * height; i++)
-			//{
-			//	size_t idx = 4 * i;
-			//	data[idx] = data[idx + 3];
-			//	data[idx+1] = data[idx + 3];
-			//	data[idx+2] = data[idx + 3];
+			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			{
+				std::cout << "Texture saving failed: Framebuffer not complete." << std::endl;
+				glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+				glDeleteFramebuffers(1, &fbo);
+				return;
+			}
 
-			//	data[idx + 3] = 255;
-			//}
-			//
-			// wstbi_write_png("output_texture.png", width, height, 4, data, width * 4);
-
-			// delete[] data;
-
-			// Create a buffer to hold the pixel data.
-			float* pixels = new float[width * height * numColCh]; // 4 channels (RGBA) with float data type
-
-			// Read the pixels from the texture into the buffer.
-			glGetTexImage(GL_TEXTURE_2D, 0, numColCh == 3 ? GL_RGB : GL_RGBA, GL_FLOAT, pixels);
+			// In GLES, reading from floating-point or integer framebuffers using GL_UNSIGNED_BYTE 
+			// can fail with GL_INVALID_OPERATION. We must query the attachment component type.
+			GLint attachmentType = 0;
+			glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, &attachmentType);
 
 			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
-			// size_t is the size of one pixel in bytes (4 for RGBA)
+
+			if (attachmentType == GL_FLOAT)
+			{
+				float* pixels_f = new float[width * height * 4];
+				glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, pixels_f);
+
+				for (int i = 0; i < width * height * 4; ++i)
+				{
+					pixels_uchar[i] = static_cast<unsigned char>(glm::clamp(pixels_f[i], 0.0f, 1.0f) * 255.0f);
+				}
+				delete[] pixels_f;
+			}
+			else if (attachmentType == GL_INT)
+			{
+				int* pixels_i = new int[width * height * 4];
+				glReadPixels(0, 0, width, height, GL_RGBA_INTEGER, GL_INT, pixels_i);
+
+				for (int i = 0; i < width * height * 4; ++i)
+				{
+					pixels_uchar[i] = static_cast<unsigned char>(glm::clamp((float)pixels_i[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
+				}
+				delete[] pixels_i;
+			}
+			else if (attachmentType == GL_UNSIGNED_INT)
+			{
+				unsigned int* pixels_ui = new unsigned int[width * height * 4];
+				glReadPixels(0, 0, width, height, GL_RGBA_INTEGER, GL_UNSIGNED_INT, pixels_ui);
+
+				for (int i = 0; i < width * height * 4; ++i)
+				{
+					pixels_uchar[i] = static_cast<unsigned char>(glm::clamp((float)pixels_ui[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
+				}
+				delete[] pixels_ui;
+			}
+			else
+			{
+				// Default for GL_UNSIGNED_NORMALIZED, GL_SIGNED_NORMALIZED, etc.
+				glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels_uchar);
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+			glDeleteFramebuffers(1, &fbo);
+
+			unsigned char* flipped_pixels = new unsigned char[width * height * 4];
 			const size_t pixel_size = 4;
 
 			for (int y = 0; y < height; y++)
 			{
-				// Source index (reading from the 'pixels' array)
-				// We read rows from top (y=0) to bottom (y=height-1)
-				// The source row is y.
 				size_t src_row_start = pixel_size * width * y;
-
-				// Destination index (writing to the 'pixels_uchar' array)
-				// We want to write the top row (y=0 in source) to the BOTTOM row (y_dest=height-1) in the destination.
-				// The target row index is (height - 1 - y).
 				size_t dest_row_start = pixel_size * width * (height - 1 - y);
 
 				for (int x = 0; x < width; x++)
 				{
-					// Calculate the index for the current pixel in the source float array
 					size_t src_idx = src_row_start + pixel_size * x;
-
-					// Calculate the index for the current pixel in the destination uchar array
 					size_t dest_idx = dest_row_start + pixel_size * x;
 
-					// Clamp and scale the R, G, B components
+					flipped_pixels[dest_idx] = pixels_uchar[src_idx];
+					flipped_pixels[dest_idx + 1] = pixels_uchar[src_idx + 1];
+					flipped_pixels[dest_idx + 2] = pixels_uchar[src_idx + 2];
+					flipped_pixels[dest_idx + 3] = pixels_uchar[src_idx + 3];
+				}
+			}
+
+			wstbi_write_png(fileName, width, height, 4, flipped_pixels, width * 4);
+
+			delete[] pixels_uchar;
+			delete[] flipped_pixels;
+#else
+			glBindTexture(GL_TEXTURE_2D, ID);
+
+			GLenum format = GL_RGBA;
+			int format_channels = 4;
+			if (numColCh == 3)
+			{
+				format = GL_RGB;
+				format_channels = 3;
+			}
+			else if (numColCh == 1)
+			{
+				format = GL_RED;
+				format_channels = 1;
+			}
+
+			// Create a buffer to hold the pixel data.
+			float* pixels = new float[(size_t)width * height * format_channels];
+
+			// Read the pixels from the texture into the buffer.
+			glGetTexImage(GL_TEXTURE_2D, 0, format, GL_FLOAT, pixels);
+
+			unsigned char* pixels_uchar = new unsigned char[(size_t)width * height * 4];
+			
+			for (int y = 0; y < height; y++)
+			{
+				size_t src_row_start = (size_t)format_channels * width * y;
+				size_t dest_row_start = 4 * (size_t)width * (height - 1 - y);
+
+				for (int x = 0; x < width; x++)
+				{
+					size_t src_idx = src_row_start + format_channels * x;
+					size_t dest_idx = dest_row_start + 4 * x;
+
 					pixels_uchar[dest_idx] =
 						static_cast<unsigned char>(glm::clamp(pixels[src_idx], 0.0f, 1.0f) * 255.0f);
-					pixels_uchar[dest_idx + 1] =
-						static_cast<unsigned char>(glm::clamp(pixels[src_idx + 1], 0.0f, 1.0f) * 255.0f);
-					pixels_uchar[dest_idx + 2] =
-						static_cast<unsigned char>(glm::clamp(pixels[src_idx + 2], 0.0f, 1.0f) * 255.0f);
+					
+					if (format_channels >= 3)
+					{
+						pixels_uchar[dest_idx + 1] =
+							static_cast<unsigned char>(glm::clamp(pixels[src_idx + 1], 0.0f, 1.0f) * 255.0f);
+						pixels_uchar[dest_idx + 2] =
+							static_cast<unsigned char>(glm::clamp(pixels[src_idx + 2], 0.0f, 1.0f) * 255.0f);
+					}
+					else
+					{
+						pixels_uchar[dest_idx + 1] = pixels_uchar[dest_idx];
+						pixels_uchar[dest_idx + 2] = pixels_uchar[dest_idx];
+					}
 
-					// Set the Alpha component
-					pixels_uchar[dest_idx + 3] = 255;
+					if (format_channels == 4)
+					{
+						pixels_uchar[dest_idx + 3] =
+							static_cast<unsigned char>(glm::clamp(pixels[src_idx + 3], 0.0f, 1.0f) * 255.0f);
+					}
+					else
+					{
+						// Set the Alpha component
+						pixels_uchar[dest_idx + 3] = 255;
+					}
 				}
 			}
 
@@ -280,6 +400,7 @@ namespace WeirdEngine
 			// Free the allocated memory.
 			delete[] pixels;
 			delete[] pixels_uchar;
+#endif
 		}
 
 	} // namespace WeirdRenderer

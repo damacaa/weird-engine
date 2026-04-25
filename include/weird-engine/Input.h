@@ -176,18 +176,41 @@ namespace WeirdEngine
 		}
 		static float GetMouseDeltaX()
 		{
-			return getInstance().m_deltaX / getInstance().m_width;
+			auto& instance = getInstance();
+			if (instance.m_width <= 0)
+			{
+				return 0.0f;
+			}
+			return instance.m_deltaX / static_cast<float>(instance.m_width);
 		}
 		static float GetMouseDeltaY()
 		{
-			return getInstance().m_deltaY / getInstance().m_height;
+			auto& instance = getInstance();
+			if (instance.m_height <= 0)
+			{
+				return 0.0f;
+			}
+			return instance.m_deltaY / static_cast<float>(instance.m_height);
+		}
+
+		static float GetMouseDeltaXRaw()
+		{
+			return getInstance().m_deltaX;
+		}
+
+		static float GetMouseDeltaYRaw()
+		{
+			return getInstance().m_deltaY;
 		}
 
 		static void SetMousePosition(float x, float y)
 		{
-			SDL_WarpMouseInWindow(getInstance().m_window, x, y);
-			// After warping, update internal state to prevent a large delta on the next frame
 			auto& instance = getInstance();
+			if (instance.m_window)
+			{
+				SDL_WarpMouseInWindow(instance.m_window, x, y);
+			}
+			// After warping, update internal state to prevent a large delta on the next frame
 			instance.m_mouseX = x;
 			instance.m_mouseY = y;
 		}
@@ -195,13 +218,23 @@ namespace WeirdEngine
 		// Shows mouse cursor and allows it to leave the window.
 		static void ShowMouse()
 		{
-			// SDL_SetRelativeMouseMode(false);
+			auto& instance = getInstance();
+			if (instance.m_window)
+			{
+				SDL_SetWindowRelativeMouseMode(instance.m_window, false);
+			}
+			SDL_ShowCursor();
 		}
 
 		// Hides mouse cursor and locks it to the window (ideal for 3D camera control).
 		static void HideMouse()
 		{
-			// SDL_SetRelativeMouseMode(true);
+			auto& instance = getInstance();
+			if (instance.m_window)
+			{
+				SDL_SetWindowRelativeMouseMode(instance.m_window, true);
+			}
+			SDL_HideCursor();
 		}
 
 #pragma endregion

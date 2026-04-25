@@ -2,7 +2,14 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/systems/SDFRenderSystem2D.h"
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
 #include <memory>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace WeirdEngine::SDFShaderGenerationSystem2D
 {
@@ -21,6 +28,15 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 		}
 
 		ctx.m_shapesNeedUpdate = false;
+
+		auto toGlslFloat = [](float value) {
+			std::ostringstream ss;
+			ss << std::fixed << std::setprecision(6) << value;
+			return ss.str();
+		};
+
+		// ECMAScript std::regex does not support lookbehind assertions.
+		static const std::regex integerLiteralRegex(R"((^|[^A-Za-z0-9_.])(\d+)([^A-Za-z0-9_.]|$))");
 
 		std::ostringstream oss;
 
@@ -67,7 +83,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				if (currentGroup != -1)
 				{
 					oss << "if(" << groupDistanceVariable
-						<< " <= max(minDist, 0)){ finalMaterialId = currentGroupColor;}\n";
+						<< " <= max(minDist, 0.0)){ finalMaterialId = currentGroupColor;}\n";
 					// oss << "{ finalMaterialId = currentGroupColor;}\n";
 					oss << "if(minDist >" << groupDistanceVariable << "){ minDist = " << groupDistanceVariable
 						<< ";}\n";
@@ -78,7 +94,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				groupDistanceVariable = "d" + std::to_string(currentGroup);
 
 				// Initialize distance with big value
-				oss << "float " << groupDistanceVariable << "= 10000;\n";
+				oss << "float " << groupDistanceVariable << "= 10000.0;\n";
 			}
 
 			if (group == CustomShape::GLOBAL_GROUP - 1)
@@ -91,15 +107,77 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 			oss << "int idx = dataOffset + " << 2 * i << ";\n";
 
 			// Fetch parameters
-			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, idx);\n";
-			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, idx + 1);\n";
+			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, ivec2(idx, 0), 0);\n";
+			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, ivec2(idx + 1, 0), 0);\n";
 
 			// Get distance function
 			auto fragmentCode = sdfs[shape.distanceFieldId]->print();
+			fragmentCode = std::regex_replace(fragmentCode, integerLiteralRegex, "$1$2.0$3");
 
 			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
+			// GLES workaround: some drivers don't propagate default float precision
+			// to array types (e.g. vec2[9]), causing compilation errors on mobile WebGL.
+			// Extract inline array constructors into local variables with explicit precision.
+			std::string arrayPreamble;
+			{
+				const std::string arrayPattern = "vec2[](";
+				size_t arrayPos = fragmentCode.find(arrayPattern);
+				if (arrayPos != std::string::npos)
+				{
+					// Find matching closing paren for the constructor
+					size_t parenStart = arrayPos + arrayPattern.length() - 1;
+					int depth = 0;
+					size_t end = parenStart;
+					for (; end < fragmentCode.size(); end++)
+					{
+						if (fragmentCode[end] == '(')
+							depth++;
+						else if (fragmentCode[end] == ')')
+						{
+							depth--;
+							if (depth == 0)
+							{
+								end++;
+								break;
+							}
+						}
+					}
+
+					// Parse individual vec2 elements from the constructor
+					std::vector<std::string> elements;
+					size_t elemStart = parenStart + 1;
+					int elemDepth = 0;
+					for (size_t k = elemStart; k < end - 1; k++)
+					{
+						if (fragmentCode[k] == '(')
+							elemDepth++;
+						else if (fragmentCode[k] == ')')
+							elemDepth--;
+						else if (fragmentCode[k] == ',' && elemDepth == 0)
+						{
+							elements.push_back(fragmentCode.substr(elemStart, k - elemStart));
+							elemStart = k + 1;
+						}
+					}
+					elements.push_back(fragmentCode.substr(elemStart, end - 1 - elemStart));
+
+					// Replace inline constructor with variable reference
+					fragmentCode.replace(arrayPos, end - arrayPos, "_sdfPoly");
+
+					// Emit element-by-element initialization (avoids array constructor syntax)
+					arrayPreamble =
+						"highp vec2 _sdfPoly[" + std::to_string(elements.size()) + "];\n";
+					for (size_t k = 0; k < elements.size(); k++)
+					{
+						arrayPreamble +=
+							"_sdfPoly[" + std::to_string(k) + "] = " + elements[k] + ";\n";
+					}
+				}
+			}
+
 			// Shape distance calculation
+			oss << arrayPreamble;
 			oss << "float dist = " << fragmentCode << ";" << std::endl;
 
 			// oss << "#ifdef ORIGIN_AT_BOTTOM_LEFT" << std::endl;
@@ -132,7 +210,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << shape.smoothFactor
+					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist," << toGlslFloat(shape.smoothFactor)
 						<< ");\n";
 					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
 						<< ": currentGroupColor;" << std::endl;
@@ -141,7 +219,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem2D
 				case CombinationType::SmoothSubtraction:
 				{
 					// Smoothly subtract "dist" from currentMinDistance
-					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << shape.smoothFactor << ");\n";
+					oss << "currentMinDistance = fOpSubSoft(currentMinDistance, dist, " << toGlslFloat(shape.smoothFactor)
+						<< ");\n";
 					// Material belongs to the *a* shape if it still �wins� after subtraction
 					// oss << "finalMaterialId = dist <= min(minDist, currentMinDistance) ? "
 					//	<< shape.m_material << " : finalMaterialId;" << std::endl;

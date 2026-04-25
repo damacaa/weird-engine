@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 // Outputs colors in RGBA
 out vec4 FragColor;
@@ -6,7 +8,7 @@ out vec4 FragColor;
 in vec2 v_texCoord;
 
 uniform sampler2D t_colorTexture;
-uniform float u_threshold = 1.0;
+const float u_threshold = 1.0;
 
 void main()
 {

@@ -335,7 +335,7 @@ namespace WeirdEngine
 				{
 					// Accumulate camera changes
 					bool cameraMoved = (m_oldCameraMatrixWorld != sceneCamera.view);
-					if (cameraMoved)
+					if (cameraMoved || m_3DsdfShaderProgram.hasRecompiled())
 					{
 						m_frameCounter = 0;
 						m_oldCameraMatrixWorld = sceneCamera.view;
@@ -345,7 +345,7 @@ namespace WeirdEngine
 					m_rayMarchAccumIdx = (m_rayMarchAccumIdx + 1) % 2;
 
 					m_rayMarchAccumRender[m_rayMarchAccumIdx].bind();
-					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Ensure we clear the new accum buffer
+					// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Ensure we clear the new accum buffer
 
 					scene.update3DWorldShader(m_3DsdfShaderProgram);
 
@@ -398,7 +398,8 @@ namespace WeirdEngine
 					m_3DsdfShaderProgram.setUniform("u_customShapeCount", (int)shapeCount3D);
 
 					// Draw the render plane with ray marching shader
-					m_renderPlane.draw(m_3DsdfShaderProgram);
+					if(m_frameCounter < 100)
+						m_renderPlane.draw(m_3DsdfShaderProgram);
 
 					m_frameCounter++;
 

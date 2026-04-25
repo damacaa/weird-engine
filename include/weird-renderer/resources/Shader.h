@@ -89,12 +89,18 @@ namespace WeirdEngine
 				glUniformMatrix4fv(getUniformLocation(name), size, GL_FALSE, &value[0][0][0]);
 			}
 
+			bool hasRecompiled() const
+			{
+				return m_hasRecompiled;
+			}
+
 		private:
 			const char* m_vertexFile;
 			const char* m_fragmentFile;
 			time_t m_lastModifiedTime;
 
 			bool m_needsRecompile = false;
+			bool m_hasRecompiled = false;
 
 			void recompile();
 			void recompile(std::string& vertexCode, std::string& fragmentCode);

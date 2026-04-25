@@ -42,8 +42,6 @@ namespace WeirdEngine
 			// Binds a texture
 			void bind(GLuint unit = 0) const;
 
-			// Unbinds a texture
-			void unbind() const;
 			// Deletes a texture
 			void dispose() const;
 

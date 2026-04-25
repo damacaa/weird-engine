@@ -71,6 +71,7 @@ namespace WeirdEngine
 			DataBuffer* m_3DShapeDataBuffer;
 
 			Texture m_combineResultTexture;
+			Texture m_outputTexture;
 
 			// Path tracing accumulation
 			Texture m_rayMarchAccumTexture[2];

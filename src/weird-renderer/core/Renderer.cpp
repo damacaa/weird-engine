@@ -178,7 +178,9 @@ namespace WeirdEngine
 			m_rayMarchAccumIdx = 0;
 			m_frameCounter = 0;
 
+			m_outputTexture = Texture(m_windowWidth, m_windowHeight, Texture::TextureType::Data);
 			m_outputResolutionRender = RenderTarget(false);
+			m_outputResolutionRender.bindColorTextureToFrameBuffer(m_outputTexture);
 
 			m_renderPlane = RenderPlane();
 
@@ -252,7 +254,9 @@ namespace WeirdEngine
 			// Screenshot
 			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
 			{
-				m_finalResultTexture.saveToDisk("output_texture.png");
+				m_outputResolutionRender.bind();
+				m_renderPlane.draw(m_outputShaderProgram);
+				m_outputTexture.saveToDisk("output_texture.bmp");
 			}
 		}
 
@@ -269,6 +273,7 @@ namespace WeirdEngine
 			m_geometryDepthTexture.dispose();
 			m_3DSceneTexture.dispose();
 			m_combineResultTexture.dispose();
+			m_outputTexture.dispose();
 			m_rayMarchAccumTexture[0].dispose();
 			m_rayMarchAccumTexture[1].dispose();
 		}
@@ -396,7 +401,6 @@ namespace WeirdEngine
 					m_renderPlane.draw(m_3DsdfShaderProgram);
 
 					m_frameCounter++;
-					m_frameCounter = std::min(m_frameCounter, 1000);
 
 					// Now copy the accumulation buffer to the main 3D scene render target
 					m_3DSceneRender.bind();

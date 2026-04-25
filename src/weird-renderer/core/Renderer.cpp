@@ -282,10 +282,13 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("World Render");
 
+			const float NEAR_PLANE = 0.1f;
+			const float FAR_PLANE = 300.0f;
+
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
 			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
+			sceneCamera.updateMatrix(NEAR_PLANE, FAR_PLANE, m_windowWidth, m_windowHeight);
 
 			// Determine render mode
 			auto renderMode = scene.getRenderMode();
@@ -351,6 +354,9 @@ namespace WeirdEngine
 					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
 					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 					m_3DsdfShaderProgram.setUniform("u_staticColors", m_colorPalette, 16);
+					m_3DsdfShaderProgram.setUniform("u_near", NEAR_PLANE);
+					m_3DsdfShaderProgram.setUniform("u_far", FAR_PLANE);
+
 					
 					m_3DsdfShaderProgram.setUniform("u_frameCounter", m_frameCounter);
 
@@ -390,6 +396,7 @@ namespace WeirdEngine
 					m_renderPlane.draw(m_3DsdfShaderProgram);
 
 					m_frameCounter++;
+					m_frameCounter = std::min(m_frameCounter, 1000);
 
 					// Now copy the accumulation buffer to the main 3D scene render target
 					m_3DSceneRender.bind();

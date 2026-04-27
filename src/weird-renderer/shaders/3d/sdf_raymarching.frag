@@ -326,10 +326,10 @@ vec3 getSkyColor(vec3 dir)
 	// Atmospheric fade from horizon to zenith based on the direction's Y coordinate
 	float t = max(dir.y, 0.0);
 	vec3 zenithColor = vec3(0.05, 0.25, 0.7);
-	vec3 horizonColor = vec3(0.7, 0.8, 0.95);
+	vec3 horizonColor = vec3(0.5, 0.6, 0.7);
 	vec3 groundColor = vec3(0.1, 0.1, 0.12);
 
-	vec3 sky = mix(horizonColor, zenithColor, pow(t, 0.6));
+	vec3 sky = mix(horizonColor, zenithColor, pow(t, 0.4));
 	if (dir.y < 0.0)
 	{
 		// Fake ground bounce color below horizon
@@ -369,19 +369,25 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 	float fresnelPower = 3.0f; // Retro: 2.0,       Realistic: 5.0
 
 	// specExponent: tightness of the direct specular highlight
-	float specExponent = 200.0f; // Retro: 400.0,     Realistic: 100.0
+	float specExponent = 2000.0f; // Retro: 400.0,     Realistic: 100.0
 
 	// specMultiplier: intensity/scaling of the direct specular lobe
 	// Retro just blows it out for that classic '90s CG highlight.
 	vec3 specMultiplier = vec3(5.0f);
 	// ===============================================================
 
+	
 	// Perform bounces
-	for (int bounce = 0; bounce < 10; bounce++)
+	int bounceCount = 3;
+
+	for (int bounce = 0; bounce < bounceCount; bounce++)
 	{
+		float currentF0 = f0;
+		float currentRoughness = roughness;
+
 		vec3 N = getNormal(p);
 
-		float fresnel = f0 + ((1.0 - f0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
+		float fresnel = currentF0 + ((1.0 - currentF0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
 
 		// Choose ray type probability based on Fresnel
 		float randVal = hash2(seed).x;
@@ -465,7 +471,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 
 		vec3 reflectDir = reflect(currentRd, N);
 		vec3 jitter = normalize(vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0);
-		vec3 specularDir = normalize(reflectDir + jitter * roughness);
+		vec3 specularDir = normalize(reflectDir + jitter * currentRoughness);
 		if (dot(specularDir, N) < 0.0)
 			specularDir = reflectDir; // prevent pointing inside
 
@@ -492,7 +498,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 		{
 			// Hit sky (ambient bounding) or ran out of steps grazing a surface
 			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome!
-			finalColor += throughput * getSkyColor(bounceDir) * 0.5;
+			finalColor += throughput * getSkyColor(bounceDir);
 			break;
 		}
 		else
@@ -504,6 +510,14 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 			currentAlbedo = min(bounceMaterial, vec3(1.0));
 
 			finalColor += throughput * emission; // Emit light from the glowing object!
+
+			// Prevent black pixels on maximum bounce depth
+			if (bounce == bounceCount - 1)
+			{
+				vec3 nextN = getNormal(p);
+				// Cheap ambient sky reflection for the very last hit
+				finalColor += throughput * getSkyColor(reflect(bounceDir, nextN)) * (1.0 - currentRoughness) + finalColor;
+			}
 		}
 	}
 
@@ -680,6 +694,16 @@ void main()
 	// we just evaluate the render directly to extract the jittered target color.
 	vec4 data = render(uv);
 	vec3 col = data.xyz;
+
+	// === Render Style Parameters (Post-Processing) =================
+	// contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
+	float contrast = 1.2; // Retro: 1.35, Realistic: 1.0
+	// ===============================================================
+	
+	// Apply contrast pivoting around mid-gray
+	col = mix(vec3(0.5), col, contrast);
+	// Clamp to ensure no weird artifacts from exceeding bounds
+	col = clamp(col, 0.0, 1.0);
 
 #ifdef PATH_TRACING
 	if (u_frameCounter > 0)

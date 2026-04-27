@@ -63,3 +63,30 @@ public:
 private:
 	float m_height;
 };
+
+struct Box : public WeirdEngine::IMathExpression
+{
+public:
+	Box()
+	{
+	}
+
+	float getValue() const override
+	{
+		return 1000.0f;
+	}
+
+  void propagateValues(float* values) override
+  {
+      // No variables to propagate since this plane is defined by a constant height
+  }
+
+	std::string print() const override
+	{
+    std::string code = 
+        "fBox(p - vec3(var0, var1, var2), vec3(var3, var4, var5))";
+
+		return code;
+	}
+
+};

@@ -6,12 +6,14 @@
 #include "Classic.h"
 #include "Fire.h"
 #include "Lines.h"
-#include "GlobalIlumination.h"
+#include "GlobalIllumination.h"
+#include "CornellBox.h"
 
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<GlobalIluminationScene>("global_illumination");
+	sceneManager.registerScene<CornellBox>("cornell_box");
+	sceneManager.registerScene<GlobalIlluminationScene>("global_illumination");
 	sceneManager.registerScene<ClassicScene>("classic");
 	sceneManager.registerScene<FireScene>("fire");
 	sceneManager.registerScene<LinesScene>("lines");
@@ -24,8 +26,10 @@ int main(int argc, char* argv[])
 	displaySettings.worldSmoothFactor = 0.0f;
 	displaySettings.vSyncEnabled = true;
 
-	displaySettings.colorPalette[DisplaySettings::Red].r = 2.0f;
-	displaySettings.colorPalette[DisplaySettings::Red].a = .25f;
+	// displaySettings.colorPalette[DisplaySettings::Red].r = 2.0f;
+	// displaySettings.colorPalette[DisplaySettings::Red].a = .25f;
+
+	displaySettings.enableDithering = false;
 
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 0.5f;
 

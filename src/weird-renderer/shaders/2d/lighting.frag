@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 #include "../common/utils.glsl"
 
@@ -12,8 +14,8 @@
 // Constants
 const int MAX_STEPS = 128;
 const float EPSILON = 0.05;
-const float NEAR = 0.1f;
-const float FAR = 1.4f;
+const float NEAR = 0.1;
+const float FAR = 1.4;
 const float NORMAL_EPSILON = 0.001;
 
 const float SHADOW_VALUE = 0.85;
@@ -37,10 +39,10 @@ uniform sampler2D t_distanceSampledTexture; // Used for ineer lighting
 uniform sampler2D t_backgroundTexture;
 uniform sampler2D t_distanceCorrectedTexture; // Used for shadows and AO
 
-uniform vec2 u_directionalLightDirection = vec2(0.7071f, 0.7071f);
-uniform float u_ambienOcclusionRadius = 0.005;
-uniform float u_ambienOcclusionStrength = 0.5;
-uniform float u_overscan = 0.0;
+const vec2 u_directionalLightDirection = vec2(0.7071, 0.7071);
+uniform float u_ambienOcclusionRadius;
+uniform float u_ambienOcclusionStrength;
+uniform float u_overscan;
 uniform vec3 u_shadowTint;
 
 // For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union artifacts

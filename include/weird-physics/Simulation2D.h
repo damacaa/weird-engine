@@ -4,7 +4,6 @@
 #include <bitset>
 #include <chrono>
 #include <cstdint>
-#include <immintrin.h>
 #include <mutex>
 #include <queue>
 #include <set>

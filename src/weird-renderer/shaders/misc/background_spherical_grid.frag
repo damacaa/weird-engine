@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 // Outputs colors in RGBA
 out vec4 FragColor;
@@ -9,10 +11,10 @@ uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
 
-uniform float gridScale = 1.0;	  // Size of each grid cell in world units
-uniform vec3 gridColor = vec3(1); // Color of the grid lines
-uniform vec3 backgroundColor = vec3(0);
-uniform float lineThickness = 0.2; // Thickness of the grid lines
+const float gridScale = 1.0;     // Size of each grid cell in world units
+const vec3 gridColor = vec3(1.0); // Color of the grid lines
+const vec3 backgroundColor = vec3(0.0);
+const float lineThickness = 0.2; // Thickness of the grid lines
 
 // ChatGPT: write a glsl functio to transform 3D cartesian coordinates to spherical
 vec3 cartesianToSpherical(vec3 v)

@@ -7,8 +7,8 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 		Camera::Camera(glm::vec3 position)
+				: position(position)
 		{
-			position = position;
 		}
 
 		const auto RIGHT = glm::vec3(1.0f, 0.0f, 0.0f);

@@ -36,9 +36,9 @@ namespace WeirdEngine
 				throw std::runtime_error(errorMsg);
 			}
 
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
@@ -86,29 +86,32 @@ namespace WeirdEngine
 
 			SDL_GL_MakeCurrent(m_window, m_glContext);
 
-			if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+			if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
 			{
 				throw std::runtime_error("Failed to initialize GLAD.");
 			}
 
 #ifndef NDEBUG
-			// Enable debug output
-			glEnable(GL_DEBUG_OUTPUT);
+			// Enable debug output via KHR_debug extension if supported
+			if (GLAD_GL_KHR_debug)
+			{
+				glEnable(GL_DEBUG_OUTPUT);
 
-			// Forces the callback to happen on the same thread, immediately during the offending call
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+				// Forces the callback to happen on the same thread, immediately during the offending call
+				glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
-			// Set the callback function
-			glDebugMessageCallback(MessageCallback, 0);
+				// Set the callback function
+				glDebugMessageCallback(MessageCallback, 0);
 
-			GLuint ignoreIDs[] = {
-				131185, // Buffer object successfully created
-				131218, // Material/Shader state info
-				131204	// Texture state info
-			};
+				GLuint ignoreIDs[] = {
+					131185, // Buffer object successfully created
+					131218, // Material/Shader state info
+					131204	// Texture state info
+				};
 
-			// Ignore non-significant error/warning codes
-			glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 3, ignoreIDs, GL_FALSE);
+				// Ignore non-significant error/warning codes
+				glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 3, ignoreIDs, GL_FALSE);
+			}
 #endif
 
 			// Audio Stream Setup

@@ -9,7 +9,7 @@ namespace WeirdEngine
 		{
 
 			float speed;
-			float sensitivity = 50000.0f;
+			float sensitivity = 0.12f;
 
 			FlyMovement()
 				: speed(10.0f)

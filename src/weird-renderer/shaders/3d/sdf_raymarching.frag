@@ -342,6 +342,8 @@ vec3 getSkyColor(vec3 dir)
 		float sun = max(dot(dir, normalize(u_lights[0].direction)), 0.0);
 		sky += vec3(1.0, 0.85, 0.6) * pow(sun, 4000.0) * 2.0; // Sun core (much smaller, tight exponent)
 		sky += vec3(1.0, 0.6, 0.2) * pow(sun, 200.0) * 0.4;	  // Sun outer glow (restrained exponent)
+
+		sky *= u_lights[0].color.w > 0.0 ? 1.0 : 0.0; // Modulate by sun color and intensity
 	}
 
 	return sky;
@@ -382,8 +384,20 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 
 	for (int bounce = 0; bounce < bounceCount; bounce++)
 	{
-		float currentF0 = f0;
-		float currentRoughness = roughness;
+		float currentF0 = mix(f0, 0.0, float(bounce) / float(bounceCount));
+		float currentRoughness = mix(roughness, 1.0, float(bounce) / float(bounceCount));
+
+		// I don't have a material system with different properties yet, so I have to do this shit to have different objects with different properties
+		// if(p.y < -2.999)
+		// {
+		// 	currentF0 = 0.0;
+		// 	currentRoughness = 1.0;
+		// }
+		// else if(p.x < 0.0)
+		// {
+		// 	currentF0 = 1.0;
+		// 	currentRoughness = 0.0;
+		// }
 
 		vec3 N = getNormal(p);
 
@@ -498,7 +512,10 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 		{
 			// Hit sky (ambient bounding) or ran out of steps grazing a surface
 			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome!
-			finalColor += throughput * getSkyColor(bounceDir);
+			
+			// Keep sky at full brightness for reflections, but dim it for diffuse ambient lighting
+			float skyIntensity = isSpecular ? 1.0 : 0.5; 
+			finalColor += throughput * getSkyColor(bounceDir) * skyIntensity;
 			break;
 		}
 		else
@@ -531,8 +548,8 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo)
 	vec3 V = -rd;
 
 	// === Render Style Parameters ===================================
-	float f0 = 0.04;
-	float fresnelPower = 5.0;
+	float f0 = 0.1;
+	float fresnelPower = 10.0;
 	float specExponent = 100.0;
 	vec3 specMultiplier = vec3(5.0);
 	// ===============================================================
@@ -608,7 +625,7 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo)
 	// Ambient and Sky Reflections
 	vec3 R = reflect(rd, N);
 	vec3 reflectionColor = getSkyColor(R);
-	vec3 ambient = albedo * 0.05 + reflectionColor * fresnel;
+	vec3 ambient = albedo * 0.1 + reflectionColor * fresnel;
 
 	return directLighting + ambient;
 }

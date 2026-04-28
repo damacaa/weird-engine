@@ -24,7 +24,7 @@ public:
 	std::string print() const override
 	{
     std::string code = 
-        "fPlane(p, vec3(0.0, 1.0, 0.0), 3.0)\n";
+        "fPlane(p, vec3(0.0, 1.0, 0.0), " + std::to_string(m_height) + ")\n";
 
 		return code;
 	}

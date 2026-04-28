@@ -8,10 +8,10 @@
 using namespace WeirdEngine;
 
 // Cornell Box
-class GlobalIluminationScene : public Scene
+class GlobalIlluminationScene : public Scene
 {
 public:
-	GlobalIluminationScene(const PhysicsSettings& settings)
+	GlobalIlluminationScene(const PhysicsSettings& settings)
 		: Scene(settings) {};
 
 private:
@@ -44,7 +44,7 @@ private:
 
 
 		{
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Plane>(0.0f);
+			std::shared_ptr<IMathExpression> plane = std::make_shared<Plane>(3.0f);
 			auto planeId = registerSDF(plane);
 
 			float vars1[8] = {}; // Custom shape
@@ -55,12 +55,12 @@ private:
 			std::shared_ptr<IMathExpression> box = std::make_shared<Box>();
 			auto boxId = registerSDF(box);
 
-			float vars1[8] = {-5.0f, -2.0f, 0.0f, 0.01f, 1.0f, 1.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Addition, false);
+			float vars1[8] = {-5.0f, -2.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // Custom shape
+			Entity start = addShape(boxId, vars1, DisplaySettings::Black, CombinationType::Addition, false);
 		}
 
 		getLigths().push_back(
-			Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)), glm::vec4(1.0f, 1.0f, 1.0f, 0.25f)});
+			Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)), glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
 
 		// getLigths().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});

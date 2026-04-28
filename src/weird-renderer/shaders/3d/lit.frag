@@ -1,4 +1,6 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 out vec4 FragColor;
 
@@ -14,15 +16,14 @@ uniform vec4 u_lightColor;
 uniform float u_ambient;
 
 uniform vec3 u_camPos;
-uniform vec3 u_fogColor = vec3(0, 0, 0);
+uniform vec3 u_fogColor;
 
 uniform float u_time;
 
 // Custom
-uniform float u_near = 0.1f;
-uniform float u_far = 100.0f;
-
-uniform float u_shininess = 100.0f;
+const float u_near = 0.1;
+const float u_far = 100.0;
+const float u_shininess = 100.0;
 
 vec3 pointLight()
 {
@@ -30,7 +31,7 @@ vec3 pointLight()
 	float dist = length(lightVec);
 	float a = 3.0;
 	float b = 0.7;
-	float intensity = u_lightColor.a * 1.0f / (a * dist * dist + b * dist + 1.0f);
+	float intensity = u_lightColor.a * 1.0 / (a * dist * dist + b * dist + 1.0);
 
 	vec3 normal = normalize(v_normal);
 	vec3 lightDir = normalize(lightVec);
@@ -72,5 +73,5 @@ void main()
 	color = mix(color, u_fogColor, fogFactor);
 
 	// Apply the fog effect
-	FragColor = vec4(color, 1.0f);
+	FragColor = vec4(color, 1.0);
 }

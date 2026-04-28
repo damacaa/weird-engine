@@ -283,7 +283,7 @@ namespace WeirdEngine
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
 				glClearColor(0, 0, 0, 1);
 				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
-				glClearDepth(1.0f);	  // Make sure depth buffer is initialized correctly
+				glClearDepthf(1.0f);	  // Make sure depth buffer is initialized correctly
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
@@ -330,11 +330,6 @@ namespace WeirdEngine
 
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);
-
-					// Unbind textures and buffers
-					m_geometryTexture.unbind();
-					m_geometryDepthTexture.unbind();
-					m_3DShapeDataBuffer->unbind();
 				}
 
 				// Render 3D geometry objects (with depth writing)

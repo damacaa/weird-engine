@@ -1,4 +1,7 @@
-#version 330 core
+#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
 
 #include "../common/shapes.glsl"
 
@@ -26,7 +29,7 @@ uniform float u_k;
 uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
-uniform samplerBuffer t_shapeBuffer;
+uniform highp sampler2D t_shapeBuffer;
 
 uniform vec2 u_resolution;
 uniform float u_overscan;
@@ -42,13 +45,13 @@ uniform float u_motionBlurBlendSpeed;
 
 uniform int u_customShapeCount;
 
-uniform float u_uiScale = 50.0f;
+const float u_uiScale = 50.0;
 
 // Constants
 const int MAX_STEPS = 100;
 const float EPSILON = 0.01;
-const float NEAR = 0.1f;
-const float FAR = 100.0f;
+const float NEAR = 0.1;
+const float FAR = 100.0;
 
 // Custom shape variables
 #define var8 u_time
@@ -108,7 +111,7 @@ vec3 getColor(vec2 p, vec2 uv)
 
 	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
 	{
-		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, i);
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
@@ -118,7 +121,7 @@ vec3 getColor(vec2 p, vec2 uv)
 #endif
 
 		// Inside ball mask is set to 0
-		mask = objectDist <= 0 ? -objectDist * 4.0 : mask;
+		mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
 		// mask = objectDist <= 0 ? 1.0 : mask;
 
 #ifdef BLEND_SHAPES
@@ -149,7 +152,7 @@ vec3 getColor(vec2 p, vec2 uv)
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
 
-	return vec3(minDist, max(finalMaterialId, 0), mask);
+	return vec3(minDist, max(float(finalMaterialId), 0.0), mask);
 }
 
 // Bilinear
@@ -194,7 +197,7 @@ void main()
 	vec2 uv = v_texCoord;
 #else
 	// World: remap UV to [-1,1] so the origin is centred on screen
-	vec2 uv = (2.0f * v_texCoord) - 1.0f;
+	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	uv *= (1.0 + u_overscan);
 #endif
 
@@ -277,7 +280,7 @@ void main()
 // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
 #endif
 
-	FragColor = vec4(finalDistance, material, mask, 0);
+	FragColor = vec4(finalDistance, material, mask, 0.0);
 
 	// This has no visual effect (multiplying by zero), but it forces
 	// the compiler to keep u_time because it's used to calculate FragColor.

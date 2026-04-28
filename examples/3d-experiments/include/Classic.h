@@ -5,6 +5,10 @@
 using namespace WeirdEngine;
 class ClassicScene : public Scene
 {
+public:
+	ClassicScene(const PhysicsSettings& settings)
+		: Scene(settings) {};
+
 private:
 	Entity m_monkey;
 	Entity m_ball;
@@ -13,6 +17,7 @@ private:
 	void onStart() override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
+		m_debugFly = true;
 
 		{
 			Entity entity = m_ecs.createEntity();
@@ -37,6 +42,9 @@ private:
 
 			m_ball = entity;
 		}
+
+		getLigths().push_back(
+			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
 	}

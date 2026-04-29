@@ -7,6 +7,7 @@
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -107,6 +108,16 @@ namespace WeirdEngine
 			RenderTarget m_litSceneRender;
 
 			DataBuffer m_shapeDataBuffer;
+			DataBuffer m_gridHeaderBuffer;
+			DataBuffer m_gridIndicesBuffer;
+
+			// Reusable scratch buffers for grid building — allocated once, reused every frame
+			struct ObjBounds { int minX, minY, maxX, maxY; };
+			std::vector<ObjBounds>    m_gridObjBounds;
+			std::vector<int>          m_gridCellCounts;
+			std::vector<int>          m_gridCellOffsets;
+			std::vector<glm::vec4>    m_gridHeader;
+			std::vector<glm::vec4>    m_gridIndices;
 
 			glm::mat4 m_oldCameraMatrix;
 			glm::mat4
@@ -115,8 +126,9 @@ namespace WeirdEngine
 
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
-
-			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+		struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
+		GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+									   const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
 									 double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();

@@ -30,6 +30,13 @@ uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
 uniform highp sampler2D t_shapeBuffer;
+uniform highp sampler2D t_gridHeader;
+uniform highp sampler2D t_gridIndices;
+
+uniform vec2 u_gridBoundsMin;
+uniform vec2 u_gridStep;
+uniform int u_gridCols;
+uniform int u_gridRows;
 
 uniform vec2 u_resolution;
 uniform float u_overscan;
@@ -109,40 +116,39 @@ vec3 getColor(vec2 p, vec2 uv)
 
 	float inv_k = 1.0 / u_k;
 
-	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
+	ivec2 cellCoord = ivec2((p - u_gridBoundsMin) / u_gridStep);
+	cellCoord = clamp(cellCoord, ivec2(0), ivec2(u_gridCols - 1, u_gridRows - 1));
+
+	vec2 cellData = texelFetch(t_gridHeader, cellCoord, 0).xy;
+	int startIndex = int(cellData.x);
+	int count = int(cellData.y);
+
+	for (int i = 0; i < count; i++)
 	{
-		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
+		int flatIndex = startIndex + i;
+		ivec2 indexCoord = ivec2(flatIndex % 1024, flatIndex / 1024);
+		int objectIndex = int(texelFetch(t_gridIndices, indexCoord, 0).x);
+
+		// Shape buffer wraps to 2D at 16384 texels wide (matches DataBuffer::uploadRawData on ES drivers)
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(objectIndex % 16384, objectIndex / 16384), 0);
 		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
-		float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+			float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
 #else
-		float objectDist = shape_circle(p - positionSizeMaterial.xy);
+			float objectDist = shape_circle(p - positionSizeMaterial.xy);
 #endif
 
-		// Inside ball mask is set to 0
-		mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
-		// mask = objectDist <= 0 ? 1.0 : mask;
+			// Inside ball mask is set to 0
+			mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
 
 #ifdef BLEND_SHAPES
-
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-
-#else
-
-		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-
-#endif
-
-#ifdef BLEND_SHAPES
-
 		minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
 		minColorDist = min(minColorDist, objectDist);
-
 #else
-
+		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
 		minDist = min(minDist, objectDist);
-
 #endif
 	}
 

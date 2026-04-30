@@ -312,7 +312,7 @@ void main()
 #endif
 
 	// float debugDistance = 10.0 * distance;
-	float debugDistance = 0.5 * texture(t_distanceCorrectedTexture, screenUV).x;
+	float debugDistance = 0.5 * texture(t_distanceSampledTexture, screenUV).x;
 
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
 	// value = debugDistance * 10.;

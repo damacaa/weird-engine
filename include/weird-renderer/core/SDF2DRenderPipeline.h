@@ -37,6 +37,7 @@ namespace WeirdEngine
 				float motionBlurBlendSpeed;
 				bool debugDistanceField;
 				bool debugMaterialColors;
+				bool debugGrid = false;
 				float ballK;
 				float ambienOcclusionRadius;
 				float ambienOcclusionStrength;

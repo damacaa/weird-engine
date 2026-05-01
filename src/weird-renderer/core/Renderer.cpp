@@ -121,6 +121,7 @@ namespace WeirdEngine
 
 			auto& result = renderScene(scene, time, clampedDelta);
 			output(scene, result, clampedDelta);
+			glFinish();
 
 			static bool showDebugUI = false;
 
@@ -302,9 +303,11 @@ namespace WeirdEngine
 
 			bool enable3DSDFs = true;
 
-			// Render geometry
+			// 3D
 			if (enable3D)
 			{
+				PROFILE_SCOPE("3D Render");
+
 				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
 
 				// Set up framebuffer for 3D scene rendering
@@ -359,6 +362,7 @@ namespace WeirdEngine
 
 					// Draw the render plane with ray marching shader
 					m_renderPlane.draw(m_3DsdfShaderProgram);
+					glFinish();
 				}
 
 				// Render 3D geometry objects (with depth writing)
@@ -376,6 +380,8 @@ namespace WeirdEngine
 					// Draw objects in the scene (3D models)
 					scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 				}
+				
+				glFinish();
 
 				if (!enable2D)
 				{

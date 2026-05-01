@@ -159,6 +159,10 @@ vec3 getColor(vec2 p, vec2 uv)
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
 
+#ifdef DEBUG_SHOW_GRID
+	finalMaterialId = count / 10; // Color cells based on how many objects they contain, for debugging purposes
+#endif
+
 	return vec3(minDist, max(float(finalMaterialId), 0.0), mask);
 }
 
@@ -302,7 +306,7 @@ void main()
 		if (gridDistNorm < lineHalfWidth)
 		{
 			finalDistance = gridDistNorm - lineHalfWidth;
-			material = 16.0 - material; // Highlight out-of-bounds areas with a different color
+			// material = 16.0 - material; // Highlight out-of-bounds areas with a different color
 		}
 	}
 #endif

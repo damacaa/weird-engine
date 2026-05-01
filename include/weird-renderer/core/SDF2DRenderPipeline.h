@@ -128,10 +128,10 @@ namespace WeirdEngine
 
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
-		struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
-		GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-									   const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
-									 double time, double delta);
+			struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
+			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+										const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+										double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);

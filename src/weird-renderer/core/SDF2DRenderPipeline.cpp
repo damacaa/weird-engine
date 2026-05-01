@@ -767,6 +767,12 @@ namespace WeirdEngine
 				else m_lightingShader.removeDefine("DEBUG_SHOW_COLORS");
 			}
 
+			if (ImGui::Checkbox("Show grid", &m_config.debugGrid))
+			{
+				if (m_config.debugGrid) m_distanceShader.addDefine("DEBUG_SHOW_GRID");
+				else m_distanceShader.removeDefine("DEBUG_SHOW_GRID");
+			}
+
 			ImGui::SeparatorText("Ambient Occlusion");
 			ImGui::SliderFloat("AO Radius", &m_config.ambienOcclusionRadius, 0.0f, 20.0f);
 			ImGui::SliderFloat("AO Strength", &m_config.ambienOcclusionStrength, 0.0f, 1.0f);

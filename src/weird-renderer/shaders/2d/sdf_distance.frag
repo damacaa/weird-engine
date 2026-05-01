@@ -7,6 +7,7 @@ precision highp sampler2D;
 
 // #define BLEND_SHAPES
 // #define MOTION_BLUR
+// #define DEBUG_SHOW_GRID
 
 out vec4 FragColor;
 
@@ -284,6 +285,26 @@ void main()
 #ifdef UI_PIPELINE
 // float pixelSize = 0.3 / u_resolution.x;
 // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
+#endif
+
+#ifdef DEBUG_SHOW_GRID
+	vec2 localP = pos - u_gridBoundsMin;
+	bool inBounds = localP.x >= 0.0 && localP.y >= 0.0 &&
+	                localP.x < float(u_gridCols) * u_gridStep.x &&
+	                localP.y < float(u_gridRows) * u_gridStep.y;
+	if (inBounds)
+	{
+		vec2 fracLocal = mod(localP, u_gridStep);
+		vec2 distToLine = min(fracLocal, u_gridStep - fracLocal);
+		float gridDistWorld = min(distToLine.x, distToLine.y);
+		float gridDistNorm = (gridDistWorld / zoom) * (0.5 / aspectRatio);
+		float lineHalfWidth = 1.0 / min(u_resolution.x, u_resolution.y);
+		if (gridDistNorm < lineHalfWidth)
+		{
+			finalDistance = gridDistNorm - lineHalfWidth;
+			material = 16.0 - material; // Highlight out-of-bounds areas with a different color
+		}
+	}
 #endif
 
 	FragColor = vec4(finalDistance, material, mask, 0.0);

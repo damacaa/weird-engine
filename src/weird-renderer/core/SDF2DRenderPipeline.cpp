@@ -356,7 +356,9 @@ namespace WeirdEngine
 			float maxX = viewMaxX + cellPad;
 			float maxY = viewMaxY + cellPad;
 
-			float idealCellSize = cellPad;
+			// Cell size is the object diameter so a circle fits in ~1 cell (2x2 worst-case).
+			// ballK only affects the insertion radius, not the cell size.
+			float idealCellSize = 2.0f * objectRadius;
 			if (idealCellSize < 0.5f)
 				idealCellSize = 0.5f;
 			int gridCols = static_cast<int>(std::ceil((maxX - minX) / idealCellSize));
@@ -388,12 +390,10 @@ namespace WeirdEngine
 			{
 				float cx = shapeData[i].x;
 				float cy = shapeData[i].y;
-				// +1/-1: one extra cell of buffer so the SDF never drops close to 0 at the outer
-				// insertion boundary, preventing JFA from propagating a "ghost" surface into empty cells.
-				int minCellX = static_cast<int>((cx - cellPad - minX) / stepX) - 1;
-				int minCellY = static_cast<int>((cy - cellPad - minY) / stepY) - 1;
-				int maxCellX = static_cast<int>((cx + cellPad - minX) / stepX) + 1;
-				int maxCellY = static_cast<int>((cy + cellPad - minY) / stepY) + 1;
+				int minCellX = static_cast<int>((cx - cellPad - minX) / stepX);
+				int minCellY = static_cast<int>((cy - cellPad - minY) / stepY);
+				int maxCellX = static_cast<int>((cx + cellPad - minX) / stepX);
+				int maxCellY = static_cast<int>((cy + cellPad - minY) / stepY);
 
 				// Cull objects entirely outside the frustum-aligned grid
 				if (maxCellX < 0 || maxCellY < 0 || minCellX >= gridCols || minCellY >= gridRows)

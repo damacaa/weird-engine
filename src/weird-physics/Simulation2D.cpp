@@ -963,6 +963,29 @@ namespace WeirdEngine
 		return false;
 	}
 
+	bool Simulation2D::removeDistanceConstraint(SimulationID a, SimulationID b)
+	{
+		if (a == b)
+			return false;
+
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
+
+		size_t previousSize = m_distanceConstraints.size();
+		m_distanceConstraints.erase(
+			std::remove_if(m_distanceConstraints.begin(), m_distanceConstraints.end(),
+				[a, b](const DistanceConstraint& constraint)
+				{
+					bool sameDirection =
+						(constraint.A == static_cast<int>(a) && constraint.B == static_cast<int>(b));
+					bool reverseDirection =
+						(constraint.A == static_cast<int>(b) && constraint.B == static_cast<int>(a));
+					return sameDirection || reverseDirection;
+				}),
+			m_distanceConstraints.end());
+
+		return previousSize != m_distanceConstraints.size();
+	}
+
 	void Simulation2D::fix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);

@@ -87,9 +87,9 @@ private:
 		m_testShape = addShape(DefaultShapes::BOX, variables, 2, CombinationType::Addition);
 	}
 
-	void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) override
+	void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.friction *= 100.0f;
+		event.raw.friction *= 100.0f;
 
 		m_collisionDetected = true;
 	}

@@ -1,9 +1,9 @@
 {
   "camera": {
     "position": [
-      -3.5375001430511475,
-      1.024999976158142,
-      15.000022888183594
+      0.049999963492155075,
+      -1.7374986410140991,
+      5.00000524520874
     ],
     "rotation": [
       0.0,
@@ -22,7 +22,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 33,
+      "id": 35,
       "rigidBody2D": {
         "physicsPosition": [
           0.0,
@@ -53,7 +53,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 34,
+      "id": 36,
       "rigidBody2D": {
         "physicsPosition": [
           -1.0,
@@ -84,7 +84,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 35,
+      "id": 37,
       "rigidBody2D": {
         "physicsPosition": [
           -1.0,
@@ -115,7 +115,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 36,
+      "id": 38,
       "rigidBody2D": {
         "physicsPosition": [
           -1.0,
@@ -146,7 +146,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 37,
+      "id": 39,
       "rigidBody2D": {
         "physicsPosition": [
           1.0,
@@ -177,7 +177,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 38,
+      "id": 40,
       "rigidBody2D": {
         "physicsPosition": [
           1.0,
@@ -208,7 +208,7 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 39,
+      "id": 41,
       "rigidBody2D": {
         "physicsPosition": [
           1.0,
@@ -239,7 +239,7 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 40,
+      "id": 42,
       "rigidBody2D": {
         "physicsPosition": [
           0.0,
@@ -270,7 +270,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 41,
+      "id": 43,
       "rigidBody2D": {
         "physicsPosition": [
           -1.0,
@@ -301,7 +301,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 42,
+      "id": 44,
       "rigidBody2D": {
         "physicsPosition": [
           1.0,
@@ -332,7 +332,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 43,
+      "id": 45,
       "rigidBody2D": {
         "physicsPosition": [
           0.0,
@@ -363,7 +363,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 44,
+      "id": 46,
       "rigidBody2D": {
         "physicsPosition": [
           2.0,
@@ -394,7 +394,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 45,
+      "id": 47,
       "rigidBody2D": {
         "physicsPosition": [
           3.0,
@@ -425,7 +425,7 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 46,
+      "id": 48,
       "rigidBody2D": {
         "physicsPosition": [
           4.0,
@@ -456,7 +456,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 47,
+      "id": 49,
       "rigidBody2D": {
         "physicsPosition": [
           -2.0,
@@ -487,7 +487,7 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 48,
+      "id": 50,
       "rigidBody2D": {
         "physicsPosition": [
           -3.0,
@@ -518,7 +518,7 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 49,
+      "id": 51,
       "rigidBody2D": {
         "physicsPosition": [
           -4.0,
@@ -548,6 +548,18 @@
   "physics": {
     "distanceConstraints": [
       {
+        "A": 3,
+        "B": 2,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 2,
+        "B": 1,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
         "A": 1,
         "B": 0,
         "distance": 1.0,
@@ -561,13 +573,43 @@
       },
       {
         "A": 4,
+        "B": 5,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 5,
+        "B": 6,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 4,
         "B": 9,
         "distance": 1.0,
         "k": 1.0
       },
       {
-        "A": 9,
+        "A": 0,
         "B": 10,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 1,
+        "B": 8,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 8,
+        "B": 10,
+        "distance": 1.0,
+        "k": 1.0
+      },
+      {
+        "A": 10,
+        "B": 9,
         "distance": 1.0,
         "k": 1.0
       },
@@ -575,60 +617,6 @@
         "A": 10,
         "B": 7,
         "distance": 1.0,
-        "k": 1.0
-      },
-      {
-        "A": 10,
-        "B": 8,
-        "distance": 1.0,
-        "k": 1.0
-      },
-      {
-        "A": 8,
-        "B": 1,
-        "distance": 1.0,
-        "k": 1.0
-      },
-      {
-        "A": 10,
-        "B": 0,
-        "distance": 1.0,
-        "k": 1.0
-      },
-      {
-        "A": 1,
-        "B": 10,
-        "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 8,
-        "B": 0,
-        "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 0,
-        "B": 9,
-        "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 10,
-        "B": 4,
-        "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 7,
-        "B": 8,
-        "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 7,
-        "B": 9,
-        "distance": 1.4142135381698608,
         "k": 1.0
       },
       {
@@ -669,26 +657,26 @@
       },
       {
         "A": 1,
-        "B": 2,
-        "distance": 1.0,
+        "B": 10,
+        "distance": 1.4142135381698608,
         "k": 1.0
       },
       {
-        "A": 2,
-        "B": 3,
-        "distance": 1.0,
+        "A": 0,
+        "B": 8,
+        "distance": 1.4142135381698608,
         "k": 1.0
       },
       {
-        "A": 4,
-        "B": 5,
-        "distance": 1.0,
+        "A": 0,
+        "B": 9,
+        "distance": 1.4142135381698608,
         "k": 1.0
       },
       {
-        "A": 5,
-        "B": 6,
-        "distance": 1.0,
+        "A": 10,
+        "B": 4,
+        "distance": 1.4142135381698608,
         "k": 1.0
       },
       {
@@ -705,8 +693,8 @@
       },
       {
         "A": 3,
-        "B": 14,
-        "distance": 3.1622776985168457,
+        "B": 1,
+        "distance": 2.0,
         "k": 0.0024806864093989134
       },
       {
@@ -716,15 +704,69 @@
         "k": 0.0024806864093989134
       },
       {
-        "A": 0,
-        "B": 6,
+        "A": 6,
+        "B": 0,
         "distance": 2.2360680103302,
         "k": 0.0024806864093989134
       },
       {
         "A": 6,
-        "B": 13,
-        "distance": 4.242640495300293,
+        "B": 4,
+        "distance": 2.0,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 2,
+        "B": 0,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 0,
+        "B": 5,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 1,
+        "B": 14,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 4,
+        "B": 11,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 8,
+        "B": 7,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 7,
+        "B": 9,
+        "distance": 1.4142135381698608,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 14,
+        "B": 2,
+        "distance": 2.2360680103302,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 14,
+        "B": 3,
+        "distance": 3.1622776985168457,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 5,
+        "B": 11,
+        "distance": 2.2360680103302,
         "k": 0.0024806864093989134
       },
       {
@@ -734,9 +776,51 @@
         "k": 0.0024806864093989134
       },
       {
+        "A": 5,
+        "B": 9,
+        "distance": 2.0,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 6,
+        "B": 9,
+        "distance": 3.0,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 2,
+        "B": 8,
+        "distance": 2.0,
+        "k": 0.0024806864093989134
+      },
+      {
         "A": 3,
-        "B": 16,
-        "distance": 4.242640495300293,
+        "B": 8,
+        "distance": 3.0,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 16,
+        "B": 1,
+        "distance": 3.1622776985168457,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 4,
+        "B": 13,
+        "distance": 3.1622776985168457,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 1,
+        "B": 6,
+        "distance": 2.8284270763397217,
+        "k": 0.0024806864093989134
+      },
+      {
+        "A": 3,
+        "B": 4,
+        "distance": 2.8284270763397217,
         "k": 0.0024806864093989134
       }
     ],
@@ -745,8 +829,16 @@
   },
   "tags": [
     {
-      "entityId": 40,
+      "entityId": 42,
       "name": "head"
+    },
+    {
+      "entityId": 38,
+      "name": "foot_left"
+    },
+    {
+      "entityId": 41,
+      "name": "foot_right"
     }
   ],
   "version": 1

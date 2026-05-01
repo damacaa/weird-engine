@@ -7,6 +7,7 @@ precision highp sampler2D;
 
 // #define BLEND_SHAPES
 // #define MOTION_BLUR
+// #define DEBUG_SHOW_GRID
 
 out vec4 FragColor;
 
@@ -30,6 +31,13 @@ uniform sampler2D t_colorTexture;
 
 uniform int u_loadedObjects;
 uniform highp sampler2D t_shapeBuffer;
+uniform highp sampler2D t_gridHeader;
+uniform highp sampler2D t_gridIndices;
+
+uniform vec2 u_gridBoundsMin;
+uniform vec2 u_gridStep;
+uniform int u_gridCols;
+uniform int u_gridRows;
 
 uniform vec2 u_resolution;
 uniform float u_overscan;
@@ -87,7 +95,7 @@ float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
 	return s * sqrt(d);
 }
 
-vec3 getColor(vec2 p, vec2 uv)
+vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 {
 	float minDist = 100000.0;
 	float minColorDist = minDist;
@@ -109,40 +117,39 @@ vec3 getColor(vec2 p, vec2 uv)
 
 	float inv_k = 1.0 / u_k;
 
-	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
+	ivec2 cellCoord = ivec2((p - u_gridBoundsMin) / u_gridStep);
+	cellCoord = clamp(cellCoord, ivec2(0), ivec2(u_gridCols - 1, u_gridRows - 1));
+
+	vec2 cellData = texelFetch(t_gridHeader, cellCoord, 0).xy;
+	int startIndex = int(cellData.x);
+	int count = int(cellData.y);
+
+	for (int i = 0; i < count; i++)
 	{
-		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
+		int flatIndex = startIndex + i;
+		ivec2 indexCoord = ivec2(flatIndex % 1024, flatIndex / 1024);
+		int objectIndex = int(texelFetch(t_gridIndices, indexCoord, 0).x);
+
+		// Shape buffer wraps to 2D at 16384 texels wide (matches DataBuffer::uploadRawData on ES drivers)
+		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(objectIndex % 16384, objectIndex / 16384), 0);
 		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
-		float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+			float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
 #else
-		float objectDist = shape_circle(p - positionSizeMaterial.xy);
+			float objectDist = shape_circle(p - positionSizeMaterial.xy);
 #endif
 
-		// Inside ball mask is set to 0
-		mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
-		// mask = objectDist <= 0 ? 1.0 : mask;
+			// Inside ball mask is set to 0
+			mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
 
 #ifdef BLEND_SHAPES
-
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-
-#else
-
-		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-
-#endif
-
-#ifdef BLEND_SHAPES
-
 		minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
 		minColorDist = min(minColorDist, objectDist);
-
 #else
-
+		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
 		minDist = min(minDist, objectDist);
-
 #endif
 	}
 
@@ -150,6 +157,10 @@ vec3 getColor(vec2 p, vec2 uv)
 
 #ifdef UI_PIPELINE
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
+#endif
+
+#ifdef DEBUG_SHOW_GRID
+	finalMaterialId = count / 10; // Color cells based on how many objects they contain, for debugging purposes
 #endif
 
 	return vec3(minDist, max(float(finalMaterialId), 0.0), mask);
@@ -207,7 +218,7 @@ void main()
 	float zoom = -u_camMatrix[3].z;
 	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-	vec3 result = getColor(pos, v_texCoord);
+	vec3 result = getDistanceMaterialMask(pos, v_texCoord);
 	float d = result.x;
 
 #ifndef UI_PIPELINE
@@ -278,6 +289,26 @@ void main()
 #ifdef UI_PIPELINE
 // float pixelSize = 0.3 / u_resolution.x;
 // finalDistance = abs(finalDistance - pixelSize) - (pixelSize);
+#endif
+
+#ifdef DEBUG_SHOW_GRID
+	vec2 localP = pos - u_gridBoundsMin;
+	bool inBounds = localP.x >= 0.0 && localP.y >= 0.0 &&
+	                localP.x < float(u_gridCols) * u_gridStep.x &&
+	                localP.y < float(u_gridRows) * u_gridStep.y;
+	if (inBounds)
+	{
+		vec2 fracLocal = mod(localP, u_gridStep);
+		vec2 distToLine = min(fracLocal, u_gridStep - fracLocal);
+		float gridDistWorld = min(distToLine.x, distToLine.y);
+		float gridDistNorm = (gridDistWorld / zoom) * (0.5 / aspectRatio);
+		float lineHalfWidth = 1.0 / min(u_resolution.x, u_resolution.y);
+		if (gridDistNorm < lineHalfWidth)
+		{
+			finalDistance = gridDistNorm - lineHalfWidth;
+			// material = 16.0 - material; // Highlight out-of-bounds areas with a different color
+		}
+	}
 #endif
 
 	FragColor = vec4(finalDistance, material, mask, 0.0);

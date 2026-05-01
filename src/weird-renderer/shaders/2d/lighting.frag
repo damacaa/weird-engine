@@ -190,8 +190,11 @@ void main()
 
 #ifdef ANTIALIASING
 
-	// Distance change over one pixel
-	float smoothing = 1.0 * fwidth(distance);
+	// Distance change over one pixel.
+	// Cap to ~1 pixel of distance in finalDistance space so fwidth discontinuities at
+	// empty grid cell boundaries don't widen the AA range and create false shape lines.
+	float maxSmoothing = 2.0 * overscanScale / u_resolution.y;
+	float smoothing = min(1.0 * fwidth(distance), maxSmoothing);
 
 	// Convert the distance to a factor between 0.0 and 1.0
 	float shapeFactor = 1.0 - smoothstep(-smoothing, smoothing, distance);
@@ -312,7 +315,7 @@ void main()
 #endif
 
 	// float debugDistance = 10.0 * distance;
-	float debugDistance = 0.5 * texture(t_distanceCorrectedTexture, screenUV).x;
+	float debugDistance = 0.5 * texture(t_distanceSampledTexture, screenUV).x;
 
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
 	// value = debugDistance * 10.;

@@ -21,6 +21,19 @@ namespace WeirdEngine
 {
 	using namespace ECS;
 
+	struct EntityCollisionEvent
+	{
+		CollisionEvent& raw;
+		Entity entityA;
+		Entity entityB;
+	};
+
+	struct EntityShapeCollisionEvent
+	{
+		ShapeCollisionEvent& raw;
+		Entity entity;
+	};
+
 	constexpr int SOUND_QUEUE_SIZE = 16;
 
 	// Forward declaration – full definition in SceneSerializer.h
@@ -99,7 +112,8 @@ namespace WeirdEngine
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onPhysicsStep() {};
 		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
-		virtual void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) {};
+		virtual void onEntityCollision(WeirdEngine::EntityCollisionEvent& event) {};
+		virtual void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 
 		void setSceneComplete(std::string nextScene = "")
@@ -142,6 +156,9 @@ namespace WeirdEngine
 		std::string getEntityTag(Entity entity) const;
 		// Return the entity that owns a tag, or MAX_ENTITIES if none.
 		Entity getEntityByTag(const std::string& name) const;
+
+		// Resolve a physics SimulationID to the owning entity.
+		Entity getEntityForSimulationId(SimulationID simulationId);
 
 		SDFRenderSystem2DContext m_2DWorldRenderContext;
 		SDFRenderSystem2DContext m_UIRenderContext;

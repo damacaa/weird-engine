@@ -4,6 +4,11 @@
 #define ENGINE_PATH "../weird-engine"
 #endif // !ENGINE_PATH
 
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_timer.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneManager.h"
@@ -79,6 +84,15 @@ namespace WeirdEngine
 			// Capture window input
 			Input::update(ctx.renderer.getWindow());
 
+			// Suppress game input when ImGui has focus
+			{
+				const ImGuiIO& io = ImGui::GetIO();
+				if (io.WantCaptureMouse)
+					Input::suppressMouseInput();
+				if (io.WantCaptureKeyboard)
+					Input::suppressKeyboardInput();
+			}
+
 			if (Input::GetKeyDown(Input::T))
 			{
 				WeirdEngine::Profiler::Get().startRecording();
@@ -91,6 +105,8 @@ namespace WeirdEngine
 			SDL_Event event;
 			while (SDL_PollEvent(&event))
 			{
+				ImGui_ImplSDL3_ProcessEvent(&event);
+
 				if (event.type == SDL_EVENT_QUIT)
 				{
 					ctx.quit = true;

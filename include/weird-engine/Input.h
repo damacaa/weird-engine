@@ -258,6 +258,32 @@ namespace WeirdEngine
 
 #pragma endregion
 
+		static void suppressMouseInput()
+		{
+			auto& instance = getInstance();
+			for (int i = 0; i < 5; ++i)
+			{
+				if (instance.m_mouseKeysTable[i] > NOT_PRESSED)           // IS_PRESSED or FIRST_PRESSED
+					instance.m_mouseKeysTable[i] = RELEASED_THIS_FRAME;    // fire key-up
+				else if (instance.m_mouseKeysTable[i] == RELEASED_THIS_FRAME)
+					instance.m_mouseKeysTable[i] = NOT_PRESSED;            // clear existing key-up
+				// NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
+			}
+		}
+
+		static void suppressKeyboardInput()
+		{
+			auto& instance = getInstance();
+			for (int i = 0; i < SDL_SCANCODE_COUNT; ++i)
+			{
+				if (instance.m_keyTable[i] > NOT_PRESSED)                 // IS_PRESSED or FIRST_PRESSED
+					instance.m_keyTable[i] = RELEASED_THIS_FRAME;          // fire key-up
+				else if (instance.m_keyTable[i] == RELEASED_THIS_FRAME)
+					instance.m_keyTable[i] = NOT_PRESSED;                  // clear existing key-up
+				// NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
+			}
+		}
+
 #pragma region Keyboard
 
 		static bool GetKey(KeyCode key)

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioEngine.h"
 #include <SDL3/SDL.h>
+
+#include "weird-renderer/audio/AudioEngine.h"
 
 namespace WeirdEngine
 {

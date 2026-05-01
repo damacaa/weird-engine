@@ -1,9 +1,13 @@
 #include "weird-renderer/core/SDLInitializer.h"
-#include "weird-renderer/audio/AudioEngine.h"
+
 #include <csignal>
-#include <glad/glad.h>
 #include <iostream>
 #include <stdexcept>
+
+#include <glad/glad.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_opengl3.h>
 
 namespace WeirdEngine
 {
@@ -91,6 +95,13 @@ namespace WeirdEngine
 				throw std::runtime_error("Failed to initialize GLAD.");
 			}
 
+			IMGUI_CHECKVERSION();
+			ImGui::CreateContext();
+			ImGui::StyleColorsDark();
+
+			ImGui_ImplSDL3_InitForOpenGL(m_window, m_glContext);
+			ImGui_ImplOpenGL3_Init("#version 300 es"); // matches your GL ES 3.0 context
+
 #ifndef NDEBUG
 			// Enable debug output via KHR_debug extension if supported
 			if (GLAD_GL_KHR_debug)
@@ -134,6 +145,10 @@ namespace WeirdEngine
 
 		SDLInitializer::~SDLInitializer()
 		{
+			ImGui_ImplOpenGL3_Shutdown();
+			ImGui_ImplSDL3_Shutdown();
+			ImGui::DestroyContext();
+
 			SDL_DestroyAudioStream(m_audioStream);
 			SDL_GL_DestroyContext(m_glContext);
 			SDL_DestroyWindow(m_window);

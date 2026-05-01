@@ -49,6 +49,7 @@ namespace WeirdEngine
 							double delta, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
+			void handleDebugInputs();
 
 		private:
 			Config m_config;
@@ -124,8 +125,6 @@ namespace WeirdEngine
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
-			void handleDebugInputs();
-
 			static int largestPowerOfTwoBelow(int n);
 		};
 	} // namespace WeirdRenderer

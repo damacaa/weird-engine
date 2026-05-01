@@ -95,7 +95,7 @@ float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
 	return s * sqrt(d);
 }
 
-vec3 getColor(vec2 p, vec2 uv)
+vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 {
 	float minDist = 100000.0;
 	float minColorDist = minDist;
@@ -218,7 +218,7 @@ void main()
 	float zoom = -u_camMatrix[3].z;
 	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-	vec3 result = getColor(pos, v_texCoord);
+	vec3 result = getDistanceMaterialMask(pos, v_texCoord);
 	float d = result.x;
 
 #ifndef UI_PIPELINE

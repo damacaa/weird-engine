@@ -137,8 +137,18 @@ namespace WeirdEngine
 					  << std::setw(10) << "% Frame" << "\n";
 			std::cout << "-----------------------------------------------------------------\n";
 
-			for (const auto& stat : m_stats)
+			printStatsRange(0, m_stats.size(), totalFrameTimeMs);
+
+			std::cout << "=================================================================\n\n";
+		}
+
+		void printStatsRange(size_t start, size_t end, double totalFrameTimeMs)
+		{
+			size_t i = start;
+			while (i < end)
 			{
+				const auto& stat = m_stats[i];
+
 				std::string indent(stat.depth * 4, ' ');
 				std::string name = indent + stat.name;
 				double avgTimeMs = stat.totalTimeMs / stat.count;
@@ -150,8 +160,41 @@ namespace WeirdEngine
 				std::cout << std::left << std::setw(40) << name << std::right << std::setw(15) << std::fixed
 						  << std::setprecision(3) << avgTimeMs << std::setw(9) << std::fixed << std::setprecision(1)
 						  << percentage << "%\n";
+
+				// Find end of this stat's subtree
+				size_t subEnd = i + 1;
+				while (subEnd < end && m_stats[subEnd].depth > stat.depth)
+					subEnd++;
+
+				if (subEnd > i + 1)
+				{
+					// Sum direct children total times
+					double childrenTotalMs = 0.0;
+					for (size_t j = i + 1; j < subEnd; j++)
+					{
+						if (m_stats[j].depth == stat.depth + 1)
+							childrenTotalMs += m_stats[j].totalTimeMs;
+					}
+
+					// Print children recursively
+					printStatsRange(i + 1, subEnd, totalFrameTimeMs);
+
+					// If unaccounted time exceeds 1% of frame, print an "Other" row
+					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
+					double unaccountedPct = totalFrameTimeMs > 0.0 ? (unaccountedMs / totalFrameTimeMs) * 100.0 : 0.0;
+					if (unaccountedPct > 1.0)
+					{
+						std::string otherIndent((stat.depth + 1) * 4, ' ');
+						std::string otherName = otherIndent + "Other";
+						double otherAvgMs = unaccountedMs / stat.count;
+						std::cout << std::left << std::setw(40) << otherName << std::right << std::setw(15)
+								  << std::fixed << std::setprecision(3) << otherAvgMs << std::setw(9) << std::fixed
+								  << std::setprecision(1) << unaccountedPct << "%\n";
+					}
+				}
+
+				i = subEnd;
 			}
-			std::cout << "=================================================================\n\n";
 		}
 
 		struct StackItem

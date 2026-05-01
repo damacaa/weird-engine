@@ -7,6 +7,7 @@
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -36,6 +37,7 @@ namespace WeirdEngine
 				float motionBlurBlendSpeed;
 				bool debugDistanceField;
 				bool debugMaterialColors;
+				bool debugGrid = false;
 				float ballK;
 				float ambienOcclusionRadius;
 				float ambienOcclusionStrength;
@@ -49,6 +51,7 @@ namespace WeirdEngine
 							double delta, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
+			void handleDebugInputs();
 
 		private:
 			Config m_config;
@@ -107,6 +110,16 @@ namespace WeirdEngine
 			RenderTarget m_litSceneRender;
 
 			DataBuffer m_shapeDataBuffer;
+			DataBuffer m_gridHeaderBuffer;
+			DataBuffer m_gridIndicesBuffer;
+
+			// Reusable scratch buffers for grid building — allocated once, reused every frame
+			struct ObjBounds { int minX, minY, maxX, maxY; };
+			std::vector<ObjBounds>    m_gridObjBounds;
+			std::vector<int>          m_gridCellCounts;
+			std::vector<int>          m_gridCellOffsets;
+			std::vector<glm::vec4>    m_gridHeader;
+			std::vector<glm::vec4>    m_gridIndices;
 
 			glm::mat4 m_oldCameraMatrix;
 			glm::mat4
@@ -115,17 +128,16 @@ namespace WeirdEngine
 
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange;
-
-			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
-									 double time, double delta);
+			struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
+			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+										const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+										double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
-			void handleDebugInputs();
-
 			static int largestPowerOfTwoBelow(int n);
 		};
 	} // namespace WeirdRenderer

@@ -1,6 +1,11 @@
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
-#include "weird-engine/vec.h"
+
 #include <algorithm>
+
+#include <imgui.h>
+
+#include "weird-engine/vec.h"
+#include "weird-engine/Profiler.h"
 
 namespace WeirdEngine
 {
@@ -289,47 +294,234 @@ namespace WeirdEngine
 			renderBackground(camera, time);
 			applyLighting(camera, time, backgroundTexture);
 
+			glFinish(); // Makes sense for profiler
+
 			return m_litSceneTexture;
+		}
+
+		SDF2DRenderPipeline::GridInfo SDF2DRenderPipeline::buildAccelerationGrid(vec4* shapeData, uint32_t dataSize,
+																				 uint32_t shapeCount,
+																				 const Camera& camera)
+		{
+			PROFILE_SCOPE(m_config.isUI ? "Build grid (UI)" : "Build grid (World)");
+
+			// Build acceleration grid using CPU padding spatial partitioning.
+			// Grid bounds are derived entirely from the camera frustum, so off-screen circles are
+			// never inserted. This relies on the 2D camera convention where:
+			//   zoom  = -view[3].z   (positive distance from origin)
+			//   camXY = view[3].xy   (camera translation in world space)
+			// If the camera representation changes, update the frustum derivation below accordingly.
+			constexpr int indexTexWidth = 1024;
+
+			int objectCount = static_cast<int>(dataSize) - (2 * static_cast<int>(shapeCount));
+
+			float objectRadius = m_config.isUI ? 5.0f : 1.0f;
+			float cellPad = m_config.ballK + objectRadius;
+
+			// Derive the visible world-space rectangle from the camera matrix
+			float zoom = -camera.view[3].z;
+			float camX = camera.view[3].x;
+			float camY = camera.view[3].y;
+			float aspectRatio = static_cast<float>(m_distanceSampleWidth) / static_cast<float>(m_distanceSampleHeight);
+			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
+
+			float uvXMin, uvYMin, uvXMax, uvYMax;
+			if (m_config.isUI)
+			{
+				uvXMin = 0.0f;
+				uvYMin = 0.0f;
+				uvXMax = 1.0f * aspectRatio;
+				uvYMax = 1.0f;
+			}
+			else
+			{
+				uvXMin = (-1.0f - overscan) * aspectRatio;
+				uvYMin = (-1.0f - overscan);
+				uvXMax = (1.0f + overscan) * aspectRatio;
+				uvYMax = (1.0f + overscan);
+			}
+
+			float viewMinX = zoom * uvXMin - camX;
+			float viewMinY = zoom * uvYMin - camY;
+			float viewMaxX = zoom * uvXMax - camX;
+			float viewMaxY = zoom * uvYMax - camY;
+			if (viewMinX > viewMaxX)
+				std::swap(viewMinX, viewMaxX);
+			if (viewMinY > viewMaxY)
+				std::swap(viewMinY, viewMaxY);
+
+			// Expand frustum by cellPad so circles that straddle the view edge are included
+			float minX = viewMinX - cellPad;
+			float minY = viewMinY - cellPad;
+			float maxX = viewMaxX + cellPad;
+			float maxY = viewMaxY + cellPad;
+
+			// Cell size is the object diameter so a circle fits in ~1 cell (2x2 worst-case).
+			// ballK only affects the insertion radius, not the cell size.
+			float idealCellSize = 2.0f * objectRadius;
+			if (idealCellSize < 0.5f)
+				idealCellSize = 0.5f;
+			int gridCols = static_cast<int>(std::ceil((maxX - minX) / idealCellSize));
+			int gridRows = static_cast<int>(std::ceil((maxY - minY) / idealCellSize));
+
+			if (gridCols < 1)
+				gridCols = 1;
+			if (gridRows < 1)
+				gridRows = 1;
+			if (gridCols > 2048)
+				gridCols = 2048;
+			if (gridRows > 2048)
+				gridRows = 2048;
+
+			float stepX = (maxX - minX) / gridCols;
+			float stepY = (maxY - minY) / gridRows;
+
+			int numCells = gridCols * gridRows;
+
+			// Reuse member scratch buffers — no heap allocation unless the scene grows
+			m_gridObjBounds.clear();
+			m_gridObjBounds.resize(objectCount);
+			m_gridCellCounts.assign(numCells, 0);
+
+			// Single pass: compute per-object cell ranges and tally cell counts.
+			// Objects whose cell range is entirely outside [0, gridCols/Rows) are naturally skipped.
+			int visibleObjects = 0;
+			for (int i = 0; i < objectCount; ++i)
+			{
+				float cx = shapeData[i].x;
+				float cy = shapeData[i].y;
+				int minCellX = static_cast<int>((cx - cellPad - minX) / stepX);
+				int minCellY = static_cast<int>((cy - cellPad - minY) / stepY);
+				int maxCellX = static_cast<int>((cx + cellPad - minX) / stepX);
+				int maxCellY = static_cast<int>((cy + cellPad - minY) / stepY);
+
+				// Cull objects entirely outside the frustum-aligned grid
+				if (maxCellX < 0 || maxCellY < 0 || minCellX >= gridCols || minCellY >= gridRows)
+				{
+					m_gridObjBounds[i] = {-1, -1, -1, -1};
+					continue;
+				}
+
+				minCellX = std::max(0, minCellX);
+				minCellY = std::max(0, minCellY);
+				maxCellX = std::min(gridCols - 1, maxCellX);
+				maxCellY = std::min(gridRows - 1, maxCellY);
+
+				m_gridObjBounds[i] = {minCellX, minCellY, maxCellX, maxCellY};
+				++visibleObjects;
+
+				for (int cyI = minCellY; cyI <= maxCellY; ++cyI)
+					for (int cxI = minCellX; cxI <= maxCellX; ++cxI)
+						m_gridCellCounts[cyI * gridCols + cxI]++;
+			}
+
+			// Prefix sum to compute cell offsets
+			m_gridCellOffsets.resize(numCells);
+			int totalIndices = 0;
+			for (int i = 0; i < numCells; ++i)
+			{
+				m_gridCellOffsets[i] = totalIndices;
+				totalIndices += m_gridCellCounts[i];
+			}
+
+			// Pre-allocate index buffer at final padded size to avoid realloc during fill
+			int indexTexHeight = std::max(1, (totalIndices + indexTexWidth - 1) / indexTexWidth);
+			int paddedSize = indexTexWidth * indexTexHeight;
+
+			m_gridHeader.resize(numCells);
+			m_gridIndices.assign(paddedSize, glm::vec4(0.0f));
+
+			// Fill index buffer using offset-as-write-cursor directly (no extra copy)
+			for (int i = 0; i < objectCount; ++i)
+			{
+				const ObjBounds& b = m_gridObjBounds[i];
+				if (b.minX < 0)
+					continue; // culled
+				for (int cyI = b.minY; cyI <= b.maxY; ++cyI)
+				{
+					for (int cxI = b.minX; cxI <= b.maxX; ++cxI)
+					{
+						int cellIdx = cyI * gridCols + cxI;
+						m_gridIndices[m_gridCellOffsets[cellIdx]++] =
+							glm::vec4(static_cast<float>(i), 0.0f, 0.0f, 0.0f);
+					}
+				}
+			}
+
+			// Restore offsets for header (they were incremented above as write cursors)
+			int writePos = 0;
+			for (int i = 0; i < numCells; ++i)
+			{
+				m_gridHeader[i] =
+					glm::vec4(static_cast<float>(writePos), static_cast<float>(m_gridCellCounts[i]), 0.0f, 0.0f);
+				writePos += m_gridCellCounts[i];
+			}
+
+			return {minX, minY, stepX, stepY, gridCols, gridRows, indexTexWidth, indexTexHeight};
 		}
 
 		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 													  const Camera& camera, double time, double delta)
 		{
-			int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
-			m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
+			{
+				PROFILE_SCOPE(m_config.isUI ? "Upload data (UI)" : "Upload data (World)");
 
-			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
-			m_distanceShader.use();
+				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
+				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
 
-			// Set uniforms
-			m_prevFrameCameraMatrix =
-				m_oldCameraMatrix; // save before overwrite so other shaders can access the true previous frame matrix
-			m_distanceShader.setUniform("u_camMatrix", camera.view);
-			m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
-			m_oldCameraMatrix = camera.view;
+				GridInfo grid = buildAccelerationGrid(shapeData, dataSize, shapeCount, camera);
+				m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
+				m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
+															grid.indexTexHeight);
 
-			cameraPositionChange = camera.position - m_lastCameraPosition;
-			m_lastCameraPosition = camera.position;
-			m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
+				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
+				m_distanceShader.use();
 
-			m_distanceShader.setUniform("u_time", time);
-			m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
-			m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
-			m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
-			m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
-			m_distanceShader.setUniform("u_k", m_config.ballK);
-			m_distanceShader.setUniform("u_staticColors", m_colorPalette, 16);
+				// Set uniforms
+				m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the
+															 // true previous frame matrix
+				m_distanceShader.setUniform("u_camMatrix", camera.view);
+				m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
+				m_oldCameraMatrix = camera.view;
 
-			m_distanceShader.setUniform("t_colorTexture", 0);
-			m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
+				cameraPositionChange = camera.position - m_lastCameraPosition;
+				m_lastCameraPosition = camera.position;
+				m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 
-			m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
-			m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
-			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
-			m_distanceShader.setUniform("t_shapeBuffer", 1);
-			m_shapeDataBuffer.bind(1);
+				m_distanceShader.setUniform("u_time", time);
+				m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
+				m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+				m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
+				m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
+				m_distanceShader.setUniform("u_k", m_config.ballK);
+				m_distanceShader.setUniform("u_staticColors", m_colorPalette, 16);
 
-			m_renderPlane.draw(m_distanceShader);
+				m_distanceShader.setUniform("t_colorTexture", 0);
+				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
+
+				m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
+				m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
+				m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
+				m_distanceShader.setUniform("t_shapeBuffer", 1);
+				m_shapeDataBuffer.bind(1);
+
+				m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
+				m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
+				m_distanceShader.setUniform("u_gridCols", grid.gridCols);
+				m_distanceShader.setUniform("u_gridRows", grid.gridRows);
+
+				m_distanceShader.setUniform("t_gridHeader", 2);
+				m_gridHeaderBuffer.bind(2);
+				m_distanceShader.setUniform("t_gridIndices", 3);
+				m_gridIndicesBuffer.bind(3);
+			}
+
+			// Upload grid
+			{
+				PROFILE_SCOPE(m_config.isUI ? "Render distance (UI)" : "Render distance (World)");
+				m_renderPlane.draw(m_distanceShader);
+				glFinish(); // Makes sense for profiler
+			}
 		}
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)
@@ -529,45 +721,68 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::handleDebugInputs()
 		{
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
-			// {
-			// 	m_2DLightingShader.toggleDefine("SHADOWS_ENABLED");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::D))
-			// {
-			// 	if (Input::GetKey(Input::LeftShift)) {
-			// 		m_finalUIShader.toggleDefine("DITHERING");
-			// 	} else {
-			// 		m_finalUIShader.toggleDefine("DEBUG_SHOW_DISTANCE");
-			// 	}
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::C))
-			// {
-			// 	m_2DLightingShader.toggleDefine("DEBUG_SHOW_COLORS");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::A))
-			// {
-			// 	m_2DLightingShader.toggleDefine("ANTIALIASING");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::B))
-			// {
-			// 	m_2DDistanceShader.toggleDefine("BLEND_SHAPES");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::M))
-			// {
-			// 	m_2DDistanceShader.toggleDefine("MOTION_BLUR");
-			// 	m_uiDistanceShader.toggleDefine("MOTION_BLUR");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::F))
-			// {
-			// 	USE_CORRECTED_DISTANCE_TEXTURE = !USE_CORRECTED_DISTANCE_TEXTURE;
-			// }
+			const char* label = m_config.isUI ? "UI Pipeline" : "World Pipeline";
+			if (!ImGui::CollapsingHeader(label))
+				return;
+
+			ImGui::PushID(label);
+
+			ImGui::SeparatorText("Shadows");
+			if (ImGui::Checkbox("Shadows", &m_config.enableShadows))
+			{
+				if (m_config.enableShadows) m_lightingShader.addDefine("SHADOWS_ENABLED");
+				else m_lightingShader.removeDefine("SHADOWS_ENABLED");
+			}
+			if (ImGui::Checkbox("Long Shadows", &m_config.enableLongShadows))
+			{
+				if (m_config.enableLongShadows) m_lightingShader.addDefine("LONG_SHADOWS");
+				else m_lightingShader.removeDefine("LONG_SHADOWS");
+			}
+
+			ImGui::SeparatorText("Rendering");
+			if (ImGui::Checkbox("Antialiasing", &m_config.enableAntialiasing))
+			{
+				if (m_config.enableAntialiasing) m_lightingShader.addDefine("ANTIALIASING");
+				else m_lightingShader.removeDefine("ANTIALIASING");
+			}
+			if (ImGui::Checkbox("Motion Blur", &m_config.enableMotionBlur))
+			{
+				if (m_config.enableMotionBlur) m_distanceShader.addDefine("MOTION_BLUR");
+				else m_distanceShader.removeDefine("MOTION_BLUR");
+			}
+			if (ImGui::Checkbox("Refraction", &m_config.enableRefraction))
+			{
+				if (m_config.enableRefraction) m_lightingShader.addDefine("REFRACTION");
+				else m_lightingShader.removeDefine("REFRACTION");
+			}
+
+			ImGui::SeparatorText("Debug");
+			if (ImGui::Checkbox("Show Distance Field", &m_config.debugDistanceField))
+			{
+				if (m_config.debugDistanceField) m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
+				else m_lightingShader.removeDefine("DEBUG_SHOW_DISTANCE");
+			}
+			if (ImGui::Checkbox("Show Material Colors", &m_config.debugMaterialColors))
+			{
+				if (m_config.debugMaterialColors) m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
+				else m_lightingShader.removeDefine("DEBUG_SHOW_COLORS");
+			}
+
+			if (ImGui::Checkbox("Show grid", &m_config.debugGrid))
+			{
+				if (m_config.debugGrid) m_distanceShader.addDefine("DEBUG_SHOW_GRID");
+				else m_distanceShader.removeDefine("DEBUG_SHOW_GRID");
+			}
+
+			ImGui::SeparatorText("Ambient Occlusion");
+			ImGui::SliderFloat("AO Radius", &m_config.ambienOcclusionRadius, 0.0f, 20.0f);
+			ImGui::SliderFloat("AO Strength", &m_config.ambienOcclusionStrength, 0.0f, 1.0f);
+
+			ImGui::SeparatorText("Materials");
+			ImGui::SliderFloat("Blend Speed", &m_config.materialBlendSpeed, 0.0f, 20.0f);
+			ImGui::SliderFloat("Smooth Factor (k)", &m_config.ballK, 0.0f, 50.0f);
+
+			ImGui::PopID();
 		}
 
 		Shader& SDF2DRenderPipeline::getDistanceShader()

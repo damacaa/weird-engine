@@ -1,8 +1,11 @@
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
-#include "weird-engine/vec.h"
-#include "weird-engine/Profiler.h"
 
 #include <algorithm>
+
+#include <imgui.h>
+
+#include "weird-engine/vec.h"
+#include "weird-engine/Profiler.h"
 
 namespace WeirdEngine
 {
@@ -717,45 +720,62 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::handleDebugInputs()
 		{
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
-			// {
-			// 	m_2DLightingShader.toggleDefine("SHADOWS_ENABLED");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::D))
-			// {
-			// 	if (Input::GetKey(Input::LeftShift)) {
-			// 		m_finalUIShader.toggleDefine("DITHERING");
-			// 	} else {
-			// 		m_finalUIShader.toggleDefine("DEBUG_SHOW_DISTANCE");
-			// 	}
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::C))
-			// {
-			// 	m_2DLightingShader.toggleDefine("DEBUG_SHOW_COLORS");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::A))
-			// {
-			// 	m_2DLightingShader.toggleDefine("ANTIALIASING");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::B))
-			// {
-			// 	m_2DDistanceShader.toggleDefine("BLEND_SHAPES");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::M))
-			// {
-			// 	m_2DDistanceShader.toggleDefine("MOTION_BLUR");
-			// 	m_uiDistanceShader.toggleDefine("MOTION_BLUR");
-			// }
-			//
-			// if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::F))
-			// {
-			// 	USE_CORRECTED_DISTANCE_TEXTURE = !USE_CORRECTED_DISTANCE_TEXTURE;
-			// }
+			const char* label = m_config.isUI ? "UI Pipeline" : "World Pipeline";
+			if (!ImGui::CollapsingHeader(label))
+				return;
+
+			ImGui::PushID(label);
+
+			ImGui::SeparatorText("Shadows");
+			if (ImGui::Checkbox("Shadows", &m_config.enableShadows))
+			{
+				if (m_config.enableShadows) m_lightingShader.addDefine("SHADOWS_ENABLED");
+				else m_lightingShader.removeDefine("SHADOWS_ENABLED");
+			}
+			if (ImGui::Checkbox("Long Shadows", &m_config.enableLongShadows))
+			{
+				if (m_config.enableLongShadows) m_lightingShader.addDefine("LONG_SHADOWS");
+				else m_lightingShader.removeDefine("LONG_SHADOWS");
+			}
+
+			ImGui::SeparatorText("Rendering");
+			if (ImGui::Checkbox("Antialiasing", &m_config.enableAntialiasing))
+			{
+				if (m_config.enableAntialiasing) m_lightingShader.addDefine("ANTIALIASING");
+				else m_lightingShader.removeDefine("ANTIALIASING");
+			}
+			if (ImGui::Checkbox("Motion Blur", &m_config.enableMotionBlur))
+			{
+				if (m_config.enableMotionBlur) m_distanceShader.addDefine("MOTION_BLUR");
+				else m_distanceShader.removeDefine("MOTION_BLUR");
+			}
+			if (ImGui::Checkbox("Refraction", &m_config.enableRefraction))
+			{
+				if (m_config.enableRefraction) m_lightingShader.addDefine("REFRACTION");
+				else m_lightingShader.removeDefine("REFRACTION");
+			}
+
+			ImGui::SeparatorText("Debug");
+			if (ImGui::Checkbox("Show Distance Field", &m_config.debugDistanceField))
+			{
+				if (m_config.debugDistanceField) m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
+				else m_lightingShader.removeDefine("DEBUG_SHOW_DISTANCE");
+			}
+			if (ImGui::Checkbox("Show Material Colors", &m_config.debugMaterialColors))
+			{
+				if (m_config.debugMaterialColors) m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
+				else m_lightingShader.removeDefine("DEBUG_SHOW_COLORS");
+			}
+
+			ImGui::SeparatorText("Ambient Occlusion");
+			ImGui::SliderFloat("AO Radius", &m_config.ambienOcclusionRadius, 0.0f, 20.0f);
+			ImGui::SliderFloat("AO Strength", &m_config.ambienOcclusionStrength, 0.0f, 1.0f);
+
+			ImGui::SeparatorText("Materials");
+			ImGui::SliderFloat("Blend Speed", &m_config.materialBlendSpeed, 0.0f, 20.0f);
+			ImGui::SliderFloat("Smooth Factor (k)", &m_config.ballK, 0.0f, 50.0f);
+
+			ImGui::PopID();
 		}
 
 		Shader& SDF2DRenderPipeline::getDistanceShader()

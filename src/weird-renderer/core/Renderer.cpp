@@ -1,9 +1,14 @@
 #include "weird-renderer/core/Renderer.h"
 
-#include "weird-engine/Profiler.h"
+#include <sys/stat.h>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
-#include <sys/stat.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_opengl3.h>
+
+#include "weird-engine/Profiler.h"
 
 namespace WeirdEngine
 {
@@ -117,6 +122,30 @@ namespace WeirdEngine
 			auto& result = renderScene(scene, time, clampedDelta);
 			output(scene, result, clampedDelta);
 			glFinish();
+
+			static bool showDebugUI = false;
+
+			if(Input::GetKeyDown(Input::F3))
+			{
+				showDebugUI = !showDebugUI;
+			}
+
+			if(showDebugUI)
+			{
+				ImGui_ImplOpenGL3_NewFrame();
+				ImGui_ImplSDL3_NewFrame();
+				ImGui::NewFrame();
+
+				ImGui::Begin("Renderer Settings");
+				m_worldPipeline->handleDebugInputs();
+				m_uiPipeline->handleDebugInputs();
+				ImGui::End();
+
+				ImGui::Render();
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, m_windowWidth, m_windowHeight);
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			}
 
 			{
 				PROFILE_SCOPE("Synchronization");

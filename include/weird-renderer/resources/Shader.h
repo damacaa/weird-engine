@@ -54,6 +54,11 @@ namespace WeirdEngine
 				glUniform1i(getUniformLocation(name), value);
 			}
 
+			void setUniform(const std::string& name, const glm::ivec2& value) const
+			{
+				glUniform2iv(getUniformLocation(name), 1, &value[0]);
+			}
+
 			void setUniform(const std::string& name, const glm::vec2& value) const
 			{
 				glUniform2fv(getUniformLocation(name), 1, &value[0]);

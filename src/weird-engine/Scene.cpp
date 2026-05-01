@@ -158,15 +158,20 @@ namespace WeirdEngine
 
 	void Scene::handleCollision(CollisionEvent& event, void* userData)
 	{
-		// Unsafe cast! Prone to error.
 		Scene* self = static_cast<Scene*>(userData);
 		self->onCollision(event);
+
+		EntityCollisionEvent entityEvent{event,
+									 self->getEntityForSimulationId(event.bodyA),
+									 self->getEntityForSimulationId(event.bodyB)};
+		self->onEntityCollision(entityEvent);
 	}
 
 	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onShapeCollision(event);
+		EntityShapeCollisionEvent entityEvent{event, self->getEntityForSimulationId(event.body)};
+		self->onEntityShapeCollision(entityEvent);
 
 		const float m_soundFalloff = 0.1f;
 		bool spatialAudio = false;
@@ -347,6 +352,15 @@ namespace WeirdEngine
 		if (it == m_tagToEntity.end())
 			return MAX_ENTITIES;
 		return it->second;
+	}
+
+	Entity Scene::getEntityForSimulationId(SimulationID simulationId)
+	{
+		auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
+		if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
+			return INVALID_ENTITY;
+
+		return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
 	}
 
 	void Scene::saveScene(const std::string& filename)

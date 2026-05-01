@@ -20,7 +20,7 @@ private:
 		m_debugInput = true;
 		m_debugFly = true;
 
-		for (size_t i = 0; i < 600; i++)
+		for (size_t i = 0; i < 9900; i++)
 		{
 
 			float y = (int)(i / 20);

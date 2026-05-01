@@ -1,9 +1,14 @@
 #include "weird-renderer/core/Renderer.h"
 
-#include "weird-engine/Profiler.h"
+#include <sys/stat.h>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
-#include <sys/stat.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_opengl3.h>
+
+#include "weird-engine/Profiler.h"
 
 namespace WeirdEngine
 {
@@ -118,6 +123,31 @@ namespace WeirdEngine
 
 			auto& result = renderScene(scene, time, clampedDelta);
 			output(scene, result, clampedDelta);
+			glFinish();
+
+			static bool showDebugUI = false;
+
+			if(Input::GetKeyDown(Input::F3))
+			{
+				showDebugUI = !showDebugUI;
+			}
+
+			if(showDebugUI)
+			{
+				ImGui_ImplOpenGL3_NewFrame();
+				ImGui_ImplSDL3_NewFrame();
+				ImGui::NewFrame();
+
+				ImGui::Begin("Renderer Settings");
+				m_worldPipeline->handleDebugInputs();
+				m_uiPipeline->handleDebugInputs();
+				ImGui::End();
+
+				ImGui::Render();
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, m_windowWidth, m_windowHeight);
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			}
 
 			{
 				PROFILE_SCOPE("Synchronization");
@@ -303,15 +333,10 @@ namespace WeirdEngine
 
 			bool enable3DSDFs = true;
 
-			// Render geometry
+			// 3D
 			if (enable3D)
 			{
-				// TODO: implement a deferred renderer that handles transparency
-				// Chosen method: Dithered (Screen-Door) Transparency
-				// Instead of truly blending a transparent object, the shader uses an alpha-test to selectively discard pixels in a stippled or checkerboard noise pattern based on the transparency level (e.g., if it's 50% transparent, it discards every other pixel).
-				// - To the G-buffer, the object is treated as 100% opaque, but it has tiny "holes" in it letting the background show through.
-				// - (Optional) Temporal Anti-Aliasing (TAA) is then used to blur these pixels across multiple frames, creating the illusion of smooth transparency.
-				// https://digitalrune.github.io/DigitalRune-Documentation/html/fa431d48-b457-4c70-a590-d44b0840ab1e.htm
+				PROFILE_SCOPE("3D Render");
 
 				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
 
@@ -411,6 +436,8 @@ namespace WeirdEngine
 					glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 					m_3DSceneRender.bind(); // Keep it bound for the geometry pass!
+
+					glFinish();
 				}
 
 				// Render 3D geometry objects (with depth writing)
@@ -428,6 +455,8 @@ namespace WeirdEngine
 					// Draw objects in the scene (3D models)
 					scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
 				}
+				
+				glFinish();
 
 				if (!enable2D)
 				{

@@ -6,6 +6,8 @@
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
+#include "weird-renderer/core/SDF3DRenderPipeline.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
 #include "weird-renderer/core/SDLInitializer.h"
 #include "weird-renderer/resources/DataBuffer.h"
 
@@ -45,47 +47,29 @@ namespace WeirdEngine
 			float m_ditheringSpread;
 			int m_ditheringColorCount;
 
-			// Pipelines for 2D SDF rendering
+			// Render pipelines
 			SDF2DRenderPipeline* m_worldPipeline;
 			SDF2DRenderPipeline* m_uiPipeline;
+			SDF3DRenderPipeline* m_3DWorldPipeline;
+			MeshRenderPipeline* m_meshPipeline;
 
-			Shader m_geometryShaderProgram;
-			Shader m_instancedGeometryShaderProgram;
 			Shader m_postProcessingShader;
-			Shader m_3DsdfShaderProgram;
 			Shader m_combineScenesShaderProgram;
 			Shader m_outputShaderProgram;
-
-			RenderTarget m_geometryRender;
-			RenderTarget m_3DSceneRender;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;
 
 			RenderPlane m_renderPlane;
 
-			Texture m_geometryTexture;
-			Texture m_geometryDepthTexture;
-			Texture m_3DSceneTexture;
-			Texture m_3DDepthSceneTexture;
-			DataBuffer* m_3DShapeDataBuffer;
-
 			Texture m_combineResultTexture;
 			Texture m_outputTexture;
-
-			// Path tracing accumulation
-			Texture m_rayMarchAccumTexture[2];
-			RenderTarget m_rayMarchAccumRender[2];
-			int m_rayMarchAccumIdx;
-			glm::mat4 m_oldCameraMatrixWorld;
-			int m_frameCounter;
-
-			void output(Scene& scene, Texture& texture, const double delta);
 
 			glm::vec4 m_colorPalette[16];
 
 			Camera m_uiCamera;
 
+			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();
 		};
 

@@ -9,6 +9,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include "weird-engine/Profiler.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
 
 namespace WeirdEngine
 {
@@ -23,6 +24,8 @@ namespace WeirdEngine
 			, m_ditheringColorCount(std::max(2, settings.ditheringColorCount))
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
+			, m_3DWorldPipeline(nullptr)
+			, m_meshPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 			, m_targetRefreshRate(settings.refreshRate)
 		{
@@ -77,14 +80,15 @@ namespace WeirdEngine
 			uiConfig.ambienOcclusionStrength = 0.15f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
-			// Load shaders
-			m_geometryShaderProgram = Shader(SHADERS_PATH "3d/geometry.vert", SHADERS_PATH "3d/geometry.frag");
+			// Initialize 3D SDF pipeline
+			SDF3DRenderPipeline::Config sdf3DConfig;
+			sdf3DConfig.renderWidth = m_renderWidth;
+			sdf3DConfig.renderHeight = m_renderHeight;
+			m_3DWorldPipeline = new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_renderPlane);
 
-			m_instancedGeometryShaderProgram =
-				Shader(SHADERS_PATH "3d/geometry_instanced.vert", SHADERS_PATH "3d/geometry.frag");
-
-			m_3DsdfShaderProgram =
-				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "3d/sdf_raymarching.frag");
+			// Initialize mesh pipeline
+			m_meshPipeline = new MeshRenderPipeline();
+			m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 
 			m_combineScenesShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/alpha_blend_textures.frag");
@@ -93,8 +97,6 @@ namespace WeirdEngine
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/screen_output.frag");
 			if (settings.enableDithering)
 				m_outputShaderProgram.addDefine("DITHERING");
-
-			m_3DShapeDataBuffer = new DataBuffer();
 
 			// Enable culling
 			glCullFace(GL_FRONT);
@@ -106,13 +108,10 @@ namespace WeirdEngine
 			freeAll();
 			delete m_worldPipeline;
 			delete m_uiPipeline;
-			// Delete all the other objects we've created
-			m_geometryShaderProgram.free();
-			m_instancedGeometryShaderProgram.free();
-			m_3DsdfShaderProgram.free();
+			delete m_3DWorldPipeline;
+			delete m_meshPipeline;
 			m_combineScenesShaderProgram.free();
 			m_outputShaderProgram.free();
-			delete m_3DShapeDataBuffer;
 		}
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
@@ -139,8 +138,11 @@ namespace WeirdEngine
 				ImGui::NewFrame();
 
 				ImGui::Begin("Renderer Settings");
-				m_worldPipeline->handleDebugInputs();
-				m_uiPipeline->handleDebugInputs();
+				m_worldPipeline->showDebugUI();
+				m_uiPipeline->showDebugUI();
+				m_3DWorldPipeline->showDebugUI();
+				m_meshPipeline->showDebugUI();
+
 				ImGui::End();
 
 				ImGui::Render();
@@ -177,36 +179,9 @@ namespace WeirdEngine
 
 			freeAll();
 
-			// Initialize 3D rendering resources
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_geometryRender = RenderTarget(false);
-			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
-			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
-
-			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_3DSceneRender = RenderTarget(false);
-			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
-			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
-
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
 			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
-
-			m_rayMarchAccumTexture[0] = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::LinearData);
-			m_rayMarchAccumTexture[1] = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::LinearData);
-
-			m_rayMarchAccumRender[0] = RenderTarget(false);
-			m_rayMarchAccumRender[0].bindColorTextureToFrameBuffer(m_rayMarchAccumTexture[0]);
-			m_rayMarchAccumRender[0].bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
-
-			m_rayMarchAccumRender[1] = RenderTarget(false);
-			m_rayMarchAccumRender[1].bindColorTextureToFrameBuffer(m_rayMarchAccumTexture[1]);
-			m_rayMarchAccumRender[1].bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
-
-			m_rayMarchAccumIdx = 0;
-			m_frameCounter = 0;
 
 			m_outputTexture = Texture(m_windowWidth, m_windowHeight, Texture::TextureType::Data);
 			m_outputResolutionRender = RenderTarget(false);
@@ -219,6 +194,8 @@ namespace WeirdEngine
 			{
 				m_worldPipeline->resize(m_renderWidth, m_renderHeight);
 				m_uiPipeline->resize(m_renderWidth, m_renderHeight);
+				m_3DWorldPipeline->resize(m_renderWidth, m_renderHeight);
+				m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 			}
 
 			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
@@ -292,20 +269,11 @@ namespace WeirdEngine
 
 		void Renderer::freeAll()
 		{
-			m_geometryRender.free();
-			m_3DSceneRender.free();
 			m_combinationRender.free();
 			m_outputResolutionRender.free();
-			m_rayMarchAccumRender[0].free();
-			m_rayMarchAccumRender[1].free();
 
-			m_geometryTexture.dispose();
-			m_geometryDepthTexture.dispose();
-			m_3DSceneTexture.dispose();
 			m_combineResultTexture.dispose();
 			m_outputTexture.dispose();
-			m_rayMarchAccumTexture[0].dispose();
-			m_rayMarchAccumTexture[1].dispose();
 		}
 
 		SDL_Window* Renderer::getWindow()
@@ -331,136 +299,55 @@ namespace WeirdEngine
 				renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 
-			bool enable3DSDFs = true;
-
 			// 3D
 			if (enable3D)
 			{
 				PROFILE_SCOPE("3D Render");
 
-				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
+				auto& lights = scene.getLigths();
 
-				// Set up framebuffer for 3D scene rendering
-				m_3DSceneRender.bind();
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
+				// Clear the 3D output target
+				m_3DWorldPipeline->getRenderTarget().bind();
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				glClearColor(0, 0, 0, 1);
-				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
-				glClearDepthf(1.0f);	  // Make sure depth buffer is initialized correctly
+				glClearDepthf(1.0f);
 
 				// Enable culling and depth testing for 3D meshes
 				glEnable(GL_CULL_FACE);
 				glEnable(GL_DEPTH_TEST);
-				glDepthFunc(GL_LEQUAL); // 'Less than or equal' ensures sky depth of 1.0 passes!
-				glDepthMask(GL_TRUE); // Write to depth buffer
+				glDepthFunc(GL_LEQUAL);
+				glDepthMask(GL_TRUE);
 				glDisable(GL_BLEND);
 
-				// Render ray marching
+				
+				// SDF ray marching pass
 				// TODO: render meshes before ray marching to reduce overdraw
-				if (enable3DSDFs)
 				{
-					// Accumulate camera changes
-					bool cameraMoved = (m_oldCameraMatrixWorld != sceneCamera.view);
-					if (cameraMoved || m_3DsdfShaderProgram.hasRecompiled())
-					{
-						m_frameCounter = 0;
-						m_oldCameraMatrixWorld = sceneCamera.view;
-					}
+					PROFILE_SCOPE("3D SDF");
+					scene.update3DWorldShader(m_3DWorldPipeline->getShader());
 
-					int previousDistanceIndex = m_rayMarchAccumIdx;
-					m_rayMarchAccumIdx = (m_rayMarchAccumIdx + 1) % 2;
-
-					m_rayMarchAccumRender[m_rayMarchAccumIdx].bind();
-					// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Ensure we clear the new accum buffer
-
-					scene.update3DWorldShader(m_3DsdfShaderProgram);
-
-					// Draw ray marching stuff
-					m_3DsdfShaderProgram.use();
-
-					// Set uniforms and other ray marching settings
-					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.5f * 0.01745329f); // PI / 180
-					m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
-					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
-					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
-					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-					m_3DsdfShaderProgram.setUniform("u_staticColors", m_colorPalette, 16);
-					m_3DsdfShaderProgram.setUniform("u_near", NEAR_PLANE);
-					m_3DsdfShaderProgram.setUniform("u_far", FAR_PLANE);
-
-					
-					m_3DsdfShaderProgram.setUniform("u_frameCounter", m_frameCounter);
-
-					auto& lights = scene.getLigths();
-					int numLights = std::min((int)lights.size(), 8);
-					m_3DsdfShaderProgram.setUniform("u_numLights", numLights);
-					for (int i = 0; i < numLights; i++)
-					{
-						std::string prefix = "u_lights[" + std::to_string(i) + "].";
-						m_3DsdfShaderProgram.setUniform(prefix + "position", lights[i].position);
-						m_3DsdfShaderProgram.setUniform(prefix + "direction", lights[i].rotation);
-						m_3DsdfShaderProgram.setUniform(prefix + "color", lights[i].color);
-						m_3DsdfShaderProgram.setUniform(prefix + "type", (int)lights[i].type);
-					}
-
-					// Geom color and depth textures for ray marching
-					m_3DsdfShaderProgram.setUniform("t_previousColor", 0);
-					m_rayMarchAccumTexture[previousDistanceIndex].bind(0);
-
-					m_3DsdfShaderProgram.setUniform("t_depthTexture", 1);
-					m_geometryDepthTexture.bind(1);
-
-					// Upload and bind shapes for ray marching
 					static uint32_t dataSize3D = 0;
 					static uint32_t shapeCount3D = 0;
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
-					
-					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-					m_3DShapeDataBuffer->uploadData<vec4>(data3D, dataSize3D);
-					m_3DShapeDataBuffer->bind(2);
 
-					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)dataSize3D);
-					m_3DsdfShaderProgram.setUniform("u_customShapeCount", (int)shapeCount3D);
-
-					// Draw the render plane with ray marching shader
-					if(m_frameCounter < 100)
-						m_renderPlane.draw(m_3DsdfShaderProgram);
-
-					m_frameCounter++;
-
-					// Now copy the accumulation buffer to the main 3D scene render target
-					m_3DSceneRender.bind();
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, m_rayMarchAccumRender[m_rayMarchAccumIdx].getFrameBuffer());
-					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_3DSceneRender.getFrameBuffer());
-					glBlitFramebuffer(0, 0, m_renderWidth, m_renderHeight, 0, 0, m_renderWidth, m_renderHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-					m_3DSceneRender.bind(); // Keep it bound for the geometry pass!
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D,
+											  lights, sceneCamera, scene.getTime(),
+											  m_meshPipeline->getDepthTexture());
 
 					glFinish();
 				}
 
-				// Render 3D geometry objects (with depth writing)
+				// Mesh geometry pass (on top of ray marching result)
 				{
 					PROFILE_SCOPE("Render 3D Models");
-					m_geometryShaderProgram.use();
-					m_geometryShaderProgram.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
-					m_geometryShaderProgram.setUniform("u_camPos", sceneCamera.position);
-
-					auto& lights = scene.getLigths();
-					m_geometryShaderProgram.setUniform("u_lightPos", lights[0].position);
-					m_geometryShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
-					m_geometryShaderProgram.setUniform("u_lightColor", lights[0].color);
-
-					// Draw objects in the scene (3D models)
-					scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
+					glFinish();
 				}
-				
-				glFinish();
 
 				if (!enable2D)
 				{
-					return m_3DSceneTexture;
+					return m_3DWorldPipeline->getOutputTexture();
 				}
 			}
 
@@ -479,7 +366,7 @@ namespace WeirdEngine
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
 				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
-												  enable3D ? &m_3DSceneTexture : nullptr);
+												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				lit2DSceneTexture = &t;
 
 				if (!enable3D)
@@ -493,7 +380,7 @@ namespace WeirdEngine
 			m_combineScenesShaderProgram.setUniform("u_time", scene.getTime());
 			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
 			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 0);
-			m_3DSceneTexture.bind(0);
+			m_3DWorldPipeline->getOutputTexture().bind(0);
 			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 1);
 			lit2DSceneTexture->bind(1);
 

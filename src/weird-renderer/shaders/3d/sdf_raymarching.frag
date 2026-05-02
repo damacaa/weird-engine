@@ -5,7 +5,7 @@ precision highp sampler2D;
 
 #include "../common/shapes.glsl"
 
-#define PATH_TRACING
+// #define PATH_TRACING
 // #define FISH_EYE
 
 vec2 fOpUnionSoft2(float a, float b, float k)
@@ -62,6 +62,7 @@ uniform highp sampler2D t_shapeBuffer;
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
 uniform int u_frameCounter;
+uniform int u_rayBounces;
 
 uniform mat4 u_camMatrix;
 uniform float u_fov;
@@ -380,12 +381,12 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 
 	
 	// Perform bounces
-	int bounceCount = 3;
 
-	for (int bounce = 0; bounce < bounceCount; bounce++)
+
+	for (int bounce = 0; bounce < u_rayBounces; bounce++)
 	{
-		float currentF0 = mix(f0, 0.0, float(bounce) / float(bounceCount));
-		float currentRoughness = mix(roughness, 1.0, float(bounce) / float(bounceCount));
+		float currentF0 = mix(f0, 0.0, float(bounce) / float(u_rayBounces));
+		float currentRoughness = mix(roughness, 1.0, float(bounce) / float(u_rayBounces));
 
 		// I don't have a material system with different properties yet, so I have to do this shit to have different objects with different properties
 		// if(p.y < -2.999)
@@ -529,7 +530,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 			finalColor += throughput * emission; // Emit light from the glowing object!
 
 			// Prevent black pixels on maximum bounce depth
-			if (bounce == bounceCount - 1)
+			if (bounce == u_rayBounces - 1)
 			{
 				vec3 nextN = getNormal(p);
 				// Cheap ambient sky reflection for the very last hit

@@ -719,7 +719,7 @@ namespace WeirdEngine
 			m_renderPlane.draw(m_lightingShader);
 		}
 
-		void SDF2DRenderPipeline::handleDebugInputs()
+		void SDF2DRenderPipeline::showDebugUI()
 		{
 			const char* label = m_config.isUI ? "UI Pipeline" : "World Pipeline";
 			if (!ImGui::CollapsingHeader(label))

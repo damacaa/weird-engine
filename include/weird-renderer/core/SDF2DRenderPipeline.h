@@ -51,7 +51,7 @@ namespace WeirdEngine
 							double delta, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
-			void handleDebugInputs();
+			void showDebugUI();
 
 		private:
 			Config m_config;

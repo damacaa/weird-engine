@@ -95,7 +95,7 @@ private:
 			Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.0f, 0.0f)), glm::vec4(1.0f, 1.0f, 1.0f, 0.0f)});
 
 		getLigths().push_back(
-			Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)});
+			Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 3.0f)});
 
 		// getLigths().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});

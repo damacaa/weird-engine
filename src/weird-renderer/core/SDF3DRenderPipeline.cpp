@@ -9,9 +9,10 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 
-		SDF3DRenderPipeline::SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane)
+		SDF3DRenderPipeline::SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, const DisplaySettings::ExtraMaterialData* materialDataPalette, RenderPlane& renderPlane)
 			: m_config(config)
 			, m_colorPalette(colorPalette)
+			, m_materialDataPalette(materialDataPalette)
 			, m_renderPlane(renderPlane)
 			, m_shapeDataBuffer(nullptr)
 			, m_accumIdx(0)
@@ -72,6 +73,13 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_time", (float)time);
 			m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			m_sdfShader.setUniform("u_staticColors", m_colorPalette, 16);
+
+			for (int i = 0; i < 16; i++)
+			{
+				std::string prefix = "u_materialData[" + std::to_string(i) + "].";
+				m_sdfShader.setUniform(prefix + "metallic", m_materialDataPalette[i].metallic);
+				m_sdfShader.setUniform(prefix + "roughness", m_materialDataPalette[i].roughness);
+			}
 			m_sdfShader.setUniform("u_near", NEAR_PLANE);
 			m_sdfShader.setUniform("u_far", FAR_PLANE);
 			m_sdfShader.setUniform("u_frameCounter", m_frameCounter);

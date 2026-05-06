@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weird-engine/vec.h"
+#include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DataBuffer.h"
@@ -29,7 +30,7 @@ namespace WeirdEngine
 				float maxRayDistance = 1000.0f;
 			};
 
-			SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane);
+			SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, const DisplaySettings::ExtraMaterialData* materialDataPalette, RenderPlane& renderPlane);
 			~SDF3DRenderPipeline();
 
 			Shader& getShader();
@@ -56,6 +57,7 @@ namespace WeirdEngine
 		private:
 			Config m_config;
 			const glm::vec4* m_colorPalette;
+			const DisplaySettings::ExtraMaterialData* m_materialDataPalette;
 			RenderPlane& m_renderPlane;
 
 			static constexpr float NEAR_PLANE = 0.1f;

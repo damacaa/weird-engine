@@ -29,17 +29,17 @@ private:
 			t.position = vec3(-0.5f, -2.0f, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::Red;
+			sdf.materialId = DisplaySettings::Blue;
 		}
 
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 8; i++)
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(1.0f + (i), -2.0f, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::White;
+			sdf.materialId = (i + 8) % 16;
 		}
 
 
@@ -48,7 +48,7 @@ private:
 			auto planeId = registerSDF(plane);
 
 			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, DisplaySettings::White, CombinationType::Addition, false);
+			Entity start = addShape(planeId, vars1, DisplaySettings::Magenta, CombinationType::Addition, false);
 		}
 
 		{

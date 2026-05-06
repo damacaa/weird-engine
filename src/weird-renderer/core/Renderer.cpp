@@ -30,6 +30,7 @@ namespace WeirdEngine
 			, m_targetRefreshRate(settings.refreshRate)
 		{
 			std::copy_n(settings.colorPalette, 16, m_colorPalette);
+			std::copy_n(settings.materialDataPalette, 16, m_materialDataPalette);
 
 			setWindowSize(settings.width, settings.height);
 
@@ -84,7 +85,7 @@ namespace WeirdEngine
 			SDF3DRenderPipeline::Config sdf3DConfig;
 			sdf3DConfig.renderWidth = m_renderWidth;
 			sdf3DConfig.renderHeight = m_renderHeight;
-			m_3DWorldPipeline = new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_renderPlane);
+			m_3DWorldPipeline = new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_materialDataPalette, m_renderPlane);
 
 			// Initialize mesh pipeline
 			m_meshPipeline = new MeshRenderPipeline();

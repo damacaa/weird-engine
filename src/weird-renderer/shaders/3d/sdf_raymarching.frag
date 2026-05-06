@@ -68,6 +68,12 @@ uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
 uniform vec4 u_staticColors[16];
+struct ExtraMaterialData
+{
+	float metallic;
+	float roughness;
+};
+uniform ExtraMaterialData u_materialData[16];
 
 struct Light
 {
@@ -351,7 +357,7 @@ vec3 getSkyColor(vec3 dir)
 }
 
 // Common Path Tracing Function running multiple lights!
-vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
+vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float seed)
 {
 	vec3 throughput = vec3(1.0);
 
@@ -362,14 +368,13 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 	vec3 currentRd = rd;
 
 	// === Render Style Parameters ===================================
-	// roughness: lower = sharper mirror-like reflections
-	float roughness = 0.1f; // Retro: 0.02,      Realistic: 0.15
-
-	// f0: base reflectivity looking straight on
-	float f0 = 0.3f; // Retro: 0.45,      Realistic: 0.04
+	// roughness and f0 are driven by the material palette; other params remain constant
+	int currentMatId = clamp(materialId, 0, 15);
+	float roughness = u_materialData[currentMatId].roughness;
+	float f0 = u_materialData[currentMatId].metallic;
 
 	// fresnelPower: exponent for viewing angle reflection falloff
-	float fresnelPower = 3.0f; // Retro: 2.0,       Realistic: 5.0
+	float fresnelPower = 10.0f; // Retro: 2.0,       Realistic: 5.0
 
 	// specExponent: tightness of the direct specular highlight
 	float specExponent = 2000.0f; // Retro: 400.0,     Realistic: 100.0
@@ -387,18 +392,6 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 	{
 		float currentF0 = mix(f0, 0.0, float(bounce) / float(u_rayBounces));
 		float currentRoughness = mix(roughness, 1.0, float(bounce) / float(u_rayBounces));
-
-		// I don't have a material system with different properties yet, so I have to do this shit to have different objects with different properties
-		// if(p.y < -2.999)
-		// {
-		// 	currentF0 = 0.0;
-		// 	currentRoughness = 1.0;
-		// }
-		// else if(p.x < 0.0)
-		// {
-		// 	currentF0 = 1.0;
-		// 	currentRoughness = 0.0;
-		// }
 
 		vec3 N = getNormal(p);
 
@@ -500,7 +493,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 		{
 			// Specular bounce takes the Fresnel energy, but we factored that into the probability
 			// so just multiply by the tint
-			throughput *= vec3(1.0);
+			throughput *= vec3(1.0); // ????
 		}
 		else
 		{
@@ -522,7 +515,13 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 		else
 		{
 			p = p + N * 0.01 + d * bounceDir;
-			vec3 bounceMaterial = getColor(p);
+			vec2 bounceScene = sceneSdf(p);
+			int bounceMatId = clamp(int(bounceScene.y), 0, 15);
+			vec3 bounceMaterial = getMaterial(p, bounceMatId);
+
+			// Update material properties for the next bounce
+			roughness = u_materialData[bounceMatId].roughness;
+			f0 = u_materialData[bounceMatId].metallic;
 
 			vec3 emission = max(bounceMaterial - vec3(1.0), vec3(0.0));
 			currentAlbedo = min(bounceMaterial, vec3(1.0));
@@ -533,8 +532,10 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 			if (bounce == u_rayBounces - 1)
 			{
 				vec3 nextN = getNormal(p);
-				// Cheap ambient sky reflection for the very last hit
-				finalColor += throughput * getSkyColor(reflect(bounceDir, nextN)) * (1.0 - currentRoughness) + finalColor;
+				// Fade reflectivity to 0 at the last bounce: use B's f0 faded by (bounce+1)/N
+				// This prevents reflected objects from appearing mirror-like at max bounce depth.
+				float nextBounceF0 = mix(f0, 0.0, float(bounce + 1) / float(u_rayBounces));
+				finalColor += throughput * getSkyColor(reflect(bounceDir, nextN)) * nextBounceF0;
 			}
 		}
 	}
@@ -543,13 +544,15 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, inout float seed)
 }
 
 // Standard forward lighting combining all light types and sky reflections
-vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo)
+vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId)
 {
 	vec3 N = getNormal(p);
 	vec3 V = -rd;
 
 	// === Render Style Parameters ===================================
-	float f0 = 0.1;
+	int matId = clamp(materialId, 0, 15);
+	float f0 = u_materialData[matId].metallic;
+	float roughness = u_materialData[matId].roughness;
 	float fresnelPower = 10.0;
 	float specExponent = 100.0;
 	vec3 specMultiplier = vec3(5.0);
@@ -669,12 +672,14 @@ vec4 render(in vec2 uv)
 	if (minDepth < u_far)
 	{
 		vec3 p = ro + object * rd;
-		vec3 material = getColor(p);
+		vec2 sceneResult = sceneSdf(p);
+		int materialId = int(sceneResult.y);
+		vec3 baseColor = getMaterial(p, materialId);
 
 #ifdef PATH_TRACING
-		col = pathTrace(p, rd, material, seed);
+		col = pathTrace(p, rd, baseColor, materialId, seed);
 #else
-		col = standardLighting(p, rd, material);
+		col = standardLighting(p, rd, baseColor, materialId);
 #endif
 
 		// Apply distance fog to smoothly blend the object into the sky using the view ray (rd) color

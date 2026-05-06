@@ -73,6 +73,31 @@ namespace WeirdEngine
 				vec4(0.4f, 0.25f, 0.1f, 1.0f)		// Brown
 			};
 
+			struct ExtraMaterialData
+			{
+				float metallic = 0.0f;
+				float roughness = 1.0f;
+			};
+
+			ExtraMaterialData materialDataPalette[16] = {
+				{0.1f, 0.3f},  // Black
+				{0.1f, 0.3f},  // White
+				{0.1f, 0.3f},  // Dark Gray
+				{0.1f, 0.3f},  // Light Gray
+				{0.1f, 0.3f},  // Red
+				{0.1f, 0.3f},  // Green
+				{0.1f, 0.3f},  // Blue
+				{0.1f, 0.3f},  // Yellow
+				{0.1f, 0.3f},  // Orange
+				{0.1f, 0.3f}, // Purple
+				{0.1f, 0.3f}, // Cyan
+				{0.1f, 0.3f}, // Magenta
+				{0.1f, 0.3f}, // Light Green
+				{0.1f, 0.3f}, // Pink
+				{0.1f, 0.3f}, // Light Blue
+				{0.1f, 0.3f}   // Brown
+			};
+
 			std::string windowTitle = "Weird Engine";
 		};
 	} // namespace WeirdRenderer

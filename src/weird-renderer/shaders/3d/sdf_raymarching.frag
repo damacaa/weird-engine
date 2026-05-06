@@ -374,10 +374,10 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float s
 	float f0 = u_materialData[currentMatId].metallic;
 
 	// fresnelPower: exponent for viewing angle reflection falloff
-	float fresnelPower = 10.0f; // Retro: 2.0,       Realistic: 5.0
+	float fresnelPower = 5.0; // Retro: 2.0,       Realistic: 5.0
 
 	// specExponent: tightness of the direct specular highlight
-	float specExponent = 2000.0f; // Retro: 400.0,     Realistic: 100.0
+	float specExponent = 2000.0; // Retro: 400.0,     Realistic: 100.0
 
 	// specMultiplier: intensity/scaling of the direct specular lobe
 	// Retro just blows it out for that classic '90s CG highlight.
@@ -390,8 +390,11 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float s
 
 	for (int bounce = 0; bounce < u_rayBounces; bounce++)
 	{
-		float currentF0 = mix(f0, 0.0, float(bounce) / float(u_rayBounces));
-		float currentRoughness = mix(roughness, 1.0, float(bounce) / float(u_rayBounces));
+		float currentF0 = f0;
+		float currentRoughness = u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
+		fresnelPower = mix(50.0, 1.0, currentF0);
+
+
 
 		vec3 N = getNormal(p);
 
@@ -531,11 +534,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float s
 			// Prevent black pixels on maximum bounce depth
 			if (bounce == u_rayBounces - 1)
 			{
-				vec3 nextN = getNormal(p);
-				// Fade reflectivity to 0 at the last bounce: use B's f0 faded by (bounce+1)/N
-				// This prevents reflected objects from appearing mirror-like at max bounce depth.
-				float nextBounceF0 = mix(f0, 0.0, float(bounce + 1) / float(u_rayBounces));
-				finalColor += throughput * getSkyColor(reflect(bounceDir, nextN)) * nextBounceF0;
+				finalColor = throughput * currentAlbedo * getSkyColor(bounceDir);
 			}
 		}
 	}

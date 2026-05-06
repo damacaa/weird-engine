@@ -55,8 +55,8 @@ private:
 			std::shared_ptr<IMathExpression> box = std::make_shared<Box>();
 			auto boxId = registerSDF(box);
 
-			float vars1[8] = {-5.0f, -2.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, DisplaySettings::Black, CombinationType::Addition, false);
+			float vars1[8] = {-5.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
+			Entity start = addShape(boxId, vars1, DisplaySettings::Gray, CombinationType::Addition, false);
 		}
 
 		getLigths().push_back(

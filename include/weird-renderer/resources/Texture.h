@@ -24,6 +24,7 @@ namespace WeirdEngine
 				Depth,
 				Data,
 				LinearData,
+				AccumulationData,
 				IntData
 			};
 

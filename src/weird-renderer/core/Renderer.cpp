@@ -2,11 +2,11 @@
 
 #include <sys/stat.h>
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
-#include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_opengl3.h>
 
 #include "weird-engine/Profiler.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
@@ -85,7 +85,9 @@ namespace WeirdEngine
 			SDF3DRenderPipeline::Config sdf3DConfig;
 			sdf3DConfig.renderWidth = m_renderWidth;
 			sdf3DConfig.renderHeight = m_renderHeight;
-			m_3DWorldPipeline = new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_materialDataPalette, m_renderPlane);
+			sdf3DConfig.contrast = settings.raymarching3DContrast;
+			m_3DWorldPipeline =
+				new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_materialDataPalette, m_renderPlane);
 
 			// Initialize mesh pipeline
 			m_meshPipeline = new MeshRenderPipeline();
@@ -96,7 +98,9 @@ namespace WeirdEngine
 
 			m_outputShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/screen_output.frag");
-			if (settings.enableDithering)
+
+			m_ditheringEnabled = settings.enableDithering;
+			if (m_ditheringEnabled)
 				m_outputShaderProgram.addDefine("DITHERING");
 
 			// Enable culling
@@ -127,12 +131,12 @@ namespace WeirdEngine
 
 			static bool showDebugUI = false;
 
-			if(Input::GetKeyDown(Input::F3))
+			if (Input::GetKeyDown(Input::F3))
 			{
 				showDebugUI = !showDebugUI;
 			}
 
-			if(showDebugUI)
+			if (showDebugUI)
 			{
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplSDL3_NewFrame();
@@ -143,6 +147,29 @@ namespace WeirdEngine
 				m_uiPipeline->showDebugUI();
 				m_3DWorldPipeline->showDebugUI();
 				m_meshPipeline->showDebugUI();
+
+				// Output settings
+				{
+					const char* label = "Output Settings";
+					if (ImGui::CollapsingHeader(label))
+					{
+
+						ImGui::PushID(label);
+
+						if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+						{
+							if (m_ditheringEnabled)
+								m_outputShaderProgram.addDefine("DITHERING");
+							else
+								m_outputShaderProgram.removeDefine("DITHERING");
+						}
+
+						ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+						ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+						ImGui::PopID();
+					}
+				}
 
 				ImGui::End();
 
@@ -250,6 +277,7 @@ namespace WeirdEngine
 			m_outputShaderProgram.use();
 			m_outputShaderProgram.setUniform("u_time", scene.getTime());
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
+			m_outputShaderProgram.setUniform("u_renderResolution", glm::vec2(m_renderWidth, m_renderHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 			m_outputShaderProgram.setUniform("u_ditheringSpread", m_ditheringSpread);
 			m_outputShaderProgram.setUniform("u_ditheringColorCount", m_ditheringColorCount);
@@ -320,7 +348,6 @@ namespace WeirdEngine
 				glDepthMask(GL_TRUE);
 				glDisable(GL_BLEND);
 
-				
 				// SDF ray marching pass
 				// TODO: render meshes before ray marching to reduce overdraw
 				{
@@ -332,8 +359,7 @@ namespace WeirdEngine
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
 
-					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D,
-											  lights, sceneCamera, scene.getTime(),
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
 											  m_meshPipeline->getDepthTexture());
 
 					glFinish();

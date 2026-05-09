@@ -33,6 +33,7 @@ namespace WeirdEngine
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;
 			float uiSmoothFactor = 3.0f;
+			float raymarching3DContrast = 1.2f;
 
 			enum DefaultColors
 			{

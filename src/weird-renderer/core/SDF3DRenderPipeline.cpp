@@ -27,6 +27,11 @@ namespace WeirdEngine
 			{
 				m_sdfShader.addDefine("PATH_TRACING");
 			}
+
+			if (m_config.enableAntialiasing)
+			{
+				m_sdfShader.addDefine("ANTIALIASING");
+			}
 		}
 
 		SDF3DRenderPipeline::~SDF3DRenderPipeline()
@@ -84,6 +89,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_far", FAR_PLANE);
 			m_sdfShader.setUniform("u_frameCounter", m_frameCounter);
 			m_sdfShader.setUniform("u_rayBounces", m_config.rayBounces);
+			m_sdfShader.setUniform("u_contrast", m_config.contrast);
 
 			int numLights = std::min((int)lights.size(), 8);
 			m_sdfShader.setUniform("u_numLights", numLights);
@@ -156,8 +162,8 @@ namespace WeirdEngine
 			m_outputRender.bindColorTextureToFrameBuffer(m_outputTexture);
 			m_outputRender.bindDepthTextureToFrameBuffer(m_depthTexture);
 
-			m_accumTexture[0] = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
-			m_accumTexture[1] = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
+			m_accumTexture[0] = Texture(newWidth, newHeight, Texture::TextureType::AccumulationData);
+			m_accumTexture[1] = Texture(newWidth, newHeight, Texture::TextureType::AccumulationData);
 			m_accumRender[0] = RenderTarget(false);
 			m_accumRender[0].bindColorTextureToFrameBuffer(m_accumTexture[0]);
 			m_accumRender[0].bindDepthTextureToFrameBuffer(m_depthTexture);
@@ -199,6 +205,20 @@ namespace WeirdEngine
 					m_sdfShader.removeDefine("PATH_TRACING");
 			}
 
+			if (ImGui::Checkbox("Enable Anti-Aliasing", &m_config.enableAntialiasing))
+			{	
+				std::cout << "Anti-Aliasing " << (m_config.enableAntialiasing ? "enabled" : "disabled") << std::endl;
+
+				if(m_config.enableAntialiasing)
+					m_sdfShader.addDefine("ANTIALIASING");
+				else
+					m_sdfShader.removeDefine("ANTIALIASING");
+			}
+
+			if (ImGui::SliderFloat("Contrast", &m_config.contrast, 1.0f, 10.0f))
+			{
+				m_frameCounter = 0;
+			}
 
 			if (m_config.enablePathTracer)
 			{

@@ -24,10 +24,12 @@ namespace WeirdEngine
 				unsigned int renderHeight = 600;
 				bool enablePathTracer = true;
 				int maxAccumulationFrames = 100;
+				float contrast = 1.2f;
 				int maxRayMarchSteps = 128;
 				int rayBounces = 3;
 				float rayMarchEpsilon = 0.001f;
 				float maxRayDistance = 1000.0f;
+				bool enableAntialiasing = true;
 			};
 
 			SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, const DisplaySettings::ExtraMaterialData* materialDataPalette, RenderPlane& renderPlane);

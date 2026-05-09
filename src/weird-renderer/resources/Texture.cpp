@@ -199,6 +199,18 @@ namespace WeirdEngine
 					numColCh = 4;
 					break;
 				}
+				case TextureType::AccumulationData:
+				{
+					// Use 32-bit floats for accumulation to avoid precision stalling over thousands of frames
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+					numColCh = 4;
+					break;
+				}
 				case TextureType::RetroColor:
 				{
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed

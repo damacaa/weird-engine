@@ -747,7 +747,12 @@ void main()
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
 		prevColor.xyz = pow(prevColor.xyz, vec3(2.2)); // to linear
-		col = mix(prevColor.xyz, col, 1.0 / float(u_frameCounter + 1));
+		
+		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap 
+		// to prevent the weight from becoming too small, allowing the image to 
+		// continually refine and denoise even after many frames.
+		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
+		col = mix(prevColor.xyz, col, weight);
 	}
 #endif
 

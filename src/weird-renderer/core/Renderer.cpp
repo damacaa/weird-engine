@@ -1,5 +1,7 @@
 #include "weird-renderer/core/Renderer.h"
 
+#include <ctime>
+#include <filesystem>
 #include <sys/stat.h>
 
 #include <imgui.h>
@@ -171,6 +173,29 @@ namespace WeirdEngine
 					}
 				}
 
+				if (ImGui::Button("Take Screenshot"))
+				{
+					m_takeScreenshot = true;
+				}
+
+				if (!m_lastScreenshotPath.empty())
+				{
+					ImGui::SameLine();
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+					ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+					ImGui::PopStyleColor();
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+						ImGui::SetTooltip("Click to open");
+					}
+					if (ImGui::IsItemClicked())
+					{
+						std::string url = "file://" + m_lastScreenshotPath;
+						SDL_OpenURL(url.c_str());
+					}
+				}
+
 				ImGui::End();
 
 				ImGui::Render();
@@ -288,11 +313,17 @@ namespace WeirdEngine
 			m_renderPlane.draw(m_outputShaderProgram);
 
 			// Screenshot
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
+			if (m_takeScreenshot)
 			{
+				m_takeScreenshot = false;
+				std::time_t t = std::time(nullptr);
+				char timeBuf[32];
+				std::strftime(timeBuf, sizeof(timeBuf), "%Y%m%d_%H%M%S", std::localtime(&t));
+				std::string filename = std::string("screenshot_") + timeBuf + ".bmp";
 				m_outputResolutionRender.bind();
 				m_renderPlane.draw(m_outputShaderProgram);
-				m_outputTexture.saveToDisk("output_texture.bmp");
+				m_outputTexture.saveToDisk(filename.c_str());
+				m_lastScreenshotPath = std::filesystem::absolute(filename).string();
 			}
 		}
 

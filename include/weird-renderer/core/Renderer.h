@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "weird-renderer/audio/AudioEngine.h"
@@ -70,6 +71,9 @@ namespace WeirdEngine
 			DisplaySettings::ExtraMaterialData m_materialDataPalette[16];
 
 			Camera m_uiCamera;
+
+			bool m_takeScreenshot = false;
+			std::string m_lastScreenshotPath;
 
 			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();

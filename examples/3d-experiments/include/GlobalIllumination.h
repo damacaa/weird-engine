@@ -32,7 +32,7 @@ private:
 			sdf.materialId = DisplaySettings::Blue;
 		}
 
-    for (size_t i = 0; i < 8; i++)
+    	for (size_t i = 0; i < 8; i++)
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -48,7 +48,7 @@ private:
 			auto planeId = registerSDF(plane);
 
 			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, DisplaySettings::Magenta, CombinationType::Addition, false);
+			Entity start = addShape(planeId, vars1, DisplaySettings::LightGray, CombinationType::Addition, false);
 		}
 
 		{

@@ -29,7 +29,7 @@ private:
 			t.position = vec3(0.0f, 0.75f, 0.0f);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::White;
+			sdf.materialId = DisplaySettings::Gray;
 		}
 
 

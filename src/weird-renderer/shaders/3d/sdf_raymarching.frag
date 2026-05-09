@@ -7,6 +7,7 @@ precision highp sampler2D;
 
 // #define PATH_TRACING
 // #define FISH_EYE
+// #define ANTIALIASING
 
 vec2 fOpUnionSoft2(float a, float b, float k)
 {
@@ -96,6 +97,11 @@ uniform float u_far;
 
 const float OVERSHOOT = 1.0;
 const float DOT_BLEND_K = 0.2;
+
+// === Render Style Parameters (Post-Processing) =================
+// contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
+uniform float u_contrast;
+// ===============================================================
 
 // Custom shape variables. In 3D these are evaluated on the XZ plane,
 // producing vertically extruded SDFs from the existing 2D math expressions.
@@ -214,6 +220,16 @@ vec2 sceneSdf(vec3 p)
 	// per shape type in this source file.
 	// Custom shapes
 #include "custom_shapes"
+
+#ifdef COMBINE_2D_AND_3D_SDFS
+	{
+		float boxDist = fBox(p - vec3(0.0, 0.0, 102.0), vec3(1000.0, 1000.0, 100.0));
+		minDist = -fOpUnionSoft(boxDist, -minDist, 0.5);
+		// minDist = max(minDist, -boxDist);
+	}
+
+	return vec2(minDist, max(float(finalMaterialId), 0.0));
+#endif
 
 	// These are just spheres
 	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
@@ -704,10 +720,12 @@ void main()
 
 	// Temporal jitter for anti-aliasing
 #ifdef PATH_TRACING
+#ifdef ANTIALIASING
 	if (u_frameCounter > 0)
 	{
 		uv += (vec2(rand(uv + u_time), rand(uv + u_time * 1.5)) - 0.5) * 2.0 / u_resolution;
 	}
+#endif
 #endif
 
 	uv.x *= aspectRatio;
@@ -717,13 +735,10 @@ void main()
 	vec4 data = render(uv);
 	vec3 col = data.xyz;
 
-	// === Render Style Parameters (Post-Processing) =================
-	// contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
-	float contrast = 1.2; // Retro: 1.35, Realistic: 1.0
-	// ===============================================================
+
 	
 	// Apply contrast pivoting around mid-gray
-	col = mix(vec3(0.5), col, contrast);
+	col = mix(vec3(0.5), col, u_contrast);
 	// Clamp to ensure no weird artifacts from exceeding bounds
 	col = clamp(col, 0.0, 1.0);
 

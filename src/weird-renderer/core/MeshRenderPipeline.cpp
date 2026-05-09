@@ -71,8 +71,15 @@ namespace WeirdEngine
 
 		void MeshRenderPipeline::showDebugUI()
 		{
-			ImGui::SeparatorText("Mesh Render Settings");
+			const char* label = "Mesh Render Settings";
+			if (!ImGui::CollapsingHeader(label))
+				return;
+
+			ImGui::PushID(label);
+
 			ImGui::TextDisabled("Render queue: not yet implemented");
+
+			ImGui::PopID();
 		}
 
 	} // namespace WeirdRenderer

@@ -46,6 +46,7 @@ namespace WeirdEngine
 			float m_targetRefreshRate;
 			float m_ditheringSpread;
 			int m_ditheringColorCount;
+			bool m_ditheringEnabled;
 
 			// Render pipelines
 			SDF2DRenderPipeline* m_worldPipeline;

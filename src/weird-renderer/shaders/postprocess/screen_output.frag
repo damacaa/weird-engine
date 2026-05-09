@@ -5,6 +5,7 @@ precision highp int;
 out vec4 FragColor;
 
 uniform vec2 u_resolution;
+uniform vec2 u_renderResolution;
 uniform sampler2D t_colorTexture;
 uniform float u_ditheringSpread;
 uniform int u_ditheringColorCount;
@@ -27,14 +28,21 @@ void main()
 
 #ifdef DITHERING
 
-	int x = int(gl_FragCoord.x);
-	int y = int(gl_FragCoord.y);
-	float ditherColorCount = max(float(u_ditheringColorCount), 2.0);
+	// Map fragment coordinates to render resolution space for consistent dithering
+	vec2 renderCoord = gl_FragCoord.xy * (u_renderResolution / u_resolution);
+	int x = int(renderCoord.x);
+	int y = int(renderCoord.y);
+	
+	// Boost saturation slightly before dithering to avoid "muddy" colors
+	float luminance = dot(col, vec3(0.299, 0.587, 0.114));
+	col = mix(vec3(luminance), col, 1.5);
+	col = clamp(col, 0.0, 1.0);
+
 	col += u_ditheringSpread * getBayer4(x, y);
 
-	col.r = floor((ditherColorCount - 1.0) * col.r + 0.5) / (ditherColorCount - 1.0);
-	col.g = floor((ditherColorCount - 1.0) * col.g + 0.5) / (ditherColorCount - 1.0);
-	col.b = floor((ditherColorCount - 1.0) * col.b + 0.5) / (ditherColorCount - 1.0);
+	vec3 levels = vec3(u_ditheringColorCount); 
+
+	col = floor(col * levels + 0.5) / levels;
 
 #endif
 

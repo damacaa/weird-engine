@@ -376,8 +376,15 @@ vec3 getSkyColor(vec3 dir)
 	return sky;
 }
 
-// Common Path Tracing Function running multiple lights!
-vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float seed)
+// ─────────────────────────────────────────────────────────────────────────────
+// Core path-tracing kernel shared by SDF and mesh surfaces.
+//
+// firstN  – surface normal at the primary hit point.
+//   • SDF  surfaces: pass getNormal(p) before calling.
+//   • Mesh surfaces: pass the GBuffer normal directly.
+// All secondary-bounce normals are always derived from the SDF analytically.
+// ─────────────────────────────────────────────────────────────────────────────
+vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
 {
 	vec3 throughput = vec3(1.0);
 
@@ -414,9 +421,9 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float s
 		float currentRoughness = u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
 		fresnelPower = mix(50.0, 1.0, currentF0);
 
-
-
-		vec3 N = getNormal(p);
+		// On the first bounce use the injected normal (supports both SDF and mesh
+		// primary hits). Subsequent bounces always use the SDF analytical gradient.
+		vec3 N = (bounce == 0) ? firstN : getNormal(p);
 
 		float fresnel = currentF0 + ((1.0 - currentF0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
 
@@ -563,9 +570,8 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, inout float s
 }
 
 // Standard forward lighting combining all light types and sky reflections
-vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId)
+vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId, vec3 N)
 {
-	vec3 N = getNormal(p);
 	vec3 V = -rd;
 
 	// === Render Style Parameters ===================================
@@ -653,85 +659,7 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId)
 	return directLighting + ambient;
 }
 
-// ==========================================
-// DEFERRED MESH LIGHTING
-// Applies the same multi-light model to a mesh surface read from the GBuffer.
-// SDFs cast light/shadow onto the mesh; meshes don't affect SDFs.
-// ==========================================
-vec3 meshLighting(vec3 p, vec3 N, vec3 albedo, float specVal)
-{
-	vec3 V = normalize(-p); // View direction (camera at origin in view space — use world cam pos below)
 
-	float f0 = 0.04; // Non-metallic default
-	float roughness = 0.6;
-	float fresnelPower = 10.0;
-	float specExponent = 80.0;
-
-	float fresnel = f0 + (1.0 - f0) * pow(clamp(1.0 - dot(V, N), 0.0, 1.0), fresnelPower);
-	fresnel = 0.25; // Not working properly
-
-	vec3 directLighting = vec3(0.0);
-
-	for (int i = 0; i < u_numLights; i++)
-	{
-		Light light = u_lights[i];
-
-		vec3 L;
-		float lightDist;
-		float attenuation = 1.0;
-
-		if (light.type == 0)
-		{
-			L = normalize(light.direction);
-			lightDist = u_far * 0.5;
-		}
-		else if (light.type == 1)
-		{
-			vec3 lightVec = light.position - p;
-			lightDist = length(lightVec);
-			L = normalize(lightVec);
-			float a = 3.0;
-			float b = 0.7;
-			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-		}
-		else
-		{
-			vec3 lightVec = light.position - p;
-			lightDist = length(lightVec);
-			L = normalize(lightVec);
-			float a = 3.0;
-			float b = 0.7;
-			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-			vec3 surfaceToLight = normalize(light.position - p);
-			float spotEffect = dot(surfaceToLight, normalize(light.direction));
-			float innerCone = 0.95;
-			float outerCone = 0.80;
-			attenuation *= smoothstep(outerCone, innerCone, spotEffect);
-		}
-
-		// Shadow ray cast through the SDF scene — SDFs occlude light on mesh surfaces
-		float dLight = rayMarch(p + N * 0.02, L);
-		bool hitObstacle =
-			(dLight < lightDist * 0.95) && (sceneSdf(p + N * 0.02 + dLight * L).x < RAYMARCH_EPSILON * 5.0);
-
-		if (!hitObstacle)
-		{
-			vec3 diffuse = albedo * max(dot(N, L), 0.0);
-			vec3 H = normalize(L + V);
-			float specPow = pow(max(dot(N, H), 0.0), specExponent);
-			// Scale specular by texture specular intensity
-			vec3 specular = vec3(specVal * 2.0 + 0.5) * specPow * fresnel;
-			directLighting += (diffuse + specular) * attenuation * light.color.xyz * light.color.w;
-		}
-	}
-
-	// Ambient + sky reflection
-	vec3 R = reflect(normalize(p), N); // approximate: camera at far origin
-	vec3 reflectionColor = getSkyColor(R);
-	vec3 ambient = albedo * 0.1 + reflectionColor * fresnel;
-
-	return directLighting + ambient;
-}
 
 // Returns the linearised (eye-space) depth from a [0,1] depth-buffer value.
 float linearizeGBufferDepth(float d)
@@ -757,10 +685,6 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	// -------------------------------------------------------
-	// GBuffer depth comparison
-	// -------------------------------------------------------
-	// v_texCoord is in [0,1] and valid here because it is a vertex-shader 'in'.
 	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;  // [0,1], 1.0 = no mesh
 	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample);  // eye-space metres
 
@@ -787,15 +711,34 @@ vec4 render(in vec2 uv)
 
 	if (meshInFront)
 	{
+		// -------------------------------------------------------
+		// GBuffer depth comparison
+		// -------------------------------------------------------
+		// Convert the aspect-corrected (possibly AA-jittered) uv back to [0,1] texcoord.
+		// When AA is active this shifts the GBuffer lookup by the same sub-pixel jitter,
+		// so mesh shading varies per frame and accumulates correctly in the temporal denoiser.
+		// Note: this can produce edge artifacts when the jitter pushes the lookup outside
+		// the mesh silhouette — that is an accepted trade-off.
+		float _ar = u_resolution.x / u_resolution.y;
+		vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
+
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
-		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   v_texCoord).rgb;
-		vec3  meshWorldPos = texture(t_gbufferWorldPos, v_texCoord).rgb;
-		float meshSpecVal  = texture(t_gbufferAlbedo,   v_texCoord).a;
-		vec3  meshNormal   = normalize(texture(t_gbufferNormal, v_texCoord).rgb);
+		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   gbufferUV).rgb;
+		vec3  meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
+		float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
+		vec3  meshNormal   = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
-		meshAlbedo = vec3(0.0, 1.0, 0.0); // Override albedo for testing
+		
 
-		col = meshLighting(meshWorldPos, meshNormal, meshAlbedo, meshSpecVal);
+		int materialId = 1;
+		meshAlbedo = getMaterial(meshWorldPos, materialId); // Override albedo for testing
+
+#ifdef PATH_TRACING
+		col = pathTrace(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
+#else
+		col = standardLighting(meshWorldPos, rd, meshAlbedo, materialId, meshNormal);
+#endif
+		
 
 		// Fog at mesh depth
 		float fog = smoothstep(u_far * 0.0, u_far, meshDepthLinear);
@@ -813,9 +756,9 @@ vec4 render(in vec2 uv)
 		vec3 baseColor = getMaterial(p, materialId);
 
 #ifdef PATH_TRACING
-		col = pathTrace(p, rd, baseColor, materialId, seed);
+		col = pathTrace(p, rd, baseColor, materialId, getNormal(p), seed);
 #else
-		col = standardLighting(p, rd, baseColor, materialId);
+		col = standardLighting(p, rd, baseColor, materialId, getNormal(p));
 #endif
 
 		float fog = smoothstep(u_far * 0.0, u_far, minDepth);

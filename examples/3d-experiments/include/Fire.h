@@ -76,8 +76,8 @@ private:
 			};
 
 			std::vector<GLuint> indices = {
-				0, 2, 1, // first triangle
-				3, 2, 0	 // second triangle
+				0, 1, 2, // first triangle
+				0, 2, 3	 // second triangle
 			};
 
 			std::vector<Texture> textures = {};
@@ -128,17 +128,17 @@ private:
 			};
 
 			std::vector<GLuint> indices = {// Front face
-										   0, 2, 1, 2, 0, 3,
+										   0, 1, 2, 0, 2, 3,
 										   // Back face
-										   7, 5, 6, 5, 7, 4,
+										   7, 6, 5, 7, 5, 4,
 										   // Left face
-										   11, 10, 9, 9, 8, 11,
+										   11, 9, 10, 11, 8, 9,
 										   // Right face
-										   12, 14, 13, 15, 14, 12,
+										   12, 13, 14, 12, 14, 15,
 										   // Top face
-										   19, 18, 17, 17, 16, 19,
+										   19, 17, 18, 19, 16, 17,
 										   // Bottom face
-										   22, 21, 20, 20, 23, 22};
+										   22, 20, 21, 22, 23, 20};
 
 			std::vector<Texture> textures = {};
 			m_cube = new Mesh(2, vertices, indices, textures);
@@ -294,7 +294,6 @@ private:
 
 	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
 	{
-
 		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();
 
@@ -306,9 +305,6 @@ private:
 		m_backgroundShader.setUniform("u_resolution", vec2(Display::rWidth, Display::rHeight));
 
 		m_renderPlane.draw(m_backgroundShader);
-		// glFrontFace(GL_CW); // Clockwise = front face
-		// m_cube->draw(m_backgroundShader, sceneCamera, sceneCamera.position, vec3(0.0f), vec3(100.0f));
-		// glFrontFace(GL_CCW); // Counter-clockwise = front face (default)
 
 		glDepthMask(GL_TRUE);
 

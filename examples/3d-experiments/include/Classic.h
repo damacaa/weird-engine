@@ -25,7 +25,7 @@ private:
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
-			t.position = vec3(0, 0, 0);
+			t.position = vec3(0, 1, 0);
 
 			MeshRenderer& mr = m_ecs.addComponent<MeshRenderer>(entity);
 
@@ -38,7 +38,7 @@ private:
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
-			t.position = vec3(0, 1, 0);
+			t.position = vec3(2, 3, 2);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
 			sdf.materialId = DisplaySettings::Red;
@@ -74,11 +74,10 @@ private:
 
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
+		return;
+
 		{
 			Transform& t = m_ecs.getComponent<Transform>(m_monkey);
-			// t.position.z = 10 * sinf(getTime());
-			t.rotation.y = getTime();
-			t.position.y = 1.0f;
 		}
 
 		{

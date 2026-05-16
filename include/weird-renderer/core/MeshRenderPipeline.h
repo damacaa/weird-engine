@@ -17,7 +17,12 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-		// Handles rendering of 3D mesh geometry (and eventually the draw queue).
+		// Handles rendering of 3D mesh geometry into a deferred GBuffer.
+		// GBuffer layout:
+		//   Attachment 0 (albedo)   : RGB = diffuse colour, A = specular intensity
+		//   Attachment 1 (worldPos) : RGB = world-space position, A = 1 (valid pixel)
+		//   Attachment 2 (normal)   : RGB = world-space normal (not remapped)
+		//   Depth attachment        : standard 24-bit depth
 		class MeshRenderPipeline
 		{
 		public:
@@ -27,10 +32,14 @@ namespace WeirdEngine
 			Shader& getShader();
 			Shader& getInstancedShader();
 
-			// Returns the geometry depth texture for use by the SDF3D pipeline.
+			// GBuffer accessors for the SDF3D pipeline.
+			Texture& getGBufferAlbedo();
+			Texture& getGBufferWorldPos();
+			Texture& getGBufferNormal();
 			Texture& getDepthTexture();
 
-			// Renders 3D models into outputTarget using the provided camera and lights.
+			// Renders 3D models into the internal GBuffer.
+			// outputTarget is forwarded to Scene::onRender for custom per-scene rendering.
 			void render(Scene& scene, RenderTarget& outputTarget, const Camera& camera,
 						const std::vector<Light>& lights);
 
@@ -40,12 +49,22 @@ namespace WeirdEngine
 			void showDebugUI();
 
 		private:
+			// Forward shaders (kept for compatibility / debug)
 			Shader m_geometryShader;
 			Shader m_instancedGeometryShader;
 
-			// Geometry depth buffer (for future pre-pass depth and SDF depth input).
+			// GBuffer shaders
+			Shader m_gbufferShader;
+			Shader m_gbufferInstancedShader;
+
+			// GBuffer textures
+			Texture m_gbufferAlbedo;
+			Texture m_gbufferWorldPos;
+			Texture m_gbufferNormal;
 			Texture m_depthTexture;
-			RenderTarget m_depthRender;
+
+			// Single FBO with 3 colour attachments + depth
+			RenderTarget m_gbufferRender;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

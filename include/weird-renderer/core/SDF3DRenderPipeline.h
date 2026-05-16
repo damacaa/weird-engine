@@ -38,13 +38,17 @@ namespace WeirdEngine
 			Shader& getShader();
 
 			// Renders the SDF 3D scene using ray marching with path-traced accumulation.
-			// Leaves the output render target bound so geometry can be rendered on top.
+			// GBuffer textures come from MeshRenderPipeline and allow the shader to composite
+			// mesh surfaces with SDF lighting (SDFs cast light on meshes; meshes don't affect SDFs).
 			void render(
 				vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 				const std::vector<Light>& lights,
 				const Camera& camera,
 				double time,
-				Texture& geometryDepthTexture
+				Texture& gbufferAlbedo,
+				Texture& gbufferWorldPos,
+				Texture& gbufferNormal,
+				Texture& gbufferDepth
 			);
 
 			RenderTarget& getRenderTarget();

@@ -366,23 +366,29 @@ namespace WeirdEngine
 
 				auto& lights = scene.getLigths();
 
-				// Clear the 3D output target
-				m_3DWorldPipeline->getRenderTarget().bind();
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				glClearColor(0, 0, 0, 1);
-				glClearDepthf(1.0f);
+				// --- 1. GBuffer pass: render mesh geometry first ---
+				// Depth testing and culling must be enabled for correct GBuffer writes.
+				{
+					PROFILE_SCOPE("Mesh GBuffer");
+					glEnable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LEQUAL);
+					glDepthMask(GL_TRUE);
+					glDisable(GL_BLEND);
 
-				// Enable culling and depth testing for 3D meshes
-				glEnable(GL_CULL_FACE);
-				glEnable(GL_DEPTH_TEST);
-				glDepthFunc(GL_LEQUAL);
-				glDepthMask(GL_TRUE);
-				glDisable(GL_BLEND);
+					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
+					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
+					glFinish();
+				}
 
-				// SDF ray marching pass
-				// TODO: render meshes before ray marching to reduce overdraw
+				// --- 2. SDF ray-marching pass: composites with GBuffer ---
+				// The SDF shader reads mesh albedo/position/normal from the GBuffer and applies
+				// SDF-sourced lighting to mesh surfaces.  SDFs cast shadows/colour onto meshes.
 				{
 					PROFILE_SCOPE("3D SDF");
+					glDisable(GL_CULL_FACE);
+					glDisable(GL_DEPTH_TEST);
+
 					scene.update3DWorldShader(m_3DWorldPipeline->getShader());
 
 					static uint32_t dataSize3D = 0;
@@ -390,16 +396,16 @@ namespace WeirdEngine
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
 
-					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
-											  m_meshPipeline->getDepthTexture());
+					m_3DWorldPipeline->render(
+						data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
+						m_meshPipeline->getGBufferAlbedo(),
+						m_meshPipeline->getGBufferWorldPos(),
+						m_meshPipeline->getGBufferNormal(),
+						m_meshPipeline->getDepthTexture()
+					);
 
-					glFinish();
-				}
+					scene.renderExtra(m_3DWorldPipeline->getRenderTarget());
 
-				// Mesh geometry pass (on top of ray marching result)
-				{
-					PROFILE_SCOPE("Render 3D Models");
-					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
 					glFinish();
 				}
 

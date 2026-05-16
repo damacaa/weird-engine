@@ -58,8 +58,12 @@ layout(location = 0) out vec4 FragColor;
 in vec2 v_texCoord;
 
 uniform sampler2D t_previousColor;
-uniform sampler2D t_depthTexture;
+uniform sampler2D t_depthTexture;       // GBuffer depth (mesh geometry)
 uniform highp sampler2D t_shapeBuffer;
+// Deferred GBuffer
+uniform sampler2D t_gbufferAlbedo;      // RGB = mesh diffuse, A = specular
+uniform sampler2D t_gbufferWorldPos;    // RGB = world-space position, A = 1 if valid
+uniform sampler2D t_gbufferNormal;      // RGB = world-space normal
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
 uniform int u_frameCounter;
@@ -649,6 +653,93 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId)
 	return directLighting + ambient;
 }
 
+// ==========================================
+// DEFERRED MESH LIGHTING
+// Applies the same multi-light model to a mesh surface read from the GBuffer.
+// SDFs cast light/shadow onto the mesh; meshes don't affect SDFs.
+// ==========================================
+vec3 meshLighting(vec3 p, vec3 N, vec3 albedo, float specVal)
+{
+	vec3 V = normalize(-p); // View direction (camera at origin in view space — use world cam pos below)
+
+	float f0 = 0.04; // Non-metallic default
+	float roughness = 0.6;
+	float fresnelPower = 10.0;
+	float specExponent = 80.0;
+
+	float fresnel = f0 + (1.0 - f0) * pow(clamp(1.0 - dot(V, N), 0.0, 1.0), fresnelPower);
+	fresnel = 0.25; // Not working properly
+
+	vec3 directLighting = vec3(0.0);
+
+	for (int i = 0; i < u_numLights; i++)
+	{
+		Light light = u_lights[i];
+
+		vec3 L;
+		float lightDist;
+		float attenuation = 1.0;
+
+		if (light.type == 0)
+		{
+			L = normalize(light.direction);
+			lightDist = u_far * 0.5;
+		}
+		else if (light.type == 1)
+		{
+			vec3 lightVec = light.position - p;
+			lightDist = length(lightVec);
+			L = normalize(lightVec);
+			float a = 3.0;
+			float b = 0.7;
+			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+		}
+		else
+		{
+			vec3 lightVec = light.position - p;
+			lightDist = length(lightVec);
+			L = normalize(lightVec);
+			float a = 3.0;
+			float b = 0.7;
+			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+			vec3 surfaceToLight = normalize(light.position - p);
+			float spotEffect = dot(surfaceToLight, normalize(light.direction));
+			float innerCone = 0.95;
+			float outerCone = 0.80;
+			attenuation *= smoothstep(outerCone, innerCone, spotEffect);
+		}
+
+		// Shadow ray cast through the SDF scene — SDFs occlude light on mesh surfaces
+		float dLight = rayMarch(p + N * 0.02, L);
+		bool hitObstacle =
+			(dLight < lightDist * 0.95) && (sceneSdf(p + N * 0.02 + dLight * L).x < RAYMARCH_EPSILON * 5.0);
+
+		if (!hitObstacle)
+		{
+			vec3 diffuse = albedo * max(dot(N, L), 0.0);
+			vec3 H = normalize(L + V);
+			float specPow = pow(max(dot(N, H), 0.0), specExponent);
+			// Scale specular by texture specular intensity
+			vec3 specular = vec3(specVal * 2.0 + 0.5) * specPow * fresnel;
+			directLighting += (diffuse + specular) * attenuation * light.color.xyz * light.color.w;
+		}
+	}
+
+	// Ambient + sky reflection
+	vec3 R = reflect(normalize(p), N); // approximate: camera at far origin
+	vec3 reflectionColor = getSkyColor(R);
+	vec3 ambient = albedo * 0.1 + reflectionColor * fresnel;
+
+	return directLighting + ambient;
+}
+
+// Returns the linearised (eye-space) depth from a [0,1] depth-buffer value.
+float linearizeGBufferDepth(float d)
+{
+	float z_n = d * 2.0 - 1.0;
+	return (2.0 * u_near * u_far) / (u_far + u_near - z_n * (u_far - u_near));
+}
+
 vec4 render(in vec2 uv)
 {
 	// Ray origin
@@ -666,26 +757,56 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	// Ray march to find closest SDF
-	float object = rayMarch(ro, rd);
+	// -------------------------------------------------------
+	// GBuffer depth comparison
+	// -------------------------------------------------------
+	// v_texCoord is in [0,1] and valid here because it is a vertex-shader 'in'.
+	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;  // [0,1], 1.0 = no mesh
+	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample);  // eye-space metres
 
-	// If ray marched distance is bigger than depth from zbuffer, set alpha to 1
+	// Ray march SDF
+	float object = rayMarch(ro, rd);
 	float minDepth = object;
 
+	// Compute the SDF hit depth in the same NDC [0,1] space so gl_FragDepth is consistent
 	float z_e = object;
-	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near); // Convert to non-linear depth
-	float depth = (z_n + 1.0) * 0.5;
+	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near);
+	float sdfDepthNDC = (z_n + 1.0) * 0.5;
 
-	gl_FragDepth = depth;
+	// Determine whether a valid mesh pixel is closer than the SDF hit
+	bool meshValid  = (meshDepthSample < 1.0 - 0.0001);
+	bool meshInFront = meshValid && (meshDepthLinear < minDepth);
 
-	// Output color (initialized to sky passing the primary ray direction)
+	// Output color
 	vec3 col = getSkyColor(rd);
+
+	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
+	float accumAlpha = 1.0;
 
 	float seed = uv.x * 1234.5 + uv.y * 6789.0 + float(u_frameCounter) * 111.0;
 
-	// Scene alpha over background is abandoned, evaluate objects fully opaque against sky
-	if (minDepth < u_far)
+	if (meshInFront)
 	{
+		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
+		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   v_texCoord).rgb;
+		vec3  meshWorldPos = texture(t_gbufferWorldPos, v_texCoord).rgb;
+		float meshSpecVal  = texture(t_gbufferAlbedo,   v_texCoord).a;
+		vec3  meshNormal   = normalize(texture(t_gbufferNormal, v_texCoord).rgb);
+
+		meshAlbedo = vec3(0.0, 1.0, 0.0); // Override albedo for testing
+
+		col = meshLighting(meshWorldPos, meshNormal, meshAlbedo, meshSpecVal);
+
+		// Fog at mesh depth
+		float fog = smoothstep(u_far * 0.0, u_far, meshDepthLinear);
+		col = mix(col, getSkyColor(rd), fog);
+
+		// Write the mesh depth to the depth buffer
+		gl_FragDepth = meshDepthSample;
+	}
+	else if (minDepth < u_far)
+	{
+		// --- SDF hit is in front ---
 		vec3 p = ro + object * rd;
 		vec2 sceneResult = sceneSdf(p);
 		int materialId = int(sceneResult.y);
@@ -697,13 +818,18 @@ vec4 render(in vec2 uv)
 		col = standardLighting(p, rd, baseColor, materialId);
 #endif
 
-		// Apply distance fog to smoothly blend the object into the sky using the view ray (rd) color
 		float fog = smoothstep(u_far * 0.0, u_far, minDepth);
 		col = mix(col, getSkyColor(rd), fog);
+
+		gl_FragDepth = sdfDepthNDC;
+	}
+	else
+	{
+		// Sky
+		gl_FragDepth = sdfDepthNDC;
 	}
 
-	// Always return 1.0 alpha now
-	return vec4(col, 1.0);
+	return vec4(col, 1.0); // accumAlpha);
 }
 
 float rand(vec2 co)

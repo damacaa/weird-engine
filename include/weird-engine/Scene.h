@@ -54,6 +54,8 @@ namespace WeirdEngine
 		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
 						  WeirdRenderer::Shader& instancingShader);
 
+		void renderExtra(WeirdRenderer::RenderTarget& renderTarget);
+
 		void update2DWorldShader(WeirdRenderer::Shader& shader);
 		void update3DWorldShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);

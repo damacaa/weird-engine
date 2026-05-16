@@ -264,13 +264,15 @@ namespace WeirdEngine
 		return m_lights;
 	}
 
-	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
-							 WeirdRenderer::Shader& instancingShader)
+	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
 	{
 		PROFILE_SCOPE("Render Models");
 		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
 		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
+	}
 
+	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)
+	{
 		onRender(renderTarget);
 	}
 

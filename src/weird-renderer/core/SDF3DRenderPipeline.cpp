@@ -50,7 +50,10 @@ namespace WeirdEngine
 			const std::vector<Light>& lights,
 			const Camera& camera,
 			double time,
-			Texture& geometryDepthTexture
+			Texture& gbufferAlbedo,
+			Texture& gbufferWorldPos,
+			Texture& gbufferNormal,
+			Texture& gbufferDepth
 		)
 		{
 			// Reset frame counter when path tracer is disabled (no accumulation)
@@ -102,17 +105,25 @@ namespace WeirdEngine
 				m_sdfShader.setUniform(prefix + "type", (int)lights[i].type);
 			}
 
-			// Previous accumulation frame and geometry depth
+			// Previous accumulation frame and GBuffer textures
 			m_sdfShader.setUniform("t_previousColor", 0);
 			m_accumTexture[previousAccumIdx].bind(0);
 
 			m_sdfShader.setUniform("t_depthTexture", 1);
-			geometryDepthTexture.bind(1);
+			gbufferDepth.bind(1);
 
 			// Shape data buffer
 			m_sdfShader.setUniform("t_shapeBuffer", 2);
 			m_shapeDataBuffer->uploadData<vec4>(shapeData, dataSize);
 			m_shapeDataBuffer->bind(2);
+
+			// GBuffer colour attachments
+			m_sdfShader.setUniform("t_gbufferAlbedo",   3);
+			gbufferAlbedo.bind(3);
+			m_sdfShader.setUniform("t_gbufferWorldPos", 4);
+			gbufferWorldPos.bind(4);
+			m_sdfShader.setUniform("t_gbufferNormal",   5);
+			gbufferNormal.bind(5);
 
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);

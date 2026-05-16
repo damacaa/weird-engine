@@ -106,7 +106,7 @@ namespace WeirdEngine
 				m_outputShaderProgram.addDefine("DITHERING");
 
 			// Enable culling
-			glCullFace(GL_FRONT);
+			glCullFace(GL_BACK);
 			glFrontFace(GL_CCW);
 		}
 
@@ -387,7 +387,9 @@ namespace WeirdEngine
 				{
 					PROFILE_SCOPE("3D SDF");
 					glDisable(GL_CULL_FACE);
-					glDisable(GL_DEPTH_TEST);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_ALWAYS);
+					glDepthMask(GL_TRUE);
 
 					scene.update3DWorldShader(m_3DWorldPipeline->getShader());
 
@@ -404,7 +406,12 @@ namespace WeirdEngine
 						m_meshPipeline->getDepthTexture()
 					);
 
+					glEnable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LEQUAL);
 					scene.renderExtra(m_3DWorldPipeline->getRenderTarget());
+					glDisable(GL_CULL_FACE);
+					glDisable(GL_DEPTH_TEST);
 
 					glFinish();
 				}

@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 project(Weird3D)
 
 # Create folders if they don't exist
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/assets")
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/include")
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/src")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,30 +15,32 @@ option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
 # Set paths for the local WeirdEngine
 set(WEIRD_ENGINE_LOCAL_PATH "../../")
 
-if(USE_LOCAL_WEIRD_ENGINE)
-    # Use the local version of WeirdEngine
-    message(STATUS "Using local version of WeirdEngine")
-    add_subdirectory(${WEIRD_ENGINE_LOCAL_PATH} ${CMAKE_BINARY_DIR}/weird-engine)
-else()
-    # Fetch WeirdEngine from GitHub
-    message(STATUS "Using online version of WeirdEngine")
-    include(FetchContent)
-    FetchContent_Declare(
-        WeirdEngine
-        GIT_REPOSITORY https://github.com/damacaa/weird-engine
-        GIT_TAG main
-    )
-    FetchContent_MakeAvailable(WeirdEngine)
+if(NOT TARGET WeirdEngine)
+    if(USE_LOCAL_WEIRD_ENGINE)
+        # Use the local version of WeirdEngine
+        message(STATUS "Using local version of WeirdEngine")
+        add_subdirectory(${WEIRD_ENGINE_LOCAL_PATH} ${CMAKE_BINARY_DIR}/weird-engine)
+    else()
+        # Fetch WeirdEngine from GitHub
+        message(STATUS "Using online version of WeirdEngine")
+        include(FetchContent)
+        FetchContent_Declare(
+            WeirdEngine
+            GIT_REPOSITORY https://github.com/damacaa/weird-engine
+            GIT_TAG main
+        )
+        FetchContent_MakeAvailable(WeirdEngine)
+    endif()
 endif()
 
 # Glob source files and header files from the proper directories.
-file(GLOB_RECURSE WEIRDGAME_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE WEIRDGAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE WEIRDGAME_HEADERS 
-    "${CMAKE_SOURCE_DIR}/include/*.h"
-    "${CMAKE_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
 )
 file(GLOB_RECURSE WEIRDGAME_ASSETS 
-    "${CMAKE_SOURCE_DIR}/assets/*.*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.*"
 )
 
 # Mark headers as header-only so that Visual Studio treats them appropriately.
@@ -48,7 +50,7 @@ set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRU
 add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
 # Set include directories.
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_BINARY_DIR}/weird-engine/include
     ${CMAKE_BINARY_DIR}/weird-engine/third-party/include
@@ -79,7 +81,7 @@ function(assign_source_groups TARGET)
         # Get the full path to the file's directory.
         get_filename_component(FILE_PATH "${source_file}" PATH)
         # Compute the path relative to the project's root.
-        file(RELATIVE_PATH REL_PATH "${CMAKE_SOURCE_DIR}" "${FILE_PATH}")
+        file(RELATIVE_PATH REL_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${FILE_PATH}")
         # Replace forward slashes with backslashes for Visual Studio filter naming.
         string(REPLACE "/" "\\" FILTER_PATH "${REL_PATH}")
         if(FILTER_PATH STREQUAL "")

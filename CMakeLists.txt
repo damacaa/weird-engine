@@ -136,3 +136,10 @@ function(assign_source_groups TARGET)
 endfunction()
 
 assign_source_groups(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+
+# Examples
+option(WEIRD_ENGINE_BUILD_EXAMPLES "Build example projects" OFF)
+if(WEIRD_ENGINE_BUILD_EXAMPLES)
+    add_subdirectory(examples/3d-experiments)
+    add_subdirectory(examples/sample-scenes)
+endif()

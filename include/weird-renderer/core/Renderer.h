@@ -75,8 +75,15 @@ namespace WeirdEngine
 			bool m_takeScreenshot = false;
 			std::string m_lastScreenshotPath;
 
+			// Stats UI (F4)
+			bool m_showStatsUI = false;
+			static constexpr int STATS_HISTORY_SIZE = 128;
+			float m_frametimeHistory[STATS_HISTORY_SIZE] = {};
+			int m_historyOffset = 0;
+
 			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();
+			void drawStatsUI(double delta);
 		};
 
 	} // namespace WeirdRenderer

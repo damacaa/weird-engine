@@ -132,71 +132,89 @@ namespace WeirdEngine
 			glFinish();
 
 			static bool showDebugUI = false;
+			static bool showStatsUI = false;
 
 			if (Input::GetKeyDown(Input::F3))
 			{
 				showDebugUI = !showDebugUI;
 			}
 
-			if (showDebugUI)
+			if (Input::GetKeyDown(Input::F4))
+			{
+				showStatsUI = !showStatsUI;
+				if (showStatsUI)
+					Profiler::Get().enableRealtime();
+				else
+					Profiler::Get().disableRealtime();
+			}
+
+			if (showDebugUI || showStatsUI)
 			{
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplSDL3_NewFrame();
 				ImGui::NewFrame();
 
-				ImGui::Begin("Renderer Settings");
-				m_worldPipeline->showDebugUI();
-				m_uiPipeline->showDebugUI();
-				m_3DWorldPipeline->showDebugUI();
-				m_meshPipeline->showDebugUI();
-
-				// Output settings
+				if (showDebugUI)
 				{
-					const char* label = "Output Settings";
-					if (ImGui::CollapsingHeader(label))
+					ImGui::Begin("Renderer Settings");
+					m_worldPipeline->showDebugUI();
+					m_uiPipeline->showDebugUI();
+					m_3DWorldPipeline->showDebugUI();
+					m_meshPipeline->showDebugUI();
+
+					// Output settings
 					{
-
-						ImGui::PushID(label);
-
-						if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+						const char* label = "Output Settings";
+						if (ImGui::CollapsingHeader(label))
 						{
-							if (m_ditheringEnabled)
-								m_outputShaderProgram.addDefine("DITHERING");
-							else
-								m_outputShaderProgram.removeDefine("DITHERING");
+
+							ImGui::PushID(label);
+
+							if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+							{
+								if (m_ditheringEnabled)
+									m_outputShaderProgram.addDefine("DITHERING");
+								else
+									m_outputShaderProgram.removeDefine("DITHERING");
+							}
+
+							ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+							ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+							ImGui::PopID();
 						}
-
-						ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
-						ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
-
-						ImGui::PopID();
 					}
-				}
 
-				if (ImGui::Button("Take Screenshot"))
-				{
-					m_takeScreenshot = true;
-				}
-
-				if (!m_lastScreenshotPath.empty())
-				{
-					ImGui::SameLine();
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-					ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
-					ImGui::PopStyleColor();
-					if (ImGui::IsItemHovered())
+					if (ImGui::Button("Take Screenshot"))
 					{
-						ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-						ImGui::SetTooltip("Click to open");
+						m_takeScreenshot = true;
 					}
-					if (ImGui::IsItemClicked())
+
+					if (!m_lastScreenshotPath.empty())
 					{
-						std::string url = "file://" + m_lastScreenshotPath;
-						SDL_OpenURL(url.c_str());
+						ImGui::SameLine();
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+						ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+						ImGui::PopStyleColor();
+						if (ImGui::IsItemHovered())
+						{
+							ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+							ImGui::SetTooltip("Click to open");
+						}
+						if (ImGui::IsItemClicked())
+						{
+							std::string url = "file://" + m_lastScreenshotPath;
+							SDL_OpenURL(url.c_str());
+						}
 					}
+
+					ImGui::End();
 				}
 
-				ImGui::End();
+				if (showStatsUI)
+				{
+					drawStatsUI(delta);
+				}
 
 				ImGui::Render();
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -339,6 +357,96 @@ namespace WeirdEngine
 		SDL_Window* Renderer::getWindow()
 		{
 			return m_window;
+		}
+
+		void Renderer::drawStatsUI(double delta)
+		{
+			float fps = delta > 0.0 ? (float)(1.0 / delta) : 0.0f;
+			float frameTimeMs = (float)(delta * 1000.0);
+
+			m_frametimeHistory[m_historyOffset] = frameTimeMs;
+			m_historyOffset = (m_historyOffset + 1) % STATS_HISTORY_SIZE;
+
+			ImGui::SetNextWindowSize(ImVec2(500, 640), ImGuiCond_FirstUseEver);
+			ImGui::Begin("Performance Stats");
+
+			// FPS / Frametime header
+			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
+
+			char ftOverlay[32];
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
+			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
+							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
+
+			ImGui::Separator();
+			ImGui::TextDisabled("Profiler Scopes  (last frame)");
+			ImGui::Spacing();
+
+			auto& profiler = Profiler::Get();
+			const auto& stats = profiler.getLastFrameStats();
+
+			if (stats.empty())
+			{
+				ImGui::TextDisabled("Warming up...");
+				ImGui::End();
+				return;
+			}
+
+			// Top-level scope time as the 100% baseline
+			double topMs = 0.0;
+			for (const auto& s : stats)
+			{
+				if (s.depth == 0 && s.count > 0)
+				{
+					topMs = s.totalTimeMs / s.count;
+					break;
+				}
+			}
+			if (topMs <= 0.0)
+				topMs = 1.0;
+
+			static const ImVec4 depthColors[] = {
+				{0.30f, 0.70f, 1.00f, 1.0f},  // depth 0 — blue
+				{0.35f, 0.90f, 0.50f, 1.0f},  // depth 1 — green
+				{1.00f, 0.70f, 0.25f, 1.0f},  // depth 2 — orange
+				{0.85f, 0.40f, 0.90f, 1.0f},  // depth 3 — purple
+				{0.85f, 0.35f, 0.35f, 1.0f},  // depth 4 — red
+			};
+			constexpr int MAX_DEPTH_COLORS = 5;
+			const float NAME_COLUMN_W = 180.0f;
+			const float INDENT_PX = 16.0f;
+			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
+
+			for (const auto& stat : stats)
+			{
+				if (stat.count == 0)
+					continue;
+
+				double avgMs = stat.totalTimeMs / stat.count;
+				float fraction = (float)(avgMs / topMs);
+				fraction = std::min(1.0f, std::max(0.0f, fraction));
+				float indentOff = stat.depth * INDENT_PX;
+				float availW = ImGui::GetContentRegionAvail().x;
+
+				// Scope name (indented)
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
+				ImGui::TextUnformatted(stat.name);
+
+				// Progress bar on the same line
+				ImGui::SameLine(NAME_COLUMN_W);
+				char barLabel[64];
+				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.1f%%", avgMs, fraction * 100.0f);
+				float barW = availW - NAME_COLUMN_W + indentOff;
+				if (barW > 10.0f)
+				{
+					int ci = std::min(stat.depth, MAX_DEPTH_COLORS - 1);
+					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
+					ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
+					ImGui::PopStyleColor();
+				}
+			}
+
+			ImGui::End();
 		}
 
 		Texture& Renderer::renderScene(Scene& scene, const double time, const double delta)

@@ -43,16 +43,50 @@ namespace WeirdEngine
 			}
 		}
 
+		// Enable real-time mode: keeps recording and snapshots per-frame data.
+		void enableRealtime()
+		{
+			m_realtimeMode = true;
+			m_recording = true;
+			m_stats.clear();
+			m_lastFrameStats.clear();
+			m_currentIndex = 0;
+			m_currentDepth = 0;
+		}
+
+		void disableRealtime()
+		{
+			m_realtimeMode = false;
+			m_recording = false;
+		}
+
+		bool isRealtime() const { return m_realtimeMode; }
+
+		const std::vector<ScopeStats>& getLastFrameStats() const { return m_lastFrameStats; }
+
 		void update()
 		{
 			if (!m_recording)
 				return;
 
-			auto now = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double> diff = now - m_startTime;
-			if (diff.count() >= 10.0)
+			if (m_realtimeMode)
 			{
-				stopRecording();
+				// Snapshot last frame's timings, then reset accumulators.
+				m_lastFrameStats = m_stats;
+				for (auto& s : m_stats)
+				{
+					s.totalTimeMs = 0.0;
+					s.count = 0;
+				}
+			}
+			else
+			{
+				auto now = std::chrono::high_resolution_clock::now();
+				std::chrono::duration<double> diff = now - m_startTime;
+				if (diff.count() >= 10.0)
+				{
+					stopRecording();
+				}
 			}
 			m_currentIndex = 0;
 			m_currentDepth = 0;
@@ -204,8 +238,10 @@ namespace WeirdEngine
 		};
 
 		bool m_recording = false;
+		bool m_realtimeMode = false;
 		std::chrono::high_resolution_clock::time_point m_startTime;
 		std::vector<ScopeStats> m_stats;
+		std::vector<ScopeStats> m_lastFrameStats;
 		std::vector<StackItem> m_stack;
 		int m_currentIndex = 0;
 		int m_currentDepth = 0;

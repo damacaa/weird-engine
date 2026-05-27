@@ -427,6 +427,11 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 
 		float fresnel = currentF0 + ((1.0 - currentF0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
 
+		if (bounce == u_rayBounces && bounce > 0)
+		{
+			fresnel = 0.0;
+		}
+
 		// Choose ray type probability based on Fresnel
 		float randVal = hash2(seed).x;
 		bool isSpecular = randVal < fresnel;
@@ -506,8 +511,16 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 
 		if (bounce == u_rayBounces) 
 		{
-        break;
-    }
+
+			// If this final hit is in a shadow, it will still evaluate to black.
+			// Add a little bit of sky ambient so deep shadows always have some color.
+			if (bounce > 0) 
+			{
+				finalColor += throughput * currentAlbedo * getSkyColor(N) * 0.15;
+			}
+			// ==========================================
+			break;
+		}
 
 		// 2. Indirect bounce (Calculated once per bounce path)
 		vec3 diffuseDir = cosineSampleHemisphere(N, seed);

@@ -105,6 +105,12 @@ namespace WeirdEngine
 			if (m_ditheringEnabled)
 				m_outputShaderProgram.addDefine("DITHERING");
 
+			m_surfaceBlurEnabled    = settings.enableSurfaceBlur;
+			m_surfaceBlurRadius     = std::max(1.0f, settings.surfaceBlurRadius);
+			m_surfaceBlurSigmaColor = std::max(0.001f, settings.surfaceBlurSigmaColor);
+			if (m_surfaceBlurEnabled)
+				m_outputShaderProgram.addDefine("SURFACE_BLUR");
+
 			// Enable culling
 			glCullFace(GL_BACK);
 			glFrontFace(GL_CCW);
@@ -181,7 +187,18 @@ namespace WeirdEngine
 							ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
 							ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
 
-							ImGui::PopID();
+						ImGui::Separator();
+						if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
+						{
+							if (m_surfaceBlurEnabled)
+								m_outputShaderProgram.addDefine("SURFACE_BLUR");
+							else
+								m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+						}
+						ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+						ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
+
+						ImGui::PopID();
 						}
 					}
 
@@ -324,6 +341,8 @@ namespace WeirdEngine
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
 			m_outputShaderProgram.setUniform("u_ditheringSpread", m_ditheringSpread);
 			m_outputShaderProgram.setUniform("u_ditheringColorCount", m_ditheringColorCount);
+			m_outputShaderProgram.setUniform("u_surfaceBlurRadius", m_surfaceBlurRadius);
+			m_outputShaderProgram.setUniform("u_surfaceBlurSigmaColor", m_surfaceBlurSigmaColor);
 
 			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			m_finalResultTexture.bind(0);
@@ -483,9 +502,12 @@ namespace WeirdEngine
 					glDepthFunc(GL_LEQUAL);
 					glDepthMask(GL_TRUE);
 					glDisable(GL_BLEND);
+					glFrontFace(GL_CW);
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
 					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
+
+										glFrontFace(GL_CCW);
 					glFinish();
 				}
 

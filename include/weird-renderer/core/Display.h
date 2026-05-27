@@ -29,6 +29,9 @@ namespace WeirdEngine
 			bool enableDithering = true;
 			float ditheringSpread = 0.05f;
 			int ditheringColorCount = 16;
+			bool enableSurfaceBlur = false;
+			float surfaceBlurRadius = 3.0f;
+			float surfaceBlurSigmaColor = 0.15f;
 			bool enableLongShadows = false;
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;

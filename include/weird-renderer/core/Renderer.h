@@ -48,6 +48,9 @@ namespace WeirdEngine
 			float m_ditheringSpread;
 			int m_ditheringColorCount;
 			bool m_ditheringEnabled;
+			bool m_surfaceBlurEnabled;
+			float m_surfaceBlurRadius;
+			float m_surfaceBlurSigmaColor;
 
 			// Render pipelines
 			SDF2DRenderPipeline* m_worldPipeline;

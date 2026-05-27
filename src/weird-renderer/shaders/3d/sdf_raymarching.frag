@@ -415,7 +415,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	// Perform bounces
 
 
-	for (int bounce = 0; bounce < u_rayBounces; bounce++)
+	for (int bounce = 0; bounce <= u_rayBounces; bounce++)
 	{
 		float currentF0 = f0;
 		float currentRoughness = u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
@@ -504,6 +504,11 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		// Add all direct light contributions for this bounce
 		finalColor += throughput * directLighting;
 
+		if (bounce == u_rayBounces) 
+		{
+        break;
+    }
+
 		// 2. Indirect bounce (Calculated once per bounce path)
 		vec3 diffuseDir = cosineSampleHemisphere(N, seed);
 
@@ -557,12 +562,6 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			currentAlbedo = min(bounceMaterial, vec3(1.0));
 
 			finalColor += throughput * emission; // Emit light from the glowing object!
-
-			// Prevent black pixels on maximum bounce depth
-			if (bounce == u_rayBounces - 1)
-			{
-				finalColor = throughput * currentAlbedo * getSkyColor(bounceDir);
-			}
 		}
 	}
 

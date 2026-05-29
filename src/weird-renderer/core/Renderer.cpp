@@ -475,16 +475,22 @@ namespace WeirdEngine
 			const float NEAR_PLANE = 0.1f;
 			const float FAR_PLANE = 300.0f;
 
-			// Get camera
-			auto& sceneCamera = scene.getCamera();
-			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.updateMatrix(NEAR_PLANE, FAR_PLANE, m_windowWidth, m_windowHeight);
-
 			// Determine render mode
 			auto renderMode = scene.getRenderMode();
 			bool enable2D =
 				renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
+
+			// Get camera
+			auto& sceneCamera = scene.getCamera();
+
+			if(renderMode == Scene::RenderMode::RayMarchingBoth)
+			{
+				sceneCamera.fov = 90.0f;
+			}
+
+			// Updates and exports the camera matrix to the Vertex Shader
+			sceneCamera.updateMatrix(NEAR_PLANE, FAR_PLANE, m_windowWidth, m_windowHeight);
 
 			// 3D
 			if (enable3D)
@@ -502,12 +508,11 @@ namespace WeirdEngine
 					glDepthFunc(GL_LEQUAL);
 					glDepthMask(GL_TRUE);
 					glDisable(GL_BLEND);
-					glFrontFace(GL_CW);
+					glFrontFace(GL_CCW);
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
 					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
 
-										glFrontFace(GL_CCW);
 					glFinish();
 				}
 
@@ -556,7 +561,6 @@ namespace WeirdEngine
 			glDisable(GL_DEPTH_TEST);
 
 			// 2D
-			Texture* lit2DSceneTexture = nullptr;
 			static uint32_t dataSize;
 			static uint32_t shapeCount;
 			static vec4* data = nullptr;
@@ -568,26 +572,13 @@ namespace WeirdEngine
 
 				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
 												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
-				lit2DSceneTexture = &t;
-
-				if (!enable3D)
-				{
-					return t;
-				}
+				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
+				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
+				return t;
 			}
 
-			m_combinationRender.bind();
-			m_combineScenesShaderProgram.use();
-			m_combineScenesShaderProgram.setUniform("u_time", scene.getTime());
-			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 0);
-			m_3DWorldPipeline->getOutputTexture().bind(0);
-			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 1);
-			lit2DSceneTexture->bind(1);
-
-			m_renderPlane.draw(m_combineScenesShaderProgram);
-
-			return m_combineResultTexture;
+			// Pure 3D: should have been returned earlier; fall back to 3D output.
+			return m_3DWorldPipeline->getOutputTexture();
 		}
 
 	} // namespace WeirdRenderer

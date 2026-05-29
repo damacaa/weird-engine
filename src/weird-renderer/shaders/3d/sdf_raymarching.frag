@@ -8,6 +8,7 @@ precision highp sampler2D;
 // #define PATH_TRACING
 // #define FISH_EYE
 // #define ANTIALIASING
+// #define COMBINE_2D_AND_3D_SDFS
 
 vec2 fOpUnionSoft2(float a, float b, float k)
 {
@@ -227,7 +228,7 @@ vec2 sceneSdf(vec3 p)
 
 #ifdef COMBINE_2D_AND_3D_SDFS
 	{
-		float boxDist = fBox(p - vec3(0.0, 0.0, 102.0), vec3(1000.0, 1000.0, 100.0));
+		float boxDist = fBox(p - vec3(0.0, 0.0, 100.5), vec3(1000.0, 1000.0, 100.0));
 		minDist = -fOpUnionSoft(boxDist, -minDist, 0.5);
 		// minDist = max(minDist, -boxDist);
 	}

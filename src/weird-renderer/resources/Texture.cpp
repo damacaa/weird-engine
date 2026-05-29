@@ -38,7 +38,8 @@ namespace WeirdEngine
 					break;
 			}
 
-			// Generates MipMaps
+			// Re-bind the texture (createTexture unbinds it at the end) before generating mipmaps
+			glBindTexture(GL_TEXTURE_2D, ID);
 			glGenerateMipmap(GL_TEXTURE_2D);
 
 			// Deletes the image data as it is already in the OpenGL Texture object

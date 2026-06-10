@@ -19,6 +19,18 @@
 
 namespace WeirdEngine
 {
+	static std::vector<std::shared_ptr<IMathExpression>> s_globalSdfs;
+
+	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
+	{
+		s_globalSdfs.push_back(sdf);
+		return static_cast<ShapeId>(s_globalSdfs.size() - 1);
+	}
+
+	const std::vector<std::shared_ptr<IMathExpression>>& Scene::getGlobalSDFs()
+	{
+		return s_globalSdfs;
+	}
 
 	Scene::Scene(const PhysicsSettings& settings)
 		: m_simulation2D(MAX_ENTITIES, settings)
@@ -38,7 +50,7 @@ namespace WeirdEngine
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		// Shapes
-		m_sdfs = DefaultShapes::getSDFS();
+		m_sdfs = Scene::getGlobalSDFs();
 		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation

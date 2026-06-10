@@ -66,9 +66,6 @@ namespace WeirdEngine
 			const DisplaySettings::ExtraMaterialData* m_materialDataPalette;
 			RenderPlane& m_renderPlane;
 
-			static constexpr float NEAR_PLANE = 0.1f;
-			static constexpr float FAR_PLANE = 300.0f;
-
 			Shader m_sdfShader;
 			DataBuffer* m_shapeDataBuffer;
 

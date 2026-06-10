@@ -88,8 +88,8 @@ namespace WeirdEngine
 				m_sdfShader.setUniform(prefix + "metallic", m_materialDataPalette[i].metallic);
 				m_sdfShader.setUniform(prefix + "roughness", m_materialDataPalette[i].roughness);
 			}
-			m_sdfShader.setUniform("u_near", NEAR_PLANE);
-			m_sdfShader.setUniform("u_far", FAR_PLANE);
+			m_sdfShader.setUniform("u_near", camera.nearPlane);
+			m_sdfShader.setUniform("u_far", camera.farPlane);
 			m_sdfShader.setUniform("u_frameCounter", m_frameCounter);
 			m_sdfShader.setUniform("u_rayBounces", m_config.rayBounces);
 			m_sdfShader.setUniform("u_contrast", m_config.contrast);

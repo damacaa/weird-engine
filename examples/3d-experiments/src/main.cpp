@@ -8,6 +8,7 @@
 #include "Lines.h"
 #include "GlobalIllumination.h"
 #include "CornellBox.h"
+#include "Water.h"
 
 int main(int argc, char* argv[])
 {
@@ -17,6 +18,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<ClassicScene>("classic");
 	sceneManager.registerScene<FireScene>("fire");
 	sceneManager.registerScene<LinesScene>("lines");
+	sceneManager.registerScene<WaterScene>("water");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;
@@ -54,7 +56,7 @@ int main(int argc, char* argv[])
 	PhysicsSettings physicsSettings{};
 
 	AudioSettings audioSettings{};
-	audioSettings.mute = false;
+	audioSettings.mute = true;
 
 	start(sceneManager, displaySettings, physicsSettings, audioSettings, argc, argv);
 }

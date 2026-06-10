@@ -2,7 +2,7 @@
 
 #include <weird-engine.h>
 
-#include "DebugPlanes.h"
+#include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
 class LinesScene : public Scene
@@ -29,7 +29,7 @@ private:
 		m_renderMode = RenderMode::RayMarching3D;
 		
 		{
-			std::shared_ptr<IMathExpression> plane = std::make_shared<PerlinPlane>(0.0f);
+			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
 			auto planeId = registerSDF(plane);
 
 			float vars1[8] = {}; // Custom shape

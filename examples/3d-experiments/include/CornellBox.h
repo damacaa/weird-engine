@@ -3,7 +3,7 @@
 #include <weird-engine.h>
 #include <weird-engine/math/Default2DSDFs.h>
 
-#include "DebugPlanes.h"
+#include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
 
@@ -44,7 +44,7 @@ private:
 		// }
 
 		{
-			std::shared_ptr<IMathExpression> box = std::make_shared<Box>();
+			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
 			auto boxId = registerSDF(box);
 
       // Left

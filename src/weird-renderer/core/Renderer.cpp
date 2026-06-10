@@ -88,6 +88,7 @@ namespace WeirdEngine
 			sdf3DConfig.renderWidth = m_renderWidth;
 			sdf3DConfig.renderHeight = m_renderHeight;
 			sdf3DConfig.contrast = settings.raymarching3DContrast;
+			sdf3DConfig.enablePathTracer = settings.enable3DPathTracer;
 			m_3DWorldPipeline =
 				new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_materialDataPalette, m_renderPlane);
 
@@ -472,9 +473,6 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("World Render");
 
-			const float NEAR_PLANE = 0.1f;
-			const float FAR_PLANE = 300.0f;
-
 			// Determine render mode
 			auto renderMode = scene.getRenderMode();
 			bool enable2D =
@@ -490,7 +488,7 @@ namespace WeirdEngine
 			}
 
 			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.updateMatrix(NEAR_PLANE, FAR_PLANE, m_windowWidth, m_windowHeight);
+			sceneCamera.updateMatrix(m_windowWidth, m_windowHeight);
 
 			// 3D
 			if (enable3D)

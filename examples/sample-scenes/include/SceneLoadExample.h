@@ -170,48 +170,51 @@ private:
 	void previewParams(uint16_t t, float cx, float cy, float p[8])
 	{
 		const float s = BTN_SIZE;
-		switch (t)
+		if (t == DefaultShapes::CIRCLE)
 		{
-			case DefaultShapes::CIRCLE:
-				p[0] = cx;
-				p[1] = cy;
-				p[2] = s;
-				break;
-			case DefaultShapes::BOX:
-				p[0] = cx;
-				p[1] = cy;
-				p[2] = s;
-				p[3] = s;
-				break;
-			case DefaultShapes::TRIANGLE:
-				p[0] = cx;
-				p[1] = cy;
-				p[2] = 2.0f * s;
-				p[3] = 2.0f * s;
-				p[4] = 0.0f;
-				break;
-			case DefaultShapes::LINE:
-				p[0] = cx - s * 0.8f;
-				p[1] = cy - s * 0.7f;
-				p[2] = cx + s * 0.8f;
-				p[3] = cy + s * 0.7f;
-				p[4] = 4.0f;
-				break;
-			case DefaultShapes::RAMP:
-				p[0] = cx;
-				p[1] = cy;
-				p[2] = s;
-				p[3] = s;
-				p[4] = 0.0f;
-				break;
-			case DefaultShapes::STAR:
-				p[0] = cx;
-				p[1] = cy;
-				p[2] = s;
-				p[3] = 5.0f;
-				p[4] = 5;
-				p[5] = 0.0f;
-				break;
+			p[0] = cx;
+			p[1] = cy;
+			p[2] = s;
+		}
+		else if (t == DefaultShapes::BOX)
+		{
+			p[0] = cx;
+			p[1] = cy;
+			p[2] = s;
+			p[3] = s;
+		}
+		else if (t == DefaultShapes::TRIANGLE)
+		{
+			p[0] = cx;
+			p[1] = cy;
+			p[2] = 2.0f * s;
+			p[3] = 2.0f * s;
+			p[4] = 0.0f;
+		}
+		else if (t == DefaultShapes::LINE)
+		{
+			p[0] = cx - s * 0.8f;
+			p[1] = cy - s * 0.7f;
+			p[2] = cx + s * 0.8f;
+			p[3] = cy + s * 0.7f;
+			p[4] = 4.0f;
+		}
+		else if (t == DefaultShapes::RAMP)
+		{
+			p[0] = cx;
+			p[1] = cy;
+			p[2] = s;
+			p[3] = s;
+			p[4] = 0.0f;
+		}
+		else if (t == DefaultShapes::STAR)
+		{
+			p[0] = cx;
+			p[1] = cy;
+			p[2] = s;
+			p[3] = 5.0f;
+			p[4] = 5;
+			p[5] = 0.0f;
 		}
 	}
 
@@ -657,56 +660,30 @@ private:
 	// =====================================================================
 	static const char* shapeName(uint16_t t)
 	{
-		switch (t)
-		{
-			case DefaultShapes::CIRCLE:
-				return "Circle";
-			case DefaultShapes::BOX:
-				return "Box";
-			case DefaultShapes::BOX_LINE:
-				return "BoxLine";
-			case DefaultShapes::TRIANGLE:
-				return "Triangle";
-			case DefaultShapes::TRIANGLE_LINE:
-				return "TriangleLine";
-			case DefaultShapes::LINE:
-				return "Line";
-			case DefaultShapes::RAMP:
-				return "Ramp";
-			case DefaultShapes::SINE:
-				return "Sine";
-			case DefaultShapes::STAR:
-				return "Star";
-			default:
-				return "Shape";
-		}
+		if (t == DefaultShapes::CIRCLE) return "Circle";
+		if (t == DefaultShapes::BOX) return "Box";
+		if (t == DefaultShapes::BOX_LINE) return "BoxLine";
+		if (t == DefaultShapes::TRIANGLE) return "Triangle";
+		if (t == DefaultShapes::TRIANGLE_LINE) return "TriangleLine";
+		if (t == DefaultShapes::LINE) return "Line";
+		if (t == DefaultShapes::RAMP) return "Ramp";
+		if (t == DefaultShapes::SINE) return "Sine";
+		if (t == DefaultShapes::STAR) return "Star";
+		return "Shape";
 	}
 
 	static int paramCount(uint16_t t)
 	{
-		switch (t)
-		{
-			case DefaultShapes::CIRCLE:
-				return 3;
-			case DefaultShapes::BOX:
-				return 4;
-			case DefaultShapes::BOX_LINE:
-				return 5;
-			case DefaultShapes::TRIANGLE:
-				return 5;
-			case DefaultShapes::TRIANGLE_LINE:
-				return 6;
-			case DefaultShapes::LINE:
-				return 5;
-			case DefaultShapes::RAMP:
-				return 5;
-			case DefaultShapes::SINE:
-				return 4;
-			case DefaultShapes::STAR:
-				return 6;
-			default:
-				return 3;
-		}
+		if (t == DefaultShapes::CIRCLE) return 3;
+		if (t == DefaultShapes::BOX) return 4;
+		if (t == DefaultShapes::BOX_LINE) return 5;
+		if (t == DefaultShapes::TRIANGLE) return 5;
+		if (t == DefaultShapes::TRIANGLE_LINE) return 6;
+		if (t == DefaultShapes::LINE) return 5;
+		if (t == DefaultShapes::RAMP) return 5;
+		if (t == DefaultShapes::SINE) return 4;
+		if (t == DefaultShapes::STAR) return 6;
+		return 3;
 	}
 
 	static const char* paramName(uint16_t t, int i)
@@ -720,29 +697,16 @@ private:
 		static const char* R[] = {"posX", "posY", "w", "h", "skew"};
 		static const char* SI[] = {"amp", "per", "spd", "yOff"};
 		static const char* ST[] = {"posX", "posY", "rad", "disp", "pts", "spin"};
-		switch (t)
-		{
-			case DefaultShapes::CIRCLE:
-				return C[i];
-			case DefaultShapes::BOX:
-				return B[i];
-			case DefaultShapes::BOX_LINE:
-				return BL[i];
-			case DefaultShapes::TRIANGLE:
-				return T[i];
-			case DefaultShapes::TRIANGLE_LINE:
-				return TL[i];
-			case DefaultShapes::LINE:
-				return L[i];
-			case DefaultShapes::RAMP:
-				return R[i];
-			case DefaultShapes::SINE:
-				return SI[i];
-			case DefaultShapes::STAR:
-				return ST[i];
-			default:
-				return "?";
-		}
+		if (t == DefaultShapes::CIRCLE) return C[i];
+		if (t == DefaultShapes::BOX) return B[i];
+		if (t == DefaultShapes::BOX_LINE) return BL[i];
+		if (t == DefaultShapes::TRIANGLE) return T[i];
+		if (t == DefaultShapes::TRIANGLE_LINE) return TL[i];
+		if (t == DefaultShapes::LINE) return L[i];
+		if (t == DefaultShapes::RAMP) return R[i];
+		if (t == DefaultShapes::SINE) return SI[i];
+		if (t == DefaultShapes::STAR) return ST[i];
+		return "?";
 	}
 
 	// =====================================================================
@@ -764,48 +728,51 @@ private:
 	{
 		std::memset(p, 0, sizeof(float) * 8);
 		vec2 c = camCentre();
-		switch (type)
+		if (type == DefaultShapes::CIRCLE)
 		{
-			case DefaultShapes::CIRCLE:
-				p[0] = c.x + rnd(-2.0f, 2.0f);
-				p[1] = c.y + rnd(-2.0f, 2.0f);
-				p[2] = rnd(0.6f, 2.5f);
-				break;
-			case DefaultShapes::BOX:
-				p[0] = c.x + rnd(-3.0f, 3.0f);
-				p[1] = c.y + rnd(-3.0f, 3.0f);
-				p[2] = rnd(0.5f, 3.0f);
-				p[3] = rnd(0.5f, 3.0f);
-				break;
-			case DefaultShapes::LINE:
-				p[0] = c.x + rnd(-3.0f, -0.5f);
-				p[1] = c.y + rnd(-2.0f, 2.0f);
-				p[2] = c.x + rnd(0.5f, 3.0f);
-				p[3] = c.y + rnd(-2.0f, 2.0f);
-				p[4] = rnd(0.05f, 0.3f);
-				break;
-			case DefaultShapes::RAMP:
-				p[0] = c.x + rnd(-2.0f, 2.0f);
-				p[1] = c.y + rnd(-2.0f, 2.0f);
-				p[2] = rnd(1.0f, 4.0f);
-				p[3] = rnd(1.0f, 4.0f);
-				p[4] = rnd(-1.5f, 1.5f);
-				break;
-			case DefaultShapes::STAR:
-				p[0] = c.x + rnd(-2.0f, 2.0f);
-				p[1] = c.y + rnd(-2.0f, 2.0f);
-				p[2] = rnd(0.8f, 2.5f);
-				p[3] = rnd(0.1f, 0.6f);
-				p[4] = static_cast<float>(static_cast<int>(rnd(3.0f, 8.0f)));
-				p[5] = rnd(0.5f, 2.0f);
-				break;
-			default:
-				p[0] = c.x;
-				p[1] = c.y;
-				p[2] = 1.0f;
-				p[3] = 1.0f;
-				p[4] = 0.0f;
-				break;
+			p[0] = c.x + rnd(-2.0f, 2.0f);
+			p[1] = c.y + rnd(-2.0f, 2.0f);
+			p[2] = rnd(0.6f, 2.5f);
+		}
+		else if (type == DefaultShapes::BOX)
+		{
+			p[0] = c.x + rnd(-3.0f, 3.0f);
+			p[1] = c.y + rnd(-3.0f, 3.0f);
+			p[2] = rnd(0.5f, 3.0f);
+			p[3] = rnd(0.5f, 3.0f);
+		}
+		else if (type == DefaultShapes::LINE)
+		{
+			p[0] = c.x + rnd(-3.0f, -0.5f);
+			p[1] = c.y + rnd(-2.0f, 2.0f);
+			p[2] = c.x + rnd(0.5f, 3.0f);
+			p[3] = c.y + rnd(-2.0f, 2.0f);
+			p[4] = rnd(0.05f, 0.3f);
+		}
+		else if (type == DefaultShapes::RAMP)
+		{
+			p[0] = c.x + rnd(-2.0f, 2.0f);
+			p[1] = c.y + rnd(-2.0f, 2.0f);
+			p[2] = rnd(1.0f, 4.0f);
+			p[3] = rnd(1.0f, 4.0f);
+			p[4] = rnd(-1.5f, 1.5f);
+		}
+		else if (type == DefaultShapes::STAR)
+		{
+			p[0] = c.x + rnd(-2.0f, 2.0f);
+			p[1] = c.y + rnd(-2.0f, 2.0f);
+			p[2] = rnd(0.8f, 2.5f);
+			p[3] = rnd(0.1f, 0.6f);
+			p[4] = static_cast<float>(static_cast<int>(rnd(3.0f, 8.0f)));
+			p[5] = rnd(0.5f, 2.0f);
+		}
+		else
+		{
+			p[0] = c.x;
+			p[1] = c.y;
+			p[2] = 1.0f;
+			p[3] = 1.0f;
+			p[4] = 0.0f;
 		}
 	}
 };

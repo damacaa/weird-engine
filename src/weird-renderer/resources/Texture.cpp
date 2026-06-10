@@ -161,19 +161,20 @@ namespace WeirdEngine
 				{
 					// Handle depth texture
 					// In GLES 3.0, GL_DEPTH_COMPONENT24 requires type GL_UNSIGNED_INT (not GL_FLOAT).
-					// Use GL_DEPTH_COMPONENT32F + GL_FLOAT if a float depth buffer is needed.
-					glTexImage2D(GL_TEXTURE_2D, 0,
-								 GL_DEPTH_COMPONENT24, // 24-bit depth
-								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, getUploadDataDepth());
+					// 1. Upgrade to 32-bit Float for flawless precision
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT,
+								 GL_FLOAT, getUploadDataDepth());
 
-					// Set texture parameters
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					// 2. MUST be GL_NEAREST so you don't interpolate non-linear math
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+					// 3. Clamp to edge so screen-space refraction doesn't wrap around
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 					// Prevent sampling artifacts in shadow mapping
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE); // or GL_COMPARE_REF_TO_TEXTURE
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
 					numColCh = 1;
 					break;

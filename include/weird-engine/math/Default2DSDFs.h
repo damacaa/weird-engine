@@ -13,137 +13,66 @@
 #include "Primitives.h"
 #include "StarShape.h"
 
+#include "weird-engine/Scene.h"
+
 namespace WeirdEngine
 {
 	namespace DefaultShapes
 	{
-		enum Type
-		{
-			CIRCLE,
-			CIRCLE_LINE,
-			BOX,
-			BOX_LINE,
-			TRIANGLE,
-			TRIANGLE_LINE,
-			LINE,
-			RAMP,
-			SINE,
-			STAR,
-			SIZE
-		};
+		inline auto var(uint8_t index) { return std::make_shared<FloatVariable>(index); }
 
-		inline std::vector<std::shared_ptr<IMathExpression>> getSDFS()
-		{
-			std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
-			m_sdfs.resize(DefaultShapes::SIZE);
+		inline const uint16_t CIRCLE = Scene::registerDefaultSDF(std::make_shared<Primitives::Circle>(
+			var(Primitives::Circle::POS_X), var(Primitives::Circle::POS_Y), var(Primitives::Circle::RADIUS)
+		));
 
-			// Sine
-			{
-				auto amplitude = std::make_shared<FloatVariable>(Primitives::SineWave::AMPLITUDE);
-				auto period = std::make_shared<FloatVariable>(Primitives::SineWave::PERIOD);
-				auto speed = std::make_shared<FloatVariable>(Primitives::SineWave::SPEED);
-				auto offset = std::make_shared<FloatVariable>(Primitives::SineWave::OFFSET);
+		inline const uint16_t CIRCLE_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
+			std::make_shared<Primitives::Circle>(var(Primitives::Circle::POS_X), var(Primitives::Circle::POS_Y), var(Primitives::Circle::RADIUS)),
+			var(Primitives::Circle::RADIUS + 1)
+		));
 
-				m_sdfs[SINE] = std::make_shared<Primitives::SineWave>(amplitude, period, speed, offset);
-			}
+		inline const uint16_t BOX = Scene::registerDefaultSDF(std::make_shared<Primitives::Box>(
+			var(Primitives::Box::POS_X), var(Primitives::Box::POS_Y),
+			var(Primitives::Box::SIZE_X), var(Primitives::Box::SIZE_Y)
+		));
 
-			// Star
-			m_sdfs[STAR] = getStarShape();
+		inline const uint16_t BOX_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
+			std::make_shared<Primitives::Box>(var(Primitives::Box::POS_X), var(Primitives::Box::POS_Y),
+											  var(Primitives::Box::SIZE_X), var(Primitives::Box::SIZE_Y)),
+			var(Primitives::Box::SIZE_Y + 1)
+		));
 
-			// Circle
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Circle::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Circle::POS_Y);
-				auto r = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS);
+		inline const uint16_t TRIANGLE = Scene::registerDefaultSDF(std::make_shared<Primitives::Triangle>(
+			var(Primitives::Triangle::POS_X), var(Primitives::Triangle::POS_Y),
+			var(Primitives::Triangle::SIZE_X), var(Primitives::Triangle::SIZE_Y),
+			var(Primitives::Triangle::ROTATION)
+		));
 
-				m_sdfs[CIRCLE] = std::make_shared<Primitives::Circle>(px, py, r);
-			}
+		inline const uint16_t TRIANGLE_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
+			std::make_shared<Primitives::Triangle>(var(Primitives::Triangle::POS_X), var(Primitives::Triangle::POS_Y),
+												   var(Primitives::Triangle::SIZE_X), var(Primitives::Triangle::SIZE_Y),
+												   var(Primitives::Triangle::ROTATION)),
+			var(Primitives::Triangle::ROTATION + 1)
+		));
 
-			// Circle line
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Circle::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Circle::POS_Y);
-				auto r = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS);
-				auto thickness = std::make_shared<FloatVariable>(Primitives::Circle::RADIUS + 1);
+		inline const uint16_t LINE = Scene::registerDefaultSDF(std::make_shared<Primitives::Line>(
+			var(Primitives::Line::POS_A_X), var(Primitives::Line::POS_A_Y),
+			var(Primitives::Line::POS_B_X), var(Primitives::Line::POS_B_Y),
+			var(Primitives::Line::WIDTH)
+		));
 
-				auto circle = std::make_shared<Primitives::Circle>(px, py, r);
+		inline const uint16_t RAMP = Scene::registerDefaultSDF(std::make_shared<Primitives::Ramp>(
+			var(Primitives::Ramp::POS_X), var(Primitives::Ramp::POS_Y),
+			var(Primitives::Ramp::WIDTH), var(Primitives::Ramp::HEIGHT), var(Primitives::Ramp::SKEW)
+		));
 
-				m_sdfs[CIRCLE_LINE] = std::make_shared<SDFOnion>(circle, thickness);
-			}
+		inline const uint16_t SINE = Scene::registerDefaultSDF(std::make_shared<Primitives::SineWave>(
+			var(Primitives::SineWave::AMPLITUDE), var(Primitives::SineWave::PERIOD),
+			var(Primitives::SineWave::SPEED), var(Primitives::SineWave::OFFSET)
+		));
 
-			// Box
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Box::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Box::POS_Y);
-				auto sx = std::make_shared<FloatVariable>(Primitives::Box::SIZE_X);
-				auto sy = std::make_shared<FloatVariable>(Primitives::Box::SIZE_Y);
+		inline const uint16_t STAR = Scene::registerDefaultSDF(getStarShape());
 
-				m_sdfs[BOX] = std::make_shared<Primitives::Box>(px, py, sx, sy);
-			}
-
-			// Box line
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Box::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Box::POS_Y);
-				auto sx = std::make_shared<FloatVariable>(Primitives::Box::SIZE_X);
-				auto sy = std::make_shared<FloatVariable>(Primitives::Box::SIZE_Y);
-				auto thickness = std::make_shared<FloatVariable>(Primitives::Box::SIZE_Y + 1);
-
-				auto box = std::make_shared<Primitives::Box>(px, py, sx, sy);
-
-				m_sdfs[BOX_LINE] = std::make_shared<SDFOnion>(box, thickness);
-			}
-
-			// Triangle
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Triangle::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Triangle::POS_Y);
-				auto sx = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_X);
-				auto sy = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_Y);
-				auto rotation = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION);
-
-				m_sdfs[TRIANGLE] = std::make_shared<Primitives::Triangle>(px, py, sx, sy, rotation);
-			}
-
-
-			// Triangle line
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Triangle::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Triangle::POS_Y);
-				auto sx = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_X);
-				auto sy = std::make_shared<FloatVariable>(Primitives::Triangle::SIZE_Y);
-				auto rotation = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION);
-				auto thickness = std::make_shared<FloatVariable>(Primitives::Triangle::ROTATION + 1);
-
-				auto triangle = std::make_shared<Primitives::Triangle>(px, py, sx, sy, rotation);
-
-				m_sdfs[TRIANGLE_LINE] = std::make_shared<SDFOnion>(triangle, thickness);
-			}
-
-			// Line
-			{
-				auto ax = std::make_shared<FloatVariable>(Primitives::Line::POS_A_X);
-				auto ay = std::make_shared<FloatVariable>(Primitives::Line::POS_A_Y);
-				auto bx = std::make_shared<FloatVariable>(Primitives::Line::POS_B_X);
-				auto by = std::make_shared<FloatVariable>(Primitives::Line::POS_B_Y);
-				auto width = std::make_shared<FloatVariable>(Primitives::Line::WIDTH);
-
-				m_sdfs[LINE] = std::make_shared<Primitives::Line>(ax, ay, bx, by, width);
-			}
-
-			// Ramp
-			{
-				auto px = std::make_shared<FloatVariable>(Primitives::Ramp::POS_X);
-				auto py = std::make_shared<FloatVariable>(Primitives::Ramp::POS_Y);
-				auto width = std::make_shared<FloatVariable>(Primitives::Ramp::WIDTH);
-				auto height = std::make_shared<FloatVariable>(Primitives::Ramp::HEIGHT);
-				auto skew = std::make_shared<FloatVariable>(Primitives::Ramp::SKEW);
-
-				m_sdfs[RAMP] = std::make_shared<Primitives::Ramp>(px, py, width, height, skew);
-			}
-
-			return m_sdfs;
-		}
 	} // namespace DefaultShapes
 } // namespace WeirdEngine
+
 #endif // WEIRDSAMPLES_DEFAULT2DSDFS_H

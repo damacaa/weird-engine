@@ -19,8 +19,8 @@ uniform vec3 u_lightPos;
 uniform vec3 u_lightDirection;
 uniform vec4 u_lightColor;
 
-float u_near = 0.1;
-float u_far = 100.0;
+uniform float u_near;
+uniform float u_far;
 
 vec4 pointLight()
 {

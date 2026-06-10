@@ -289,6 +289,8 @@ float rayMarch(vec3 ro, vec3 rd)
 		traveled += hit;
 	}
 
+	// traveled += sceneSdf(ro + rd * traveled).x; // Final SDF evaluation to reduce overshoot
+
 	return traveled;
 }
 
@@ -703,10 +705,17 @@ vec4 render(in vec2 uv)
 
 	// Ray march SDF
 	float object = rayMarch(ro, rd);
-	float minDepth = object;
+
+	// --- THE FIX ---
+	// Convert Euclidean ray distance to Planar View-Z distance!
+	vec3 rdCam = normalize(vec3(uv, -u_fov));
+	float planarDepth = object * abs(rdCam.z);
+
+	// Use planar depth to properly compare against the G-Buffer
+	float minDepth = planarDepth;
 
 	// Compute the SDF hit depth in the same NDC [0,1] space so gl_FragDepth is consistent
-	float z_e = object;
+	float z_e = planarDepth;
 	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near);
 	float sdfDepthNDC = (z_n + 1.0) * 0.5;
 

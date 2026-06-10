@@ -93,6 +93,9 @@ namespace WeirdEngine
 			return m_nextScene;
 		};
 
+		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
+		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
+
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
 		// Set the path to a .weird file to load when the scene starts

@@ -3,7 +3,7 @@
 #include <weird-engine.h>
 #include <weird-engine/math/Default2DSDFs.h>
 
-#include "DebugPlanes.h"
+#include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
 class ClassicScene : public Scene
@@ -52,7 +52,7 @@ private:
 		}
 
 		{
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Plane>(0.0f);
+			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::Plane>(0.0f);
 			auto planeId = registerSDF(plane);
 
 			float vars1[8] = {}; // Custom shape

@@ -37,6 +37,7 @@ namespace WeirdEngine
 			float worldSmoothFactor = 0.5f;
 			float uiSmoothFactor = 3.0f;
 			float raymarching3DContrast = 1.2f;
+			bool enable3DPathTracer = true;
 
 			enum DefaultColors
 			{

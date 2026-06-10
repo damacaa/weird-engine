@@ -19,6 +19,8 @@ namespace WeirdEngine
 
 					c.camera.position = t.position;
 					c.camera.orientation = t.rotation;
+					c.camera.nearPlane = c.nearPlane;
+					c.camera.farPlane = c.farPlane;
 				}
 			}
 		} // namespace CameraSystem

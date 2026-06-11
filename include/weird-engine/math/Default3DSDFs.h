@@ -20,6 +20,10 @@ namespace WeirdEngine
     {
         inline auto var(uint8_t index) { return std::make_shared<FloatVariable>(index); }
 
+        inline const uint16_t PLANE = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Plane>(
+            var(Primitives3D::Plane::HEIGHT)
+        ));
+
         inline const uint16_t BOX = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Box>(
             var(Primitives3D::Box::POS_X), var(Primitives3D::Box::POS_Y), var(Primitives3D::Box::POS_Z),
             var(Primitives3D::Box::SIZE_X), var(Primitives3D::Box::SIZE_Y), var(Primitives3D::Box::SIZE_Z)

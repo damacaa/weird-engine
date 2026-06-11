@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <imgui.h>
 
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer

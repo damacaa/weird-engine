@@ -1,0 +1,8 @@
+-std=c++20
+-xc++
+-Iinclude
+-Ithird-party
+-Ithird-party/SDL/include
+-Ithird-party/imgui
+-Ithird-party/imgui/backends
+-Iexamples/3d-experiments/include

@@ -14,17 +14,20 @@ namespace WeirdEngine::Primitives3D
 {
     struct Plane : public WeirdEngine::IMathExpression
     {
+    protected:
+        std::shared_ptr<IMathExpression> m_h;
+
     public:
-        Plane(float height) : m_height(height) {}
+        static constexpr uint8_t HEIGHT = 0;
+
+        Plane(std::shared_ptr<IMathExpression> h) : m_h(std::move(h)) {}
         
         float getValue() const override { return 1000.0f; }
         void propagateValues(float* values) override {}
         
         std::string print() const override {
-            return "fPlane(p, vec3(0.0, 1.0, 0.0), " + std::to_string(m_height) + ")\n";
+            return "fPlane(p, vec3(0.0, 1.0, 0.0), " + m_h->print() + ")\n";
         }
-    private:
-        float m_height;
     };
 
     struct PerlinPlane : public WeirdEngine::IMathExpression

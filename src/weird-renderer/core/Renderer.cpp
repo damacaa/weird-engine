@@ -13,6 +13,10 @@
 #include "weird-engine/Profiler.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
 
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer

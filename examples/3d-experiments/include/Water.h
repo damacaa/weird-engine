@@ -120,7 +120,7 @@ private:
 		m_time += delta;
 
 		
-		auto& floatables = m_ecs.getComponentArray<Floatable>();
+		const auto& floatables = m_ecs.getComponentArray<Floatable>();
 
 		for(int i = 0; i < floatables->getSize(); i++)
 		{

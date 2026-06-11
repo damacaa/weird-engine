@@ -2,7 +2,6 @@
 
 #include <weird-engine.h>
 #include <weird-engine/math/Default2DSDFs.h>
-
 #include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
@@ -52,11 +51,8 @@ private:
 		}
 
 		{
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::Plane>(0.0f);
-			auto planeId = registerSDF(plane);
-
 			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, 0);
+			Entity start = addShape(DefaultShapes3D::PLANE, vars1, DisplaySettings::White, CombinationType::Addition, false);
 		}
 
 		getLigths().push_back(

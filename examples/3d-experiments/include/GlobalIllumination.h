@@ -44,11 +44,8 @@ private:
 
 
 		{
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::Plane>(3.0f);
-			auto planeId = registerSDF(plane);
-
-			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, DisplaySettings::LightGray, CombinationType::Addition, false);
+			float vars[8] = {3};
+			Entity floor = addShape(DefaultShapes3D::PLANE, vars, DisplaySettings::White, CombinationType::Addition, false);
 		}
 
 		{

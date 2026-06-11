@@ -7,6 +7,7 @@ execute_process(COMMAND git submodule update --init --recursive)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 

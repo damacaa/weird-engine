@@ -7,6 +7,10 @@
 #include "weird-engine/vec.h"
 #include "weird-engine/Profiler.h"
 
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer

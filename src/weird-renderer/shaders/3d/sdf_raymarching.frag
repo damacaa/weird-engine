@@ -332,6 +332,12 @@ vec2 hash2(inout float seed)
 	return fract(sin(vec2(seed, seed + 1.0) * vec2(12.9898, 78.233)) * 43758.5453);
 }
 
+vec3 hash3(inout float seed)
+{
+	seed += 1.0;
+	return fract(sin(vec3(seed, seed + 1.0, seed + 2.0) * vec3(12.9898, 78.233, 45.164)) * 43758.5453);
+}
+
 vec3 cosineSampleHemisphere(vec3 N, inout float seed)
 {
 	vec2 xi = hash2(seed);
@@ -566,9 +572,12 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		else
 		{
 			p = p + N * 0.01 + d * bounceDir;
-			vec2 bounceScene = sceneSdf(p);
+			// Jitter the material sampling point on bounces too, so
+			// smooth-union color blending works for indirect lighting.
+			vec3 bounceMaterialPos = p + (hash3(seed) - 0.5) * 0.04 * max(d, 1.0);
+			vec2 bounceScene = sceneSdf(bounceMaterialPos);
 			int bounceMatId = clamp(int(bounceScene.y), 0, 15);
-			vec3 bounceMaterial = getMaterial(p, bounceMatId);
+			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId);
 
 			// Update material properties for the next bounce
 			roughness = u_materialData[bounceMatId].roughness;
@@ -773,9 +782,20 @@ vec4 render(in vec2 uv)
 	{
 		// --- SDF hit is in front ---
 		vec3 p = ro + object * rd;
-		vec2 sceneResult = sceneSdf(p);
+
+#ifdef PATH_TRACING
+		// Jitter the material sampling point with high-frequency 3D noise.
+		// Temporal accumulation will blend material colors at smooth-union
+		// boundaries into smooth gradients.
+		// Scale jitter by distance so blending stays visible at any range
+		vec3 materialSamplePos = p + (hash3(seed) - 0.5) * 0.01 * max(object, 5.0);
+#else
+		vec3 materialSamplePos = p;
+#endif
+
+		vec2 sceneResult = sceneSdf(materialSamplePos);
 		int materialId = int(sceneResult.y);
-		vec3 baseColor = getMaterial(p, materialId);
+		vec3 baseColor = getMaterial(materialSamplePos, materialId);
 
 #ifdef PATH_TRACING
 		col = pathTrace(p, rd, baseColor, materialId, getNormal(p), seed);

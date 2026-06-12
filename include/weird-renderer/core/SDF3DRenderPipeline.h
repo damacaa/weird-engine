@@ -67,6 +67,7 @@ namespace WeirdEngine
 			RenderPlane& m_renderPlane;
 
 			Shader m_sdfShader;
+			Shader m_resolveShader;
 			DataBuffer* m_shapeDataBuffer;
 
 			Texture m_outputTexture;

@@ -24,6 +24,7 @@ namespace WeirdEngine
 			, m_oldCameraMatrix(glm::mat4(0.0f))
 		{
 			m_sdfShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "3d/sdf_raymarching.frag");
+			m_resolveShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/linear_to_srgb.frag");
 			m_shapeDataBuffer = new DataBuffer();
 			resize(config.renderWidth, config.renderHeight);
 
@@ -137,16 +138,16 @@ namespace WeirdEngine
 
 			m_frameCounter++;
 
-			// Blit accumulation result to the main output target
+			// Resolve accumulation result to the main output target (applying gamma)
 			m_outputRender.bind();
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, m_accumRender[m_accumIdx].getFrameBuffer());
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_outputRender.getFrameBuffer());
-			glBlitFramebuffer(
-				0, 0, (GLint)m_config.renderWidth, (GLint)m_config.renderHeight,
-				0, 0, (GLint)m_config.renderWidth, (GLint)m_config.renderHeight,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			
+			m_resolveShader.use();
+			m_resolveShader.setUniform("t_input", 0);
+			m_accumTexture[m_accumIdx].bind(0);
+
+			glDisable(GL_DEPTH_TEST);
+			m_renderPlane.draw(m_resolveShader);
+			glEnable(GL_DEPTH_TEST);
 
 			// Keep output bound so geometry can be rendered on top
 			m_outputRender.bind();

@@ -96,7 +96,7 @@ uniform float u_time;
 
 const int MAX_STEPS = 256;
 const float RAYMARCH_EPSILON = 0.001;
-const float NORMAL_EPSILON = 0.00001;
+const float NORMAL_EPSILON = 0.0001;
 uniform float u_near;
 uniform float u_far;
 
@@ -325,17 +325,30 @@ vec3 getPointLight(vec3 p, vec3 rd, vec3 color)
 }
 
 // Random functions for path tracing
-// Based on typical hash
+// Based on PCG integer hash
+uint pcg(inout uint state)
+{
+	state = state * 747796405u + 2891336453u;
+	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	return (word >> 22u) ^ word;
+}
+
+float randomFloat(inout float seed)
+{
+	uint state = floatBitsToUint(seed);
+	float result = float(pcg(state)) * (1.0 / 4294967296.0); // 2^-32
+	seed = uintBitsToFloat(state);
+	return result;
+}
+
 vec2 hash2(inout float seed)
 {
-	seed += 1.0;
-	return fract(sin(vec2(seed, seed + 1.0) * vec2(12.9898, 78.233)) * 43758.5453);
+	return vec2(randomFloat(seed), randomFloat(seed));
 }
 
 vec3 hash3(inout float seed)
 {
-	seed += 1.0;
-	return fract(sin(vec3(seed, seed + 1.0, seed + 2.0) * vec3(12.9898, 78.233, 45.164)) * 43758.5453);
+	return vec3(randomFloat(seed), randomFloat(seed), randomFloat(seed));
 }
 
 vec3 cosineSampleHemisphere(vec3 N, inout float seed)
@@ -547,15 +560,9 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 
 		// modulate throughput based on branch
 		if (isSpecular)
-		{
-			// Specular bounce takes the Fresnel energy, but we factored that into the probability
-			// so just multiply by the tint
-			throughput *= vec3(1.0); // ????
-		}
+			throughput *= mix(vec3(1.0), currentAlbedo, currentF0); // metallic tint
 		else
-		{
 			throughput *= currentAlbedo;
-		}
 
 		bool bounceHitObstacle = (d < u_far) && (sceneSdf(p + N * 0.01 + d * bounceDir).x < RAYMARCH_EPSILON * 5.0);
 
@@ -738,7 +745,9 @@ vec4 render(in vec2 uv)
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
 
-	float seed = uv.x * 1234.5 + uv.y * 6789.0 + float(u_frameCounter) * 111.0;
+	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter);
+	pcg(state); // Warm up the state
+	float seed = uintBitsToFloat(state);
 
 	if (meshInFront)
 	{
@@ -846,7 +855,15 @@ void main()
 	vec4 data = render(uv);
 	vec3 col = data.xyz;
 
-
+	// Firefly suppression: clamp per-sample luminance before accumulation.
+	// Fireflies are caused by rare specular paths hitting a bright light,
+	// producing extreme values that take hundreds of frames to average out.
+	// Clamping the max component kills them at the source with minimal bias.
+	float maxComp = max(col.r, max(col.g, col.b));
+	if (maxComp > 3.0)
+	{
+		col *= 3.0 / maxComp;
+	}
 	
 	// Apply contrast pivoting around mid-gray
 	col = mix(vec3(0.5), col, u_contrast);
@@ -857,7 +874,6 @@ void main()
 	if (u_frameCounter > 0)
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
-		prevColor.xyz = pow(prevColor.xyz, vec3(2.2)); // to linear
 		
 		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap 
 		// to prevent the weight from becoming too small, allowing the image to 
@@ -867,6 +883,5 @@ void main()
 	}
 #endif
 
-	FragColor = vec4(pow(col, vec3(0.4545)), 1.0); // to sRGB
-												   // FragColor = vec4(1.0); // all white
+	FragColor = vec4(col, 1.0); // output linear color for accumulation
 }

@@ -89,6 +89,7 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 
 	int finalMaterialId = 16;
 	float mask = 0.0;
+	float globalBlend = 0.0;
 
 #include "custom_shapes"
 

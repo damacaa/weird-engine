@@ -14,6 +14,22 @@ float fOpUnionSoft(float a, float b, float r, float invR)
 	return min(a, b) - h * h * 0.25 * invR;
 }
 
+vec2 fOpUnionSoft_blend(float a, float b, float r)
+{
+	r *= 1.0;
+	float h = max(r - abs(a - b), 0.0);
+	float blend = h / r;
+	return vec2(min(a, b) - h * h * 0.25 / r, blend);
+}
+
+vec2 fOpUnionSoft_blend(float a, float b, float r, float invR)
+{
+	r *= 1.0;
+	float h = max(r - abs(a - b), 0.0);
+	float blend = h * invR;
+	return vec2(min(a, b) - h * h * 0.25 * invR, blend);
+}
+
 // Smooth subtraction: a - b
 float fOpSubSoft(float a, float b, float r)
 {

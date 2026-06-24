@@ -46,6 +46,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 		int currentGroup = -1;
 		std::string groupDistanceVariable;
+		std::string groupBlendVariable;
 
 		ShapeClass dummyShape;
 		dummyShape.groupIdx = CustomShape::GLOBAL_GROUP - 1;
@@ -73,13 +74,16 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 				{
 					oss << "if(" << groupDistanceVariable
 						<< " <= max(minDist, 0.0)){ finalMaterialId = currentGroupColor;}\n";
+					oss << "if(" << groupDistanceVariable << " <= minDist) { globalBlend = " << groupBlendVariable << "; }\n";
 					oss << "if(minDist > " << groupDistanceVariable << "){ minDist = " << groupDistanceVariable
 						<< ";}\n";
 				}
 
 				currentGroup = group;
 				groupDistanceVariable = "d" + std::to_string(currentGroup);
+				groupBlendVariable = "b" + std::to_string(currentGroup);
 				oss << "float " << groupDistanceVariable << " = 10000.0;\n";
+				oss << "float " << groupBlendVariable << " = 0.0;\n";
 			}
 
 			if (group == CustomShape::GLOBAL_GROUP - 1)
@@ -157,13 +161,15 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			oss << "dist = modifyDistanceBasedOnMaterial(dist, " << shape.material << ", idx);\n";
 
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";\n";
+			oss << "float currentBlend = " << (globalEffect ? "globalBlend" : groupBlendVariable) << ";\n";
 
 			switch (shape.combination)
 			{
 				case CombinationType::Addition:
 				{
+					oss << "if (dist <= currentMinDistance) { currentBlend = 0.0; }\n";
 					oss << "currentMinDistance = min(currentMinDistance, dist);\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
+					oss << "currentGroupColor = dist <= currentMinDistance ? " << shape.material
 						<< " : currentGroupColor;\n";
 					break;
 				}
@@ -179,9 +185,12 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "currentMinDistance = fOpUnionSoft(currentMinDistance, dist, "
+					oss << "vec2 res = fOpUnionSoft_blend(currentMinDistance, dist, "
 						<< toGlslFloat(shape.smoothFactor) << ");\n";
-					oss << "currentGroupColor = dist <= min(currentMinDistance, dist) ? " << shape.material
+					oss << "if (res.y > 0.0) { currentBlend = max(currentBlend, res.y); }\n";
+					oss << "else if (dist < currentMinDistance) { currentBlend = 0.0; }\n";
+					oss << "currentMinDistance = res.x;\n";
+					oss << "currentGroupColor = dist <= currentMinDistance ? " << shape.material
 						<< " : currentGroupColor;\n";
 					break;
 				}
@@ -196,6 +205,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			}
 
 			oss << (globalEffect ? "minDist" : groupDistanceVariable) << " = currentMinDistance;\n";
+			oss << (globalEffect ? "globalBlend" : groupBlendVariable) << " = currentBlend;\n";
 			oss << "}\n\n";
 		}
 

@@ -209,10 +209,11 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 }
 // ==========================================
 
-vec2 sceneSdf(vec3 p)
+vec3 sceneSdf(vec3 p)
 {
 	float minDist = u_far;
 	int finalMaterialId = 16;
+	float globalBlend = 0.0;
 
 	// Runtime-generated custom-shape SDF code is injected at this include point.
 	// SDFShaderGenerationSystem walks the ECS custom shape components when they are marked dirty,
@@ -233,7 +234,7 @@ vec2 sceneSdf(vec3 p)
 		// minDist = max(minDist, -boxDist);
 	}
 
-	return vec2(minDist, max(float(finalMaterialId), 0.0));
+	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 #endif
 
 	// These are just spheres
@@ -247,10 +248,17 @@ vec2 sceneSdf(vec3 p)
 		objectDist = modifyDistanceBasedOnMaterial(objectDist, materialId, i);
 
 		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-		minDist = fOpUnionSoft(objectDist, minDist, DOT_BLEND_K);
+		
+		vec2 res = fOpUnionSoft_blend(minDist, objectDist, DOT_BLEND_K);
+		if (res.y > 0.0) {
+			globalBlend = max(globalBlend, res.y);
+		} else if (objectDist < minDist) {
+			globalBlend = 0.0;
+		}
+		minDist = res.x;
 	}
 
-	return vec2(minDist, max(float(finalMaterialId), 0.0));
+	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 }
 
 vec3 getMaterial(vec3 p, int id)
@@ -267,7 +275,7 @@ vec3 getMaterial(vec3 p, int id)
 
 vec3 getColor(vec3 p)
 {
-	vec2 scene = sceneSdf(p);
+	vec3 scene = sceneSdf(p);
 	return getMaterial(p, int(scene.y));
 }
 
@@ -581,8 +589,12 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			p = p + N * 0.01 + d * bounceDir;
 			// Jitter the material sampling point on bounces too, so
 			// smooth-union color blending works for indirect lighting.
-			vec3 bounceMaterialPos = p + (hash3(seed) - 0.5) * 0.04 * max(d, 1.0);
-			vec2 bounceScene = sceneSdf(bounceMaterialPos);
+			vec3 preBounceScene = sceneSdf(p);
+			float bounceBlend = preBounceScene.z;
+			float bounceJitterMask = smoothstep(0.0, 0.5, bounceBlend);
+
+			vec3 bounceMaterialPos = p + (hash3(seed) - 0.5) * 0.04 * max(d, 1.0) * bounceJitterMask;
+			vec3 bounceScene = sceneSdf(bounceMaterialPos);
 			int bounceMatId = clamp(int(bounceScene.y), 0, 15);
 			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId);
 
@@ -797,12 +809,16 @@ vec4 render(in vec2 uv)
 		// Temporal accumulation will blend material colors at smooth-union
 		// boundaries into smooth gradients.
 		// Scale jitter by distance so blending stays visible at any range
-		vec3 materialSamplePos = p + (hash3(seed) - 0.5) * 0.01 * max(object, 5.0);
+		vec3 preScene = sceneSdf(p);
+		float blendFactor = preScene.z;
+		float jitterMask = smoothstep(0.0, 0.5, blendFactor);
+
+		vec3 materialSamplePos = p + (hash3(seed) - 0.5) * 0.01 * max(object, 5.0) * jitterMask;
 #else
 		vec3 materialSamplePos = p;
 #endif
 
-		vec2 sceneResult = sceneSdf(materialSamplePos);
+		vec3 sceneResult = sceneSdf(materialSamplePos);
 		int materialId = int(sceneResult.y);
 		vec3 baseColor = getMaterial(materialSamplePos, materialId);
 

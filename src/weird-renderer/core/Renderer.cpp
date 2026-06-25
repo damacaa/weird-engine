@@ -36,8 +36,6 @@ namespace WeirdEngine
 			, m_targetRefreshRate(settings.refreshRate)
 		{
 			std::copy_n(settings.colorPalette, 16, m_colorPalette);
-			std::copy_n(settings.materialDataPalette, 16, m_materialDataPalette);
-
 			setWindowSize(settings.width, settings.height);
 
 			// Initialize world 2D pipeline
@@ -94,7 +92,7 @@ namespace WeirdEngine
 			sdf3DConfig.contrast = settings.raymarching3DContrast;
 			sdf3DConfig.enablePathTracer = settings.enable3DPathTracer;
 			m_3DWorldPipeline =
-				new SDF3DRenderPipeline(sdf3DConfig, m_colorPalette, m_materialDataPalette, m_renderPlane);
+				new SDF3DRenderPipeline(sdf3DConfig, m_renderPlane);
 
 			// Initialize mesh pipeline
 			m_meshPipeline = new MeshRenderPipeline();
@@ -540,7 +538,8 @@ namespace WeirdEngine
 						m_meshPipeline->getGBufferAlbedo(),
 						m_meshPipeline->getGBufferWorldPos(),
 						m_meshPipeline->getGBufferNormal(),
-						m_meshPipeline->getDepthTexture()
+						m_meshPipeline->getDepthTexture(),
+						scene.getMaterials()
 					);
 
 					glEnable(GL_CULL_FACE);

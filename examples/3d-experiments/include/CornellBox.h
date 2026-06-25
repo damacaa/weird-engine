@@ -23,13 +23,27 @@ private:
 		m_debugFly = true;
 
 
+		auto& ballMat = createMaterial();
+		ballMat.color = vec4(1.0f);
+		ballMat.metallic = 1.0f;
+		ballMat.roughness = 0.005f;
+
+		auto& redMat = createMaterial();
+		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
+
+		auto& greenMat = createMaterial();
+		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
+
+		auto& whiteMat = createMaterial();
+		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(0.0f, 0.75f, 0.0f);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::Gray;
+			sdf.materialId = ballMat.id;
 		}
 
 
@@ -50,37 +64,37 @@ private:
       // Left
 			{
 				float vars1[8] = {-2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::Red, CombinationType::Addition, false);
+				Entity start = addShape(boxId, vars1, redMat, CombinationType::Addition, false);
 			}
 
       // Right
       {
 				float vars1[8] = {2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::Green, CombinationType::Addition, false);
+				Entity start = addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
 			}
 
       // Back
       {
 				float vars1[8] = {0.0f, 2.6f, -2.0f * 2.6f, 3.0f * 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Addition, false);
+				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
       // Top
       {
 				float vars1[8] = {0.0f, 3.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Addition, false);
+				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
       // Light hole
       {
 				float vars1[8] = {0.0f, 2.0f * 2.6f, 0.0f, 0.5f, 1.0f, 0.5f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Subtraction, false);
+				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
 			}
 
       // Floor
       {
 				float vars1[8] = {0.0f, -1.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Addition, false);
+				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
       // {

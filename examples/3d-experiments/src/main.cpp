@@ -37,21 +37,7 @@ int main(int argc, char* argv[])
 
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 1.0f;
 
-	displaySettings.materialDataPalette[DisplaySettings::Gray].roughness = 0.005f;
-	displaySettings.materialDataPalette[DisplaySettings::Gray].metallic = 1.0f;
 
-
-	displaySettings.materialDataPalette[DisplaySettings::LightGray].roughness = 0.1f;
-	displaySettings.materialDataPalette[DisplaySettings::LightGray].metallic = 0.5f;
-
-	displaySettings.materialDataPalette[DisplaySettings::White].roughness = 1.0f;
-	displaySettings.materialDataPalette[DisplaySettings::White].metallic = 0.0f;
-
-	displaySettings.materialDataPalette[DisplaySettings::Red].roughness = 1.0f;
-	displaySettings.materialDataPalette[DisplaySettings::Red].metallic = 0.0f;
-
-	displaySettings.materialDataPalette[DisplaySettings::Green].roughness = 1.0f;
-	displaySettings.materialDataPalette[DisplaySettings::Green].metallic = 0.0f;
 
 	PhysicsSettings physicsSettings{};
 

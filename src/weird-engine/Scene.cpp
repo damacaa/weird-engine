@@ -450,4 +450,19 @@ namespace WeirdEngine
 
 		return component;
 	}
+
+	Material3D& Scene::createMaterial()
+	{
+		if (m_materialCount >= 16)
+		{
+			// Max materials reached, return the last one
+			return m_materials[15];
+		}
+		
+		Material3D& mat = m_materials[m_materialCount];
+		mat.id = m_materialCount;
+		m_materialCount++;
+		
+		return mat;
+	}
 } // namespace WeirdEngine

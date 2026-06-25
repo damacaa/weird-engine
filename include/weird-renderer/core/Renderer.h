@@ -71,7 +71,6 @@ namespace WeirdEngine
 			Texture m_outputTexture;
 
 			glm::vec4 m_colorPalette[16];
-			DisplaySettings::ExtraMaterialData m_materialDataPalette[16];
 
 			Camera m_uiCamera;
 

@@ -21,6 +21,18 @@ private:
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
+		auto& redMat = createMaterial();
+		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
+		
+		auto& orangeMat = createMaterial();
+		orangeMat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
+		
+		auto& floorMaterial = createMaterial();
+		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		floorMaterial.metallic = 1.0f;
+		floorMaterial.roughness = 0.3f;
+		floorMaterial.pattern = MaterialPattern::Checkers;
+
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -40,19 +52,19 @@ private:
 			t.position = vec3(2, 3, 2);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::Red;
+			sdf.materialId = redMat.id;
 
 			m_ball = entity;
 		}
 
 		{
 			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f}; // Custom shape
-			Entity start = addShape(DefaultShapes::STAR, vars1, DisplaySettings::Orange, CombinationType::Addition, true, 0);
+			Entity start = addShape(DefaultShapes::STAR, vars1, orangeMat, CombinationType::Addition, true, 0);
 		}
 
 		{
 			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(DefaultShapes3D::PLANE, vars1, DisplaySettings::White, CombinationType::Addition, false);
+			Entity start = addShape(DefaultShapes3D::PLANE, vars1, floorMaterial, CombinationType::Addition, false);
 		}
 
 		getLigths().push_back(

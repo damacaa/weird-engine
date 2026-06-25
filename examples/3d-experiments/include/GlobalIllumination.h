@@ -22,6 +22,34 @@ private:
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
+		auto& floorMaterial = createMaterial();
+		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		floorMaterial.metallic = 0.0f;
+		floorMaterial.roughness = 0.3f;
+		floorMaterial.pattern = MaterialPattern::Checkers;
+
+		auto& mirrorMaterial = createMaterial();
+		mirrorMaterial.color = vec4(1.0f);
+		mirrorMaterial.metallic = 1.0f;
+		mirrorMaterial.roughness = 0.0f;
+		
+		std::vector<uint16_t> randomMats;
+		vec4 colors[] = {
+			vec4(.95f, 0.4f, 0.1f, 1.0f),       // Orange
+			vec4(0.5f, 0.0f, 1.0f, 1.0f),       // Purple
+			vec4(0.0f, .9f, .9f, 1.0f),         // Cyan
+			vec4(1.0f, 0.3f, .6f, 1.0f),        // Magenta
+			vec4(0.5f, 1.0f, 0.5f, 1.0f),       // Light Green
+			vec4(1.0f, 0.5f, 0.5f, 1.0f),       // Pink
+			vec4(0.5f, 0.5f, 1.0f, 1.0f),       // Light Blue
+			vec4(0.4f, 0.25f, 0.1f, 1.0f)       // Brown
+		};
+
+		for (int i = 0; i < 8; i++) {
+			auto& mat = createMaterial();
+			mat.color = colors[i];
+			randomMats.push_back(mat.id);
+		}
 
 		{
 			Entity entity = m_ecs.createEntity();
@@ -29,7 +57,7 @@ private:
 			t.position = vec3(-0.5f, -2.0f, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = DisplaySettings::Blue;
+			sdf.materialId = randomMats[rand() % randomMats.size()];
 		}
 
     	for (size_t i = 0; i < 8; i++)
@@ -39,13 +67,12 @@ private:
 			t.position = vec3(1.0f + (i), -2.0f, 0);
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = (i + 8) % 16;
+			sdf.materialId = randomMats[i];
 		}
-
 
 		{
 			float vars[8] = {3};
-			Entity floor = addShape(DefaultShapes3D::PLANE, vars, DisplaySettings::White, CombinationType::Addition, false);
+			Entity floor = addShape(DefaultShapes3D::PLANE, vars, floorMaterial, CombinationType::Addition, false);
 		}
 
 		{
@@ -53,7 +80,7 @@ private:
 			auto boxId = registerSDF(box);
 
 			float vars1[8] = {-5.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, DisplaySettings::Gray, CombinationType::Addition, false);
+			Entity start = addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
 		{
@@ -61,7 +88,7 @@ private:
 			auto boxId = registerSDF(box);
 
 			float vars1[8] = {20.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, DisplaySettings::Gray, CombinationType::Addition, false);
+			Entity start = addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
 		getLigths().push_back(

@@ -73,13 +73,14 @@ uniform int u_rayBounces;
 uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
-uniform vec4 u_staticColors[16];
-struct ExtraMaterialData
+struct MaterialData
 {
+	vec4 color;
 	float metallic;
 	float roughness;
+	int pattern;
 };
-uniform ExtraMaterialData u_materialData[16];
+uniform MaterialData u_materials[16];
 
 struct Light
 {
@@ -184,7 +185,7 @@ vec2 HashID(float id)
 // The reusable Transparency Dither Function
 float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 {
-	float alpha = materialId < 16 ? u_staticColors[materialId].a : 1.0;
+	float alpha = materialId < 16 ? u_materials[materialId].color.a : 1.0;
 
 	if (alpha < 1.0)
 	{
@@ -263,8 +264,10 @@ vec3 sceneSdf(vec3 p)
 
 vec3 getMaterial(vec3 p, int id)
 {
-	vec3 color = id < 16 ? u_staticColors[id].xyz : (0.83 * vec3(1.0));
-	if (id == 0)
+	vec3 color = id < 16 ? u_materials[id].color.xyz : (0.83 * vec3(1.0));
+	int pattern = id < 16 ? u_materials[id].pattern : 0;
+
+	if (pattern == 1)
 	{
 		float checker = 0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0);
 		return color * (0.8 + checker);
@@ -427,8 +430,8 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	// === Render Style Parameters ===================================
 	// roughness and f0 are driven by the material palette; other params remain constant
 	int currentMatId = clamp(materialId, 0, 15);
-	float roughness = u_materialData[currentMatId].roughness;
-	float f0 = u_materialData[currentMatId].metallic;
+	float roughness = u_materials[currentMatId].roughness;
+	float f0 = u_materials[currentMatId].metallic;
 
 	// fresnelPower: exponent for viewing angle reflection falloff
 	float fresnelPower = 5.0; // Retro: 2.0,       Realistic: 5.0
@@ -599,8 +602,8 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId);
 
 			// Update material properties for the next bounce
-			roughness = u_materialData[bounceMatId].roughness;
-			f0 = u_materialData[bounceMatId].metallic;
+			roughness = u_materials[bounceMatId].roughness;
+			f0 = u_materials[bounceMatId].metallic;
 
 			vec3 emission = max(bounceMaterial - vec3(1.0), vec3(0.0));
 			currentAlbedo = min(bounceMaterial, vec3(1.0));
@@ -619,8 +622,8 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId, vec3 N)
 
 	// === Render Style Parameters ===================================
 	int matId = clamp(materialId, 0, 15);
-	float f0 = u_materialData[matId].metallic;
-	float roughness = u_materialData[matId].roughness;
+	float f0 = u_materials[matId].metallic;
+	float roughness = u_materials[matId].roughness;
 	float fresnelPower = 10.0;
 	float specExponent = 100.0;
 	vec3 specMultiplier = vec3(5.0);

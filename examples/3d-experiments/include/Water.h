@@ -84,12 +84,15 @@ private:
 	{
 		m_debugFly = true;
 
+		auto& redMat = createMaterial();
+		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
+
 		{
 			m_dot = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(m_dot);
 			t.position = vec3(0, 0, 0);
 			auto& renderer = m_ecs.addComponent<Dot>(m_dot);
-			renderer.materialId = DisplaySettings::Red;
+			renderer.materialId = redMat.id;
 			m_ecs.addComponent<Floatable>(m_dot);
 		}
 

@@ -13,10 +13,8 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 
-		SDF3DRenderPipeline::SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, const DisplaySettings::ExtraMaterialData* materialDataPalette, RenderPlane& renderPlane)
+		SDF3DRenderPipeline::SDF3DRenderPipeline(const Config& config, RenderPlane& renderPlane)
 			: m_config(config)
-			, m_colorPalette(colorPalette)
-			, m_materialDataPalette(materialDataPalette)
 			, m_renderPlane(renderPlane)
 			, m_shapeDataBuffer(nullptr)
 			, m_accumIdx(0)
@@ -58,7 +56,8 @@ namespace WeirdEngine
 			Texture& gbufferAlbedo,
 			Texture& gbufferWorldPos,
 			Texture& gbufferNormal,
-			Texture& gbufferDepth
+			Texture& gbufferDepth,
+			const Material3D* materials
 		)
 		{
 			// Reset frame counter when path tracer is disabled (no accumulation)
@@ -85,13 +84,13 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_fov", shaderFov);
 			m_sdfShader.setUniform("u_time", (float)time);
 			m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
-			m_sdfShader.setUniform("u_staticColors", m_colorPalette, 16);
-
 			for (int i = 0; i < 16; i++)
 			{
-				std::string prefix = "u_materialData[" + std::to_string(i) + "].";
-				m_sdfShader.setUniform(prefix + "metallic", m_materialDataPalette[i].metallic);
-				m_sdfShader.setUniform(prefix + "roughness", m_materialDataPalette[i].roughness);
+				std::string prefix = "u_materials[" + std::to_string(i) + "].";
+				m_sdfShader.setUniform(prefix + "color", materials[i].color);
+				m_sdfShader.setUniform(prefix + "metallic", materials[i].metallic);
+				m_sdfShader.setUniform(prefix + "roughness", materials[i].roughness);
+				m_sdfShader.setUniform(prefix + "pattern", (int)materials[i].pattern);
 			}
 			m_sdfShader.setUniform("u_near", camera.nearPlane);
 			m_sdfShader.setUniform("u_far", camera.farPlane);

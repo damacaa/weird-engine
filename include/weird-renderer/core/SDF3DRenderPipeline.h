@@ -9,6 +9,7 @@
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
 #include "weird-renderer/scene/Light.h"
+#include "weird-engine/Material3D.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -32,7 +33,7 @@ namespace WeirdEngine
 				bool enableAntialiasing = true;
 			};
 
-			SDF3DRenderPipeline(const Config& config, const glm::vec4* colorPalette, const DisplaySettings::ExtraMaterialData* materialDataPalette, RenderPlane& renderPlane);
+			SDF3DRenderPipeline(const Config& config, RenderPlane& renderPlane);
 			~SDF3DRenderPipeline();
 
 			Shader& getShader();
@@ -48,7 +49,8 @@ namespace WeirdEngine
 				Texture& gbufferAlbedo,
 				Texture& gbufferWorldPos,
 				Texture& gbufferNormal,
-				Texture& gbufferDepth
+				Texture& gbufferDepth,
+				const Material3D* materials
 			);
 
 			RenderTarget& getRenderTarget();
@@ -62,8 +64,6 @@ namespace WeirdEngine
 
 		private:
 			Config m_config;
-			const glm::vec4* m_colorPalette;
-			const DisplaySettings::ExtraMaterialData* m_materialDataPalette;
 			RenderPlane& m_renderPlane;
 
 			Shader m_sdfShader;

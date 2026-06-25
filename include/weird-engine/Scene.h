@@ -12,6 +12,7 @@
 
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-physics/Simulation2D.h"
+#include "weird-engine/Material3D.h"
 
 #include <string>
 #include <unordered_map>
@@ -68,6 +69,11 @@ namespace WeirdEngine
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
+
+		Material3D& createMaterial();
+
+		Material3D& getMaterial(int index) { return m_materials[index]; }
+		const Material3D* getMaterials() const { return m_materials; }
 
 		float getTime();
 
@@ -134,13 +140,28 @@ namespace WeirdEngine
 		ResourceManager m_resourceManager;
 		Simulation2D m_simulation2D;
 
+		Material3D m_materials[16];
+		uint16_t m_materialCount = 0;
+
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(ShapeId shapeId, float* variables, uint16_t material,
 						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
 						int group = 0);
+		Entity addShape(ShapeId shapeId, float* variables, const Material3D& material,
+						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
+						int group = 0)
+		{
+			return addShape(shapeId, variables, material.id, combination, hasCollision, group);
+		}
+		
 		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
 						  CombinationType combination = CombinationType::Addition, int group = 0);
+		Entity addUIShape(ShapeId shapeId, float* variables, const Material3D& material,
+						  CombinationType combination = CombinationType::Addition, int group = 0)
+		{
+			return addUIShape(shapeId, variables, material.id, combination, group);
+		}
 		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
 
 		void lookAt(Entity entity);

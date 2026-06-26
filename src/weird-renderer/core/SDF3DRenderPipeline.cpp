@@ -91,6 +91,8 @@ namespace WeirdEngine
 				m_sdfShader.setUniform(prefix + "metallic", materials[i].metallic);
 				m_sdfShader.setUniform(prefix + "roughness", materials[i].roughness);
 				m_sdfShader.setUniform(prefix + "pattern", (int)materials[i].pattern);
+				m_sdfShader.setUniform(prefix + "patternScale", materials[i].patternScale);
+				m_sdfShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
 			}
 			m_sdfShader.setUniform("u_near", camera.nearPlane);
 			m_sdfShader.setUniform("u_far", camera.farPlane);

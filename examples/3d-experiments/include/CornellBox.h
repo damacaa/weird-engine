@@ -33,7 +33,9 @@ private:
 
 		auto& greenMat = createMaterial();
 		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
-
+		greenMat.metallic = 0.5f;
+		greenMat.roughness = 0.1f;
+		
 		auto& whiteMat = createMaterial();
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 

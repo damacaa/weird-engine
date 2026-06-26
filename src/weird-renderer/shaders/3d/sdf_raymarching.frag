@@ -79,6 +79,8 @@ struct MaterialData
 	float metallic;
 	float roughness;
 	int pattern;
+	float patternScale;
+	vec4 secondaryColor;
 };
 uniform MaterialData u_materials[16];
 
@@ -161,6 +163,49 @@ float perlin(vec2 p)
 	float ab = mix(a, b, f.x);
 	float cd = mix(c, d, f.x);
 	return mix(ab, cd, f.y);
+}
+
+// Hash 3D
+vec3 hash3D(vec3 p)
+{
+	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
+			 dot(p, vec3(269.5, 183.3, 246.1)),
+			 dot(p, vec3(113.5, 271.9, 124.6)));
+	return normalize(fract(sin(p) * 43758.5453123) * 2.0 - 1.0);
+}
+
+// Gradient noise 3D
+float grad3D(vec3 p, vec3 ip)
+{
+	return dot(p - ip, hash3D(ip));
+}
+
+// Perlin Noise 3D
+float perlin3D(vec3 p)
+{
+	vec3 ip = floor(p);
+	vec3 fp = fract(p);
+
+	float a000 = grad3D(p, ip + vec3(0.0, 0.0, 0.0));
+	float a100 = grad3D(p, ip + vec3(1.0, 0.0, 0.0));
+	float a010 = grad3D(p, ip + vec3(0.0, 1.0, 0.0));
+	float a110 = grad3D(p, ip + vec3(1.0, 1.0, 0.0));
+	float a001 = grad3D(p, ip + vec3(0.0, 0.0, 1.0));
+	float a101 = grad3D(p, ip + vec3(1.0, 0.0, 1.0));
+	float a011 = grad3D(p, ip + vec3(0.0, 1.0, 1.0));
+	float a111 = grad3D(p, ip + vec3(1.0, 1.0, 1.0));
+
+	vec3 f = vec3(fade(fp.x), fade(fp.y), fade(fp.z));
+
+	float mix00 = mix(a000, a100, f.x);
+	float mix01 = mix(a010, a110, f.x);
+	float mix10 = mix(a001, a101, f.x);
+	float mix11 = mix(a011, a111, f.x);
+
+	float mix0 = mix(mix00, mix01, f.y);
+	float mix1 = mix(mix10, mix11, f.y);
+
+	return mix(mix0, mix1, f.z);
 }
 
 // ==========================================
@@ -265,13 +310,34 @@ vec3 sceneSdf(vec3 p)
 vec3 getMaterial(vec3 p, int id)
 {
 	vec3 color = id < 16 ? u_materials[id].color.xyz : (0.83 * vec3(1.0));
+	vec3 secondaryColor = id < 16 ? u_materials[id].secondaryColor.xyz : vec3(0.0);
 	int pattern = id < 16 ? u_materials[id].pattern : 0;
+	float patternScale = id < 16 ? u_materials[id].patternScale : 1.0;
 
-	if (pattern == 1)
+	if(pattern > 0)
 	{
-		float checker = 0.2 + 0.4 * mod(floor(p.x) + floor(p.z), 2.0);
-		return color * (0.8 + checker);
+		float patternShape = 0.0;
+		vec3 sp = p * patternScale;
+
+		if (pattern == 1)
+		{
+			patternShape = mod(floor(sp.x) + floor(sp.y) + floor(sp.z), 2.0);
+		}
+		else if(pattern == 2) // Perlin Noise
+		{
+			patternShape = perlin3D(sp.xyz * 10.0);
+		}
+		else if(pattern == 3) // Waves
+		{
+			patternShape = (sin(10.0  * perlin3D(sp.xyz * 10.0)) + 1.0) * 0.5;
+			patternShape = smoothstep(0.3, 0.7, patternShape);
+
+		}
+
+		return mix(color, secondaryColor, patternShape);
 	}
+
+	
 
 	return color;
 }

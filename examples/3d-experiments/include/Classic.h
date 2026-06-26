@@ -29,6 +29,7 @@ private:
 		
 		auto& floorMaterial = createMaterial();
 		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		floorMaterial.secondaryColor = vec4(0.4f, 0.4f, 0.6f, 1.0f);
 		floorMaterial.metallic = 1.0f;
 		floorMaterial.roughness = 0.3f;
 		floorMaterial.pattern = MaterialPattern::Checkers;

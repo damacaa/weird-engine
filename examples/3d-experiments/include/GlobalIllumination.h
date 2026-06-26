@@ -22,45 +22,95 @@ private:
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
-		auto& floorMaterial = createMaterial();
-		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-		floorMaterial.metallic = 0.0f;
-		floorMaterial.roughness = 0.3f;
-		floorMaterial.pattern = MaterialPattern::Checkers;
 
-		auto& mirrorMaterial = createMaterial();
-		mirrorMaterial.color = vec4(1.0f);
-		mirrorMaterial.metallic = 1.0f;
-		mirrorMaterial.roughness = 0.0f;
-		
-		std::vector<uint16_t> randomMats;
-		vec4 colors[] = {
-			vec4(.95f, 0.4f, 0.1f, 1.0f),       // Orange
-			vec4(0.5f, 0.0f, 1.0f, 1.0f),       // Purple
-			vec4(0.0f, .9f, .9f, 1.0f),         // Cyan
-			vec4(1.0f, 0.3f, .6f, 1.0f),        // Magenta
-			vec4(0.5f, 1.0f, 0.5f, 1.0f),       // Light Green
-			vec4(1.0f, 0.5f, 0.5f, 1.0f),       // Pink
-			vec4(0.5f, 0.5f, 1.0f, 1.0f),       // Light Blue
-			vec4(0.4f, 0.25f, 0.1f, 1.0f)       // Brown
-		};
-
-		for (int i = 0; i < 8; i++) {
-			auto& mat = createMaterial();
-			mat.color = colors[i];
-			randomMats.push_back(mat.id);
-		}
 
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
 			t.position = vec3(-0.5f, -2.0f, 0);
 
+			auto& mat = createMaterial();
+			mat.color = vec4(1.0f);
+			mat.metallic = 1.0f;
+			mat.roughness = 0.0f;
+
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = randomMats[rand() % randomMats.size()];
+			sdf.materialId = mat.id;
+		}
+		
+		std::vector<uint16_t> randomMats;
+		vec4 colors[] = {
+			vec4(.95f, 0.4f, 0.1f, 1.0f),       // Orange
+			vec4(0.5f, 0.0f, 1.0f, 1.0f),       // Purple
+			vec4(0.0f, .9f, .9f, 1.0f),         // Cyan
+			vec4(0.5f, 1.0f, 0.5f, 1.0f),       // Light Green
+			vec4(1.0f, 0.3f, .6f, 1.0f),        // Magenta
+			vec4(1.0f, 0.5f, 0.5f, 1.0f),       // Pink
+			vec4(0.5f, 0.5f, 1.0f, 1.0f),       // Light Blue
+			vec4(0.4f, 0.25f, 0.1f, 1.0f)       // Brown
+		};
+
+
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
+			mat.metallic = 0.5f;
+			mat.roughness = 0.1f;
+			mat.pattern = MaterialPattern::None;
+			mat.secondaryColor = vec4(0.0f);
+
+			randomMats.push_back(mat.id);
 		}
 
-    	for (size_t i = 0; i < 8; i++)
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(0.5f, 1.0f, 0.5f, 1.0f);
+			mat.metallic = 0.05f;
+			mat.roughness = 0.99f;
+			mat.pattern = MaterialPattern::Checkers;
+			mat.secondaryColor = mat.color * 0.8f;
+			
+			randomMats.push_back(mat.id);
+		}
+
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(1.0f, 0.3f, .6f, 1.0f);
+			mat.secondaryColor = vec4(1.0f, 0.2f, 0.05f, 1.0f);
+			
+			mat.metallic = 0.5f;
+			mat.roughness = 0.05f;
+			mat.pattern = MaterialPattern::Waves;
+			
+			randomMats.push_back(mat.id);
+		}
+
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(0.0f, 10.9f, 10.9f, 1.0f);
+			mat.metallic = 0.05f;
+			mat.roughness = 0.99f;
+			mat.pattern = MaterialPattern::Checkers;
+			mat.secondaryColor = mat.color * 0.8f;
+			
+			randomMats.push_back(mat.id);
+		}
+
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(0.5f, 0.5f, 0.8f, 1.0f);
+			mat.secondaryColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			mat.metallic = 0.3f;
+			mat.roughness = 0.001f;
+			mat.pattern = MaterialPattern::PerlinNoise;
+			mat.patternScale = 5.0f;
+			
+			randomMats.push_back(mat.id);
+		}
+
+		
+
+    	for (size_t i = 0; i < randomMats.size(); i++)
 		{
 			Entity entity = m_ecs.createEntity();
 			Transform& t = m_ecs.addComponent<Transform>(entity);
@@ -71,11 +121,24 @@ private:
 		}
 
 		{
+			auto& floorMaterial = createMaterial();
+			floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			floorMaterial.metallic = 0.0f;
+			floorMaterial.roughness = 0.3f;
+			floorMaterial.pattern = MaterialPattern::Checkers;
+			floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
+
 			float vars[8] = {3};
 			Entity floor = addShape(DefaultShapes3D::PLANE, vars, floorMaterial, CombinationType::Addition, false);
 		}
 
+		auto& mirrorMaterial = createMaterial();
+		mirrorMaterial.color = vec4(1.0f);
+		mirrorMaterial.metallic = 1.0f;
+		mirrorMaterial.roughness = 0.0f;
+
 		{
+			
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
 			auto boxId = registerSDF(box);
 

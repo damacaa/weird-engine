@@ -3,16 +3,16 @@
 
 #include <weird-engine.h>
 
-#include "Classic.h"
-#include "GlobalIllumination.h"
-#include "CornellBox.h"
+#include "Fire.h"
+#include "Lines.h"
+#include "Water.h"
 
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<CornellBox>("cornell_box");
-	sceneManager.registerScene<GlobalIlluminationScene>("global_illumination");
-	sceneManager.registerScene<ClassicScene>("classic");
+	sceneManager.registerScene<FireScene>("fire");
+	sceneManager.registerScene<LinesScene>("lines");
+	sceneManager.registerScene<WaterScene>("water");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;

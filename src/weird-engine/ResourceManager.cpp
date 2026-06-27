@@ -118,12 +118,7 @@ namespace WeirdEngine
 		}
 
 		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
-
-		// Blender's GLTF exporter produces CW-wound triangles relative to OpenGL's CCW convention.
-		// Reverse each triangle's winding so front faces are correctly CCW.
-		for (size_t i = 0; i + 2 < indices.size(); i += 3)
-			std::swap(indices[i + 1], indices[i + 2]);
-
+		
 		std::vector<Texture> textures = getTextures(file);
 
 		// Combine the vertices, indices, and textures into a mesh

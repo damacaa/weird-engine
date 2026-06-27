@@ -2,18 +2,18 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/ResourceManager.h"
 
+#include "weird-renderer/resources/DrawCommand.h"
+#include <vector>
+
 namespace WeirdEngine
 {
 	using namespace ECS;
 
 	namespace RenderSystem
 	{
-
-		inline void update(ECSManager& ecs, ResourceManager& resourceManager, WeirdRenderer::Shader& shader,
-						   WeirdRenderer::Camera& camera, const std::vector<WeirdRenderer::Light>& lights)
+		inline void update(ECSManager& ecs, ResourceManager& resourceManager, std::vector<WeirdRenderer::DrawCommand>& drawQueue)
 		{
-
-			shader.use();
+			drawQueue.clear();
 
 			auto componentArray = ecs.getComponentManager<MeshRenderer>()->getComponentArray();
 
@@ -22,7 +22,14 @@ namespace WeirdEngine
 				MeshRenderer& mr = componentArray->getDataAtIdx(i);
 				auto& t = ecs.getComponent<Transform>(mr.Owner);
 
-				resourceManager.getMesh(mr.mesh).draw(shader, camera, t.position, t.rotation, t.scale);
+				WeirdRenderer::DrawCommand cmd;
+				cmd.mesh = &resourceManager.getMesh(mr.mesh);
+				cmd.materialIndex = mr.materialIndex;
+				cmd.translation = t.position;
+				cmd.rotation = t.rotation;
+				cmd.scale = t.scale;
+
+				drawQueue.push_back(cmd);
 			}
 		}
 	} // namespace RenderSystem

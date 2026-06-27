@@ -81,6 +81,11 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
+		auto& defaultMaterial = createMaterial();
+		defaultMaterial.color = vec4(1.0f);
+		defaultMaterial.metallic = 0.5f;
+		defaultMaterial.roughness = 0.1f;
+
 		onCreate();
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
@@ -149,6 +154,11 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("Scene logic update");
 			onUpdate(delta);
+		}
+
+		{
+			PROFILE_SCOPE("Render Queue update");
+			RenderSystem::update(m_ecs, m_resourceManager, m_drawQueue);
 		}
 
 		m_ecs.freeRemovedComponents();
@@ -274,13 +284,6 @@ namespace WeirdEngine
 	std::vector<WeirdRenderer::Light>& Scene::getLigths()
 	{
 		return m_lights;
-	}
-
-	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader, WeirdRenderer::Shader& instancingShader)
-	{
-		PROFILE_SCOPE("Render Models");
-		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
-		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
 	}
 
 	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)

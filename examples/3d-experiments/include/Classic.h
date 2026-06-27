@@ -43,6 +43,7 @@ private:
 
 			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
 			mr.mesh = id;
+			// mr.materialIndex = floorMaterial.id;
 
 			m_monkey = entity;
 		}

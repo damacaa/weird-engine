@@ -538,6 +538,7 @@ namespace WeirdEngine
 						m_meshPipeline->getGBufferAlbedo(),
 						m_meshPipeline->getGBufferWorldPos(),
 						m_meshPipeline->getGBufferNormal(),
+						m_meshPipeline->getGBufferMaterial(),
 						m_meshPipeline->getDepthTexture(),
 						scene.getMaterials()
 					);

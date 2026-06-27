@@ -2,6 +2,7 @@
 precision highp float;
 precision highp int;
 precision highp sampler2D;
+precision highp isampler2D;
 
 #include "../common/shapes.glsl"
 
@@ -65,6 +66,8 @@ uniform highp sampler2D t_shapeBuffer;
 uniform sampler2D t_gbufferAlbedo;      // RGB = mesh diffuse, A = specular
 uniform sampler2D t_gbufferWorldPos;    // RGB = world-space position, A = 1 if valid
 uniform sampler2D t_gbufferNormal;      // RGB = world-space normal
+uniform isampler2D t_gbufferMaterial;   // R = material ID
+
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
 uniform int u_frameCounter;
@@ -846,13 +849,11 @@ vec4 render(in vec2 uv)
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
 		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   gbufferUV).rgb;
 		vec3  meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
-		float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
+		// float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
 		vec3  meshNormal   = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
-		
-
-		int materialId = 1;
-		meshAlbedo = getMaterial(meshWorldPos, materialId); // Override albedo for testing
+		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
+		meshAlbedo *= getMaterial(meshWorldPos, materialId); // Apply material palette color to mesh albedo
 
 #ifdef PATH_TRACING
 		col = pathTrace(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);

@@ -56,6 +56,7 @@ namespace WeirdEngine
 			Texture& gbufferAlbedo,
 			Texture& gbufferWorldPos,
 			Texture& gbufferNormal,
+			Texture& gbufferMaterial,
 			Texture& gbufferDepth,
 			const Material3D* materials
 		)
@@ -130,6 +131,8 @@ namespace WeirdEngine
 			gbufferWorldPos.bind(4);
 			m_sdfShader.setUniform("t_gbufferNormal",   5);
 			gbufferNormal.bind(5);
+			m_sdfShader.setUniform("t_gbufferMaterial", 6);
+			gbufferMaterial.bind(6);
 
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);

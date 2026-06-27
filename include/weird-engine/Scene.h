@@ -52,9 +52,6 @@ namespace WeirdEngine
 		virtual ~Scene();
 		void start();
 
-		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
-						  WeirdRenderer::Shader& instancingShader);
-
 		void renderExtra(WeirdRenderer::RenderTarget& renderTarget);
 
 		void update2DWorldShader(WeirdRenderer::Shader& shader);

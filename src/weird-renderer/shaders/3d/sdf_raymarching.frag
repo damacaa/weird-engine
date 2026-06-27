@@ -67,6 +67,7 @@ uniform sampler2D t_gbufferAlbedo;      // RGB = mesh diffuse, A = specular
 uniform sampler2D t_gbufferWorldPos;    // RGB = world-space position, A = 1 if valid
 uniform sampler2D t_gbufferNormal;      // RGB = world-space normal
 uniform isampler2D t_gbufferMaterial;   // R = material ID
+uniform sampler2D t_gbufferBackDepth;   // Back-face depth
 
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
@@ -74,6 +75,7 @@ uniform int u_frameCounter;
 uniform int u_rayBounces;
 
 uniform mat4 u_camMatrix;
+uniform mat4 u_viewProjection;
 uniform float u_fov;
 uniform vec2 u_resolution;
 struct MaterialData
@@ -258,6 +260,106 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 }
 // ==========================================
 
+// Projects a world-space point into GBuffer UV coordinates.
+// Returns the UV in [0,1] range.  Sets `valid` to false if the point
+// projects outside the screen or behind the camera.
+vec2 worldToGBufferUV(vec3 worldPos, out bool valid)
+{
+    vec4 clipPos = u_viewProjection * vec4(worldPos, 1.0);
+
+    // Behind the camera
+    if (clipPos.w <= 0.0) {
+        valid = false;
+        return vec2(0.0);
+    }
+
+    vec3 ndc = clipPos.xyz / clipPos.w;  // [-1, 1]
+
+    // Out-of-screen check with a small margin to avoid edge artifacts
+    const float MARGIN = 0.02;
+    if (abs(ndc.x) > 1.0 - MARGIN || abs(ndc.y) > 1.0 - MARGIN || ndc.z > 1.0 || ndc.z < -1.0) {
+        valid = false;
+        return vec2(0.0);
+    }
+
+    valid = true;
+    return ndc.xy * 0.5 + 0.5;  // [0, 1] UV
+}
+
+// Forward declaration
+float linearizeGBufferDepth(float d);
+
+// Approximate signed distance to the rasterized mesh surface.
+// Returns a large positive value if no mesh is visible at this projection.
+float meshSDF(vec3 p)
+{
+    bool valid;
+    vec2 uv = worldToGBufferUV(p, valid);
+
+    if (!valid)
+        return u_far;  // No mesh data here — don't occlude
+
+    float frontDepthRaw = texture(t_depthTexture, uv).r;
+    if (frontDepthRaw > 1.0 - 0.0001)
+        return u_far;  // Sky pixel — no mesh
+
+    float backDepthRaw  = texture(t_gbufferBackDepth, uv).r;
+
+    float frontDepthLinear = linearizeGBufferDepth(frontDepthRaw);
+    float backDepthLinear  = linearizeGBufferDepth(backDepthRaw);
+
+    vec4 clipPos = u_viewProjection * vec4(p, 1.0);
+    float sampleDepthRaw = clipPos.z / clipPos.w * 0.5 + 0.5;
+    float sampleDepthLinear = linearizeGBufferDepth(sampleDepthRaw);
+
+    // We are inside the mesh if our depth is between front and back faces
+    bool insideSlab = (sampleDepthLinear > frontDepthLinear) && (sampleDepthLinear < backDepthLinear);
+
+    // Shrink the mesh slightly to prevent self-shadowing acne
+    const float SHADOW_BIAS = 0.05;
+
+    if (insideSlab)
+    {
+        // Distance from sample to front face
+        vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
+        float distToFront = length(p - meshWorldPos);
+
+        // Acne zone for front face
+        if (distToFront < SHADOW_BIAS)
+        {
+            return SHADOW_BIAS - distToFront;
+        }
+
+        // Acne zone for back face (using Z depth difference as approximation)
+        float zDistToBack = backDepthLinear - sampleDepthLinear;
+        if (zDistToBack < SHADOW_BIAS)
+        {
+            return SHADOW_BIAS - zDistToBack;
+        }
+
+        // Deep inside the mesh: return 0.0 to immediately register a hit!
+        // DO NOT return a negative value, otherwise the raymarcher will step backwards and rattle.
+        return 0.0;
+    }
+    else
+    {
+        if (sampleDepthLinear <= frontDepthLinear)
+        {
+            // In front of the mesh. Return Euclidean distance + bias so it overshoots
+            // slightly into the mesh, landing exactly at the 0.0 boundary.
+            vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
+            float distToFront = length(p - meshWorldPos);
+            return min(distToFront + SHADOW_BIAS, 2.0);
+        }
+        else
+        {
+            // Behind the back face. Return safe distance + bias.
+            float zDistToBack = sampleDepthLinear - backDepthLinear;
+            return min(zDistToBack * 0.5 + SHADOW_BIAS, 2.0);
+        }
+    }
+}
+
 vec3 sceneSdf(vec3 p)
 {
 	float minDist = u_far;
@@ -306,6 +408,16 @@ vec3 sceneSdf(vec3 p)
 		}
 		minDist = res.x;
 	}
+
+#ifdef MESH_SHADOW_SDF
+	{
+		float mDist = meshSDF(p);
+		if (mDist < minDist) {
+			minDist = mDist;
+			finalMaterialId = 15;  // Use a designated "mesh shadow" material slot
+		}
+	}
+#endif
 
 	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 }

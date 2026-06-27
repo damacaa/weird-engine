@@ -51,6 +51,7 @@ namespace WeirdEngine
 				Texture& gbufferNormal,
 				Texture& gbufferMaterial,
 				Texture& gbufferDepth,
+				Texture& gbufferBackDepth,
 				const Material3D* materials
 			);
 

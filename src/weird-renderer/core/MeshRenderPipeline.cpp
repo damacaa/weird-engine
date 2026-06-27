@@ -60,6 +60,11 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			return m_depthTexture;
 		}
 
+		Texture& MeshRenderPipeline::getBackDepthTexture()
+		{
+			return m_backDepthTexture;
+		}
+
 		void MeshRenderPipeline::render(Scene& scene, RenderTarget& outputTarget, const Camera& camera,
 									const std::vector<Light>& lights)
 		{
@@ -88,6 +93,37 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			// Restore single draw buffer so subsequent passes don't accidentally write to all 3
 			const GLenum single[1] = {GL_COLOR_ATTACHMENT0};
 			glDrawBuffers(1, single);
+
+			// --- Back-face depth pass for slab shadow technique ---
+			{
+				m_backDepthRender.bind();
+
+				const GLenum noneArray[1] = {GL_NONE};
+				glDrawBuffers(1, noneArray);
+				glReadBuffer(GL_NONE);
+
+				glClearDepthf(0.0f);
+				glClear(GL_DEPTH_BUFFER_BIT);
+
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_GREATER);
+				glDepthMask(GL_TRUE);
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_FRONT);
+
+				m_gbufferShader.use();
+
+				for (const auto& cmd : drawQueue)
+				{
+					cmd.mesh->draw(m_gbufferShader, camera, cmd.translation, cmd.rotation, cmd.scale, cmd.materialIndex);
+				}
+
+				glCullFace(GL_BACK);
+				glDepthFunc(GL_LEQUAL);
+				glClearDepthf(1.0f);
+
+				glDrawBuffers(1, single);
+			}
 		}
 
 		void MeshRenderPipeline::resize(unsigned int newWidth, unsigned int newHeight)
@@ -106,16 +142,22 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferNormal,   2);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferMaterial, 3);
 			m_gbufferRender.bindDepthTextureToFrameBuffer(m_depthTexture);
+
+			m_backDepthTexture = Texture(newWidth, newHeight, Texture::TextureType::Depth);
+			m_backDepthRender  = RenderTarget(false);
+			m_backDepthRender.bindDepthTextureToFrameBuffer(m_backDepthTexture);
 		}
 
 		void MeshRenderPipeline::free()
 		{
 			m_gbufferRender.free();
+			m_backDepthRender.free();
 			m_gbufferAlbedo.dispose();
 			m_gbufferWorldPos.dispose();
 			m_gbufferNormal.dispose();
 			m_gbufferMaterial.dispose();
 			m_depthTexture.dispose();
+			m_backDepthTexture.dispose();
 		}
 
 		void MeshRenderPipeline::showDebugUI()

@@ -35,6 +35,8 @@ namespace WeirdEngine
 			{
 				m_sdfShader.addDefine("ANTIALIASING");
 			}
+
+			m_sdfShader.addDefine("MESH_SHADOW_SDF");
 		}
 
 		SDF3DRenderPipeline::~SDF3DRenderPipeline()
@@ -58,6 +60,7 @@ namespace WeirdEngine
 			Texture& gbufferNormal,
 			Texture& gbufferMaterial,
 			Texture& gbufferDepth,
+			Texture& gbufferBackDepth,
 			const Material3D* materials
 		)
 		{
@@ -82,6 +85,7 @@ namespace WeirdEngine
 
 			float shaderFov = 1.0f / tan(camera.fov * 0.5f * 0.01745329f); // PI / 180
 			m_sdfShader.setUniform("u_camMatrix", camera.view);
+			m_sdfShader.setUniform("u_viewProjection", camera.cameraMatrix);
 			m_sdfShader.setUniform("u_fov", shaderFov);
 			m_sdfShader.setUniform("u_time", (float)time);
 			m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
@@ -133,6 +137,9 @@ namespace WeirdEngine
 			gbufferNormal.bind(5);
 			m_sdfShader.setUniform("t_gbufferMaterial", 6);
 			gbufferMaterial.bind(6);
+
+			m_sdfShader.setUniform("t_gbufferBackDepth", 7);
+			gbufferBackDepth.bind(7);
 
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);

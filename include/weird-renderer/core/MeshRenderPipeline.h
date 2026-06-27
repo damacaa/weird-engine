@@ -38,6 +38,7 @@ namespace WeirdEngine
 			Texture& getGBufferNormal();
 			Texture& getGBufferMaterial();
 			Texture& getDepthTexture();
+			Texture& getBackDepthTexture();
 
 			// Renders 3D models into the internal GBuffer.
 			// outputTarget is forwarded to Scene::onRender for custom per-scene rendering.
@@ -64,9 +65,11 @@ namespace WeirdEngine
 			Texture m_gbufferNormal;
 			Texture m_gbufferMaterial;
 			Texture m_depthTexture;
+			Texture m_backDepthTexture;
 
 			// Single FBO with 3 colour attachments + depth
 			RenderTarget m_gbufferRender;
+			RenderTarget m_backDepthRender;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

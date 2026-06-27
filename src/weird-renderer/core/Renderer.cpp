@@ -540,6 +540,7 @@ namespace WeirdEngine
 						m_meshPipeline->getGBufferNormal(),
 						m_meshPipeline->getGBufferMaterial(),
 						m_meshPipeline->getDepthTexture(),
+						m_meshPipeline->getBackDepthTexture(),
 						scene.getMaterials()
 					);
 

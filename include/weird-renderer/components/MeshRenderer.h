@@ -11,10 +11,14 @@ namespace WeirdEngine
 	{
 	public:
 		MeshID mesh;
+		int materialIndex = 0;
 
 		MeshRenderer() {};
 
 		MeshRenderer(MeshID mesh)
 			: mesh(mesh) {};
+
+		MeshRenderer(MeshID mesh, int materialIndex)
+			: mesh(mesh), materialIndex(materialIndex) {};
 	};
 } // namespace WeirdEngine

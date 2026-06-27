@@ -50,6 +50,11 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			return m_gbufferNormal;
 		}
 
+		Texture& MeshRenderPipeline::getGBufferMaterial()
+		{
+			return m_gbufferMaterial;
+		}
+
 		Texture& MeshRenderPipeline::getDepthTexture()
 		{
 			return m_depthTexture;
@@ -65,17 +70,20 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			m_gbufferInstancedShader.use();
 			m_gbufferInstancedShader.setUniform("u_camMatrix", camera.cameraMatrix);
 
-			// Bind GBuffer FBO and activate all 3 colour draw buffers
+			// Bind GBuffer FBO and activate all 4 colour draw buffers
 			m_gbufferRender.bind();
-			const GLenum drawBuffers[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
-			glDrawBuffers(3, drawBuffers);
+			const GLenum drawBuffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+			glDrawBuffers(4, drawBuffers);
 
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			// Render scene meshes into the GBuffer.
-			// outputTarget is forwarded to Scene::onRender for per-scene custom rendering.
-			scene.renderModels(outputTarget, m_gbufferShader, m_gbufferInstancedShader);
+			const auto& drawQueue = scene.getDrawQueue();
+			for (const auto& cmd : drawQueue)
+			{
+				cmd.mesh->draw(m_gbufferShader, camera, cmd.translation, cmd.rotation, cmd.scale, cmd.materialIndex);
+			}
 
 			// Restore single draw buffer so subsequent passes don't accidentally write to all 3
 			const GLenum single[1] = {GL_COLOR_ATTACHMENT0};
@@ -89,12 +97,14 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			m_gbufferAlbedo   = Texture(newWidth, newHeight, Texture::TextureType::Data);
 			m_gbufferWorldPos = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
 			m_gbufferNormal   = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
+			m_gbufferMaterial = Texture(newWidth, newHeight, Texture::TextureType::IntData);
 			m_depthTexture    = Texture(newWidth, newHeight, Texture::TextureType::Depth);
 
 			m_gbufferRender = RenderTarget(false);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferAlbedo,   0);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferWorldPos, 1);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferNormal,   2);
+			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferMaterial, 3);
 			m_gbufferRender.bindDepthTextureToFrameBuffer(m_depthTexture);
 		}
 
@@ -104,6 +114,7 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			m_gbufferAlbedo.dispose();
 			m_gbufferWorldPos.dispose();
 			m_gbufferNormal.dispose();
+			m_gbufferMaterial.dispose();
 			m_depthTexture.dispose();
 		}
 

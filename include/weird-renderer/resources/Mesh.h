@@ -43,19 +43,19 @@ namespace WeirdEngine
 			~Mesh();
 
 			// Draws the mesh
-			void draw(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) const;
+			void draw(Shader& shader, const Camera& camera, glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
 
 			// Draws the mesh
-			void drawInstances(Shader& shader, Camera& camera, unsigned int instances, glm::vec3 translation,
-							   glm::vec3 rotation, glm::vec3 scale) const;
+			void drawInstances(Shader& shader, const Camera& camera, unsigned int instances, glm::vec3 translation = glm::vec3(0),
+							   glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
 
 			void free();
 
 			bool m_isBillboard = false;
 
 		private:
-			void UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation,
-								glm::vec3 scale) const;
+			void UploadUniforms(Shader& shader, const Camera& camera, glm::vec3 translation, glm::vec3 rotation,
+								glm::vec3 scale, int materialIndex) const;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

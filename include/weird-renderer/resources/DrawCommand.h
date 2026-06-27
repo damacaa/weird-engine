@@ -12,8 +12,10 @@ namespace WeirdEngine
 		struct DrawCommand
 		{
 			Mesh* mesh;
-			// Material* material; // TODO
-			glm::mat4 transform;
+			int materialIndex = 0;
+			glm::vec3 translation;
+			glm::vec3 rotation;
+			glm::vec3 scale;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

@@ -36,6 +36,7 @@ namespace WeirdEngine
 			Texture& getGBufferAlbedo();
 			Texture& getGBufferWorldPos();
 			Texture& getGBufferNormal();
+			Texture& getGBufferMaterial();
 			Texture& getDepthTexture();
 
 			// Renders 3D models into the internal GBuffer.
@@ -61,6 +62,7 @@ namespace WeirdEngine
 			Texture m_gbufferAlbedo;
 			Texture m_gbufferWorldPos;
 			Texture m_gbufferNormal;
+			Texture m_gbufferMaterial;
 			Texture m_depthTexture;
 
 			// Single FBO with 3 colour attachments + depth

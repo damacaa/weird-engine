@@ -108,6 +108,15 @@ private:
 			randomMats.push_back(mat.id);
 		}
 
+		{
+			auto& mat = createMaterial();
+			mat.color = vec4(0.85f, 0.7f, 0.1f, 0.5f);
+			mat.metallic = 0.5f;
+			mat.roughness = 0.0f;
+			
+			randomMats.push_back(mat.id);
+		}
+
 		
 
     	for (size_t i = 0; i < randomMats.size(); i++)

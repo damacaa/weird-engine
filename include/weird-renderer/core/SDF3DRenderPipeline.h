@@ -49,6 +49,7 @@ namespace WeirdEngine
 				Texture& gbufferAlbedo,
 				Texture& gbufferWorldPos,
 				Texture& gbufferNormal,
+				Texture& gbufferMaterial,
 				Texture& gbufferDepth,
 				const Material3D* materials
 			);

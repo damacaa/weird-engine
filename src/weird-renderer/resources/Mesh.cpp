@@ -38,19 +38,19 @@ namespace WeirdEngine
 		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
 		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		void Mesh::draw(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation,
-						glm::vec3 scale) const
+		void Mesh::draw(Shader& shader, const Camera& camera, glm::vec3 translation, glm::vec3 rotation,
+						glm::vec3 scale, int materialIndex) const
 		{
-			UploadUniforms(shader, camera, translation, rotation, scale);
+			UploadUniforms(shader, camera, translation, rotation, scale, materialIndex);
 
 			// Draw the actual mesh
 			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		}
 
-		void Mesh::drawInstances(Shader& shader, Camera& camera, unsigned int instances, glm::vec3 translation,
-								 glm::vec3 rotation, glm::vec3 scale) const
+		void Mesh::drawInstances(Shader& shader, const Camera& camera, unsigned int instances, glm::vec3 translation,
+								 glm::vec3 rotation, glm::vec3 scale, int materialIndex) const
 		{
-			UploadUniforms(shader, camera, translation, rotation, scale);
+			UploadUniforms(shader, camera, translation, rotation, scale, materialIndex);
 
 			// Draw the actual mesh
 			glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
@@ -63,8 +63,8 @@ namespace WeirdEngine
 			m_ebo.free();
 		}
 
-		void Mesh::UploadUniforms(Shader& shader, Camera& camera, glm::vec3 translation, glm::vec3 rotation,
-								  glm::vec3 scale) const
+		void Mesh::UploadUniforms(Shader& shader, const Camera& camera, glm::vec3 translation, glm::vec3 rotation,
+								  glm::vec3 scale, int materialIndex) const
 		{
 			// Bind shader to be able to access uniforms
 			shader.use();
@@ -93,6 +93,9 @@ namespace WeirdEngine
 				// textures[i].bind(i);
 				// textures[i].texUnit(shader, ("t_" + type + num).c_str(), unit);
 			}
+			
+			glUniform1i(glGetUniformLocation(shader.ID, "u_materialIndex"), materialIndex);
+			glUniform1i(glGetUniformLocation(shader.ID, "u_hasDiffuse"), textures.size() > 0 ? 1 : 0);
 
 			// Compute model matrix
 			glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);

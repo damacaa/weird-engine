@@ -118,6 +118,19 @@ namespace WeirdEngine
 			m_distanceTextureDoubleBuffer[1] = &m_distanceRenderB;
 			m_distanceTextureDoubleBufferIdx = 0;
 
+			// Clear double-buffered distance textures to a large positive value (10.0f)
+			// to avoid motion-blur blending artifacts from uninitialized (0.0) pixels.
+			m_distanceRenderA.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			m_distanceRenderB.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender = RenderTarget(false);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
@@ -245,6 +258,19 @@ namespace WeirdEngine
 			m_distanceTextureB =
 				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
+
+			// Clear double-buffered distance textures to a large positive value (10.0f)
+			// to avoid motion-blur blending artifacts from uninitialized (0.0) pixels.
+			m_distanceRenderA.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			m_distanceRenderB.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
@@ -484,6 +510,12 @@ namespace WeirdEngine
 				// Set uniforms
 				m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the
 															 // true previous frame matrix
+				if (m_oldCameraMatrix == glm::mat4(1.0f))
+				{
+					m_oldCameraMatrix = camera.view;
+					m_prevFrameCameraMatrix = camera.view;
+				}
+				
 				m_distanceShader.setUniform("u_camMatrix", camera.view);
 				m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 				m_oldCameraMatrix = camera.view;

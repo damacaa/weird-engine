@@ -15,13 +15,11 @@ public:
 		: Scene(settings) {};
 
 private:
-
 	// Inherited via Scene
 	void onStart() override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
-
 
 		auto& ballMat = createMaterial();
 		ballMat.color = vec4(1.0f);
@@ -35,7 +33,7 @@ private:
 		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
 		greenMat.metallic = 0.5f;
 		greenMat.roughness = 0.1f;
-		
+
 		auto& whiteMat = createMaterial();
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -48,70 +46,67 @@ private:
 			sdf.materialId = ballMat.id;
 		}
 
+		{
+			Entity entity = m_ecs.createEntity();
+			Transform& t = m_ecs.addComponent<Transform>(entity);
+			t.position = vec3(20.0f, 20.0f, 0.0f);
 
-
-
-		// {
-		// 	std::shared_ptr<IMathExpression> plane = std::make_shared<Plane>(0.0f);
-		// 	auto planeId = registerSDF(plane);
-
-		// 	float vars1[8] = {}; // Custom shape
-		// 	Entity start = addShape(planeId, vars1, DisplaySettings::White, CombinationType::Addition, false);
-		// }
+			auto& text = m_ecs.addComponent<UITextRenderer>(entity);
+			text.text = "Cornell Box";
+		}
 
 		{
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
 			auto boxId = registerSDF(box);
 
-      // Left
+			// Left
 			{
 				float vars1[8] = {-2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
 				Entity start = addShape(boxId, vars1, redMat, CombinationType::Addition, false);
 			}
 
-      // Right
-      {
+			// Right
+			{
 				float vars1[8] = {2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
 				Entity start = addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
 			}
 
-      // Back
-      {
+			// Back
+			{
 				float vars1[8] = {0.0f, 2.6f, -2.0f * 2.6f, 3.0f * 2.6f, 2.6f, 2.6f}; // Custom shape
 				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
-      // Top
-      {
+			// Top
+			{
 				float vars1[8] = {0.0f, 3.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
 				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
-      // Light hole
-      {
+			// Light hole
+			{
 				float vars1[8] = {0.0f, 2.0f * 2.6f, 0.0f, 0.5f, 1.0f, 0.5f}; // Custom shape
 				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
 			}
 
-      // Floor
-      {
+			// Floor
+			{
 				float vars1[8] = {0.0f, -1.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
 				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
-      // {
+			// {
 			// 	float vars1[8] = {0.0f, 2.6f, 0.0f, 2.7f, 2.7f, 2.7f}; // Custom shape
 			// 	Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Intersection, false);
 			// }
-
 		}
-    
-    // Sun
-    getLigths().push_back(
-			Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.0f, 0.0f)), glm::vec4(1.0f, 1.0f, 1.0f, 0.0f)});
 
-		getLigths().push_back(
-			Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 3.0f)});
+		// Sun
+		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.0f, 0.0f)),
+									glm::vec4(1.0f, 1.0f, 1.0f, 0.0f)});
+
+		getLigths().push_back(Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f),
+									glm::vec4(1.0f, 1.0f, 1.0f, 3.0f)});
 
 		// getLigths().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});

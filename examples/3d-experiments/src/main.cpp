@@ -4,11 +4,8 @@
 #include <weird-engine.h>
 
 #include "Classic.h"
-#include "Fire.h"
-#include "Lines.h"
 #include "GlobalIllumination.h"
 #include "CornellBox.h"
-#include "Water.h"
 
 int main(int argc, char* argv[])
 {
@@ -16,9 +13,6 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<CornellBox>("cornell_box");
 	sceneManager.registerScene<GlobalIlluminationScene>("global_illumination");
 	sceneManager.registerScene<ClassicScene>("classic");
-	sceneManager.registerScene<FireScene>("fire");
-	sceneManager.registerScene<LinesScene>("lines");
-	sceneManager.registerScene<WaterScene>("water");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;

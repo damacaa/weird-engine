@@ -172,7 +172,9 @@ private:
 		// getLigths().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
+		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		cameraTransform.position = vec3(12, -1, 12);
+		cameraTransform.rotation.x = -0.95f;
 	}
 
 	void onUpdate(float delta) override

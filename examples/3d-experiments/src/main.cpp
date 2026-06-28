@@ -4,14 +4,14 @@
 #include <weird-engine.h>
 
 #include "Classic.h"
-#include "GlobalIllumination.h"
+#include "MaterialShowcase.h"
 #include "CornellBox.h"
 
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<CornellBox>("cornell_box");
-	sceneManager.registerScene<GlobalIlluminationScene>("global_illumination");
+	sceneManager.registerScene<MaterialShowcaseScene>("material_showcase");
 	sceneManager.registerScene<ClassicScene>("classic");
 
 	DisplaySettings displaySettings{};

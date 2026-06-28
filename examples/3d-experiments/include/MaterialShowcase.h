@@ -8,10 +8,10 @@
 using namespace WeirdEngine;
 
 // Cornell Box
-class GlobalIlluminationScene : public Scene
+class MaterialShowcaseScene : public Scene
 {
 public:
-	GlobalIlluminationScene(const PhysicsSettings& settings)
+	MaterialShowcaseScene(const PhysicsSettings& settings)
 		: Scene(settings) {};
 
 private:

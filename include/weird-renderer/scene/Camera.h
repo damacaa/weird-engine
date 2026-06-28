@@ -34,10 +34,12 @@ namespace WeirdEngine
 			glm::mat4 view;
 
 			float fov = 45.0f;
+			float nearPlane = 0.1f;
+			float farPlane = 300.0f;
 			bool lookAtMode = true;
 
 			// Updates the camera matrix to the Vertex Shader
-			void updateMatrix(float nearPlane, float farPlane, int width, int height);
+			void updateMatrix(int width, int height);
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

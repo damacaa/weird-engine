@@ -1,11 +1,14 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "weird-renderer/audio/AudioEngine.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
+#include "weird-renderer/core/SDF3DRenderPipeline.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
 #include "weird-renderer/core/SDLInitializer.h"
 #include "weird-renderer/resources/DataBuffer.h"
 
@@ -42,41 +45,47 @@ namespace WeirdEngine
 
 			bool m_vSyncEnabled;
 			float m_targetRefreshRate;
+			float m_ditheringSpread;
+			int m_ditheringColorCount;
+			bool m_ditheringEnabled;
+			bool m_surfaceBlurEnabled;
+			float m_surfaceBlurRadius;
+			float m_surfaceBlurSigmaColor;
 
-			// Pipelines for 2D SDF rendering
+			// Render pipelines
 			SDF2DRenderPipeline* m_worldPipeline;
 			SDF2DRenderPipeline* m_uiPipeline;
+			SDF3DRenderPipeline* m_3DWorldPipeline;
+			MeshRenderPipeline* m_meshPipeline;
 
-			Shader m_geometryShaderProgram;
-			Shader m_instancedGeometryShaderProgram;
 			Shader m_postProcessingShader;
-			Shader m_3DsdfShaderProgram;
 			Shader m_combineScenesShaderProgram;
 			Shader m_outputShaderProgram;
-
-			RenderTarget m_geometryRender;
-			RenderTarget m_3DSceneRender;
 
 			RenderTarget m_combinationRender;
 			RenderTarget m_outputResolutionRender;
 
 			RenderPlane m_renderPlane;
 
-			Texture m_geometryTexture;
-			Texture m_geometryDepthTexture;
-			Texture m_3DSceneTexture;
-			Texture m_3DDepthSceneTexture;
-			DataBuffer* m_3DShapeDataBuffer;
-
 			Texture m_combineResultTexture;
-
-			void output(Scene& scene, Texture& texture, const double delta);
+			Texture m_outputTexture;
 
 			glm::vec4 m_colorPalette[16];
 
 			Camera m_uiCamera;
 
+			bool m_takeScreenshot = false;
+			std::string m_lastScreenshotPath;
+
+			// Stats UI (F4)
+			bool m_showStatsUI = false;
+			static constexpr int STATS_HISTORY_SIZE = 128;
+			float m_frametimeHistory[STATS_HISTORY_SIZE] = {};
+			int m_historyOffset = 0;
+
+			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();
+			void drawStatsUI(double delta);
 		};
 
 	} // namespace WeirdRenderer

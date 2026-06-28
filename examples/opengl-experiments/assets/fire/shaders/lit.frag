@@ -21,8 +21,8 @@ uniform vec3 u_fogColor;
 uniform float u_time;
 
 // Custom
-const float u_near = 0.1;
-const float u_far = 100.0;
+uniform float u_near;
+uniform float u_far;
 const float u_shininess = 100.0;
 
 vec3 pointLight()

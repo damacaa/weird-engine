@@ -7,6 +7,7 @@ execute_process(COMMAND git submodule update --init --recursive)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -138,8 +139,9 @@ endfunction()
 assign_source_groups(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 # Examples
-option(WEIRD_ENGINE_BUILD_EXAMPLES "Build example projects" OFF)
+option(WEIRD_ENGINE_BUILD_EXAMPLES "Build example projects" ON)
 if(WEIRD_ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples/3d-experiments)
+    add_subdirectory(examples/opengl-experiments)
     add_subdirectory(examples/sample-scenes)
 endif()

@@ -87,7 +87,7 @@ namespace WeirdEngine
 		m_resourcesUsedByEntity.erase(entity);
 	}
 
-	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes)
+	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes, glm::mat4 transform)
 	{
 		// Get all accessor indices
 		unsigned int posAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
@@ -105,8 +105,20 @@ namespace WeirdEngine
 
 		// Combine all the vertex components and also get the indices and textures
 		std::vector<Vertex> vertices = assembleVertices(positions, normals, texUVs);
-		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
 
+		// Apply the node's world transform so Blender's coordinate conversion is baked in
+		if (transform != glm::mat4(1.0f))
+		{
+			glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+			for (auto& v : vertices)
+			{
+				v.position = glm::vec3(transform * glm::vec4(v.position, 1.0f));
+				v.normal   = glm::normalize(normalMatrix * v.normal);
+			}
+		}
+
+		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
+		
 		std::vector<Texture> textures = getTextures(file);
 
 		// Combine the vertices, indices, and textures into a mesh
@@ -132,7 +144,8 @@ namespace WeirdEngine
 		glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 		if (node.find("rotation") != node.end())
 		{
-			float rotValues[4] = {node["rotation"][3], node["rotation"][0], node["rotation"][1], node["rotation"][2]};
+			// GLTF stores quaternion as [x, y, z, w]; glm::make_quat expects the same layout
+			float rotValues[4] = {node["rotation"][0], node["rotation"][1], node["rotation"][2], node["rotation"][3]};
 			rotation = glm::make_quat(rotValues);
 		}
 		// Get scale if it exists
@@ -176,16 +189,15 @@ namespace WeirdEngine
 			// scalesMeshes.push_back(scale);
 			// matricesMeshes.push_back(matNextNode);
 
-			loadMesh(file, node["mesh"], meshes);
+			loadMesh(file, node["mesh"], meshes, matNextNode);
 		}
 
-		// TODO: retore this
 		// Check if the node has children, and if it does, apply this function to them with the matNextNode
-		/*if (node.find("children") != node.end())
+		if (node.find("children") != node.end())
 		{
 			for (unsigned int i = 0; i < node["children"].size(); i++)
-				traverseNode(file, node["children"][i], matNextNode);
-		}*/
+				traverseNode(file, node["children"][i], meshes, matNextNode);
+		}
 	}
 
 	std::vector<unsigned char> ResourceManager::getData(const char* file)
@@ -216,7 +228,7 @@ namespace WeirdEngine
 
 		// Get properties from the bufferView
 		json bufferView = m_json["bufferViews"][buffViewInd];
-		unsigned int byteOffset = bufferView["byteOffset"];
+		unsigned int byteOffset = bufferView.value("byteOffset", 0);
 
 		// Interpret the type and store it into numPerVert
 		unsigned int numPerVert;
@@ -257,7 +269,7 @@ namespace WeirdEngine
 
 		// Get properties from the bufferView
 		json bufferView = m_json["bufferViews"][buffViewInd];
-		unsigned int byteOffset = bufferView["byteOffset"];
+		unsigned int byteOffset = bufferView.value("byteOffset", 0);
 
 		// Get indices with regards to their type: unsigned int, unsigned short, or short
 		unsigned int beginningOfData = byteOffset + accByteOffset;

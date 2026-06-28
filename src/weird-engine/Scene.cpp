@@ -7,7 +7,7 @@
 
 #include "weird-physics/components/RigidBodyManager.h"
 
-#include "weird-engine/systems/2DSDFShaderGenerationSystem.h"
+#include "weird-engine/systems/SDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"
 #include "weird-engine/systems/PhysicsInteractionSystem.h"
@@ -15,10 +15,22 @@
 #include "weird-engine/systems/PlayerMovementSystem.h"
 #include "weird-engine/systems/RenderSystem.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
-#include "weird-engine/systems/SDFRenderSystem2D.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
 
 namespace WeirdEngine
 {
+	static std::vector<std::shared_ptr<IMathExpression>> s_globalSdfs;
+
+	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
+	{
+		s_globalSdfs.push_back(sdf);
+		return static_cast<ShapeId>(s_globalSdfs.size() - 1);
+	}
+
+	const std::vector<std::shared_ptr<IMathExpression>>& Scene::getGlobalSDFs()
+	{
+		return s_globalSdfs;
+	}
 
 	Scene::Scene(const PhysicsSettings& settings)
 		: m_simulation2D(MAX_ENTITIES, settings)
@@ -38,7 +50,7 @@ namespace WeirdEngine
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		// Shapes
-		m_sdfs = DefaultShapes::getSDFS();
+		m_sdfs = Scene::getGlobalSDFs();
 		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation
@@ -69,6 +81,11 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
+		auto& defaultMaterial = createMaterial();
+		defaultMaterial.color = vec4(1.0f);
+		defaultMaterial.metallic = 0.5f;
+		defaultMaterial.roughness = 0.1f;
+
 		onCreate();
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
@@ -137,6 +154,11 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("Scene logic update");
 			onUpdate(delta);
+		}
+
+		{
+			PROFILE_SCOPE("Render Queue update");
+			RenderSystem::update(m_ecs, m_resourceManager, m_drawQueue);
 		}
 
 		m_ecs.freeRemovedComponents();
@@ -215,29 +237,42 @@ namespace WeirdEngine
 	{
 		PROFILE_SCOPE("Fetch World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem2D::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+	}
+
+	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	{
+		PROFILE_SCOPE("Fetch 3D World Data");
+		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_3DWorldRenderContext, data, size);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
-		SDFRenderSystem2D::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
+		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem2D::update<Dot, CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+	}
+
+	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
+	{
+		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_3DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem2D::update<UIDot, UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::forceShaderRefresh()
 	{
 		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
 		m_UIRenderContext.m_shapesNeedUpdate = true;
 	}
 
@@ -251,13 +286,8 @@ namespace WeirdEngine
 		return m_lights;
 	}
 
-	void Scene::renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
-							 WeirdRenderer::Shader& instancingShader)
+	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)
 	{
-		PROFILE_SCOPE("Render Models");
-		WeirdRenderer::Camera& camera = m_ecs.getComponent<ECS::Camera>(m_mainCamera).camera;
-		RenderSystem::update(m_ecs, m_resourceManager, shader, camera, m_lights);
-
 		onRender(renderTarget);
 	}
 
@@ -389,6 +419,7 @@ namespace WeirdEngine
 		std::copy(variables, variables + 8, shape.parameters);
 
 		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
 
 		return entity;
 	}
@@ -421,5 +452,20 @@ namespace WeirdEngine
 		m_UIRenderContext.m_shapesNeedUpdate = true;
 
 		return component;
+	}
+
+	Material3D& Scene::createMaterial()
+	{
+		if (m_materialCount >= 16)
+		{
+			// Max materials reached, return the last one
+			return m_materials[15];
+		}
+		
+		Material3D& mat = m_materials[m_materialCount];
+		mat.id = m_materialCount;
+		m_materialCount++;
+		
+		return mat;
 	}
 } // namespace WeirdEngine

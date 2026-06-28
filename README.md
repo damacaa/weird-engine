@@ -17,19 +17,12 @@ Weird Engine is a simple yet unique game engine featuring:
 2. Place your header files (`.h`) in the `/include` directory.  
 3. Place your source files (`.cpp`) in the `/src` directory.  
    - You can create subfolders for better organization.  
-4. Run CMake to generate the build files.  
-5. Open the generated solution in the `/build` folder.  
-6. Build and run your project.  
+4. Build witch CMake and run your project.  
 
 ### Linux
-#### Ubuntu
-```
-sudo apt install build-essential libx11-dev libxcursor-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxrandr-dev libxxf86vm-devs libxinerama-dev
-```
-#### Fedora 
-```
-sudo dnf builddep SDL3
-```
+You'll need to install SDL3 dependencies:
+[SDL3 Linux README](https://wiki.libsdl.org/SDL3/README-linux)
+
 ### Issues downloading SDL submodule
 ```
 git rm --cached third-party/SDL

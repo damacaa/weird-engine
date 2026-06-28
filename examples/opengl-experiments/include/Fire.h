@@ -45,23 +45,27 @@ private:
 		// Base shaders
 		m_backgroundShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "misc/background_spherical_grid.frag");
-		m_litShader = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "3d/lit.frag");
+		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/lit.frag");
 		m_bloomShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bloom.frag");
 		m_blurShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/blur.frag");
 		m_brightFilterShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bright_filter.frag");
 
 		// Custom shaders
-		m_flameShader = Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
+		m_flameShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
 		m_particlesShader =
 			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
 		m_smokeShader =
 			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
 		m_heatDistortionShader =
-			Shader(SHADERS_PATH "common/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
+			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
 		getLigths().push_back(
-			Light{0, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+			Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)}
+		);
+		getLigths().push_back(
+		Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)}
+		);
 
 		// Load meshes
 		// Quad geom
@@ -76,8 +80,8 @@ private:
 			};
 
 			std::vector<GLuint> indices = {
-				0, 2, 1, // first triangle
-				3, 2, 0	 // second triangle
+				0, 1, 2, // first triangle
+				0, 2, 3	 // second triangle
 			};
 
 			std::vector<Texture> textures = {};
@@ -128,17 +132,17 @@ private:
 			};
 
 			std::vector<GLuint> indices = {// Front face
-										   0, 2, 1, 2, 0, 3,
+										   0, 1, 2, 0, 2, 3,
 										   // Back face
-										   7, 5, 6, 5, 7, 4,
+										   7, 6, 5, 7, 5, 4,
 										   // Left face
-										   11, 10, 9, 9, 8, 11,
+										   11, 9, 10, 11, 8, 9,
 										   // Right face
-										   12, 14, 13, 15, 14, 12,
+										   12, 13, 14, 12, 14, 15,
 										   // Top face
-										   19, 18, 17, 17, 16, 19,
+										   19, 17, 18, 19, 16, 17,
 										   // Bottom face
-										   22, 21, 20, 20, 23, 22};
+										   22, 20, 21, 22, 23, 20};
 
 			std::vector<Texture> textures = {};
 			m_cube = new Mesh(2, vertices, indices, textures);
@@ -294,11 +298,11 @@ private:
 
 	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
 	{
-
 		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();
 
 		glDepthMask(GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
 		m_backgroundShader.use();
 		m_backgroundShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
 		float shaderFov = 1.0f / tan(sceneCamera.fov * 0.01745f * 0.5f);
@@ -306,10 +310,8 @@ private:
 		m_backgroundShader.setUniform("u_resolution", vec2(Display::rWidth, Display::rHeight));
 
 		m_renderPlane.draw(m_backgroundShader);
-		// glFrontFace(GL_CW); // Clockwise = front face
-		// m_cube->draw(m_backgroundShader, sceneCamera, sceneCamera.position, vec3(0.0f), vec3(100.0f));
-		// glFrontFace(GL_CCW); // Counter-clockwise = front face (default)
 
+glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
 
 		// Render stuff
@@ -320,14 +322,16 @@ private:
 		// Take care of the camera Matrix
 		m_litShader.setUniform("u_camPos", sceneCamera.position);
 		m_litShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
+		m_litShader.setUniform("u_near", sceneCamera.nearPlane);
+		m_litShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Pass light rotation
 		auto& lights = getLigths();
-		glm::vec3 position = lights[0].position;
+		glm::vec3 position = lights[1].position;
 		m_litShader.setUniform("u_lightPos", position);
-		glm::vec3 direction = lights[0].rotation;
+		glm::vec3 direction = lights[1].rotation;
 		m_litShader.setUniform("u_directionalLightDir", direction);
-		glm::vec4 color = lights[0].color;
+		glm::vec4 color = lights[1].color;
 		m_litShader.setUniform("u_lightColor", color);
 
 		// bind current FBO

@@ -2,6 +2,8 @@
 
 #include <weird-engine.h>
 
+#include <weird-engine/math/Default3DSDFs.h>
+
 using namespace WeirdEngine;
 class LinesScene : public Scene
 {
@@ -10,6 +12,7 @@ public:
 		: Scene(settings) {};
 
 private:
+	uint16_t m_whiteMatId;
 	Texture* m_colorTextureCopy;
 
 	RenderPlane* m_renderPlane;
@@ -24,6 +27,20 @@ private:
 
 	void onCreate() override
 	{
+		m_renderMode = RenderMode::RayMarching3D;
+		
+		{
+			auto& whiteMat = createMaterial();
+			m_whiteMatId = whiteMat.id;
+			whiteMat.pattern = MaterialPattern::Checkers;
+
+			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
+			auto planeId = registerSDF(plane);
+
+			float vars1[8] = {}; // Custom shape
+			Entity start = addShape(planeId, vars1, whiteMat);
+		}
+
 		m_renderPlane = new RenderPlane();
 		m_colorTextureCopy = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_lineShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/lines.frag");
@@ -54,7 +71,7 @@ private:
 			// mr.mesh = id;
 
 			auto& sdf = m_ecs.addComponent<Dot>(entity);
-			sdf.materialId = 0;
+			sdf.materialId = m_whiteMatId;
 
 			m_monkey = entity;
 		}

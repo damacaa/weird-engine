@@ -7,6 +7,10 @@
 #include "weird-engine/vec.h"
 #include "weird-engine/Profiler.h"
 
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
+
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -113,6 +117,19 @@ namespace WeirdEngine
 			m_distanceTextureDoubleBuffer[0] = &m_distanceRenderA;
 			m_distanceTextureDoubleBuffer[1] = &m_distanceRenderB;
 			m_distanceTextureDoubleBufferIdx = 0;
+
+			// Clear double-buffered distance textures to a large positive value (10.0f)
+			// to avoid motion-blur blending artifacts from uninitialized (0.0) pixels.
+			m_distanceRenderA.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			m_distanceRenderB.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender = RenderTarget(false);
@@ -241,6 +258,19 @@ namespace WeirdEngine
 			m_distanceTextureB =
 				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderB.bindColorTextureToFrameBuffer(m_distanceTextureB);
+
+			// Clear double-buffered distance textures to a large positive value (10.0f)
+			// to avoid motion-blur blending artifacts from uninitialized (0.0) pixels.
+			m_distanceRenderA.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			m_distanceRenderB.bind();
+			glClearColor(10.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
@@ -480,6 +510,12 @@ namespace WeirdEngine
 				// Set uniforms
 				m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the
 															 // true previous frame matrix
+				if (m_oldCameraMatrix == glm::mat4(1.0f))
+				{
+					m_oldCameraMatrix = camera.view;
+					m_prevFrameCameraMatrix = camera.view;
+				}
+				
 				m_distanceShader.setUniform("u_camMatrix", camera.view);
 				m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 				m_oldCameraMatrix = camera.view;
@@ -494,6 +530,7 @@ namespace WeirdEngine
 				m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 				m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 				m_distanceShader.setUniform("u_k", m_config.ballK);
+				m_distanceShader.setUniform("u_staticColors", m_colorPalette, 16);
 
 				m_distanceShader.setUniform("t_colorTexture", 0);
 				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
@@ -718,7 +755,7 @@ namespace WeirdEngine
 			m_renderPlane.draw(m_lightingShader);
 		}
 
-		void SDF2DRenderPipeline::handleDebugInputs()
+		void SDF2DRenderPipeline::showDebugUI()
 		{
 			const char* label = m_config.isUI ? "UI Pipeline" : "World Pipeline";
 			if (!ImGui::CollapsingHeader(label))

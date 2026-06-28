@@ -15,7 +15,7 @@ namespace WeirdEngine
 		const auto UP = glm::vec3(0.0f, 1.0f, 0.0f);
 		const auto FORWARD = glm::vec3(0.0f, 0.0f, 1.0f);
 
-		void Camera::updateMatrix(float nearPlane, float farPlane, int width, int height)
+		void Camera::updateMatrix(int width, int height)
 		{
 			if (lookAtMode)
 			{

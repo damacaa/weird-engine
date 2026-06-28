@@ -38,7 +38,8 @@ namespace WeirdEngine
 					break;
 			}
 
-			// Generates MipMaps
+			// Re-bind the texture (createTexture unbinds it at the end) before generating mipmaps
+			glBindTexture(GL_TEXTURE_2D, ID);
 			glGenerateMipmap(GL_TEXTURE_2D);
 
 			// Deletes the image data as it is already in the OpenGL Texture object
@@ -160,19 +161,20 @@ namespace WeirdEngine
 				{
 					// Handle depth texture
 					// In GLES 3.0, GL_DEPTH_COMPONENT24 requires type GL_UNSIGNED_INT (not GL_FLOAT).
-					// Use GL_DEPTH_COMPONENT32F + GL_FLOAT if a float depth buffer is needed.
-					glTexImage2D(GL_TEXTURE_2D, 0,
-								 GL_DEPTH_COMPONENT24, // 24-bit depth
-								 width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, getUploadDataDepth());
+					// 1. Upgrade to 32-bit Float for flawless precision
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT,
+								 GL_FLOAT, getUploadDataDepth());
 
-					// Set texture parameters
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					// 2. MUST be GL_NEAREST so you don't interpolate non-linear math
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+					// 3. Clamp to edge so screen-space refraction doesn't wrap around
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 					// Prevent sampling artifacts in shadow mapping
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE); // or GL_COMPARE_REF_TO_TEXTURE
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
 					numColCh = 1;
 					break;
@@ -199,6 +201,18 @@ namespace WeirdEngine
 					numColCh = 4;
 					break;
 				}
+				case TextureType::AccumulationData:
+				{
+					// Use 32-bit floats for accumulation to avoid precision stalling over thousands of frames
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+					numColCh = 4;
+					break;
+				}
 				case TextureType::RetroColor:
 				{
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
@@ -215,7 +229,14 @@ namespace WeirdEngine
 				}
 				case TextureType::IntData:
 				{
-					// Handle integer data texture
+					std::vector<int> zeroDataI32(width * height, 0);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, width, height, 0, GL_RED_INTEGER, GL_INT, zeroDataI32.data());
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+					numColCh = 1;
 					break;
 				}
 				default:

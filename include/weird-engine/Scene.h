@@ -3,7 +3,7 @@
 #include "ecs/ECS.h"
 #include "ResourceManager.h"
 
-#include "weird-engine/systems/SDFRenderSystem2D.h"
+#include "weird-engine/systems/SDFRenderSystem.h"
 
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
@@ -12,6 +12,7 @@
 
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-physics/Simulation2D.h"
+#include "weird-engine/Material3D.h"
 
 #include <string>
 #include <unordered_map>
@@ -51,19 +52,25 @@ namespace WeirdEngine
 		virtual ~Scene();
 		void start();
 
-		void renderModels(WeirdRenderer::RenderTarget& renderTarget, WeirdRenderer::Shader& shader,
-						  WeirdRenderer::Shader& instancingShader);
+		void renderExtra(WeirdRenderer::RenderTarget& renderTarget);
 
 		void update2DWorldShader(WeirdRenderer::Shader& shader);
+		void update3DWorldShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
 		void forceShaderRefresh();
 		void update(double delta, double time);
 
 		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
+		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
+
+		Material3D& createMaterial();
+
+		Material3D& getMaterial(int index) { return m_materials[index]; }
+		const Material3D* getMaterials() const { return m_materials; }
 
 		float getTime();
 
@@ -88,6 +95,9 @@ namespace WeirdEngine
 		{
 			return m_nextScene;
 		};
+
+		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
+		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
 
@@ -127,13 +137,28 @@ namespace WeirdEngine
 		ResourceManager m_resourceManager;
 		Simulation2D m_simulation2D;
 
+		Material3D m_materials[16];
+		uint16_t m_materialCount = 0;
+
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
 
 		Entity addShape(ShapeId shapeId, float* variables, uint16_t material,
 						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
 						int group = 0);
+		Entity addShape(ShapeId shapeId, float* variables, const Material3D& material,
+						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
+						int group = 0)
+		{
+			return addShape(shapeId, variables, material.id, combination, hasCollision, group);
+		}
+		
 		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
 						  CombinationType combination = CombinationType::Addition, int group = 0);
+		Entity addUIShape(ShapeId shapeId, float* variables, const Material3D& material,
+						  CombinationType combination = CombinationType::Addition, int group = 0)
+		{
+			return addUIShape(shapeId, variables, material.id, combination, group);
+		}
 		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
 
 		void lookAt(Entity entity);
@@ -157,11 +182,11 @@ namespace WeirdEngine
 		// Return the entity that owns a tag, or MAX_ENTITIES if none.
 		Entity getEntityByTag(const std::string& name) const;
 
+		SDFRenderSystemContext m_2DWorldRenderContext;
+		SDFRenderSystemContext m_3DWorldRenderContext;
+		SDFRenderSystemContext m_UIRenderContext;
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId);
-
-		SDFRenderSystem2DContext m_2DWorldRenderContext;
-		SDFRenderSystem2DContext m_UIRenderContext;
 
 		bool m_debugFly = false;
 		bool m_debugInput = false;

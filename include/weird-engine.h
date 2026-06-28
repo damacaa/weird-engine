@@ -21,6 +21,14 @@
 #define EXPORT
 #endif
 
+#ifndef ASSETS_PATH
+#define ASSETS_PATH
+#endif // !ASSETS_PATH
+
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
+
 extern "C"
 {
 	EXPORT unsigned long NvOptimusEnablement = 0x00000001;

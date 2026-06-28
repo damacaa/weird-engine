@@ -12,6 +12,8 @@ namespace WeirdEngine
 		struct Camera : public Component
 		{
 			WeirdRenderer::Camera camera;
+			float nearPlane = 0.1f;
+			float farPlane = 300.0f;
 
 			Camera()
 				: camera(vec3(0.0f))

@@ -1,14 +1,21 @@
 #include "weird-renderer/core/Renderer.h"
 
+#include <ctime>
+#include <filesystem>
 #include <sys/stat.h>
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl3.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
-#include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_opengl3.h>
 
 #include "weird-engine/Profiler.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
+
+#ifndef SHADERS_PATH
+#define SHADERS_PATH
+#endif // !SHADERS_PATH
 
 namespace WeirdEngine
 {
@@ -19,13 +26,16 @@ namespace WeirdEngine
 			, m_distanceSampleScale(settings.distanceSampleScale)
 			, m_renderScale(settings.internalResolutionScale)
 			, m_vSyncEnabled(settings.vSyncEnabled)
+			, m_ditheringSpread(std::max(0.0f, settings.ditheringSpread))
+			, m_ditheringColorCount(std::max(2, settings.ditheringColorCount))
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
+			, m_3DWorldPipeline(nullptr)
+			, m_meshPipeline(nullptr)
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 			, m_targetRefreshRate(settings.refreshRate)
 		{
 			std::copy_n(settings.colorPalette, 16, m_colorPalette);
-
 			setWindowSize(settings.width, settings.height);
 
 			// Initialize world 2D pipeline
@@ -75,27 +85,37 @@ namespace WeirdEngine
 			uiConfig.ambienOcclusionStrength = 0.15f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
-			// Load shaders
-			m_geometryShaderProgram = Shader(SHADERS_PATH "common/geometry.vert", SHADERS_PATH "common/geometry.frag");
+			// Initialize 3D SDF pipeline
+			SDF3DRenderPipeline::Config sdf3DConfig;
+			sdf3DConfig.renderWidth = m_renderWidth;
+			sdf3DConfig.renderHeight = m_renderHeight;
+			sdf3DConfig.contrast = settings.raymarching3DContrast;
+			sdf3DConfig.enablePathTracer = settings.enable3DPathTracer;
+			m_3DWorldPipeline =
+				new SDF3DRenderPipeline(sdf3DConfig, m_renderPlane);
 
-			m_instancedGeometryShaderProgram =
-				Shader(SHADERS_PATH "common/geometry_instanced.vert", SHADERS_PATH "common/geometry.frag");
-
-			m_3DsdfShaderProgram =
-				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "3d/sdf_raymarching.frag");
+			// Initialize mesh pipeline
+			m_meshPipeline = new MeshRenderPipeline();
+			m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 
 			m_combineScenesShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/alpha_blend_textures.frag");
 
 			m_outputShaderProgram =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/screen_output.frag");
-			if (settings.enableDithering)
+
+			m_ditheringEnabled = settings.enableDithering;
+			if (m_ditheringEnabled)
 				m_outputShaderProgram.addDefine("DITHERING");
 
-			m_3DShapeDataBuffer = new DataBuffer();
+			m_surfaceBlurEnabled    = settings.enableSurfaceBlur;
+			m_surfaceBlurRadius     = std::max(1.0f, settings.surfaceBlurRadius);
+			m_surfaceBlurSigmaColor = std::max(0.001f, settings.surfaceBlurSigmaColor);
+			if (m_surfaceBlurEnabled)
+				m_outputShaderProgram.addDefine("SURFACE_BLUR");
 
 			// Enable culling
-			glCullFace(GL_FRONT);
+			glCullFace(GL_BACK);
 			glFrontFace(GL_CCW);
 		}
 
@@ -104,13 +124,10 @@ namespace WeirdEngine
 			freeAll();
 			delete m_worldPipeline;
 			delete m_uiPipeline;
-			// Delete all the other objects we've created
-			m_geometryShaderProgram.free();
-			m_instancedGeometryShaderProgram.free();
-			m_3DsdfShaderProgram.free();
+			delete m_3DWorldPipeline;
+			delete m_meshPipeline;
 			m_combineScenesShaderProgram.free();
 			m_outputShaderProgram.free();
-			delete m_3DShapeDataBuffer;
 		}
 
 		void Renderer::render(Scene& scene, const double time, const double delta)
@@ -124,22 +141,100 @@ namespace WeirdEngine
 			glFinish();
 
 			static bool showDebugUI = false;
+			static bool showStatsUI = false;
 
-			if(Input::GetKeyDown(Input::F3))
+			if (Input::GetKeyDown(Input::F3))
 			{
 				showDebugUI = !showDebugUI;
 			}
 
-			if(showDebugUI)
+			if (Input::GetKeyDown(Input::F4))
+			{
+				showStatsUI = !showStatsUI;
+				if (showStatsUI)
+					Profiler::Get().enableRealtime();
+				else
+					Profiler::Get().disableRealtime();
+			}
+
+			if (showDebugUI || showStatsUI)
 			{
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplSDL3_NewFrame();
 				ImGui::NewFrame();
 
-				ImGui::Begin("Renderer Settings");
-				m_worldPipeline->handleDebugInputs();
-				m_uiPipeline->handleDebugInputs();
-				ImGui::End();
+				if (showDebugUI)
+				{
+					ImGui::Begin("Renderer Settings");
+					m_worldPipeline->showDebugUI();
+					m_uiPipeline->showDebugUI();
+					m_3DWorldPipeline->showDebugUI();
+					m_meshPipeline->showDebugUI();
+
+					// Output settings
+					{
+						const char* label = "Output Settings";
+						if (ImGui::CollapsingHeader(label))
+						{
+
+							ImGui::PushID(label);
+
+							if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+							{
+								if (m_ditheringEnabled)
+									m_outputShaderProgram.addDefine("DITHERING");
+								else
+									m_outputShaderProgram.removeDefine("DITHERING");
+							}
+
+							ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+							ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+						ImGui::Separator();
+						if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
+						{
+							if (m_surfaceBlurEnabled)
+								m_outputShaderProgram.addDefine("SURFACE_BLUR");
+							else
+								m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+						}
+						ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+						ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
+
+						ImGui::PopID();
+						}
+					}
+
+					if (ImGui::Button("Take Screenshot"))
+					{
+						m_takeScreenshot = true;
+					}
+
+					if (!m_lastScreenshotPath.empty())
+					{
+						ImGui::SameLine();
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+						ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+						ImGui::PopStyleColor();
+						if (ImGui::IsItemHovered())
+						{
+							ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+							ImGui::SetTooltip("Click to open");
+						}
+						if (ImGui::IsItemClicked())
+						{
+							std::string url = "file://" + m_lastScreenshotPath;
+							SDL_OpenURL(url.c_str());
+						}
+					}
+
+					ImGui::End();
+				}
+
+				if (showStatsUI)
+				{
+					drawStatsUI(delta);
+				}
 
 				ImGui::Render();
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -175,24 +270,13 @@ namespace WeirdEngine
 
 			freeAll();
 
-			// Initialize 3D rendering resources
-			m_geometryTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_geometryDepthTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_geometryRender = RenderTarget(false);
-			m_geometryRender.bindColorTextureToFrameBuffer(m_geometryTexture);
-			m_geometryRender.bindDepthTextureToFrameBuffer(m_geometryDepthTexture);
-
-			m_3DSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
-			m_3DDepthSceneTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Depth);
-			m_3DSceneRender = RenderTarget(false);
-			m_3DSceneRender.bindColorTextureToFrameBuffer(m_3DSceneTexture);
-			m_3DSceneRender.bindDepthTextureToFrameBuffer(m_3DDepthSceneTexture);
-
 			m_combineResultTexture = Texture(m_renderWidth, m_renderHeight, Texture::TextureType::Data);
 			m_combinationRender = RenderTarget(false);
 			m_combinationRender.bindColorTextureToFrameBuffer(m_combineResultTexture);
 
+			m_outputTexture = Texture(m_windowWidth, m_windowHeight, Texture::TextureType::Data);
 			m_outputResolutionRender = RenderTarget(false);
+			m_outputResolutionRender.bindColorTextureToFrameBuffer(m_outputTexture);
 
 			m_renderPlane = RenderPlane();
 
@@ -201,6 +285,8 @@ namespace WeirdEngine
 			{
 				m_worldPipeline->resize(m_renderWidth, m_renderHeight);
 				m_uiPipeline->resize(m_renderWidth, m_renderHeight);
+				m_3DWorldPipeline->resize(m_renderWidth, m_renderHeight);
+				m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 			}
 
 			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
@@ -254,7 +340,12 @@ namespace WeirdEngine
 			m_outputShaderProgram.use();
 			m_outputShaderProgram.setUniform("u_time", scene.getTime());
 			m_outputShaderProgram.setUniform("u_resolution", glm::vec2(m_windowWidth, m_windowHeight));
+			m_outputShaderProgram.setUniform("u_renderResolution", glm::vec2(m_renderWidth, m_renderHeight));
 			m_outputShaderProgram.setUniform("u_renderScale", m_renderScale);
+			m_outputShaderProgram.setUniform("u_ditheringSpread", m_ditheringSpread);
+			m_outputShaderProgram.setUniform("u_ditheringColorCount", m_ditheringColorCount);
+			m_outputShaderProgram.setUniform("u_surfaceBlurRadius", m_surfaceBlurRadius);
+			m_outputShaderProgram.setUniform("u_surfaceBlurSigmaColor", m_surfaceBlurSigmaColor);
 
 			m_outputShaderProgram.setUniform("t_colorTexture", 0);
 			m_finalResultTexture.bind(0);
@@ -262,23 +353,27 @@ namespace WeirdEngine
 			m_renderPlane.draw(m_outputShaderProgram);
 
 			// Screenshot
-			if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKeyDown(Input::S))
+			if (m_takeScreenshot)
 			{
-				m_finalResultTexture.saveToDisk("output_texture.png");
+				m_takeScreenshot = false;
+				std::time_t t = std::time(nullptr);
+				char timeBuf[32];
+				std::strftime(timeBuf, sizeof(timeBuf), "%Y%m%d_%H%M%S", std::localtime(&t));
+				std::string filename = std::string("screenshot_") + timeBuf + ".bmp";
+				m_outputResolutionRender.bind();
+				m_renderPlane.draw(m_outputShaderProgram);
+				m_outputTexture.saveToDisk(filename.c_str());
+				m_lastScreenshotPath = std::filesystem::absolute(filename).string();
 			}
 		}
 
 		void Renderer::freeAll()
 		{
-			m_geometryRender.free();
-			m_3DSceneRender.free();
 			m_combinationRender.free();
 			m_outputResolutionRender.free();
 
-			m_geometryTexture.dispose();
-			m_geometryDepthTexture.dispose();
-			m_3DSceneTexture.dispose();
 			m_combineResultTexture.dispose();
+			m_outputTexture.dispose();
 		}
 
 		SDL_Window* Renderer::getWindow()
@@ -286,14 +381,99 @@ namespace WeirdEngine
 			return m_window;
 		}
 
+		void Renderer::drawStatsUI(double delta)
+		{
+			float fps = delta > 0.0 ? (float)(1.0 / delta) : 0.0f;
+			float frameTimeMs = (float)(delta * 1000.0);
+
+			m_frametimeHistory[m_historyOffset] = frameTimeMs;
+			m_historyOffset = (m_historyOffset + 1) % STATS_HISTORY_SIZE;
+
+			ImGui::SetNextWindowSize(ImVec2(500, 640), ImGuiCond_FirstUseEver);
+			ImGui::Begin("Performance Stats");
+
+			// FPS / Frametime header
+			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
+
+			char ftOverlay[32];
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
+			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
+							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
+
+			ImGui::Separator();
+			ImGui::TextDisabled("Profiler Scopes  (last frame)");
+			ImGui::Spacing();
+
+			auto& profiler = Profiler::Get();
+			const auto& stats = profiler.getLastFrameStats();
+
+			if (stats.empty())
+			{
+				ImGui::TextDisabled("Warming up...");
+				ImGui::End();
+				return;
+			}
+
+			// Top-level scope time as the 100% baseline
+			double topMs = 0.0;
+			for (const auto& s : stats)
+			{
+				if (s.depth == 0 && s.count > 0)
+				{
+					topMs = s.totalTimeMs / s.count;
+					break;
+				}
+			}
+			if (topMs <= 0.0)
+				topMs = 1.0;
+
+			static const ImVec4 depthColors[] = {
+				{0.30f, 0.70f, 1.00f, 1.0f},  // depth 0 — blue
+				{0.35f, 0.90f, 0.50f, 1.0f},  // depth 1 — green
+				{1.00f, 0.70f, 0.25f, 1.0f},  // depth 2 — orange
+				{0.85f, 0.40f, 0.90f, 1.0f},  // depth 3 — purple
+				{0.85f, 0.35f, 0.35f, 1.0f},  // depth 4 — red
+			};
+			constexpr int MAX_DEPTH_COLORS = 5;
+			const float NAME_COLUMN_W = 180.0f;
+			const float INDENT_PX = 16.0f;
+			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
+
+			for (const auto& stat : stats)
+			{
+				if (stat.count == 0)
+					continue;
+
+				double avgMs = stat.totalTimeMs / stat.count;
+				float fraction = (float)(avgMs / topMs);
+				fraction = std::min(1.0f, std::max(0.0f, fraction));
+				float indentOff = stat.depth * INDENT_PX;
+				float availW = ImGui::GetContentRegionAvail().x;
+
+				// Scope name (indented)
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
+				ImGui::TextUnformatted(stat.name);
+
+				// Progress bar on the same line
+				ImGui::SameLine(NAME_COLUMN_W);
+				char barLabel[64];
+				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.1f%%", avgMs, fraction * 100.0f);
+				float barW = availW - NAME_COLUMN_W + indentOff;
+				if (barW > 10.0f)
+				{
+					int ci = std::min(stat.depth, MAX_DEPTH_COLORS - 1);
+					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
+					ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
+					ImGui::PopStyleColor();
+				}
+			}
+
+			ImGui::End();
+		}
+
 		Texture& Renderer::renderScene(Scene& scene, const double time, const double delta)
 		{
 			PROFILE_SCOPE("World Render");
-
-			// Get camera
-			auto& sceneCamera = scene.getCamera();
-			// Updates and exports the camera matrix to the Vertex Shader
-			sceneCamera.updateMatrix(0.1f, 100.0f, m_windowWidth, m_windowHeight);
 
 			// Determine render mode
 			auto renderMode = scene.getRenderMode();
@@ -301,91 +481,82 @@ namespace WeirdEngine
 				renderMode == Scene::RenderMode::RayMarching2D || renderMode == Scene::RenderMode::RayMarchingBoth;
 			bool enable3D = renderMode != Scene::RenderMode::RayMarching2D;
 
-			bool enable3DSDFs = true;
+			// Get camera
+			auto& sceneCamera = scene.getCamera();
+
+			if(renderMode == Scene::RenderMode::RayMarchingBoth)
+			{
+				sceneCamera.fov = 90.0f;
+			}
+
+			// Updates and exports the camera matrix to the Vertex Shader
+			sceneCamera.updateMatrix(m_windowWidth, m_windowHeight);
 
 			// 3D
 			if (enable3D)
 			{
 				PROFILE_SCOPE("3D Render");
 
-				auto& renderQueue = scene.getDrawQueue(); // TODO: sort and then draw it
+				auto& lights = scene.getLigths();
 
-				// Set up framebuffer for 3D scene rendering
-				m_3DSceneRender.bind();
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffer
-				glClearColor(0, 0, 0, 1);
-				glDepthMask(GL_TRUE); // Still write to depth buffer for the 3D meshes
-				glClearDepthf(1.0f);	  // Make sure depth buffer is initialized correctly
-
-				// Enable culling and depth testing for 3D meshes
-				glEnable(GL_CULL_FACE);
-				glEnable(GL_DEPTH_TEST);
-				glDepthFunc(GL_LESS); // Ensure depth comparison is 'less than'
-				glDepthMask(GL_TRUE); // Write to depth buffer
-				glDisable(GL_BLEND);
-
-				// Render ray marching
-				// TODO: render meshes before ray marching to reduce overdraw
-				if (enable3DSDFs)
+				// --- 1. GBuffer pass: render mesh geometry first ---
+				// Depth testing and culling must be enabled for correct GBuffer writes.
 				{
-					// Draw ray marching stuff
-					m_3DsdfShaderProgram.use();
+					PROFILE_SCOPE("Mesh GBuffer");
+					glEnable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LEQUAL);
+					glDepthMask(GL_TRUE);
+					glDisable(GL_BLEND);
+					glFrontFace(GL_CCW);
 
-					// Set uniforms and other ray marching settings
-					float shaderFov = 1.0f / tan(sceneCamera.fov * 0.5f * 0.01745329f); // PI / 180
-					m_3DsdfShaderProgram.setUniform("u_camMatrix", sceneCamera.view);
-					m_3DsdfShaderProgram.setUniform("u_fov", shaderFov);
-					m_3DsdfShaderProgram.setUniform("u_time", scene.getTime());
-					m_3DsdfShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
+					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
+					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
 
-					auto& lights = scene.getLigths();
-					m_3DsdfShaderProgram.setUniform("u_lightPos", lights[0].position);
-					m_3DsdfShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
-					m_3DsdfShaderProgram.setUniform("u_lightColor", lights[0].color);
-
-					// Geom color and depth textures for ray marching
-					m_3DsdfShaderProgram.setUniform("t_colorTexture", 0);
-					m_geometryTexture.bind(0);
-
-					m_3DsdfShaderProgram.setUniform("t_depthTexture", 1);
-					m_geometryDepthTexture.bind(1);
-
-					// Upload and bind shapes for ray marching
-					static uint32_t DataSize3D = 0;
-					static vec4* Data3D = nullptr;
-					// scene.get2DShapesData(Data3D, DataSize3D);
-					m_3DsdfShaderProgram.setUniform("t_shapeBuffer", 2);
-					m_3DShapeDataBuffer->uploadData<vec4>(Data3D, DataSize3D);
-					m_3DShapeDataBuffer->bind(2);
-
-					m_3DsdfShaderProgram.setUniform("u_loadedObjects", (int)DataSize3D);
-
-					// Draw the render plane with ray marching shader
-					m_renderPlane.draw(m_3DsdfShaderProgram);
 					glFinish();
 				}
 
-				// Render 3D geometry objects (with depth writing)
+				// --- 2. SDF ray-marching pass: composites with GBuffer ---
+				// The SDF shader reads mesh albedo/position/normal from the GBuffer and applies
+				// SDF-sourced lighting to mesh surfaces.  SDFs cast shadows/colour onto meshes.
 				{
-					PROFILE_SCOPE("Render 3D Models");
-					m_geometryShaderProgram.use();
-					m_geometryShaderProgram.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
-					m_geometryShaderProgram.setUniform("u_camPos", sceneCamera.position);
+					PROFILE_SCOPE("3D SDF");
+					glDisable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_ALWAYS);
+					glDepthMask(GL_TRUE);
 
-					auto& lights = scene.getLigths();
-					m_geometryShaderProgram.setUniform("u_lightPos", lights[0].position);
-					m_geometryShaderProgram.setUniform("u_lightDirection", lights[0].rotation);
-					m_geometryShaderProgram.setUniform("u_lightColor", lights[0].color);
+					scene.update3DWorldShader(m_3DWorldPipeline->getShader());
 
-					// Draw objects in the scene (3D models)
-					scene.renderModels(m_3DSceneRender, m_geometryShaderProgram, m_instancedGeometryShaderProgram);
+					static uint32_t dataSize3D = 0;
+					static uint32_t shapeCount3D = 0;
+					static vec4* data3D = nullptr;
+					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
+
+					m_3DWorldPipeline->render(
+						data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
+						m_meshPipeline->getGBufferAlbedo(),
+						m_meshPipeline->getGBufferWorldPos(),
+						m_meshPipeline->getGBufferNormal(),
+						m_meshPipeline->getGBufferMaterial(),
+						m_meshPipeline->getDepthTexture(),
+						m_meshPipeline->getBackDepthTexture(),
+						scene.getMaterials()
+					);
+
+					glEnable(GL_CULL_FACE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthFunc(GL_LEQUAL);
+					scene.renderExtra(m_3DWorldPipeline->getRenderTarget());
+					glDisable(GL_CULL_FACE);
+					glDisable(GL_DEPTH_TEST);
+
+					glFinish();
 				}
-				
-				glFinish();
 
 				if (!enable2D)
 				{
-					return m_3DSceneTexture;
+					return m_3DWorldPipeline->getOutputTexture();
 				}
 			}
 
@@ -393,7 +564,6 @@ namespace WeirdEngine
 			glDisable(GL_DEPTH_TEST);
 
 			// 2D
-			Texture* lit2DSceneTexture = nullptr;
 			static uint32_t dataSize;
 			static uint32_t shapeCount;
 			static vec4* data = nullptr;
@@ -404,27 +574,14 @@ namespace WeirdEngine
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
 				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
-												  enable3D ? &m_3DSceneTexture : nullptr);
-				lit2DSceneTexture = &t;
-
-				if (!enable3D)
-				{
-					return t;
-				}
+												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
+				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
+				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
+				return t;
 			}
 
-			m_combinationRender.bind();
-			m_combineScenesShaderProgram.use();
-			m_combineScenesShaderProgram.setUniform("u_time", scene.getTime());
-			m_combineScenesShaderProgram.setUniform("u_resolution", glm::vec2(m_renderWidth, m_renderHeight));
-			m_combineScenesShaderProgram.setUniform("t_3DSceneTexture", 0);
-			m_3DSceneTexture.bind(0);
-			m_combineScenesShaderProgram.setUniform("t_2DSceneTexture", 1);
-			lit2DSceneTexture->bind(1);
-
-			m_renderPlane.draw(m_combineScenesShaderProgram);
-
-			return m_combineResultTexture;
+			// Pure 3D: should have been returned earlier; fall back to 3D output.
+			return m_3DWorldPipeline->getOutputTexture();
 		}
 
 	} // namespace WeirdRenderer

@@ -27,10 +27,17 @@ namespace WeirdEngine
 			float distanceSampleScale = 0.5f, internalResolutionScale = 1.0f, refreshRate = 60.0f;
 			float worldDistanceOverscan = 0.1f;
 			bool enableDithering = true;
+			float ditheringSpread = 0.05f;
+			int ditheringColorCount = 16;
+			bool enableSurfaceBlur = false;
+			float surfaceBlurRadius = 3.0f;
+			float surfaceBlurSigmaColor = 0.15f;
 			bool enableLongShadows = false;
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;
 			float uiSmoothFactor = 3.0f;
+			float raymarching3DContrast = 1.2f;
+			bool enable3DPathTracer = true;
 
 			enum DefaultColors
 			{
@@ -70,6 +77,8 @@ namespace WeirdEngine
 				vec4(0.5f, 0.5f, 1.0f, 1.0f),		// Light Blue
 				vec4(0.4f, 0.25f, 0.1f, 1.0f)		// Brown
 			};
+
+
 
 			std::string windowTitle = "Weird Engine";
 		};

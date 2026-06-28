@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 project(WeirdSamples)
 
 # Create folders if they don't exist
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/assets")
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/include")
-file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/src")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,36 +29,41 @@ endif()
 # -------------------------------------------------------------------------
 # INCLUDE ENGINE & CAPTURE SOURCE PATH
 # -------------------------------------------------------------------------
-if(USE_LOCAL_WEIRD_ENGINE)
-    # Use the local version of WeirdEngine
-    message(STATUS "Using local version of WeirdEngine")
-    add_subdirectory(${WEIRD_ENGINE_LOCAL_PATH} ${CMAKE_BINARY_DIR}/weird-engine)
-    
-    # Resolve the local path to an absolute path for copying files later
-    get_filename_component(WEIRD_ENGINE_REAL_SOURCE "${WEIRD_ENGINE_LOCAL_PATH}" ABSOLUTE)
+if(NOT TARGET WeirdEngine)
+    if(USE_LOCAL_WEIRD_ENGINE)
+        # Use the local version of WeirdEngine
+        message(STATUS "Using local version of WeirdEngine")
+        add_subdirectory(${WEIRD_ENGINE_LOCAL_PATH} ${CMAKE_BINARY_DIR}/weird-engine)
+        
+        # Resolve the local path to an absolute path for copying files later
+        get_filename_component(WEIRD_ENGINE_REAL_SOURCE "${WEIRD_ENGINE_LOCAL_PATH}" ABSOLUTE)
+    else()
+        # Fetch WeirdEngine from GitHub
+        message(STATUS "Using online version of WeirdEngine")
+        include(FetchContent)
+        FetchContent_Declare(
+            WeirdEngine
+            GIT_REPOSITORY https://github.com/damacaa/weird-engine
+            GIT_TAG main
+        )
+        FetchContent_MakeAvailable(WeirdEngine)
+        
+        # FetchContent defines <name>_SOURCE_DIR (usually lowercase)
+        set(WEIRD_ENGINE_REAL_SOURCE "${weirdengine_SOURCE_DIR}")
+    endif()
 else()
-    # Fetch WeirdEngine from GitHub
-    message(STATUS "Using online version of WeirdEngine")
-    include(FetchContent)
-    FetchContent_Declare(
-        WeirdEngine
-        GIT_REPOSITORY https://github.com/damacaa/weird-engine
-        GIT_TAG main
-    )
-    FetchContent_MakeAvailable(WeirdEngine)
-    
-    # FetchContent defines <name>_SOURCE_DIR (usually lowercase)
-    set(WEIRD_ENGINE_REAL_SOURCE "${weirdengine_SOURCE_DIR}")
+    # WeirdEngine already defined (built from root); resolve its source path
+    get_filename_component(WEIRD_ENGINE_REAL_SOURCE "${WEIRD_ENGINE_LOCAL_PATH}" ABSOLUTE)
 endif()
 
 # Glob source files and header files from the proper directories.
-file(GLOB_RECURSE WEIRDGAME_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE WEIRDGAME_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE WEIRDGAME_HEADERS 
-    "${CMAKE_SOURCE_DIR}/include/*.h"
-    "${CMAKE_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
 )
 file(GLOB_RECURSE WEIRDGAME_ASSETS 
-    "${CMAKE_SOURCE_DIR}/assets/*.*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.*"
 )
 
 # Mark headers as header-only so that Visual Studio treats them appropriately.
@@ -68,7 +73,7 @@ set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRU
 add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
 # Set include directories.
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Link to WeirdEngine.
 target_link_libraries(${PROJECT_NAME} PRIVATE WeirdEngine)
@@ -99,7 +104,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 
     # 2. Copy Project ASSETS folder -> Build/assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/assets"
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
 
     # 3. Copy WeirdEngine FONTS -> Build/fonts
@@ -122,7 +127,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 function(assign_source_groups TARGET)
     foreach(source_file IN LISTS ARGN)
         get_filename_component(FILE_PATH "${source_file}" PATH)
-        file(RELATIVE_PATH REL_PATH "${CMAKE_SOURCE_DIR}" "${FILE_PATH}")
+        file(RELATIVE_PATH REL_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${FILE_PATH}")
         string(REPLACE "/" "\\" FILTER_PATH "${REL_PATH}")
         if(FILTER_PATH STREQUAL "")
             set(FILTER_PATH "Root")

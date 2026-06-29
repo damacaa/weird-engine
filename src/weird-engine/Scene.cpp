@@ -19,17 +19,22 @@
 
 namespace WeirdEngine
 {
-	static std::vector<std::shared_ptr<IMathExpression>> s_globalSdfs;
+	static std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFsInternal()
+	{
+		static std::vector<std::shared_ptr<IMathExpression>> s_globalSdfs;
+		return s_globalSdfs;
+	}
 
 	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
 	{
-		s_globalSdfs.push_back(sdf);
-		return static_cast<ShapeId>(s_globalSdfs.size() - 1);
+		auto& sdfs = getGlobalSDFsInternal();
+		sdfs.push_back(sdf);
+		return static_cast<ShapeId>(sdfs.size() - 1);
 	}
 
 	const std::vector<std::shared_ptr<IMathExpression>>& Scene::getGlobalSDFs()
 	{
-		return s_globalSdfs;
+		return getGlobalSDFsInternal();
 	}
 
 	Scene::Scene(const PhysicsSettings& settings)

@@ -17,6 +17,11 @@
 
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
+extern "C"
+{
+	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
+	EXPORT int AmdPowerXpressRequestHighPerformance = 1;
+}
 #else
 #define EXPORT
 #endif
@@ -29,10 +34,6 @@
 #define SHADERS_PATH
 #endif // !SHADERS_PATH
 
-extern "C"
-{
-	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
-}
 
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-renderer/audio/AudioEngine.h"

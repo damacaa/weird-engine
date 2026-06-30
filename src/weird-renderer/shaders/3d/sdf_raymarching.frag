@@ -10,6 +10,7 @@ precision highp isampler2D;
 // #define FISH_EYE
 // #define ANTIALIASING
 // #define COMBINE_2D_AND_3D_SDFS
+// #define REALTIME_MODE
 
 vec2 fOpUnionSoft2(float a, float b, float k)
 {
@@ -72,6 +73,7 @@ uniform sampler2D t_gbufferBackDepth;   // Back-face depth
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
 uniform int u_frameCounter;
+uniform int u_maxAccumulationFrames;
 uniform int u_rayBounces;
 
 uniform mat4 u_camMatrix;
@@ -1111,10 +1113,18 @@ void main()
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
 		
+#ifdef REALTIME_MODE
+		// Realtime mode: Use a fixed weight based on max accumulation frames 
+		// to discard old information over time and reduce ghosting during movement.
+		// If u_maxAccumulationFrames is 1, weight is 1.0 (no ghosting, but noisy).
+		// If u_maxAccumulationFrames is higher, weight gets smaller (less noise, but more ghosting).
+		float weight = 1.0 / max(float(u_maxAccumulationFrames), 1.0);
+#else
 		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap 
 		// to prevent the weight from becoming too small, allowing the image to 
 		// continually refine and denoise even after many frames.
 		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
+#endif
 		col = mix(prevColor.xyz, col, weight);
 	}
 #endif

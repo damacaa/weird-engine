@@ -31,6 +31,11 @@ namespace WeirdEngine
 				m_sdfShader.addDefine("PATH_TRACING");
 			}
 
+			if (m_config.enableRealtimeMode)
+			{
+				m_sdfShader.addDefine("REALTIME_MODE");
+			}
+
 			if (m_config.enableAntialiasing)
 			{
 				m_sdfShader.addDefine("ANTIALIASING");
@@ -70,7 +75,7 @@ namespace WeirdEngine
 
 			// Detect camera movement and restart accumulation
 			bool cameraMoved = (m_oldCameraMatrix != camera.view);
-			if (cameraMoved || m_sdfShader.hasRecompiled())
+			if (!m_config.enableRealtimeMode && (cameraMoved || m_sdfShader.hasRecompiled()))
 			{
 				m_frameCounter = 0;
 				m_oldCameraMatrix = camera.view;
@@ -102,6 +107,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_near", camera.nearPlane);
 			m_sdfShader.setUniform("u_far", camera.farPlane);
 			m_sdfShader.setUniform("u_frameCounter", m_frameCounter);
+			m_sdfShader.setUniform("u_maxAccumulationFrames", m_config.maxAccumulationFrames);
 			m_sdfShader.setUniform("u_rayBounces", m_config.rayBounces);
 			m_sdfShader.setUniform("u_contrast", m_config.contrast);
 
@@ -144,7 +150,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);
 
-			if (m_frameCounter < m_config.maxAccumulationFrames)
+			if (m_frameCounter < m_config.maxAccumulationFrames || m_config.enableRealtimeMode)
 				m_renderPlane.draw(m_sdfShader);
 
 			m_frameCounter++;
@@ -232,6 +238,19 @@ namespace WeirdEngine
 					m_sdfShader.removeDefine("PATH_TRACING");
 			}
 
+			if (ImGui::Checkbox("Enable Realtime Mode", &m_config.enableRealtimeMode))
+			{	
+				std::cout << "Realtime Mode " << (m_config.enableRealtimeMode ? "enabled" : "disabled") << std::endl;
+
+				if(m_config.enableRealtimeMode)
+				{
+					m_sdfShader.addDefine("REALTIME_MODE");
+					m_config.maxAccumulationFrames = 5;
+				}
+				else
+					m_sdfShader.removeDefine("REALTIME_MODE");
+			}
+
 			if (ImGui::Checkbox("Enable Anti-Aliasing", &m_config.enableAntialiasing))
 			{	
 				std::cout << "Anti-Aliasing " << (m_config.enableAntialiasing ? "enabled" : "disabled") << std::endl;
@@ -249,11 +268,19 @@ namespace WeirdEngine
 
 			if (m_config.enablePathTracer)
 			{
-				if(ImGui::SliderInt("Bounces", &m_config.rayBounces, 1, 10))
+				if (ImGui::SliderInt("Bounces", &m_config.rayBounces, 1, 10))
 					m_frameCounter = 0;
 
-				if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 10, 1000))
-					m_frameCounter = 0;
+				if (m_config.enableRealtimeMode)
+				{
+					if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 1, 10))
+						m_frameCounter = 0;
+				}
+				else
+				{
+					if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 10, 1000))
+						m_frameCounter = 0;
+				}
 
 				int progress = std::min(m_frameCounter, m_config.maxAccumulationFrames);
 				ImGui::LabelText("Accumulation Progress", "%d / %d frames", progress, m_config.maxAccumulationFrames);

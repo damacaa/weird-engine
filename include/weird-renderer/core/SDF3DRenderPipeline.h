@@ -24,6 +24,7 @@ namespace WeirdEngine
 				unsigned int renderWidth = 800;
 				unsigned int renderHeight = 600;
 				bool enablePathTracer = true;
+				bool enableRealtimeMode = false;
 				int maxAccumulationFrames = 100;
 				float contrast = 1.2f;
 				int maxRayMarchSteps = 128;

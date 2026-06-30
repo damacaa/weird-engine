@@ -422,7 +422,20 @@ vec3 sceneSdf(vec3 p)
 	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 }
 
-vec3 getMaterial(vec3 p, int id)
+float checkersGradBox3D( in vec3 p, in vec3 dpdx, in vec3 dpdy )
+{
+    // 1. Calculate the filter kernel width
+    vec3 w = max(abs(dpdx) + abs(dpdy), 0.001); 
+    
+    // 2. Analytical integral (box filter)
+    vec3 i = 2.0 * (abs(fract((p - 0.5 * w) * 0.5) - 0.5) - 
+                    abs(fract((p + 0.5 * w) * 0.5) - 0.5)) / w;
+                    
+    // 3. XOR the X, Y, and Z integrals to create the 3D pattern
+    return 0.5 - 0.5 * i.x * i.y * i.z;
+}
+
+vec3 getMaterial(vec3 p, int id, vec3 dpdx, vec3 dpdy)
 {
 	vec3 color = id < 16 ? u_materials[id].color.xyz : (0.83 * vec3(1.0));
 	vec3 secondaryColor = id < 16 ? u_materials[id].secondaryColor.xyz : vec3(0.0);
@@ -434,19 +447,26 @@ vec3 getMaterial(vec3 p, int id)
 		float patternShape = 0.0;
 		vec3 sp = p * patternScale;
 
-		if (pattern == 1)
+		if (pattern == 1) // Checkerboard
 		{
-			patternShape = mod(floor(sp.x) + floor(sp.y) + floor(sp.z), 2.0);
+			patternShape = checkersGradBox3D(sp, dpdx * patternScale, dpdy * patternScale);
 		}
 		else if(pattern == 2) // Perlin Noise
 		{
-			patternShape = perlin3D(sp.xyz * 10.0);
+			float noise = perlin3D(sp.xyz * 10.0);
+			float w = length(abs(dpdx * patternScale) + abs(dpdy * patternScale));
+			float fade = smoothstep(1.5, 0.5, w * 10.0);
+			patternShape = mix(0.5, noise, fade);
 		}
 		else if(pattern == 3) // Waves
 		{
-			patternShape = (sin(10.0  * perlin3D(sp.xyz * 10.0)) + 1.0) * 0.5;
-			patternShape = smoothstep(0.3, 0.7, patternShape);
-
+			float noise = perlin3D(sp.xyz * 10.0);
+			float wave = (sin(10.0  * noise) + 1.0) * 0.5;
+			wave = smoothstep(0.3, 0.7, wave);
+			
+			float w = length(abs(dpdx * patternScale) + abs(dpdy * patternScale));
+			float fade = smoothstep(1.5, 0.5, w * 10.0);
+			patternShape = mix(0.5, wave, fade);
 		}
 
 		return mix(color, secondaryColor, patternShape);
@@ -457,10 +477,10 @@ vec3 getMaterial(vec3 p, int id)
 	return color;
 }
 
-vec3 getColor(vec3 p)
+vec3 getColor(vec3 p, vec3 dpdx, vec3 dpdy)
 {
 	vec3 scene = sceneSdf(p);
-	return getMaterial(p, int(scene.y));
+	return getMaterial(p, int(scene.y), dpdx, dpdy);
 }
 
 float rayMarch(vec3 ro, vec3 rd)
@@ -788,7 +808,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			vec3 bounceMaterialPos = p + (hash3(seed) - 0.5) * 0.04 * max(d, 1.0) * bounceJitterMask;
 			vec3 bounceScene = sceneSdf(bounceMaterialPos);
 			int bounceMatId = clamp(int(bounceScene.y), 0, 15);
-			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId);
+			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId, vec3(0.0), vec3(0.0));
 
 			// Update material properties for the next bounce
 			roughness = u_materials[bounceMatId].roughness;
@@ -953,6 +973,19 @@ vec4 render(in vec2 uv)
 	pcg(state); // Warm up the state
 	float seed = uintBitsToFloat(state);
 
+	// ================== COMPUTE DERIVATIVES UNCONDITIONALLY ==================
+	// We MUST compute dFdx and dFdy before entering the non-uniform branches below!
+	vec3 p_sdf = ro + object * rd;
+	vec3 dpdx_sdf = dFdx(p_sdf);
+	vec3 dpdy_sdf = dFdy(p_sdf);
+
+	float _ar = u_resolution.x / u_resolution.y;
+	vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
+	vec3 meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
+	vec3 dpdx_mesh = dFdx(meshWorldPos);
+	vec3 dpdy_mesh = dFdy(meshWorldPos);
+	// =========================================================================
+
 	if (meshInFront)
 	{
 		// -------------------------------------------------------
@@ -963,17 +996,14 @@ vec4 render(in vec2 uv)
 		// so mesh shading varies per frame and accumulates correctly in the temporal denoiser.
 		// Note: this can produce edge artifacts when the jitter pushes the lookup outside
 		// the mesh silhouette — that is an accepted trade-off.
-		float _ar = u_resolution.x / u_resolution.y;
-		vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
 
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
 		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   gbufferUV).rgb;
-		vec3  meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
 		// float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
 		vec3  meshNormal   = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
 		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
-		meshAlbedo *= getMaterial(meshWorldPos, materialId); // Apply material palette color to mesh albedo
+		meshAlbedo *= getMaterial(meshWorldPos, materialId, dpdx_mesh, dpdy_mesh); // Apply material palette color to mesh albedo
 
 #ifdef PATH_TRACING
 		col = pathTrace(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
@@ -992,7 +1022,7 @@ vec4 render(in vec2 uv)
 	else if (minDepth < u_far)
 	{
 		// --- SDF hit is in front ---
-		vec3 p = ro + object * rd;
+		vec3 p = p_sdf;
 
 #ifdef PATH_TRACING
 		// Jitter the material sampling point with high-frequency 3D noise.
@@ -1010,7 +1040,7 @@ vec4 render(in vec2 uv)
 
 		vec3 sceneResult = sceneSdf(materialSamplePos);
 		int materialId = int(sceneResult.y);
-		vec3 baseColor = getMaterial(materialSamplePos, materialId);
+		vec3 baseColor = getMaterial(materialSamplePos, materialId, dpdx_sdf, dpdy_sdf);
 
 #ifdef PATH_TRACING
 		col = pathTrace(p, rd, baseColor, materialId, getNormal(p), seed);

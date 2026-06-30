@@ -949,7 +949,7 @@ vec4 render(in vec2 uv)
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
 
-	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter);
+	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter) + uint(u_time * 1000.0);
 	pcg(state); // Warm up the state
 	float seed = uintBitsToFloat(state);
 

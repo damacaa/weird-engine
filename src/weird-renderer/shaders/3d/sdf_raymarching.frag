@@ -639,7 +639,15 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		// primary hits). Subsequent bounces always use the SDF analytical gradient.
 		vec3 N = (bounce == 0) ? firstN : getNormal(p);
 
-		float fresnel = currentF0 + ((1.0 - currentF0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
+		float viewAngle = clamp(dot(-currentRd, N), 0.0, 1.0);
+		float fresnel = currentF0 + ((1.0 - currentF0) * pow(1.0 - viewAngle, fresnelPower));
+
+		// HACK: Reduce high-frequency noise at extreme grazing angles (like distant horizon)
+		// 1. Cap the maximum Fresnel reflection to avoid perfect mirror-like sampling
+		fresnel = min(fresnel, max(currentF0, 0.85));
+		// 2. Artificially boost roughness to blur the heavily scattered rays at grazing angles
+		float grazingFactor = pow(1.0 - viewAngle, 5.0);
+		currentRoughness = mix(currentRoughness, 1.0, grazingFactor * 0.5);
 
 		if (bounce == u_rayBounces && bounce > 0)
 		{

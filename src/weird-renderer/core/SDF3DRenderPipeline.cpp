@@ -75,7 +75,7 @@ namespace WeirdEngine
 
 			// Detect camera movement and restart accumulation
 			bool cameraMoved = (m_oldCameraMatrix != camera.view);
-			if (!m_config.enableRealtimeMode && (cameraMoved || m_sdfShader.hasRecompiled()))
+			if (cameraMoved || m_sdfShader.hasRecompiled())
 			{
 				m_frameCounter = 0;
 				m_oldCameraMatrix = camera.view;

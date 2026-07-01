@@ -497,8 +497,10 @@ float rayMarch(vec3 ro, vec3 rd)
 
 		hit = sceneSdf(p).x;
 
-		if (abs(hit) < RAYMARCH_EPSILON || traveled > u_far)
-			break;
+		float eps = RAYMARCH_EPSILON * (1.0 + traveled * 0.05);
+
+    if (abs(hit) < eps || traveled > u_far)
+            break;
 
 		traveled += hit;
 	}

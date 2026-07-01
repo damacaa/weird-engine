@@ -547,25 +547,24 @@ uint pcg(inout uint state)
 	return (word >> 22u) ^ word;
 }
 
-float randomFloat(inout float seed)
+float randomFloat(inout uint state)
 {
-	uint state = floatBitsToUint(seed);
-	float result = float(pcg(state)) * (1.0 / 4294967296.0); // 2^-32
-	seed = uintBitsToFloat(state);
-	return result;
+    state = state * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return float((word >> 22u) ^ word) * 2.3283064365386963e-10; // 1.0 / 2^32
 }
 
-vec2 hash2(inout float seed)
+vec2 hash2(inout uint state) 
 {
-	return vec2(randomFloat(seed), randomFloat(seed));
+    return vec2(randomFloat(state), randomFloat(state));
 }
 
-vec3 hash3(inout float seed)
+vec3 hash3(inout uint state) 
 {
-	return vec3(randomFloat(seed), randomFloat(seed), randomFloat(seed));
+    return vec3(randomFloat(state), randomFloat(state), randomFloat(state));
 }
 
-vec3 cosineSampleHemisphere(vec3 N, inout float seed)
+vec3 cosineSampleHemisphere(vec3 N, inout uint seed)
 {
 	vec2 xi = hash2(seed);
 	float phi = 2.0 * 3.14159265359 * xi.x;
@@ -620,7 +619,7 @@ vec3 getSkyColor(vec3 dir)
 //   • Mesh surfaces: pass the GBuffer normal directly.
 // All secondary-bounce normals are always derived from the SDF analytically.
 // ─────────────────────────────────────────────────────────────────────────────
-vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
+vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout uint seed)
 {
 	vec3 throughput = vec3(1.0);
 
@@ -973,7 +972,7 @@ vec4 render(in vec2 uv)
 
 	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter) + uint(u_time * 1000.0);
 	pcg(state); // Warm up the state
-	float seed = uintBitsToFloat(state);
+	uint seed = state;
 
 	// ================== COMPUTE DERIVATIVES UNCONDITIONALLY ==================
 	// We MUST compute dFdx and dFdy before entering the non-uniform branches below!

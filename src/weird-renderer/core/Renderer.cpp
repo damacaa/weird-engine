@@ -157,90 +157,87 @@ namespace WeirdEngine
 					Profiler::Get().disableRealtime();
 			}
 
-			if (showDebugUI || showStatsUI)
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplSDL3_NewFrame();
+			ImGui::NewFrame();
+
+			if (showDebugUI)
 			{
-				ImGui_ImplOpenGL3_NewFrame();
-				ImGui_ImplSDL3_NewFrame();
-				ImGui::NewFrame();
+				ImGui::Begin("Renderer Settings");
+				m_worldPipeline->showDebugUI();
+				m_uiPipeline->showDebugUI();
+				m_3DWorldPipeline->showDebugUI();
+				m_meshPipeline->showDebugUI();
 
-				if (showDebugUI)
+				// Output settings
 				{
-					ImGui::Begin("Renderer Settings");
-					m_worldPipeline->showDebugUI();
-					m_uiPipeline->showDebugUI();
-					m_3DWorldPipeline->showDebugUI();
-					m_meshPipeline->showDebugUI();
-
-					// Output settings
+					const char* label = "Output Settings";
+					if (ImGui::CollapsingHeader(label))
 					{
-						const char* label = "Output Settings";
-						if (ImGui::CollapsingHeader(label))
+
+						ImGui::PushID(label);
+
+						if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
 						{
-
-							ImGui::PushID(label);
-
-							if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
-							{
-								if (m_ditheringEnabled)
-									m_outputShaderProgram.addDefine("DITHERING");
-								else
-									m_outputShaderProgram.removeDefine("DITHERING");
-							}
-
-							ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
-							ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
-
-						ImGui::Separator();
-						if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
-						{
-							if (m_surfaceBlurEnabled)
-								m_outputShaderProgram.addDefine("SURFACE_BLUR");
+							if (m_ditheringEnabled)
+								m_outputShaderProgram.addDefine("DITHERING");
 							else
-								m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+								m_outputShaderProgram.removeDefine("DITHERING");
 						}
-						ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
-						ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
 
-						ImGui::PopID();
-						}
-					}
+						ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+						ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
 
-					if (ImGui::Button("Take Screenshot"))
+					ImGui::Separator();
+					if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
 					{
-						m_takeScreenshot = true;
+						if (m_surfaceBlurEnabled)
+							m_outputShaderProgram.addDefine("SURFACE_BLUR");
+						else
+							m_outputShaderProgram.removeDefine("SURFACE_BLUR");
 					}
+					ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+					ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
 
-					if (!m_lastScreenshotPath.empty())
-					{
-						ImGui::SameLine();
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-						ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
-						ImGui::PopStyleColor();
-						if (ImGui::IsItemHovered())
-						{
-							ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-							ImGui::SetTooltip("Click to open");
-						}
-						if (ImGui::IsItemClicked())
-						{
-							std::string url = "file://" + m_lastScreenshotPath;
-							SDL_OpenURL(url.c_str());
-						}
+					ImGui::PopID();
 					}
-
-					ImGui::End();
 				}
 
-				if (showStatsUI)
+				if (ImGui::Button("Take Screenshot"))
 				{
-					drawStatsUI(delta);
+					m_takeScreenshot = true;
 				}
 
-				ImGui::Render();
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				glViewport(0, 0, m_windowWidth, m_windowHeight);
-				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+				if (!m_lastScreenshotPath.empty())
+				{
+					ImGui::SameLine();
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+					ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+					ImGui::PopStyleColor();
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+						ImGui::SetTooltip("Click to open");
+					}
+					if (ImGui::IsItemClicked())
+					{
+						std::string url = "file://" + m_lastScreenshotPath;
+						SDL_OpenURL(url.c_str());
+					}
+				}
+
+				ImGui::End();
 			}
+
+			if (showStatsUI)
+			{
+				drawStatsUI(delta);
+			}
+
+			ImGui::Render();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, m_windowWidth, m_windowHeight);
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			{
 				PROFILE_SCOPE("Synchronization");

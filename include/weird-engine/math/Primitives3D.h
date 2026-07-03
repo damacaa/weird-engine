@@ -32,18 +32,29 @@ namespace WeirdEngine::Primitives3D
 
     struct PerlinPlane : public WeirdEngine::IMathExpression
     {
+    protected:
+        std::shared_ptr<IMathExpression> m_h;
+        std::shared_ptr<IMathExpression> m_displacement;
+        std::shared_ptr<IMathExpression> m_detailScale;
+
     public:
-        PerlinPlane(float height) : m_height(height) {}
-        
+        static constexpr uint8_t BASE_HEIGHT = 0;
+        static constexpr uint8_t DISPLACEMENT = 1;
+        static constexpr uint8_t DETAIL_SCALE = 2;
+
+        PerlinPlane(std::shared_ptr<IMathExpression> height, std::shared_ptr<IMathExpression> displacement, std::shared_ptr<IMathExpression> detailScale)
+            : m_h(std::move(height)), m_displacement(std::move(displacement)), m_detailScale(std::move(detailScale))
+        {
+        }
+
         float getValue() const override { return 1000.0f; }
         void propagateValues(float* values) override {}
         
         std::string print() const override {
-            return "fPlane(\n"
-                   "    p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))))\n";
+            return "0.5 * fPlane(\n"
+                   "    p, vec3(0.0, 1.0, 0.0), " + m_h->print() + " + (" + m_detailScale->print() + " * perlin(1.2 * vec2(p.x, p.z))) + (" + m_displacement->print() + " * perlin(0.2 * vec2(p.x, p.z))))\n";
         }
-    private:
-        float m_height;
+
     };
 
     struct Box : public WeirdEngine::IMathExpression

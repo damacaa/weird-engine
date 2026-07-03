@@ -34,11 +34,8 @@ private:
 			m_whiteMatId = whiteMat.id;
 			whiteMat.pattern = MaterialPattern::Checkers;
 
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
-			auto planeId = registerSDF(plane);
-
-			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, whiteMat);
+			float vars[8] = {0.0f};
+			addShape(DefaultShapes3D::PLANE, vars, whiteMat, CombinationType::Addition, false);
 		}
 
 		m_renderPlane = new RenderPlane();

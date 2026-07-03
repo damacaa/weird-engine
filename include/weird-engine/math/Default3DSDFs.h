@@ -24,6 +24,12 @@ namespace WeirdEngine
             var(Primitives3D::Plane::HEIGHT)
         ));
 
+        inline const uint16_t PERLIN_PLANE = Scene::registerDefaultSDF(std::make_shared<Primitives3D::PerlinPlane>(
+            var(Primitives3D::PerlinPlane::BASE_HEIGHT),
+            var(Primitives3D::PerlinPlane::DISPLACEMENT),
+            var(Primitives3D::PerlinPlane::DETAIL_SCALE)
+        ));
+
         inline const uint16_t BOX = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Box>(
             var(Primitives3D::Box::POS_X), var(Primitives3D::Box::POS_Y), var(Primitives3D::Box::POS_Z),
             var(Primitives3D::Box::SIZE_X), var(Primitives3D::Box::SIZE_Y), var(Primitives3D::Box::SIZE_Z)

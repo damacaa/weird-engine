@@ -343,7 +343,7 @@ namespace WeirdEngine
 					// TODO: Pre-calculate target plane for relaxation
 					// collisionEvent.targetPos = p + (penetration * collisionEvent.normal);
 
-					constexpr float DYNAMIC_FRICTION = 0.1f;
+					constexpr float DYNAMIC_FRICTION = 0.05f;
 					collisionEvent.friction = DYNAMIC_FRICTION;
 
 					constexpr float ABSORTION = 10.0f;
@@ -618,11 +618,16 @@ namespace WeirdEngine
 			float restitution = 0.5f;
 			vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
 			float velocityAlongNormal = glm::dot(normal, vRel);
-			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
-			vec2 impulse = impulseMagnitude * normal;
+			
+			// Only apply impulse if objects are moving towards each other
+			if (velocityAlongNormal < 0.0f)
+			{
+				float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
+				vec2 impulse = impulseMagnitude * normal;
 
-			m_velocities[col.A] -= m_invMass[col.A] * impulse;
-			m_velocities[col.B] += m_invMass[col.B] * impulse;
+				m_velocities[col.A] -= m_invMass[col.A] * impulse;
+				m_velocities[col.B] += m_invMass[col.B] * impulse;
+			}
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
@@ -653,20 +658,42 @@ namespace WeirdEngine
 			if (collisionEvent.state == CollisionState::END)
 				continue;
 
-			vec2 vel = collisionEvent.velocity;
-			float speed = length(vel);
+			// Use the current velocity of the body for accurate response
+			vec2 vel = m_velocities[collisionEvent.body];
+			
+			float v_n = glm::dot(vel, collisionEvent.normal);
+			vec2 vel_t = vel - (v_n * collisionEvent.normal);
+			float speed_t = length(vel_t);
 
-			vec2 velocityDirection = speed > 0.0f ? vel / speed : vec2(0.0f); // Avoid NaN
-			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
+			// Apply Tangential Friction
+			if (speed_t > EPSILON)
+			{
+				// Normal acceleration from the penalty method (calculated below: push * penetration^2)
+				float normalAcceleration = m_push * collisionEvent.penetration * collisionEvent.penetration;
+				
+				// Coulomb friction (constant sliding resistance based on normal force)
+				float coulombDrop = collisionEvent.friction * normalAcceleration * m_fixedDeltaTimeF;
+				
+				// Viscous friction (increases with speed to slow it down more when moving fast)
+				float viscousDrop = collisionEvent.friction * speed_t * 10.0f * m_fixedDeltaTimeF;
+				
+				float totalDrop = coulombDrop + viscousDrop;
+				
+				// Clamp velocity drop so it never reverses the direction (fixes low-speed jitter)
+				float drop = std::min(totalDrop, speed_t);
+				
+				m_velocities[collisionEvent.body] -= drop * (vel_t / speed_t);
+			}
 
-			// Apply friction
-			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.0f);
-			m_velocities[collisionEvent.body] -=
-				m_fixedDeltaTimeF * friction * velocityDirection; // Lose velocity on collision
-
-			// Absortion
-			float absortionRate = std::max(0.0f, collisionEvent.absortion * velocityAlongNormal);
-			m_velocities[collisionEvent.body] -= m_fixedDeltaTimeF * absortionRate * speed * collisionEvent.normal;
+			// Absorption (Damping on the normal axis to prevent infinite bouncing)
+			// Apply damping proportional to the normal velocity
+			float dampingDrop = collisionEvent.absortion * v_n * m_fixedDeltaTimeF;
+			if (v_n > 0.0f) {
+				dampingDrop = std::min(dampingDrop, v_n);
+			} else {
+				dampingDrop = std::max(dampingDrop, v_n);
+			}
+			m_velocities[collisionEvent.body] -= dampingDrop * collisionEvent.normal;
 
 			// Penalty
 			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;

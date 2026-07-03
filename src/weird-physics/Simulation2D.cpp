@@ -46,6 +46,7 @@ namespace WeirdEngine
 		, m_diameterSquared(m_diameter * m_diameter)
 		, m_radious(m_diameter / 2.0f)
 		, m_collisionMap(size)
+		, m_head(8191, -1)
 	{
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
@@ -216,18 +217,15 @@ namespace WeirdEngine
 		m_collisions.clear();
 
 		// Spatial hash grid (broadphase)
-		// Static arrays to avoid memory allocation overhead each frame
-		static const int TABLE_SIZE = 8191; // A prime number for better hashing
-		static std::vector<int> head(TABLE_SIZE, -1);
-		static std::vector<int> next;
+		const int TABLE_SIZE = 8191; // A prime number for better hashing
 
 		// Reset the head array for this frame
-		std::fill(head.begin(), head.end(), -1);
+		std::fill(m_head.begin(), m_head.end(), -1);
 
 		// Ensure the next array is large enough to hold all particles
-		if (next.size() < m_size)
+		if (m_next.size() < m_size)
 		{
-			next.resize(std::max((size_t)m_size, m_maxSize), -1);
+			m_next.resize(std::max((size_t)m_size, m_maxSize), -1);
 		}
 
 		// Cell size should be exactly the maximum interaction distance (the diameter)
@@ -255,8 +253,8 @@ namespace WeirdEngine
 			int hash = getHash(gx, gy);
 
 			// Insert at the head of the linked list for this cell
-			next[i] = head[hash];
-			head[hash] = i;
+			m_next[i] = m_head[hash];
+			m_head[hash] = i;
 		}
 
 		// Check for collisions using the grid
@@ -271,7 +269,7 @@ namespace WeirdEngine
 				for (int dy = -1; dy <= 1; dy++)
 				{
 					int hash = getHash(gx + dx, gy + dy);
-					int j = head[hash];
+					int j = m_head[hash];
 
 					// Traverse the linked list of particles in this cell
 					while (j != -1)
@@ -292,7 +290,7 @@ namespace WeirdEngine
 #endif
 						}
 
-						j = next[j]; // Move to the next particle in the cell
+						j = m_next[j]; // Move to the next particle in the cell
 					}
 				}
 			}
@@ -343,7 +341,7 @@ namespace WeirdEngine
 					// TODO: Pre-calculate target plane for relaxation
 					// collisionEvent.targetPos = p + (penetration * collisionEvent.normal);
 
-					constexpr float DYNAMIC_FRICTION = 0.1f;
+					constexpr float DYNAMIC_FRICTION = 0.05f;
 					collisionEvent.friction = DYNAMIC_FRICTION;
 
 					constexpr float ABSORTION = 10.0f;
@@ -618,11 +616,20 @@ namespace WeirdEngine
 			float restitution = 0.5f;
 			vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
 			float velocityAlongNormal = glm::dot(normal, vRel);
-			float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
-			vec2 impulse = impulseMagnitude * normal;
+			
+			// Only apply impulse if objects are moving towards each other
+			if (velocityAlongNormal < 0.0f)
+			{
+				float invMassSum = m_invMass[col.A] + m_invMass[col.B];
+				if (invMassSum > 0.0f)
+				{
+					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
+					vec2 impulse = impulseMagnitude * normal;
 
-			m_velocities[col.A] -= m_invMass[col.A] * impulse;
-			m_velocities[col.B] += m_invMass[col.B] * impulse;
+					m_velocities[col.A] -= m_invMass[col.A] * impulse;
+					m_velocities[col.B] += m_invMass[col.B] * impulse;
+				}
+			}
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
@@ -653,20 +660,42 @@ namespace WeirdEngine
 			if (collisionEvent.state == CollisionState::END)
 				continue;
 
-			vec2 vel = collisionEvent.velocity;
-			float speed = length(vel);
+			// Use the current velocity of the body for accurate response
+			vec2 vel = m_velocities[collisionEvent.body];
+			
+			float v_n = glm::dot(vel, collisionEvent.normal);
+			vec2 vel_t = vel - (v_n * collisionEvent.normal);
+			float speed_t = length(vel_t);
 
-			vec2 velocityDirection = speed > 0.0f ? vel / speed : vec2(0.0f); // Avoid NaN
-			float velocityAlongNormal = glm::dot(velocityDirection, collisionEvent.normal);
+			// Apply Tangential Friction
+			if (speed_t > EPSILON)
+			{
+				// Normal acceleration from the penalty method (calculated below: push * penetration^2)
+				float normalAcceleration = m_push * collisionEvent.penetration * collisionEvent.penetration;
+				
+				// Coulomb friction (constant sliding resistance based on normal force)
+				float coulombDrop = collisionEvent.friction * normalAcceleration * m_fixedDeltaTimeF;
+				
+				// Viscous friction (increases with speed to slow it down more when moving fast)
+				float viscousDrop = collisionEvent.friction * speed_t * 10.0f * m_fixedDeltaTimeF;
+				
+				float totalDrop = coulombDrop + viscousDrop;
+				
+				// Clamp velocity drop so it never reverses the direction (fixes low-speed jitter)
+				float drop = std::min(totalDrop, speed_t);
+				
+				m_velocities[collisionEvent.body] -= drop * (vel_t / speed_t);
+			}
 
-			// Apply friction
-			float friction = collisionEvent.friction * (1.0f - abs(velocityAlongNormal)) * (speed + 1.0f);
-			m_velocities[collisionEvent.body] -=
-				m_fixedDeltaTimeF * friction * velocityDirection; // Lose velocity on collision
-
-			// Absortion
-			float absortionRate = std::max(0.0f, collisionEvent.absortion * velocityAlongNormal);
-			m_velocities[collisionEvent.body] -= m_fixedDeltaTimeF * absortionRate * speed * collisionEvent.normal;
+			// Absorption (Damping on the normal axis to prevent infinite bouncing)
+			// Apply damping proportional to the normal velocity
+			float dampingDrop = collisionEvent.absortion * v_n * m_fixedDeltaTimeF;
+			if (v_n > 0.0f) {
+				dampingDrop = std::min(dampingDrop, v_n);
+			} else {
+				dampingDrop = std::max(dampingDrop, v_n);
+			}
+			m_velocities[collisionEvent.body] -= dampingDrop * collisionEvent.normal;
 
 			// Penalty
 			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;
@@ -739,18 +768,6 @@ namespace WeirdEngine
 		// 	m_forces[constraint.B] -= f * n;
 		// }
 
-		// TODO: instead of this, set m_invMass[i] to 0 outside the relaxation loop, less mutex and less calculations
-		{
-			std::lock_guard<std::mutex> lock(m_fixMutex);
-			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
-			{
-				SimulationID id = *it;
-
-				m_positions[id] = m_previousPositions[id];
-				m_velocities[id] = vec2(0.0f);
-				m_forces[id] = vec2(0.0f);
-			}
-		}
 	}
 
 	void Simulation2D::integratePredict(const float timeStep)
@@ -989,13 +1006,22 @@ namespace WeirdEngine
 	void Simulation2D::fix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);
-		m_fixedObjects.emplace_back(id);
+		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
+			m_fixedObjects.emplace_back(id);
+			m_invMass[id] = 0.0f;
+			m_velocities[id] = vec2(0.0f);
+			m_forces[id] = vec2(0.0f);
+		}
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);
-		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
+		auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id);
+		if (it != m_fixedObjects.end()) {
+			m_fixedObjects.erase(it);
+			m_invMass[id] = m_mass[id] > 0.0f ? 1.0f / m_mass[id] : 0.0f;
+		}
 	}
 
 	vec2 Simulation2D::getPosition(SimulationID entity)
@@ -1005,10 +1031,10 @@ namespace WeirdEngine
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
 		m_positions[id] = pos;
 		m_positionsRead[id] = pos;
 		m_previousPositions[id] = pos;
-		m_velocities[id] = vec2(0.0f);
 	}
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
@@ -1020,7 +1046,11 @@ namespace WeirdEngine
 	void Simulation2D::setMass(SimulationID id, float mass)
 	{
 		m_mass[id] = mass;
-		m_invMass[id] = 1.0f / mass;
+		
+		std::lock_guard<std::mutex> lock(m_fixMutex);
+		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
+			m_invMass[id] = mass > 0.0f ? 1.0f / mass : 0.0f;
+		}
 	}
 
 	void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)

@@ -6,6 +6,7 @@
 #include "Classic.h"
 #include "MaterialShowcase.h"
 #include "CornellBox.h"
+#include "MicroWorld.h"
 
 int main(int argc, char* argv[])
 {
@@ -13,7 +14,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<CornellBox>("cornell_box");
 	sceneManager.registerScene<MaterialShowcaseScene>("material_showcase");
 	sceneManager.registerScene<ClassicScene>("classic");
-
+	sceneManager.registerScene<MicroWorld>("world");
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;
 	displaySettings.height = 800;

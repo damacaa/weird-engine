@@ -324,6 +324,9 @@ namespace WeirdEngine
 		// Collision
 		CollisionDetectionMethod m_collisionDetectionMethod;
 
+		std::vector<int> m_head;
+		std::vector<int> m_next;
+
 		std::vector<Collision> m_collisions;
 		std::vector<int> m_treeIDs;
 		std::unordered_map<int, SimulationID> m_treeIdToSimulationID;

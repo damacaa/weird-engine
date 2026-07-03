@@ -46,6 +46,7 @@ namespace WeirdEngine
 		, m_diameterSquared(m_diameter * m_diameter)
 		, m_radious(m_diameter / 2.0f)
 		, m_collisionMap(size)
+		, m_head(8191, -1)
 	{
 		for (size_t i = 0; i < m_maxSize; i++)
 		{
@@ -216,18 +217,15 @@ namespace WeirdEngine
 		m_collisions.clear();
 
 		// Spatial hash grid (broadphase)
-		// Static arrays to avoid memory allocation overhead each frame
-		static const int TABLE_SIZE = 8191; // A prime number for better hashing
-		static std::vector<int> head(TABLE_SIZE, -1);
-		static std::vector<int> next;
+		const int TABLE_SIZE = 8191; // A prime number for better hashing
 
 		// Reset the head array for this frame
-		std::fill(head.begin(), head.end(), -1);
+		std::fill(m_head.begin(), m_head.end(), -1);
 
 		// Ensure the next array is large enough to hold all particles
-		if (next.size() < m_size)
+		if (m_next.size() < m_size)
 		{
-			next.resize(std::max((size_t)m_size, m_maxSize), -1);
+			m_next.resize(std::max((size_t)m_size, m_maxSize), -1);
 		}
 
 		// Cell size should be exactly the maximum interaction distance (the diameter)
@@ -255,8 +253,8 @@ namespace WeirdEngine
 			int hash = getHash(gx, gy);
 
 			// Insert at the head of the linked list for this cell
-			next[i] = head[hash];
-			head[hash] = i;
+			m_next[i] = m_head[hash];
+			m_head[hash] = i;
 		}
 
 		// Check for collisions using the grid
@@ -271,7 +269,7 @@ namespace WeirdEngine
 				for (int dy = -1; dy <= 1; dy++)
 				{
 					int hash = getHash(gx + dx, gy + dy);
-					int j = head[hash];
+					int j = m_head[hash];
 
 					// Traverse the linked list of particles in this cell
 					while (j != -1)
@@ -292,7 +290,7 @@ namespace WeirdEngine
 #endif
 						}
 
-						j = next[j]; // Move to the next particle in the cell
+						j = m_next[j]; // Move to the next particle in the cell
 					}
 				}
 			}
@@ -622,11 +620,15 @@ namespace WeirdEngine
 			// Only apply impulse if objects are moving towards each other
 			if (velocityAlongNormal < 0.0f)
 			{
-				float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / (m_invMass[col.A] + m_invMass[col.B]);
-				vec2 impulse = impulseMagnitude * normal;
+				float invMassSum = m_invMass[col.A] + m_invMass[col.B];
+				if (invMassSum > 0.0f)
+				{
+					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
+					vec2 impulse = impulseMagnitude * normal;
 
-				m_velocities[col.A] -= m_invMass[col.A] * impulse;
-				m_velocities[col.B] += m_invMass[col.B] * impulse;
+					m_velocities[col.A] -= m_invMass[col.A] * impulse;
+					m_velocities[col.B] += m_invMass[col.B] * impulse;
+				}
 			}
 
 			// Penalty method
@@ -766,18 +768,6 @@ namespace WeirdEngine
 		// 	m_forces[constraint.B] -= f * n;
 		// }
 
-		// TODO: instead of this, set m_invMass[i] to 0 outside the relaxation loop, less mutex and less calculations
-		{
-			std::lock_guard<std::mutex> lock(m_fixMutex);
-			for (auto it = m_fixedObjects.begin(); it != m_fixedObjects.end(); ++it)
-			{
-				SimulationID id = *it;
-
-				m_positions[id] = m_previousPositions[id];
-				m_velocities[id] = vec2(0.0f);
-				m_forces[id] = vec2(0.0f);
-			}
-		}
 	}
 
 	void Simulation2D::integratePredict(const float timeStep)
@@ -1016,13 +1006,22 @@ namespace WeirdEngine
 	void Simulation2D::fix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);
-		m_fixedObjects.emplace_back(id);
+		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
+			m_fixedObjects.emplace_back(id);
+			m_invMass[id] = 0.0f;
+			m_velocities[id] = vec2(0.0f);
+			m_forces[id] = vec2(0.0f);
+		}
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
 		std::lock_guard<std::mutex> lock(m_fixMutex);
-		m_fixedObjects.erase(std::remove(m_fixedObjects.begin(), m_fixedObjects.end(), id), m_fixedObjects.end());
+		auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id);
+		if (it != m_fixedObjects.end()) {
+			m_fixedObjects.erase(it);
+			m_invMass[id] = m_mass[id] > 0.0f ? 1.0f / m_mass[id] : 0.0f;
+		}
 	}
 
 	vec2 Simulation2D::getPosition(SimulationID entity)
@@ -1047,7 +1046,11 @@ namespace WeirdEngine
 	void Simulation2D::setMass(SimulationID id, float mass)
 	{
 		m_mass[id] = mass;
-		m_invMass[id] = 1.0f / mass;
+		
+		std::lock_guard<std::mutex> lock(m_fixMutex);
+		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
+			m_invMass[id] = mass > 0.0f ? 1.0f / mass : 0.0f;
+		}
 	}
 
 	void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)

@@ -1031,10 +1031,10 @@ namespace WeirdEngine
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
+		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
 		m_positions[id] = pos;
 		m_positionsRead[id] = pos;
 		m_previousPositions[id] = pos;
-		m_velocities[id] = vec2(0.0f);
 	}
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)

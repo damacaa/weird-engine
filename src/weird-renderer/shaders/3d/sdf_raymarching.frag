@@ -57,6 +57,7 @@ float fCylinder(vec3 p, float r, float height)
 
 // Outputs colors in RGBA
 layout(location = 0) out vec4 FragColor;
+layout(location = 1) out vec4 FragWorldPos;  // World-space hit position for TAA invalidation
 
 in vec2 v_texCoord;
 
@@ -69,6 +70,7 @@ uniform sampler2D t_gbufferWorldPos;    // RGB = world-space position, A = 1 if 
 uniform sampler2D t_gbufferNormal;      // RGB = world-space normal
 uniform isampler2D t_gbufferMaterial;   // R = material ID
 uniform sampler2D t_gbufferBackDepth;   // Back-face depth
+uniform sampler2D t_previousWorldPos;   // Previous frame world-pos for TAA invalidation
 
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
@@ -116,6 +118,10 @@ const float DOT_BLEND_K = 0.2;
 // === Render Style Parameters (Post-Processing) =================
 // contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
 uniform float u_contrast;
+
+// Per-pixel TAA invalidation thresholds
+uniform float u_taaBaseThreshold;
+uniform float u_taaDistanceScale;
 // ===============================================================
 
 // Custom shape variables. In 3D these are evaluated on the XZ plane,
@@ -926,7 +932,9 @@ float linearizeGBufferDepth(float d)
 	return (2.0 * u_near * u_far) / (u_far + u_near - z_n * (u_far - u_near));
 }
 
-vec4 render(in vec2 uv)
+// render() returns color in xyz and packs the world-space hit position
+// into a separate out parameter for the TAA world-pos history buffer.
+vec4 render(in vec2 uv, out vec3 outWorldPos)
 {
 	// Ray origin
 	vec3 ro = -u_camMatrix[3].xyz;
@@ -971,6 +979,9 @@ vec4 render(in vec2 uv)
 
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
+
+	// Default world-pos sentinel for sky pixels (large value = no geometry)
+	outWorldPos = vec3(99999.0);
 
 	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter) + uint(u_time * 1000.0);
 	pcg(state); // Warm up the state
@@ -1021,6 +1032,8 @@ vec4 render(in vec2 uv)
 
 		// Write the mesh depth to the depth buffer
 		gl_FragDepth = meshDepthSample;
+
+		outWorldPos = meshWorldPos;
 	}
 	else if (minDepth < u_far)
 	{
@@ -1055,6 +1068,8 @@ vec4 render(in vec2 uv)
 		col = mix(col, getSkyColor(rd), fog);
 
 		gl_FragDepth = sdfDepthNDC;
+
+		outWorldPos = p;
 	}
 	else
 	{
@@ -1089,9 +1104,9 @@ void main()
 
 	uv.x *= aspectRatio;
 
-	// Because AA jitter is baked into the original UVs being sent to render(),
-	// we just evaluate the render directly to extract the jittered target color.
-	vec4 data = render(uv);
+	// Render the scene and get world-space hit position
+	vec3 currentWorldPos;
+	vec4 data = render(uv, currentWorldPos);
 	vec3 col = data.xyz;
 
 	// Firefly suppression: clamp per-sample luminance before accumulation.
@@ -1113,17 +1128,29 @@ void main()
 	if (u_frameCounter > 0)
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
-		
+
+		// --- Per-pixel TAA invalidation via world-position history ---
+		vec3 prevWorldPos = texture(t_previousWorldPos, screenUV).xyz;
+		float worldPosDist = length(currentWorldPos - prevWorldPos);
+
+		// Camera position (extracted from the view matrix inverse)
+		vec3 ro = -u_camMatrix[3].xyz;
+		ro = vec3(dot(u_camMatrix[0].xyz, ro), dot(u_camMatrix[1].xyz, ro), dot(u_camMatrix[2].xyz, ro));
+		float distToCamera = length(currentWorldPos - ro);
+
+		// Adaptive threshold: scales with distance to handle far surfaces
+		// where small angular changes produce large world-pos differences
+		float threshold = u_taaBaseThreshold + distToCamera * u_taaDistanceScale;
+
 #ifdef REALTIME_MODE
+		bool pixelChanged = (worldPosDist > threshold);
+		
 		// Realtime mode: Use a fixed weight based on max accumulation frames 
 		// to discard old information over time and reduce ghosting during movement.
-		// If u_maxAccumulationFrames is 1, weight is 1.0 (no ghosting, but noisy).
-		// If u_maxAccumulationFrames is higher, weight gets smaller (less noise, but more ghosting).
-		float weight = 1.0 / max(float(u_maxAccumulationFrames), 1.0);
+		float weight = pixelChanged ? 1.0 : (1.0 / max(float(u_maxAccumulationFrames), 1.0));
 #else
-		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap 
-		// to prevent the weight from becoming too small, allowing the image to 
-		// continually refine and denoise even after many frames.
+		bool pixelChanged = false; // Disable per-pixel invalidation in non-realtime mode
+		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap
 		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
 #endif
 		col = mix(prevColor.xyz, col, weight);
@@ -1131,4 +1158,5 @@ void main()
 #endif
 
 	FragColor = vec4(col, 1.0); // output linear color for accumulation
+	FragWorldPos = vec4(currentWorldPos, 1.0); // output world-pos for next frame's TAA comparison
 }

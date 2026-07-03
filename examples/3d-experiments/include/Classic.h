@@ -84,10 +84,9 @@ private:
 
 		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
 
-		return;
-
 		{
 			Transform& t = m_ecs.getComponent<Transform>(m_monkey);
+			t.rotation.y += 0.5f * delta;
 		}
 
 		{

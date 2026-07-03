@@ -73,12 +73,19 @@ namespace WeirdEngine
 			if (!m_config.enablePathTracer)
 				m_frameCounter = 0;
 
-			// Detect camera movement and restart accumulation
+			// Detect shader recompilation and restart accumulation
 			bool cameraMoved = (m_oldCameraMatrix != camera.view);
-			if (cameraMoved || m_sdfShader.hasRecompiled())
+			if (m_sdfShader.hasRecompiled())
 			{
 				m_frameCounter = 0;
+			}
+			if (cameraMoved)
+			{
 				m_oldCameraMatrix = camera.view;
+				if (!m_config.enableRealtimeMode)
+				{
+					m_frameCounter = 0;
+				}
 			}
 
 			int previousAccumIdx = m_accumIdx;
@@ -147,11 +154,30 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("t_gbufferBackDepth", 7);
 			gbufferBackDepth.bind(7);
 
+			// Previous frame world-position buffer for per-pixel TAA invalidation
+			m_sdfShader.setUniform("t_previousWorldPos", 8);
+			m_worldPosTexture[previousAccumIdx].bind(8);
+
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);
 
+			// Per-pixel TAA invalidation thresholds
+			m_sdfShader.setUniform("u_taaBaseThreshold", m_config.taaBaseThreshold);
+			m_sdfShader.setUniform("u_taaDistanceScale", m_config.taaDistanceScale);
+
 			if (m_frameCounter < m_config.maxAccumulationFrames || m_config.enableRealtimeMode)
+			{
+				// Enable writing to both colour attachments (MRT):
+				// location 0 = accumulated colour, location 1 = world-space hit position
+				const GLenum drawBuffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+				glDrawBuffers(2, drawBuffers);
+
 				m_renderPlane.draw(m_sdfShader);
+
+				// Restore single draw buffer for the resolve pass
+				const GLenum single[1] = {GL_COLOR_ATTACHMENT0};
+				glDrawBuffers(1, single);
+			}
 
 			m_frameCounter++;
 
@@ -197,11 +223,15 @@ namespace WeirdEngine
 
 			m_accumTexture[0] = Texture(newWidth, newHeight, Texture::TextureType::AccumulationData);
 			m_accumTexture[1] = Texture(newWidth, newHeight, Texture::TextureType::AccumulationData);
+			m_worldPosTexture[0] = Texture(newWidth, newHeight, Texture::TextureType::Data);
+			m_worldPosTexture[1] = Texture(newWidth, newHeight, Texture::TextureType::Data);
 			m_accumRender[0] = RenderTarget(false);
 			m_accumRender[0].bindColorTextureToFrameBuffer(m_accumTexture[0]);
+			m_accumRender[0].bindColorTextureToFrameBuffer(m_worldPosTexture[0], 1);
 			m_accumRender[0].bindDepthTextureToFrameBuffer(m_depthTexture);
 			m_accumRender[1] = RenderTarget(false);
 			m_accumRender[1].bindColorTextureToFrameBuffer(m_accumTexture[1]);
+			m_accumRender[1].bindColorTextureToFrameBuffer(m_worldPosTexture[1], 1);
 			m_accumRender[1].bindDepthTextureToFrameBuffer(m_depthTexture);
 
 			m_accumIdx = 0;
@@ -218,6 +248,8 @@ namespace WeirdEngine
 			m_depthTexture.dispose();
 			m_accumTexture[0].dispose();
 			m_accumTexture[1].dispose();
+			m_worldPosTexture[0].dispose();
+			m_worldPosTexture[1].dispose();
 		}
 
 		void SDF3DRenderPipeline::showDebugUI()
@@ -245,7 +277,7 @@ namespace WeirdEngine
 				if(m_config.enableRealtimeMode)
 				{
 					m_sdfShader.addDefine("REALTIME_MODE");
-					m_config.maxAccumulationFrames = 5;
+					m_config.maxAccumulationFrames = 10;
 				}
 				else
 					m_sdfShader.removeDefine("REALTIME_MODE");
@@ -273,7 +305,7 @@ namespace WeirdEngine
 
 				if (m_config.enableRealtimeMode)
 				{
-					if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 1, 10))
+					if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 1, 100))
 						m_frameCounter = 0;
 				}
 				else
@@ -282,8 +314,24 @@ namespace WeirdEngine
 						m_frameCounter = 0;
 				}
 
-				int progress = std::min(m_frameCounter, m_config.maxAccumulationFrames);
-				ImGui::LabelText("Accumulation Progress", "%d / %d frames", progress, m_config.maxAccumulationFrames);
+				if (!m_config.enableRealtimeMode)
+				{
+					int progress = std::min(m_frameCounter, m_config.maxAccumulationFrames);
+					ImGui::LabelText("Accumulation Progress", "%d / %d frames", progress,
+									 m_config.maxAccumulationFrames);
+				}
+				else
+				{
+					ImGui::Text("TAA Invalidation");
+					if (ImGui::SliderFloat("Base Threshold", &m_config.taaBaseThreshold, 0.01f, 1.0f, "%.3f"))
+						m_frameCounter = 0;
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Minimum world-space distance to trigger per-pixel accumulation reset");
+					if (ImGui::SliderFloat("Distance Scale", &m_config.taaDistanceScale, 0.0f, 0.1f, "%.4f"))
+						m_frameCounter = 0;
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Threshold scales with camera distance: threshold = base + dist * scale");
+				}
 			}
 
 			ImGui::PopID();

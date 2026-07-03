@@ -32,6 +32,10 @@ namespace WeirdEngine
 				float rayMarchEpsilon = 0.001f;
 				float maxRayDistance = 1000.0f;
 				bool enableAntialiasing = true;
+
+				// Per-pixel TAA invalidation thresholds
+				float taaBaseThreshold = 0.1f;
+				float taaDistanceScale = 0.01f;
 			};
 
 			SDF3DRenderPipeline(const Config& config, RenderPlane& renderPlane);
@@ -81,6 +85,9 @@ namespace WeirdEngine
 			Texture m_accumTexture[2];
 			RenderTarget m_accumRender[2];
 			int m_accumIdx;
+
+			// Double-buffered world-position history for per-pixel TAA invalidation
+			Texture m_worldPosTexture[2];
 
 			glm::mat4 m_oldCameraMatrix;
 			int m_frameCounter;

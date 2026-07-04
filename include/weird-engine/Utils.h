@@ -3,10 +3,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include "weird-engine/Logger.h"
 
 namespace WeirdEngine
 {
@@ -35,7 +36,7 @@ namespace WeirdEngine
 			return (contents);
 		}
 
-		std::cout << "Can't find " << filename << "\n";
+		WeirdEngine::Logger::error(std::string("Can't find ") + filename);
 		throw(errno);
 	}
 
@@ -93,7 +94,7 @@ namespace WeirdEngine
 		else
 		{
 			// Handle the error if the file couldn't be opened
-			std::cerr << "Error: Could not open file " << filename << " for writing.\n";
+			WeirdEngine::Logger::error(std::string("Error: Could not open file ") + filename + " for writing.");
 		}
 	}
 

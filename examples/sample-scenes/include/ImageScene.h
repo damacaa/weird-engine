@@ -102,7 +102,7 @@ private:
 
 		if (img == nullptr)
 		{
-			std::cerr << "Error: could not load image." << std::endl;
+			WeirdEngine::Logger::error("Error: could not load image.");
 			return vec3();
 		}
 
@@ -203,7 +203,7 @@ private:
 			}
 
 			saveToFile(filePath.c_str(), result);
-			std::cout << "Image saved" << std::endl;
+			WeirdEngine::Logger::log("Image saved");
 		}
 	}
 };

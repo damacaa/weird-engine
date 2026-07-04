@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "glm/gtx/norm.hpp"
+#include "weird-engine/Logger.h"
 
 namespace WeirdEngine
 {
@@ -248,8 +249,8 @@ namespace WeirdEngine
 			if (g_simulationSteps == 20 * m_simulationFrequency)
 			{
 				auto average = g_time / g_simulationSteps;
-				std::cout << average << "ms" << std::endl;
-				std::cout << g_collisionCount << " collisions" << std::endl;
+				WeirdEngine::Logger::Log(std::to_string(average) + "ms");
+				WeirdEngine::Logger::Log(std::to_string(g_collisionCount) + " collisions");
 			}
 #endif
 		}
@@ -394,7 +395,7 @@ namespace WeirdEngine
 
 #if MEASURE_PERFORMANCE
 		if (g_simulationSteps == 0)
-			std::cout << "First frame checks: " << checks << std::endl;
+			WeirdEngine::Logger::Log("First frame checks: " + std::to_string(checks));
 #endif
 
 		// Shape collisions

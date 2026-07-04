@@ -129,7 +129,7 @@ private:
 				{
 					foot.stepStarted = false;
 					m_currentFoot = (m_currentFoot + 1) % componentArray->getSize();
-					// std::cout << "Switching foot: " << m_currentFoot << std::endl;
+					// WeirdEngine::Logger::Log("Switching foot: " + std::to_string(m_currentFoot));
 				}
 				else
 				{

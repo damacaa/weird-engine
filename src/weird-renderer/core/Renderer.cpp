@@ -11,6 +11,7 @@
 #include <SDL3/SDL_hints.h>
 
 #include "weird-engine/Profiler.h"
+#include "weird-engine/Logger.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
 
 #ifndef SHADERS_PATH
@@ -249,6 +250,13 @@ namespace WeirdEngine
 						}
 						ImGui::EndTabItem();
 					}
+
+					if (ImGui::BeginTabItem("Console"))
+					{
+						Logger::drawImGuiConsole();
+						ImGui::EndTabItem();
+					}
+					
 					ImGui::EndTabBar();
 				}
 

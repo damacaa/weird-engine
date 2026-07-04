@@ -29,6 +29,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			return;
 		}
 
+		Logger::log("Updating shader code for " + std::string(typeid(ShapeClass).name()) + "s...");
+
 		shapesNeedUpdate = false;
 
 		auto toGlslFloat = [](float value) {
@@ -241,7 +243,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 #ifndef NDEBUG
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
 		{
-			std::cout << replacement << std::endl;
+			WeirdEngine::Logger::log(replacement);
 
 			std::ofstream outFile("generated_shader.frag");
 			if (outFile.is_open())
@@ -257,6 +259,6 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	inline void update(ECSManager& ecs, RenderContext& ctx, WeirdRenderer::Shader& shader,
 					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
-		updateShaderCode<ShapeClass>(ctx.m_shapesNeedUpdate, ecs, shader, sdfs);
+		updateShaderCode<ShapeClass>(ctx.shapesNeedUpdate, ecs, shader, sdfs);
 	}
 } // namespace WeirdEngine::SDFShaderGenerationSystem

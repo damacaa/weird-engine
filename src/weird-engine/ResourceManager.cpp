@@ -332,7 +332,7 @@ namespace WeirdEngine
 		// If mesh doesn't contain any texture, use 1x1 white textures
 		if (m_json["images"].size() == 0)
 		{
-			std::cout << "No textures";
+			WeirdEngine::Logger::warning("No textures");
 
 			std::string key = "default" + DIFFUSE;
 			if (m_textureMap.find(key) != m_textureMap.end())

@@ -224,7 +224,7 @@ namespace WeirdEngine
 
 			if (ImGui::Checkbox("Enable Path Tracer", &m_config.enablePathTracer))
 			{	
-				std::cout << "Path tracer " << (m_config.enablePathTracer ? "enabled" : "disabled") << std::endl;
+				WeirdEngine::Logger::log(std::string("Path tracer ") + (m_config.enablePathTracer ? "enabled" : "disabled"));
 
 				if(m_config.enablePathTracer)
 					m_sdfShader.addDefine("PATH_TRACING");
@@ -234,7 +234,7 @@ namespace WeirdEngine
 
 			if (ImGui::Checkbox("Enable Anti-Aliasing", &m_config.enableAntialiasing))
 			{	
-				std::cout << "Anti-Aliasing " << (m_config.enableAntialiasing ? "enabled" : "disabled") << std::endl;
+				WeirdEngine::Logger::log(std::string("Anti-Aliasing ") + (m_config.enableAntialiasing ? "enabled" : "disabled"));
 
 				if(m_config.enableAntialiasing)
 					m_sdfShader.addDefine("ANTIALIASING");

@@ -10,14 +10,14 @@ namespace WeirdEngine
 	// Make this a component?
 	struct SDFRenderSystemContext
 	{
-		float m_dotRadious = 5.0f;
-		float m_charSpacing = 10.0f;
-		WeirdRenderer::Font m_font;
+		float dotRadious = 5.0f;
+		float charSpacing = 10.0f;
+		WeirdRenderer::Font font;
 
-		bool m_shapesNeedUpdate = true;
+		bool shapesNeedUpdate = true;
 
 		SDFRenderSystemContext()
-			: m_font(FONTS_PATH "small.bmp", 3, 4, 1,
+			: font(FONTS_PATH "small.bmp", 3, 4, 1,
 					 "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}abcdefghijklmnopqrstuvwxyz\\/<>1234567890!\" &_*()__-=_+?|.,:;")
 		{
 		}
@@ -38,13 +38,13 @@ namespace WeirdEngine
 
 					for (const auto& c : text.text)
 					{
-						text.bufferedDotCount += ctx.m_font.getCharData(c).dotCount;
+						text.bufferedDotCount += ctx.font.getCharData(c).dotCount;
 					}
 
 					int charCount = text.text.length();
-					text.width = (charCount * ctx.m_font.getCharWidth() * 2 * ctx.m_dotRadious) +
-								 ((charCount - 1) * ctx.m_charSpacing);
-					text.height = ctx.m_font.getCharHeight() * 2 * ctx.m_dotRadious;
+					text.width = (charCount * ctx.font.getCharWidth() * 2 * ctx.dotRadious) +
+								 ((charCount - 1) * ctx.charSpacing);
+					text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
 
 					text.dirty = false;
 				}
@@ -100,7 +100,7 @@ namespace WeirdEngine
 				data[i].w = dotComp.materialId;
 			}
 
-			float charWidth = ctx.m_font.getCharWidth() * 2 * ctx.m_dotRadious; // should be 40
+			float charWidth = ctx.font.getCharWidth() * 2 * ctx.dotRadious; // should be 40
 
 			// Text
 			int dotIndex = 0;
@@ -142,15 +142,15 @@ namespace WeirdEngine
 
 				for (size_t c = 0; c < charCount; c++)
 				{
-					auto charData = ctx.m_font.getCharData(text.text[c]);
+					auto charData = ctx.font.getCharData(text.text[c]);
 					for (size_t j = 0; j < charData.dotCount; j++)
 					{
 						int idx = normalDots + dotIndex;
 						dotIndex++;
 
-						vec2 charOffset = vec2(((charWidth + ctx.m_charSpacing) * c) + ctx.m_dotRadious,
-											   ctx.m_dotRadious); // TODO: different lines
-						vec2 scaledDotPosition = 2 * ctx.m_dotRadious * charData.positions[j];
+						vec2 charOffset = vec2(((charWidth + ctx.charSpacing) * c) + ctx.dotRadious,
+											   ctx.dotRadious); // TODO: different lines
+						vec2 scaledDotPosition = 2 * ctx.dotRadious * charData.positions[j];
 						vec2 position = (vec2)t.position + charOffset + scaledDotPosition + alignmentOffset; // + letter
 						data[idx].x = position.x;
 						data[idx].y = position.y;

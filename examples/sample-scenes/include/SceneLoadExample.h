@@ -549,8 +549,8 @@ private:
 		if (idx >= pc)
 			return;
 
-		std::cout << "[" << shapeName(cs.distanceFieldId) << "] " << paramName(cs.distanceFieldId, idx) << " (now "
-				  << cs.parameters[idx] << "): " << std::flush;
+		std::string msg = "[" + std::string(shapeName(cs.distanceFieldId)) + "] " + std::string(paramName(cs.distanceFieldId, idx)) + " (now " + std::to_string(cs.parameters[idx]) + "): ";
+		WeirdEngine::Logger::log(msg);
 
 		float v;
 		if (std::cin >> v)

@@ -2,7 +2,7 @@
 
 #include "weird-engine/vec.h"
 #include <array>
-#include <iostream>
+#include "weird-engine/Logger.h"
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 #include <string>
@@ -34,7 +34,7 @@ namespace WeirdEngine::WeirdRenderer
 
 			if (img == nullptr)
 			{
-				std::cerr << "Error: could not load image." << std::endl;
+				WeirdEngine::Logger::error("Error: could not load image.");
 				return;
 			}
 

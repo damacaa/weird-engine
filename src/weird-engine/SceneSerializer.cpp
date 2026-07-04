@@ -219,11 +219,11 @@ namespace WeirdEngine
 		std::ofstream outFile(filename);
 		if (!outFile.is_open())
 		{
-			std::cerr << "[SceneSerializer] Failed to open file for writing: " << filename << "\n";
+			WeirdEngine::Logger::error("[SceneSerializer] Failed to open file for writing: " + filename);
 			return;
 		}
 		outFile << j.dump(2);
-		std::cout << "[SceneSerializer] Scene saved to " << filename << "\n";
+		WeirdEngine::Logger::log("[SceneSerializer] Scene saved to " + filename);
 	}
 
 	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags)
@@ -233,7 +233,7 @@ namespace WeirdEngine
 		std::ifstream inFile(path);
 		if (!inFile.is_open())
 		{
-			std::cerr << "[SceneSerializer] Failed to open .weird file: " << path << "\n";
+			WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
 			return;
 		}
 
@@ -244,7 +244,7 @@ namespace WeirdEngine
 		}
 		catch (const json::parse_error& e)
 		{
-			std::cerr << "[SceneSerializer] JSON parse error in " << path << ": " << e.what() << "\n";
+			WeirdEngine::Logger::error("[SceneSerializer] JSON parse error in " + path + ": " + e.what());
 			return;
 		}
 
@@ -311,7 +311,7 @@ namespace WeirdEngine
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
 					s.isDirty = true;
-					scene.m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
 				}
 
 				if (ej.contains("uiShape"))
@@ -328,7 +328,7 @@ namespace WeirdEngine
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
-					scene.m_UIRenderContext.m_shapesNeedUpdate = true;
+					scene.m_UIRenderContext.shapesNeedUpdate = true;
 				}
 
 				if (ej.contains("dot"))
@@ -530,7 +530,7 @@ namespace WeirdEngine
 			}
 		}
 
-		std::cout << "[SceneSerializer] Scene loaded from " << path << "\n";
+		WeirdEngine::Logger::log("[SceneSerializer] Scene loaded from " + path);
 	}
 
 } // namespace WeirdEngine

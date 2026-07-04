@@ -43,7 +43,7 @@ namespace WeirdEngine
 
 		inline void reset()
 		{
-			std::cout << m_interactionModeToString[(int)m_currentInteractionMode] << std::endl;
+			WeirdEngine::Logger::log(m_interactionModeToString[(int)m_currentInteractionMode]);
 
 			m_loadingImpulse = false;
 

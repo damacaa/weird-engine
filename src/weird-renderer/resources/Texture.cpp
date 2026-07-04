@@ -273,7 +273,7 @@ namespace WeirdEngine
 
 			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			{
-				std::cout << "Texture saving failed: Framebuffer not complete." << std::endl;
+				WeirdEngine::Logger::error("Texture saving failed: Framebuffer not complete.");
 				glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
 				glDeleteFramebuffers(1, &fbo);
 				return;

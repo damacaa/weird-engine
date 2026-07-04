@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include "weird-engine/Logger.h"
 
 #define MA_NO_DEVICE_IO
 #define MINIAUDIO_IMPLEMENTATION
@@ -45,7 +46,7 @@ namespace WeirdEngine
 			result = ma_engine_init(&engineConfig, &m_engine);
 			if (result != MA_SUCCESS)
 			{
-				std::cerr << "Failed to initialize audio engine" << std::endl;
+				WeirdEngine::Logger::error("Failed to initialize audio engine");
 				return false;
 			}
 
@@ -58,7 +59,7 @@ namespace WeirdEngine
 			ma_result noiseResult = ma_noise_init(&noiseConfig, nullptr, &m_noise);
 			if (noiseResult != MA_SUCCESS)
 			{
-				std::cerr << "Failed to initialize noise generator" << std::endl;
+				WeirdEngine::Logger::error("Failed to initialize noise generator");
 				return false;
 			}
 

@@ -1,6 +1,7 @@
 #include "weird-renderer/core/RenderTarget.h"
 
 #include <iostream>
+#include "weird-engine/Logger.h"
 #include <stdexcept>
 
 namespace WeirdEngine
@@ -39,7 +40,7 @@ namespace WeirdEngine
 
 			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			{
-				std::cerr << "Framebuffer is not complete!" << std::endl;
+				WeirdEngine::Logger::error("Framebuffer is not complete!");
 				throw std::runtime_error("Framebuffer is not complete!");
 			}
 

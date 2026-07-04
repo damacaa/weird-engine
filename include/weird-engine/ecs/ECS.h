@@ -143,6 +143,19 @@ namespace WeirdEngine
 			return getComponentManager<T>()->getComponentArray();
 		}
 
+		std::vector<size_t> getComponentTypes(Entity entity) const
+		{
+			std::vector<size_t> componentTypes;
+			for (size_t i = 0; i < m_componentManagers.size(); ++i)
+			{
+				if (m_componentManagers[i] && m_componentManagers[i]->hasComponent(entity))
+				{
+					componentTypes.push_back(i);
+				}
+			}
+			return componentTypes;
+		}
+
 	private:
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::queue<Entity> m_freeEntities;

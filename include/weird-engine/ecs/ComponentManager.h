@@ -15,6 +15,7 @@ namespace WeirdEngine
 		virtual ~IComponentManager() = default;
 		virtual void freeRemovedComponents() = 0;
 		virtual void removeData(Entity entity) = 0;
+		virtual bool hasComponent(Entity entity) = 0;
 	};
 
 	template <typename T> class ComponentManager : public IComponentManager
@@ -57,7 +58,7 @@ namespace WeirdEngine
 			return getComponentArray()->getDataFromEntity(entity);
 		}
 
-		bool hasComponent(Entity entity)
+		bool hasComponent(Entity entity) override
 		{
 			return getComponentArray()->hasData(entity);
 		}

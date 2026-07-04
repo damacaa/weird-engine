@@ -1,4 +1,7 @@
 #include "weird-engine/Scene.h"
+
+#include <imgui.h>
+
 #include "weird-engine/Input.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/Profiler.h"
@@ -58,6 +61,7 @@ namespace WeirdEngine
 
 		// Create camera
 		m_mainCamera = m_ecs.createEntity();
+		tag(m_mainCamera, "mainCamera");
 		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
@@ -643,6 +647,52 @@ namespace WeirdEngine
 	}
 
 	// Utils
+
+	void Scene::renderImGui()
+	{
+		const char* label = "Global settings";
+		if (ImGui::CollapsingHeader(label))
+		{
+
+			ImGui::PushID(label);
+			onImGuiRender();
+
+			ImGui::PopID();
+		}
+
+		const char* label2 = "Hierarchy";
+		if (ImGui::CollapsingHeader(label2))
+		{
+
+			ImGui::PushID(label2);
+
+			for (Entity e = 0; e < m_ecs.getEntityCount(); ++e)
+			{
+				std::vector<size_t> componentIDs = m_ecs.getComponentTypes(e);
+
+				if (componentIDs.empty())
+					continue;
+
+				std::string tag = getEntityTag(e);
+				std::string label =
+					tag.empty() ? ("Entity " + std::to_string(e)) : (tag + " (ID: " + std::to_string(e) + ")");
+
+				if (ImGui::TreeNode(label.c_str()))
+				{
+					ImGui::TextDisabled("Attached Components:");
+
+					for (size_t compID : componentIDs)
+					{
+						ImGui::BulletText("Component Type ID: %zu", compID);
+					}
+
+					ImGui::TreePop();
+				}
+			}
+
+			ImGui::PopID();
+		}
+	}
 
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
 						   bool hasCollision, int group)

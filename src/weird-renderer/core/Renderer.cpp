@@ -157,90 +157,115 @@ namespace WeirdEngine
 					Profiler::Get().disableRealtime();
 			}
 
-			if (showDebugUI || showStatsUI)
+			if (Input::GetKeyDown(Input::F11))
 			{
-				ImGui_ImplOpenGL3_NewFrame();
-				ImGui_ImplSDL3_NewFrame();
-				ImGui::NewFrame();
-
-				if (showDebugUI)
-				{
-					ImGui::Begin("Renderer Settings");
-					m_worldPipeline->showDebugUI();
-					m_uiPipeline->showDebugUI();
-					m_3DWorldPipeline->showDebugUI();
-					m_meshPipeline->showDebugUI();
-
-					// Output settings
-					{
-						const char* label = "Output Settings";
-						if (ImGui::CollapsingHeader(label))
-						{
-
-							ImGui::PushID(label);
-
-							if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
-							{
-								if (m_ditheringEnabled)
-									m_outputShaderProgram.addDefine("DITHERING");
-								else
-									m_outputShaderProgram.removeDefine("DITHERING");
-							}
-
-							ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
-							ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
-
-						ImGui::Separator();
-						if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
-						{
-							if (m_surfaceBlurEnabled)
-								m_outputShaderProgram.addDefine("SURFACE_BLUR");
-							else
-								m_outputShaderProgram.removeDefine("SURFACE_BLUR");
-						}
-						ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
-						ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
-
-						ImGui::PopID();
-						}
-					}
-
-					if (ImGui::Button("Take Screenshot"))
-					{
-						m_takeScreenshot = true;
-					}
-
-					if (!m_lastScreenshotPath.empty())
-					{
-						ImGui::SameLine();
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-						ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
-						ImGui::PopStyleColor();
-						if (ImGui::IsItemHovered())
-						{
-							ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-							ImGui::SetTooltip("Click to open");
-						}
-						if (ImGui::IsItemClicked())
-						{
-							std::string url = "file://" + m_lastScreenshotPath;
-							SDL_OpenURL(url.c_str());
-						}
-					}
-
-					ImGui::End();
-				}
-
-				if (showStatsUI)
-				{
-					drawStatsUI(delta);
-				}
-
-				ImGui::Render();
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				glViewport(0, 0, m_windowWidth, m_windowHeight);
-				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+				bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+				SDL_SetWindowFullscreen(m_window, !isFullscreen);
 			}
+
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplSDL3_NewFrame();
+			ImGui::NewFrame();
+
+			if (showDebugUI)
+			{
+				ImGui::Begin("Engine Settings");
+
+				if (ImGui::BeginTabBar("EngineTabBar"))
+				{
+					if (ImGui::BeginTabItem("Scene"))
+					{
+						scene.renderImGui();
+						ImGui::EndTabItem();
+					}
+
+					if (ImGui::BeginTabItem("Renderer"))
+					{
+						m_worldPipeline->showDebugUI();
+						m_uiPipeline->showDebugUI();
+						m_3DWorldPipeline->showDebugUI();
+						m_meshPipeline->showDebugUI();
+
+						// Output settings
+						{
+							const char* label = "Output Settings";
+							if (ImGui::CollapsingHeader(label))
+							{
+								ImGui::PushID(label);
+
+								if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+								{
+									if (m_ditheringEnabled)
+										m_outputShaderProgram.addDefine("DITHERING");
+									else
+										m_outputShaderProgram.removeDefine("DITHERING");
+								}
+
+								ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+								ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+								ImGui::Separator();
+								if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
+								{
+									if (m_surfaceBlurEnabled)
+										m_outputShaderProgram.addDefine("SURFACE_BLUR");
+									else
+										m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+								}
+								ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+								ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
+
+								ImGui::PopID();
+							}
+						}
+
+						if (ImGui::Button("Take Screenshot"))
+						{
+							m_takeScreenshot = true;
+						}
+
+						bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+						if (ImGui::Checkbox("Fullscreen", &isFullscreen))
+						{
+							SDL_SetWindowFullscreen(m_window, isFullscreen);
+						}
+
+						if (!m_lastScreenshotPath.empty())
+						{
+							ImGui::SameLine();
+							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+							ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+							ImGui::PopStyleColor();
+							if (ImGui::IsItemHovered())
+							{
+								ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+								ImGui::SetTooltip("Click to open");
+							}
+							if (ImGui::IsItemClicked())
+							{
+								std::string url = "file://" + m_lastScreenshotPath;
+								SDL_OpenURL(url.c_str());
+							}
+						}
+						ImGui::EndTabItem();
+					}
+					ImGui::EndTabBar();
+				}
+
+				ImGui::End();
+			}
+
+			if (showStatsUI)
+			{
+				drawStatsUI(delta);
+			}
+
+			
+
+			ImGui::Render();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glViewport(0, 0, m_windowWidth, m_windowHeight);
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			{
 				PROFILE_SCOPE("Synchronization");
@@ -441,13 +466,13 @@ namespace WeirdEngine
 
 			for (const auto& stat : stats)
 			{
-				if (stat.count == 0)
+				if (stat.count == 0 || stat.depth == 0)
 					continue;
 
 				double avgMs = stat.totalTimeMs / stat.count;
 				float fraction = (float)(avgMs / topMs);
 				fraction = std::min(1.0f, std::max(0.0f, fraction));
-				float indentOff = stat.depth * INDENT_PX;
+				float indentOff = (stat.depth - 1) * INDENT_PX;
 				float availW = ImGui::GetContentRegionAvail().x;
 
 				// Scope name (indented)
@@ -458,7 +483,7 @@ namespace WeirdEngine
 				ImGui::SameLine(NAME_COLUMN_W);
 				char barLabel[64];
 				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.1f%%", avgMs, fraction * 100.0f);
-				float barW = availW - NAME_COLUMN_W + indentOff;
+				float barW = availW - NAME_COLUMN_W;
 				if (barW > 10.0f)
 				{
 					int ci = std::min(stat.depth, MAX_DEPTH_COLORS - 1);

@@ -116,6 +116,8 @@ namespace WeirdEngine
 		// Physics queries
 		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f, float maxDistance = 150.0f);
 
+		void renderImGui();
+
 	protected:
 		virtual void onCreate() {};
 		virtual void onStart(ECSManager& ecs, const TagMap& tags)
@@ -125,6 +127,7 @@ namespace WeirdEngine
 		virtual void onStart(ECSManager& ecs) {}
 		virtual void onUpdate(float delta, ECSManager& ecs) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
+		virtual void onImGuiRender() {};
 		
 		// Physics thread callbacks (No m_ecs access recommended!)
 		virtual void onPhysicsStep(Simulation2D& simulation) {};

@@ -136,8 +136,8 @@ private:
 		auto& settings = m_tempEcs->addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
 		settings.damping = 1.0f;
-		settings.isGravityDirty = true;
-		settings.isDampingDirty = true;
+		settings.isDirty = true;
+		settings.isDirty = true;
 
 		buildMaterialPalette();
 		buildToolbar();
@@ -447,8 +447,8 @@ private:
 				settings.gravity = 0.0f;
 				settings.damping = 1.0f;
 			}
-			settings.isGravityDirty = true;
-			settings.isDampingDirty = true;
+			settings.isDirty = true;
+			settings.isDirty = true;
 		}
 
 		m_gridMode = m_tempEcs->getComponent<ShapeToggle>(m_gridToggleEntity).active;
@@ -611,7 +611,7 @@ private:
 
 		auto& rb = m_tempEcs->getComponent<RigidBody2D>(m_draggedBall);
 		rb.isFixed = true;
-		rb.isFixedDirty = true;
+		rb.isDirty = true;
 		vec2 startPos = getMouseWorldPosition();
 		if (m_gridMode)
 			startPos = snapToGrid(startPos, m_draggedBall);
@@ -648,7 +648,7 @@ private:
 		{
 			auto& rb = m_tempEcs->getComponent<RigidBody2D>(m_draggedBall);
 			rb.isFixed = false;
-			rb.isFixedDirty = true;
+			rb.isDirty = true;
 		}
 
 		m_draggedBall = static_cast<Entity>(-1);

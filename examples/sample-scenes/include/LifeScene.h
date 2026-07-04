@@ -37,8 +37,8 @@ private:
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
 		settings.damping = 1.0f;
-		settings.isGravityDirty = true;
-		settings.isDampingDirty = true;
+		settings.isDirty = true;
+		settings.isDirty = true;
 
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
 		for (size_t j = 0; j < 3; j++)

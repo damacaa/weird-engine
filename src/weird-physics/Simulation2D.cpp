@@ -321,6 +321,30 @@ namespace WeirdEngine
 			m_head[hash] = i;
 		}
 
+		// Update the spatial grid snapshot for read-only access (e.g. by raymarching in the main thread)
+		{
+			// TODO: [PERFORMANCE] Avoid heap allocation every physics step.
+			// Currently, we allocate a new std::shared_ptr and its internal std::vector buffers 
+			// (head, next, positions) on the heap every single time this function runs.
+			// While std::shared_ptr safely manages the memory lifecycle for the main thread, 
+			// this causes unnecessary memory fragmentation and malloc overhead.
+			// 
+			// PROPOSED SOLUTION: Implement an Object Pool (e.g. std::vector<SpatialGridSnapshot*>)
+			// with a custom std::shared_ptr deleter. Instead of allocating a new object here, 
+			// pop an old one from the pool (which reuses the vector capacities). When the main 
+			// thread's shared_ptr reference count drops to 0, the custom deleter should push 
+			// the object back into the pool instead of deleting it.
+			auto snapshot = std::make_shared<SpatialGridSnapshot>();
+			snapshot->head = m_head;
+			snapshot->next = m_next;
+			snapshot->positions.assign(m_positions, m_positions + m_size);
+			snapshot->invCellSize = invCellSize;
+			snapshot->radious = m_radious;
+
+			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
+			m_spatialGridSnapshot = snapshot;
+		}
+
 		// Check for collisions using the grid
 		for (int i = 0; i < m_size; i++)
 		{

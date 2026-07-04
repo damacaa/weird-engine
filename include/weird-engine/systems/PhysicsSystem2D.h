@@ -38,25 +38,22 @@ namespace WeirdEngine
 						transform.isDirty = false; // TODO: move somewhere else
 					}
 
-					if (rb.isVelocityDirty)
+					if (rb.isDirty)
 					{
 						simulation.setVelocity(rb.simulationId, rb.velocity);
-						rb.isVelocityDirty = false;
+						
+						if (rb.isFixed)
+							simulation.fix(rb.simulationId);
+						else
+							simulation.unFix(rb.simulationId);
+							
+						rb.isDirty = false;
 					}
 
 					if (glm::length2(rb.pendingForce) > 0.0001f)
 					{
 						simulation.addForce(rb.simulationId, rb.pendingForce);
 						rb.pendingForce = glm::vec2(0.0f);
-					}
-
-					if (rb.isFixedDirty)
-					{
-						if (rb.isFixed)
-							simulation.fix(rb.simulationId);
-						else
-							simulation.unFix(rb.simulationId);
-						rb.isFixedDirty = false;
 					}
 
 					simulation.updateTransform(transform, rb.simulationId);
@@ -78,15 +75,11 @@ namespace WeirdEngine
 				if (globalSettingsArray && globalSettingsArray->getSize() > 0)
 				{
 					auto& settings = globalSettingsArray->getDataAtIdx(0);
-					if (settings.isGravityDirty)
+					if (settings.isDirty)
 					{
 						simulation.setGravity(settings.gravity);
-						settings.isGravityDirty = false;
-					}
-					if (settings.isDampingDirty)
-					{
 						simulation.setDamping(settings.damping);
-						settings.isDampingDirty = false;
+						settings.isDirty = false;
 					}
 				}
 

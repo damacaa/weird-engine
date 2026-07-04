@@ -107,8 +107,14 @@ namespace WeirdEngine
 			m_sceneFilePath = path;
 		}
 
+		struct RaymarchResult
+		{
+			float distance;
+			Entity entity;
+		};
+
 		// Physics queries
-		float raymarch(glm::vec2 origin, glm::vec2 direction, float maxDistance, int shapeGroup = -1);
+		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f, float maxDistance = 150.0f);
 
 	protected:
 		virtual void onCreate() {};

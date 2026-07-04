@@ -4,6 +4,9 @@
 
 #include <filesystem>
 
+#include <vector>
+#include "weird-physics/components/GlobalPhysicsSettings.h"
+
 #include "globals.h"
 
 using namespace WeirdEngine;
@@ -25,13 +28,17 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
 
-		m_simulation2D.setGravity(0.0f);
-		m_simulation2D.setDamping(0.05f);
+		Entity globalSettingsEnt = ecs.createEntity();
+		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
+		settings.gravity = 0.0f;
+		settings.damping = 1.0f;
+		settings.isGravityDirty = true;
+		settings.isDampingDirty = true;
 
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
 		for (size_t j = 0; j < 3; j++)
@@ -42,61 +49,63 @@ private:
 				if (!entry.is_regular_file() || entry.path().extension() != ".weird")
 					continue;
 
-				Entity firstCreated = static_cast<Entity>(m_ecs.getEntityCount());
+				Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
 
 				auto tags = loadWeirdFile(entry.path().string());
 
-				Entity lastCreated = static_cast<Entity>(m_ecs.getEntityCount());
+				Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
 
 				for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 				{
-					auto& t = m_ecs.getComponent<Transform>(firstCreated + e);
+					auto& t = ecs.getComponent<Transform>(firstCreated + e);
 					t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
 				}
 
 				if (tags.contains("head"))
 				{
 					Entity headEntity = tags["head"];
-					m_ecs.addComponent<Head>(headEntity);
+					ecs.addComponent<Head>(headEntity);
 				}
 				else
 				{
-					auto& a = m_ecs.getComponent<Dot>(firstCreated);
-					m_ecs.addComponent<Head>(a.Owner);
+					auto& a = ecs.getComponent<Dot>(firstCreated);
+					ecs.addComponent<Head>(a.Owner);
 				}
 
 				++i;
 			}
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
-		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q))
 		{
 			setSceneComplete();
 		}
+
+		updatePhysics(delta, ecs);
 	}
 
-	void onPhysicsStep() override
+	void updatePhysics(float delta, ECSManager& ecs)
 	{
-		float delta = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
+		float timeDelta = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
 
-		auto headArray = m_ecs.getComponentArray<Head>();
+		auto headArray = ecs.getComponentArray<Head>();
 
 		for (size_t i = 0; i < headArray->getSize(); i++)
 		{
 			auto& head = headArray->getDataAtIdx(i);
 			Entity headEntity = head.Owner;
 
-			auto& rb = m_ecs.getComponent<RigidBody2D>(headEntity);
-			m_simulation2D.addForce(rb.simulationId, head.forceMagnitude * head.direction * delta);
+			auto& rb = ecs.getComponent<RigidBody2D>(headEntity);
+			rb.pendingForce += head.forceMagnitude * head.direction * timeDelta;
 
-			if (delta < 0.0f && !head.directionChanged)
+			if (timeDelta < 0.0f && !head.directionChanged)
 			{ // rotate direction by random amount between -45 and 45 degrees
 				constexpr float MAX_ANGLE = 45.0f;
 				float angle = (rand() / (float)RAND_MAX) * MAX_ANGLE - (MAX_ANGLE / 2.0f);
@@ -113,7 +122,7 @@ private:
 				head.directionChanged = false;
 			}
 
-			vec2 positon = m_simulation2D.getPosition(rb.simulationId);
+			vec2 positon = vec2(ecs.getComponent<Transform>(headEntity).position);
 			if (length(positon) > 50.0f)
 			{
 				head.direction = -normalize(positon);

@@ -22,23 +22,14 @@ namespace WeirdEngine
 		static constexpr uint8_t WORLD_X = 9;
 		static constexpr uint8_t WORLD_Y = 10;
 
-		std::array<float, VALUES_SIZE> m_values;
 
 	public:
 		ShapeMacro() {}
 
 		~ShapeMacro() override = default;
 
-		void propagateValues(float* values) override
-		{
-			for (int i = 0; i < VALUES_SIZE; i++)
-			{
-				m_values[i] = values[i];
-			}
-		}
-
 		[[nodiscard]]
-		float getValue() const override = 0;
+		float getValue(const float* parameters) const override = 0;
 
 		[[nodiscard]]
 		std::string print() const override = 0;

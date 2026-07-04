@@ -41,9 +41,8 @@ namespace WeirdEngine
 					parameters[9] = Input::GetMouseX();
 					parameters[10] = Input::GetMouseY();
 
-					sdfs[shape.distanceFieldId]->propagateValues(parameters);
 
-					float distance = sdfs[shape.distanceFieldId]->getValue();
+					float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 					buttonComponent.hovered = distance < buttonComponent.clickPadding;
 
 					if (mouseIsClicking && buttonComponent.hovered)
@@ -122,9 +121,8 @@ namespace WeirdEngine
 					parameters[9] = Input::GetMouseX();
 					parameters[10] = Input::GetMouseY();
 
-					sdfs[shape.distanceFieldId]->propagateValues(parameters);
 
-					float distance = sdfs[shape.distanceFieldId]->getValue();
+					float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 					toggleComponent.hovered = distance < toggleComponent.clickPadding;
 
 					if (mouseIsClicking && toggleComponent.hovered)

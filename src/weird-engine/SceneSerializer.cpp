@@ -5,6 +5,8 @@
 #include <iostream>
 #include <json/json.h>
 #include <unordered_map>
+#include "weird-physics/components/DistanceConstraint.h"
+#include "weird-physics/components/Spring.h"
 
 namespace WeirdEngine
 {
@@ -238,6 +240,8 @@ namespace WeirdEngine
 		std::unordered_map<int, SimulationID> simIdMap;
 		// Map from saved entity id → newly created Entity
 		std::unordered_map<Entity, Entity> entityIdMap;
+		// Map from saved simulation id → newly created Entity
+		std::unordered_map<int, Entity> simIdToEntityMap;
 
 		// Restore entities
 		if (j.contains("entities") && j["entities"].is_array())
@@ -331,7 +335,10 @@ namespace WeirdEngine
 					}
 
 					if (savedSimId >= 0)
+					{
 						simIdMap[savedSimId] = rb.simulationId;
+						simIdToEntityMap[savedSimId] = entity;
+					}
 				}
 			}
 		}
@@ -383,8 +390,27 @@ namespace WeirdEngine
 					auto itB = simIdMap.find(savedB);
 					if (itA != simIdMap.end() && itB != simIdMap.end())
 					{
-						scene.m_simulation2D.addRawDistanceConstraint(static_cast<int>(itA->second),
-																	  static_cast<int>(itB->second), dist, k);
+						// Create component instead of raw simulation constraint
+						auto entityA = simIdToEntityMap[savedA];
+						auto entityB = simIdToEntityMap[savedB];
+
+						if (k >= 1.0f)
+						{
+							Entity constraintEnt = scene.m_ecs.createEntity();
+							auto& constraint = scene.m_ecs.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
+							constraint.entityA = entityA;
+							constraint.entityB = entityB;
+							constraint.distance = dist;
+						}
+						else
+						{
+							Entity springEnt = scene.m_ecs.createEntity();
+							auto& spring = scene.m_ecs.addComponent<WeirdEngine::Spring>(springEnt);
+							spring.entityA = entityA;
+							spring.entityB = entityB;
+							spring.stiffness = k;
+							spring.restDistance = dist;
+						}
 					}
 				}
 			}

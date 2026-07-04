@@ -50,22 +50,11 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_px->propagateValues(values);
-				m_py->propagateValues(values);
-				m_r->propagateValues(values);
-
-				m_time->propagateValues(values);
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
-				return length(p) - m_r->getValue();
+				vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters), m_worldY->getValue(parameters) - m_py->getValue(parameters));
+				return length(p) - m_r->getValue(parameters);
 			}
 
 			[[nodiscard]]
@@ -106,22 +95,11 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_px->propagateValues(values);
-				m_py->propagateValues(values);
-				m_w->propagateValues(values);
-				m_h->propagateValues(values);
-
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
-				vec2 b = vec2(m_w->getValue(), m_h->getValue());
+				vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters), m_worldY->getValue(parameters) - m_py->getValue(parameters));
+				vec2 b = vec2(m_w->getValue(parameters), m_h->getValue(parameters));
 				vec2 d = abs(p) - b;
 				return length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
 			}
@@ -167,24 +145,12 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_amplitude->propagateValues(values);
-				m_period->propagateValues(values);
-				m_speed->propagateValues(values);
-				m_offset->propagateValues(values);
-
-				m_time->propagateValues(values);
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				return (m_worldY->getValue() - m_offset->getValue()) -
-					   m_amplitude->getValue() * sinf(m_period->getValue() * m_worldX->getValue() +
-												 m_speed->getValue() * m_time->getValue());
+				return (m_worldY->getValue(parameters) - m_offset->getValue(parameters)) -
+					   m_amplitude->getValue(parameters) * sinf(m_period->getValue(parameters) * m_worldX->getValue(parameters) +
+												 m_speed->getValue(parameters) * m_time->getValue(parameters));
 			}
 
 			[[nodiscard]]
@@ -230,25 +196,13 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_px->propagateValues(values);
-				m_py->propagateValues(values);
-				m_w->propagateValues(values);
-				m_h->propagateValues(values);
-				m_skew->propagateValues(values);
-
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
-				float wi = m_w->getValue();
-				float he = m_h->getValue();
-				float sk = m_skew->getValue();
+				vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters), m_worldY->getValue(parameters) - m_py->getValue(parameters));
+				float wi = m_w->getValue(parameters);
+				float he = m_h->getValue(parameters);
+				float sk = m_skew->getValue(parameters);
 
 				glm::vec2 e(wi, sk);
 				if (p.x < 0.0f)
@@ -308,18 +262,6 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_px->propagateValues(values);
-				m_py->propagateValues(values);
-				m_w->propagateValues(values);
-				m_h->propagateValues(values);
-				m_rotation->propagateValues(values);
-
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			static float cross(const vec2& a, const vec2& b)
 			{
 				return a.x * b.y - a.y * b.x;
@@ -349,10 +291,10 @@ namespace WeirdEngine::Primitives
 			}
 
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				vec2 p = vec2(m_worldX->getValue() - m_px->getValue(), m_worldY->getValue() - m_py->getValue());
-				float angle = m_rotation->getValue();
+				vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters), m_worldY->getValue(parameters) - m_py->getValue(parameters));
+				float angle = m_rotation->getValue(parameters);
 				float c = cosf(angle);
 				float s = sinf(angle);
 
@@ -360,8 +302,8 @@ namespace WeirdEngine::Primitives
 					return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
 				};
 
-				float halfWidth = m_w->getValue() * 0.5f;
-				float height = m_h->getValue();
+				float halfWidth = m_w->getValue(parameters) * 0.5f;
+				float height = m_h->getValue(parameters);
 
 				vec2 a = rotate(vec2(-halfWidth, -height / 3.0f));
 				vec2 b = rotate(vec2(halfWidth, -height / 3.0f));
@@ -413,27 +355,15 @@ namespace WeirdEngine::Primitives
 				m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
 			}
 
-			void propagateValues(float* values) override
-			{
-				m_ax->propagateValues(values);
-				m_ay->propagateValues(values);
-				m_bx->propagateValues(values);
-				m_by->propagateValues(values);
-				m_width->propagateValues(values);
-
-				m_worldX->propagateValues(values);
-				m_worldY->propagateValues(values);
-			}
-
 			[[nodiscard]]
-			float getValue() const override
+			float getValue(const float* parameters) const override
 			{
-				vec2 p = vec2(m_worldX->getValue(), m_worldY->getValue());
+				vec2 p = vec2(m_worldX->getValue(parameters), m_worldY->getValue(parameters));
 
-				vec2 a = vec2(m_ax->getValue(), m_ay->getValue());
-				vec2 b = vec2(m_bx->getValue(), m_by->getValue());
+				vec2 a = vec2(m_ax->getValue(parameters), m_ay->getValue(parameters));
+				vec2 b = vec2(m_bx->getValue(parameters), m_by->getValue(parameters));
 
-				float width = m_width->getValue();
+				float width = m_width->getValue(parameters);
 
 				vec2 pa = p - a, ba = b - a;
 				float h = glm::clamp(glm::dot(pa, ba) / glm::dot(ba, ba), 0.0f, 1.0f);

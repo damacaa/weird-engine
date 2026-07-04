@@ -1,7 +1,7 @@
 #pragma once
 
 #include "weird-engine/ecs/Component.h"
-
+#include <glm/glm.hpp>
 namespace WeirdEngine
 {
 	struct RigidBody : public Component
@@ -14,7 +14,12 @@ namespace WeirdEngine
 	struct RigidBody2D : public Component
 	{
 		RigidBody2D()
-			: simulationId(-1) {};
+			: simulationId(-1), velocity(0.0f, 0.0f), pendingForce(0.0f, 0.0f), isVelocityDirty(false), isFixed(false), isFixedDirty(false) {};
 		unsigned int simulationId;
+		glm::vec2 velocity;
+		glm::vec2 pendingForce;
+		bool isVelocityDirty;
+		bool isFixed;
+		bool isFixedDirty;
 	};
 } // namespace WeirdEngine

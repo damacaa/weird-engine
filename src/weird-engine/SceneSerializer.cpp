@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/Spring.h"
+#include "weird-physics/components/GlobalPhysicsSettings.h"
 
 namespace WeirdEngine
 {
@@ -139,6 +140,20 @@ namespace WeirdEngine
 					{"text", tr.text}, {"material", tr.material}, {"width", tr.width}, {"height", tr.height}};
 			}
 
+			// GlobalPhysicsSettings
+			auto globalSettingsArray = scene.m_ecs.getComponentArray<GlobalPhysicsSettings>();
+			if (globalSettingsArray)
+			{
+				for (size_t i = 0; i < globalSettingsArray->getSize(); i++)
+				{
+					Entity e = globalSettingsArray->getEntityAtIdx(i);
+					if (isBlacklisted(e)) continue;
+					auto& gs = globalSettingsArray->getDataAtIdx(i);
+					auto& ej = collectEntity(e);
+					ej["globalPhysicsSettings"] = {{"gravity", gs.gravity}, {"damping", gs.damping}};
+				}
+			}
+
 			// Save entities in order of their ID
 			// Entity order is very important for correct SDF operations
 			// BIG TODO: when entities are added/removed, ensure this order is maintained
@@ -170,27 +185,35 @@ namespace WeirdEngine
 			j["tags"] = tagsJson;
 		}
 
-		// Save physics constraints
+		// Save physics constraints directly from ECS components
 		{
 			json distanceConstraintsJson = json::array();
-			for (const auto& dc : scene.m_simulation2D.getDistanceConstraints())
+			auto distConstraintArray = scene.m_ecs.getComponentArray<DistanceConstraint>();
+			if (distConstraintArray)
 			{
-				distanceConstraintsJson.push_back({{"A", dc.A}, {"B", dc.B}, {"distance", dc.Distance}, {"k", dc.K}});
+				for (size_t i = 0; i < distConstraintArray->getSize(); i++)
+				{
+					Entity e = distConstraintArray->getEntityAtIdx(i);
+					if (isBlacklisted(e)) continue;
+					auto& dc = distConstraintArray->getDataAtIdx(i);
+					distanceConstraintsJson.push_back({{"entityA", dc.entityA}, {"entityB", dc.entityB}, {"distance", dc.distance}});
+				}
 			}
 
-			json gravitationalConstraintsJson = json::array();
-			for (const auto& gc : scene.m_simulation2D.getGravitationalConstraints())
+			json springsJson = json::array();
+			auto springArray = scene.m_ecs.getComponentArray<Spring>();
+			if (springArray)
 			{
-				gravitationalConstraintsJson.push_back({{"A", gc.A}, {"B", gc.B}, {"g", gc.g}});
+				for (size_t i = 0; i < springArray->getSize(); i++)
+				{
+					Entity e = springArray->getEntityAtIdx(i);
+					if (isBlacklisted(e)) continue;
+					auto& sp = springArray->getDataAtIdx(i);
+					springsJson.push_back({{"entityA", sp.entityA}, {"entityB", sp.entityB}, {"distance", sp.restDistance}, {"k", sp.stiffness}});
+				}
 			}
 
-			json fixedObjectsJson = json::array();
-			for (SimulationID fid : scene.m_simulation2D.getFixedObjects())
-				fixedObjectsJson.push_back(fid);
-
-			j["physics"] = {{"distanceConstraints", distanceConstraintsJson},
-							{"gravitationalConstraints", gravitationalConstraintsJson},
-							{"fixedObjects", fixedObjectsJson}};
+			j["physics"] = {{"distanceConstraints", distanceConstraintsJson}, {"springs", springsJson}};
 		}
 
 		std::ofstream outFile(filename);
@@ -327,6 +350,15 @@ namespace WeirdEngine
 					tr.dirty = true;
 				}
 
+				if (ej.contains("globalPhysicsSettings"))
+				{
+					auto& gs = scene.m_ecs.addComponent<GlobalPhysicsSettings>(entity);
+					const auto& gsj = ej["globalPhysicsSettings"];
+					gs.gravity = gsj.value("gravity", 0.0f);
+					gs.damping = gsj.value("damping", 0.05f);
+					gs.isDirty = true;
+				}
+
 				if (ej.contains("rigidBody2D"))
 				{
 					auto& rb = scene.m_ecs.addComponent<RigidBody2D>(entity);
@@ -393,7 +425,7 @@ namespace WeirdEngine
 			}
 		}
 
-		// Restore physics constraints using the simulationId mapping
+		// Restore physics constraints using the entity mapping (with legacy fallback)
 		if (j.contains("physics"))
 		{
 			const auto& phys = j["physics"];
@@ -402,19 +434,30 @@ namespace WeirdEngine
 			{
 				for (const auto& dcj : phys["distanceConstraints"])
 				{
-					int savedA = dcj.value("A", -1);
-					int savedB = dcj.value("B", -1);
+					Entity entityA = INVALID_ENTITY, entityB = INVALID_ENTITY;
+
+					if (dcj.contains("A")) { // Legacy format
+						int savedA = dcj.value("A", -1);
+						int savedB = dcj.value("B", -1);
+						if (simIdMap.find(savedA) != simIdMap.end() && simIdMap.find(savedB) != simIdMap.end()) {
+							entityA = simIdToEntityMap[savedA];
+							entityB = simIdToEntityMap[savedB];
+						}
+					}
+					else if (dcj.contains("entityA")) { // Modern format
+						Entity savedA = dcj.value("entityA", INVALID_ENTITY);
+						Entity savedB = dcj.value("entityB", INVALID_ENTITY);
+						if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end()) {
+							entityA = entityIdMap[savedA];
+							entityB = entityIdMap[savedB];
+						}
+					}
+
 					float dist = dcj.value("distance", 1.0f);
 					float k = dcj.value("k", 1.0f);
 
-					auto itA = simIdMap.find(savedA);
-					auto itB = simIdMap.find(savedB);
-					if (itA != simIdMap.end() && itB != simIdMap.end())
+					if (entityA != INVALID_ENTITY && entityB != INVALID_ENTITY)
 					{
-						// Create component instead of raw simulation constraint
-						auto entityA = simIdToEntityMap[savedA];
-						auto entityB = simIdToEntityMap[savedB];
-
 						if (k >= 1.0f)
 						{
 							Entity constraintEnt = scene.m_ecs.createEntity();
@@ -432,6 +475,25 @@ namespace WeirdEngine
 							spring.stiffness = k;
 							spring.restDistance = dist;
 						}
+					}
+				}
+			}
+
+			if (phys.contains("springs"))
+			{
+				for (const auto& spj : phys["springs"])
+				{
+					Entity savedA = spj.value("entityA", INVALID_ENTITY);
+					Entity savedB = spj.value("entityB", INVALID_ENTITY);
+
+					if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end())
+					{
+						Entity springEnt = scene.m_ecs.createEntity();
+						auto& spring = scene.m_ecs.addComponent<WeirdEngine::Spring>(springEnt);
+						spring.entityA = entityIdMap[savedA];
+						spring.entityB = entityIdMap[savedB];
+						spring.stiffness = spj.value("k", 1.0f);
+						spring.restDistance = spj.value("distance", 1.0f);
 					}
 				}
 			}

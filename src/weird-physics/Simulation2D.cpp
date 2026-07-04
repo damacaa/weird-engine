@@ -22,6 +22,8 @@ namespace WeirdEngine
 		, m_positionsAux(new vec2[size])
 		, m_previousPositions(new vec2[size])
 		, m_velocities(new vec2[size])
+		, m_velocitiesRead(new vec2[size])
+		, m_velocitiesAux(new vec2[size])
 		, m_forces(new vec2[size])
 		, m_externalForcesSinceLastUpdate(false)
 		, m_externalForces(new vec2[size])
@@ -55,6 +57,8 @@ namespace WeirdEngine
 			m_previousPositions[i] = vec2(0.0f, 0.0f);
 
 			m_velocities[i] = vec2(0.0f);
+			m_velocitiesRead[i] = vec2(0.0f);
+			m_velocitiesAux[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
 
 			m_mass[i] = 1000.0f;
@@ -71,6 +75,8 @@ namespace WeirdEngine
 		delete[] m_positionsAux;
 		delete[] m_previousPositions;
 		delete[] m_velocities;
+		delete[] m_velocitiesRead;
+		delete[] m_velocitiesAux;
 		delete[] m_forces;
 		delete[] m_mass;
 		delete[] m_invMass;
@@ -257,6 +263,8 @@ namespace WeirdEngine
 
 	void Simulation2D::startSimulationThread()
 	{
+		process(); // Process any pending before starting the thread
+
 		m_simulating = true;
 
 		m_simulationThread = std::thread(&Simulation2D::runSimulationThread, this);
@@ -891,6 +899,7 @@ namespace WeirdEngine
 		for (size_t i = 0; i < m_size; i++)
 		{
 			m_positionsAux[i] = m_positions[i];
+			m_velocitiesAux[i] = m_velocities[i];
 		}
 
 		// swap buffers
@@ -899,6 +908,10 @@ namespace WeirdEngine
 			vec2* aux = m_positionsAux;
 			m_positionsAux = m_positionsRead;
 			m_positionsRead = aux;
+
+			aux = m_velocitiesAux;
+			m_velocitiesAux = m_velocitiesRead;
+			m_velocitiesRead = aux;
 		}
 	}
 
@@ -917,6 +930,8 @@ namespace WeirdEngine
 		m_positionsAux[id] = vec2(0.0f);
 		m_previousPositions[id] = vec2(0.0f);
 		m_velocities[id] = vec2(0.0f);
+		m_velocitiesRead[id] = vec2(0.0f);
+		m_velocitiesAux[id] = vec2(0.0f);
 		m_forces[id] = vec2(0.0f);
 		m_externalForces[id] = vec2(0.0f);
 		m_mass[id] = 1.0f;
@@ -945,6 +960,8 @@ namespace WeirdEngine
 			m_positionsAux[toId] = m_positionsAux[fromId];
 			m_previousPositions[toId] = m_previousPositions[fromId];
 			m_velocities[toId] = m_velocities[fromId];
+			m_velocitiesRead[toId] = m_velocitiesRead[fromId];
+			m_velocitiesAux[toId] = m_velocitiesAux[fromId];
 			m_forces[toId] = m_forces[fromId];
 			m_externalForces[toId] = m_externalForces[fromId];
 			m_mass[toId] = m_mass[fromId];
@@ -1140,12 +1157,15 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(m_commandMutex);
 			m_pendingCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
+			
+			std::lock_guard<std::mutex> readLock(m_readMutex);
+			m_positionsRead[id] = pos;
 		}
 	}
 
 	vec2 Simulation2D::getVelocity(SimulationID id)
 	{
-		return m_velocities[id];
+		return m_velocitiesRead[id];
 	}
 
 	void Simulation2D::setVelocity(SimulationID id, vec2 vel)
@@ -1158,6 +1178,9 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(m_commandMutex);
 			m_pendingCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
+			
+			std::lock_guard<std::mutex> readLock(m_readMutex);
+			m_velocitiesRead[id] = vel;
 		}
 	}
 

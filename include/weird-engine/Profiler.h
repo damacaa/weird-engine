@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sstream>
+#include "weird-engine/Logger.h"
 
 namespace WeirdEngine
 {
@@ -39,7 +41,7 @@ namespace WeirdEngine
 				m_stats.clear();
 				m_currentIndex = 0;
 				m_currentDepth = 0;
-				std::cout << "Profiler started recording..." << std::endl;
+				WeirdEngine::Logger::log("Profiler started recording...");
 			}
 		}
 
@@ -165,9 +167,10 @@ namespace WeirdEngine
 	private:
 		void printReport()
 		{
-			std::cout << "\n=================================================================\n";
-			std::cout << "                       PERFORMANCE REPORT\n";
-			std::cout << "=================================================================\n";
+			std::ostringstream oss;
+			oss << "\n=================================================================\n";
+			oss << "                       PERFORMANCE REPORT\n";
+			oss << "=================================================================\n";
 
 			double totalFrameTimeMs = 0.0;
 			int frameCount = 0;
@@ -180,16 +183,17 @@ namespace WeirdEngine
 			if (frameCount == 0)
 				frameCount = 1;
 
-			std::cout << std::left << std::setw(40) << "Scope" << std::right << std::setw(15) << "Avg Time (ms)"
+			oss << std::left << std::setw(40) << "Scope" << std::right << std::setw(15) << "Avg Time (ms)"
 					  << std::setw(10) << "% Frame" << "\n";
-			std::cout << "-----------------------------------------------------------------\n";
+			oss << "-----------------------------------------------------------------\n";
 
-			printStatsRange(0, m_stats.size(), totalFrameTimeMs);
+			printStatsRange(0, m_stats.size(), totalFrameTimeMs, oss);
 
-			std::cout << "=================================================================\n\n";
+			oss << "=================================================================\n";
+			WeirdEngine::Logger::log(oss.str());
 		}
 
-		void printStatsRange(size_t start, size_t end, double totalFrameTimeMs)
+		void printStatsRange(size_t start, size_t end, double totalFrameTimeMs, std::ostringstream& oss)
 		{
 			size_t i = start;
 			while (i < end)
@@ -204,7 +208,7 @@ namespace WeirdEngine
 				if (stat.depth == 0)
 					percentage = 100.0;
 
-				std::cout << std::left << std::setw(40) << name << std::right << std::setw(15) << std::fixed
+				oss << std::left << std::setw(40) << name << std::right << std::setw(15) << std::fixed
 						  << std::setprecision(3) << avgTimeMs << std::setw(9) << std::fixed << std::setprecision(1)
 						  << percentage << "%\n";
 
@@ -224,7 +228,7 @@ namespace WeirdEngine
 					}
 
 					// Print children recursively
-					printStatsRange(i + 1, subEnd, totalFrameTimeMs);
+					printStatsRange(i + 1, subEnd, totalFrameTimeMs, oss);
 
 					// If unaccounted time exceeds 1% of frame, print an "Other" row
 					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
@@ -234,7 +238,7 @@ namespace WeirdEngine
 						std::string otherIndent((stat.depth + 1) * 4, ' ');
 						std::string otherName = otherIndent + "Other";
 						double otherAvgMs = unaccountedMs / stat.count;
-						std::cout << std::left << std::setw(40) << otherName << std::right << std::setw(15)
+						oss << std::left << std::setw(40) << otherName << std::right << std::setw(15)
 								  << std::fixed << std::setprecision(3) << otherAvgMs << std::setw(9) << std::fixed
 								  << std::setprecision(1) << unaccountedPct << "%\n";
 					}

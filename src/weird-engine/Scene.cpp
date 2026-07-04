@@ -84,8 +84,8 @@ namespace WeirdEngine
 		m_simulation2D.setShapeCollisionCallback(&handleShapeCollision, this);
 
 		// Initialize 2D world render context
-		m_2DWorldRenderContext.m_dotRadious = 0.5f;
-		m_2DWorldRenderContext.m_charSpacing = 1.0f;
+		m_2DWorldRenderContext.dotRadious = 0.5f;
+		m_2DWorldRenderContext.charSpacing = 1.0f;
 	}
 
 	Scene::~Scene()
@@ -143,7 +143,7 @@ namespace WeirdEngine
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
-			m_2DWorldRenderContext.m_shapesNeedUpdate = true;
+			m_2DWorldRenderContext.shapesNeedUpdate = true;
 		}
 
 		// Update systems
@@ -314,9 +314,9 @@ namespace WeirdEngine
 
 	void Scene::forceShaderRefresh()
 	{
-		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
-		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
-		m_UIRenderContext.m_shapesNeedUpdate = true;
+		m_2DWorldRenderContext.shapesNeedUpdate = true;
+		m_3DWorldRenderContext.shapesNeedUpdate = true;
+		m_UIRenderContext.shapesNeedUpdate = true;
 	}
 
 	const std::vector<WeirdRenderer::DrawCommand>& Scene::getDrawQueue() const
@@ -683,7 +683,8 @@ namespace WeirdEngine
 
 					for (size_t compID : componentIDs)
 					{
-						ImGui::BulletText("Component Type ID: %zu", compID);
+						std::string compName = m_ecs.getComponentName(compID);
+						ImGui::BulletText("%s", compName.c_str());
 					}
 
 					ImGui::TreePop();
@@ -706,8 +707,8 @@ namespace WeirdEngine
 		shape.material = material;
 		std::copy(variables, variables + 8, shape.parameters);
 
-		m_2DWorldRenderContext.m_shapesNeedUpdate = true;
-		m_3DWorldRenderContext.m_shapesNeedUpdate = true;
+		m_2DWorldRenderContext.shapesNeedUpdate = true;
+		m_3DWorldRenderContext.shapesNeedUpdate = true;
 
 		return entity;
 	}
@@ -723,7 +724,7 @@ namespace WeirdEngine
 		shape.material = material;
 		std::copy(variables, variables + 8, shape.parameters);
 
-		m_UIRenderContext.m_shapesNeedUpdate = true;
+		m_UIRenderContext.shapesNeedUpdate = true;
 
 		return entity;
 	}
@@ -737,7 +738,7 @@ namespace WeirdEngine
 		component.smoothFactor = 100.0f;
 		std::copy(variables, variables + 8, component.parameters);
 
-		m_UIRenderContext.m_shapesNeedUpdate = true;
+		m_UIRenderContext.shapesNeedUpdate = true;
 
 		return component;
 	}

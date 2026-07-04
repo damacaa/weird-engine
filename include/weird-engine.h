@@ -11,6 +11,7 @@
 
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
+#include "weird-engine/Logger.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/core/Renderer.h"
 #include "weird-renderer/core/SDLInitializer.h"
@@ -125,7 +126,7 @@ namespace WeirdEngine
 					int newWidth = event.window.data1;
 					int newHeight = event.window.data2;
 
-					std::cout << "Window resized to: " << newWidth << "x" << newHeight << std::endl;
+					WeirdEngine::Logger::log("Window resized to: " + std::to_string(newWidth) + "x" + std::to_string(newHeight));
 
 					ctx.renderer.setWindowSize(newWidth, newHeight);
 					newResolution = true;
@@ -190,7 +191,7 @@ namespace WeirdEngine
 
 			if (g_emscriptenEnv->runtimeContext->quit)
 			{
-				std::cout << "Quitting..." << std::endl;
+				WeirdEngine::Logger::Log("Quitting...");
 				// Clean up heap-allocated resources
 				if (g_emscriptenEnv->runtimeContext != nullptr)
 				{
@@ -218,7 +219,7 @@ namespace WeirdEngine
 	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
 			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
 	{
-		std::cout << "Starting Weird Engine..." << std::endl;
+		WeirdEngine::Logger::log("Starting Weird Engine...");
 
 		std::string startupScene;
 		for (int i = 1; i < argc; ++i)
@@ -230,7 +231,7 @@ namespace WeirdEngine
 			}else if ((arg == "--scene" || arg == "-s") && i + 1 < argc)
 			{
 				startupScene = argv[++i]; // Get the next argument as the scene name
-				std::cout << "Startup scene set to: " << startupScene << std::endl;
+				WeirdEngine::Logger::log("Startup scene set to: " + startupScene);
 			}
 		}
 
@@ -254,7 +255,7 @@ namespace WeirdEngine
 		}
 		catch (...)
 		{
-			std::cerr << "Failed to initialize SDL/Renderer" << std::endl;
+			WeirdEngine::Logger::error("Failed to initialize SDL/Renderer");
 			if (Detail::g_emscriptenEnv->sdlInitializer != nullptr)
 			{
 				delete Detail::g_emscriptenEnv->sdlInitializer;
@@ -312,7 +313,7 @@ namespace WeirdEngine
 			Detail::runFrame(runtimeContext);
 		}
 
-		std::cout << "Quitting..." << std::endl;
+		WeirdEngine::Logger::log("Quitting...");
 #endif
 		// audioEngine.close();
 	}

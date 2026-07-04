@@ -89,7 +89,7 @@ private:
 		}
 
 		float y = -5.0f + (static_cast<int>(std::floor(getTime() * 12345.6789f)) % 10);
-		std::cout << "Spawning shape at y = " << y << std::endl;
+		WeirdEngine::Logger::log("Spawning shape at y = " + std::to_string(y));
 		float variables[4]{15, y, 15, 5};
 		m_testShape = addShape(DefaultShapes::BOX, variables, 2, CombinationType::Addition);
 	}

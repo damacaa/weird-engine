@@ -11,6 +11,12 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+#include <string>
+#include <typeinfo>
+#if defined(__GNUC__) || defined(__clang__)
+#include <cxxabi.h>
+#include <cstdlib>
+#endif
 
 namespace WeirdEngine
 {
@@ -103,6 +109,7 @@ namespace WeirdEngine
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = pointerToManager;
+			cacheComponentName<T>(id);
 		}
 
 		template <typename T> void registerComponent(std::shared_ptr<ComponentManager<T>> manager)
@@ -123,6 +130,7 @@ namespace WeirdEngine
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = manager;
+			cacheComponentName<T>(id);
 		}
 
 		template <typename T> std::shared_ptr<ComponentManager<T>> getComponentManager()
@@ -156,7 +164,51 @@ namespace WeirdEngine
 			return componentTypes;
 		}
 
+		std::string getComponentName(size_t typeId) const
+		{
+			auto it = m_componentNames.find(typeId);
+			if (it != m_componentNames.end())
+				return it->second;
+			return "Unknown";
+		}
+
 	private:
+		template <typename T> void cacheComponentName(size_t id)
+		{
+			if (m_componentNames.find(id) != m_componentNames.end()) return;
+
+			const char* rawName = typeid(T).name();
+			std::string finalName;
+#if defined(__GNUC__) || defined(__clang__)
+			int status = -4;
+			char* demangled = abi::__cxa_demangle(rawName, nullptr, nullptr, &status);
+			if (status == 0 && demangled) {
+				finalName = demangled;
+				std::free(demangled);
+			} else {
+				finalName = rawName;
+				if (demangled) std::free(demangled);
+			}
+#else
+			finalName = rawName;
+#endif
+
+			// Strip namespaces (e.g. "WeirdEngine::Transform" -> "Transform")
+			size_t colonPos = finalName.rfind("::");
+			if (colonPos != std::string::npos) {
+				finalName = finalName.substr(colonPos + 2);
+			} else {
+				// Strip "class " or "struct " prefixes if there was no namespace (mostly for MSVC)
+				size_t spacePos = finalName.rfind(" ");
+				if (spacePos != std::string::npos) {
+					finalName = finalName.substr(spacePos + 1);
+				}
+			}
+
+			m_componentNames[id] = finalName;
+		}
+
+		std::unordered_map<size_t, std::string> m_componentNames;
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::queue<Entity> m_freeEntities;
 		Entity m_entityCount = 0;

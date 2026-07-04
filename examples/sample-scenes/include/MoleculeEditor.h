@@ -169,7 +169,7 @@ private:
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::S))
 		{
-			std::cout << "Save scene name: " << std::flush;
+			WeirdEngine::Logger::log("Save scene name: ");
 
 			std::string fileName;
 			if (!(std::cin >> fileName))
@@ -189,7 +189,7 @@ private:
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
 		{
-			std::cout << "Load scene name: " << std::flush;
+			WeirdEngine::Logger::log("Load scene name: ");
 
 			std::string fileName;
 			if (!(std::cin >> fileName))
@@ -994,7 +994,7 @@ private:
 			auto& btn = m_tempEcs->getComponent<ShapeButton>(m_tagEditButton);
 			if (btn.state == ButtonState::Down)
 			{
-				std::cout << "Enter new tag (empty to remove): " << std::flush;
+				WeirdEngine::Logger::log("Enter new tag (empty to remove): ");
 				std::string newTag;
 				std::getline(std::cin, newTag);
 				if (newTag.empty())
@@ -1153,8 +1153,9 @@ private:
 			newDists++;
 		}
 
-		std::cout << "[MoleculeEditor] Loaded " << simIdToEntity.size() << " balls and "
-				  << (newSprings + newDists) << " links from " << path << "\n";
+		std::string loadMsg = "[MoleculeEditor] Loaded " + std::to_string(simIdToEntity.size()) + " balls and " +
+				  std::to_string(newSprings + newDists) + " links from " + path;
+		WeirdEngine::Logger::log(loadMsg);
 	}
 
 	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override

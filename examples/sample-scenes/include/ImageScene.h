@@ -19,7 +19,7 @@ private:
 	std::string imagePath = ASSETS_PATH "jimmy.jpg";
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -61,14 +61,14 @@ private:
 
 			material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			Dot& dot = ecs.addComponent<Dot>(entity);
 			dot.materialId = material;
 
-			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
+			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
@@ -89,7 +89,7 @@ private:
 			addShape(DefaultShapes::BOX, variables, 3);
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
 	vec3 getColor(const char* path, float x, float y)
@@ -168,7 +168,7 @@ private:
 		return closestIndex;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -178,7 +178,7 @@ private:
 		// Get colors
 		if (Input::GetKeyDown(Input::P))
 		{
-			auto components = m_ecs.getComponentArray<RigidBody2D>();
+			auto components = ecs.getComponentArray<RigidBody2D>();
 
 			// Result string
 			std::string result;
@@ -186,7 +186,7 @@ private:
 			for (size_t i = 0; i < components->getSize(); i++)
 			{
 				RigidBody2D& rb = components->getDataAtIdx(i);
-				Transform& t = m_ecs.getComponent<Transform>(rb.Owner);
+				Transform& t = ecs.getComponent<Transform>(rb.Owner);
 
 				int x = floor(t.position.x);
 				int y = floor(30 - t.position.y);

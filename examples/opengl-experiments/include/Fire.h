@@ -212,13 +212,13 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugFly = false;
 	}
 
 	float m_time = 3.1416f;
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -243,7 +243,7 @@ private:
 			}
 		}
 
-		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 
 		static float amplitude = 10.0f;
 

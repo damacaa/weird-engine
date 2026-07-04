@@ -28,6 +28,23 @@ namespace WeirdEngine
 
 	using SimulationID = std::uint32_t;
 
+	enum class PhysicsCommandType
+	{
+		SetVelocity,
+		SetPosition,
+		Fix,
+		UnFix,
+		SetMass
+	};
+
+	struct PhysicsCommand
+	{
+		PhysicsCommandType type;
+		SimulationID id;
+		vec2 vectorData;
+		float floatData;
+	};
+
 	enum class CollisionState
 	{
 		START,
@@ -61,6 +78,15 @@ namespace WeirdEngine
 	// Define the function pointer type and include a user data pointer
 	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
 	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
+
+	struct SpatialGridSnapshot
+	{
+		std::vector<int> head;
+		std::vector<int> next;
+		std::vector<vec2> positions;
+		float invCellSize;
+		float radious;
+	};
 
 	class Simulation2D
 	{
@@ -100,14 +126,23 @@ namespace WeirdEngine
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
+		bool isFixed(SimulationID id);
 
 		// Retrieve results
 		vec2 getPosition(SimulationID id);
 		void setPosition(SimulationID id, vec2 pos);
+		vec2 getVelocity(SimulationID id);
+		void setVelocity(SimulationID id, vec2 vel);
 		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
+
+		std::shared_ptr<SpatialGridSnapshot> getSpatialGridSnapshot()
+		{
+			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
+			return m_spatialGridSnapshot;
+		}
 
 		void updateShape(CustomShape& shape);
 		void removeShape(CustomShape& shape);
@@ -205,6 +240,9 @@ namespace WeirdEngine
 		void integrateVelocity(float timeStep);
 		void integratePredict(float timeStep);
 
+		void internalUpdateShape(CustomShape& shape);
+		void internalRemoveShape(CustomShape& shape);
+
 		struct Collision
 		{
 		public:
@@ -290,6 +328,8 @@ namespace WeirdEngine
 
 		vec2* m_previousPositions;
 		vec2* m_velocities;
+		vec2* m_velocitiesRead;
+		vec2* m_velocitiesAux;
 		vec2* m_forces;
 
 		bool m_externalForcesSinceLastUpdate;
@@ -337,6 +377,7 @@ namespace WeirdEngine
 		std::vector<GravitationalConstraint> m_gravitationalConstraints;
 
 		std::thread m_simulationThread;
+		std::thread::id m_physicsThreadId;
 		void runSimulationThread();
 
 		// Extra
@@ -344,9 +385,24 @@ namespace WeirdEngine
 		bool m_repulsionEnabled = false;
 		bool m_liftEnabled = false;
 
+		std::mutex m_spatialGridSnapshotMutex;
+		std::shared_ptr<SpatialGridSnapshot> m_spatialGridSnapshot;
+
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
-		std::recursive_mutex m_objectMutex;
+		std::mutex m_structuralMutex;
+		std::mutex m_readMutex;
+		std::mutex m_commandMutex;
+		std::vector<PhysicsCommand> m_pendingCommands;
+		std::vector<PhysicsCommand> m_internalCommands;
+
+		struct ShapeUpdateCommand
+		{
+			bool isRemove;
+			CustomShape shape;
+		};
+		std::mutex m_shapeUpdateMutex;
+		std::vector<ShapeUpdateCommand> m_pendingShapeUpdates;
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

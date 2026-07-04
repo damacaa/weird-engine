@@ -22,6 +22,8 @@ namespace WeirdEngine
 		, m_positionsAux(new vec2[size])
 		, m_previousPositions(new vec2[size])
 		, m_velocities(new vec2[size])
+		, m_velocitiesRead(new vec2[size])
+		, m_velocitiesAux(new vec2[size])
 		, m_forces(new vec2[size])
 		, m_externalForcesSinceLastUpdate(false)
 		, m_externalForces(new vec2[size])
@@ -55,6 +57,8 @@ namespace WeirdEngine
 			m_previousPositions[i] = vec2(0.0f, 0.0f);
 
 			m_velocities[i] = vec2(0.0f);
+			m_velocitiesRead[i] = vec2(0.0f);
+			m_velocitiesAux[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
 
 			m_mass[i] = 1000.0f;
@@ -71,6 +75,8 @@ namespace WeirdEngine
 		delete[] m_positionsAux;
 		delete[] m_previousPositions;
 		delete[] m_velocities;
+		delete[] m_velocitiesRead;
+		delete[] m_velocitiesAux;
 		delete[] m_forces;
 		delete[] m_mass;
 		delete[] m_invMass;
@@ -113,17 +119,80 @@ namespace WeirdEngine
 
 	void Simulation2D::process()
 	{
-		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
 		int steps = 0;
 
 		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
 		{
+			std::lock_guard<std::mutex> structLock(m_structuralMutex);
+
+			std::vector<PhysicsCommand> commandsToExecute;
+			{
+				std::lock_guard<std::mutex> cmdLock(m_commandMutex);
+				commandsToExecute = std::move(m_pendingCommands);
+			}
+			commandsToExecute.insert(commandsToExecute.end(), m_internalCommands.begin(), m_internalCommands.end());
+			m_internalCommands.clear();
+
+			for (const auto& cmd : commandsToExecute)
+			{
+				switch (cmd.type)
+				{
+				case PhysicsCommandType::SetVelocity:
+					m_velocities[cmd.id] = cmd.vectorData;
+					break;
+				case PhysicsCommandType::SetPosition:
+					m_positions[cmd.id] = cmd.vectorData;
+					m_previousPositions[cmd.id] = cmd.vectorData;
+					{
+						std::lock_guard<std::mutex> rLock(m_readMutex);
+						m_positionsRead[cmd.id] = cmd.vectorData;
+					}
+					break;
+				case PhysicsCommandType::SetMass:
+					m_mass[cmd.id] = cmd.floatData;
+					if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end()) {
+						m_invMass[cmd.id] = cmd.floatData > 0.0f ? 1.0f / cmd.floatData : 0.0f;
+					}
+					break;
+				case PhysicsCommandType::Fix:
+					if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end()) {
+						m_fixedObjects.emplace_back(cmd.id);
+						m_invMass[cmd.id] = 0.0f;
+						m_velocities[cmd.id] = vec2(0.0f);
+						m_forces[cmd.id] = vec2(0.0f);
+					}
+					break;
+				case PhysicsCommandType::UnFix:
+				{
+					auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id);
+					if (it != m_fixedObjects.end()) {
+						m_fixedObjects.erase(it);
+						m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
+					}
+					break;
+				}
+				default:
+					break;
+				}
+			}
+
 #if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
 #endif
 
 			if (!m_isPaused)
 			{
+				{
+					std::lock_guard<std::mutex> shapeLock(m_shapeUpdateMutex);
+					for (auto& cmd : m_pendingShapeUpdates)
+					{
+						if (cmd.isRemove)
+							internalRemoveShape(cmd.shape);
+						else
+							internalUpdateShape(cmd.shape);
+					}
+					m_pendingShapeUpdates.clear();
+				}
 
 				checkCollisions();
 				applyForces();
@@ -194,9 +263,12 @@ namespace WeirdEngine
 
 	void Simulation2D::startSimulationThread()
 	{
+		process(); // Process any pending before starting the thread
+
 		m_simulating = true;
 
 		m_simulationThread = std::thread(&Simulation2D::runSimulationThread, this);
+		m_physicsThreadId = m_simulationThread.get_id();
 	}
 
 	void Simulation2D::stopSimulationThread()
@@ -255,6 +327,30 @@ namespace WeirdEngine
 			// Insert at the head of the linked list for this cell
 			m_next[i] = m_head[hash];
 			m_head[hash] = i;
+		}
+
+		// Update the spatial grid snapshot for read-only access (e.g. by raymarching in the main thread)
+		{
+			// TODO: [PERFORMANCE] Avoid heap allocation every physics step.
+			// Currently, we allocate a new std::shared_ptr and its internal std::vector buffers 
+			// (head, next, positions) on the heap every single time this function runs.
+			// While std::shared_ptr safely manages the memory lifecycle for the main thread, 
+			// this causes unnecessary memory fragmentation and malloc overhead.
+			// 
+			// PROPOSED SOLUTION: Implement an Object Pool (e.g. std::vector<SpatialGridSnapshot*>)
+			// with a custom std::shared_ptr deleter. Instead of allocating a new object here, 
+			// pop an old one from the pool (which reuses the vector capacities). When the main 
+			// thread's shared_ptr reference count drops to 0, the custom deleter should push 
+			// the object back into the pool instead of deleting it.
+			auto snapshot = std::make_shared<SpatialGridSnapshot>();
+			snapshot->head = m_head;
+			snapshot->next = m_next;
+			snapshot->positions.assign(m_positions, m_positions + m_size);
+			snapshot->invCellSize = invCellSize;
+			snapshot->radious = m_radious;
+
+			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
+			m_spatialGridSnapshot = snapshot;
 		}
 
 		// Check for collisions using the grid
@@ -445,9 +541,8 @@ namespace WeirdEngine
 			obj.parameters[10] = p.y;
 
 			// Distance
-			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(obj.parameters);
 
 			float currentMinDistance = d;
 			GroupState* groupState = nullptr;
@@ -531,9 +626,8 @@ namespace WeirdEngine
 			obj.parameters[10] = p.y;
 
 			// Distance
-			(*m_sdfs)[obj.distanceFieldId]->propagateValues(obj.parameters);
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue();
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(obj.parameters);
 
 			float currentMinDistance = d;
 
@@ -805,19 +899,27 @@ namespace WeirdEngine
 		for (size_t i = 0; i < m_size; i++)
 		{
 			m_positionsAux[i] = m_positions[i];
+			m_velocitiesAux[i] = m_velocities[i];
 		}
 
 		// swap buffers
-		vec2* aux = m_positionsAux;
-		m_positionsAux = m_positionsRead;
-		m_positionsRead = aux;
+		{
+			std::lock_guard<std::mutex> lock(m_readMutex);
+			vec2* aux = m_positionsAux;
+			m_positionsAux = m_positionsRead;
+			m_positionsRead = aux;
+
+			aux = m_velocitiesAux;
+			m_velocitiesAux = m_velocitiesRead;
+			m_velocitiesRead = aux;
+		}
 	}
 
 #pragma endregion
 
 	SimulationID Simulation2D::generateSimulationID()
 	{
-		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
 		SimulationID id = m_size;
 
@@ -828,6 +930,8 @@ namespace WeirdEngine
 		m_positionsAux[id] = vec2(0.0f);
 		m_previousPositions[id] = vec2(0.0f);
 		m_velocities[id] = vec2(0.0f);
+		m_velocitiesRead[id] = vec2(0.0f);
+		m_velocitiesAux[id] = vec2(0.0f);
 		m_forces[id] = vec2(0.0f);
 		m_externalForces[id] = vec2(0.0f);
 		m_mass[id] = 1.0f;
@@ -839,7 +943,7 @@ namespace WeirdEngine
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		std::scoped_lock lock(m_objectMutex, m_externalForcesMutex, m_fixMutex);
+		std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex);
 
 		if (m_size == 0 || id >= m_size)
 		{
@@ -856,6 +960,8 @@ namespace WeirdEngine
 			m_positionsAux[toId] = m_positionsAux[fromId];
 			m_previousPositions[toId] = m_previousPositions[fromId];
 			m_velocities[toId] = m_velocities[fromId];
+			m_velocitiesRead[toId] = m_velocitiesRead[fromId];
+			m_velocitiesAux[toId] = m_velocitiesAux[fromId];
 			m_forces[toId] = m_forces[fromId];
 			m_externalForces[toId] = m_externalForces[fromId];
 			m_mass[toId] = m_mass[fromId];
@@ -985,7 +1091,7 @@ namespace WeirdEngine
 		if (a == b)
 			return false;
 
-		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
 		size_t previousSize = m_distanceConstraints.size();
 		m_distanceConstraints.erase(
@@ -1005,51 +1111,99 @@ namespace WeirdEngine
 
 	void Simulation2D::fix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(m_fixMutex);
-		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
-			m_fixedObjects.emplace_back(id);
-			m_invMass[id] = 0.0f;
-			m_velocities[id] = vec2(0.0f);
-			m_forces[id] = vec2(0.0f);
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back({PhysicsCommandType::Fix, id});
+		}
+		else
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back({PhysicsCommandType::Fix, id});
 		}
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
-		std::lock_guard<std::mutex> lock(m_fixMutex);
-		auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id);
-		if (it != m_fixedObjects.end()) {
-			m_fixedObjects.erase(it);
-			m_invMass[id] = m_mass[id] > 0.0f ? 1.0f / m_mass[id] : 0.0f;
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back({PhysicsCommandType::UnFix, id});
 		}
+		else
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back({PhysicsCommandType::UnFix, id});
+		}
+	}
+
+	bool Simulation2D::isFixed(SimulationID id)
+	{
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
+		return std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) != m_fixedObjects.end();
 	}
 
 	vec2 Simulation2D::getPosition(SimulationID entity)
 	{
+		std::lock_guard<std::mutex> lock(m_readMutex);
 		return m_positionsRead[entity];
 	}
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
-		std::lock_guard<std::recursive_mutex> lock(m_objectMutex);
-		m_positions[id] = pos;
-		m_positionsRead[id] = pos;
-		m_previousPositions[id] = pos;
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
+		}
+		else
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
+			
+			std::lock_guard<std::mutex> readLock(m_readMutex);
+			m_positionsRead[id] = pos;
+		}
+	}
+
+	vec2 Simulation2D::getVelocity(SimulationID id)
+	{
+		return m_velocitiesRead[id];
+	}
+
+	void Simulation2D::setVelocity(SimulationID id, vec2 vel)
+	{
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
+		}
+		else
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
+			
+			std::lock_guard<std::mutex> readLock(m_readMutex);
+			m_velocitiesRead[id] = vel;
+		}
 	}
 
 	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
 	{
+		std::lock_guard<std::mutex> lock(m_readMutex);
 		transform.position.x = m_positionsRead[id].x;
 		transform.position.y = m_positionsRead[id].y;
 	}
 
 	void Simulation2D::setMass(SimulationID id, float mass)
 	{
-		m_mass[id] = mass;
+		PhysicsCommand cmd = {PhysicsCommandType::SetMass, id};
+		cmd.floatData = mass;
 		
-		std::lock_guard<std::mutex> lock(m_fixMutex);
-		if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) == m_fixedObjects.end()) {
-			m_invMass[id] = mass > 0.0f ? 1.0f / mass : 0.0f;
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back(cmd);
+		}
+		else
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back(cmd);
 		}
 	}
 
@@ -1058,7 +1212,7 @@ namespace WeirdEngine
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
 	}
 
-	void Simulation2D::updateShape(CustomShape& shape)
+	void Simulation2D::internalUpdateShape(CustomShape& shape)
 	{
 		if (!shape.hasCollisions)
 			return;
@@ -1084,7 +1238,7 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::removeShape(CustomShape& shape)
+	void Simulation2D::internalRemoveShape(CustomShape& shape)
 	{
 		if (m_objects.size() == 0)
 		{
@@ -1111,6 +1265,18 @@ namespace WeirdEngine
 
 		// Remove from map
 		m_entityToObjectsIdx.erase(shape.Owner);
+	}
+
+	void Simulation2D::updateShape(CustomShape& shape)
+	{
+		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
+		m_pendingShapeUpdates.push_back({false, shape});
+	}
+
+	void Simulation2D::removeShape(CustomShape& shape)
+	{
+		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
+		m_pendingShapeUpdates.push_back({true, shape});
 	}
 
 	SimulationID Simulation2D::raycast(vec2 pos)

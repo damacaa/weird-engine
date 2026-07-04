@@ -17,7 +17,7 @@ public:
 private:
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
@@ -25,8 +25,8 @@ private:
 
 
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(-0.5f, -2.0f, 0);
 
 			auto& mat = createMaterial();
@@ -34,7 +34,7 @@ private:
 			mat.metallic = 1.0f;
 			mat.roughness = 0.0f;
 
-			auto& sdf = m_ecs.addComponent<Dot>(entity);
+			auto& sdf = ecs.addComponent<Dot>(entity);
 			sdf.materialId = mat.id;
 		}
 		
@@ -121,11 +121,11 @@ private:
 
     	for (size_t i = 0; i < randomMats.size(); i++)
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(1.0f + (i), -2.0f, 0);
 
-			auto& sdf = m_ecs.addComponent<Dot>(entity);
+			auto& sdf = ecs.addComponent<Dot>(entity);
 			sdf.materialId = randomMats[i];
 		}
 
@@ -172,19 +172,19 @@ private:
 		// getLigths().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 		cameraTransform.position = vec3(12, -1, 12);
 		cameraTransform.rotation.x = -0.95f;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
 			setSceneComplete();
 		}
 
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 
 		// getLigths()[0].position.x = cameraTransform.position.x;
 		// getLigths()[0].position.y = cameraTransform.position.y;

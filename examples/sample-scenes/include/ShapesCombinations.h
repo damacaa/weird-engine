@@ -25,7 +25,7 @@ private:
 
 	std::vector<Entity> m_uiPoints;
 
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -81,20 +81,20 @@ private:
 
 		for (int i = 0; i < 10; ++i)
 		{
-			auto ee = m_ecs.createEntity();
-			auto& t = m_ecs.addComponent<Transform>(ee);
+			auto ee = ecs.createEntity();
+			auto& t = ecs.addComponent<Transform>(ee);
 			t.position = vec3(15.0f, 15.0f, 10.0f);
 
-			auto& ui = m_ecs.addComponent<UIDot>(ee);
+			auto& ui = ecs.addComponent<UIDot>(ee);
 			ui.materialId = 4 + (i % 12);
 
 			m_uiPoints.push_back(ee);
 		}
 
 		{
-			Entity text = m_ecs.createEntity();
-			auto& t = m_ecs.addComponent<Transform>(text);
-			auto& uiText = m_ecs.addComponent<UITextRenderer>(text);
+			Entity text = ecs.createEntity();
+			auto& t = ecs.addComponent<Transform>(text);
+			auto& uiText = ecs.addComponent<UITextRenderer>(text);
 			uiText.text = "";
 			uiText.material = 12;
 			t.position = vec3(150.0f, 150.0f, 0.0f);
@@ -102,30 +102,30 @@ private:
 			m_text = text;
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
-		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q))
 		{
 			setSceneComplete();
 		}
 
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 		float x = Input::GetMouseX();
 		float y = Input::GetMouseY();
 
 		{
-			auto& text = m_ecs.getComponent<UITextRenderer>(m_text);
+			auto& text = ecs.getComponent<UITextRenderer>(m_text);
 			bool hideText = Input::GetKey(Input::LeftAlt);
 			text.text =
-				hideText ? "" : "Balls:" + std::to_string(static_cast<int>(m_ecs.getComponentArray<Dot>()->getSize()));
+				hideText ? "" : "Balls:" + std::to_string(static_cast<int>(ecs.getComponentArray<Dot>()->getSize()));
 			text.dirty = true;
 
-			auto& textTransform = m_ecs.getComponent<Transform>(m_text);
+			auto& textTransform = ecs.getComponent<Transform>(m_text);
 			textTransform.position.x = x;
 			textTransform.position.y = y;
 		}
@@ -150,7 +150,7 @@ private:
 		}
 
 		{
-			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle);
+			CustomShape& cs = ecs.getComponent<CustomShape>(m_circle);
 			cs.parameters[0] = m_initialMousePositionInWorld.x;
 			cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
 			cs.parameters[2] = m_circleRadious;
@@ -160,7 +160,7 @@ private:
 
 		if (m_circle2)
 		{
-			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_circle2);
+			CustomShape& cs = ecs.getComponent<CustomShape>(m_circle2);
 			cs.parameters[0] = m_initialMousePositionInWorld.x;
 			cs.parameters[1] = m_initialMousePositionInWorld.y;
 			cs.parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
@@ -183,7 +183,7 @@ private:
 			float x = center.x + std::cos(angle) * radius;
 			float y = center.y + std::sin(angle) * radius;
 
-			auto& t = m_ecs.getComponent<Transform>(m_uiPoints[i]);
+			auto& t = ecs.getComponent<Transform>(m_uiPoints[i]);
 			t.position = vec3(x, y, 0.0f);
 		}
 	}

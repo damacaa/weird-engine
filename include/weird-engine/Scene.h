@@ -107,23 +107,33 @@ namespace WeirdEngine
 			m_sceneFilePath = path;
 		}
 
+		struct RaymarchResult
+		{
+			float distance;
+			Entity entity;
+		};
+
+		// Physics queries
+		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f, float maxDistance = 150.0f);
+
 	protected:
 		virtual void onCreate() {};
-		// Override onStart(tags) to receive the map of tags→entities when the
-		// scene is loaded from a .weird file.  Override onStart() (no parameter)
-		// for scenes that don't need the tag map.  The default implementation of
-		// the tags overload simply calls onStart(), so you only need one.
-		virtual void onStart(const TagMap& tags)
+		virtual void onStart(ECSManager& ecs, const TagMap& tags)
 		{
-			onStart();
+			onStart(ecs);
 		}
-		virtual void onStart() {}
-		virtual void onUpdate(float delta) = 0;
+		virtual void onStart(ECSManager& ecs) {}
+		virtual void onUpdate(float delta, ECSManager& ecs) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
-		virtual void onPhysicsStep() {};
-		virtual void onCollision(WeirdEngine::CollisionEvent& event) {};
-		virtual void onEntityCollision(WeirdEngine::EntityCollisionEvent& event) {};
-		virtual void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) {};
+		
+		// Physics thread callbacks (No m_ecs access recommended!)
+		virtual void onPhysicsStep(Simulation2D& simulation) {};
+		virtual void onCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) {};
+		virtual void onShapeCollision(Simulation2D& simulation, WeirdEngine::ShapeCollisionEvent& event) {};
+		
+		// Main thread callbacks (m_ecs is safe to use here) // ARE YOU SURE???
+		virtual void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) {};
+		virtual void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) {};
 		virtual void onDestroy() {};
 
 		void setSceneComplete(std::string nextScene = "")
@@ -132,11 +142,9 @@ namespace WeirdEngine
 			m_nextScene = nextScene;
 		};
 
-		ECSManager m_ecs;
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
-		Simulation2D m_simulation2D;
-
+		
 		Material3D m_materials[16];
 		uint16_t m_materialCount = 0;
 
@@ -226,6 +234,13 @@ namespace WeirdEngine
 
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;
+
+		ECSManager m_ecs;
+		Simulation2D m_simulation2D;
+
+		std::mutex m_collisionQueueMutex;
+		std::vector<CollisionEvent> m_queuedCollisions;
+		std::vector<ShapeCollisionEvent> m_queuedShapeCollisions;
 
 		// Entity tag storage (bidirectional maps kept in sync)
 		TagMap m_tagToEntity;

@@ -16,7 +16,7 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
@@ -38,20 +38,20 @@ private:
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(0.0f, 0.75f, 0.0f);
 
-			auto& sdf = m_ecs.addComponent<Dot>(entity);
+			auto& sdf = ecs.addComponent<Dot>(entity);
 			sdf.materialId = ballMat.id;
 		}
 
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(20.0f, 20.0f, 0.0f);
 
-			auto& text = m_ecs.addComponent<UITextRenderer>(entity);
+			auto& text = ecs.addComponent<UITextRenderer>(entity);
 			text.text = "Cornell Box";
 		}
 
@@ -114,17 +114,17 @@ private:
 		// getLigths().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2.6f, 12.0f);
+		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2.6f, 12.0f);
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
 			setSceneComplete();
 		}
 
-		auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 
 		// getLigths()[0].position.x = cameraTransform.position.x;
 		// getLigths()[0].position.y = cameraTransform.position.y;

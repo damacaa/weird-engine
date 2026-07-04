@@ -13,7 +13,7 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -29,14 +29,14 @@ private:
 
 			float z = 0;
 
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
-			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			Dot& dot = ecs.addComponent<Dot>(entity);
 			dot.materialId = material;
 
-			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
+			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
@@ -48,7 +48,7 @@ private:
 		{
 			float variables[8]{15.0f, -50.0f, 250.0f, 50.0f};
 			auto floor = addShape(DefaultShapes::BOX, variables, 3, CombinationType::SmoothAddition);
-			m_ecs.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
+			ecs.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 		}
 
 		{
@@ -56,10 +56,10 @@ private:
 			addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -68,20 +68,20 @@ private:
 	}
 
 	float m_lastTime = 0.0f;
-	void onCollision(WeirdEngine::CollisionEvent& event) override
+	void onCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) override
 	{
 		float t = getTime();
 		if (t - m_lastTime < 0.1f)
 			return; // Avoid multiple collisions in a short time
 
 		m_lastTime = t;
-		// m_simulation2D.setPosition(event.bodyA, vec2(15.0f, 15.0f));
-		// m_simulation2D.addForce(event.bodyA, vec2(2.0f * sinf(t), -20.0f));
-		m_simulation2D.setPosition(event.bodyB, vec2(15.0f, 24.45f));
-		m_simulation2D.addForce(event.bodyB, vec2(20.0f * sinf(10.0f * t), -30.0f));
+		// simulation.setPosition(event.bodyA, vec2(15.0f, 15.0f));
+		// simulation.addForce(event.bodyA, vec2(2.0f * sinf(t), -20.0f));
+		simulation.setPosition(event.bodyB, vec2(15.0f, 24.45f));
+		simulation.addForce(event.bodyB, vec2(20.0f * sinf(10.0f * t), -30.0f));
 
-		// Entity a = m_ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(event.bodyA).Owner;
-		// Transform &at = m_ecs.getComponent<Transform>(a);
+		// Entity a = ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(event.bodyA).Owner;
+		// Transform &at = ecs.getComponent<Transform>(a);
 		// at.position.x = 15.0f + sinf(event.bodyB * 123.4565f + t);
 		// at.position.y = 5.0f + (event.bodyA % 10) * 2.5f;
 		// at.isDirty = true;

@@ -22,9 +22,7 @@ namespace WeirdEngine::Primitives3D
 
         Plane(std::shared_ptr<IMathExpression> h) : m_h(std::move(h)) {}
         
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-        
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override {
             return "fPlane(p, vec3(0.0, 1.0, 0.0), " + m_h->print() + ")\n";
         }
@@ -35,9 +33,7 @@ namespace WeirdEngine::Primitives3D
     public:
         PerlinPlane(float height) : m_height(height) {}
         
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-        
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override {
             return "fPlane(\n"
                    "    p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * vec2(p.x, p.z))))\n";
@@ -71,9 +67,7 @@ namespace WeirdEngine::Primitives3D
         {
         }
 
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override
         {
             if (m_px)
@@ -103,9 +97,7 @@ namespace WeirdEngine::Primitives3D
         {
         }
 
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override
         {
             return "fSphere(p - vec3(" + m_px->print() + ", " + m_py->print() + ", " + m_pz->print() + "), " + m_r->print() + ")";
@@ -131,9 +123,7 @@ namespace WeirdEngine::Primitives3D
         {
         }
 
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override
         {
             return "fCylinder(p - vec3(" + m_px->print() + ", " + m_py->print() + ", " + m_pz->print() + "), " + m_r->print() + ", " + m_h->print() + ")";
@@ -159,9 +149,7 @@ namespace WeirdEngine::Primitives3D
         {
         }
 
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override
         {
             return "fTorus(p - vec3(" + m_px->print() + ", " + m_py->print() + ", " + m_pz->print() + "), " + m_r1->print() + ", " + m_r2->print() + ")";
@@ -187,9 +175,7 @@ namespace WeirdEngine::Primitives3D
         {
         }
 
-        float getValue() const override { return 1000.0f; }
-        void propagateValues(float* values) override {}
-
+        float getValue(const float* parameters) const override { return 1000.0f; }
         std::string print() const override
         {
             return "fCapsule(p - vec3(" + m_px->print() + ", " + m_py->print() + ", " + m_pz->print() + "), " + m_r->print() + ", " + m_h->print() + ")";

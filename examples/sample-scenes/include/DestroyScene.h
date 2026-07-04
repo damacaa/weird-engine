@@ -3,6 +3,7 @@
 #include <weird-engine.h>
 
 #include "globals.h"
+#include "weird-physics/components/DistanceConstraint.h"
 
 using namespace WeirdEngine;
 class DestroyScene : public Scene
@@ -20,19 +21,19 @@ private:
 	float m_countDown = -1.0f;
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
 
-		spawnNextBatch();
+		spawnNextBatch(ecs);
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
-		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -54,29 +55,35 @@ private:
 					m_collisionDetected = false;
 					for (auto e : m_testBalls)
 					{
-						m_ecs.destroyEntity(e); // Destroy all test balls
+						ecs.destroyEntity(e); // Destroy all test balls
 					}
 
-					m_ecs.destroyEntity(m_testShape); // Destroy the test shape
-					spawnNextBatch();
+					ecs.destroyEntity(m_testShape); // Destroy the test shape
+					spawnNextBatch(ecs);
 				}
 			}
 		}
 	}
 
-	void spawnNextBatch()
+	void spawnNextBatch(ECSManager& ecs)
 	{
 		for (int i = 0; i < 8; ++i)
 		{
-			Entity e = m_ecs.createEntity();
-			auto& t = m_ecs.addComponent<Transform>(e);
+			Entity e = ecs.createEntity();
+			auto& t = ecs.addComponent<Transform>(e);
 			t.position = vec3((i + 1) * 3, 20.0f, 0.0f);
-			auto& ui = m_ecs.addComponent<Dot>(e);
+			auto& ui = ecs.addComponent<Dot>(e);
 			ui.materialId = 4 + (e % 12);
-			auto& rb = m_ecs.addComponent<RigidBody2D>(e);
+			auto& rb = ecs.addComponent<RigidBody2D>(e);
 
 			if (i > 0)
-				m_simulation2D.addPositionConstraint(rb.simulationId, rb.simulationId - 1, 3.0f);
+			{
+				Entity constraintEnt = ecs.createEntity();
+				auto& constraint = ecs.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
+				constraint.entityA = m_testBalls.back();
+				constraint.entityB = e;
+				constraint.distance = 3.0f;
+			}
 
 			m_testBalls.push_back(e);
 		}
@@ -87,7 +94,7 @@ private:
 		m_testShape = addShape(DefaultShapes::BOX, variables, 2, CombinationType::Addition);
 	}
 
-	void onEntityShapeCollision(WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		event.raw.friction *= 100.0f;
 

@@ -4,8 +4,10 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-physics/components/CustomShapeManager.h"
-
+#include "weird-physics/components/CustomShapeManager.h"
+#include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
+#include "weird-physics/components/SpringManager.h"
 
 #include "weird-engine/systems/SDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
@@ -47,6 +49,12 @@ namespace WeirdEngine
 
 		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
 		m_ecs.registerComponent<CustomShape>(shapeManager);
+
+		std::shared_ptr<DistanceConstraintManager> distManager = std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
+		m_ecs.registerComponent<DistanceConstraint>(distManager);
+
+		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_ecs);
+		m_ecs.registerComponent<Spring>(springManager);
 
 		// Create camera
 		m_mainCamera = m_ecs.createEntity();
@@ -102,7 +110,7 @@ namespace WeirdEngine
 			loadedTags = m_tagToEntity;
 		}
 
-		onStart(loadedTags);
+		onStart(m_ecs, loadedTags);
 
 		switch (m_renderMode)
 		{
@@ -121,6 +129,8 @@ namespace WeirdEngine
 			default:
 				break;
 		}
+		
+		PhysicsSystem2D::update(m_ecs, m_simulation2D);
 	}
 
 	void Scene::update(double delta, double time)
@@ -158,7 +168,29 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Scene logic update");
-			onUpdate(delta);
+
+			// Process queued collisions
+			std::vector<CollisionEvent> collisions;
+			std::vector<ShapeCollisionEvent> shapeCollisions;
+			{
+				std::lock_guard<std::mutex> lock(m_collisionQueueMutex);
+				collisions = std::move(m_queuedCollisions);
+				shapeCollisions = std::move(m_queuedShapeCollisions);
+			}
+			
+			for (auto& ev : collisions)
+			{
+				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA), getEntityForSimulationId(ev.bodyB)};
+				onEntityCollision(m_ecs, entityEvent);
+			}
+
+			for (auto& ev : shapeCollisions)
+			{
+				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body)};
+				onEntityShapeCollision(m_ecs, entityEvent);
+			}
+
+			onUpdate(delta, m_ecs);
 		}
 
 		{
@@ -177,7 +209,7 @@ namespace WeirdEngine
 	void Scene::handlePhysicsStep(void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onPhysicsStep();
+		self->onPhysicsStep(self->m_simulation2D);
 
 		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
 		self->m_frictionSoundLevel = 0.0f;
@@ -186,19 +218,21 @@ namespace WeirdEngine
 	void Scene::handleCollision(CollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onCollision(event);
-
-		EntityCollisionEvent entityEvent{event,
-									 self->getEntityForSimulationId(event.bodyA),
-									 self->getEntityForSimulationId(event.bodyB)};
-		self->onEntityCollision(entityEvent);
+		self->onCollision(self->m_simulation2D, event);
+		
+		std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
+		self->m_queuedCollisions.push_back(event);
 	}
 
 	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		EntityShapeCollisionEvent entityEvent{event, self->getEntityForSimulationId(event.body)};
-		self->onEntityShapeCollision(entityEvent);
+		self->onShapeCollision(self->m_simulation2D, event);
+		
+		{
+			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
+			self->m_queuedShapeCollisions.push_back(event);
+		}
 
 		const float m_soundFalloff = 0.1f;
 		bool spatialAudio = false;
@@ -407,6 +441,205 @@ namespace WeirdEngine
 	void Scene::loadFromWeirdFile(const std::string& path)
 	{
 		SceneSerializer::load(*this, path);
+	}
+
+	Scene::RaymarchResult Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance)
+	{
+		float traveled = 0.0f;
+		float time = getTime();
+		auto gridSnapshot = m_simulation2D.getSpatialGridSnapshot();
+
+		if(epsilon <= 0.0f)
+		{
+			epsilon = 0.001f; // Default epsilon
+		}
+
+		struct GroupState
+		{
+			uint16_t id;
+			float minDistance;
+			Entity closestEntity;
+		};
+
+		for (int i = 0; i < 100; i++)
+		{
+			glm::vec2 p = origin + (traveled * direction);
+			float d = 1000.0f;
+			float minD = d;
+			Entity closestEntity = INVALID_ENTITY;
+
+			std::vector<GroupState> groups;
+			groups.reserve(16);
+
+			auto shapeArray = m_ecs.getComponentArray<CustomShape>();
+			for (size_t j = 0; j < shapeArray->getSize(); j++)
+			{
+				auto& shape = shapeArray->getDataAtIdx(j);
+
+				if (!shape.hasCollisions)
+					continue;
+					
+				if (shape.distanceFieldId >= m_sdfs.size())
+					continue;
+
+				float parameters[11];
+				std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
+				parameters[8] = time;
+				parameters[9] = p.x;
+				parameters[10] = p.y;
+
+				float dist = m_sdfs[shape.distanceFieldId]->getValue(parameters);
+				float currentMinDistance = d;
+				Entity currentEntity = INVALID_ENTITY;
+
+				GroupState* groupState = nullptr;
+				for (auto& group : groups)
+				{
+					if (group.id == shape.groupIdx)
+					{
+						groupState = &group;
+						currentMinDistance = groupState->minDistance;
+						currentEntity = groupState->closestEntity;
+						break;
+					}
+				}
+
+				if (!groupState && shape.groupIdx != CustomShape::GLOBAL_GROUP)
+				{
+					groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f, INVALID_ENTITY});
+					groupState = &groups.back();
+					currentMinDistance = groupState->minDistance;
+				}
+
+				bool closestEntityUpdated = false;
+				switch (shape.combination)
+				{
+					case CombinationType::Addition:
+						if (dist < currentMinDistance)
+							closestEntityUpdated = true;
+						currentMinDistance = dist;
+						break;
+					case CombinationType::Subtraction:
+						currentMinDistance = std::max(currentMinDistance, -dist);
+						break;
+					case CombinationType::SmoothAddition:
+						dist = fOpUnionSoft(dist, currentMinDistance, shape.smoothFactor);
+						if (dist < currentMinDistance)
+							closestEntityUpdated = true;
+						currentMinDistance = dist;
+						break;
+					case CombinationType::SmoothSubtraction:
+						currentMinDistance = fOpSubSoft(currentMinDistance, dist, shape.smoothFactor);
+						break;
+					case CombinationType::Intersection:
+						currentMinDistance = std::max(currentMinDistance, dist);
+						break;
+				}
+
+				if (closestEntityUpdated)
+				{
+					currentEntity = shapeArray->getEntityAtIdx(j);
+				}
+
+				if (shape.groupIdx == CustomShape::GLOBAL_GROUP)
+				{
+					d = currentMinDistance;
+					if (d < minD)
+					{
+						minD = d;
+						closestEntity = currentEntity;
+					}
+				}
+				else
+				{
+					groupState->minDistance = currentMinDistance;
+					if (closestEntityUpdated)
+					{
+						groupState->closestEntity = currentEntity;
+					}
+				}
+			}
+
+			for (const auto& group : groups)
+			{
+				if (group.minDistance < d)
+				{
+					d = group.minDistance;
+					closestEntity = group.closestEntity;
+				}
+				if (d < minD)
+				{
+					minD = d;
+				}
+			}
+
+			// Evaluate Rigidbodies using the Spatial Grid Snapshot
+			if (gridSnapshot)
+			{
+				float minRigidbodyDist = 1000.0f;
+				Entity closestRbEntity = INVALID_ENTITY;
+
+				int gx = static_cast<int>(std::floor(p.x * gridSnapshot->invCellSize));
+				int gy = static_cast<int>(std::floor(p.y * gridSnapshot->invCellSize));
+				const int TABLE_SIZE = 8191; // Must match Simulation2D.cpp
+
+				auto getHash = [](int x, int y) -> int
+				{
+					constexpr int p1 = 73856093;
+					constexpr int p2 = 19349663;
+					int hash = (x * p1) ^ (y * p2);
+					hash = hash % TABLE_SIZE;
+					if (hash < 0)
+						hash += TABLE_SIZE;
+					return hash;
+				};
+
+				for (int dx = -1; dx <= 1; dx++)
+				{
+					for (int dy = -1; dy <= 1; dy++)
+					{
+						int hash = getHash(gx + dx, gy + dy);
+						int rbIndex = gridSnapshot->head[hash];
+
+						while (rbIndex != -1)
+						{
+							glm::vec2 rbPos = gridSnapshot->positions[rbIndex];
+							float dist = glm::length(p - rbPos) - gridSnapshot->radious;
+
+							if (dist < minRigidbodyDist)
+							{
+								minRigidbodyDist = dist;
+								closestRbEntity = getEntityForSimulationId(rbIndex);
+							}
+
+							rbIndex = gridSnapshot->next[rbIndex];
+						}
+					}
+				}
+
+				if (minRigidbodyDist < d)
+				{
+					d = minRigidbodyDist;
+					closestEntity = closestRbEntity;
+				}
+				if (d < minD)
+				{
+					minD = d;
+				}
+			}
+
+			if (d <= epsilon)
+				return {traveled, closestEntity};
+
+			traveled += std::abs(d);
+
+			if (traveled >= maxDistance)
+			{
+				return {maxDistance, INVALID_ENTITY};
+			}
+		}
+
+		return {traveled, INVALID_ENTITY};
 	}
 
 	// Utils

@@ -15,7 +15,7 @@ private:
 	Entity m_cursorShape;
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -30,18 +30,18 @@ private:
 
 			float z = 0;
 
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 			if (i < 100)
 			{
 			}
 
-			Dot& dot = m_ecs.addComponent<Dot>(entity);
+			Dot& dot = ecs.addComponent<Dot>(entity);
 			dot.materialId = material;
 
-			RigidBody2D& rb = m_ecs.addComponent<RigidBody2D>(entity);
+			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
@@ -69,12 +69,12 @@ private:
 			m_cursorShape = star;
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
-		g_cameraPositon = m_ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -83,8 +83,8 @@ private:
 
 		// Move wall to mouse
 		{
-			CustomShape& cs = m_ecs.getComponent<CustomShape>(m_cursorShape);
-			auto& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+			CustomShape& cs = ecs.getComponent<CustomShape>(m_cursorShape);
+			auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 			float x = Input::GetMouseX();
 			float y = Input::GetMouseY();
 

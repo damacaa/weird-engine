@@ -11,9 +11,8 @@ namespace WeirdEngine
 	// Base
 	struct IMathExpression
 	{
-		virtual void propagateValues(float* values) = 0;
 		[[nodiscard]]
-		virtual float getValue() const = 0;
+		virtual float getValue(const float* parameters) const = 0;
 		[[nodiscard]]
 		virtual std::string print() const = 0;
 		virtual ~IMathExpression() = default;
@@ -25,7 +24,7 @@ namespace WeirdEngine
 	{
 	private:
 		std::ptrdiff_t m_offset;
-		float* m_value = nullptr;
+		
 
 	public:
 		explicit FloatVariable(std::ptrdiff_t offset)
@@ -33,15 +32,10 @@ namespace WeirdEngine
 		{
 		}
 
-		void propagateValues(float* values) override
-		{
-			m_value = values + m_offset;
-		}
-
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return *m_value;
+			return parameters[m_offset];
 		}
 
 		[[nodiscard]]
@@ -62,10 +56,8 @@ namespace WeirdEngine
 		{
 		}
 
-		void propagateValues(float* values) override {}
-
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
 			return m_value;
 		}
@@ -112,13 +104,8 @@ namespace WeirdEngine
 			valueA = (std::move(a));
 		}
 
-		void propagateValues(float* values) override
-		{
-			valueA->propagateValues(values);
-		}
-
 		[[nodiscard]]
-		float getValue() const override = 0;
+		float getValue(const float* parameters) const override = 0;
 
 		[[nodiscard]]
 		std::string print() const override = 0;
@@ -130,9 +117,9 @@ namespace WeirdEngine
 		using OneFloatOperation::OneFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return sinf(valueA->getValue());
+			return sinf(valueA->getValue(parameters));
 		}
 
 		[[nodiscard]]
@@ -148,9 +135,9 @@ namespace WeirdEngine
 		using OneFloatOperation::OneFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return std::abs(valueA->getValue());
+			return std::abs(valueA->getValue(parameters));
 		}
 
 		[[nodiscard]]
@@ -198,12 +185,6 @@ namespace WeirdEngine
 		// TwoFloatOperation(std::ptrdiff_t i, std::ptrdiff_t j)
 		//	: valueA(std::make_shared<FloatVariable>(i)), valueB(std::make_shared<FloatVariable>(j)) {}
 
-		void propagateValues(float* values) override
-		{
-			valueA->propagateValues(values);
-			valueB->propagateValues(values);
-		}
-
 		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b)
 		{
 			valueA = (std::move(a));
@@ -211,7 +192,7 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		virtual float getValue() const override = 0;
+		virtual float getValue(const float* parameters) const override = 0;
 
 		[[nodiscard]]
 		virtual std::string print() const override = 0;
@@ -223,9 +204,9 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return valueA->getValue() + valueB->getValue();
+			return valueA->getValue(parameters) + valueB->getValue(parameters);
 		}
 
 		[[nodiscard]]
@@ -241,9 +222,9 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return valueA->getValue() - valueB->getValue();
+			return valueA->getValue(parameters) - valueB->getValue(parameters);
 		}
 
 		[[nodiscard]]
@@ -259,9 +240,9 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return valueA->getValue() * valueB->getValue();
+			return valueA->getValue(parameters) * valueB->getValue(parameters);
 		}
 
 		[[nodiscard]]
@@ -276,9 +257,9 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return valueA->getValue() / valueB->getValue();
+			return valueA->getValue(parameters) / valueB->getValue(parameters);
 		}
 
 		[[nodiscard]]
@@ -294,9 +275,9 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			return atan2f(valueA->getValue(), valueB->getValue());
+			return atan2f(valueA->getValue(parameters), valueB->getValue(parameters));
 		}
 
 		[[nodiscard]]
@@ -311,10 +292,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			// Note: ensure glm is included in the project configuration
 			return length(glm::vec2(a, b));
@@ -332,10 +313,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return std::max(a, b);
 		}
@@ -352,10 +333,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return std::min(a, b);
 		}
@@ -372,10 +353,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return std::min(a, b);
 		}
@@ -392,10 +373,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return std::max(a, -b);
 		}
@@ -412,10 +393,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return std::max(a, b);
 		}
@@ -432,10 +413,10 @@ namespace WeirdEngine
 		using TwoFloatOperation::TwoFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
 
 			return abs(a) - b;
 		}
@@ -478,13 +459,6 @@ namespace WeirdEngine
 		{
 		}
 
-		void propagateValues(float* values) override
-		{
-			valueA->propagateValues(values);
-			valueB->propagateValues(values);
-			valueC->propagateValues(values);
-		}
-
 		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, std::shared_ptr<IMathExpression> c)
 		{
 			valueA = (std::move(a));
@@ -493,7 +467,7 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		virtual float getValue() const override = 0;
+		virtual float getValue(const float* parameters) const override = 0;
 
 		[[nodiscard]]
 		virtual std::string print() const override = 0;
@@ -518,11 +492,11 @@ namespace WeirdEngine
 		using ThreeFloatOperation::ThreeFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
-			float r = valueC->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
+			float r = valueC->getValue(parameters);
 
 			return fOpUnionSoft(a, b, r);
 		}
@@ -539,11 +513,11 @@ namespace WeirdEngine
 		using ThreeFloatOperation::ThreeFloatOperation;
 
 		[[nodiscard]]
-		float getValue() const override
+		float getValue(const float* parameters) const override
 		{
-			float a = valueA->getValue();
-			float b = valueB->getValue();
-			float r = valueC->getValue();
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
+			float r = valueC->getValue(parameters);
 
 			return fOpSubSoft(a, b, r);
 		}

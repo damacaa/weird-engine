@@ -379,12 +379,6 @@ namespace WeirdEngine
 					{
 						vec2 savedPos(rbj["physicsPosition"][0].get<float>(), rbj["physicsPosition"][1].get<float>());
 						scene.m_simulation2D.setPosition(rb.simulationId, savedPos);
-
-						// Prevent the Transform's dirty flag from overwriting the precise physics position we just loaded
-						if (scene.m_ecs.hasComponent<Transform>(entity))
-						{
-							scene.m_ecs.getComponent<Transform>(entity).isDirty = false;
-						}
 					}
 
 					if (savedSimId >= 0)

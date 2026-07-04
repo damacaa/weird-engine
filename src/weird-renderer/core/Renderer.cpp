@@ -157,6 +157,12 @@ namespace WeirdEngine
 					Profiler::Get().disableRealtime();
 			}
 
+			if (Input::GetKeyDown(Input::F11))
+			{
+				bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+				SDL_SetWindowFullscreen(m_window, !isFullscreen);
+			}
+
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplSDL3_NewFrame();
 			ImGui::NewFrame();
@@ -216,6 +222,12 @@ namespace WeirdEngine
 						if (ImGui::Button("Take Screenshot"))
 						{
 							m_takeScreenshot = true;
+						}
+
+						bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+						if (ImGui::Checkbox("Fullscreen", &isFullscreen))
+						{
+							SDL_SetWindowFullscreen(m_window, isFullscreen);
 						}
 
 						if (!m_lastScreenshotPath.empty())

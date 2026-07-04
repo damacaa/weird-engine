@@ -79,6 +79,15 @@ namespace WeirdEngine
 	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
 	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
 
+	struct SpatialGridSnapshot
+	{
+		std::vector<int> head;
+		std::vector<int> next;
+		std::vector<vec2> positions;
+		float invCellSize;
+		float radious;
+	};
+
 	class Simulation2D
 	{
 
@@ -128,6 +137,12 @@ namespace WeirdEngine
 		void setMass(SimulationID id, float mass);
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
+
+		std::shared_ptr<SpatialGridSnapshot> getSpatialGridSnapshot()
+		{
+			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
+			return m_spatialGridSnapshot;
+		}
 
 		void updateShape(CustomShape& shape);
 		void removeShape(CustomShape& shape);
@@ -367,6 +382,9 @@ namespace WeirdEngine
 		bool m_attracttionEnabled = false;
 		bool m_repulsionEnabled = false;
 		bool m_liftEnabled = false;
+
+		std::mutex m_spatialGridSnapshotMutex;
+		std::shared_ptr<SpatialGridSnapshot> m_spatialGridSnapshot;
 
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;

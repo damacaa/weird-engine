@@ -8,11 +8,10 @@ namespace WeirdEngine
 	struct GlobalPhysicsSettings : public Component
 	{
 		GlobalPhysicsSettings()
-			: gravity(0.0f), damping(0.05f), isGravityDirty(true), isDampingDirty(true) {};
+			: gravity(0.0f), damping(0.05f), isDirty(true) {};
 			
 		float gravity;
 		float damping;
-		bool isGravityDirty;
-		bool isDampingDirty;
+		bool isDirty;
 	};
 }

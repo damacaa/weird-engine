@@ -443,22 +443,31 @@ namespace WeirdEngine
 		SceneSerializer::load(*this, path);
 	}
 
-	float Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float maxDistance, int shapeGroup)
+	Scene::RaymarchResult Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance)
 	{
 		float traveled = 0.0f;
 		float time = getTime();
+		auto gridSnapshot = m_simulation2D.getSpatialGridSnapshot();
+
+		if(epsilon <= 0.0f)
+		{
+			epsilon = 0.001f; // Default epsilon
+		}
+
+		struct GroupState
+		{
+			uint16_t id;
+			float minDistance;
+			Entity closestEntity;
+		};
 
 		for (int i = 0; i < 100; i++)
 		{
 			glm::vec2 p = origin + (traveled * direction);
 			float d = 1000.0f;
 			float minD = d;
-			
-			struct GroupState
-			{
-				uint16_t id;
-				float minDistance;
-			};
+			Entity closestEntity = INVALID_ENTITY;
+
 			std::vector<GroupState> groups;
 			groups.reserve(16);
 
@@ -466,13 +475,12 @@ namespace WeirdEngine
 			for (size_t j = 0; j < shapeArray->getSize(); j++)
 			{
 				auto& shape = shapeArray->getDataAtIdx(j);
-				if (!shape.hasCollisions) continue;
-				if (shape.distanceFieldId >= m_sdfs.size()) continue;
 
-				if (shape.groupIdx != CustomShape::GLOBAL_GROUP)
-				{
-					if (shapeGroup != -1 && shape.groupIdx != shapeGroup) continue;
-				}
+				if (!shape.hasCollisions)
+					continue;
+					
+				if (shape.distanceFieldId >= m_sdfs.size())
+					continue;
 
 				float parameters[11];
 				std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
@@ -482,7 +490,8 @@ namespace WeirdEngine
 
 				float dist = m_sdfs[shape.distanceFieldId]->getValue(parameters);
 				float currentMinDistance = d;
-				
+				Entity currentEntity = INVALID_ENTITY;
+
 				GroupState* groupState = nullptr;
 				for (auto& group : groups)
 				{
@@ -490,64 +499,147 @@ namespace WeirdEngine
 					{
 						groupState = &group;
 						currentMinDistance = groupState->minDistance;
+						currentEntity = groupState->closestEntity;
 						break;
 					}
 				}
 
 				if (!groupState && shape.groupIdx != CustomShape::GLOBAL_GROUP)
 				{
-					groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f});
+					groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f, INVALID_ENTITY});
 					groupState = &groups.back();
 					currentMinDistance = groupState->minDistance;
 				}
 
+				bool closestEntityUpdated = false;
 				switch (shape.combination)
 				{
-				case CombinationType::Addition:
-					currentMinDistance = std::min(dist, currentMinDistance);
-					break;
-				case CombinationType::Subtraction:
-					currentMinDistance = std::max(currentMinDistance, -dist);
-					break;
-				case CombinationType::SmoothAddition:
-					currentMinDistance = fOpUnionSoft(dist, currentMinDistance, shape.parameters[4]);
-					break;
-				case CombinationType::SmoothSubtraction:
-					currentMinDistance = fOpSubSoft(currentMinDistance, dist, shape.parameters[4]);
-				case CombinationType::Intersection:
-					currentMinDistance = std::max(currentMinDistance, dist);
-					break;
+					case CombinationType::Addition:
+						if (dist < currentMinDistance)
+							closestEntityUpdated = true;
+						currentMinDistance = dist;
+						break;
+					case CombinationType::Subtraction:
+						currentMinDistance = std::max(currentMinDistance, -dist);
+						break;
+					case CombinationType::SmoothAddition:
+						dist = fOpUnionSoft(dist, currentMinDistance, shape.smoothFactor);
+						if (dist < currentMinDistance)
+							closestEntityUpdated = true;
+						currentMinDistance = dist;
+						break;
+					case CombinationType::SmoothSubtraction:
+						currentMinDistance = fOpSubSoft(currentMinDistance, dist, shape.smoothFactor);
+						break;
+					case CombinationType::Intersection:
+						currentMinDistance = std::max(currentMinDistance, dist);
+						break;
 				}
-				
+
+				if (closestEntityUpdated)
+				{
+					currentEntity = shapeArray->getEntityAtIdx(j);
+				}
+
 				if (shape.groupIdx == CustomShape::GLOBAL_GROUP)
 				{
 					d = currentMinDistance;
-					minD = std::min(minD, d);
+					if (d < minD)
+					{
+						minD = d;
+						closestEntity = currentEntity;
+					}
 				}
 				else
 				{
 					groupState->minDistance = currentMinDistance;
+					if (closestEntityUpdated)
+					{
+						groupState->closestEntity = currentEntity;
+					}
 				}
 			}
 
 			for (const auto& group : groups)
 			{
-				d = std::min(d, group.minDistance);
-				minD = std::min(minD, d);
+				if (group.minDistance < d)
+				{
+					d = group.minDistance;
+					closestEntity = group.closestEntity;
+				}
+				if (d < minD)
+				{
+					minD = d;
+				}
 			}
 
-			if (d <= -0.001f) // EPSILON
-				break;
+			// Evaluate Rigidbodies using the Spatial Grid Snapshot
+			if (gridSnapshot)
+			{
+				float minRigidbodyDist = 1000.0f;
+				Entity closestRbEntity = INVALID_ENTITY;
 
-			traveled += std::abs(d) + 0.001f; // EPSILON
+				int gx = static_cast<int>(std::floor(p.x * gridSnapshot->invCellSize));
+				int gy = static_cast<int>(std::floor(p.y * gridSnapshot->invCellSize));
+				const int TABLE_SIZE = 8191; // Must match Simulation2D.cpp
+
+				auto getHash = [](int x, int y) -> int
+				{
+					constexpr int p1 = 73856093;
+					constexpr int p2 = 19349663;
+					int hash = (x * p1) ^ (y * p2);
+					hash = hash % TABLE_SIZE;
+					if (hash < 0)
+						hash += TABLE_SIZE;
+					return hash;
+				};
+
+				for (int dx = -1; dx <= 1; dx++)
+				{
+					for (int dy = -1; dy <= 1; dy++)
+					{
+						int hash = getHash(gx + dx, gy + dy);
+						int rbIndex = gridSnapshot->head[hash];
+
+						while (rbIndex != -1)
+						{
+							glm::vec2 rbPos = gridSnapshot->positions[rbIndex];
+							float dist = glm::length(p - rbPos) - gridSnapshot->radious;
+
+							if (dist < minRigidbodyDist)
+							{
+								minRigidbodyDist = dist;
+								closestRbEntity = getEntityForSimulationId(rbIndex);
+							}
+
+							rbIndex = gridSnapshot->next[rbIndex];
+						}
+					}
+				}
+
+				if (minRigidbodyDist < d)
+				{
+					d = minRigidbodyDist;
+					closestEntity = closestRbEntity;
+				}
+				if (d < minD)
+				{
+					minD = d;
+				}
+			}
+
+			if (d <= epsilon)
+				return {traveled, closestEntity};
+
+			traveled += std::abs(d);
 
 			if (traveled >= maxDistance)
 			{
-				return maxDistance;
+				return {maxDistance, INVALID_ENTITY};
 			}
 		}
 
-		return traveled - 0.001f;
+		return {traveled, INVALID_ENTITY};
 	}
 
 	// Utils

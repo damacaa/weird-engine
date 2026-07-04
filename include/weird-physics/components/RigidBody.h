@@ -14,12 +14,11 @@ namespace WeirdEngine
 	struct RigidBody2D : public Component
 	{
 		RigidBody2D()
-			: simulationId(-1), velocity(0.0f, 0.0f), pendingForce(0.0f, 0.0f), isVelocityDirty(false), isFixed(false), isFixedDirty(false) {};
+			: simulationId(-1), velocity(0.0f, 0.0f), pendingForce(0.0f, 0.0f), isFixed(false), isDirty(false) {};
 		unsigned int simulationId;
 		glm::vec2 velocity;
 		glm::vec2 pendingForce;
-		bool isVelocityDirty;
 		bool isFixed;
-		bool isFixedDirty;
+		bool isDirty;
 	};
 } // namespace WeirdEngine

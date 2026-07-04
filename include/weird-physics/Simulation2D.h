@@ -328,6 +328,8 @@ namespace WeirdEngine
 
 		vec2* m_previousPositions;
 		vec2* m_velocities;
+		vec2* m_velocitiesRead;
+		vec2* m_velocitiesAux;
 		vec2* m_forces;
 
 		bool m_externalForcesSinceLastUpdate;

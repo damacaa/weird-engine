@@ -36,9 +36,9 @@ private:
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
-		settings.damping = 1.0f;
+		settings.damping = 0.1f;
 		settings.isDirty = true;
-		settings.isDirty = true;
+
 
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
 		for (size_t j = 0; j < 3; j++)
@@ -57,6 +57,11 @@ private:
 
 				for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 				{
+					if(!ecs.hasComponent<Transform>(firstCreated + e))
+					{
+						continue;
+					}
+
 					auto& t = ecs.getComponent<Transform>(firstCreated + e);
 					t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
 				}

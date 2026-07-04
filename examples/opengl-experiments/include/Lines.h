@@ -54,41 +54,41 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = false;
 		getLigths().push_back(Light{});
 
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(0, 0, 0);
 
-			// MeshRenderer &mr = m_ecs.addComponent<MeshRenderer>(entity);
+			// MeshRenderer &mr = ecs.addComponent<MeshRenderer>(entity);
 
 			// auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
 			// mr.mesh = id;
 
-			auto& sdf = m_ecs.addComponent<Dot>(entity);
+			auto& sdf = ecs.addComponent<Dot>(entity);
 			sdf.materialId = m_whiteMatId;
 
 			m_monkey = entity;
 		}
 	}
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
 			setSceneComplete();
 		}
 
-		Transform& cameraTransform = m_ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 		cameraTransform.position.y = 5.0f;
 		cameraTransform.position.z -= 10.0f * delta;
 
-		Transform& monkeyTransform = m_ecs.getComponent<Transform>(m_monkey);
+		Transform& monkeyTransform = ecs.getComponent<Transform>(m_monkey);
 		monkeyTransform.position = cameraTransform.position;
 		monkeyTransform.position.z -= 5.0f;
 	}

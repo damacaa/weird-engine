@@ -4,8 +4,10 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-physics/components/CustomShapeManager.h"
-
+#include "weird-physics/components/CustomShapeManager.h"
+#include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
+#include "weird-physics/components/SpringManager.h"
 
 #include "weird-engine/systems/SDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
@@ -47,6 +49,12 @@ namespace WeirdEngine
 
 		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
 		m_ecs.registerComponent<CustomShape>(shapeManager);
+
+		std::shared_ptr<DistanceConstraintManager> distManager = std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
+		m_ecs.registerComponent<DistanceConstraint>(distManager);
+
+		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_ecs);
+		m_ecs.registerComponent<Spring>(springManager);
 
 		// Create camera
 		m_mainCamera = m_ecs.createEntity();
@@ -102,7 +110,7 @@ namespace WeirdEngine
 			loadedTags = m_tagToEntity;
 		}
 
-		onStart(loadedTags);
+		onStart(m_ecs, loadedTags);
 
 		switch (m_renderMode)
 		{
@@ -121,6 +129,8 @@ namespace WeirdEngine
 			default:
 				break;
 		}
+		
+		PhysicsSystem2D::update(m_ecs, m_simulation2D);
 	}
 
 	void Scene::update(double delta, double time)
@@ -158,7 +168,29 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Scene logic update");
-			onUpdate(delta);
+
+			// Process queued collisions
+			std::vector<CollisionEvent> collisions;
+			std::vector<ShapeCollisionEvent> shapeCollisions;
+			{
+				std::lock_guard<std::mutex> lock(m_collisionQueueMutex);
+				collisions = std::move(m_queuedCollisions);
+				shapeCollisions = std::move(m_queuedShapeCollisions);
+			}
+			
+			for (auto& ev : collisions)
+			{
+				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA), getEntityForSimulationId(ev.bodyB)};
+				onEntityCollision(m_ecs, entityEvent);
+			}
+
+			for (auto& ev : shapeCollisions)
+			{
+				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body)};
+				onEntityShapeCollision(m_ecs, entityEvent);
+			}
+
+			onUpdate(delta, m_ecs);
 		}
 
 		{
@@ -177,7 +209,7 @@ namespace WeirdEngine
 	void Scene::handlePhysicsStep(void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onPhysicsStep();
+		self->onPhysicsStep(self->m_simulation2D);
 
 		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
 		self->m_frictionSoundLevel = 0.0f;
@@ -186,19 +218,21 @@ namespace WeirdEngine
 	void Scene::handleCollision(CollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onCollision(event);
-
-		EntityCollisionEvent entityEvent{event,
-									 self->getEntityForSimulationId(event.bodyA),
-									 self->getEntityForSimulationId(event.bodyB)};
-		self->onEntityCollision(entityEvent);
+		self->onCollision(self->m_simulation2D, event);
+		
+		std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
+		self->m_queuedCollisions.push_back(event);
 	}
 
 	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		EntityShapeCollisionEvent entityEvent{event, self->getEntityForSimulationId(event.body)};
-		self->onEntityShapeCollision(entityEvent);
+		self->onShapeCollision(self->m_simulation2D, event);
+		
+		{
+			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
+			self->m_queuedShapeCollisions.push_back(event);
+		}
 
 		const float m_soundFalloff = 0.1f;
 		bool spatialAudio = false;
@@ -407,6 +441,113 @@ namespace WeirdEngine
 	void Scene::loadFromWeirdFile(const std::string& path)
 	{
 		SceneSerializer::load(*this, path);
+	}
+
+	float Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float maxDistance, int shapeGroup)
+	{
+		float traveled = 0.0f;
+		float time = getTime();
+
+		for (int i = 0; i < 100; i++)
+		{
+			glm::vec2 p = origin + (traveled * direction);
+			float d = 1000.0f;
+			float minD = d;
+			
+			struct GroupState
+			{
+				uint16_t id;
+				float minDistance;
+			};
+			std::vector<GroupState> groups;
+			groups.reserve(16);
+
+			auto shapeArray = m_ecs.getComponentArray<CustomShape>();
+			for (size_t j = 0; j < shapeArray->getSize(); j++)
+			{
+				auto& shape = shapeArray->getDataAtIdx(j);
+				if (!shape.hasCollisions) continue;
+				if (shape.distanceFieldId >= m_sdfs.size()) continue;
+
+				if (shape.groupIdx != CustomShape::GLOBAL_GROUP)
+				{
+					if (shapeGroup != -1 && shape.groupIdx != shapeGroup) continue;
+				}
+
+				float parameters[11];
+				std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
+				parameters[8] = time;
+				parameters[9] = p.x;
+				parameters[10] = p.y;
+
+				float dist = m_sdfs[shape.distanceFieldId]->getValue(parameters);
+				float currentMinDistance = d;
+				
+				GroupState* groupState = nullptr;
+				for (auto& group : groups)
+				{
+					if (group.id == shape.groupIdx)
+					{
+						groupState = &group;
+						currentMinDistance = groupState->minDistance;
+						break;
+					}
+				}
+
+				if (!groupState && shape.groupIdx != CustomShape::GLOBAL_GROUP)
+				{
+					groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f});
+					groupState = &groups.back();
+					currentMinDistance = groupState->minDistance;
+				}
+
+				switch (shape.combination)
+				{
+				case CombinationType::Addition:
+					currentMinDistance = std::min(dist, currentMinDistance);
+					break;
+				case CombinationType::Subtraction:
+					currentMinDistance = std::max(currentMinDistance, -dist);
+					break;
+				case CombinationType::SmoothAddition:
+					currentMinDistance = fOpUnionSoft(dist, currentMinDistance, shape.parameters[4]);
+					break;
+				case CombinationType::SmoothSubtraction:
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, shape.parameters[4]);
+				case CombinationType::Intersection:
+					currentMinDistance = std::max(currentMinDistance, dist);
+					break;
+				}
+				
+				if (shape.groupIdx == CustomShape::GLOBAL_GROUP)
+				{
+					d = currentMinDistance;
+					minD = std::min(minD, d);
+				}
+				else
+				{
+					groupState->minDistance = currentMinDistance;
+				}
+			}
+
+			for (const auto& group : groups)
+			{
+				d = std::min(d, group.minDistance);
+				minD = std::min(minD, d);
+			}
+
+			if (d <= -0.001f) // EPSILON
+				break;
+
+			traveled += std::abs(d) + 0.001f; // EPSILON
+
+			if (traveled >= maxDistance)
+			{
+				return maxDistance;
+			}
+		}
+
+		return traveled - 0.001f;
 	}
 
 	// Utils

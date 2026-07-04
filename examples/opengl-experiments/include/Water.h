@@ -80,7 +80,7 @@ private:
 		float buoyancy = 10.0f; // how strongly this entity is affected by the water surface
 	};
 
-	void onStart() override
+	void onStart(ECSManager& ecs) override
 	{
 		m_debugFly = true;
 
@@ -88,32 +88,32 @@ private:
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
 		{
-			m_dot = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(m_dot);
+			m_dot = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(m_dot);
 			t.position = vec3(0, 0, 0);
-			auto& renderer = m_ecs.addComponent<Dot>(m_dot);
+			auto& renderer = ecs.addComponent<Dot>(m_dot);
 			renderer.materialId = redMat.id;
-			m_ecs.addComponent<Floatable>(m_dot);
+			ecs.addComponent<Floatable>(m_dot);
 		}
 
 		{
-			Entity entity = m_ecs.createEntity();
-			Transform& t = m_ecs.addComponent<Transform>(entity);
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(3, 0, 0);
 
-			MeshRenderer& mr = m_ecs.addComponent<MeshRenderer>(entity);
+			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
 			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 			
-			m_ecs.addComponent<Floatable>(entity);
+			ecs.addComponent<Floatable>(entity);
 		}
 
-		m_ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 3, 20);
+		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 3, 20);
 	}
 
 	float m_time = 0.0f;
 
-	void onUpdate(float delta) override
+	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
@@ -123,14 +123,14 @@ private:
 		m_time += delta;
 
 		
-		const auto& floatables = m_ecs.getComponentArray<Floatable>();
+		const auto& floatables = ecs.getComponentArray<Floatable>();
 
 		for(int i = 0; i < floatables->getSize(); i++)
 		{
 			auto& floatable = floatables->getDataAtIdx(i);
 
 			// Keep the dot riding the water surface
-			Transform& transform = m_ecs.getComponent<Transform>(floatable.Owner);
+			Transform& transform = ecs.getComponent<Transform>(floatable.Owner);
 			glm::vec2 flatPos = { transform.position.x, transform.position.z };
 			float centerHeight = m_waterPlane.waterHeightAt(flatPos, m_time);
 			transform.position.y = centerHeight;

@@ -28,6 +28,23 @@ namespace WeirdEngine
 
 	using SimulationID = std::uint32_t;
 
+	enum class PhysicsCommandType
+	{
+		SetVelocity,
+		SetPosition,
+		Fix,
+		UnFix,
+		SetMass
+	};
+
+	struct PhysicsCommand
+	{
+		PhysicsCommandType type;
+		SimulationID id;
+		vec2 vectorData;
+		float floatData;
+	};
+
 	enum class CollisionState
 	{
 		START,
@@ -100,10 +117,13 @@ namespace WeirdEngine
 
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
+		bool isFixed(SimulationID id);
 
 		// Retrieve results
 		vec2 getPosition(SimulationID id);
 		void setPosition(SimulationID id, vec2 pos);
+		vec2 getVelocity(SimulationID id);
+		void setVelocity(SimulationID id, vec2 vel);
 		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
 
@@ -204,6 +224,9 @@ namespace WeirdEngine
 		void solveConstraints();
 		void integrateVelocity(float timeStep);
 		void integratePredict(float timeStep);
+
+		void internalUpdateShape(CustomShape& shape);
+		void internalRemoveShape(CustomShape& shape);
 
 		struct Collision
 		{
@@ -337,6 +360,7 @@ namespace WeirdEngine
 		std::vector<GravitationalConstraint> m_gravitationalConstraints;
 
 		std::thread m_simulationThread;
+		std::thread::id m_physicsThreadId;
 		void runSimulationThread();
 
 		// Extra
@@ -346,7 +370,19 @@ namespace WeirdEngine
 
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
-		std::recursive_mutex m_objectMutex;
+		std::mutex m_structuralMutex;
+		std::mutex m_readMutex;
+		std::mutex m_commandMutex;
+		std::vector<PhysicsCommand> m_pendingCommands;
+		std::vector<PhysicsCommand> m_internalCommands;
+
+		struct ShapeUpdateCommand
+		{
+			bool isRemove;
+			CustomShape shape;
+		};
+		std::mutex m_shapeUpdateMutex;
+		std::vector<ShapeUpdateCommand> m_pendingShapeUpdates;
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

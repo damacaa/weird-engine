@@ -103,15 +103,15 @@ private:
 
 		// Fix corners
 		ecs.getComponent<RigidBody2D>(balls[0]).isFixed = true;
-		ecs.getComponent<RigidBody2D>(balls[0]).isFixedDirty = true;
+		ecs.getComponent<RigidBody2D>(balls[0]).isDirty = true;
 		if (numBalls >= rowWidth)
 		{
 			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isFixedDirty = true;
+			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isDirty = true;
 			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isFixedDirty = true;
+			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isDirty = true;
 			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isFixedDirty = true;
+			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isDirty = true;
 		}
 
 		// Add base shapes (walls, ground, custom)

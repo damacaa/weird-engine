@@ -119,7 +119,12 @@ namespace WeirdEngine
 				auto& rb = rigidBodyArray->getDataAtIdx(i);
 				vec2 simPos = scene.m_simulation2D.getPosition(rb.simulationId);
 				auto& ej = collectEntity(e);
-				ej["rigidBody2D"] = {{"simulationId", rb.simulationId}, {"physicsPosition", {simPos.x, simPos.y}}};
+				ej["rigidBody2D"] = {
+					{"simulationId", rb.simulationId}, 
+					{"physicsPosition", {simPos.x, simPos.y}},
+					{"velocity", {rb.velocity.x, rb.velocity.y}},
+					{"isFixed", rb.isFixed}
+				};
 			}
 
 			// TextRenderer
@@ -328,10 +333,26 @@ namespace WeirdEngine
 					const auto& rbj = ej["rigidBody2D"];
 					int savedSimId = rbj.value("simulationId", -1);
 
+					if (rbj.contains("velocity"))
+					{
+						rb.velocity = vec2(rbj["velocity"][0].get<float>(), rbj["velocity"][1].get<float>());
+					}
+					if (rbj.contains("isFixed"))
+					{
+						rb.isFixed = rbj.value("isFixed", false);
+					}
+					rb.isDirty = true; // Sync velocity and fixed state to simulation
+
 					if (rbj.contains("physicsPosition"))
 					{
 						vec2 savedPos(rbj["physicsPosition"][0].get<float>(), rbj["physicsPosition"][1].get<float>());
 						scene.m_simulation2D.setPosition(rb.simulationId, savedPos);
+
+						// Prevent the Transform's dirty flag from overwriting the precise physics position we just loaded
+						if (scene.m_ecs.hasComponent<Transform>(entity))
+						{
+							scene.m_ecs.getComponent<Transform>(entity).isDirty = false;
+						}
 					}
 
 					if (savedSimId >= 0)
@@ -439,7 +460,16 @@ namespace WeirdEngine
 					int savedId = fixedJ.get<int>();
 					auto it = simIdMap.find(savedId);
 					if (it != simIdMap.end())
-						scene.m_simulation2D.fix(it->second);
+					{
+						Entity e = simIdToEntityMap[savedId];
+						if (scene.m_ecs.hasComponent<RigidBody2D>(e))
+						{
+							auto& rb = scene.m_ecs.getComponent<RigidBody2D>(e);
+							rb.isFixed = true;
+							rb.isDirty = true;
+						}
+						// The actual fix will happen in PhysicsSystem2D::update thanks to isDirty=true
+					}
 				}
 			}
 		}

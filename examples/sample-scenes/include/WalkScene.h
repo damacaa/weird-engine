@@ -66,7 +66,7 @@ private:
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = -10.0f;
-		settings.isGravityDirty = true;
+		settings.isDirty = true;
 	}
 
 	void onUpdate(float delta, ECSManager& ecs) override
@@ -98,7 +98,7 @@ private:
 				if(foot.onFloor)
 				{
 					rb.isFixed = true;
-					rb.isFixedDirty = true;
+					rb.isDirty = true;
 				}
 				continue;
 			}
@@ -107,7 +107,7 @@ private:
 			headRB.pendingForce += vec2(0.0f, 1.0f);
 
 			rb.isFixed = false;
-			rb.isFixedDirty = true;
+			rb.isDirty = true;
 
 			// Start step
 			if (!foot.stepStarted)
@@ -119,7 +119,7 @@ private:
 					foot.t = 0.0f;
 					// rb.position = foot.initialPos + vec2(0.0f, 0.1f);
 					rb.isFixed = false;
-					rb.isFixedDirty = true;
+					rb.isDirty = true;
 				}
 			}
 			else

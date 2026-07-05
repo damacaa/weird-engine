@@ -20,11 +20,10 @@ struct Head : public Component
 	bool directionChanged = false;
 };
 
-class LifeScene : public Scene
+class LifeScene : public Scene2D
 {
 public:
-	LifeScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	LifeScene(){};
 
 private:
 	// Inherited via Scene

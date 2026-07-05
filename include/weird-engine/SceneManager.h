@@ -65,7 +65,7 @@ namespace WeirdEngine
 		names.push_back(sceneName);
 		sceneFactories[sceneName] = [this, sceneFilePath]()
 		{
-			auto scene = std::make_unique<T>(m_physicsSettings);
+			auto scene = std::make_unique<T>();
 			if (!sceneFilePath.empty())
 			{
 				scene->setSceneFilePath(sceneFilePath);

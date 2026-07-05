@@ -6,11 +6,10 @@
 #include "weird-physics/components/DistanceConstraint.h"
 
 using namespace WeirdEngine;
-class DestroyScene : public Scene
+class DestroyScene : public Scene2D
 {
 public:
-	DestroyScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	DestroyScene(){};
 
 private:
 	std::vector<Entity> m_testBalls;

@@ -5,11 +5,10 @@
 #include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
-class LinesScene : public Scene
+class LinesScene : public Scene3D
 {
 public:
-	LinesScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	LinesScene(){};
 
 private:
 	uint16_t m_whiteMatId;
@@ -27,7 +26,6 @@ private:
 
 	void onCreate() override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 		
 		{
 			auto& whiteMat = createMaterial();
@@ -56,7 +54,6 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs) override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = false;
 		getLigths().push_back(Light{});
 

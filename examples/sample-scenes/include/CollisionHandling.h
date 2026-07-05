@@ -5,11 +5,10 @@
 #include "globals.h"
 
 using namespace WeirdEngine;
-class CollisionHandlingScene : public Scene
+class CollisionHandlingScene : public Scene2D
 {
 public:
-	CollisionHandlingScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	CollisionHandlingScene(){};
 
 private:
 	// Inherited via Scene

@@ -5,12 +5,8 @@
 #include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
-class ClassicScene : public Scene
+class ClassicScene : public Scene3D
 {
-public:
-	ClassicScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
-
 private:
 	Entity m_monkey;
 	Entity m_ball;
@@ -18,7 +14,6 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs) override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
 		auto& redMat = createMaterial();

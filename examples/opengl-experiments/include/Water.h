@@ -5,11 +5,10 @@
 
 using namespace WeirdEngine;
 
-class WaterScene : public Scene
+class WaterScene : public Scene3D
 {
 public:
-	WaterScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	WaterScene(){};
 
 private:
 	Shader m_waterShader;
@@ -48,7 +47,6 @@ private:
 
 	void onCreate() override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 
 		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert",
 		                       ASSETS_PATH "water/shaders/water.frag");

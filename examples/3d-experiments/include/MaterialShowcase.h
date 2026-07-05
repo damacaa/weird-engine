@@ -8,18 +8,16 @@
 using namespace WeirdEngine;
 
 // Cornell Box
-class MaterialShowcaseScene : public Scene
+class MaterialShowcaseScene : public Scene3D
 {
 public:
-	MaterialShowcaseScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	MaterialShowcaseScene(){};
 
 private:
 
 	// Inherited via Scene
 	void onStart(ECSManager& ecs) override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
 

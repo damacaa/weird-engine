@@ -7,11 +7,10 @@
 #include <glm/gtx/norm.hpp>
 
 using namespace WeirdEngine;
-class ImageScene : public Scene
+class ImageScene : public Scene2D
 {
 public:
-	ImageScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	ImageScene(){};
 
 private:
 	std::string binaryString;

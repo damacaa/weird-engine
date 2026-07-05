@@ -9,6 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(WEIRD_ENGINE_ENABLE_ASAN "Enable AddressSanitizer for memory leak detection" OFF)
+if(WEIRD_ENGINE_ENABLE_ASAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+endif()
+
 message(STATUS "WeirdEngine path: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 

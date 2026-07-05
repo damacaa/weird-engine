@@ -26,6 +26,7 @@ namespace WeirdEngine
         static void warning(const std::string& message);
         static void error(const std::string& message);
 
+        static bool s_enableConsoleOutput;
         static void drawImGuiConsole();
 
     private:

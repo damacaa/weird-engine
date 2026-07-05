@@ -63,7 +63,7 @@ namespace WeirdEngine
 				if (manager)
 					manager->removeData(entity);
 			}
-			m_freeEntities.push(entity);
+			m_entitiesToFree.push(entity);
 		}
 
 		void freeRemovedComponents()
@@ -73,6 +73,12 @@ namespace WeirdEngine
 				if (manager)
 					manager->freeRemovedComponents();
 			}
+
+			while (!m_entitiesToFree.empty())
+			{
+				m_freeEntities.push(m_entitiesToFree.front());
+				m_entitiesToFree.pop();
+			}
 		}
 
 		template <typename T> T& addComponent(Entity entity)
@@ -81,6 +87,7 @@ namespace WeirdEngine
 
 			auto cm = getComponentManager<T>();
 			auto& component = cm->getNewComponent(entity);
+			component.Owner = entity;
 
 			return component;
 		}
@@ -211,6 +218,7 @@ namespace WeirdEngine
 		std::unordered_map<size_t, std::string> m_componentNames;
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::queue<Entity> m_freeEntities;
+		std::queue<Entity> m_entitiesToFree;
 		Entity m_entityCount = 0;
 	};
 } // namespace WeirdEngine

@@ -253,6 +253,7 @@ namespace WeirdEngine
 
 					if (ImGui::BeginTabItem("Console"))
 					{
+						ImGui::Checkbox("Print to std::cout", &Logger::s_enableConsoleOutput);
 						Logger::drawImGuiConsole();
 						ImGui::EndTabItem();
 					}

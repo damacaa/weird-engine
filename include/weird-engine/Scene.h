@@ -245,6 +245,9 @@ namespace WeirdEngine
 		std::vector<CollisionEvent> m_queuedCollisions;
 		std::vector<ShapeCollisionEvent> m_queuedShapeCollisions;
 
+		std::vector<CollisionEvent> m_processingCollisions;
+		std::vector<ShapeCollisionEvent> m_processingShapeCollisions;
+
 		// Entity tag storage (bidirectional maps kept in sync)
 		TagMap m_tagToEntity;
 		std::unordered_map<Entity, std::string> m_entityToTag;

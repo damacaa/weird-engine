@@ -44,8 +44,8 @@ namespace WeirdEngine
 		{
 			if (!m_freeEntities.empty())
 			{
-				Entity e = m_freeEntities.front();
-				m_freeEntities.pop();
+				Entity e = m_freeEntities.back();
+				m_freeEntities.pop_back();
 				return e;
 			}
 			return m_entityCount++;
@@ -63,7 +63,7 @@ namespace WeirdEngine
 				if (manager)
 					manager->removeData(entity);
 			}
-			m_entitiesToFree.push(entity);
+			m_entitiesToFree.push_back(entity);
 		}
 
 		void freeRemovedComponents()
@@ -74,11 +74,11 @@ namespace WeirdEngine
 					manager->freeRemovedComponents();
 			}
 
-			while (!m_entitiesToFree.empty())
+			for (Entity e : m_entitiesToFree)
 			{
-				m_freeEntities.push(m_entitiesToFree.front());
-				m_entitiesToFree.pop();
+				m_freeEntities.push_back(e);
 			}
+			m_entitiesToFree.clear();
 		}
 
 		template <typename T> T& addComponent(Entity entity)
@@ -217,8 +217,8 @@ namespace WeirdEngine
 
 		std::unordered_map<size_t, std::string> m_componentNames;
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
-		std::queue<Entity> m_freeEntities;
-		std::queue<Entity> m_entitiesToFree;
+		std::vector<Entity> m_freeEntities;
+		std::vector<Entity> m_entitiesToFree;
 		Entity m_entityCount = 0;
 	};
 } // namespace WeirdEngine

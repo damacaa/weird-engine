@@ -22,7 +22,7 @@ namespace WeirdEngine
 	{
 	protected:
 		std::shared_ptr<void> m_componentArray;
-		std::queue<Entity> m_removedEntities;
+		std::vector<Entity> m_removedEntities;
 
 		virtual void handleNewComponent(Entity entity, T& component) {}
 		virtual void handleDestroyedComponent(Entity entity) {}
@@ -65,7 +65,7 @@ namespace WeirdEngine
 
 		void removeData(Entity entity) override
 		{
-			m_removedEntities.push(entity);
+			m_removedEntities.push_back(entity);
 		}
 
 		std::shared_ptr<ComponentArray<T>> getComponentArray()
@@ -78,18 +78,15 @@ namespace WeirdEngine
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<T>>(m_componentArray);
 
-			while (m_removedEntities.size() > 0)
+			for (Entity e : m_removedEntities)
 			{
-				Entity e = m_removedEntities.front();
-
 				if (componentArray->hasData(e))
 				{
 					handleDestroyedComponent(e);
 					componentArray->removeData(e);
 				}
-
-				m_removedEntities.pop();
 			}
+			m_removedEntities.clear();
 		}
 	};
 } // namespace WeirdEngine

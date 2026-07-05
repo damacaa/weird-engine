@@ -82,6 +82,14 @@ namespace WeirdEngine
 		delete[] m_externalForces;
 		delete[] m_mass;
 		delete[] m_invMass;
+
+		m_spatialGridSnapshot.reset();
+
+		for (auto* snapshot : m_snapshotPool)
+		{
+			delete snapshot;
+		}
+		m_snapshotPool.clear();
 	}
 
 	void Simulation2D::pause()
@@ -113,6 +121,26 @@ namespace WeirdEngine
 		process();
 	}
 
+	std::shared_ptr<SpatialGridSnapshot> Simulation2D::getSnapshotFromPool()
+	{
+		std::lock_guard<std::mutex> lock(m_snapshotPoolMutex);
+		if (!m_snapshotPool.empty())
+		{
+			SpatialGridSnapshot* snapshot = m_snapshotPool.back();
+			m_snapshotPool.pop_back();
+
+			return std::shared_ptr<SpatialGridSnapshot>(snapshot, [this](SpatialGridSnapshot* p) {
+				std::lock_guard<std::mutex> poolLock(m_snapshotPoolMutex);
+				m_snapshotPool.push_back(p);
+			});
+		}
+
+		return std::shared_ptr<SpatialGridSnapshot>(new SpatialGridSnapshot(), [this](SpatialGridSnapshot* p) {
+			std::lock_guard<std::mutex> poolLock(m_snapshotPoolMutex);
+			m_snapshotPool.push_back(p);
+		});
+	}
+
 #if MEASURE_PERFORMANCE
 	double g_time = 0;
 	uint32_t g_simulationSteps = 0;
@@ -127,15 +155,14 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> structLock(m_structuralMutex);
 
-			std::vector<PhysicsCommand> commandsToExecute;
 			{
 				std::lock_guard<std::mutex> cmdLock(m_commandMutex);
-				commandsToExecute = std::move(m_pendingCommands);
+				std::swap(m_processingCommands, m_pendingCommands);
 			}
-			commandsToExecute.insert(commandsToExecute.end(), m_internalCommands.begin(), m_internalCommands.end());
+			m_processingCommands.insert(m_processingCommands.end(), m_internalCommands.begin(), m_internalCommands.end());
 			m_internalCommands.clear();
 
-			for (const auto& cmd : commandsToExecute)
+			for (const auto& cmd : m_processingCommands)
 			{
 				switch (cmd.type)
 				{
@@ -177,6 +204,7 @@ namespace WeirdEngine
 					break;
 				}
 			}
+			m_processingCommands.clear();
 
 #if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
@@ -344,7 +372,7 @@ namespace WeirdEngine
 			// pop an old one from the pool (which reuses the vector capacities). When the main 
 			// thread's shared_ptr reference count drops to 0, the custom deleter should push 
 			// the object back into the pool instead of deleting it.
-			auto snapshot = std::make_shared<SpatialGridSnapshot>();
+			auto snapshot = getSnapshotFromPool();
 			snapshot->head = m_head;
 			snapshot->next = m_next;
 			snapshot->positions.assign(m_positions, m_positions + m_size);

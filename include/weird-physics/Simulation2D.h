@@ -388,12 +388,17 @@ namespace WeirdEngine
 		std::mutex m_spatialGridSnapshotMutex;
 		std::shared_ptr<SpatialGridSnapshot> m_spatialGridSnapshot;
 
+		std::mutex m_snapshotPoolMutex;
+		std::vector<SpatialGridSnapshot*> m_snapshotPool;
+		std::shared_ptr<SpatialGridSnapshot> getSnapshotFromPool();
+
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
 		std::mutex m_structuralMutex;
 		std::mutex m_readMutex;
 		std::mutex m_commandMutex;
 		std::vector<PhysicsCommand> m_pendingCommands;
+		std::vector<PhysicsCommand> m_processingCommands;
 		std::vector<PhysicsCommand> m_internalCommands;
 
 		struct ShapeUpdateCommand

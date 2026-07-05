@@ -190,21 +190,20 @@ namespace WeirdEngine
 			PROFILE_SCOPE("Scene logic update");
 
 			// Process queued collisions
-			std::vector<CollisionEvent> collisions;
-			std::vector<ShapeCollisionEvent> shapeCollisions;
 			{
 				std::lock_guard<std::mutex> lock(m_collisionQueueMutex);
-				collisions = std::move(m_queuedCollisions);
-				shapeCollisions = std::move(m_queuedShapeCollisions);
+				std::swap(m_processingCollisions, m_queuedCollisions);
+				std::swap(m_processingShapeCollisions, m_queuedShapeCollisions);
 			}
 			
-			for (auto& ev : collisions)
+			for (auto& ev : m_processingCollisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA), getEntityForSimulationId(ev.bodyB)};
 				onEntityCollision(m_ecs, entityEvent);
 			}
+			m_processingCollisions.clear();
 
-			for (auto& ev : shapeCollisions)
+			for (auto& ev : m_processingShapeCollisions)
 			{
 				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body)};
 				onEntityShapeCollision(m_ecs, entityEvent);
@@ -231,6 +230,7 @@ namespace WeirdEngine
 					playSound(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(ev.position, 0.0f)});
 				}
 			}
+			m_processingShapeCollisions.clear();
 			
 			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
 			m_frictionSoundLevel = 0.0f;

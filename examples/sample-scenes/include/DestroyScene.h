@@ -54,16 +54,19 @@ private:
 				{
 				case 0:
 				{
-					if (m_testBalls.size() < 100)
+					if (m_testBalls.size() < 1000)
 					{
-						Entity e = ecs.createEntity();
-						auto& t = ecs.addComponent<Transform>(e);
-						t.position = vec3((std::rand() % 200) - 100.0f, (std::rand() % 100) - 50.0f, 0.0f);
-						t.isDirty = true;
-						auto& ui = ecs.addComponent<Dot>(e);
-						ui.materialId = 4 + (e % 12);
-						auto& rb = ecs.addComponent<RigidBody2D>(e);
-						m_testBalls.push_back(e);
+						for (int j = 0; j < 10; ++j)
+						{
+							Entity e = ecs.createEntity();
+							auto& t = ecs.addComponent<Transform>(e);
+							t.position = vec3((std::rand() % 200) - 100.0f, (std::rand() % 100) - 50.0f, 0.0f);
+							t.isDirty = true;
+							auto& ui = ecs.addComponent<Dot>(e);
+							ui.materialId = 4 + (e % 12);
+							auto& rb = ecs.addComponent<RigidBody2D>(e);
+							m_testBalls.push_back(e);
+						}
 					}
 					break;
 				}

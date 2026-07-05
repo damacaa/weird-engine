@@ -21,11 +21,10 @@ struct Foot : public Component
 	bool stepStarted = false;
 };
 
-class WalkScene : public Scene
+class WalkScene : public Scene2D
 {
 public:
-	WalkScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	WalkScene(){};
 
 private:
 

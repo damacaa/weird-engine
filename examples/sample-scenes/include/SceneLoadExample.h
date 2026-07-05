@@ -10,12 +10,11 @@
 
 using namespace WeirdEngine;
 
-class SceneLoadExample : public Scene
+class SceneLoadExample : public Scene2D
 {
 public:
-	SceneLoadExample(const PhysicsSettings& settings)
-		: Scene(settings)
-		, m_rng(12345)
+	SceneLoadExample() : m_rng(12345)
+
 	{
 	}
 

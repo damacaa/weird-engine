@@ -7,12 +7,10 @@
 
 using namespace WeirdEngine;
 // Example scene demonstrating how to create a rope of connected circles using springs.
-class RopeScene : public Scene
+class RopeScene : public Scene2D
 {
 public:
-	RopeScene(const PhysicsSettings& settings)
-		: Scene(settings)
-	{
+	RopeScene(){
 	}
 
 private:

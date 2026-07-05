@@ -8,17 +8,15 @@
 using namespace WeirdEngine;
 
 // Cornell Box
-class CornellBox : public Scene
+class CornellBox : public Scene3D
 {
 public:
-	CornellBox(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	CornellBox(){};
 
 private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs) override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 		m_debugFly = true;
 
 		auto& ballMat = createMaterial();

@@ -4,7 +4,7 @@
 using namespace WeirdEngine;
 
 // Example scene demonstrating how to create a rope of connected circles using springs.
-class EmptyScene : public Scene
+class EmptyScene : public Scene2D
 {
 public:
 	EmptyScene()
@@ -15,7 +15,6 @@ public:
 private:
 	void onStart() override
 	{
-		m_renderMode = RenderMode::RayMarching2D;
 	}
 
 	void onUpdate(float delta) override {}

@@ -1,4 +1,5 @@
 #include "weird-engine/Scene.h"
+#include "weird-engine/SceneManager.h"
 
 #include <imgui.h>
 
@@ -42,16 +43,37 @@ namespace WeirdEngine
 		return getGlobalSDFsInternal();
 	}
 
-	Scene::Scene(const PhysicsSettings& settings)
-		: m_simulation2D(MAX_ENTITIES, settings)
+	Scene::Scene()
+		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
 		, m_runSimulationInThread(true)
+	{
+		
+	}
+
+	Scene::~Scene()
+	{
+		m_simulation2D.stopSimulationThread();
+
+		// TODO: Free resources from all entities
+		m_resourceManager.freeResources(0);
+	}
+
+	void Scene::start()
 	{
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
 
-		std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D);
-		m_ecs.registerComponent<CustomShape>(shapeManager);
+		if(m_renderMode == RenderMode::RayMarching2D)
+		{
+			std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D, m_2DWorldRenderContext);
+			m_ecs.registerComponent<CustomShape>(shapeManager);
+		}
+		else
+		{
+			std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D, m_3DWorldRenderContext);
+			m_ecs.registerComponent<CustomShape>(shapeManager);
+		}
 
 		std::shared_ptr<DistanceConstraintManager> distManager = std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
 		m_ecs.registerComponent<DistanceConstraint>(distManager);
@@ -59,12 +81,10 @@ namespace WeirdEngine
 		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_ecs);
 		m_ecs.registerComponent<Spring>(springManager);
 
-		// Create camera
-		m_mainCamera = m_ecs.createEntity();
-		tag(m_mainCamera, "mainCamera");
-		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
-		t.rotation = vec3(0, 0, -1.0f);
-		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		std::shared_ptr<CustomUIShapeManager> uiShapeManager = std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
+		m_ecs.registerComponent<UIShape>(uiShapeManager);
+
+
 
 		// Shapes
 		m_sdfs = Scene::getGlobalSDFs();
@@ -86,22 +106,18 @@ namespace WeirdEngine
 		// Initialize 2D world render context
 		m_2DWorldRenderContext.dotRadious = 0.5f;
 		m_2DWorldRenderContext.charSpacing = 1.0f;
-	}
-
-	Scene::~Scene()
-	{
-		m_simulation2D.stopSimulationThread();
-
-		// TODO: Free resources from all entities
-		m_resourceManager.freeResources(0);
-	}
-
-	void Scene::start()
-	{
+		
 		auto& defaultMaterial = createMaterial();
 		defaultMaterial.color = vec4(1.0f);
 		defaultMaterial.metallic = 0.5f;
 		defaultMaterial.roughness = 0.1f;
+
+		// Create camera
+		m_mainCamera = m_ecs.createEntity();
+		tag(m_mainCamera, "mainCamera");
+		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
+		t.rotation = vec3(0, 0, -1.0f);
+		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
 		onCreate();
 
@@ -143,7 +159,7 @@ namespace WeirdEngine
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
-			m_2DWorldRenderContext.shapesNeedUpdate = true;
+			forceShaderRefresh();
 		}
 
 		// Update systems
@@ -331,7 +347,10 @@ namespace WeirdEngine
 
 	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)
 	{
-		onRender(renderTarget);
+		if(m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
+		{
+			onRender(renderTarget);
+		}
 	}
 
 	// SDFs
@@ -707,9 +726,6 @@ namespace WeirdEngine
 		shape.material = material;
 		std::copy(variables, variables + 8, shape.parameters);
 
-		m_2DWorldRenderContext.shapesNeedUpdate = true;
-		m_3DWorldRenderContext.shapesNeedUpdate = true;
-
 		return entity;
 	}
 
@@ -724,8 +740,6 @@ namespace WeirdEngine
 		shape.material = material;
 		std::copy(variables, variables + 8, shape.parameters);
 
-		m_UIRenderContext.shapesNeedUpdate = true;
-
 		return entity;
 	}
 
@@ -737,8 +751,6 @@ namespace WeirdEngine
 		component.groupIdx = group;
 		component.smoothFactor = 100.0f;
 		std::copy(variables, variables + 8, component.parameters);
-
-		m_UIRenderContext.shapesNeedUpdate = true;
 
 		return component;
 	}

@@ -5,11 +5,10 @@
 #include "globals.h"
 
 using namespace WeirdEngine;
-class MouseCollisionScene : public Scene
+class MouseCollisionScene : public Scene2D
 {
 public:
-	MouseCollisionScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	MouseCollisionScene(){};
 
 private:
 	Entity m_cursorShape;

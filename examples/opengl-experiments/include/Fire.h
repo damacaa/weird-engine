@@ -3,11 +3,10 @@
 #include <weird-engine.h>
 
 using namespace WeirdEngine;
-class FireScene : public Scene
+class FireScene : public Scene3D
 {
 public:
-	FireScene(const PhysicsSettings& settings)
-		: Scene(settings) {};
+	FireScene(){};
 
 private:
 	Shader m_flameShader;
@@ -40,7 +39,6 @@ private:
 
 	void onCreate() override
 	{
-		m_renderMode = RenderMode::RayMarching3D;
 
 		// Base shaders
 		m_backgroundShader =

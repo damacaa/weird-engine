@@ -17,12 +17,10 @@
 
 using namespace WeirdEngine;
 
-class MoleculeEditor : public Scene
+class MoleculeEditor : public Scene2D
 {
 public:
-	MoleculeEditor(const PhysicsSettings& settings)
-		: Scene(settings)
-	{
+	MoleculeEditor(){
 	}
 
 	ECSManager* m_tempEcs = nullptr;

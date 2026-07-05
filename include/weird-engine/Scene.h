@@ -48,7 +48,7 @@ namespace WeirdEngine
 		/// Map from tag name (std::string) to the entity that owns it.
 		using TagMap = std::unordered_map<std::string, Entity>;
 
-		Scene(const PhysicsSettings& settings);
+		Scene();
 		virtual ~Scene();
 		void start();
 
@@ -248,5 +248,22 @@ namespace WeirdEngine
 		// Entity tag storage (bidirectional maps kept in sync)
 		TagMap m_tagToEntity;
 		std::unordered_map<Entity, std::string> m_entityToTag;
+	};
+	class Scene2D : public Scene
+	{
+	public:
+		Scene2D() { m_renderMode = RenderMode::RayMarching2D; }
+	};
+
+	class Scene3D : public Scene
+	{
+	public:
+		Scene3D() { m_renderMode = RenderMode::RayMarching3D; }
+	};
+
+	class SceneBoth : public Scene
+	{
+	public:
+		SceneBoth() { m_renderMode = RenderMode::RayMarchingBoth; }
 	};
 } // namespace WeirdEngine

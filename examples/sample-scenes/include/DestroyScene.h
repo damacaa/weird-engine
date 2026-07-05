@@ -78,7 +78,7 @@ private:
 						float y = (std::rand() % 100) - 50.0f;
 						float w = (float)(std::rand() % 4 + 1);
 						float h = (float)(std::rand() % 4 + 1);
-						float variables[4]{w, y, x, h};
+						float variables[8]{w, y, x, h, 0.0f, 0.0f, 0.0f, 0.0f};
 						uint16_t material = std::rand() % 16;
 						Entity shape = addShape(DefaultShapes::BOX, variables, material, CombinationType::Addition);
 						m_testShapes.push_back(shape);

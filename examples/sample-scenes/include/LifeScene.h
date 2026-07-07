@@ -107,7 +107,7 @@ private:
 			Entity headEntity = head.Owner;
 
 			auto& rb = ecs.getComponent<RigidBody2D>(headEntity);
-			rb.pendingForce += head.forceMagnitude * head.direction * timeDelta;
+			rb.pendingImpulseForce += head.forceMagnitude * head.direction * timeDelta;
 
 			if (timeDelta < 0.0f && !head.directionChanged)
 			{ // rotate direction by random amount between -45 and 45 degrees

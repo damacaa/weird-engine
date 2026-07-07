@@ -130,6 +130,18 @@ namespace WeirdEngine
 		void unFix(SimulationID id);
 		bool isFixed(SimulationID id);
 
+		// Performance Stats
+		struct PerformanceStats {
+			double timePerStepMs = 0.0;
+			double simulationRatio = 0.0;
+		};
+
+		PerformanceStats getPerformanceStats() const
+		{
+			std::lock_guard<std::mutex> lock(m_statsMutex);
+			return m_stats;
+		}
+
 		// Retrieve results
 		vec2 getPosition(SimulationID id);
 		void setPosition(SimulationID id, vec2 pos);
@@ -407,6 +419,9 @@ namespace WeirdEngine
 		};
 		std::mutex m_shapeUpdateMutex;
 		std::vector<ShapeUpdateCommand> m_pendingShapeUpdates;
+
+		mutable std::mutex m_statsMutex;
+		PerformanceStats m_stats;
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

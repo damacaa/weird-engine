@@ -489,10 +489,10 @@ namespace WeirdEngine
 				ImGui::TextUnformatted(stat.name);
 
 				// Progress bar on the same line
-				ImGui::SameLine(NAME_COLUMN_W);
+				ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
 				char barLabel[64];
-				snprintf(barLabel, sizeof(barLabel), "%.1f ms  %.1f%%", avgMs, fraction * 100.0f);
-				float barW = availW - NAME_COLUMN_W;
+				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.2f%%", avgMs, fraction * 100.0f);
+				float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
 				if (barW > 10.0f)
 				{
 					int ci = std::min(stat.depth, MAX_DEPTH_COLORS - 1);

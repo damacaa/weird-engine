@@ -103,7 +103,7 @@ private:
 			}
 
 			auto& headRB = ecs.getComponent<RigidBody2D>(m_head);
-			headRB.pendingForce += vec2(0.0f, 1.0f);
+			headRB.pendingImpulseForce += vec2(0.0f, 1.0f);
 
 			rb.isFixed = false;
 			rb.isDirty = true;
@@ -150,7 +150,7 @@ private:
 					if(m_feetTouching)
 						f.x = 0.0f;
 
-					rb.pendingForce += f;
+					rb.pendingImpulseForce += f;
 
 					// vec2 offset = vec2(-std::sin(foot.t), 1.0f - std::abs(std::cos(2.0f * foot.t)));
 					// offset.y *= 0.5f;

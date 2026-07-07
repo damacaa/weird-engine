@@ -117,7 +117,9 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
-		void addForce(SimulationID id, const vec2& force);
+		void addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent = false);
+		void setContinuousForce(SimulationID id, const vec2& force, bool massIndependent = false);
+		void swapContinuousForces();
 		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
@@ -332,8 +334,10 @@ namespace WeirdEngine
 		vec2* m_velocitiesAux;
 		vec2* m_forces;
 
-		bool m_externalForcesSinceLastUpdate;
-		vec2* m_externalForces;
+		bool m_impulsesSinceLastUpdate;
+		vec2* m_impulses;
+		vec2* m_continuousForcesRead;
+		vec2* m_continuousForcesWrite;
 
 		size_t m_maxSize;
 		size_t m_size;

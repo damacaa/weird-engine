@@ -26,8 +26,10 @@ namespace WeirdEngine
 		, m_velocitiesRead(new vec2[size])
 		, m_velocitiesAux(new vec2[size])
 		, m_forces(new vec2[size])
-		, m_externalForcesSinceLastUpdate(false)
-		, m_externalForces(new vec2[size])
+		, m_impulsesSinceLastUpdate(false)
+		, m_impulses(new vec2[size])
+		, m_continuousForcesRead(new vec2[size])
+		, m_continuousForcesWrite(new vec2[size])
 		, m_mass(new float[size])
 		, m_invMass(new float[size])
 		, m_maxSize(size)
@@ -61,6 +63,8 @@ namespace WeirdEngine
 			m_velocitiesRead[i] = vec2(0.0f);
 			m_velocitiesAux[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
+			m_continuousForcesRead[i] = vec2(0.0f);
+			m_continuousForcesWrite[i] = vec2(0.0f);
 
 			m_mass[i] = 1000.0f;
 			m_invMass[i] = 0.001f;
@@ -79,7 +83,9 @@ namespace WeirdEngine
 		delete[] m_velocitiesRead;
 		delete[] m_velocitiesAux;
 		delete[] m_forces;
-		delete[] m_externalForces;
+		delete[] m_impulses;
+		delete[] m_continuousForcesRead;
+		delete[] m_continuousForcesWrite;
 		delete[] m_mass;
 		delete[] m_invMass;
 	}
@@ -682,14 +688,19 @@ namespace WeirdEngine
 		// External forces
 		{
 			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-			if (m_externalForcesSinceLastUpdate)
+			
+			for (size_t i = 0; i < m_size; i++)
 			{
-				m_externalForcesSinceLastUpdate = false;
+				m_forces[i] += m_continuousForcesRead[i];
+			}
+
+			if (m_impulsesSinceLastUpdate)
+			{
+				m_impulsesSinceLastUpdate = false;
 				for (size_t i = 0; i < m_size; i++)
 				{
-					vec2& f = m_externalForces[i];
-					m_forces[i] = f;
-					m_externalForces[i] = vec2(0);
+					m_forces[i] += m_impulses[i];
+					m_impulses[i] = vec2(0);
 				}
 			}
 		}
@@ -935,7 +946,9 @@ namespace WeirdEngine
 		m_velocitiesRead[id] = vec2(0.0f);
 		m_velocitiesAux[id] = vec2(0.0f);
 		m_forces[id] = vec2(0.0f);
-		m_externalForces[id] = vec2(0.0f);
+		m_impulses[id] = vec2(0.0f);
+		m_continuousForcesRead[id] = vec2(0.0f);
+		m_continuousForcesWrite[id] = vec2(0.0f);
 		m_mass[id] = 1.0f;
 		m_invMass[id] = 1.0f;
 
@@ -965,7 +978,9 @@ namespace WeirdEngine
 			m_velocitiesRead[toId] = m_velocitiesRead[fromId];
 			m_velocitiesAux[toId] = m_velocitiesAux[fromId];
 			m_forces[toId] = m_forces[fromId];
-			m_externalForces[toId] = m_externalForces[fromId];
+			m_impulses[toId] = m_impulses[fromId];
+			m_continuousForcesRead[toId] = m_continuousForcesRead[fromId];
+			m_continuousForcesWrite[toId] = m_continuousForcesWrite[fromId];
 			m_mass[toId] = m_mass[fromId];
 			m_invMass[toId] = m_invMass[fromId];
 
@@ -1032,15 +1047,39 @@ namespace WeirdEngine
 		return m_size;
 	}
 
-	void Simulation2D::addForce(SimulationID id, const vec2& force)
+	void Simulation2D::addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent)
 	{
 		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
-		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4
-		// unity types
+		m_impulsesSinceLastUpdate = true;
+		if (massIndependent)
+			m_impulses[id] += m_simulationFrequency * m_mass[id] * impulse;
+		else
+			m_impulses[id] += m_simulationFrequency * impulse;
+	}
 
-		m_externalForcesSinceLastUpdate = true;
-		m_externalForces[id] += m_simulationFrequency * m_mass[id] * force;
+	void Simulation2D::setContinuousForce(SimulationID id, const vec2& force, bool massIndependent)
+	{
+		// No lock needed, game thread writes directly to the write buffer
+		if (massIndependent)
+			m_continuousForcesWrite[id] = force * m_mass[id];
+		else
+			m_continuousForcesWrite[id] = force;
+	}
+
+	void Simulation2D::swapContinuousForces()
+	{
+		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+
+		vec2* temp = m_continuousForcesRead;
+		m_continuousForcesRead = m_continuousForcesWrite;
+		m_continuousForcesWrite = temp;
+
+		// Clear the new write buffer so it's ready for the next frame
+		for (size_t i = 0; i < m_size; i++)
+		{
+			m_continuousForcesWrite[i] = vec2(0.0f);
+		}
 	}
 
 	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)

@@ -427,10 +427,10 @@ namespace WeirdEngine
 			ImGui::Begin("Performance Stats");
 
 			// FPS / Frametime header
-			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
+			ImGui::Text("FPS: %.1f  |  Frame: %.1f ms", fps, frameTimeMs);
 
 			char ftOverlay[32];
-			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.1f ms", frameTimeMs);
 			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
 							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
 
@@ -491,7 +491,7 @@ namespace WeirdEngine
 				// Progress bar on the same line
 				ImGui::SameLine(NAME_COLUMN_W);
 				char barLabel[64];
-				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.1f%%", avgMs, fraction * 100.0f);
+				snprintf(barLabel, sizeof(barLabel), "%.1f ms  %.1f%%", avgMs, fraction * 100.0f);
 				float barW = availW - NAME_COLUMN_W;
 				if (barW > 10.0f)
 				{

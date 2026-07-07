@@ -70,7 +70,7 @@ namespace WeirdEngine
 		inline void runFrame(RuntimeContext& ctx)
 		{
 			// Measure time
-			ctx.time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+			ctx.time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 			ctx.delta = ctx.time - ctx.prevTime;
 			ctx.timeDiff += ctx.delta;
 			ctx.prevTime = ctx.time;
@@ -285,7 +285,7 @@ namespace WeirdEngine
 			*Detail::g_emscriptenEnv->renderer,
 			audioEngine
 		};
-		Detail::g_emscriptenEnv->runtimeContext->time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+		Detail::g_emscriptenEnv->runtimeContext->time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		Detail::g_emscriptenEnv->runtimeContext->prevTime = Detail::g_emscriptenEnv->runtimeContext->time;
 
 		emscripten_set_main_loop(Detail::runFrameEmscripten, 0, 1);
@@ -305,7 +305,7 @@ namespace WeirdEngine
 
 		// Time
 		Detail::RuntimeContext runtimeContext{sceneManager, renderer, audioEngine};
-		runtimeContext.time = static_cast<double>(SDL_GetTicks()) / 1000.0;
+		runtimeContext.time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		runtimeContext.prevTime = runtimeContext.time;
 
 		while (!runtimeContext.quit)

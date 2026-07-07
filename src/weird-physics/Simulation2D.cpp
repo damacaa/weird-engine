@@ -79,6 +79,7 @@ namespace WeirdEngine
 		delete[] m_velocitiesRead;
 		delete[] m_velocitiesAux;
 		delete[] m_forces;
+		delete[] m_externalForces;
 		delete[] m_mass;
 		delete[] m_invMass;
 	}

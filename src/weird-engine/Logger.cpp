@@ -6,26 +6,33 @@ namespace WeirdEngine
 {
     std::vector<LogMessage> Logger::s_messages;
     std::mutex Logger::s_mutex;
+    bool Logger::s_enableConsoleOutput = true;
 
     void Logger::log(const std::string& message)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_messages.push_back({LogLevel::Info, message});
-        std::cout << "[INFO] " << message << std::endl;
+        if (s_messages.size() > 1000) s_messages.erase(s_messages.begin());
+        if (s_enableConsoleOutput)
+            std::cout << "[INFO] " << message << std::endl;
     }
 
     void Logger::warning(const std::string& message)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_messages.push_back({LogLevel::Warning, message});
-        std::cout << "[WARN] " << message << std::endl;
+        if (s_messages.size() > 1000) s_messages.erase(s_messages.begin());
+        if (s_enableConsoleOutput)
+            std::cout << "[WARN] " << message << std::endl;
     }
 
     void Logger::error(const std::string& message)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_messages.push_back({LogLevel::Error, message});
-        std::cerr << "[ERROR] " << message << std::endl;
+        if (s_messages.size() > 1000) s_messages.erase(s_messages.begin());
+        if (s_enableConsoleOutput)
+            std::cerr << "[ERROR] " << message << std::endl;
     }
 
     void Logger::drawImGuiConsole()

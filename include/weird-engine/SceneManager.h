@@ -31,8 +31,8 @@ namespace WeirdEngine
 
 		static SceneManager& getInstance()
 		{
-			static SceneManager* _instance = new SceneManager();
-			return *_instance;
+			static SceneManager _instance;
+			return _instance;
 		};
 
 		void loadNextScene();

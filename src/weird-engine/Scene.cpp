@@ -208,7 +208,32 @@ namespace WeirdEngine
 			{
 				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body)};
 				onEntityShapeCollision(m_ecs, entityEvent);
+
+				const float m_soundFalloff = 0.1f;
+				bool spatialAudio = false;
+				auto camPosition = getCamera().position;
+				float speed = glm::length2(ev.velocity);
+				float distanceMultiplier =
+					1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(ev.position, 0.0f))));
+				float frictionSample = ev.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
+
+				m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
+
+				if (ev.state == CollisionState::START)
+				{
+					float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
+					float volume = penetrationFactor;
+
+					float freqFactor = std::abs(glm::dot(ev.normal, (ev.velocity)));
+					freqFactor *= 0.01f;
+					float frequency = 200.0f + (freqFactor * 300.0f);
+
+					playSound(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(ev.position, 0.0f)});
+				}
 			}
+			
+			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
+			m_frictionSoundLevel = 0.0f;
 
 			onUpdate(delta, m_ecs);
 		}
@@ -230,9 +255,6 @@ namespace WeirdEngine
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsStep(self->m_simulation2D);
-
-		self->m_frictionSoundLevelRead.store(self->m_frictionSoundLevel, std::memory_order_release);
-		self->m_frictionSoundLevel = 0.0f;
 	}
 
 	void Scene::handleCollision(CollisionEvent& event, void* userData)
@@ -252,31 +274,6 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
 			self->m_queuedShapeCollisions.push_back(event);
-		}
-
-		const float m_soundFalloff = 0.1f;
-		bool spatialAudio = false;
-		auto camPosition = self->getCamera().position; // Mutex?
-		float speed = glm::length2(event.velocity);
-		float distanceMultiplier =
-			1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(event.position, 0.0f))));
-		float frictionSample = event.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
-
-		self->m_frictionSoundLevel = std::max(frictionSample, self->m_frictionSoundLevel);
-
-		if (event.state == CollisionState::START)
-		{
-			// float speedFactor = std::sqrt((std::min)(0.001f * speed, 1.0f));
-			float penetrationFactor = std::sqrt((std::min)(2.0f * event.penetration, 1.0f));
-			float volume = penetrationFactor;
-
-			float freqFactor = std::abs(glm::dot(event.normal, (event.velocity)));
-			freqFactor *= 0.01f;
-			// freqFactor = freqFactor * freqFactor;
-			float frequency = 200.0f + (freqFactor * 300.0f);
-
-			self->m_audioQueue.push(
-				WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(event.position, 0.0f)});
 		}
 	}
 

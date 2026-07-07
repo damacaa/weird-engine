@@ -67,6 +67,8 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
 
+		Simulation2D& getSimulation2D() { return m_simulation2D; }
+
 		Material3D& createMaterial();
 
 		Material3D& getMaterial(int index) { return m_materials[index]; }

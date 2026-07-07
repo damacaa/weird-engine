@@ -266,7 +266,7 @@ namespace WeirdEngine
 
 			if (showStatsUI)
 			{
-				drawStatsUI(delta);
+				drawStatsUI(scene, delta);
 			}
 
 			
@@ -415,7 +415,7 @@ namespace WeirdEngine
 			return m_window;
 		}
 
-		void Renderer::drawStatsUI(double delta)
+		void Renderer::drawStatsUI(Scene& scene, double delta)
 		{
 			float fps = delta > 0.0 ? (float)(1.0 / delta) : 0.0f;
 			float frameTimeMs = (float)(delta * 1000.0);
@@ -433,6 +433,11 @@ namespace WeirdEngine
 			snprintf(ftOverlay, sizeof(ftOverlay), "%.1f ms", frameTimeMs);
 			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
 							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
+
+			ImGui::Spacing();
+			auto simStats = scene.getSimulation2D().getPerformanceStats();
+			ImGui::Text("Physics Step:  %.2f ms", simStats.timePerStepMs);
+			ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
 
 			ImGui::Separator();
 			ImGui::TextDisabled("Profiler Scopes  (last frame)");

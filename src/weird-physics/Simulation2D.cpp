@@ -119,11 +119,7 @@ namespace WeirdEngine
 		process();
 	}
 
-#if MEASURE_PERFORMANCE
-	double g_time = 0;
-	uint32_t g_simulationSteps = 0;
-	uint64_t g_collisionCount = 0;
-#endif
+
 
 	void Simulation2D::process()
 	{
@@ -184,9 +180,7 @@ namespace WeirdEngine
 				}
 			}
 
-#if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
-#endif
 
 			if (!m_isPaused)
 			{
@@ -243,23 +237,14 @@ namespace WeirdEngine
 				m_simulationDelay -= m_fixedDeltaTime;
 			}
 
-#if MEASURE_PERFORMANCE
-			// Get the ending time
 			auto end = std::chrono::high_resolution_clock::now();
-
-			// Calculate the duration
-			std::chrono::duration<double> duration = end - start;
-
-			g_simulationSteps++;
-			g_time += 1000 * duration.count();
-
-			if (g_simulationSteps == 20 * m_simulationFrequency)
+			std::chrono::duration<double, std::milli> durationMs = end - start;
+			
 			{
-				auto average = g_time / g_simulationSteps;
-				WeirdEngine::Logger::Log(std::to_string(average) + "ms");
-				WeirdEngine::Logger::Log(std::to_string(g_collisionCount) + " collisions");
+				std::lock_guard<std::mutex> lock(m_statsMutex);
+				m_stats.timePerStepMs = durationMs.count();
+				m_stats.simulationRatio = durationMs.count() > 0.0 ? (m_fixedDeltaTime * 1000.0) / durationMs.count() : 0.0;
 			}
-#endif
 		}
 	}
 
@@ -291,9 +276,7 @@ namespace WeirdEngine
 	void Simulation2D::checkCollisions()
 	{
 		// Detect collisions
-#if MEASURE_PERFORMANCE
-		int checks = 0;
-#endif
+
 		m_collisions.clear();
 
 		// Spatial hash grid (broadphase)
@@ -389,9 +372,7 @@ namespace WeirdEngine
 							{
 								m_collisions.emplace_back(Collision(i, j, ij));
 							}
-#if MEASURE_PERFORMANCE
-							checks++;
-#endif
+
 						}
 
 						j = m_next[j]; // Move to the next particle in the cell
@@ -400,10 +381,7 @@ namespace WeirdEngine
 			}
 		}
 
-#if MEASURE_PERFORMANCE
-		if (g_simulationSteps == 0)
-			WeirdEngine::Logger::Log("First frame checks: " + std::to_string(checks));
-#endif
+
 
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
@@ -750,9 +728,7 @@ namespace WeirdEngine
 				m_collisionCallback(event, m_callbackUserData);
 			}
 
-#if MEASURE_PERFORMANCE
-			g_collisionCount++;
-#endif
+
 		}
 
 		// Shape collisions

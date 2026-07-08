@@ -196,9 +196,15 @@ namespace WeirdEngine
 					m_pendingShapeUpdates.clear();
 				}
 
-				checkCollisions();
-				applyForces();
+				double timerBroad = 0, timerNarrow = 0, timerShape = 0;
+				checkCollisions(timerBroad, timerNarrow, timerShape);
 
+				auto timerForceStart = std::chrono::high_resolution_clock::now();
+				applyForces();
+				auto timerForceEnd = std::chrono::high_resolution_clock::now();
+				double timerCollisionEvents = std::chrono::duration<double, std::milli>(timerForceEnd - timerForceStart).count();
+
+				auto timerIntStart = std::chrono::high_resolution_clock::now();
 				// 1. Predict where particles will go based on velocity and forces
 				integratePredict((float)m_fixedDeltaTime);
 
@@ -211,6 +217,18 @@ namespace WeirdEngine
 
 				// 3. Derive the exact velocity based on how much the constraints moved the particles
 				integrateVelocity((float)m_fixedDeltaTime);
+				auto timerIntEnd = std::chrono::high_resolution_clock::now();
+				double timerIntegration = std::chrono::duration<double, std::milli>(timerIntEnd - timerIntStart).count();
+
+				{
+					std::lock_guard<std::mutex> lock(m_statsMutex);
+					// Exponential moving average (10% new value, 90% old value)
+					m_stats.broadPhaseMs = m_stats.broadPhaseMs * 0.9 + timerBroad * 0.1;
+					m_stats.narrowPhaseMs = m_stats.narrowPhaseMs * 0.9 + timerNarrow * 0.1;
+					m_stats.shapeEvaluationMs = m_stats.shapeEvaluationMs * 0.9 + timerShape * 0.1;
+					m_stats.collisionEventsMs = m_stats.collisionEventsMs * 0.9 + timerCollisionEvents * 0.1;
+					m_stats.integrationMs = m_stats.integrationMs * 0.9 + timerIntegration * 0.1;
+				}
 
 				++steps;
 				{
@@ -273,8 +291,9 @@ namespace WeirdEngine
 		m_simulationThread.join();
 	}
 
-	void Simulation2D::checkCollisions()
+	void Simulation2D::checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs)
 	{
+		auto timerStart = std::chrono::high_resolution_clock::now();
 		// Detect collisions
 
 		m_collisions.clear();
@@ -344,6 +363,9 @@ namespace WeirdEngine
 			m_spatialGridSnapshot = snapshot;
 		}
 
+		auto timerBroad = std::chrono::high_resolution_clock::now();
+		broadPhaseMs = std::chrono::duration<double, std::milli>(timerBroad - timerStart).count();
+
 		// Check for collisions using the grid
 		for (int i = 0; i < m_size; i++)
 		{
@@ -381,7 +403,8 @@ namespace WeirdEngine
 			}
 		}
 
-
+		auto timerNarrow = std::chrono::high_resolution_clock::now();
+		narrowPhaseMs = std::chrono::duration<double, std::milli>(timerNarrow - timerBroad).count();
 
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
@@ -455,6 +478,9 @@ namespace WeirdEngine
 				m_collisionQueue.push_back(collisionEvent);
 			}
 		}
+
+		auto timerShape = std::chrono::high_resolution_clock::now();
+		shapeEvaluationMs = std::chrono::duration<double, std::milli>(timerShape - timerNarrow).count();
 	}
 
 	void Simulation2D::solveCollisionsPositionBased()

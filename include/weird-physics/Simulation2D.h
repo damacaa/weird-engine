@@ -134,6 +134,11 @@ namespace WeirdEngine
 		struct PerformanceStats {
 			double timePerStepMs = 0.0;
 			double simulationRatio = 0.0;
+			double broadPhaseMs = 0.0;
+			double narrowPhaseMs = 0.0;
+			double shapeEvaluationMs = 0.0;
+			double integrationMs = 0.0;
+			double collisionEventsMs = 0.0;
 		};
 
 		PerformanceStats getPerformanceStats() const
@@ -247,7 +252,7 @@ namespace WeirdEngine
 
 	private:
 		void process();
-		void checkCollisions();
+		void checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs);
 		void solveCollisionsPositionBased();
 		void applyForces();
 		void solveConstraints();

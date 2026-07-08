@@ -435,11 +435,7 @@ namespace WeirdEngine
 							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
 
 			ImGui::Spacing();
-			auto simStats = scene.getSimulation2D().getPerformanceStats();
-			ImGui::Text("Physics Step:  %.2f ms", simStats.timePerStepMs);
-			ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
 
-			ImGui::Separator();
 			ImGui::TextDisabled("Profiler Scopes  (last frame)");
 			ImGui::Spacing();
 
@@ -506,6 +502,12 @@ namespace WeirdEngine
 					ImGui::PopStyleColor();
 				}
 			}
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::TextDisabled("Physics Stats");
+
+			scene.renderPhysicsStatsUI();
 
 			ImGui::End();
 		}

@@ -117,7 +117,9 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
-		void addForce(SimulationID id, const vec2& force);
+		void addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent = false);
+		void setContinuousForce(SimulationID id, const vec2& force, bool massIndependent = false);
+		void swapContinuousForces();
 		void addSpring(SimulationID a, SimulationID b, float stiffness, float distance = 1.0f);
 		void addPositionConstraint(SimulationID a, SimulationID b, float distance = 1.0f);
 		void addGravitationalConstraint(SimulationID a, SimulationID b, float gravity);
@@ -127,6 +129,23 @@ namespace WeirdEngine
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
 		bool isFixed(SimulationID id);
+
+		// Performance Stats
+		struct PerformanceStats {
+			double timePerStepMs = 0.0;
+			double simulationRatio = 0.0;
+			double broadPhaseMs = 0.0;
+			double narrowPhaseMs = 0.0;
+			double shapeEvaluationMs = 0.0;
+			double integrationMs = 0.0;
+			double collisionEventsMs = 0.0;
+		};
+
+		PerformanceStats getPerformanceStats() const
+		{
+			std::lock_guard<std::mutex> lock(m_statsMutex);
+			return m_stats;
+		}
 
 		// Retrieve results
 		vec2 getPosition(SimulationID id);
@@ -233,7 +252,7 @@ namespace WeirdEngine
 
 	private:
 		void process();
-		void checkCollisions();
+		void checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs);
 		void solveCollisionsPositionBased();
 		void applyForces();
 		void solveConstraints();
@@ -332,8 +351,10 @@ namespace WeirdEngine
 		vec2* m_velocitiesAux;
 		vec2* m_forces;
 
-		bool m_externalForcesSinceLastUpdate;
-		vec2* m_externalForces;
+		bool m_impulsesSinceLastUpdate;
+		vec2* m_impulses;
+		vec2* m_continuousForcesRead;
+		vec2* m_continuousForcesWrite;
 
 		size_t m_maxSize;
 		size_t m_size;
@@ -403,6 +424,9 @@ namespace WeirdEngine
 		};
 		std::mutex m_shapeUpdateMutex;
 		std::vector<ShapeUpdateCommand> m_pendingShapeUpdates;
+
+		mutable std::mutex m_statsMutex;
+		PerformanceStats m_stats;
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

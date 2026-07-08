@@ -172,7 +172,7 @@ private:
 			sdf.materialId = 4 + ecs.getComponentArray<Dot>()->getSize() % 12;
 
 			auto& rb = ecs.addComponent<RigidBody2D>(entity);
-			rb.pendingForce += vec2(20.0f, 0.0f);
+			rb.pendingImpulseForce += vec2(20.0f, 0.0f);
 		}
 
 		m_lastSpawnTime = getTime();

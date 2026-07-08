@@ -73,7 +73,7 @@ namespace WeirdEngine
 				dot.materialId = m_currentMaterial + 4;
 
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
-				simulation.addForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+				simulation.addImpulseForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 
 				m_firstIdInSpring = -1;
 			}
@@ -143,7 +143,7 @@ namespace WeirdEngine
 				SimulationID target = ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(last).simulationId;
 
 				auto v = vec2(15, 30) - simulation.getPosition(target);
-				simulation.addForce(target, 50.0f * normalize(v));
+				simulation.setContinuousForce(target, 50.0f * normalize(v));
 			}
 
 			// Pause / resume simulation
@@ -193,7 +193,7 @@ namespace WeirdEngine
 				if (m_dragId < simulation.getSize())
 				{
 					simulation.unFix(m_dragId);
-					simulation.addForce(m_dragId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+					simulation.addImpulseForce(m_dragId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
 					m_dragId = -1;
 				}
 			}
@@ -243,7 +243,7 @@ namespace WeirdEngine
 					float maxDistance = 5.0f;
 					vec2 force = 1.0f * glm::clamp(maxDistance - distance, 0.0f, 1.0f) * direction;
 
-					simulation.addForce(rb.simulationId, force);
+					simulation.addImpulseForce(rb.simulationId, force);
 				}
 			}
 		}

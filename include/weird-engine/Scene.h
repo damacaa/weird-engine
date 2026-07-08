@@ -67,6 +67,8 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
 
+		Simulation2D& getSimulation2D() { return m_simulation2D; }
+
 		Material3D& createMaterial();
 
 		Material3D& getMaterial(int index) { return m_materials[index]; }
@@ -117,6 +119,7 @@ namespace WeirdEngine
 		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f, float maxDistance = 150.0f);
 
 		void renderImGui();
+		void renderPhysicsStatsUI();
 
 	protected:
 		virtual void onCreate() {};
@@ -197,7 +200,7 @@ namespace WeirdEngine
 		SDFRenderSystemContext m_3DWorldRenderContext;
 		SDFRenderSystemContext m_UIRenderContext;
 		// Resolve a physics SimulationID to the owning entity.
-		Entity getEntityForSimulationId(SimulationID simulationId);
+		Entity getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
 
 		bool m_debugFly = false;
 		bool m_debugInput = false;

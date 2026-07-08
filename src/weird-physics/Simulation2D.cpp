@@ -26,8 +26,10 @@ namespace WeirdEngine
 		, m_velocitiesRead(new vec2[size])
 		, m_velocitiesAux(new vec2[size])
 		, m_forces(new vec2[size])
-		, m_externalForcesSinceLastUpdate(false)
-		, m_externalForces(new vec2[size])
+		, m_impulsesSinceLastUpdate(false)
+		, m_impulses(new vec2[size])
+		, m_continuousForcesRead(new vec2[size])
+		, m_continuousForcesWrite(new vec2[size])
 		, m_mass(new float[size])
 		, m_invMass(new float[size])
 		, m_maxSize(size)
@@ -61,6 +63,8 @@ namespace WeirdEngine
 			m_velocitiesRead[i] = vec2(0.0f);
 			m_velocitiesAux[i] = vec2(0.0f);
 			m_forces[i] = vec2(0.0f);
+			m_continuousForcesRead[i] = vec2(0.0f);
+			m_continuousForcesWrite[i] = vec2(0.0f);
 
 			m_mass[i] = 1000.0f;
 			m_invMass[i] = 0.001f;
@@ -79,7 +83,9 @@ namespace WeirdEngine
 		delete[] m_velocitiesRead;
 		delete[] m_velocitiesAux;
 		delete[] m_forces;
-		delete[] m_externalForces;
+		delete[] m_impulses;
+		delete[] m_continuousForcesRead;
+		delete[] m_continuousForcesWrite;
 		delete[] m_mass;
 		delete[] m_invMass;
 	}
@@ -113,11 +119,7 @@ namespace WeirdEngine
 		process();
 	}
 
-#if MEASURE_PERFORMANCE
-	double g_time = 0;
-	uint32_t g_simulationSteps = 0;
-	uint64_t g_collisionCount = 0;
-#endif
+
 
 	void Simulation2D::process()
 	{
@@ -178,9 +180,7 @@ namespace WeirdEngine
 				}
 			}
 
-#if MEASURE_PERFORMANCE
 			auto start = std::chrono::high_resolution_clock::now();
-#endif
 
 			if (!m_isPaused)
 			{
@@ -196,9 +196,15 @@ namespace WeirdEngine
 					m_pendingShapeUpdates.clear();
 				}
 
-				checkCollisions();
-				applyForces();
+				double timerBroad = 0, timerNarrow = 0, timerShape = 0;
+				checkCollisions(timerBroad, timerNarrow, timerShape);
 
+				auto timerForceStart = std::chrono::high_resolution_clock::now();
+				applyForces();
+				auto timerForceEnd = std::chrono::high_resolution_clock::now();
+				double timerCollisionEvents = std::chrono::duration<double, std::milli>(timerForceEnd - timerForceStart).count();
+
+				auto timerIntStart = std::chrono::high_resolution_clock::now();
 				// 1. Predict where particles will go based on velocity and forces
 				integratePredict((float)m_fixedDeltaTime);
 
@@ -211,6 +217,18 @@ namespace WeirdEngine
 
 				// 3. Derive the exact velocity based on how much the constraints moved the particles
 				integrateVelocity((float)m_fixedDeltaTime);
+				auto timerIntEnd = std::chrono::high_resolution_clock::now();
+				double timerIntegration = std::chrono::duration<double, std::milli>(timerIntEnd - timerIntStart).count();
+
+				{
+					std::lock_guard<std::mutex> lock(m_statsMutex);
+					// Exponential moving average (10% new value, 90% old value)
+					m_stats.broadPhaseMs = m_stats.broadPhaseMs * 0.9 + timerBroad * 0.1;
+					m_stats.narrowPhaseMs = m_stats.narrowPhaseMs * 0.9 + timerNarrow * 0.1;
+					m_stats.shapeEvaluationMs = m_stats.shapeEvaluationMs * 0.9 + timerShape * 0.1;
+					m_stats.collisionEventsMs = m_stats.collisionEventsMs * 0.9 + timerCollisionEvents * 0.1;
+					m_stats.integrationMs = m_stats.integrationMs * 0.9 + timerIntegration * 0.1;
+				}
 
 				++steps;
 				{
@@ -237,23 +255,14 @@ namespace WeirdEngine
 				m_simulationDelay -= m_fixedDeltaTime;
 			}
 
-#if MEASURE_PERFORMANCE
-			// Get the ending time
 			auto end = std::chrono::high_resolution_clock::now();
-
-			// Calculate the duration
-			std::chrono::duration<double> duration = end - start;
-
-			g_simulationSteps++;
-			g_time += 1000 * duration.count();
-
-			if (g_simulationSteps == 20 * m_simulationFrequency)
+			std::chrono::duration<double, std::milli> durationMs = end - start;
+			
 			{
-				auto average = g_time / g_simulationSteps;
-				WeirdEngine::Logger::Log(std::to_string(average) + "ms");
-				WeirdEngine::Logger::Log(std::to_string(g_collisionCount) + " collisions");
+				std::lock_guard<std::mutex> lock(m_statsMutex);
+				m_stats.timePerStepMs = durationMs.count();
+				m_stats.simulationRatio = durationMs.count() > 0.0 ? (m_fixedDeltaTime * 1000.0) / durationMs.count() : 0.0;
 			}
-#endif
 		}
 	}
 
@@ -282,12 +291,11 @@ namespace WeirdEngine
 		m_simulationThread.join();
 	}
 
-	void Simulation2D::checkCollisions()
+	void Simulation2D::checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs)
 	{
+		auto timerStart = std::chrono::high_resolution_clock::now();
 		// Detect collisions
-#if MEASURE_PERFORMANCE
-		int checks = 0;
-#endif
+
 		m_collisions.clear();
 
 		// Spatial hash grid (broadphase)
@@ -355,6 +363,9 @@ namespace WeirdEngine
 			m_spatialGridSnapshot = snapshot;
 		}
 
+		auto timerBroad = std::chrono::high_resolution_clock::now();
+		broadPhaseMs = std::chrono::duration<double, std::milli>(timerBroad - timerStart).count();
+
 		// Check for collisions using the grid
 		for (int i = 0; i < m_size; i++)
 		{
@@ -383,9 +394,7 @@ namespace WeirdEngine
 							{
 								m_collisions.emplace_back(Collision(i, j, ij));
 							}
-#if MEASURE_PERFORMANCE
-							checks++;
-#endif
+
 						}
 
 						j = m_next[j]; // Move to the next particle in the cell
@@ -394,10 +403,8 @@ namespace WeirdEngine
 			}
 		}
 
-#if MEASURE_PERFORMANCE
-		if (g_simulationSteps == 0)
-			WeirdEngine::Logger::Log("First frame checks: " + std::to_string(checks));
-#endif
+		auto timerNarrow = std::chrono::high_resolution_clock::now();
+		narrowPhaseMs = std::chrono::duration<double, std::milli>(timerNarrow - timerBroad).count();
 
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
@@ -471,6 +478,9 @@ namespace WeirdEngine
 				m_collisionQueue.push_back(collisionEvent);
 			}
 		}
+
+		auto timerShape = std::chrono::high_resolution_clock::now();
+		shapeEvaluationMs = std::chrono::duration<double, std::milli>(timerShape - timerNarrow).count();
 	}
 
 	void Simulation2D::solveCollisionsPositionBased()
@@ -682,14 +692,19 @@ namespace WeirdEngine
 		// External forces
 		{
 			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-			if (m_externalForcesSinceLastUpdate)
+			
+			for (size_t i = 0; i < m_size; i++)
 			{
-				m_externalForcesSinceLastUpdate = false;
+				m_forces[i] += m_continuousForcesRead[i];
+			}
+
+			if (m_impulsesSinceLastUpdate)
+			{
+				m_impulsesSinceLastUpdate = false;
 				for (size_t i = 0; i < m_size; i++)
 				{
-					vec2& f = m_externalForces[i];
-					m_forces[i] = f;
-					m_externalForces[i] = vec2(0);
+					m_forces[i] += m_impulses[i];
+					m_impulses[i] = vec2(0);
 				}
 			}
 		}
@@ -739,9 +754,7 @@ namespace WeirdEngine
 				m_collisionCallback(event, m_callbackUserData);
 			}
 
-#if MEASURE_PERFORMANCE
-			g_collisionCount++;
-#endif
+
 		}
 
 		// Shape collisions
@@ -935,7 +948,9 @@ namespace WeirdEngine
 		m_velocitiesRead[id] = vec2(0.0f);
 		m_velocitiesAux[id] = vec2(0.0f);
 		m_forces[id] = vec2(0.0f);
-		m_externalForces[id] = vec2(0.0f);
+		m_impulses[id] = vec2(0.0f);
+		m_continuousForcesRead[id] = vec2(0.0f);
+		m_continuousForcesWrite[id] = vec2(0.0f);
 		m_mass[id] = 1.0f;
 		m_invMass[id] = 1.0f;
 
@@ -965,7 +980,9 @@ namespace WeirdEngine
 			m_velocitiesRead[toId] = m_velocitiesRead[fromId];
 			m_velocitiesAux[toId] = m_velocitiesAux[fromId];
 			m_forces[toId] = m_forces[fromId];
-			m_externalForces[toId] = m_externalForces[fromId];
+			m_impulses[toId] = m_impulses[fromId];
+			m_continuousForcesRead[toId] = m_continuousForcesRead[fromId];
+			m_continuousForcesWrite[toId] = m_continuousForcesWrite[fromId];
 			m_mass[toId] = m_mass[fromId];
 			m_invMass[toId] = m_invMass[fromId];
 
@@ -1032,15 +1049,39 @@ namespace WeirdEngine
 		return m_size;
 	}
 
-	void Simulation2D::addForce(SimulationID id, const vec2& force)
+	void Simulation2D::addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent)
 	{
 		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 
-		// TODO: create two buffers (continuous forces and impulses), depending on type multiply by mass imitating 4
-		// unity types
+		m_impulsesSinceLastUpdate = true;
+		if (massIndependent)
+			m_impulses[id] += m_simulationFrequency * m_mass[id] * impulse;
+		else
+			m_impulses[id] += m_simulationFrequency * impulse;
+	}
 
-		m_externalForcesSinceLastUpdate = true;
-		m_externalForces[id] += m_simulationFrequency * m_mass[id] * force;
+	void Simulation2D::setContinuousForce(SimulationID id, const vec2& force, bool massIndependent)
+	{
+		// No lock needed, game thread writes directly to the write buffer
+		if (massIndependent)
+			m_continuousForcesWrite[id] = force * m_mass[id];
+		else
+			m_continuousForcesWrite[id] = force;
+	}
+
+	void Simulation2D::swapContinuousForces()
+	{
+		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+
+		vec2* temp = m_continuousForcesRead;
+		m_continuousForcesRead = m_continuousForcesWrite;
+		m_continuousForcesWrite = temp;
+
+		// Clear the new write buffer so it's ready for the next frame
+		for (size_t i = 0; i < m_size; i++)
+		{
+			m_continuousForcesWrite[i] = vec2(0.0f);
+		}
 	}
 
 	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)

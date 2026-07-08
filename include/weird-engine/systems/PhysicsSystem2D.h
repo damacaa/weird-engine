@@ -50,10 +50,16 @@ namespace WeirdEngine
 						rb.isDirty = false;
 					}
 
-					if (glm::length2(rb.pendingForce) > 0.0001f)
+					if (glm::length2(rb.pendingImpulseForce) > 0.0001f)
 					{
-						simulation.addForce(rb.simulationId, rb.pendingForce);
-						rb.pendingForce = glm::vec2(0.0f);
+						simulation.addImpulseForce(rb.simulationId, rb.pendingImpulseForce);
+						rb.pendingImpulseForce = glm::vec2(0.0f);
+					}
+
+					if (glm::length2(rb.pendingContinuousForce) > 0.0001f)
+					{
+						simulation.setContinuousForce(rb.simulationId, rb.pendingContinuousForce);
+						rb.pendingContinuousForce = glm::vec2(0.0f);
 					}
 
 					simulation.updateTransform(transform, rb.simulationId);
@@ -120,6 +126,9 @@ namespace WeirdEngine
 						}
 					}
 				}
+
+				// Dispatch all continuous force writes to the physics thread
+				simulation.swapContinuousForces();
 			}
 		} // namespace PhysicsSystem2D
 	} // namespace ECS

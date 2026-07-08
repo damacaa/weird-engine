@@ -155,7 +155,7 @@ namespace WeirdEngine
 
 	void Scene::update(double delta, double time)
 	{
-		PROFILE_SCOPE("Scene Logic Update");
+		PROFILE_SCOPE("Scene Update");
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
@@ -187,7 +187,7 @@ namespace WeirdEngine
 		}
 
 		{
-			PROFILE_SCOPE("Scene logic update");
+			PROFILE_SCOPE("Collision handling");
 
 			// Process queued collisions
 			std::vector<CollisionEvent> collisions;
@@ -197,16 +197,19 @@ namespace WeirdEngine
 				collisions = std::move(m_queuedCollisions);
 				shapeCollisions = std::move(m_queuedShapeCollisions);
 			}
+
+			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
 			
+			// TODO: This loop has very inconsistent execution times. Investigate why.
 			for (auto& ev : collisions)
 			{
-				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA), getEntityForSimulationId(ev.bodyB)};
+				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies), getEntityForSimulationId(ev.bodyB, rigidBodies)};
 				onEntityCollision(m_ecs, entityEvent);
 			}
 
 			for (auto& ev : shapeCollisions)
 			{
-				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body)};
+				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body, rigidBodies)};
 				onEntityShapeCollision(m_ecs, entityEvent);
 
 				const float m_soundFalloff = 0.1f;
@@ -234,7 +237,10 @@ namespace WeirdEngine
 			
 			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
 			m_frictionSoundLevel = 0.0f;
+		}
 
+		{
+			PROFILE_SCOPE("OnUpdate");
 			onUpdate(delta, m_ecs);
 		}
 
@@ -430,11 +436,13 @@ namespace WeirdEngine
 		return it->second;
 	}
 
-	Entity Scene::getEntityForSimulationId(SimulationID simulationId)
+	Entity Scene::getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
 	{
-		auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
+		return 0;
+		
 		if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
 			return INVALID_ENTITY;
+
 
 		return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
 	}
@@ -490,6 +498,9 @@ namespace WeirdEngine
 
 			std::vector<GroupState> groups;
 			groups.reserve(16);
+
+			// Cache the rigid bodies component array to avoid repeated lookups in the ECS during the raymarching loop
+			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
 
 			auto shapeArray = m_ecs.getComponentArray<CustomShape>();
 			for (size_t j = 0; j < shapeArray->getSize(); j++)
@@ -629,7 +640,7 @@ namespace WeirdEngine
 							if (dist < minRigidbodyDist)
 							{
 								minRigidbodyDist = dist;
-								closestRbEntity = getEntityForSimulationId(rbIndex);
+								closestRbEntity = getEntityForSimulationId(rbIndex, rigidBodies);
 							}
 
 							rbIndex = gridSnapshot->next[rbIndex];
@@ -709,6 +720,18 @@ namespace WeirdEngine
 
 			ImGui::PopID();
 		}
+	}
+
+	void Scene::renderPhysicsStatsUI()
+	{
+		auto simStats = m_simulation2D.getPerformanceStats();
+		ImGui::Text("Step:  %.2f ms", simStats.timePerStepMs);
+		ImGui::Text("  Broad Phase: %.3f ms", simStats.broadPhaseMs);
+		ImGui::Text("  Narrow Phase: %.3f ms", simStats.narrowPhaseMs);
+		ImGui::Text("  Shape Eval:  %.3f ms", simStats.shapeEvaluationMs);
+		ImGui::Text("  Collisions:  %.3f ms", simStats.collisionEventsMs);
+		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
+		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
 	}
 
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,

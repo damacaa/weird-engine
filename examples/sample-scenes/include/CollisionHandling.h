@@ -75,9 +75,9 @@ private:
 
 		m_lastTime = t;
 		// simulation.setPosition(event.bodyA, vec2(15.0f, 15.0f));
-		// simulation.addForce(event.bodyA, vec2(2.0f * sinf(t), -20.0f));
+		// simulation.addImpulseForce(event.bodyA, vec2(2.0f * sinf(t), -20.0f));
 		simulation.setPosition(event.bodyB, vec2(15.0f, 24.45f));
-		simulation.addForce(event.bodyB, vec2(20.0f * sinf(10.0f * t), -30.0f));
+		simulation.addImpulseForce(event.bodyB, vec2(20.0f * sinf(10.0f * t), -30.0f));
 
 		// Entity a = ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(event.bodyA).Owner;
 		// Transform &at = ecs.getComponent<Transform>(a);

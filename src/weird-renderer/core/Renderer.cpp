@@ -474,13 +474,29 @@ namespace WeirdEngine
 			const float INDENT_PX = 16.0f;
 			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
 
-			for (const auto& stat : stats)
+			for (size_t i = 0; i < stats.size(); ++i)
 			{
+				const auto& stat = stats[i];
 				if (stat.count == 0 || stat.depth == 0)
 					continue;
 
 				double avgMs = stat.totalTimeMs / stat.count;
-				float fraction = (float)(avgMs / topMs);
+				double parentMs = topMs;
+
+				// Find parent time
+				for (int j = (int)i - 1; j >= 0; --j)
+				{
+					if (stats[j].depth == stat.depth - 1 && stats[j].count > 0)
+					{
+						parentMs = stats[j].totalTimeMs / stats[j].count;
+						break;
+					}
+				}
+
+				if (parentMs <= 0.0)
+					parentMs = 1.0;
+
+				float fraction = (float)(avgMs / parentMs);
 				fraction = std::min(1.0f, std::max(0.0f, fraction));
 				float indentOff = (stat.depth - 1) * INDENT_PX;
 				float availW = ImGui::GetContentRegionAvail().x;

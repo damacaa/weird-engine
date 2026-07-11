@@ -200,7 +200,6 @@ namespace WeirdEngine
 
 			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
 			
-			// TODO: This loop has very inconsistent execution times. Investigate why.
 			for (auto& ev : collisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies), getEntityForSimulationId(ev.bodyB, rigidBodies)};

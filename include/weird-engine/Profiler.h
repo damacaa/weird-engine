@@ -16,6 +16,7 @@ namespace WeirdEngine
 		int depth;
 		double totalTimeMs = 0.0;
 		int count = 0;
+		int parentIndex = -1;
 	};
 
 	class Profiler
@@ -60,6 +61,9 @@ namespace WeirdEngine
 
 		bool isRealtime() const { return m_realtimeMode; }
 
+		double getUnaccountedThreshold() const { return m_unaccountedThresholdPct; }
+		void setUnaccountedThreshold(double threshold) { m_unaccountedThresholdPct = threshold; }
+
 		const std::vector<ScopeStats>& getLastFrameStats() const { return m_lastFrameStats; }
 
 		void update()
@@ -86,8 +90,9 @@ namespace WeirdEngine
 
 			if (m_realtimeMode)
 			{
-				// Snapshot last frame's timings, then reset accumulators.
-				m_lastFrameStats = m_stats;
+				// Snapshot last frame's timings, inject "Others" rows, then reset accumulators.
+				m_lastFrameStats.clear();
+				injectOthersRange(0, m_stats.size(), m_stats, m_lastFrameStats);
 				for (auto& s : m_stats)
 				{
 					s.totalTimeMs = 0.0;
@@ -118,8 +123,9 @@ namespace WeirdEngine
 			if (!m_recording)
 				return;
 
+			int parentIdx = m_stack.empty() ? -1 : m_stack.back().statIndex;
 			int statIndex = -1;
-			if (m_currentIndex < m_stats.size() && m_stats[m_currentIndex].name == name)
+			if (m_currentIndex < m_stats.size() && m_stats[m_currentIndex].name == name && m_stats[m_currentIndex].parentIndex == parentIdx)
 			{
 				statIndex = m_currentIndex;
 				m_currentIndex++;
@@ -129,7 +135,7 @@ namespace WeirdEngine
 				bool found = false;
 				for (size_t i = 0; i < m_stats.size(); ++i)
 				{
-					if (m_stats[i].name == name && m_stats[i].depth == m_currentDepth)
+					if (m_stats[i].name == name && m_stats[i].depth == m_currentDepth && m_stats[i].parentIndex == parentIdx)
 					{
 						statIndex = i;
 						m_currentIndex = i + 1;
@@ -139,7 +145,7 @@ namespace WeirdEngine
 				}
 				if (!found)
 				{
-					m_stats.push_back({name, m_currentDepth, 0.0, 0});
+					m_stats.push_back({name, m_currentDepth, 0.0, 0, parentIdx});
 					statIndex = m_stats.size() - 1;
 					m_currentIndex = m_stats.size();
 				}
@@ -165,6 +171,41 @@ namespace WeirdEngine
 		}
 
 	private:
+		void injectOthersRange(size_t start, size_t end, const std::vector<ScopeStats>& inStats, std::vector<ScopeStats>& outStats)
+		{
+			size_t i = start;
+			while (i < end)
+			{
+				const auto& stat = inStats[i];
+				outStats.push_back(stat);
+
+				size_t subEnd = i + 1;
+				while (subEnd < end && inStats[subEnd].depth > stat.depth)
+					subEnd++;
+
+				if (subEnd > i + 1)
+				{
+					double childrenTotalMs = 0.0;
+					for (size_t j = i + 1; j < subEnd; j++)
+					{
+						if (inStats[j].depth == stat.depth + 1)
+							childrenTotalMs += inStats[j].totalTimeMs;
+					}
+
+					injectOthersRange(i + 1, subEnd, inStats, outStats);
+
+					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
+					double unaccountedPctOfScope = stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
+					if (unaccountedPctOfScope > m_unaccountedThresholdPct)
+					{
+						outStats.push_back({"Others", stat.depth + 1, unaccountedMs, stat.count, stat.parentIndex});
+					}
+				}
+
+				i = subEnd;
+			}
+		}
+
 		void printReport()
 		{
 			std::ostringstream oss;
@@ -230,13 +271,14 @@ namespace WeirdEngine
 					// Print children recursively
 					printStatsRange(i + 1, subEnd, totalFrameTimeMs, oss);
 
-					// If unaccounted time exceeds 1% of frame, print an "Other" row
+					// If unaccounted time exceeds 1% of scope, print an "Other" row
 					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
+					double unaccountedPctOfScope = stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
 					double unaccountedPct = totalFrameTimeMs > 0.0 ? (unaccountedMs / totalFrameTimeMs) * 100.0 : 0.0;
-					if (unaccountedPct > 1.0)
+					if (unaccountedPctOfScope > m_unaccountedThresholdPct)
 					{
 						std::string otherIndent((stat.depth + 1) * 4, ' ');
-						std::string otherName = otherIndent + "Other";
+						std::string otherName = otherIndent + "Others";
 						double otherAvgMs = unaccountedMs / stat.count;
 						oss << std::left << std::setw(40) << otherName << std::right << std::setw(15)
 								  << std::fixed << std::setprecision(3) << otherAvgMs << std::setw(9) << std::fixed
@@ -264,6 +306,7 @@ namespace WeirdEngine
 		std::vector<StackItem> m_stack;
 		int m_currentIndex = 0;
 		int m_currentDepth = 0;
+		double m_unaccountedThresholdPct = 5.0;
 	};
 
 	class ProfilerScope

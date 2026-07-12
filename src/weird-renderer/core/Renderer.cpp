@@ -439,10 +439,10 @@ namespace WeirdEngine
 			ImGui::Begin("Performance Stats");
 
 			// FPS / Frametime header
-			ImGui::Text("FPS: %.1f  |  Frame: %.1f ms", fps, frameTimeMs);
+			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
 
 			char ftOverlay[32];
-			snprintf(ftOverlay, sizeof(ftOverlay), "%.1f ms", frameTimeMs);
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
 			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
 							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
 

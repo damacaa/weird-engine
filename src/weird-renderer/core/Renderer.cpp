@@ -477,35 +477,118 @@ namespace WeirdEngine
 			const float INDENT_PX = 16.0f;
 			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
 
-			for (size_t i = 0; i < stats.size(); ++i)
+			if (ImGui::BeginTabBar("ProfilerTabs"))
 			{
-				const auto& stat = stats[i];
-				if (stat.count == 0 || stat.depth == 0)
-					continue;
-
-				double avgMs = stat.totalTimeMs / stat.count;
-
-				float fraction = (float)(avgMs / topMs);
-				fraction = std::min(1.0f, std::max(0.0f, fraction));
-				float indentOff = (stat.depth - 1) * INDENT_PX;
-				float availW = ImGui::GetContentRegionAvail().x;
-
-				// Scope name (indented)
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
-				ImGui::TextUnformatted(stat.name);
-
-				// Progress bar on the same line
-				ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
-				char barLabel[64];
-				snprintf(barLabel, sizeof(barLabel), "%.3f ms  %.3f%%", avgMs, fraction * 100.0f);
-				float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
-				if (barW > 10.0f)
+				if (ImGui::BeginTabItem("List View"))
 				{
-					int ci = std::min(stat.depth - 1, MAX_DEPTH_COLORS - 1);
-					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
-					ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
-					ImGui::PopStyleColor();
+					for (size_t i = 0; i < stats.size(); ++i)
+					{
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0)
+							continue;
+
+						double avgMs = stat.totalTimeMs / stat.count;
+
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float indentOff = (stat.depth - 1) * INDENT_PX;
+						float availW = ImGui::GetContentRegionAvail().x;
+
+						// Scope name (indented)
+						ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
+						ImGui::TextUnformatted(stat.name);
+
+						// Progress bar on the same line
+						ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
+						char barLabel[64];
+						snprintf(barLabel, sizeof(barLabel), "%.3f ms  %.3f%%", avgMs, fraction * 100.0f);
+						float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
+						if (barW > 10.0f)
+						{
+							int ci = std::min(stat.depth - 1, MAX_DEPTH_COLORS - 1);
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
+							ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
+							ImGui::PopStyleColor();
+						}
+					}
+					ImGui::EndTabItem();
 				}
+
+				if (ImGui::BeginTabItem("Timeline View"))
+				{
+					ImDrawList* drawList = ImGui::GetWindowDrawList();
+					ImVec2 p0 = ImGui::GetCursorScreenPos();
+					float availW = ImGui::GetContentRegionAvail().x;
+					float rowH = ImGui::GetTextLineHeight() + 4.0f;
+
+					int maxDepth = 0;
+					for (const auto& s : stats)
+					{
+						if (s.depth > 0)
+							maxDepth = std::max(maxDepth, s.depth - 1);
+					}
+
+					float totalH = (maxDepth + 1) * rowH;
+					ImGui::InvisibleButton("##timeline", ImVec2(availW, totalH));
+
+					float currentX[32] = {0};
+
+					for (size_t i = 0; i < stats.size(); ++i)
+					{
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0 || stat.depth >= 33)
+							continue;
+
+						int renderDepth = stat.depth - 1;
+						double avgMs = stat.totalTimeMs / stat.count;
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float w = std::max(1.0f, fraction * availW);
+
+						float x = currentX[renderDepth];
+						float y = renderDepth * rowH;
+
+						ImVec2 rectMin = ImVec2(p0.x + x, p0.y + y);
+						ImVec2 rectMax = ImVec2(p0.x + x + w, p0.y + y + rowH - 1.0f);
+
+						int ci = std::min(renderDepth, MAX_DEPTH_COLORS - 1);
+						ImU32 col = ImGui::ColorConvertFloat4ToU32(depthColors[ci]);
+
+						bool hovered = ImGui::IsMouseHoveringRect(rectMin, rectMax);
+						if (hovered)
+						{
+							ImVec4 hc = depthColors[ci];
+							hc.x = std::min(1.0f, hc.x * 1.2f);
+							hc.y = std::min(1.0f, hc.y * 1.2f);
+							hc.z = std::min(1.0f, hc.z * 1.2f);
+							col = ImGui::ColorConvertFloat4ToU32(hc);
+						}
+
+						drawList->AddRectFilled(rectMin, rectMax, col);
+						drawList->AddRect(rectMin, rectMax, IM_COL32(0, 0, 0, 100));
+
+						if (w > 20.0f)
+						{
+							ImGui::PushClipRect(rectMin, rectMax, true);
+							drawList->AddText(ImVec2(rectMin.x + 2, rectMin.y + 1), IM_COL32(255, 255, 255, 255), stat.name);
+							ImGui::PopClipRect();
+						}
+
+						if (hovered)
+						{
+							ImGui::BeginTooltip();
+							ImGui::Text("%s", stat.name);
+							ImGui::Text("%.3f ms (%.1f%%)", avgMs, fraction * 100.0f);
+							ImGui::EndTooltip();
+						}
+
+						currentX[renderDepth] += w;
+						if (renderDepth + 1 < 32)
+							currentX[renderDepth + 1] = x;
+					}
+					ImGui::EndTabItem();
+				}
+				ImGui::EndTabBar();
 			}
 
 			ImGui::Spacing();

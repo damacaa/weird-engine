@@ -326,17 +326,22 @@ namespace WeirdEngine
 	class ProfilerScope
 	{
 	public:
-		ProfilerScope(const char* name)
+		ProfilerScope(const char* name, bool active = true)
 		{
-			Profiler::Get().beginScope(name);
+			m_active = active && name != nullptr;
+			if (m_active)
+				Profiler::Get().beginScope(name);
 		}
 		~ProfilerScope()
 		{
-			Profiler::Get().endScope();
+			if (m_active)
+				Profiler::Get().endScope();
 		}
+	private:
+		bool m_active;
 	};
 
 } // namespace WeirdEngine
 
-#define PROFILE_SCOPE(name) WeirdEngine::ProfilerScope profile_scope_##__LINE__(name)
+#define PROFILE_SCOPE(...) WeirdEngine::ProfilerScope profile_scope_##__LINE__(__VA_ARGS__)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__FUNCTION__)

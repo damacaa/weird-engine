@@ -155,9 +155,9 @@ namespace WeirdEngine
 				{
 					showStatsUI = !showStatsUI;
 					if (showStatsUI)
-						Profiler::Get().enableRealtime();
+						Profiler::get().enableRealtime();
 					else
-						Profiler::Get().disableRealtime();
+						Profiler::get().disableRealtime();
 				}
 
 				if (Input::GetKeyDown(Input::F11))
@@ -451,7 +451,7 @@ namespace WeirdEngine
 			ImGui::TextDisabled("Profiler Scopes  (last frame)");
 			ImGui::Spacing();
 
-			auto& profiler = Profiler::Get();
+			auto& profiler = Profiler::get();
 			const auto& stats = profiler.getLastFrameStats();
 
 			if (stats.empty())
@@ -721,8 +721,7 @@ namespace WeirdEngine
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
 					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
-
-					glFinish();
+					Profiler::get().gpuSync();
 				}
 
 				// --- 2. SDF ray-marching pass: composites with GBuffer ---
@@ -759,8 +758,7 @@ namespace WeirdEngine
 					scene.renderExtra(m_3DWorldPipeline->getRenderTarget());
 					glDisable(GL_CULL_FACE);
 					glDisable(GL_DEPTH_TEST);
-
-					glFinish();
+					Profiler::get().gpuSync();
 				}
 
 				if (!enable2D)

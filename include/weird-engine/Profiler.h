@@ -6,6 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <deque>
+#include <glad/glad.h>
 #include "weird-engine/Logger.h"
 
 namespace WeirdEngine
@@ -23,7 +24,7 @@ namespace WeirdEngine
 	class Profiler
 	{
 	public:
-		static Profiler& Get()
+		static Profiler& get()
 		{
 			static Profiler p;
 			return p;
@@ -257,6 +258,15 @@ namespace WeirdEngine
 			m_stats[item.statIndex].count++;
 		}
 
+		void gpuSync()
+		{
+			// Only stall the CPU/GPU pipeline if we are actively recording to minimize performance impact.
+			if (isRecordingReport() || isRealtime())
+			{
+				glFinish();
+			}
+		}
+
 	private:
 		void injectOthersRange(size_t start, size_t end, const std::vector<ScopeStats>& inStats, std::vector<ScopeStats>& outStats)
 		{
@@ -330,12 +340,12 @@ namespace WeirdEngine
 		{
 			m_active = active && name != nullptr;
 			if (m_active)
-				Profiler::Get().beginScope(name);
+				Profiler::get().beginScope(name);
 		}
 		~ProfilerScope()
 		{
 			if (m_active)
-				Profiler::Get().endScope();
+				Profiler::get().endScope();
 		}
 	private:
 		bool m_active;

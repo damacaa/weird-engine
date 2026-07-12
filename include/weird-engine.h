@@ -91,7 +91,7 @@ namespace WeirdEngine
 			}
 #endif
 
-			WeirdEngine::Profiler::Get().update();
+			WeirdEngine::Profiler::get().update();
 
 			PROFILE_SCOPE("Frame");
 

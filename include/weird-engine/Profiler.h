@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <deque>
 #include "weird-engine/Logger.h"
 
 namespace WeirdEngine
@@ -59,7 +60,51 @@ namespace WeirdEngine
 		double getUnaccountedThreshold() const { return m_unaccountedThresholdPct; }
 		void setUnaccountedThreshold(double threshold) { m_unaccountedThresholdPct = threshold; }
 
-		const std::vector<ScopeStats>& getLastFrameStats() const { return m_lastFrameStats; }
+		const std::vector<ScopeStats>& getLastFrameStats() const 
+		{ 
+			if (m_paused && m_historyEnabled && !m_historyBuffer.empty())
+			{
+				if (m_playbackIndex >= 0 && m_playbackIndex < m_historyBuffer.size())
+				{
+					return m_historyBuffer[m_playbackIndex];
+				}
+			}
+			return m_lastFrameStats; 
+		}
+
+		void setHistoryEnabled(bool enabled)
+		{
+			if (m_historyEnabled != enabled)
+			{
+				m_historyEnabled = enabled;
+				if (!enabled)
+				{
+					m_historyBuffer.clear();
+					m_playbackIndex = -1;
+				}
+			}
+		}
+		bool isHistoryEnabled() const { return m_historyEnabled; }
+		int getHistoryCapturedCount() const { return (int)m_historyBuffer.size(); }
+		int getHistoryCapacity() const { return m_historyCapacity; }
+
+		void pause() { m_pendingPause = true; }
+		void resume() { m_pendingResume = true; }
+		bool isPaused() const { return m_paused; }
+
+		int getPlaybackIndex() const { return m_playbackIndex; }
+		void setPlaybackIndex(int idx) { m_playbackIndex = idx; }
+
+		double getReportProgressSeconds() const
+		{
+			if (m_recording && !m_realtimeMode && !m_reportFinished && !m_paused)
+			{
+				auto now = std::chrono::high_resolution_clock::now();
+				std::chrono::duration<double> diff = now - m_startTime;
+				return diff.count();
+			}
+			return 0.0;
+		}
 
 		bool isReportFinished() const { return m_reportFinished; }
 		bool isRecordingReport() const { return m_recording && !m_realtimeMode; }
@@ -98,7 +143,22 @@ namespace WeirdEngine
 				m_pendingRealtimeDisable = false;
 			}
 
-			if (!m_recording)
+			if (m_pendingPause)
+			{
+				m_paused = true;
+				m_playbackIndex = m_historyBuffer.empty() ? 0 : (int)m_historyBuffer.size() - 1;
+				m_pendingPause = false;
+			}
+			else if (m_pendingResume)
+			{
+				m_paused = false;
+				m_stats.clear(); // clear any partial accumulations
+				m_currentIndex = 0;
+				m_currentDepth = 0;
+				m_pendingResume = false;
+			}
+
+			if (!m_recording || m_paused)
 				return;
 
 			if (m_realtimeMode)
@@ -110,6 +170,15 @@ namespace WeirdEngine
 				{
 					s.totalTimeMs = 0.0;
 					s.count = 0;
+				}
+
+				if (m_historyEnabled)
+				{
+					m_historyBuffer.push_back(m_lastFrameStats);
+					if (m_historyBuffer.size() > m_historyCapacity)
+					{
+						m_historyBuffer.pop_front();
+					}
 				}
 			}
 			else
@@ -138,7 +207,7 @@ namespace WeirdEngine
 
 		void beginScope(const char* name)
 		{
-			if (!m_recording)
+			if (!m_recording || m_paused)
 				return;
 
 			int parentIdx = m_stack.empty() ? -1 : m_stack.back().statIndex;
@@ -175,7 +244,7 @@ namespace WeirdEngine
 
 		void endScope()
 		{
-			if (!m_recording || m_stack.empty())
+			if (!m_recording || m_paused || m_stack.empty())
 				return;
 
 			auto now = std::chrono::high_resolution_clock::now();
@@ -238,9 +307,16 @@ namespace WeirdEngine
 		bool m_pendingRealtimeDisable = false;
 		bool m_pendingReportRecordingEnable = false;
 		bool m_reportFinished = false;
+		bool m_historyEnabled = false;
+		bool m_paused = false;
+		bool m_pendingPause = false;
+		bool m_pendingResume = false;
+		int m_historyCapacity = 300;
+		int m_playbackIndex = -1;
 		std::chrono::high_resolution_clock::time_point m_startTime;
 		std::vector<ScopeStats> m_stats;
 		std::vector<ScopeStats> m_lastFrameStats;
+		std::deque<std::vector<ScopeStats>> m_historyBuffer;
 		std::vector<StackItem> m_stack;
 		int m_currentIndex = 0;
 		int m_currentDepth = 0;

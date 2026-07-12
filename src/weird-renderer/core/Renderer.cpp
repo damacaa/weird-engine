@@ -588,18 +588,58 @@ namespace WeirdEngine
 					}
 					ImGui::EndTabItem();
 				}
+				if (ImGui::BeginTabItem("Physics Stats"))
+				{
+					ImGui::Spacing();
+					scene.renderPhysicsStatsUI();
+					ImGui::EndTabItem();
+				}
 				ImGui::EndTabBar();
 			}
 
 			ImGui::Spacing();
 			ImGui::Separator();
-			ImGui::TextDisabled("Physics Stats");
-
-			scene.renderPhysicsStatsUI();
-
 
 			if (profiler.isRealtime())
 			{
+				bool historyEnabled = profiler.isHistoryEnabled();
+				if (ImGui::Checkbox("Enable History Buffer", &historyEnabled))
+				{
+					profiler.setHistoryEnabled(historyEnabled);
+				}
+
+				if (historyEnabled)
+				{
+					ImGui::SameLine();
+					ImGui::TextDisabled("(%d/%d frames captured)", profiler.getHistoryCapturedCount(), profiler.getHistoryCapacity());
+				}
+
+				if (profiler.isPaused())
+				{
+					if (ImGui::Button("Resume Profiler"))
+					{
+						profiler.resume();
+					}
+
+					if (historyEnabled && profiler.getHistoryCapturedCount() > 0)
+					{
+						int maxIdx = profiler.getHistoryCapturedCount() - 1;
+						if (maxIdx < 0) maxIdx = 0;
+						int pIndex = profiler.getPlaybackIndex();
+						if (ImGui::SliderInt("Scrub History", &pIndex, 0, maxIdx))
+						{
+							profiler.setPlaybackIndex(pIndex);
+						}
+					}
+				}
+				else
+				{
+					if (ImGui::Button("Pause & Inspect Frame"))
+					{
+						profiler.pause();
+					}
+				}
+
 				if (ImGui::Button("Start Average Report"))
 				{
 					profiler.startRecording();
@@ -607,7 +647,7 @@ namespace WeirdEngine
 			}
 			else if (profiler.isRecordingReport())
 			{
-				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report...");
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report... (%.1fs / 10.0s)", profiler.getReportProgressSeconds());
 				if (ImGui::Button("Cancel & Return to Realtime"))
 				{
 					profiler.enableRealtime();

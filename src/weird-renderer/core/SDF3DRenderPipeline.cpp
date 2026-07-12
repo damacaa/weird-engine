@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <imgui.h>
+#include "weird-engine/Profiler.h"
 
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
@@ -162,8 +163,7 @@ namespace WeirdEngine
 
 			// Keep output bound so geometry can be rendered on top
 			m_outputRender.bind();
-
-			glFinish();
+			Profiler::get().gpuSync();
 		}
 
 		RenderTarget& SDF3DRenderPipeline::getRenderTarget()

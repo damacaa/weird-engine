@@ -326,7 +326,7 @@ namespace WeirdEngine
 			renderBackground(camera, time);
 			applyLighting(camera, time, backgroundTexture);
 
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync(); // Stalls if recording average report
 
 			return m_litSceneTexture;
 		}
@@ -560,7 +560,7 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE(m_config.isUI ? "Render distance (UI)" : "Render distance (World)");
 				m_renderPlane.draw(m_distanceShader);
-				glFinish(); // Makes sense for profiler
+				Profiler::get().gpuSync();
 			}
 		}
 
@@ -633,8 +633,7 @@ namespace WeirdEngine
 			m_jumpFloodDoubleBuffer[lastIndex]->getColorAttachment()->bind(1);
 
 			m_renderPlane.draw(m_distanceCorrectionShader);
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::upscaleDistance()
@@ -655,8 +654,7 @@ namespace WeirdEngine
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_distanceUpscalerShader);
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time, double delta)
@@ -683,8 +681,7 @@ namespace WeirdEngine
 			m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(1);
 
 			m_renderPlane.draw(m_materialColorShader);
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::blendMaterials(double time)
@@ -713,8 +710,7 @@ namespace WeirdEngine
 
 				horizontal = !horizontal;
 			}
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::renderBackground(const Camera& camera, double time)
@@ -730,8 +726,7 @@ namespace WeirdEngine
 												 glm::vec2(m_config.renderWidth, m_config.renderHeight));
 
 			m_renderPlane.draw(m_defaultBackgroundShader);
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::applyLighting(const Camera& camera, double time, Texture* backgroundTexture)
@@ -781,8 +776,7 @@ namespace WeirdEngine
 			m_distanceTextureCorrected.bind(3);
 
 			m_renderPlane.draw(m_lightingShader);
-
-			glFinish(); // Makes sense for profiler
+			Profiler::get().gpuSync();
 		}
 
 		void SDF2DRenderPipeline::showDebugUI()

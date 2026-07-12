@@ -704,8 +704,7 @@ namespace WeirdEngine
 			// 3D
 			if (enable3D)
 			{
-				if(enable2D)
-					PROFILE_SCOPE("3D Render");
+				PROFILE_SCOPE("3D Render", enable2D);
 
 				auto& lights = scene.getLigths();
 
@@ -779,8 +778,7 @@ namespace WeirdEngine
 			static vec4* data = nullptr;
 			if (enable2D)
 			{
-				if(enable3D)
-					PROFILE_SCOPE("2D Render");
+				PROFILE_SCOPE("2D Render", enable3D);
 
 				m_worldPipeline->getDistanceShader().use();
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());

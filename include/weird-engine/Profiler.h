@@ -35,15 +35,10 @@ namespace WeirdEngine
 
 		void startRecording()
 		{
-			if (!m_recording)
-			{
-				m_recording = true;
-				m_startTime = std::chrono::high_resolution_clock::now();
-				m_stats.clear();
-				m_currentIndex = 0;
-				m_currentDepth = 0;
-				WeirdEngine::Logger::log("Profiler started recording...");
-			}
+			m_pendingReportRecordingEnable = true;
+			m_pendingRealtimeDisable = false;
+			m_pendingRealtimeEnable = false;
+			WeirdEngine::Logger::log("Profiler pending report recording...");
 		}
 
 		// Enable real-time mode: keeps recording and snapshots per-frame data.
@@ -66,12 +61,29 @@ namespace WeirdEngine
 
 		const std::vector<ScopeStats>& getLastFrameStats() const { return m_lastFrameStats; }
 
+		bool isReportFinished() const { return m_reportFinished; }
+		bool isRecordingReport() const { return m_recording && !m_realtimeMode; }
+
 		void update()
 		{
-			if (m_pendingRealtimeEnable)
+			if (m_pendingReportRecordingEnable)
+			{
+				m_realtimeMode = false;
+				m_recording = true;
+				m_reportFinished = false;
+				m_startTime = std::chrono::high_resolution_clock::now();
+				m_stats.clear();
+				m_lastFrameStats.clear();
+				m_currentIndex = 0;
+				m_currentDepth = 0;
+				m_pendingReportRecordingEnable = false;
+				WeirdEngine::Logger::log("Profiler started report recording...");
+			}
+			else if (m_pendingRealtimeEnable)
 			{
 				m_realtimeMode = true;
 				m_recording = true;
+				m_reportFinished = false;
 				m_stats.clear();
 				m_lastFrameStats.clear();
 				m_currentIndex = 0;
@@ -82,6 +94,7 @@ namespace WeirdEngine
 			{
 				m_realtimeMode = false;
 				m_recording = false;
+				m_reportFinished = false;
 				m_pendingRealtimeDisable = false;
 			}
 
@@ -101,6 +114,10 @@ namespace WeirdEngine
 			}
 			else
 			{
+				// Update display stats every frame to show running average
+				m_lastFrameStats.clear();
+				injectOthersRange(0, m_stats.size(), m_stats, m_lastFrameStats);
+
 				auto now = std::chrono::high_resolution_clock::now();
 				std::chrono::duration<double> diff = now - m_startTime;
 				if (diff.count() >= 10.0)
@@ -115,7 +132,8 @@ namespace WeirdEngine
 		void stopRecording()
 		{
 			m_recording = false;
-			printReport();
+			m_reportFinished = true;
+			WeirdEngine::Logger::log("Profiler recording finished.");
 		}
 
 		void beginScope(const char* name)
@@ -206,89 +224,7 @@ namespace WeirdEngine
 			}
 		}
 
-		void printReport()
-		{
-			std::ostringstream oss;
-			oss << "\n=================================================================\n";
-			oss << "                       PERFORMANCE REPORT\n";
-			oss << "=================================================================\n";
 
-			double totalFrameTimeMs = 0.0;
-			int frameCount = 0;
-			if (!m_stats.empty())
-			{
-				totalFrameTimeMs = m_stats[0].totalTimeMs;
-				frameCount = m_stats[0].count;
-			}
-
-			if (frameCount == 0)
-				frameCount = 1;
-
-			oss << std::left << std::setw(40) << "Scope" << std::right << std::setw(15) << "Avg Time (ms)"
-					  << std::setw(10) << "% Frame" << "\n";
-			oss << "-----------------------------------------------------------------\n";
-
-			printStatsRange(0, m_stats.size(), totalFrameTimeMs, oss);
-
-			oss << "=================================================================\n";
-			WeirdEngine::Logger::log(oss.str());
-		}
-
-		void printStatsRange(size_t start, size_t end, double totalFrameTimeMs, std::ostringstream& oss)
-		{
-			size_t i = start;
-			while (i < end)
-			{
-				const auto& stat = m_stats[i];
-
-				std::string indent(stat.depth * 4, ' ');
-				std::string name = indent + stat.name;
-				double avgTimeMs = stat.totalTimeMs / stat.count;
-				double percentage = totalFrameTimeMs > 0.0 ? (stat.totalTimeMs / totalFrameTimeMs) * 100.0 : 0.0;
-
-				if (stat.depth == 0)
-					percentage = 100.0;
-
-				oss << std::left << std::setw(40) << name << std::right << std::setw(15) << std::fixed
-						  << std::setprecision(3) << avgTimeMs << std::setw(9) << std::fixed << std::setprecision(1)
-						  << percentage << "%\n";
-
-				// Find end of this stat's subtree
-				size_t subEnd = i + 1;
-				while (subEnd < end && m_stats[subEnd].depth > stat.depth)
-					subEnd++;
-
-				if (subEnd > i + 1)
-				{
-					// Sum direct children total times
-					double childrenTotalMs = 0.0;
-					for (size_t j = i + 1; j < subEnd; j++)
-					{
-						if (m_stats[j].depth == stat.depth + 1)
-							childrenTotalMs += m_stats[j].totalTimeMs;
-					}
-
-					// Print children recursively
-					printStatsRange(i + 1, subEnd, totalFrameTimeMs, oss);
-
-					// If unaccounted time exceeds 1% of scope, print an "Other" row
-					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
-					double unaccountedPctOfScope = stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
-					double unaccountedPct = totalFrameTimeMs > 0.0 ? (unaccountedMs / totalFrameTimeMs) * 100.0 : 0.0;
-					if (unaccountedPctOfScope > m_unaccountedThresholdPct)
-					{
-						std::string otherIndent((stat.depth + 1) * 4, ' ');
-						std::string otherName = otherIndent + "Others";
-						double otherAvgMs = unaccountedMs / stat.count;
-						oss << std::left << std::setw(40) << otherName << std::right << std::setw(15)
-								  << std::fixed << std::setprecision(3) << otherAvgMs << std::setw(9) << std::fixed
-								  << std::setprecision(1) << unaccountedPct << "%\n";
-					}
-				}
-
-				i = subEnd;
-			}
-		}
 
 		struct StackItem
 		{
@@ -300,6 +236,8 @@ namespace WeirdEngine
 		bool m_realtimeMode = false;
 		bool m_pendingRealtimeEnable = false;
 		bool m_pendingRealtimeDisable = false;
+		bool m_pendingReportRecordingEnable = false;
+		bool m_reportFinished = false;
 		std::chrono::high_resolution_clock::time_point m_startTime;
 		std::vector<ScopeStats> m_stats;
 		std::vector<ScopeStats> m_lastFrameStats;

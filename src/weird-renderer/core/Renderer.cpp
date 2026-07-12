@@ -234,6 +234,11 @@ namespace WeirdEngine
 								SDL_SetWindowFullscreen(m_window, isFullscreen);
 							}
 
+							if (ImGui::Checkbox("VSync", &m_vSyncEnabled))
+							{
+								updateVSyncSetting();
+							}
+
 							if (!m_lastScreenshotPath.empty())
 							{
 								ImGui::SameLine();
@@ -332,21 +337,7 @@ namespace WeirdEngine
 
 			m_uiCamera.view = cameraMatrix;
 
-			if (m_vSyncEnabled)
-			{
-				// Try -1 (Adaptive) first
-				int result = SDL_GL_SetSwapInterval(-1);
-
-				// If Adaptive fails, fall back to Standard (1)
-				if (result != 0)
-				{
-					result = SDL_GL_SetSwapInterval(1);
-				}
-			}
-			else
-			{
-				SDL_GL_SetSwapInterval(0); // Disable VSync
-			}
+			updateVSyncSetting();
 		}
 
 		void Renderer::output(Scene& scene, Texture& texture, const double delta)
@@ -410,6 +401,25 @@ namespace WeirdEngine
 
 			m_combineResultTexture.dispose();
 			m_outputTexture.dispose();
+		}
+
+		void Renderer::updateVSyncSetting()
+		{
+			if (m_vSyncEnabled)
+			{
+				// Try -1 (Adaptive) first
+				int result = SDL_GL_SetSwapInterval(-1);
+
+				// If Adaptive fails, fall back to Standard (1)
+				if (result != 0)
+				{
+					result = SDL_GL_SetSwapInterval(1);
+				}
+			}
+			else
+			{
+				SDL_GL_SetSwapInterval(0); // Disable VSync
+			}
 		}
 
 		SDL_Window* Renderer::getWindow()

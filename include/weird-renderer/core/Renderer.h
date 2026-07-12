@@ -86,6 +86,7 @@ namespace WeirdEngine
 			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();
 			void drawStatsUI(Scene& scene, double delta);
+			void updateVSyncSetting();
 		};
 
 	} // namespace WeirdRenderer

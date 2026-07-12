@@ -313,6 +313,8 @@ namespace WeirdEngine
 											 const Camera& camera, double time, double delta,
 											 Texture* backgroundTexture)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
+
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
 
@@ -493,6 +495,8 @@ namespace WeirdEngine
 		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 													  const Camera& camera, double time, double delta)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
+
 			{
 				PROFILE_SCOPE(m_config.isUI ? "Upload data (UI)" : "Upload data (World)");
 
@@ -562,6 +566,8 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "applyJumpFloodCorrection (UI)" : "applyJumpFloodCorrection (World)");
+
 			float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
 			uint16_t jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
 			bool pingpong = true;
@@ -627,10 +633,15 @@ namespace WeirdEngine
 			m_jumpFloodDoubleBuffer[lastIndex]->getColorAttachment()->bind(1);
 
 			m_renderPlane.draw(m_distanceCorrectionShader);
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::upscaleDistance()
 		{
+			PROFILE_SCOPE(m_config.isUI ? "upscaleDistance (UI)" : "upscaleDistance (World)");
+
+
 			m_distanceUpscaler.bind();
 
 			m_distanceUpscalerShader.use();
@@ -644,10 +655,15 @@ namespace WeirdEngine
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
 
 			m_renderPlane.draw(m_distanceUpscalerShader);
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time, double delta)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "renderMaterialColors (UI)" : "renderMaterialColors (World)");
+
+
 			m_colorRender.bind();
 
 			m_materialColorShader.use();
@@ -667,10 +683,14 @@ namespace WeirdEngine
 			m_postProcessDoubleBuffer[!horizontal]->getColorAttachment()->bind(1);
 
 			m_renderPlane.draw(m_materialColorShader);
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::blendMaterials(double time)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "blendMaterials (UI)" : "blendMaterials (World)");
+			
 			m_materialBlendShader.use();
 			m_materialBlendShader.setUniform("t_colorTexture", 0);
 			m_materialBlendShader.setUniform("u_time", time);
@@ -693,10 +713,14 @@ namespace WeirdEngine
 
 				horizontal = !horizontal;
 			}
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::renderBackground(const Camera& camera, double time)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "renderBackground (UI)" : "renderBackground (World)");
+
 			m_backgroundRender.bind();
 
 			m_defaultBackgroundShader.use();
@@ -706,10 +730,14 @@ namespace WeirdEngine
 												 glm::vec2(m_config.renderWidth, m_config.renderHeight));
 
 			m_renderPlane.draw(m_defaultBackgroundShader);
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::applyLighting(const Camera& camera, double time, Texture* backgroundTexture)
 		{
+			PROFILE_SCOPE(m_config.isUI ? "applyLighting (UI)" : "applyLighting (World)");
+
 			m_litSceneRender.bind();
 
 			m_lightingShader.use();
@@ -753,6 +781,8 @@ namespace WeirdEngine
 			m_distanceTextureCorrected.bind(3);
 
 			m_renderPlane.draw(m_lightingShader);
+
+			glFinish(); // Makes sense for profiler
 		}
 
 		void SDF2DRenderPipeline::showDebugUI()

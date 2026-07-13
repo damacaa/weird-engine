@@ -34,7 +34,9 @@ namespace WeirdEngine
 		SetPosition,
 		Fix,
 		UnFix,
-		SetMass
+		SetMass,
+		ActivatePending,
+		AddImpulse
 	};
 
 	struct PhysicsCommand
@@ -113,6 +115,7 @@ namespace WeirdEngine
 
 		// void setSize(unsigned int size);
 		SimulationID generateSimulationID();
+		void activatePendingBodies();
 		void removeObject(SimulationID id);
 		size_t getSize();
 
@@ -358,6 +361,7 @@ namespace WeirdEngine
 
 		size_t m_maxSize;
 		size_t m_size;
+		size_t m_allocated;
 
 		float* m_mass;
 		float* m_invMass;

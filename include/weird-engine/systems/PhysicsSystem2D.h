@@ -129,6 +129,11 @@ namespace WeirdEngine
 
 				// Dispatch all continuous force writes to the physics thread
 				simulation.swapContinuousForces();
+
+				// Activate any newly created rigidbodies now that all their
+				// initialization commands (position, velocity, mass, etc.)
+				// have been queued ahead of this in m_pendingCommands.
+				simulation.activatePendingBodies();
 			}
 		} // namespace PhysicsSystem2D
 	} // namespace ECS

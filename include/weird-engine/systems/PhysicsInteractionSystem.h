@@ -1,7 +1,7 @@
 #pragma once
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
-#include "weird-physics/Simulation2D.h"
+
 
 namespace WeirdEngine
 {
@@ -13,7 +13,7 @@ namespace WeirdEngine
 		inline bool m_loadingImpulse = false;
 		inline vec2 m_loadStartPosition;
 
-		inline SimulationID m_dragId = -1;
+		inline Entity m_dragId = INVALID_ENTITY;
 
 		inline int m_currentMaterial = 0;
 
@@ -34,12 +34,12 @@ namespace WeirdEngine
 
 		inline InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
-		inline vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation);
-		inline void drag(ECSManager& ecs, Simulation2D& simulation);
-		inline void impulse(ECSManager& ecs, Simulation2D& simulation);
-		inline void fix(ECSManager& ecs, Simulation2D& simulation);
-		inline void spring(ECSManager& ecs, Simulation2D& simulation);
-		inline void positionConstraint(ECSManager& ecs, Simulation2D& simulation);
+		inline vec2 getMousePositionInWorld(ECSManager& ecs);
+		inline void drag(ECSManager& ecs);
+		inline void impulse(ECSManager& ecs);
+		inline void fix(ECSManager& ecs);
+		inline void spring(ECSManager& ecs);
+		inline void positionConstraint(ECSManager& ecs);
 
 		inline void reset()
 		{
@@ -47,22 +47,22 @@ namespace WeirdEngine
 
 			m_loadingImpulse = false;
 
-			m_dragId = -1;
+			m_dragId = INVALID_ENTITY;
 
 			m_currentMaterial = 0;
 
-			m_firstIdInSpring = -1;
+			m_firstIdInSpring = INVALID_ENTITY;
 
-			m_selectedId = -1;
+			m_selectedId = INVALID_ENTITY;
 		}
 
-		inline void update(ECSManager& ecs, Simulation2D& simulation)
+		inline void update(ECSManager& ecs)
 		{
 			// Spawn ball
 			if (Input::GetMouseButtonDown(Input::LeftClick))
 			{
 				// Get mouse coordinates world space
-				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
+				vec2 mousePositionInWorld = getMousePositionInWorld(ecs);
 
 				// t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
 				Entity entity = ecs.createEntity();
@@ -73,9 +73,9 @@ namespace WeirdEngine
 				dot.materialId = m_currentMaterial + 4;
 
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
-				simulation.addImpulseForce(rb.simulationId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
+				rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
 
-				m_firstIdInSpring = -1;
+				m_firstIdInSpring = INVALID_ENTITY;
 			}
 
 			if (Input::GetKeyDown(Input::C))
@@ -86,19 +86,19 @@ namespace WeirdEngine
 			switch (m_currentInteractionMode)
 			{
 				case PhysicsInteractionSystem::InteractionMode::Drag:
-					drag(ecs, simulation);
+					drag(ecs);
 					break;
 				case PhysicsInteractionSystem::InteractionMode::Impulse:
-					impulse(ecs, simulation);
+					impulse(ecs);
 					break;
 				case PhysicsInteractionSystem::InteractionMode::Fix:
-					fix(ecs, simulation);
+					fix(ecs);
 					break;
 				case PhysicsInteractionSystem::InteractionMode::Spring:
-					spring(ecs, simulation);
+					spring(ecs);
 					break;
 				case PhysicsInteractionSystem::InteractionMode::DistanceConstraint:
-					positionConstraint(ecs, simulation);
+					positionConstraint(ecs);
 					break;
 				default:
 					break;
@@ -137,30 +137,33 @@ namespace WeirdEngine
 			// Add force to last ball
 			if (Input::GetKey(Input::T))
 			{
-				SimulationID lastInSimulation = simulation.getSize() - 1;
+				auto rbs = ecs.getComponentArray<RigidBody2D>();
 
-				int last = ecs.getComponentArray<RigidBody2D>()->getSize() - 1;
-				SimulationID target = ecs.getComponentArray<RigidBody2D>()->getDataAtIdx(last).simulationId;
+				RigidBody2D& target = rbs->getLastData();
 
-				auto v = vec2(15, 30) - simulation.getPosition(target);
-				simulation.setContinuousForce(target, 50.0f * normalize(v));
+				vec3 position = ecs.getComponent<Transform>(target.Owner).position;
+				vec2 v = vec2(15, 30) - vec2(position.x, position.y);
+
+				target.pendingContinuousForce += 50.0f * normalize(v);
+
+				target.isDirty = true;
 			}
 
-			// Pause / resume simulation
-			if (Input::GetKeyDown(Input::P))
-			{
-				if (simulation.isPaused())
-				{
-					simulation.resume();
-				}
-				else
-				{
-					simulation.pause();
-				}
-			}
+			// // Pause / resume simulation
+			// if (Input::GetKeyDown(Input::P))
+			// {
+			// 	if (simulation.isPaused())
+			// 	{
+			// 		simulation.resume();
+			// 	}
+			// 	else
+			// 	{
+			// 		simulation.pause();
+			// 	}
+			// }
 		}
 
-		inline vec2 getMousePositionInWorld(ECSManager& ecs, Simulation2D& simulation)
+		inline vec2 getMousePositionInWorld(ECSManager& ecs)
 		{
 			// Get mouse coordinates
 			auto& cameraTransform = ecs.getComponent<Transform>(0); // m_mainCamera
@@ -173,39 +176,85 @@ namespace WeirdEngine
 			return mousePositionInWorld;
 		}
 
-		inline void drag(ECSManager& ecs, Simulation2D& simulation)
+		inline void drag(ECSManager& ecs)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
-				// Find new target
-				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
+				auto rbs = ecs.getComponentArray<RigidBody2D>();
 
-				// No prior target and new target is good
-				if (m_dragId >= simulation.getSize() && id < simulation.getSize())
+
+				float minD2 = 1.0f;
+
+				vec2 mouseInWorld = getMousePositionInWorld(ecs);
+
+				for (int i = 0; i < rbs->getSize(); i++)
 				{
-					m_dragId = id;
-					simulation.fix(m_dragId);
+					auto& rb = rbs->getDataAtIdx(i);
+					auto& t = ecs.getComponent<Transform>(rb.Owner);
+
+					float d2 = glm::length2(mouseInWorld - vec2(t.position.x, t.position.y));
+					if (d2 < minD2)
+					{
+						minD2 = d2;
+						m_dragId = rb.Owner;
+					}
 				}
+
+
+				if(m_dragId != INVALID_ENTITY)
+				{
+					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
+					rb.isFixed = true;
+					rb.isDirty = true;
+				}
+				
 			}
 
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
-				if (m_dragId < simulation.getSize())
+				if (m_dragId != INVALID_ENTITY)
 				{
-					simulation.unFix(m_dragId);
-					simulation.addImpulseForce(m_dragId, 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY()));
-					m_dragId = -1;
+					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
+					rb.isFixed = false;
+					rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
+					rb.isDirty = true;
+
+					m_dragId = INVALID_ENTITY;
 				}
 			}
 
-			if (m_dragId < simulation.getSize())
+			if (m_dragId != INVALID_ENTITY)
 			{
-				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
-				simulation.setPosition(m_dragId, mousePositionInWorld);
+				vec2 mousePositionInWorld = getMousePositionInWorld(ecs);
+				auto& t = ecs.getComponent<Transform>(m_dragId);
+
+				t.position = vec3(mousePositionInWorld, 0.0f);
+				t.isDirty = true;
 			}
 		}
 
-		inline void impulse(ECSManager& ecs, Simulation2D& simulation)
+		inline Entity getEntityAtPosition(ECSManager& ecs, vec2 position, float radius = 0.5f)
+		{
+			auto rbs = ecs.getComponentArray<RigidBody2D>();
+			float minD2 = radius * radius;
+			Entity found = INVALID_ENTITY;
+
+			for (int i = 0; i < rbs->getSize(); i++)
+			{
+				auto& rb = rbs->getDataAtIdx(i);
+				auto& t = ecs.getComponent<Transform>(rb.Owner);
+
+				float d2 = glm::length2(position - vec2(t.position.x, t.position.y));
+				if (d2 < minD2)
+				{
+					minD2 = d2;
+					found = rb.Owner;
+				}
+			}
+			return found;
+		}
+
+		inline void impulse(ECSManager& ecs)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
@@ -213,7 +262,7 @@ namespace WeirdEngine
 					return;
 
 				m_loadingImpulse = true;
-				m_loadStartPosition = getMousePositionInWorld(ecs, simulation);
+				m_loadStartPosition = getMousePositionInWorld(ecs);
 			}
 
 			if (Input::GetMouseButtonUp(Input::RightClick))
@@ -228,7 +277,7 @@ namespace WeirdEngine
 
 				auto transforms = ecs.getComponentArray<Transform>();
 
-				vec2 mousePositionInWorld = getMousePositionInWorld(ecs, simulation);
+				vec2 mousePositionInWorld = getMousePositionInWorld(ecs);
 				vec2 direction = (mousePositionInWorld - m_loadStartPosition);
 				float dragDistance = length(direction);
 
@@ -243,84 +292,98 @@ namespace WeirdEngine
 					float maxDistance = 5.0f;
 					vec2 force = 1.0f * glm::clamp(maxDistance - distance, 0.0f, 1.0f) * direction;
 
-					simulation.addImpulseForce(rb.simulationId, force);
+					rb.pendingImpulseForce += force;
+					rb.isDirty = true;
 				}
 			}
 		}
 
-		inline void fix(ECSManager& ecs, Simulation2D& simulation)
+		inline void fix(ECSManager& ecs)
 		{
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
-				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
-				if (id < simulation.getSize())
+				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
+				if (id != INVALID_ENTITY)
 				{
-					simulation.fix(id);
+					auto& rb = ecs.getComponent<RigidBody2D>(id);
+					rb.isFixed = !rb.isFixed;
+					rb.isDirty = true;
 				}
 			}
 		}
 
-		inline void spring(ECSManager& ecs, Simulation2D& simulation)
+		inline void spring(ECSManager& ecs)
 		{
 
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
-				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
-				if (id < simulation.getSize())
+				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
+				if (id != INVALID_ENTITY)
 				{
 					m_firstIdInSpring = id;
 				}
 				else
 				{
-					m_firstIdInSpring = -1;
+					m_firstIdInSpring = INVALID_ENTITY;
 				}
 			}
 
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
-				if (m_firstIdInSpring < simulation.getSize())
+				if (m_firstIdInSpring != INVALID_ENTITY)
 				{
 					// Check
-					SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
-					if (id < simulation.getSize())
+					Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
+					if (id != INVALID_ENTITY)
 					{
-						simulation.addSpring(id, m_firstIdInSpring, 0.1f, 1.4142f);
+						Entity entity = ecs.createEntity();
+						auto& spring = ecs.addComponent<Spring>(entity);
+						spring.entityA = id;
+						spring.entityB = m_firstIdInSpring;
+						spring.stiffness = 0.1f;
+						spring.restDistance = 1.4142f;
+						spring.isDirty = true;
 					}
 				}
 
-				m_firstIdInSpring = -1;
+				m_firstIdInSpring = INVALID_ENTITY;
 			}
 		}
 
-		inline void positionConstraint(ECSManager& ecs, Simulation2D& simulation)
+		inline void positionConstraint(ECSManager& ecs)
 		{
 
 			if (Input::GetMouseButtonDown(Input::RightClick))
 			{
-				SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
-				if (id < simulation.getSize())
+				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
+				if (id != INVALID_ENTITY)
 				{
 					m_firstIdInSpring = id;
 				}
 				else
 				{
-					m_firstIdInSpring = -1;
+					m_firstIdInSpring = INVALID_ENTITY;
 				}
 			}
 
 			if (Input::GetMouseButtonUp(Input::RightClick))
 			{
-				if (m_firstIdInSpring < simulation.getSize())
+				if (m_firstIdInSpring != INVALID_ENTITY)
 				{
 					// Check
-					SimulationID id = simulation.raycast(getMousePositionInWorld(ecs, simulation));
-					if (id < simulation.getSize())
+					Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
+					if (id != INVALID_ENTITY)
 					{
-						simulation.addPositionConstraint(id, m_firstIdInSpring);
+						Entity entity = ecs.createEntity();
+						auto& constraint = ecs.addComponent<DistanceConstraint>(entity);
+						constraint.entityA = id;
+						constraint.entityB = m_firstIdInSpring;
+						constraint.distance = 1.0f; // Was default in simulation.addPositionConstraint
+						constraint.isDirty = true;
 					}
 				}
 
-				m_firstIdInSpring = -1;
+				m_firstIdInSpring = INVALID_ENTITY;
 			}
 		}
 	} // namespace PhysicsInteractionSystem

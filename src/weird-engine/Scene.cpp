@@ -180,7 +180,7 @@ namespace WeirdEngine
 
 			if (m_debugInput)
 			{
-				PhysicsInteractionSystem::update(m_ecs, m_simulation2D);
+				PhysicsInteractionSystem::update(m_ecs);
 			}
 
 			m_simulation2D.update(delta);
@@ -677,11 +677,21 @@ namespace WeirdEngine
 
 	void Scene::renderImGui()
 	{
-		const char* label = "Global settings";
+		const char* label = "Settings";
 		if (ImGui::CollapsingHeader(label))
 		{
-
 			ImGui::PushID(label);
+
+			if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
+			{
+				if (m_simulationIsPaused)
+					m_simulation2D.pause();
+				else
+					m_simulation2D.resume();
+			}
+
+			ImGui::Separator();
+
 			onImGuiRender();
 
 			ImGui::PopID();

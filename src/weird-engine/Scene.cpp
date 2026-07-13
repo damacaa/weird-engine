@@ -190,12 +190,16 @@ namespace WeirdEngine
 			PROFILE_SCOPE("Collision handling");
 
 			// Process queued collisions
-			std::vector<CollisionEvent> collisions;
-			std::vector<ShapeCollisionEvent> shapeCollisions;
+			// Static vectors retain heap capacity across frames, avoiding
+			// repeated allocations when thousands of collisions are generated.
+			static std::vector<CollisionEvent> collisions;
+			static std::vector<ShapeCollisionEvent> shapeCollisions;
+			collisions.clear();
+			shapeCollisions.clear();
 			{
 				std::lock_guard<std::mutex> lock(m_collisionQueueMutex);
-				collisions = std::move(m_queuedCollisions);
-				shapeCollisions = std::move(m_queuedShapeCollisions);
+				std::swap(collisions, m_queuedCollisions);
+				std::swap(shapeCollisions, m_queuedShapeCollisions);
 			}
 
 			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();

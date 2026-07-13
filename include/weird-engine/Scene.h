@@ -13,6 +13,7 @@
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-physics/Simulation2D.h"
 #include "weird-engine/Material3D.h"
+#include "weird-engine/Background.h"
 
 #include <string>
 #include <unordered_map>
@@ -73,6 +74,9 @@ namespace WeirdEngine
 
 		Material3D& getMaterial(int index) { return m_materials[index]; }
 		const Material3D* getMaterials() const { return m_materials; }
+
+		BackgroundParams& getBackground() { return m_background; }
+		const BackgroundParams& getBackground() const { return m_background; }
 
 		float getTime();
 
@@ -220,6 +224,8 @@ namespace WeirdEngine
 
 		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
 		std::string m_sceneFilePath;
+		
+		BackgroundParams m_background;
 
 	private:
 		// Load scene state from a .weird JSON file

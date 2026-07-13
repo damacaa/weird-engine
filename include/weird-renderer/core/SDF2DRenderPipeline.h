@@ -7,6 +7,7 @@
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
+#include "weird-engine/Background.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -48,7 +49,7 @@ namespace WeirdEngine
 
 			Shader& getDistanceShader();
 			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time,
-							double delta, Texture* backgroundTexture = nullptr);
+							double delta, const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 			void showDebugUI();
@@ -103,8 +104,12 @@ namespace WeirdEngine
 			RenderTarget m_postProcessRenderBack;
 			RenderTarget* m_postProcessDoubleBuffer[2];
 
-			Texture m_backgroundTexture;
-			RenderTarget m_backgroundRender;
+			Texture m_backgroundTextureFront;
+			Texture m_backgroundTextureBack;
+			RenderTarget m_backgroundRenderFront;
+			RenderTarget m_backgroundRenderBack;
+			RenderTarget* m_backgroundDoubleBuffer[2];
+			int m_backgroundDoubleBufferIdx = 0;
 
 			Texture m_litSceneTexture;
 			RenderTarget m_litSceneRender;
@@ -127,7 +132,8 @@ namespace WeirdEngine
 			glm::vec3 m_lastCameraPosition;
 
 			bool horizontal = true;
-			glm::vec3 cameraPositionChange;
+			glm::vec3 cameraPositionChange = glm::vec3(0.0f);
+
 			struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
 			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 										const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
@@ -136,7 +142,7 @@ namespace WeirdEngine
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);
 			void blendMaterials(double time);
-			void renderBackground(const Camera& camera, double time);
+			void renderBackground(const Camera& camera, double time, const BackgroundParams& bgParams);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
 			static int largestPowerOfTwoBelow(int n);
 		};

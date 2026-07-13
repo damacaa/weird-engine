@@ -7,6 +7,8 @@
 #include "weird-engine/vec.h"
 #include "weird-engine/Profiler.h"
 
+#include <glm/gtx/color_space.hpp>
+
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
 #endif // !SHADERS_PATH
@@ -171,9 +173,15 @@ namespace WeirdEngine
 			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
 			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
 
-			m_backgroundTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
-			m_backgroundRender = RenderTarget(false);
-			m_backgroundRender.bindColorTextureToFrameBuffer(m_backgroundTexture);
+			m_backgroundTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundRenderFront = RenderTarget(false);
+			m_backgroundRenderBack = RenderTarget(false);
+			m_backgroundRenderFront.bindColorTextureToFrameBuffer(m_backgroundTextureFront);
+			m_backgroundRenderBack.bindColorTextureToFrameBuffer(m_backgroundTextureBack);
+			m_backgroundDoubleBuffer[0] = &m_backgroundRenderFront;
+			m_backgroundDoubleBuffer[1] = &m_backgroundRenderBack;
+			m_backgroundDoubleBufferIdx = 0;
 
 			m_litSceneTexture =
 				Texture(m_config.renderWidth, m_config.renderHeight,
@@ -209,7 +217,10 @@ namespace WeirdEngine
 			m_colorRender.free();
 			m_postProcessRenderFront.free();
 			m_postProcessRenderBack.free();
-			m_backgroundRender.free();
+
+			m_backgroundRenderFront.free();
+			m_backgroundRenderBack.free();
+
 			m_litSceneRender.free();
 
 			m_distanceTextureA.dispose();
@@ -222,7 +233,8 @@ namespace WeirdEngine
 			m_colorTexture.dispose();
 			m_postProcessTextureFront.dispose();
 			m_postProcessTextureBack.dispose();
-			m_backgroundTexture.dispose();
+			m_backgroundTextureFront.dispose();
+			m_backgroundTextureBack.dispose();
 			m_litSceneTexture.dispose();
 		}
 
@@ -247,7 +259,8 @@ namespace WeirdEngine
 			m_colorTexture.dispose();
 			m_postProcessTextureFront.dispose();
 			m_postProcessTextureBack.dispose();
-			m_backgroundTexture.dispose();
+			m_backgroundTextureFront.dispose();
+			m_backgroundTextureBack.dispose();
 			m_litSceneTexture.dispose();
 
 			// Recreate textures with new dimensions and rebind to existing render targets
@@ -300,8 +313,10 @@ namespace WeirdEngine
 			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
 
-			m_backgroundTexture = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
-			m_backgroundRender.bindColorTextureToFrameBuffer(m_backgroundTexture);
+			m_backgroundTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundRenderFront.bindColorTextureToFrameBuffer(m_backgroundTextureFront);
+			m_backgroundRenderBack.bindColorTextureToFrameBuffer(m_backgroundTextureBack);
 
 			m_litSceneTexture =
 				Texture(m_config.renderWidth, m_config.renderHeight,
@@ -311,7 +326,7 @@ namespace WeirdEngine
 
 		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 											 const Camera& camera, double time, double delta,
-											 Texture* backgroundTexture)
+											 const BackgroundParams& bgParams, Texture* backgroundTexture)
 		{
 			// PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
 
@@ -323,7 +338,31 @@ namespace WeirdEngine
 			upscaleDistance();
 			renderMaterialColors(camera, time, delta);
 			blendMaterials(time);
-			renderBackground(camera, time);
+			if (!backgroundTexture) 
+			{
+				renderBackground(camera, time, bgParams);
+			}
+
+			// Dynamically set shadow tint based on background primary color to simulate global sky ambient
+			glm::vec3 hsvAmbient = glm::hsvColor(glm::vec3(bgParams.primaryColor));
+
+			// Shift hue slightly (e.g. +15 degrees) to make shadows more interesting
+			hsvAmbient.x += 15.0f;
+			if (hsvAmbient.x >= 360.0f) hsvAmbient.x -= 360.0f;
+
+			// Increase saturation to get a pure, vibrant color tone
+			hsvAmbient.y = std::min(hsvAmbient.y * 1.5f + 0.2f, 1.0f);
+			hsvAmbient.z = 1.0f;
+
+			glm::vec3 vibrantColor = glm::rgbColor(hsvAmbient);
+			
+			// Map the vibrant color to a valid transmittance range. 
+			// We want the shadow to block at most ~25% of light (0.75 transmittance) 
+			// to keep it from getting too dark, while fully letting the tinted color through.
+			glm::vec3 shadowTransmittance = glm::mix(glm::vec3(0.75f), glm::vec3(1.0f), vibrantColor);
+			
+			m_config.shadowTint = shadowTransmittance;
+
 			applyLighting(camera, time, backgroundTexture);
 
 			Profiler::get().gpuSync(); // Stalls if recording average report
@@ -711,20 +750,70 @@ namespace WeirdEngine
 			Profiler::get().gpuSync();
 		}
 
-		void SDF2DRenderPipeline::renderBackground(const Camera& camera, double time)
+		void SDF2DRenderPipeline::renderBackground(const Camera& camera, double time, const BackgroundParams& bgParams)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderBackground (UI)" : "renderBackground (World)");
 
-			m_backgroundRender.bind();
+			// Inject code if needed
+			if (bgParams.isDirty)
+			{
+				std::string injectedCode = "";
+				
+				switch (bgParams.type) {
+					case BackgroundType::Solid:
+						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) { return u_bgPrimaryColor.rgb; }";
+						break;
+					case BackgroundType::Grid:
+						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
+									   "    float zoom = -2.0 * u_camMatrix[3].z;\n"
+									   "    float freq = 0.1 * u_bgScale;\n"
+									   "    float threshold = 2.0 * freq * zoom / u_resolution.y;\n"
+									   "    float gridLine = (fract(freq * worldPos.x) >= threshold && \n"
+									   "                      fract(freq * worldPos.y) >= threshold) ? 1.0 : 0.0;\n"
+									   "    return mix(u_bgPrimaryColor.rgb, u_bgSecondaryColor.rgb, 1.0 - gridLine) * u_bgIntensity;\n"
+									   "}";
+						break;
+					case BackgroundType::Sky:
+						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
+									   "    float freq = 0.1 * u_bgScale;\n"
+									   "    float t = clamp((worldPos.y * freq + 1.0) * 0.5, 0.0, 1.0);\n"
+									   "    return mix(u_bgSecondaryColor.rgb, u_bgPrimaryColor.rgb, t) * u_bgIntensity;\n"
+									   "}";
+						break;
+					case BackgroundType::Custom:
+						injectedCode = bgParams.customShaderCode;
+						break;
+				}
+				
+				injectedCode = "#define HAS_CUSTOM_BACKGROUND\n" + injectedCode;
+				m_defaultBackgroundShader.setFragmentIncludeCode(0, injectedCode);
+			}
+
+			int writeIdx = (m_backgroundDoubleBufferIdx + 1) % 2;
+			m_backgroundDoubleBuffer[writeIdx]->bind();
 
 			m_defaultBackgroundShader.use();
+			m_defaultBackgroundShader.setUniform("t_prevBackground", 0);
+			if (m_backgroundDoubleBufferIdx == 0) {
+				m_backgroundTextureFront.bind(0);
+			} else {
+				m_backgroundTextureBack.bind(0);
+			}
 			m_defaultBackgroundShader.setUniform("u_camMatrix", camera.view);
 			m_defaultBackgroundShader.setUniform("u_time", time);
 			m_defaultBackgroundShader.setUniform("u_resolution",
 												 glm::vec2(m_config.renderWidth, m_config.renderHeight));
+												 
+			// Background params
+			m_defaultBackgroundShader.setUniform("u_bgPrimaryColor", bgParams.primaryColor);
+			m_defaultBackgroundShader.setUniform("u_bgSecondaryColor", bgParams.secondaryColor);
+			m_defaultBackgroundShader.setUniform("u_bgScale", bgParams.scale);
+			m_defaultBackgroundShader.setUniform("u_bgIntensity", bgParams.intensity);
+			m_defaultBackgroundShader.setUniform("u_enableBlend", time <= 1.0);
 
 			m_renderPlane.draw(m_defaultBackgroundShader);
 			Profiler::get().gpuSync();
+			m_backgroundDoubleBufferIdx = writeIdx;
 		}
 
 		void SDF2DRenderPipeline::applyLighting(const Camera& camera, double time, Texture* backgroundTexture)
@@ -766,7 +855,11 @@ namespace WeirdEngine
 			}
 			else
 			{
-				m_backgroundTexture.bind(2);
+				if (m_backgroundDoubleBufferIdx == 0) {
+					m_backgroundTextureFront.bind(2);
+				} else {
+					m_backgroundTextureBack.bind(2);
+				}
 			}
 
 			// Corrected distance for shadows

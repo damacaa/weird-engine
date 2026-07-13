@@ -357,7 +357,7 @@ namespace WeirdEngine
 
 			double time = scene.getTime();
 			auto& m_finalResultTexture =
-				m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, &texture);
+				m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, scene.getBackground(), &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
@@ -786,11 +786,11 @@ namespace WeirdEngine
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
+				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta, scene.getBackground(),
 												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
-				return t;
+				return texture;
 			}
 
 			// Pure 3D: should have been returned earlier; fall back to 3D output.

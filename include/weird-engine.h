@@ -91,49 +91,48 @@ namespace WeirdEngine
 			}
 #endif
 
-			// Capture window input
-			Input::update(ctx.renderer.getWindow());
-
-			// Suppress game input when ImGui has focus
-			{
-				const ImGuiIO& io = ImGui::GetIO();
-				if (io.WantCaptureMouse)
-					Input::suppressMouseInput();
-				if (io.WantCaptureKeyboard)
-					Input::suppressKeyboardInput();
-			}
-
-			if (Input::GetKeyDown(Input::T))
-			{
-				WeirdEngine::Profiler::Get().startRecording();
-			}
-			WeirdEngine::Profiler::Get().update();
+			WeirdEngine::Profiler::get().update();
 
 			PROFILE_SCOPE("Frame");
 
 			bool newResolution = false;
-			SDL_Event event;
-			while (SDL_PollEvent(&event))
+			// Capture window input and events
 			{
-				ImGui_ImplSDL3_ProcessEvent(&event);
+				PROFILE_SCOPE("Input events");
+				Input::update(ctx.renderer.getWindow());
 
-				if (event.type == SDL_EVENT_QUIT)
+				// Suppress game input when ImGui has focus
 				{
-					ctx.quit = true;
+					const ImGuiIO& io = ImGui::GetIO();
+					if (io.WantCaptureMouse)
+						Input::suppressMouseInput();
+					if (io.WantCaptureKeyboard)
+						Input::suppressKeyboardInput();
 				}
-				else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+				
+				SDL_Event event;
+				while (SDL_PollEvent(&event))
 				{
-					int newWidth = event.window.data1;
-					int newHeight = event.window.data2;
-
-					WeirdEngine::Logger::log("Window resized to: " + std::to_string(newWidth) + "x" + std::to_string(newHeight));
-
-					ctx.renderer.setWindowSize(newWidth, newHeight);
-					newResolution = true;
-				}
-				else
-				{
-					Input::handleEvent(event);
+					ImGui_ImplSDL3_ProcessEvent(&event);
+					
+					if (event.type == SDL_EVENT_QUIT)
+					{
+						ctx.quit = true;
+					}
+					else if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+					{
+						int newWidth = event.window.data1;
+						int newHeight = event.window.data2;
+						
+						WeirdEngine::Logger::log("Window resized to: " + std::to_string(newWidth) + "x" + std::to_string(newHeight));
+						
+						ctx.renderer.setWindowSize(newWidth, newHeight);
+						newResolution = true;
+					}
+					else
+					{
+						Input::handleEvent(event);
+					}
 				}
 			}
 

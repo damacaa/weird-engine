@@ -190,17 +190,20 @@ namespace WeirdEngine
 			PROFILE_SCOPE("Collision handling");
 
 			// Process queued collisions
-			std::vector<CollisionEvent> collisions;
-			std::vector<ShapeCollisionEvent> shapeCollisions;
+			// Static vectors retain heap capacity across frames, avoiding
+			// repeated allocations when thousands of collisions are generated.
+			static std::vector<CollisionEvent> collisions;
+			static std::vector<ShapeCollisionEvent> shapeCollisions;
+			collisions.clear();
+			shapeCollisions.clear();
 			{
 				std::lock_guard<std::mutex> lock(m_collisionQueueMutex);
-				collisions = std::move(m_queuedCollisions);
-				shapeCollisions = std::move(m_queuedShapeCollisions);
+				std::swap(collisions, m_queuedCollisions);
+				std::swap(shapeCollisions, m_queuedShapeCollisions);
 			}
 
 			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
 			
-			// TODO: This loop has very inconsistent execution times. Investigate why.
 			for (auto& ev : collisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies), getEntityForSimulationId(ev.bodyB, rigidBodies)};
@@ -297,21 +300,21 @@ namespace WeirdEngine
 
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch World Data");
+		// PROFILE_SCOPE("Fetch World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch 3D World Data");
+		// PROFILE_SCOPE("Fetch 3D World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_3DWorldRenderContext, data, size);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch UI Data");
+		// PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
 	}
@@ -438,11 +441,8 @@ namespace WeirdEngine
 
 	Entity Scene::getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
 	{
-		return 0;
-		
 		if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
 			return INVALID_ENTITY;
-
 
 		return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
 	}

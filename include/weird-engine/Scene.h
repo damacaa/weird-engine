@@ -243,6 +243,7 @@ namespace WeirdEngine
 
 		ECSManager m_ecs;
 		Simulation2D m_simulation2D;
+		bool m_simulationIsPaused = false;
 
 		std::mutex m_collisionQueueMutex;
 		std::vector<CollisionEvent> m_queuedCollisions;

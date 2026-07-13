@@ -675,6 +675,10 @@ namespace WeirdEngine
 				{
 					profiler.enableRealtime();
 				}
+				if (ImGui::Button("Copy Report to Clipboard"))
+				{
+					ImGui::SetClipboardText(profiler.getReportString().c_str());
+				}
 			}
 
 			ImGui::End();

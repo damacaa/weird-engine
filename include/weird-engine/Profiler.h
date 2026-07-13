@@ -110,6 +110,38 @@ namespace WeirdEngine
 		bool isReportFinished() const { return m_reportFinished; }
 		bool isRecordingReport() const { return m_recording && !m_realtimeMode; }
 
+		std::string getReportString() const
+		{
+			std::stringstream ss;
+			ss << "Profiler Average Report\n";
+			ss << "=======================\n";
+			const auto& stats = getLastFrameStats();
+			
+			double topMs = 0.0;
+			for (const auto& s : stats)
+			{
+				if (s.depth == 0 && s.count > 0)
+				{
+					topMs = s.totalTimeMs / s.count;
+					break;
+				}
+			}
+			if (topMs <= 0.0) topMs = 1.0;
+
+			for (const auto& s : stats)
+			{
+				if (s.count == 0 || s.depth == 0) continue;
+				double avgMs = s.totalTimeMs / s.count;
+				float fraction = (float)(avgMs / topMs);
+				fraction = std::min(1.0f, std::max(0.0f, fraction));
+				for (int i = 1; i < s.depth; ++i) ss << "  ";
+				ss << s.name << ": ";
+				ss << std::fixed << std::setprecision(3) << avgMs << " ms (";
+				ss << std::fixed << std::setprecision(1) << (fraction * 100.0f) << "%)\n";
+			}
+			return ss.str();
+		}
+
 		void update()
 		{
 			if (m_pendingReportRecordingEnable)

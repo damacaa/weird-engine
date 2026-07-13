@@ -437,11 +437,8 @@ namespace WeirdEngine
 
 	Entity Scene::getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
 	{
-		return 0;
-		
 		if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
 			return INVALID_ENTITY;
-
 
 		return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
 	}

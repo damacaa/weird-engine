@@ -128,8 +128,7 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 			float objectDist = shape_circle(p - positionSizeMaterial.xy);
 #endif
 
-			// Inside ball mask is set to 0
-			mask = objectDist <= 0.0 ? -objectDist * 4.0 : mask;
+			mask = max(mask, -objectDist * 4.0);
 
 #ifdef BLEND_SHAPES
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;

@@ -34,6 +34,7 @@ namespace WeirdEngine
 		, m_invMass(new float[size])
 		, m_maxSize(size)
 		, m_size(0)
+		, m_allocated(0)
 		, m_simulationDelay(0)
 		, m_simulationTime(0)
 		, m_substeps(1)
@@ -173,6 +174,18 @@ namespace WeirdEngine
 						m_fixedObjects.erase(it);
 						m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
 					}
+					break;
+				}
+				case PhysicsCommandType::ActivatePending:
+				{
+					m_size = m_allocated;
+					break;
+				}
+				case PhysicsCommandType::AddImpulse:
+				{
+					std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+					m_impulsesSinceLastUpdate = true;
+					m_impulses[cmd.id] += cmd.vectorData;
 					break;
 				}
 				default:
@@ -936,7 +949,7 @@ namespace WeirdEngine
 	{
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
-		SimulationID id = m_size;
+		SimulationID id = m_allocated;
 
 		// Initialize particle with safe defaults so the physics
 		// thread never processes stale/garbage data.
@@ -953,9 +966,19 @@ namespace WeirdEngine
 		m_continuousForcesWrite[id] = vec2(0.0f);
 		m_mass[id] = 1.0f;
 		m_invMass[id] = 1.0f;
+		m_collisionMap[id] = false;
 
-		m_size++;
+		m_allocated++;
 		return id;
+	}
+
+	void Simulation2D::activatePendingBodies()
+	{
+		if (m_allocated == m_size)
+			return;
+
+		std::lock_guard<std::mutex> lock(m_commandMutex);
+		m_pendingCommands.push_back({PhysicsCommandType::ActivatePending});
 	}
 
 	void Simulation2D::removeObject(SimulationID id)
@@ -1042,6 +1065,7 @@ namespace WeirdEngine
 
 		// Adjust size
 		m_size--;
+		m_allocated--;
 	}
 
 	size_t Simulation2D::getSize()
@@ -1051,13 +1075,19 @@ namespace WeirdEngine
 
 	void Simulation2D::addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent)
 	{
-		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-
-		m_impulsesSinceLastUpdate = true;
+		vec2 finalImpulse = impulse * m_simulationFrequency;
 		if (massIndependent)
-			m_impulses[id] += m_simulationFrequency * m_mass[id] * impulse;
+			finalImpulse *= m_mass[id];
+
+		if (std::this_thread::get_id() == m_physicsThreadId)
+		{
+			m_internalCommands.push_back({PhysicsCommandType::AddImpulse, id, finalImpulse});
+		}
 		else
-			m_impulses[id] += m_simulationFrequency * impulse;
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back({PhysicsCommandType::AddImpulse, id, finalImpulse});
+		}
 	}
 
 	void Simulation2D::setContinuousForce(SimulationID id, const vec2& force, bool massIndependent)
@@ -1078,7 +1108,7 @@ namespace WeirdEngine
 		m_continuousForcesWrite = temp;
 
 		// Clear the new write buffer so it's ready for the next frame
-		for (size_t i = 0; i < m_size; i++)
+		for (size_t i = 0; i < m_allocated; i++)
 		{
 			m_continuousForcesWrite[i] = vec2(0.0f);
 		}
@@ -1089,6 +1119,7 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_distanceConstraints.emplace_back(
 			a, b, distance,
 			std::pow(stiffness, std::sqrt(m_relaxationSteps))); // Square to make stiffness more intuitive
@@ -1099,6 +1130,7 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_distanceConstraints.emplace_back(a, b, distance, 1.0f);
 	}
 
@@ -1107,6 +1139,7 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_gravitationalConstraints.emplace_back(a, b, gravity);
 	}
 
@@ -1115,6 +1148,7 @@ namespace WeirdEngine
 		if (a == b)
 			return false;
 
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		for (auto& constraint : m_distanceConstraints)
 		{
 			bool sameDirection = (constraint.A == static_cast<int>(a) && constraint.B == static_cast<int>(b));

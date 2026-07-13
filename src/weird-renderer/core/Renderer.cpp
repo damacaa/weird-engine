@@ -141,140 +141,147 @@ namespace WeirdEngine
 			output(scene, result, clampedDelta);
 			glFinish();
 
-			static bool showDebugUI = false;
-			static bool showStatsUI = false;
-
-			if (Input::GetKeyDown(Input::F3))
 			{
-				showDebugUI = !showDebugUI;
-			}
+				PROFILE_SCOPE("ImGui");
+				static bool showDebugUI = false;
+				static bool showStatsUI = false;
 
-			if (Input::GetKeyDown(Input::F4))
-			{
-				showStatsUI = !showStatsUI;
-				if (showStatsUI)
-					Profiler::Get().enableRealtime();
-				else
-					Profiler::Get().disableRealtime();
-			}
-
-			if (Input::GetKeyDown(Input::F11))
-			{
-				bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
-				SDL_SetWindowFullscreen(m_window, !isFullscreen);
-			}
-
-			ImGui_ImplOpenGL3_NewFrame();
-			ImGui_ImplSDL3_NewFrame();
-			ImGui::NewFrame();
-
-			if (showDebugUI)
-			{
-				ImGui::Begin("Engine Settings");
-
-				if (ImGui::BeginTabBar("EngineTabBar"))
+				if (Input::GetKeyDown(Input::F3))
 				{
-					if (ImGui::BeginTabItem("Scene"))
-					{
-						scene.renderImGui();
-						ImGui::EndTabItem();
-					}
-
-					if (ImGui::BeginTabItem("Renderer"))
-					{
-						m_worldPipeline->showDebugUI();
-						m_uiPipeline->showDebugUI();
-						m_3DWorldPipeline->showDebugUI();
-						m_meshPipeline->showDebugUI();
-
-						// Output settings
-						{
-							const char* label = "Output Settings";
-							if (ImGui::CollapsingHeader(label))
-							{
-								ImGui::PushID(label);
-
-								if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
-								{
-									if (m_ditheringEnabled)
-										m_outputShaderProgram.addDefine("DITHERING");
-									else
-										m_outputShaderProgram.removeDefine("DITHERING");
-								}
-
-								ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
-								ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
-
-								ImGui::Separator();
-								if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
-								{
-									if (m_surfaceBlurEnabled)
-										m_outputShaderProgram.addDefine("SURFACE_BLUR");
-									else
-										m_outputShaderProgram.removeDefine("SURFACE_BLUR");
-								}
-								ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
-								ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f, 1.0f);
-
-								ImGui::PopID();
-							}
-						}
-
-						if (ImGui::Button("Take Screenshot"))
-						{
-							m_takeScreenshot = true;
-						}
-
-						bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
-						if (ImGui::Checkbox("Fullscreen", &isFullscreen))
-						{
-							SDL_SetWindowFullscreen(m_window, isFullscreen);
-						}
-
-						if (!m_lastScreenshotPath.empty())
-						{
-							ImGui::SameLine();
-							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-							ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
-							ImGui::PopStyleColor();
-							if (ImGui::IsItemHovered())
-							{
-								ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-								ImGui::SetTooltip("Click to open");
-							}
-							if (ImGui::IsItemClicked())
-							{
-								std::string url = "file://" + m_lastScreenshotPath;
-								SDL_OpenURL(url.c_str());
-							}
-						}
-						ImGui::EndTabItem();
-					}
-
-					if (ImGui::BeginTabItem("Console"))
-					{
-						ImGui::Checkbox("Print to std::cout", &Logger::s_enableConsoleOutput);
-						Logger::drawImGuiConsole();
-						ImGui::EndTabItem();
-					}
-					
-					ImGui::EndTabBar();
+					showDebugUI = !showDebugUI;
 				}
 
-				ImGui::End();
+				if (Input::GetKeyDown(Input::F4))
+				{
+					showStatsUI = !showStatsUI;
+					if (showStatsUI)
+						Profiler::get().enableRealtime();
+					else
+						Profiler::get().disableRealtime();
+				}
+
+				if (Input::GetKeyDown(Input::F11))
+				{
+					bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+					SDL_SetWindowFullscreen(m_window, !isFullscreen);
+				}
+
+				ImGui_ImplOpenGL3_NewFrame();
+				ImGui_ImplSDL3_NewFrame();
+				ImGui::NewFrame();
+
+				if (showDebugUI)
+				{
+					ImGui::Begin("Engine Settings");
+
+					if (ImGui::BeginTabBar("EngineTabBar"))
+					{
+						if (ImGui::BeginTabItem("Scene"))
+						{
+							scene.renderImGui();
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Renderer"))
+						{
+							m_worldPipeline->showDebugUI();
+							m_uiPipeline->showDebugUI();
+							m_3DWorldPipeline->showDebugUI();
+							m_meshPipeline->showDebugUI();
+
+							// Output settings
+							{
+								const char* label = "Output Settings";
+								if (ImGui::CollapsingHeader(label))
+								{
+									ImGui::PushID(label);
+
+									if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+									{
+										if (m_ditheringEnabled)
+											m_outputShaderProgram.addDefine("DITHERING");
+										else
+											m_outputShaderProgram.removeDefine("DITHERING");
+									}
+
+									ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+									ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+									ImGui::Separator();
+									if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
+									{
+										if (m_surfaceBlurEnabled)
+											m_outputShaderProgram.addDefine("SURFACE_BLUR");
+										else
+											m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+									}
+									ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+									ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f,
+													   1.0f);
+
+									ImGui::PopID();
+								}
+							}
+
+							if (ImGui::Button("Take Screenshot"))
+							{
+								m_takeScreenshot = true;
+							}
+
+							bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+							if (ImGui::Checkbox("Fullscreen", &isFullscreen))
+							{
+								SDL_SetWindowFullscreen(m_window, isFullscreen);
+							}
+
+							if (ImGui::Checkbox("VSync", &m_vSyncEnabled))
+							{
+								updateVSyncSetting();
+							}
+
+							if (!m_lastScreenshotPath.empty())
+							{
+								ImGui::SameLine();
+								ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+								ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
+								ImGui::PopStyleColor();
+								if (ImGui::IsItemHovered())
+								{
+									ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+									ImGui::SetTooltip("Click to open");
+								}
+								if (ImGui::IsItemClicked())
+								{
+									std::string url = "file://" + m_lastScreenshotPath;
+									SDL_OpenURL(url.c_str());
+								}
+							}
+							ImGui::EndTabItem();
+						}
+
+						if (ImGui::BeginTabItem("Console"))
+						{
+							ImGui::Checkbox("Print to std::cout", &Logger::s_enableConsoleOutput);
+							Logger::drawImGuiConsole();
+							ImGui::EndTabItem();
+						}
+
+						ImGui::EndTabBar();
+					}
+
+					ImGui::End();
+				}
+
+				if (showStatsUI)
+				{
+					drawStatsUI(scene, delta);
+				}
+
+				ImGui::Render();
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glViewport(0, 0, m_windowWidth, m_windowHeight);
+				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 			}
-
-			if (showStatsUI)
-			{
-				drawStatsUI(scene, delta);
-			}
-
-			
-
-			ImGui::Render();
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glViewport(0, 0, m_windowWidth, m_windowHeight);
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			{
 				PROFILE_SCOPE("Synchronization");
@@ -330,21 +337,7 @@ namespace WeirdEngine
 
 			m_uiCamera.view = cameraMatrix;
 
-			if (m_vSyncEnabled)
-			{
-				// Try -1 (Adaptive) first
-				int result = SDL_GL_SetSwapInterval(-1);
-
-				// If Adaptive fails, fall back to Standard (1)
-				if (result != 0)
-				{
-					result = SDL_GL_SetSwapInterval(1);
-				}
-			}
-			else
-			{
-				SDL_GL_SetSwapInterval(0); // Disable VSync
-			}
+			updateVSyncSetting();
 		}
 
 		void Renderer::output(Scene& scene, Texture& texture, const double delta)
@@ -410,6 +403,25 @@ namespace WeirdEngine
 			m_outputTexture.dispose();
 		}
 
+		void Renderer::updateVSyncSetting()
+		{
+			if (m_vSyncEnabled)
+			{
+				// Try -1 (Adaptive) first
+				int result = SDL_GL_SetSwapInterval(-1);
+
+				// If Adaptive fails, fall back to Standard (1)
+				if (result != 0)
+				{
+					result = SDL_GL_SetSwapInterval(1);
+				}
+			}
+			else
+			{
+				SDL_GL_SetSwapInterval(0); // Disable VSync
+			}
+		}
+
 		SDL_Window* Renderer::getWindow()
 		{
 			return m_window;
@@ -427,10 +439,10 @@ namespace WeirdEngine
 			ImGui::Begin("Performance Stats");
 
 			// FPS / Frametime header
-			ImGui::Text("FPS: %.1f  |  Frame: %.1f ms", fps, frameTimeMs);
+			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
 
 			char ftOverlay[32];
-			snprintf(ftOverlay, sizeof(ftOverlay), "%.1f ms", frameTimeMs);
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
 			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
 							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
 
@@ -439,7 +451,7 @@ namespace WeirdEngine
 			ImGui::TextDisabled("Profiler Scopes  (last frame)");
 			ImGui::Spacing();
 
-			auto& profiler = Profiler::Get();
+			auto& profiler = Profiler::get();
 			const auto& stats = profiler.getLastFrameStats();
 
 			if (stats.empty())
@@ -459,6 +471,7 @@ namespace WeirdEngine
 					break;
 				}
 			}
+
 			if (topMs <= 0.0)
 				topMs = 1.0;
 
@@ -474,40 +487,199 @@ namespace WeirdEngine
 			const float INDENT_PX = 16.0f;
 			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
 
-			for (const auto& stat : stats)
+			if (ImGui::BeginTabBar("ProfilerTabs"))
 			{
-				if (stat.count == 0 || stat.depth == 0)
-					continue;
-
-				double avgMs = stat.totalTimeMs / stat.count;
-				float fraction = (float)(avgMs / topMs);
-				fraction = std::min(1.0f, std::max(0.0f, fraction));
-				float indentOff = (stat.depth - 1) * INDENT_PX;
-				float availW = ImGui::GetContentRegionAvail().x;
-
-				// Scope name (indented)
-				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
-				ImGui::TextUnformatted(stat.name);
-
-				// Progress bar on the same line
-				ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
-				char barLabel[64];
-				snprintf(barLabel, sizeof(barLabel), "%.2f ms  %.2f%%", avgMs, fraction * 100.0f);
-				float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
-				if (barW > 10.0f)
+				if (ImGui::BeginTabItem("List View"))
 				{
-					int ci = std::min(stat.depth, MAX_DEPTH_COLORS - 1);
-					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
-					ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
-					ImGui::PopStyleColor();
+					for (size_t i = 0; i < stats.size(); ++i)
+					{
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0)
+							continue;
+
+						double avgMs = stat.totalTimeMs / stat.count;
+
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float indentOff = (stat.depth - 1) * INDENT_PX;
+						float availW = ImGui::GetContentRegionAvail().x;
+
+						// Scope name (indented)
+						ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
+						ImGui::TextUnformatted(stat.name);
+
+						// Progress bar on the same line
+						ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
+						char barLabel[64];
+						snprintf(barLabel, sizeof(barLabel), "%.3f ms  %.3f%%", avgMs, fraction * 100.0f);
+						float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
+						if (barW > 10.0f)
+						{
+							int ci = std::min(stat.depth - 1, MAX_DEPTH_COLORS - 1);
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
+							ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
+							ImGui::PopStyleColor();
+						}
+					}
+					ImGui::EndTabItem();
 				}
+
+				if (ImGui::BeginTabItem("Timeline View"))
+				{
+					ImDrawList* drawList = ImGui::GetWindowDrawList();
+					ImVec2 p0 = ImGui::GetCursorScreenPos();
+					float availW = ImGui::GetContentRegionAvail().x;
+					float rowH = ImGui::GetTextLineHeight() + 4.0f;
+
+					int maxDepth = 0;
+					for (const auto& s : stats)
+					{
+						if (s.depth > 0)
+							maxDepth = std::max(maxDepth, s.depth - 1);
+					}
+
+					float totalH = (maxDepth + 1) * rowH;
+					ImGui::InvisibleButton("##timeline", ImVec2(availW, totalH));
+
+					float currentX[32] = {0};
+
+					for (size_t i = 0; i < stats.size(); ++i)
+					{
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0 || stat.depth >= 33)
+							continue;
+
+						int renderDepth = stat.depth - 1;
+						double avgMs = stat.totalTimeMs / stat.count;
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float w = std::max(1.0f, fraction * availW);
+
+						float x = currentX[renderDepth];
+						float y = renderDepth * rowH;
+
+						ImVec2 rectMin = ImVec2(p0.x + x, p0.y + y);
+						ImVec2 rectMax = ImVec2(p0.x + x + w, p0.y + y + rowH - 1.0f);
+
+						int ci = std::min(renderDepth, MAX_DEPTH_COLORS - 1);
+						ImU32 col = ImGui::ColorConvertFloat4ToU32(depthColors[ci]);
+
+						bool hovered = ImGui::IsMouseHoveringRect(rectMin, rectMax);
+						if (hovered)
+						{
+							ImVec4 hc = depthColors[ci];
+							hc.x = std::min(1.0f, hc.x * 1.2f);
+							hc.y = std::min(1.0f, hc.y * 1.2f);
+							hc.z = std::min(1.0f, hc.z * 1.2f);
+							col = ImGui::ColorConvertFloat4ToU32(hc);
+						}
+
+						drawList->AddRectFilled(rectMin, rectMax, col);
+						drawList->AddRect(rectMin, rectMax, IM_COL32(0, 0, 0, 100));
+
+						if (w > 20.0f)
+						{
+							ImGui::PushClipRect(rectMin, rectMax, true);
+							drawList->AddText(ImVec2(rectMin.x + 2, rectMin.y + 1), IM_COL32(255, 255, 255, 255), stat.name);
+							ImGui::PopClipRect();
+						}
+
+						if (hovered)
+						{
+							ImGui::BeginTooltip();
+							ImGui::Text("%s", stat.name);
+							ImGui::Text("%.3f ms (%.1f%%)", avgMs, fraction * 100.0f);
+							ImGui::EndTooltip();
+						}
+
+						currentX[renderDepth] += w;
+						if (renderDepth + 1 < 32)
+							currentX[renderDepth + 1] = x;
+					}
+					ImGui::EndTabItem();
+				}
+				if (ImGui::BeginTabItem("Physics Stats"))
+				{
+					ImGui::Spacing();
+					scene.renderPhysicsStatsUI();
+					ImGui::EndTabItem();
+				}
+				ImGui::EndTabBar();
 			}
 
 			ImGui::Spacing();
 			ImGui::Separator();
-			ImGui::TextDisabled("Physics Stats");
 
-			scene.renderPhysicsStatsUI();
+			if (profiler.isRealtime())
+			{
+				bool historyEnabled = profiler.isHistoryEnabled();
+				if (ImGui::Checkbox("Enable History Buffer", &historyEnabled))
+				{
+					profiler.setHistoryEnabled(historyEnabled);
+				}
+
+				if (historyEnabled)
+				{
+					ImGui::SameLine();
+					ImGui::TextDisabled("(%d/%d frames captured)", profiler.getHistoryCapturedCount(), profiler.getHistoryCapacity());
+				}
+
+				if (profiler.isPaused())
+				{
+					if (ImGui::Button("Resume Profiler"))
+					{
+						profiler.resume();
+					}
+
+					if (historyEnabled && profiler.getHistoryCapturedCount() > 0)
+					{
+						int maxIdx = profiler.getHistoryCapturedCount() - 1;
+						if (maxIdx < 0) maxIdx = 0;
+						int pIndex = profiler.getPlaybackIndex();
+						if (ImGui::SliderInt("Scrub History", &pIndex, 0, maxIdx))
+						{
+							profiler.setPlaybackIndex(pIndex);
+						}
+					}
+				}
+				else
+				{
+					if (ImGui::Button("Pause & Inspect Frame"))
+					{
+						profiler.pause();
+					}
+				}
+
+				if (ImGui::Button("Start Average Report"))
+				{
+					profiler.startRecording();
+				}
+			}
+			else if (profiler.isRecordingReport())
+			{
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report... (%.1fs / 10.0s)", profiler.getReportProgressSeconds());
+				if (ImGui::Button("Cancel & Return to Realtime"))
+				{
+					profiler.enableRealtime();
+				}
+			}
+			else if (profiler.isReportFinished())
+			{
+				ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Average Report Completed");
+				if (ImGui::Button("Restart Average Report"))
+				{
+					profiler.startRecording();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Return to Realtime"))
+				{
+					profiler.enableRealtime();
+				}
+				if (ImGui::Button("Copy Report to Clipboard"))
+				{
+					ImGui::SetClipboardText(profiler.getReportString().c_str());
+				}
+			}
 
 			ImGui::End();
 		}
@@ -536,7 +708,7 @@ namespace WeirdEngine
 			// 3D
 			if (enable3D)
 			{
-				PROFILE_SCOPE("3D Render");
+				PROFILE_SCOPE("3D Render", enable2D);
 
 				auto& lights = scene.getLigths();
 
@@ -553,8 +725,7 @@ namespace WeirdEngine
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
 					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
-
-					glFinish();
+					Profiler::get().gpuSync();
 				}
 
 				// --- 2. SDF ray-marching pass: composites with GBuffer ---
@@ -591,8 +762,7 @@ namespace WeirdEngine
 					scene.renderExtra(m_3DWorldPipeline->getRenderTarget());
 					glDisable(GL_CULL_FACE);
 					glDisable(GL_DEPTH_TEST);
-
-					glFinish();
+					Profiler::get().gpuSync();
 				}
 
 				if (!enable2D)
@@ -610,6 +780,8 @@ namespace WeirdEngine
 			static vec4* data = nullptr;
 			if (enable2D)
 			{
+				PROFILE_SCOPE("2D Render", enable3D);
+
 				m_worldPipeline->getDistanceShader().use();
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);

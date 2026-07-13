@@ -79,6 +79,7 @@ namespace WeirdEngine
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/background.frag");
 
 			m_lightingShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/lighting.frag");
+			m_traditionalTextShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/text_sdf_blend.frag");
 			if (m_config.enableShadows)
 			{
 				m_lightingShader.addDefine("SHADOWS_ENABLED");
@@ -324,7 +325,7 @@ namespace WeirdEngine
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
 		}
 
-		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<TraditionalTextData>& textData,
 											 const Camera& camera, double time, double delta,
 											 const BackgroundParams& bgParams, Texture* backgroundTexture)
 		{
@@ -332,6 +333,9 @@ namespace WeirdEngine
 
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
+
+            renderTraditionalText(textData, camera);
+
 
 			applyJumpFloodCorrection(time); // To generate a corrected distance texture
 
@@ -599,6 +603,39 @@ namespace WeirdEngine
 				m_renderPlane.draw(m_distanceShader);
 				Profiler::get().gpuSync();
 			}
+		}
+
+		void SDF2DRenderPipeline::renderTraditionalText(const std::vector<TraditionalTextData>& textData, const Camera& camera)
+		{
+            if (textData.empty()) return;
+
+			PROFILE_SCOPE(m_config.isUI ? "renderTraditionalText (UI)" : "renderTraditionalText (World)");
+
+            m_traditionalTextShader.use();
+			m_traditionalTextShader.setUniform("u_camMatrix", camera.view);
+			m_traditionalTextShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+			m_traditionalTextShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
+
+            for (const auto& data : textData) {
+                if (!data.text->sdfTexture) continue;
+
+				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
+				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
+
+				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
+
+                m_traditionalTextShader.setUniform("u_textPos", glm::vec2(data.transform.position.x, data.transform.position.y));
+                m_traditionalTextShader.setUniform("u_textSize", glm::vec2(data.text->width, data.text->height));
+                m_traditionalTextShader.setUniform("u_materialId", data.text->materialId);
+
+                m_traditionalTextShader.setUniform("t_distanceTexture", 0);
+				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
+
+                m_traditionalTextShader.setUniform("t_textSdfTexture", 1);
+                data.text->sdfTexture->bind(1);
+
+				m_renderPlane.draw(m_traditionalTextShader);
+            }
 		}
 
 		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)

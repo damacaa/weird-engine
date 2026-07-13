@@ -100,6 +100,17 @@ private:
 			m_text = text;
 		}
 
+		{
+			Entity traditionalText = ecs.createEntity();
+			auto& t = ecs.addComponent<Transform>(traditionalText);
+			auto& textComp = ecs.addComponent<TraditionalTextComponent>(traditionalText);
+			textComp.text = "Hello Weird Engine!";
+			textComp.fontSize = 48.0f;
+			textComp.materialId = 0;
+			textComp.dirty = true;
+			t.position = vec3(0.0f, 15.0f, 0.0f);
+		}
+
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 

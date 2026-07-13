@@ -39,7 +39,7 @@ namespace WeirdEngine
 			Texture(glm::vec4 color);
 
 			Texture(int width, int height, TextureType type);
-
+			Texture(int width, int height, TextureType type, void* data);
 			// Binds a texture
 			void bind(GLuint unit = 0) const;
 

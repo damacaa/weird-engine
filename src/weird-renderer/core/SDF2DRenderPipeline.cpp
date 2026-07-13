@@ -313,7 +313,7 @@ namespace WeirdEngine
 											 const Camera& camera, double time, double delta,
 											 Texture* backgroundTexture)
 		{
-			PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
+			// PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
 
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
@@ -335,8 +335,6 @@ namespace WeirdEngine
 																				 uint32_t shapeCount,
 																				 const Camera& camera)
 		{
-			PROFILE_SCOPE(m_config.isUI ? "Build grid (UI)" : "Build grid (World)");
-
 			// Build acceleration grid using CPU padding spatial partitioning.
 			// Grid bounds are derived entirely from the camera frustum, so off-screen circles are
 			// never inserted. This relies on the 2D camera convention where:
@@ -498,7 +496,7 @@ namespace WeirdEngine
 			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
 
 			{
-				PROFILE_SCOPE(m_config.isUI ? "Upload data (UI)" : "Upload data (World)");
+				// PROFILE_SCOPE(m_config.isUI ? "Upload data (UI)" : "Upload data (World)");
 
 				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
@@ -558,7 +556,7 @@ namespace WeirdEngine
 
 			// Upload grid
 			{
-				PROFILE_SCOPE(m_config.isUI ? "Render distance (UI)" : "Render distance (World)");
+				// PROFILE_SCOPE(m_config.isUI ? "Render distance (UI)" : "Render distance (World)");
 				m_renderPlane.draw(m_distanceShader);
 				Profiler::get().gpuSync();
 			}

@@ -296,21 +296,21 @@ namespace WeirdEngine
 
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch World Data");
+		// PROFILE_SCOPE("Fetch World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch 3D World Data");
+		// PROFILE_SCOPE("Fetch 3D World Data");
 		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
 		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_3DWorldRenderContext, data, size);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
-		PROFILE_SCOPE("Fetch UI Data");
+		// PROFILE_SCOPE("Fetch UI Data");
 		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
 	}

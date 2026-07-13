@@ -8,6 +8,7 @@
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
 #include "weird-engine/Background.h"
+#include "weird-engine/systems/TraditionalTextSystem.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -48,11 +49,20 @@ namespace WeirdEngine
 			~SDF2DRenderPipeline();
 
 			Shader& getDistanceShader();
-			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time,
+			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<TraditionalTextData>& textData, const Camera& camera, double time,
 							double delta, const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
+
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 			void showDebugUI();
+
+			void renderTraditionalText(const std::vector<TraditionalTextData>& textData, const Camera& camera);
+
+		private:
+			int largestPowerOfTwoBelow(int n);
+
+			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+									 double time, double delta);
 
 		private:
 			Config m_config;
@@ -72,6 +82,7 @@ namespace WeirdEngine
 			Shader m_materialBlendShader;
 			Shader m_defaultBackgroundShader;
 			Shader m_lightingShader;
+            Shader m_traditionalTextShader;
 
 			Texture m_distanceTextureA;
 			RenderTarget m_distanceRenderA;
@@ -136,15 +147,13 @@ namespace WeirdEngine
 
 			struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
 			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-										const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
-										double time, double delta);
+										const Camera& camera);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time, const BackgroundParams& bgParams);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
-			static int largestPowerOfTwoBelow(int n);
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

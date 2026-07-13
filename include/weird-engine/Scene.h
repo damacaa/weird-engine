@@ -7,6 +7,7 @@
 
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
+#include "weird-engine/systems/TraditionalTextSystem.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
 
@@ -64,6 +65,8 @@ namespace WeirdEngine
 		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
+
+		void getTraditionalTextData(std::vector<TraditionalTextData>& outData);
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();

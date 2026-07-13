@@ -11,9 +11,11 @@
 #include "weird-physics/components/CustomShapeManager.h"
 #include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
+
 #include "weird-physics/components/SpringManager.h"
 
 #include "weird-engine/systems/SDFShaderGenerationSystem.h"
+#include "weird-engine/systems/TraditionalTextSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"
 #include "weird-engine/systems/PhysicsInteractionSystem.h"
@@ -83,6 +85,8 @@ namespace WeirdEngine
 
 		std::shared_ptr<CustomUIShapeManager> uiShapeManager = std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
 		m_ecs.registerComponent<UIShape>(uiShapeManager);
+
+        m_ecs.registerComponent<TraditionalTextComponent>();
 
 
 
@@ -296,6 +300,11 @@ namespace WeirdEngine
 	WeirdRenderer::Camera& Scene::getCamera()
 	{
 		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
+	}
+
+	void Scene::getTraditionalTextData(std::vector<TraditionalTextData>& outData)
+	{
+		TraditionalTextSystem::update(m_ecs, outData);
 	}
 
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)

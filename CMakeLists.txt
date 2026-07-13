@@ -101,7 +101,14 @@ target_include_directories(glad
 target_link_libraries(${PROJECT_NAME} PUBLIC glad)
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3)
 target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
-    
+include(FetchContent)
+FetchContent_Declare(
+  freetype
+  GIT_REPOSITORY https://github.com/freetype/freetype.git
+  GIT_TAG        VER-2-13-2
+)
+FetchContent_MakeAvailable(freetype)
+target_link_libraries(${PROJECT_NAME} PUBLIC freetype)    
 
 # Shaders
 option(WEIRD_ENGINE_USE_RUNTIME_ASSETS

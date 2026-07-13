@@ -11,6 +11,7 @@
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
 #include "WalkScene.h"
+#include "TextScene.h"
 
 #include "globals.h"
 #include "MoleculeEditor.h"
@@ -33,6 +34,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<WalkScene>("walk");
+	sceneManager.registerScene<TextScene>("text");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;

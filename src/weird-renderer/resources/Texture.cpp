@@ -73,6 +73,13 @@ namespace WeirdEngine
 			createTexture(nullptr, width, height, type);
 		}
 
+		Texture::Texture(int width, int height, TextureType type, void* data)
+			: width(width)
+			, height(height)
+		{
+			createTexture(data, width, height, type);
+		}
+
 		void Texture::createTexture(void* data, int width, int height, TextureType type)
 		{
 			std::vector<unsigned char> zeroDataU8;

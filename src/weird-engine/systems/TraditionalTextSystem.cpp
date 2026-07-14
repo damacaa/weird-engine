@@ -7,7 +7,8 @@ namespace WeirdEngine {
     static FT_Library ftLibrary;
     static bool ftInitialized = false;
 
-    void TraditionalTextSystem::update(ECSManager& ecs, std::vector<TraditionalTextData>& outData) {
+    template <typename T>
+    void updateInternal(ECSManager& ecs, std::vector<TraditionalTextData>& outData) {
         if (!ftInitialized) {
             if (FT_Init_FreeType(&ftLibrary)) {
                 std::cerr << "Could not init freetype library" << std::endl;
@@ -16,7 +17,9 @@ namespace WeirdEngine {
             ftInitialized = true;
         }
 
-        auto textArray = ecs.getComponentManager<TraditionalTextComponent>()->getComponentArray();
+        auto textArray = ecs.getComponentManager<T>()->getComponentArray();
+        if (!textArray) return;
+        
         auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
 
         for (size_t i = 0; i < textArray->getSize(); i++) {
@@ -103,5 +106,13 @@ namespace WeirdEngine {
             data.text = &textComp;
             outData.push_back(data);
         }
+    }
+
+    void TraditionalTextSystem::update(ECSManager& ecs, std::vector<TraditionalTextData>& outData) {
+        updateInternal<TraditionalTextComponent>(ecs, outData);
+    }
+    
+    void TraditionalTextSystem::updateUI(ECSManager& ecs, std::vector<TraditionalTextData>& outData) {
+        updateInternal<UITraditionalTextComponent>(ecs, outData);
     }
 }

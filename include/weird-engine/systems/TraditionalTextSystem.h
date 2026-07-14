@@ -13,5 +13,6 @@ namespace WeirdEngine {
     class TraditionalTextSystem {
     public:
         static void update(ECSManager& ecs, std::vector<TraditionalTextData>& outData);
+        static void updateUI(ECSManager& ecs, std::vector<TraditionalTextData>& outData);
     };
 }

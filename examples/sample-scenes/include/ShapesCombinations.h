@@ -112,6 +112,19 @@ private:
 			t.scale = glm::vec3(0.1f); 
 		}
 
+		{
+			Entity uiTraditionalText = ecs.createEntity();
+			auto& t = ecs.addComponent<Transform>(uiTraditionalText);
+			auto& textComp = ecs.addComponent<UITraditionalTextComponent>(uiTraditionalText);
+			textComp.text = "This is UI Traditional Text!";
+			textComp.fontSize = 128.0f;
+			textComp.materialId = 9;
+			textComp.dirty = true;
+			
+			t.position = vec3(0.0f, 0.0f, 0.0f); 
+			t.scale = glm::vec3(1.0f);
+		}
+
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 

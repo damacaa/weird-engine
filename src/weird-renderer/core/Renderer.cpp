@@ -356,7 +356,8 @@ namespace WeirdEngine
 			scene.getUIData(uiData, dataSize, shapeCount);
 
 			double time = scene.getTime();
-			std::vector<TraditionalTextData> uiTextData; // empty for now in UI
+			std::vector<TraditionalTextData> uiTextData;
+            scene.getUITraditionalTextData(uiTextData);
 			auto& m_finalResultTexture =
 				m_uiPipeline->render(uiData, dataSize, shapeCount, uiTextData, m_uiCamera, time, delta, scene.getBackground(), &texture);
 

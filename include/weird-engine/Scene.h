@@ -67,6 +67,7 @@ namespace WeirdEngine
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
 		void getTraditionalTextData(std::vector<TraditionalTextData>& outData);
+		void getUITraditionalTextData(std::vector<TraditionalTextData>& outData);
 
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();

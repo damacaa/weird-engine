@@ -87,6 +87,7 @@ namespace WeirdEngine
 		m_ecs.registerComponent<UIShape>(uiShapeManager);
 
         m_ecs.registerComponent<TraditionalTextComponent>();
+        m_ecs.registerComponent<UITraditionalTextComponent>();
 
 
 
@@ -305,6 +306,11 @@ namespace WeirdEngine
 	void Scene::getTraditionalTextData(std::vector<TraditionalTextData>& outData)
 	{
 		TraditionalTextSystem::update(m_ecs, outData);
+	}
+
+	void Scene::getUITraditionalTextData(std::vector<TraditionalTextData>& outData)
+	{
+		TraditionalTextSystem::updateUI(m_ecs, outData);
 	}
 
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)

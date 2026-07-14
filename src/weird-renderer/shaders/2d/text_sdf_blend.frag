@@ -23,6 +23,8 @@ void main() {
     
     vec2 textUv = (pos - u_textPos) / u_textSize;
     
+    textUv.y = 1.0 - textUv.y;
+    
     vec4 current = texture(t_distanceTexture, v_texCoord);
     float minDist = current.x;
     float material = current.y;

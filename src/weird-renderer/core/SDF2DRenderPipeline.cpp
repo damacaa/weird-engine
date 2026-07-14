@@ -625,7 +625,7 @@ namespace WeirdEngine
 				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
 
                 m_traditionalTextShader.setUniform("u_textPos", glm::vec2(data.transform.position.x, data.transform.position.y));
-                m_traditionalTextShader.setUniform("u_textSize", glm::vec2(data.text->width, data.text->height));
+                m_traditionalTextShader.setUniform("u_textSize", glm::vec2(data.text->width * data.transform.scale.x, data.text->height * data.transform.scale.y));
                 m_traditionalTextShader.setUniform("u_materialId", data.text->materialId);
 
                 m_traditionalTextShader.setUniform("t_distanceTexture", 0);

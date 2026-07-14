@@ -105,10 +105,11 @@ private:
 			auto& t = ecs.addComponent<Transform>(traditionalText);
 			auto& textComp = ecs.addComponent<TraditionalTextComponent>(traditionalText);
 			textComp.text = "Hello Weird Engine!";
-			textComp.fontSize = 48.0f;
-			textComp.materialId = 0;
+			textComp.fontSize = 32.0f;
+			textComp.materialId = 10;
 			textComp.dirty = true;
 			t.position = vec3(0.0f, 15.0f, 0.0f);
+			t.scale = glm::vec3(0.1f); 
 		}
 
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;

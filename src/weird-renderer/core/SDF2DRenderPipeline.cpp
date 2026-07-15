@@ -44,6 +44,7 @@ namespace WeirdEngine
 			, m_oldCameraMatrix(1.0f)
 			, m_prevFrameCameraMatrix(1.0f)
 			, m_lastCameraPosition(0.0f)
+			, m_fontManager(std::make_unique<FontManager>())
 		{
 			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
 			float overscanScale = 1.0f + 2.0f * overscan;
@@ -617,6 +618,10 @@ namespace WeirdEngine
 			m_traditionalTextShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 
             for (const auto& data : textData) {
+                if (data.text->dirty) {
+                    m_fontManager->updateTextComponent(*data.text);
+                }
+                
                 if (!data.text->sdfTexture) continue;
 
 				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;

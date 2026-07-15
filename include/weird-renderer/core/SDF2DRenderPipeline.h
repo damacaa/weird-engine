@@ -9,7 +9,9 @@
 #include "weird-renderer/scene/Camera.h"
 #include "weird-engine/Background.h"
 #include "weird-engine/systems/TraditionalTextSystem.h"
+#include "weird-renderer/fonts/FontManager.h"
 #include <vector>
+#include <memory>
 
 namespace WeirdEngine
 {
@@ -154,6 +156,8 @@ namespace WeirdEngine
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time, const BackgroundParams& bgParams);
 			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
+
+			std::unique_ptr<FontManager> m_fontManager;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

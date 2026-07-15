@@ -13,6 +13,7 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/Logger.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
@@ -237,6 +238,13 @@ namespace WeirdEngine
 							if (ImGui::Checkbox("VSync", &m_vSyncEnabled))
 							{
 								updateVSyncSetting();
+							}
+
+							bool isMuted = AudioEngine::getInstance().isMuted();
+							if (ImGui::Checkbox("Mute Audio", &isMuted))
+							{
+								if (isMuted) AudioEngine::getInstance().mute();
+								else AudioEngine::getInstance().unmute();
 							}
 
 							if (!m_lastScreenshotPath.empty())

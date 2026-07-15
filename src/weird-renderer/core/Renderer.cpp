@@ -13,6 +13,7 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/Logger.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
@@ -74,7 +75,7 @@ namespace WeirdEngine
 			uiConfig.enableShadows = false;
 			uiConfig.enableLongShadows = false;
 			uiConfig.enableRefraction = true;
-			uiConfig.enableAntialiasing = true;
+			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			uiConfig.enableMotionBlur = true;
 			uiConfig.materialBlendIterations = 1;
 			uiConfig.materialBlendSpeed = 5.0f;
@@ -239,6 +240,13 @@ namespace WeirdEngine
 								updateVSyncSetting();
 							}
 
+							bool isMuted = AudioEngine::getInstance().isMuted();
+							if (ImGui::Checkbox("Mute Audio", &isMuted))
+							{
+								if (isMuted) AudioEngine::getInstance().mute();
+								else AudioEngine::getInstance().unmute();
+							}
+
 							if (!m_lastScreenshotPath.empty())
 							{
 								ImGui::SameLine();
@@ -330,12 +338,13 @@ namespace WeirdEngine
 				m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 			}
 
-			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
+			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_windowHeight);
 			glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
 			glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 			auto cameraMatrix = glm::lookAt(position, position + orientation, up);
 
 			m_uiCamera.view = cameraMatrix;
+			m_uiCamera.position = position;
 
 			updateVSyncSetting();
 		}
@@ -357,7 +366,7 @@ namespace WeirdEngine
 
 			double time = scene.getTime();
 			auto& m_finalResultTexture =
-				m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, &texture);
+				m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, scene.getBackground(), &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
@@ -786,11 +795,11 @@ namespace WeirdEngine
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& t = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
+				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta, scene.getBackground(),
 												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
-				return t;
+				return texture;
 			}
 
 			// Pure 3D: should have been returned earlier; fall back to 3D output.

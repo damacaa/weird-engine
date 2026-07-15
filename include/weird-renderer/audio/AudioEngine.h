@@ -66,6 +66,11 @@ namespace WeirdEngine
 				m_mute = false;
 			}
 
+			bool isMuted() const
+			{
+				return m_mute;
+			}
+
 			AudioData getAudioData();
 
 		private:

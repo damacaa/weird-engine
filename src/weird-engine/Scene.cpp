@@ -690,6 +690,22 @@ namespace WeirdEngine
 					m_simulation2D.resume();
 			}
 
+			ImGui::SeparatorText("Background");
+			const char* bgTypes[] = { "Solid", "Grid", "Sky", "Custom" };
+			int bgTypeIdx = static_cast<int>(m_background.type);
+			if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
+			{
+				m_background.type = static_cast<BackgroundType>(bgTypeIdx);
+			}
+			
+			if (m_background.type != BackgroundType::Custom)
+			{
+				ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
+				ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
+				ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
+				ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
+			}
+
 			ImGui::Separator();
 
 			onImGuiRender();

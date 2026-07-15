@@ -298,7 +298,14 @@ void main()
 	color = vec3(normal, 0.0);
 #endif
 
-	vec3 shadowTransmittance = mix(u_shadowTint, vec3(1.0), shadows);
+	// Remap the shadow value (which normally goes from SHADOW_VALUE to 1.0) 
+	// so we can apply the full shadow tint when fully shadowed.
+	float litFactor = clamp((shadows - SHADOW_VALUE) / (1.0 - SHADOW_VALUE), 0.0, 1.0);
+	
+	// If AO pushes shadows below SHADOW_VALUE, we darken the ambient tint itself
+	float ambientOcclusion = clamp(shadows / SHADOW_VALUE, 0.0, 1.0);
+	
+	vec3 shadowTransmittance = mix(u_shadowTint * ambientOcclusion, vec3(1.0), litFactor);
 	vec3 shadedBackground = backgroundColor * shadowTransmittance;
 
 	// Apply lighting to the shapes, cast shadows on the background, and mix both based on shape factor

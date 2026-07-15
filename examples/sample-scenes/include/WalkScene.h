@@ -36,6 +36,11 @@ private:
 		m_debugInput = true;
 		m_debugFly = true;
 
+		m_background.type = BackgroundType::Sky;
+		m_background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
+		m_background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
+		m_background.scale = 0.2f;
+
 		auto tags = loadWeirdFile(ASSETS_PATH "Organisms/man.weird");
 
 		Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
@@ -58,7 +63,7 @@ private:
 
 
 		float boundsVars2[8]{0.0f, -24.0f, 200.0f, 20.0f};
-		Entity inside = addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGray, CombinationType::Addition);
+		Entity inside = addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen, CombinationType::Addition);
 
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 

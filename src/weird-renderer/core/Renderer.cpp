@@ -74,7 +74,7 @@ namespace WeirdEngine
 			uiConfig.enableShadows = false;
 			uiConfig.enableLongShadows = false;
 			uiConfig.enableRefraction = true;
-			uiConfig.enableAntialiasing = true;
+			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			uiConfig.enableMotionBlur = true;
 			uiConfig.materialBlendIterations = 1;
 			uiConfig.materialBlendSpeed = 5.0f;
@@ -330,12 +330,13 @@ namespace WeirdEngine
 				m_meshPipeline->resize(m_renderWidth, m_renderHeight);
 			}
 
-			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_renderHeight);
+			glm::vec3 position = glm::vec3(0.0f, 0.0f, (float)m_windowHeight);
 			glm::vec3 orientation = glm::vec3(0.0f, 0.0f, -1.0f);
 			glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 			auto cameraMatrix = glm::lookAt(position, position + orientation, up);
 
 			m_uiCamera.view = cameraMatrix;
+			m_uiCamera.position = position;
 
 			updateVSyncSetting();
 		}

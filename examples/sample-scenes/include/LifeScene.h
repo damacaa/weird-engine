@@ -11,7 +11,7 @@
 
 using namespace WeirdEngine;
 
-struct Head : public Component
+struct Head
 {
 	Head() {};
 
@@ -36,7 +36,7 @@ private:
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
 		settings.damping = 0.1f;
-		settings.isDirty = true;
+		ecs.setComponentDirty(settings);
 
 
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
@@ -73,7 +73,7 @@ private:
 				else
 				{
 					auto& a = ecs.getComponent<Dot>(firstCreated);
-					ecs.addComponent<Head>(a.Owner);
+					ecs.addComponent<Head>(firstCreated);
 				}
 
 				++i;
@@ -104,7 +104,7 @@ private:
 		for (size_t i = 0; i < headArray->getSize(); i++)
 		{
 			auto& head = headArray->getDataAtIdx(i);
-			Entity headEntity = head.Owner;
+			Entity headEntity = headArray->getEntityAtIdx(i);
 
 			auto& rb = ecs.getComponent<RigidBody2D>(headEntity);
 			rb.pendingImpulseForce += head.forceMagnitude * head.direction * timeDelta;

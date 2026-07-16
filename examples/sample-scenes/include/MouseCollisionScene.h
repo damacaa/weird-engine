@@ -92,7 +92,7 @@ private:
 
 			cs.parameters[0] = mousePositionInWorld.x;
 			cs.parameters[1] = mousePositionInWorld.y;
-			cs.isDirty = true;
+			ecs.setComponentDirty(cs);
 		}
 	}
 };

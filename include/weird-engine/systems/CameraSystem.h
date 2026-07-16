@@ -14,8 +14,9 @@ namespace WeirdEngine
 				unsigned int size = componentArray.getSize();
 				for (size_t i = 0; i < size; i++)
 				{
-					Camera& c = componentArray[i];
-					Transform& t = ecs.getComponent<Transform>(c.Owner);
+					auto& c = componentArray.getDataAtIdx(i);
+					Entity camOwner = componentArray.getEntityAtIdx(i);
+					Transform& t = ecs.getComponent<Transform>(camOwner);
 
 					c.camera.position = t.position;
 					c.camera.orientation = t.rotation;

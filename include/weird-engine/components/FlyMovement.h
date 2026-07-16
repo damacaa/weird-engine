@@ -1,20 +1,13 @@
 #pragma once
-#include "weird-engine/ecs/Component.h"
 
 namespace WeirdEngine
 {
 	namespace ECS
 	{
-		struct FlyMovement : public Component
+		struct FlyMovement
 		{
-
-			float speed;
+			float speed = 1.0f;
 			float sensitivity = 0.12f;
-
-			FlyMovement()
-				: speed(10.0f)
-			{
-			}
 		};
 	} // namespace ECS
 } // namespace WeirdEngine

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Component.h"
 #include "ComponentManager.h"
 #include "Entity.h"
 
@@ -83,11 +82,8 @@ namespace WeirdEngine
 
 		template <typename T> T& addComponent(Entity entity)
 		{
-			static_assert(std::is_base_of<Component, T>::value, "T must derive from Component");
-
 			auto cm = getComponentManager<T>();
 			auto& component = cm->getNewComponent(entity);
-			component.Owner = entity;
 
 			return component;
 		}
@@ -103,6 +99,16 @@ namespace WeirdEngine
 			if (id >= m_componentManagers.size() || !m_componentManagers[id])
 				return false;
 			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id])->hasComponent(entity);
+		}
+
+		template <typename T> void setEntityDirty(Entity entity, bool dirty = true)
+		{
+			getComponentManager<T>()->getComponentArray()->setEntityDirty(entity, dirty);
+		}
+
+		template <typename T> void setComponentDirty(const T& component, bool dirty = true)
+		{
+			getComponentManager<T>()->getComponentArray()->setComponentDirty(component, dirty);
 		}
 
 		template <typename T> void registerComponent()

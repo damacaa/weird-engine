@@ -121,7 +121,7 @@ private:
 			bool hideText = Input::GetKey(Input::LeftAlt);
 			text.text =
 				hideText ? "" : "Balls:" + std::to_string(static_cast<int>(ecs.getComponentArray<Dot>()->getSize()));
-			text.dirty = true;
+			ecs.setComponentDirty(text);
 
 			auto& textTransform = ecs.getComponent<Transform>(m_text);
 			textTransform.position.x = x;
@@ -153,7 +153,7 @@ private:
 			cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
 			cs.parameters[2] = m_circleRadious;
 
-			cs.isDirty = true;
+			ecs.setComponentDirty(cs);
 		}
 
 		if (m_circle2)
@@ -163,7 +163,7 @@ private:
 			cs.parameters[1] = m_initialMousePositionInWorld.y;
 			cs.parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
 
-			cs.isDirty = true;
+			ecs.setComponentDirty(cs);
 		}
 
 		float volume = AudioEngine::getInstance().getAudioData().currentVolume;

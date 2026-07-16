@@ -1,5 +1,4 @@
 #pragma once
-#include "weird-engine/ecs/Component.h"
 #include "weird-engine/math/MathExpressions.h"
 
 namespace WeirdEngine
@@ -15,12 +14,11 @@ namespace WeirdEngine
 		SmoothSubtraction,
 	};
 
-	struct CustomShape : public Component
+	struct CustomShape
 	{
 		uint16_t distanceFieldId = 0;
 		CombinationType combination = CombinationType::Addition;
 		float parameters[8] = {0.0f};
-		bool isDirty = true;
 		bool hasCollisions = true;
 		uint16_t groupIdx = 0;
 		uint16_t material = 0;
@@ -30,7 +28,7 @@ namespace WeirdEngine
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
 	};
 
-	struct UIShape : public Component
+	struct UIShape
 	{
 		uint16_t distanceFieldId = 0;
 		CombinationType combination = CombinationType::Addition;

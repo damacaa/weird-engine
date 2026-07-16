@@ -28,7 +28,7 @@ namespace WeirdEngine
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<CustomShape>>(m_componentArray);
 			CustomShape& removedShape = componentArray->getDataFromEntity(entity);
-			m_simulation->removeShape(removedShape);
+			m_simulation->removeShape(entity, removedShape);
 
 			m_renderContext->shapesNeedUpdate = true;
 		}

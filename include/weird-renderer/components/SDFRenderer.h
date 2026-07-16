@@ -1,9 +1,8 @@
 #pragma once
-#include "weird-engine/ecs/Component.h"
 
 namespace WeirdEngine
 {
-	struct Dot : public Component
+	struct Dot
 	{
 		bool isStatic = false;
 		unsigned int materialId;
@@ -14,7 +13,7 @@ namespace WeirdEngine
 		}
 	};
 
-	struct UIDot : public Component
+	struct UIDot
 	{
 		bool isStatic = false;
 		unsigned int materialId;

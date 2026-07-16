@@ -1,11 +1,10 @@
 #pragma once
 #pragma once
-#include "weird-engine/ecs/Component.h"
 #include "weird-renderer/resources/Mesh.h"
 
 namespace WeirdEngine
 {
-	struct InstancedMeshRenderer : public Component
+	struct InstancedMeshRenderer
 	{
 	private:
 	public:

@@ -256,7 +256,7 @@ namespace WeirdEngine
 			if (cam.contains("position"))
 			{
 				camTransform.position = vec3(cam["position"][0], cam["position"][1], cam["position"][2]);
-				camTransform.isDirty = true;
+				scene.m_ecs.getComponentArray<Transform>()->setEntityDirty(scene.m_mainCamera, true);
 			}
 			if (cam.contains("rotation"))
 				camTransform.rotation = vec3(cam["rotation"][0], cam["rotation"][1], cam["rotation"][2]);
@@ -292,7 +292,7 @@ namespace WeirdEngine
 						t.rotation = vec3(tj["rotation"][0], tj["rotation"][1], tj["rotation"][2]);
 					if (tj.contains("scale"))
 						t.scale = vec3(tj["scale"][0], tj["scale"][1], tj["scale"][2]);
-					t.isDirty = true;
+					scene.m_ecs.getComponentArray<Transform>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("customShape"))
@@ -310,7 +310,7 @@ namespace WeirdEngine
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
-					s.isDirty = true;
+					scene.m_ecs.getComponentArray<CustomShape>()->setEntityDirty(entity, true);
 					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
 				}
 
@@ -347,7 +347,7 @@ namespace WeirdEngine
 					tr.material = static_cast<uint16_t>(trj.value("material", 0));
 					tr.width = trj.value("width", 0.0f);
 					tr.height = trj.value("height", 0.0f);
-					tr.dirty = true;
+					scene.m_ecs.getComponentArray<TextRenderer>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("globalPhysicsSettings"))
@@ -356,7 +356,7 @@ namespace WeirdEngine
 					const auto& gsj = ej["globalPhysicsSettings"];
 					gs.gravity = gsj.value("gravity", 0.0f);
 					gs.damping = gsj.value("damping", 0.05f);
-					gs.isDirty = true;
+					scene.m_ecs.getComponentArray<GlobalPhysicsSettings>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("rigidBody2D"))
@@ -373,7 +373,7 @@ namespace WeirdEngine
 					{
 						rb.isFixed = rbj.value("isFixed", false);
 					}
-					rb.isDirty = true; // Sync velocity and fixed state to simulation
+					scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(entity, true); // Sync velocity and fixed state to simulation
 
 					if (rbj.contains("physicsPosition"))
 					{
@@ -522,7 +522,7 @@ namespace WeirdEngine
 						{
 							auto& rb = scene.m_ecs.getComponent<RigidBody2D>(e);
 							rb.isFixed = true;
-							rb.isDirty = true;
+							scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(e, true);
 						}
 						// The actual fix will happen in PhysicsSystem2D::update thanks to isDirty=true
 					}

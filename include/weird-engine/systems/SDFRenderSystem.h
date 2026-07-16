@@ -29,9 +29,15 @@ namespace WeirdEngine
 		template <typename DotClass, typename ShapeClass, typename TextClass>
 		inline void update(ECSManager& ecs, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
 		{
-			auto updateText = [&](TextClass& text)
+			// Get component arrays for the templated types
+			auto dotClassArray = ecs.getComponentManager<DotClass>()->getComponentArray();
+			auto shapeClassArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
+			auto textClassArray = ecs.getComponentManager<TextClass>()->getComponentArray();
+			auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
+
+			auto updateText = [&](TextClass& text, size_t index)
 			{
-				if (text.dirty)
+				if (textClassArray->isDirty(index))
 				{
 					// Update dot count
 					text.bufferedDotCount = 0;
@@ -46,15 +52,9 @@ namespace WeirdEngine
 								 ((charCount - 1) * ctx.charSpacing);
 					text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
 
-					text.dirty = false;
+					textClassArray->setDirty(index, false);
 				}
 			};
-
-			// Get component arrays for the templated types
-			auto dotClassArray = ecs.getComponentManager<DotClass>()->getComponentArray();
-			auto shapeClassArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
-			auto textClassArray = ecs.getComponentManager<TextClass>()->getComponentArray();
-			auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
 
 			uint32_t normalDots = dotClassArray->getSize();
 			uint32_t textDots = 0;
@@ -62,7 +62,7 @@ namespace WeirdEngine
 			for (size_t i = 0; i < textClassArray->getSize(); i++)
 			{
 				auto& text = textClassArray->getDataAtIdx(i);
-				updateText(text);
+				updateText(text, i);
 
 				textDots += text.bufferedDotCount;
 			}
@@ -92,7 +92,8 @@ namespace WeirdEngine
 			for (size_t i = 0; i < normalDots; i++)
 			{
 				auto& dotComp = dotClassArray->getDataAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(dotComp.Owner); // Assuming DotClass has an 'Owner' member
+				Entity dotOwner = dotClassArray->getEntityAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(dotOwner);
 
 				data[i].x = t.position.x;
 				data[i].y = t.position.y;
@@ -107,7 +108,8 @@ namespace WeirdEngine
 			for (size_t i = 0; i < textClassArray->getSize(); i++)
 			{
 				auto& text = textClassArray->getDataAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(text.Owner);
+				Entity textOwner = textClassArray->getEntityAtIdx(i);
+				auto& t = transformArray->getDataFromEntity(textOwner);
 				int charCount = text.text.length();
 
 				float horizontalOffset = 0.0f;

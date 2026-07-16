@@ -73,7 +73,7 @@ private:
 
 	Entity m_dot;
 
-	struct Floatable : public Component
+	struct Floatable
 	{
 		float buoyancy = 10.0f; // how strongly this entity is affected by the water surface
 	};
@@ -128,7 +128,7 @@ private:
 			auto& floatable = floatables->getDataAtIdx(i);
 
 			// Keep the dot riding the water surface
-			Transform& transform = ecs.getComponent<Transform>(floatable.Owner);
+			Transform& transform = ecs.getComponent<Transform>(floatables->getEntityAtIdx(i));
 			glm::vec2 flatPos = { transform.position.x, transform.position.z };
 			float centerHeight = m_waterPlane.waterHeightAt(flatPos, m_time);
 			transform.position.y = centerHeight;

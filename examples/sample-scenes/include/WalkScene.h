@@ -8,7 +8,7 @@
 
 using namespace WeirdEngine;
 
-struct Foot : public Component
+struct Foot
 {
 	Foot() {};
 
@@ -70,7 +70,7 @@ private:
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = -10.0f;
-		settings.isDirty = true;
+		ecs.setComponentDirty(settings);
 	}
 
 	void onUpdate(float delta, ECSManager& ecs) override
@@ -95,14 +95,14 @@ private:
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
 			auto& foot = componentArray->getDataAtIdx(i);
-			auto& rb = rigidBodies->getDataFromEntity(foot.Owner);
+			auto& rb = rigidBodies->getDataFromEntity(componentArray->getEntityAtIdx(i));
 
 			if(i != m_currentFoot)
 			{
 				if(foot.onFloor)
 				{
 					rb.isFixed = true;
-					rb.isDirty = true;
+					ecs.setComponentDirty(rb);
 				}
 				continue;
 			}
@@ -111,19 +111,19 @@ private:
 			headRB.pendingImpulseForce += vec2(0.0f, 1.0f);
 
 			rb.isFixed = false;
-			rb.isDirty = true;
+			ecs.setComponentDirty(rb);
 
 			// Start step
 			if (!foot.stepStarted)
 			{
 				if (foot.onFloor)
 				{
-					foot.initialPos = vec2(ecs.getComponent<Transform>(foot.Owner).position);
+					foot.initialPos = vec2(ecs.getComponent<Transform>(componentArray->getEntityAtIdx(i)).position);
 					foot.stepStarted = true;
 					foot.t = 0.0f;
 					// rb.position = foot.initialPos + vec2(0.0f, 0.1f);
 					rb.isFixed = false;
-					rb.isDirty = true;
+					ecs.setComponentDirty(rb);
 				}
 			}
 			else

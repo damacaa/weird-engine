@@ -185,7 +185,8 @@ private:
 			for (size_t i = 0; i < components->getSize(); i++)
 			{
 				RigidBody2D& rb = components->getDataAtIdx(i);
-				Transform& t = ecs.getComponent<Transform>(rb.Owner);
+				Entity rbOwner = components->getEntityAtIdx(i);
+				Transform& t = ecs.getComponent<Transform>(rbOwner);
 
 				int x = floor(t.position.x);
 				int y = floor(30 - t.position.y);

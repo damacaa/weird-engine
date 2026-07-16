@@ -101,15 +101,15 @@ private:
 
 		// Fix corners
 		ecs.getComponent<RigidBody2D>(balls[0]).isFixed = true;
-		ecs.getComponent<RigidBody2D>(balls[0]).isDirty = true;
+		ecs.setEntityDirty<RigidBody2D>(balls[0], true);
 		if (numBalls >= rowWidth)
 		{
 			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isDirty = true;
+			ecs.setEntityDirty<RigidBody2D>(balls[rowWidth - 1], true);
 			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isDirty = true;
+			ecs.setEntityDirty<RigidBody2D>(balls[rowWidth], true);
 			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isFixed = true;
-			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isDirty = true;
+			ecs.setEntityDirty<RigidBody2D>(balls[(2 * rowWidth) - 1], true);
 		}
 
 		// Add base shapes (walls, ground, custom)
@@ -195,7 +195,7 @@ private:
 			auto& cs = ecs.getComponent<CustomShape>(m_star);
 			cs.parameters[4] = static_cast<int>(std::floor(animTime)) % 5 + 2;
 			cs.parameters[3] = std::sin(3.1416f * animTime);
-			cs.isDirty = true;
+			ecs.setComponentDirty(cs);
 		}
 
 		auto audioVisualData = AudioEngine::getInstance().getAudioData();
@@ -284,7 +284,7 @@ private:
 
 			// We shouldn't call getSimulation() here. 
 			// We can mark the custom shape entity for destruction or something.
-			ecs.destroyEntity(components->getDataAtIdx(id).Owner);
+			ecs.destroyEntity(components->getEntityAtIdx(id));
 		}
 	}
 

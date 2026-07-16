@@ -3,7 +3,6 @@
 #include <memory>
 #include <queue>
 
-#include "Component.h"
 #include "ComponentArray.h"
 #include "Entity.h"
 
@@ -45,8 +44,6 @@ namespace WeirdEngine
 
 			auto castedComponentArray = getComponentArray();
 			T& component = castedComponentArray->getNewComponent(entity);
-
-			component.Owner = entity;
 
 			handleNewComponent(entity, component);
 

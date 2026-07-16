@@ -34,7 +34,8 @@ namespace WeirdEngine
 				{
 					float parameters[11];
 
-					auto& shape = ecs.getComponent<UIShape>(buttonComponent.Owner);
+					Entity buttonOwner = componentArray->getEntityAtIdx(i);
+					auto& shape = ecs.getComponent<UIShape>(buttonOwner);
 					std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 
 					parameters[8] = time;
@@ -85,7 +86,8 @@ namespace WeirdEngine
 						{
 							buttonComponent.state = ButtonState::Off;
 
-							auto& shape = ecs.getComponent<UIShape>(buttonComponent.Owner);
+							Entity buttonOwner = componentArray->getEntityAtIdx(i);
+							auto& shape = ecs.getComponent<UIShape>(buttonOwner);
 							for (int j = 0; j < 8; ++j)
 							{
 								if (buttonComponent.parameterModifierMask.test(j))
@@ -114,7 +116,8 @@ namespace WeirdEngine
 				{
 					float parameters[11];
 
-					auto& shape = ecs.getComponent<UIShape>(toggleComponent.Owner);
+					Entity toggleOwner = componentArray->getEntityAtIdx(i);
+					auto& shape = ecs.getComponent<UIShape>(toggleOwner);
 					std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 
 					parameters[8] = time;
@@ -141,7 +144,8 @@ namespace WeirdEngine
 						{
 							toggleComponent.state = ButtonState::Down;
 
-							auto& shape = ecs.getComponent<UIShape>(toggleComponent.Owner);
+							Entity toggleOwner = componentArray->getEntityAtIdx(i);
+							auto& shape = ecs.getComponent<UIShape>(toggleOwner);
 							for (int j = 0; j < 8; ++j)
 							{
 								if (toggleComponent.parameterModifierMask.test(j))
@@ -172,7 +176,8 @@ namespace WeirdEngine
 						{
 							toggleComponent.state = ButtonState::Off;
 
-							auto& shape = ecs.getComponent<UIShape>(toggleComponent.Owner);
+							Entity toggleOwner = componentArray->getEntityAtIdx(i);
+							auto& shape = ecs.getComponent<UIShape>(toggleOwner);
 							for (int j = 0; j < 8; ++j)
 							{
 								if (toggleComponent.parameterModifierMask.test(j))

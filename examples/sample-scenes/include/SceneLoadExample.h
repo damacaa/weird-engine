@@ -134,7 +134,7 @@ private:
 		for (size_t i = 0; i < transformArray->getSize(); ++i)
 		{
 			auto& transform = transformArray->getDataAtIdx(i);
-			Entity entity = transform.Owner;
+			Entity entity = transformArray->getEntityAtIdx(i);
 			if (entity == m_mainCamera)
 				continue;
 
@@ -300,7 +300,7 @@ private:
 		m_selInfoText = m_tempEcs->createEntity();
 		auto& selInfoTf = m_tempEcs->addComponent<Transform>(m_selInfoText);
 		selInfoTf.position = vec3(HIDDEN, PANEL_TOP_Y + 35.0f, 0.0f);
-		selInfoTf.isDirty = true;
+		m_tempEcs->setComponentDirty(selInfoTf);
 
 		auto& hdr = m_tempEcs->addComponent<UITextRenderer>(m_selInfoText);
 		hdr.material = 1;
@@ -320,7 +320,7 @@ private:
 			Entity te = m_tempEcs->createEntity();
 			auto& ttf = m_tempEcs->addComponent<Transform>(te);
 			ttf.position = vec3(HIDDEN, py, 0.0f);
-			ttf.isDirty = true;
+			m_tempEcs->setComponentDirty(ttf);
 			auto& tx = m_tempEcs->addComponent<UITextRenderer>(te);
 			tx.material = 0;
 			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
@@ -433,11 +433,11 @@ private:
 
 			auto& t = m_tempEcs->getComponent<Transform>(m_paramBtns[i].textEntity);
 			t.position = vec3(PANEL_X - P_BTN_W - 10.0f, py, 0.0f);
-			t.isDirty = true;
+			m_tempEcs->setComponentDirty(t);
 		}
 		auto& ht = m_tempEcs->getComponent<Transform>(m_selInfoText);
 		ht.position = vec3(PANEL_X, PANEL_TOP_Y + 35.0f, 0.0f);
-		ht.isDirty = true;
+		m_tempEcs->setComponentDirty(ht);
 		// m_UIRenderSystem.shaderNeedsUpdate() = true;
 	}
 
@@ -449,11 +449,11 @@ private:
 			u.parameters[0] = HIDDEN;
 			auto& t = m_tempEcs->getComponent<Transform>(m_paramBtns[i].textEntity);
 			t.position.x = HIDDEN;
-			t.isDirty = true;
+			m_tempEcs->setComponentDirty(t);
 		}
 		auto& ht = m_tempEcs->getComponent<Transform>(m_selInfoText);
 		ht.position.x = HIDDEN;
-		ht.isDirty = true;
+		m_tempEcs->setComponentDirty(ht);
 		// m_UIRenderSystem.shaderNeedsUpdate() = true;
 	}
 
@@ -474,7 +474,7 @@ private:
 		if (hdr.text != name)
 		{
 			hdr.text = name;
-			hdr.dirty = true;
+			m_tempEcs->setComponentDirty(hdr);
 		}
 
 		int pc = paramCount(cs.distanceFieldId);
@@ -488,7 +488,7 @@ private:
 				if (tx.text != buf)
 				{
 					tx.text = buf;
-					tx.dirty = true;
+					m_tempEcs->setComponentDirty(tx);
 				}
 
 				auto& u = m_tempEcs->getComponent<UIShape>(m_paramBtns[i].shapeEntity);
@@ -504,7 +504,7 @@ private:
 				if (t.position.x < 0.0f || std::abs(t.position.y - py) > 0.001f)
 				{
 					t.position = vec3(txX, py, 0.0f);
-					t.isDirty = true;
+					m_tempEcs->setComponentDirty(t);
 				}
 			}
 			else
@@ -512,7 +512,7 @@ private:
 				if (!tx.text.empty())
 				{
 					tx.text.clear();
-					tx.dirty = true;
+					m_tempEcs->setComponentDirty(tx);
 				}
 				auto& u = m_tempEcs->getComponent<UIShape>(m_paramBtns[i].shapeEntity);
 				if (u.parameters[0] > 0.0f)
@@ -520,7 +520,7 @@ private:
 					u.parameters[0] = HIDDEN;
 					auto& t2 = m_tempEcs->getComponent<Transform>(m_paramBtns[i].textEntity);
 					t2.position.x = HIDDEN;
-					t2.isDirty = true;
+					m_tempEcs->setComponentDirty(t2);
 				}
 			}
 		}
@@ -557,7 +557,7 @@ private:
 			if (cs.distanceFieldId == DefaultShapes::STAR && idx == 4)
 				v = std::round(v);
 			cs.parameters[idx] = v;
-			cs.isDirty = true;
+			m_tempEcs->setComponentDirty(cs);
 		}
 		else
 		{
@@ -650,7 +650,7 @@ private:
 		Entity e = m_tempEcs->createEntity();
 		auto& t = m_tempEcs->addComponent<Transform>(e);
 		t.position = vec3(wp.x, wp.y, 0.0f);
-		t.isDirty = true;
+		m_tempEcs->setComponentDirty(t);
 		auto& sdf = m_tempEcs->addComponent<Dot>(e);
 		sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
 		m_tempEcs->addComponent<RigidBody2D>(e);

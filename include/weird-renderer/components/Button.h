@@ -1,6 +1,5 @@
 #pragma once
 
-#include "weird-engine/ecs/Component.h"
 
 #include <bitset>
 
@@ -14,7 +13,7 @@ namespace WeirdEngine
 		Up
 	};
 
-	struct ShapeButton : public Component
+	struct ShapeButton
 	{
 		ButtonState state = ButtonState::Off;
 		std::bitset<8> parameterModifierMask;
@@ -23,7 +22,7 @@ namespace WeirdEngine
 		bool hovered = false;
 	};
 
-	struct ShapeToggle : public Component
+	struct ShapeToggle
 	{
 		ButtonState state = ButtonState::Off;
 		std::bitset<8> parameterModifierMask;

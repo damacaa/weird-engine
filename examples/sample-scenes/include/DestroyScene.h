@@ -9,7 +9,7 @@
 
 using namespace WeirdEngine;
 
-struct CollisionTracker : public Component
+struct CollisionTracker
 {
 	int collisionCount = 0;
 };
@@ -61,7 +61,7 @@ private:
 							Entity e = ecs.createEntity();
 							auto& t = ecs.addComponent<Transform>(e);
 							t.position = vec3((std::rand() % 200) - 100.0f, (std::rand() % 100) - 50.0f, 0.0f);
-							t.isDirty = true;
+							ecs.setComponentDirty(t);
 							auto& ui = ecs.addComponent<Dot>(e);
 							ui.materialId = 4 + (e % 12);
 							auto& rb = ecs.addComponent<RigidBody2D>(e);
@@ -179,7 +179,7 @@ private:
 			{
 				auto& rb = ecs.getComponent<RigidBody2D>(e);
 				rb.isFixed = true;
-				rb.isDirty = true;
+				ecs.setComponentDirty(rb);
 			}
 		}
 

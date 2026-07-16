@@ -20,7 +20,8 @@ namespace WeirdEngine
 			for (size_t i = 0; i < componentArray->getSize(); i++)
 			{
 				MeshRenderer& mr = componentArray->getDataAtIdx(i);
-				auto& t = ecs.getComponent<Transform>(mr.Owner);
+				Entity mOwner = componentArray->getEntityAtIdx(i);
+				auto& t = ecs.getComponent<Transform>(mOwner);
 
 				WeirdRenderer::DrawCommand cmd;
 				cmd.mesh = &resourceManager.getMesh(mr.mesh);

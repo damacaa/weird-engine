@@ -166,8 +166,8 @@ namespace WeirdEngine
 			return m_spatialGridSnapshot;
 		}
 
-		void updateShape(CustomShape& shape);
-		void removeShape(CustomShape& shape);
+		void updateShape(Entity owner, CustomShape& shape);
+		void removeShape(Entity owner, CustomShape& shape);
 
 		SimulationID raycast(vec2 pos);
 		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
@@ -262,8 +262,8 @@ namespace WeirdEngine
 		void integrateVelocity(float timeStep);
 		void integratePredict(float timeStep);
 
-		void internalUpdateShape(CustomShape& shape);
-		void internalRemoveShape(CustomShape& shape);
+		void internalUpdateShape(Entity owner, CustomShape& shape);
+		void internalRemoveShape(Entity owner, CustomShape& shape);
 
 		struct Collision
 		{
@@ -424,6 +424,7 @@ namespace WeirdEngine
 		struct ShapeUpdateCommand
 		{
 			bool isRemove;
+			Entity owner;
 			CustomShape shape;
 		};
 		std::mutex m_shapeUpdateMutex;

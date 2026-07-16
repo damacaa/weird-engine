@@ -5,7 +5,6 @@
 #include <stdexcept>
 #include <unordered_map>
 
-#include "Component.h"
 #include "Entity.h"
 
 namespace WeirdEngine
@@ -17,6 +16,12 @@ namespace WeirdEngine
 	{
 	public:
 		std::array<T, MAX_ENTITIES> values;
+		std::array<bool, MAX_ENTITIES> dirtyFlags = []
+		{
+			std::array<bool, MAX_ENTITIES> arr;
+			arr.fill(false);
+			return arr;
+		}();
 		size_t size = 0;
 
 		void insertData(Entity entity, T component)
@@ -24,6 +29,7 @@ namespace WeirdEngine
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
 			values[size] = component;
+			dirtyFlags[size] = true;
 			++size;
 		}
 
@@ -31,6 +37,7 @@ namespace WeirdEngine
 		{
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
+			dirtyFlags[size] = true;
 
 			return values[size++];
 		}
@@ -40,6 +47,7 @@ namespace WeirdEngine
 			size_t indexOfRemovedEntity = entityToIndexMap[entity];
 			size_t indexOfLastElement = size - 1;
 			values[indexOfRemovedEntity] = values[indexOfLastElement];
+			dirtyFlags[indexOfRemovedEntity] = dirtyFlags[indexOfLastElement];
 
 			Entity entityOfLastElement = indexToEntityMap[indexOfLastElement];
 			entityToIndexMap[entityOfLastElement] = indexOfRemovedEntity;
@@ -72,6 +80,37 @@ namespace WeirdEngine
 		bool hasData(Entity entity)
 		{
 			return entityToIndexMap[entity] != INVALID_INDEX;
+		}
+
+		void setDirty(size_t idx, bool dirty)
+		{
+			dirtyFlags[idx] = dirty;
+		}
+
+		bool isDirty(size_t idx) const
+		{
+			return dirtyFlags[idx];
+		}
+
+		void setEntityDirty(Entity entity, bool dirty)
+		{
+			if (hasData(entity))
+				dirtyFlags[entityToIndexMap[entity]] = dirty;
+		}
+
+		void setComponentDirty(const T& component, bool dirty)
+		{
+			ptrdiff_t diff = &component - values.data();
+			if (diff >= 0 && diff < static_cast<ptrdiff_t>(size))
+			{
+				dirtyFlags[diff] = dirty;
+			}
+		}
+
+		bool isEntityDirty(Entity entity)
+		{
+			if (!hasData(entity)) return false;
+			return dirtyFlags[entityToIndexMap[entity]];
 		}
 
 		// Overload [] operator for non-const objects (modifiable)

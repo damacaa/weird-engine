@@ -1,6 +1,5 @@
 #pragma once
 #include "weird-engine/components/Transform.h"
-#include "weird-engine/ecs/Component.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/scene/Camera.h"
@@ -9,7 +8,7 @@ namespace WeirdEngine
 {
 	namespace ECS
 	{
-		struct Camera : public Component
+		struct Camera
 		{
 			WeirdRenderer::Camera camera;
 			float nearPlane = 0.1f;

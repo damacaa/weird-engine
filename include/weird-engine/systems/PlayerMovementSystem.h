@@ -40,9 +40,8 @@ namespace WeirdEngine
 				unsigned int size = componentArray->getSize();
 				for (size_t i = 0; i < size; i++)
 				{
-
 					auto& flyComponent = componentArray->getDataAtIdx(i);
-					Entity target = flyComponent.Owner;
+					Entity target = componentArray->getEntityAtIdx(i);
 
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);
@@ -171,8 +170,8 @@ namespace WeirdEngine
 				unsigned int size = componentArray.getSize();
 				for (size_t i = 0; i < size; i++)
 				{
-					auto& flyComponent = componentArray[i];
-					Entity target = flyComponent.Owner;
+					auto& flyComponent = componentArray.getDataAtIdx(i);
+					Entity target = componentArray.getEntityAtIdx(i);
 
 					Transform& t = ecs.getComponent<Transform>(target);
 					Camera& c = ecs.getComponent<Camera>(target);

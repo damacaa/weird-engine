@@ -134,8 +134,7 @@ private:
 		auto& settings = m_tempEcs->addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
 		settings.damping = 1.0f;
-		settings.isDirty = true;
-		settings.isDirty = true;
+		m_tempEcs->setComponentDirty(settings);
 
 		buildMaterialPalette();
 		buildToolbar();
@@ -445,8 +444,7 @@ private:
 				settings.gravity = 0.0f;
 				settings.damping = 1.0f;
 			}
-			settings.isDirty = true;
-			settings.isDirty = true;
+			m_tempEcs->setComponentDirty(settings);
 		}
 
 		m_gridMode = m_tempEcs->getComponent<ShapeToggle>(m_gridToggleEntity).active;
@@ -464,7 +462,7 @@ private:
 
 		auto& t = m_tempEcs->addComponent<Transform>(e);
 		t.position = vec3(world.x, world.y, 0.0f);
-		t.isDirty = true;
+		m_tempEcs->setComponentDirty(t);
 
 		auto& sdf = m_tempEcs->addComponent<Dot>(e);
 		sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
@@ -609,14 +607,14 @@ private:
 
 		auto& rb = m_tempEcs->getComponent<RigidBody2D>(m_draggedBall);
 		rb.isFixed = true;
-		rb.isDirty = true;
+		m_tempEcs->setComponentDirty(rb);
 		vec2 startPos = getMouseWorldPosition();
 		if (m_gridMode)
 			startPos = snapToGrid(startPos, m_draggedBall);
 		
 		auto& t = m_tempEcs->getComponent<Transform>(m_draggedBall);
 		t.position = vec3(startPos.x, startPos.y, 0.0f);
-		t.isDirty = true;
+		m_tempEcs->setComponentDirty(t);
 	}
 
 	void onRightDragUpdate()
@@ -634,7 +632,7 @@ private:
 			dragPos = snapToGrid(dragPos, m_draggedBall);
 		auto& t = m_tempEcs->getComponent<Transform>(m_draggedBall);
 		t.position = vec3(dragPos.x, dragPos.y, 0.0f);
-		t.isDirty = true;
+		m_tempEcs->setComponentDirty(t);
 	}
 
 	void onRightDragEnd()
@@ -646,7 +644,7 @@ private:
 		{
 			auto& rb = m_tempEcs->getComponent<RigidBody2D>(m_draggedBall);
 			rb.isFixed = false;
-			rb.isDirty = true;
+			m_tempEcs->setComponentDirty(rb);
 		}
 
 		m_draggedBall = static_cast<Entity>(-1);
@@ -980,7 +978,7 @@ private:
 			if (tx.text != newText)
 			{
 				tx.text = newText;
-				tx.dirty = true;
+				m_tempEcs->setComponentDirty(tx);
 			}
 		}
 

@@ -202,9 +202,13 @@ namespace WeirdEngine
 					for (auto& cmd : m_pendingShapeUpdates)
 					{
 						if (cmd.isRemove)
-							internalRemoveShape(cmd.shape);
+						{
+							internalRemoveShape(cmd.owner, cmd.shape);
+						}
 						else
-							internalUpdateShape(cmd.shape);
+						{
+							internalUpdateShape(cmd.owner, cmd.shape);
+						}
 					}
 					m_pendingShapeUpdates.clear();
 				}
@@ -1289,16 +1293,16 @@ namespace WeirdEngine
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
 	}
 
-	void Simulation2D::internalUpdateShape(CustomShape& shape)
+	void Simulation2D::internalUpdateShape(Entity owner, CustomShape& shape)
 	{
 		if (!shape.hasCollisions)
 			return;
 
-		DistanceFieldObject2D sdf(shape.Owner, shape.distanceFieldId, shape.combination, shape.groupIdx,
+		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx,
 								  shape.parameters);
 
 		// Check if the key exists
-		auto it = m_entityToObjectsIdx.find(shape.Owner);
+		auto it = m_entityToObjectsIdx.find(owner);
 		if (it != m_entityToObjectsIdx.end())
 		{
 			// Key exists, get the value
@@ -1310,19 +1314,19 @@ namespace WeirdEngine
 			// Key does not exist
 			m_objects.push_back(sdf);
 			ShapeId id = m_objects.size() - 1;
-			m_entityToObjectsIdx[shape.Owner] = id;
+			m_entityToObjectsIdx[owner] = id;
 			shape.simulationId = id;
 		}
 	}
 
-	void Simulation2D::internalRemoveShape(CustomShape& shape)
+	void Simulation2D::internalRemoveShape(Entity owner, CustomShape& shape)
 	{
 		if (m_objects.size() == 0)
 		{
 			return;
 		}
 
-		auto it = m_entityToObjectsIdx.find(shape.Owner);
+		auto it = m_entityToObjectsIdx.find(owner);
 		if (it == m_entityToObjectsIdx.end())
 		{
 			return;
@@ -1341,19 +1345,19 @@ namespace WeirdEngine
 		m_objects.pop_back();
 
 		// Remove from map
-		m_entityToObjectsIdx.erase(shape.Owner);
+		m_entityToObjectsIdx.erase(owner);
 	}
 
-	void Simulation2D::updateShape(CustomShape& shape)
+	void Simulation2D::updateShape(Entity owner, CustomShape& shape)
 	{
 		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
-		m_pendingShapeUpdates.push_back({false, shape});
+		m_pendingShapeUpdates.push_back({false, owner, shape});
 	}
 
-	void Simulation2D::removeShape(CustomShape& shape)
+	void Simulation2D::removeShape(Entity owner, CustomShape& shape)
 	{
 		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
-		m_pendingShapeUpdates.push_back({true, shape});
+		m_pendingShapeUpdates.push_back({true, owner, shape});
 	}
 
 	SimulationID Simulation2D::raycast(vec2 pos)

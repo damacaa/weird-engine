@@ -29,16 +29,17 @@ namespace WeirdEngine
 
 				for (size_t i = 0; i < componentArray->getSize(); i++)
 				{
+					Entity entity = componentArray->getEntityAtIdx(i);
 					auto& rb = componentArray->getDataAtIdx(i);
-					auto& transform = transformArray->getDataFromEntity(rb.Owner);
-					if (transform.isDirty)
+					auto& transform = transformArray->getDataFromEntity(entity);
+					if (transformArray->isEntityDirty(entity))
 					{
 						// Override simulation transform
 						simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-						transform.isDirty = false; // TODO: move somewhere else
+						transformArray->setEntityDirty(entity, false); // TODO: move somewhere else
 					}
 
-					if (rb.isDirty)
+					if (componentArray->isDirty(i))
 					{
 						simulation.setVelocity(rb.simulationId, rb.velocity);
 						
@@ -47,7 +48,7 @@ namespace WeirdEngine
 						else
 							simulation.unFix(rb.simulationId);
 							
-						rb.isDirty = false;
+						componentArray->setDirty(i, false);
 					}
 
 					if (glm::length2(rb.pendingImpulseForce) > 0.0001f)
@@ -69,11 +70,12 @@ namespace WeirdEngine
 
 				for (size_t i = 0; i < shapeArray->getSize(); i++)
 				{
+					Entity entity = shapeArray->getEntityAtIdx(i);
 					auto& shape = shapeArray->getDataAtIdx(i);
-					if (shape.isDirty)
+					if (shapeArray->isDirty(i))
 					{
-						simulation.updateShape(shape);
-						shape.isDirty = false;
+						simulation.updateShape(entity, shape);
+						shapeArray->setDirty(i, false);
 					}
 				}
 
@@ -81,11 +83,11 @@ namespace WeirdEngine
 				if (globalSettingsArray && globalSettingsArray->getSize() > 0)
 				{
 					auto& settings = globalSettingsArray->getDataAtIdx(0);
-					if (settings.isDirty)
+					if (globalSettingsArray->isDirty(0))
 					{
 						simulation.setGravity(settings.gravity);
 						simulation.setDamping(settings.damping);
-						settings.isDirty = false;
+						globalSettingsArray->setDirty(0, false);
 					}
 				}
 
@@ -95,14 +97,14 @@ namespace WeirdEngine
 					for (size_t i = 0; i < springArray->getSize(); i++)
 					{
 						auto& spring = springArray->getDataAtIdx(i);
-						if (spring.isDirty && spring.entityA != INVALID_ENTITY && spring.entityB != INVALID_ENTITY)
+						if (springArray->isDirty(i) && spring.entityA != INVALID_ENTITY && spring.entityB != INVALID_ENTITY)
 						{
 							if (ecs.hasComponent<RigidBody2D>(spring.entityA) && ecs.hasComponent<RigidBody2D>(spring.entityB))
 							{
 								auto simIdA = ecs.getComponent<RigidBody2D>(spring.entityA).simulationId;
 								auto simIdB = ecs.getComponent<RigidBody2D>(spring.entityB).simulationId;
 								simulation.addSpring(simIdA, simIdB, spring.stiffness, spring.restDistance);
-								spring.isDirty = false;
+								springArray->setDirty(i, false);
 							}
 						}
 					}
@@ -114,14 +116,14 @@ namespace WeirdEngine
 					for (size_t i = 0; i < distConstraintArray->getSize(); i++)
 					{
 						auto& constraint = distConstraintArray->getDataAtIdx(i);
-						if (constraint.isDirty && constraint.entityA != INVALID_ENTITY && constraint.entityB != INVALID_ENTITY)
+						if (distConstraintArray->isDirty(i) && constraint.entityA != INVALID_ENTITY && constraint.entityB != INVALID_ENTITY)
 						{
 							if (ecs.hasComponent<RigidBody2D>(constraint.entityA) && ecs.hasComponent<RigidBody2D>(constraint.entityB))
 							{
 								auto simIdA = ecs.getComponent<RigidBody2D>(constraint.entityA).simulationId;
 								auto simIdB = ecs.getComponent<RigidBody2D>(constraint.entityB).simulationId;
 								simulation.addPositionConstraint(simIdA, simIdB, constraint.distance);
-								constraint.isDirty = false;
+								distConstraintArray->setDirty(i, false);
 							}
 						}
 					}

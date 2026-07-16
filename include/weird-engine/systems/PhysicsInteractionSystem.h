@@ -140,13 +140,14 @@ namespace WeirdEngine
 				auto rbs = ecs.getComponentArray<RigidBody2D>();
 
 				RigidBody2D& target = rbs->getLastData();
+				Entity targetOwner = rbs->getEntityAtIdx(rbs->getSize() - 1);
 
-				vec3 position = ecs.getComponent<Transform>(target.Owner).position;
+				vec3 position = ecs.getComponent<Transform>(targetOwner).position;
 				vec2 v = vec2(15, 30) - vec2(position.x, position.y);
 
 				target.pendingContinuousForce += 50.0f * normalize(v);
 
-				target.isDirty = true;
+				rbs->setEntityDirty(targetOwner, true);
 			}
 
 			// // Pause / resume simulation
@@ -190,13 +191,14 @@ namespace WeirdEngine
 				for (int i = 0; i < rbs->getSize(); i++)
 				{
 					auto& rb = rbs->getDataAtIdx(i);
-					auto& t = ecs.getComponent<Transform>(rb.Owner);
+					Entity rbOwner = rbs->getEntityAtIdx(i);
+					auto& t = ecs.getComponent<Transform>(rbOwner);
 
 					float d2 = glm::length2(mouseInWorld - vec2(t.position.x, t.position.y));
 					if (d2 < minD2)
 					{
 						minD2 = d2;
-						m_dragId = rb.Owner;
+						m_dragId = rbOwner;
 					}
 				}
 
@@ -205,7 +207,7 @@ namespace WeirdEngine
 				{
 					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
 					rb.isFixed = true;
-					rb.isDirty = true;
+					rbs->setEntityDirty(m_dragId, true);
 				}
 				
 			}
@@ -217,7 +219,7 @@ namespace WeirdEngine
 					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
 					rb.isFixed = false;
 					rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
-					rb.isDirty = true;
+					ecs.getComponentArray<RigidBody2D>()->setEntityDirty(m_dragId, true);
 
 					m_dragId = INVALID_ENTITY;
 				}
@@ -229,7 +231,7 @@ namespace WeirdEngine
 				auto& t = ecs.getComponent<Transform>(m_dragId);
 
 				t.position = vec3(mousePositionInWorld, 0.0f);
-				t.isDirty = true;
+				ecs.getComponentArray<Transform>()->setEntityDirty(m_dragId, true);
 			}
 		}
 
@@ -242,13 +244,14 @@ namespace WeirdEngine
 			for (int i = 0; i < rbs->getSize(); i++)
 			{
 				auto& rb = rbs->getDataAtIdx(i);
-				auto& t = ecs.getComponent<Transform>(rb.Owner);
+				Entity rbOwner = rbs->getEntityAtIdx(i);
+				auto& t = ecs.getComponent<Transform>(rbOwner);
 
 				float d2 = glm::length2(position - vec2(t.position.x, t.position.y));
 				if (d2 < minD2)
 				{
 					minD2 = d2;
-					found = rb.Owner;
+					found = rbOwner;
 				}
 			}
 			return found;
@@ -285,7 +288,8 @@ namespace WeirdEngine
 				{
 
 					auto& rb = componentArray->getDataAtIdx(i);
-					auto& t = transforms->getDataFromEntity(rb.Owner);
+					Entity rbOwner = componentArray->getEntityAtIdx(i);
+					auto& t = transforms->getDataFromEntity(rbOwner);
 
 					float distance = glm::length(static_cast<vec2>(t.position) - m_loadStartPosition);
 					// float maxDistance = (0.5f * dragDistance);
@@ -293,7 +297,7 @@ namespace WeirdEngine
 					vec2 force = 1.0f * glm::clamp(maxDistance - distance, 0.0f, 1.0f) * direction;
 
 					rb.pendingImpulseForce += force;
-					rb.isDirty = true;
+					componentArray->setDirty(i, true);
 				}
 			}
 		}
@@ -307,7 +311,7 @@ namespace WeirdEngine
 				{
 					auto& rb = ecs.getComponent<RigidBody2D>(id);
 					rb.isFixed = !rb.isFixed;
-					rb.isDirty = true;
+					ecs.getComponentArray<RigidBody2D>()->setEntityDirty(id, true);
 				}
 			}
 		}
@@ -342,7 +346,7 @@ namespace WeirdEngine
 						spring.entityB = m_firstIdInSpring;
 						spring.stiffness = 0.1f;
 						spring.restDistance = 1.4142f;
-						spring.isDirty = true;
+						ecs.getComponentArray<Spring>()->setEntityDirty(entity, true);
 					}
 				}
 
@@ -379,7 +383,7 @@ namespace WeirdEngine
 						constraint.entityA = id;
 						constraint.entityB = m_firstIdInSpring;
 						constraint.distance = 1.0f; // Was default in simulation.addPositionConstraint
-						constraint.isDirty = true;
+						ecs.getComponentArray<DistanceConstraint>()->setEntityDirty(entity, true);
 					}
 				}
 

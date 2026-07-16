@@ -107,6 +107,16 @@ namespace WeirdEngine
 			}
 		}
 
+		bool isComponentDirty(const T& component) const
+		{
+			ptrdiff_t diff = &component - values.data();
+			if (diff >= 0 && diff < static_cast<ptrdiff_t>(size))
+			{
+				return dirtyFlags[diff];
+			}
+			return false;
+		}
+
 		bool isEntityDirty(Entity entity)
 		{
 			if (!hasData(entity)) return false;

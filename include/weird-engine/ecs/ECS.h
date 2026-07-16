@@ -5,8 +5,10 @@
 
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <queue>
+#include <tuple>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -110,6 +112,66 @@ namespace WeirdEngine
 		{
 			getComponentManager<T>()->getComponentArray()->setComponentDirty(component, dirty);
 		}
+
+		template <typename T> bool isComponentDirty(const T& component)
+		{
+			return getComponentManager<T>()->getComponentArray()->isComponentDirty(component);
+		}
+
+		// =====================================================================
+		// forEach — iterate entities that have ALL of the listed components
+		// =====================================================================
+
+		// Primary form: lambda receives (Entity e, T&...)
+		template <typename... Ts, typename Func>
+		void forEach(Func&& func)
+		{
+			// Grab all the component arrays up front
+			auto arrays = std::make_tuple(getComponentArray<Ts>()...);
+
+			// Find the smallest array to drive the outer loop.
+			// We iterate the smallest one and check membership in the rest.
+			size_t smallestSize = std::numeric_limits<size_t>::max();
+			size_t smallestIdx = 0;
+			size_t idx = 0;
+			((void)(getComponentArray<Ts>()->getSize() < smallestSize
+				? (smallestSize = getComponentArray<Ts>()->getSize(), smallestIdx = idx++, true)
+				: (idx++, false)), ...);
+
+			// Dispatch to the driver that iterates the smallest array
+			idx = 0;
+			(forEachDriver<Ts, Ts...>(std::forward<Func>(func), arrays, smallestSize, smallestIdx, idx++) || ...);
+		}
+
+	private:
+
+		// Driver: called once per type in the pack. Only the one matching
+		// smallestIdx actually runs the loop; the others return false.
+		template <typename Driver, typename... Ts, typename Func, typename Arrays>
+		bool forEachDriver(Func&& func, Arrays& arrays, size_t smallestSize, size_t targetIdx, size_t myIdx)
+		{
+			if (myIdx != targetIdx)
+				return false;
+
+			auto driverArray = std::get<std::shared_ptr<ComponentArray<Driver>>>(arrays);
+
+			for (size_t i = 0; i < smallestSize; i++)
+			{
+				Entity e = driverArray->getEntityAtIdx(i);
+
+				// Check that this entity exists in ALL component arrays
+				bool hasAll = (std::get<std::shared_ptr<ComponentArray<Ts>>>(arrays)->hasData(e) && ...);
+				if (!hasAll)
+					continue;
+
+				// Call the user's lambda with (Entity, T&...)
+				func(e, std::get<std::shared_ptr<ComponentArray<Ts>>>(arrays)->getDataFromEntity(e)...);
+			}
+
+			return true; // signal that we ran the loop
+		}
+
+	public:
 
 		template <typename T> void registerComponent()
 		{

@@ -18,20 +18,20 @@
 
 namespace WeirdEngine::SDFShaderGenerationSystem
 {
-	template <typename ShapeClass>
-	inline void updateShaderCode(bool& shapesNeedUpdate, ECSManager& ecs, WeirdRenderer::Shader& shader,
-							 const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
+	template <typename ShapeClass, typename RenderContext>
+	inline void update(ECSManager& ecs, RenderContext& ctx, WeirdRenderer::Shader& shader,
+					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
 		const auto componentArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
 
-		if (!shapesNeedUpdate)
+		if (!ctx.shapesNeedUpdate)
 		{
 			return;
 		}
 
 		Logger::log("Updating shader code for " + std::string(typeid(ShapeClass).name()) + "s...");
 
-		shapesNeedUpdate = false;
+		ctx.shapesNeedUpdate = false;
 
 		auto toGlslFloat = [](float value) {
 			std::ostringstream ss;
@@ -253,12 +253,5 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			}
 		}
 #endif
-	}
-
-	template <typename ShapeClass, typename RenderContext>
-	inline void update(ECSManager& ecs, RenderContext& ctx, WeirdRenderer::Shader& shader,
-					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
-	{
-		updateShaderCode<ShapeClass>(ctx.shapesNeedUpdate, ecs, shader, sdfs);
 	}
 } // namespace WeirdEngine::SDFShaderGenerationSystem

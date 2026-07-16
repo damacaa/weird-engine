@@ -11,27 +11,23 @@ namespace WeirdEngine
 
 	namespace RenderSystem
 	{
-		inline void update(ECSManager& ecs, ResourceManager& resourceManager, std::vector<WeirdRenderer::DrawCommand>& drawQueue)
+		inline void update(ECSManager& ecs, ResourceManager& resourceManager,
+						   std::vector<WeirdRenderer::DrawCommand>& drawQueue)
 		{
 			drawQueue.clear();
 
-			auto componentArray = ecs.getComponentManager<MeshRenderer>()->getComponentArray();
+			ecs.forEach<MeshRenderer, Transform>(
+				[&](Entity mOwner, MeshRenderer& mr, Transform& t)
+				{
+					WeirdRenderer::DrawCommand cmd;
+					cmd.mesh = &resourceManager.getMesh(mr.mesh);
+					cmd.materialIndex = mr.materialIndex;
+					cmd.translation = t.position;
+					cmd.rotation = t.rotation;
+					cmd.scale = t.scale;
 
-			for (size_t i = 0; i < componentArray->getSize(); i++)
-			{
-				MeshRenderer& mr = componentArray->getDataAtIdx(i);
-				Entity mOwner = componentArray->getEntityAtIdx(i);
-				auto& t = ecs.getComponent<Transform>(mOwner);
-
-				WeirdRenderer::DrawCommand cmd;
-				cmd.mesh = &resourceManager.getMesh(mr.mesh);
-				cmd.materialIndex = mr.materialIndex;
-				cmd.translation = t.position;
-				cmd.rotation = t.rotation;
-				cmd.scale = t.scale;
-
-				drawQueue.push_back(cmd);
-			}
+					drawQueue.push_back(cmd);
+				});
 		}
 	} // namespace RenderSystem
 } // namespace WeirdEngine

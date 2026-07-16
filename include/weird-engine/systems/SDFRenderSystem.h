@@ -29,15 +29,15 @@ namespace WeirdEngine
 		template <typename DotClass, typename ShapeClass, typename TextClass>
 		inline void update(ECSManager& ecs, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
 		{
-			// Get component arrays for the templated types
-			auto dotClassArray = ecs.getComponentManager<DotClass>()->getComponentArray();
-			auto shapeClassArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
-			auto textClassArray = ecs.getComponentManager<TextClass>()->getComponentArray();
-			auto transformArray = ecs.getComponentManager<Transform>()->getComponentArray();
-
-			auto updateText = [&](TextClass& text, size_t index)
+			uint32_t normalDots = 0;
+			if (auto dotArray = ecs.getComponentArray<DotClass>())
 			{
-				if (textClassArray->isDirty(index))
+				normalDots = dotArray->getSize();
+			}
+
+			uint32_t textDots = 0;
+			ecs.forEach<TextClass>([&](Entity entity, TextClass& text) {
+				if (ecs.isComponentDirty(text))
 				{
 					// Update dot count
 					text.bufferedDotCount = 0;
@@ -52,22 +52,19 @@ namespace WeirdEngine
 								 ((charCount - 1) * ctx.charSpacing);
 					text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
 
-					textClassArray->setDirty(index, false);
+					ecs.setComponentDirty(text, false);
 				}
-			};
-
-			uint32_t normalDots = dotClassArray->getSize();
-			uint32_t textDots = 0;
-
-			for (size_t i = 0; i < textClassArray->getSize(); i++)
-			{
-				auto& text = textClassArray->getDataAtIdx(i);
-				updateText(text, i);
 
 				textDots += text.bufferedDotCount;
-			}
+			});
+
 			uint32_t dotCount = normalDots + textDots;
-			uint32_t shapeCount = shapeClassArray->getSize();
+
+			uint32_t shapeCount = 0;
+			if (auto shapeArray = ecs.getComponentArray<ShapeClass>())
+			{
+				shapeCount = shapeArray->getSize();
+			}
 
 			// Each ShapeClass will contribute 2 dots to the buffer
 			uint32_t newSize = dotCount + (2 * shapeCount);
@@ -89,27 +86,20 @@ namespace WeirdEngine
 			}
 
 			// Process DotClass instances
-			for (size_t i = 0; i < normalDots; i++)
-			{
-				auto& dotComp = dotClassArray->getDataAtIdx(i);
-				Entity dotOwner = dotClassArray->getEntityAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(dotOwner);
-
-				data[i].x = t.position.x;
-				data[i].y = t.position.y;
-				data[i].z = t.position.z;
-				data[i].w = dotComp.materialId;
-			}
+			int dotIdx = 0;
+			ecs.forEach<DotClass, Transform>([&](Entity entity, DotClass& dotComp, Transform& t) {
+				data[dotIdx].x = t.position.x;
+				data[dotIdx].y = t.position.y;
+				data[dotIdx].z = t.position.z;
+				data[dotIdx].w = dotComp.materialId;
+				dotIdx++;
+			});
 
 			float charWidth = ctx.font.getCharWidth() * 2 * ctx.dotRadious; // should be 40
 
 			// Text
 			int dotIndex = 0;
-			for (size_t i = 0; i < textClassArray->getSize(); i++)
-			{
-				auto& text = textClassArray->getDataAtIdx(i);
-				Entity textOwner = textClassArray->getEntityAtIdx(i);
-				auto& t = transformArray->getDataFromEntity(textOwner);
+			ecs.forEach<TextClass, Transform>([&](Entity entity, TextClass& text, Transform& t) {
 				int charCount = text.text.length();
 
 				float horizontalOffset = 0.0f;
@@ -160,25 +150,24 @@ namespace WeirdEngine
 						data[idx].w = text.material;
 					}
 				}
-			}
+			});
 
 			// Process ShapeClass instances
-			for (size_t i = 0; i < shapeCount; i++)
-			{
-				auto& shapeComp = shapeClassArray->getDataAtIdx(i);
-
+			int shapeIdx = 0;
+			ecs.forEach<ShapeClass>([&](Entity entity, ShapeClass& shapeComp) {
 				// Assuming ShapeClass has m_parameters[0] through m_parameters[7]
 				// Make sure your ShapeClass provides these members.
-				data[dotCount + (2 * i)].x = shapeComp.parameters[0];
-				data[dotCount + (2 * i)].y = shapeComp.parameters[1];
-				data[dotCount + (2 * i)].z = shapeComp.parameters[2];
-				data[dotCount + (2 * i)].w = shapeComp.parameters[3];
+				data[dotCount + (2 * shapeIdx)].x = shapeComp.parameters[0];
+				data[dotCount + (2 * shapeIdx)].y = shapeComp.parameters[1];
+				data[dotCount + (2 * shapeIdx)].z = shapeComp.parameters[2];
+				data[dotCount + (2 * shapeIdx)].w = shapeComp.parameters[3];
 
-				data[dotCount + (2 * i) + 1].x = shapeComp.parameters[4];
-				data[dotCount + (2 * i) + 1].y = shapeComp.parameters[5];
-				data[dotCount + (2 * i) + 1].z = shapeComp.parameters[6];
-				data[dotCount + (2 * i) + 1].w = shapeComp.parameters[7];
-			}
+				data[dotCount + (2 * shapeIdx) + 1].x = shapeComp.parameters[4];
+				data[dotCount + (2 * shapeIdx) + 1].y = shapeComp.parameters[5];
+				data[dotCount + (2 * shapeIdx) + 1].z = shapeComp.parameters[6];
+				data[dotCount + (2 * shapeIdx) + 1].w = shapeComp.parameters[7];
+				shapeIdx++;
+			});
 		}
 
 	} // namespace SDFRenderSystem

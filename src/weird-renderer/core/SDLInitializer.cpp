@@ -5,9 +5,13 @@
 #include <stdexcept>
 
 #include <glad/glad.h>
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
+#endif
+
+#include "weird-renderer/core/WeirdFBDevEGL.h"
 
 namespace WeirdEngine
 {
@@ -33,12 +37,30 @@ namespace WeirdEngine
 		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine)
 			: m_window(window)
 		{
+#ifdef WEIRD_USE_FBDEV_EGL
+			// Video backend selection: fbdev EGL by default, SDL's own windowing
+			// (e.g. kmsdrm) when WEIRD_VIDEO_BACKEND=sdl.
+			const char* backend = SDL_getenv("WEIRD_VIDEO_BACKEND");
+			m_useFBDevEGL = !(backend && SDL_strcmp(backend, "sdl") == 0);
+
+			if (m_useFBDevEGL)
+			{
+				SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+			}
+#endif
 			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
 			{
-				std::string errorMsg = "SDL could not initialize! SDL_Error: ";
-				errorMsg += SDL_GetError();
-				throw std::runtime_error(errorMsg);
+				std::cout << "SDL_Init with audio failed: " << SDL_GetError()
+						  << " - retrying without audio" << std::endl;
+				if (!SDL_Init(SDL_INIT_VIDEO))
+				{
+					std::string errorMsg = "SDL could not initialize! SDL_Error: ";
+					errorMsg += SDL_GetError();
+					throw std::runtime_error(errorMsg);
+				}
 			}
+			std::cout << "SDL initialized. Video driver: "
+					  << (SDL_GetCurrentVideoDriver() ? SDL_GetCurrentVideoDriver() : "<none>") << std::endl;
 
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -46,11 +68,19 @@ namespace WeirdEngine
 			SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-			SDL_WindowFlags windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-
-			if (settings.fullscreen)
+			SDL_WindowFlags windowFlags;
+			if (m_useFBDevEGL)
 			{
-				windowFlags |= SDL_WINDOW_FULLSCREEN;
+				windowFlags = 0;
+			}
+			else
+			{
+				windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+
+				if (settings.fullscreen)
+				{
+					windowFlags |= SDL_WINDOW_FULLSCREEN;
+				}
 			}
 
 			window = SDL_CreateWindow(settings.windowTitle.c_str(), settings.width, settings.height, windowFlags);
@@ -59,48 +89,83 @@ namespace WeirdEngine
 				throw std::runtime_error("Failed to create SDL window.");
 			}
 
-			if (!settings.fullscreen)
+			if (!m_useFBDevEGL)
 			{
-				SDL_SetWindowPosition(window, settings.x, settings.y);
-			}
+				if (!settings.fullscreen)
+				{
+					SDL_SetWindowPosition(window, settings.x, settings.y);
+				}
 
-			int displayIndex = SDL_GetDisplayForWindow(window);
-			if (displayIndex < 0)
-			{
-				SDL_Log("Failed to get display index: %s", SDL_GetError());
-				return;
-			}
+				int displayIndex = SDL_GetDisplayForWindow(window);
+				if (displayIndex < 0)
+				{
+					SDL_Log("Failed to get display index: %s", SDL_GetError());
+					return;
+				}
 
-			const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(displayIndex);
-			settings.refreshRate = mode->refresh_rate;
+				const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(displayIndex);
+				settings.refreshRate = mode->refresh_rate;
 
-			if (settings.fullscreen)
-			{
-				SDL_GetWindowSizeInPixels(window, reinterpret_cast<int*>(&settings.width),
-										  reinterpret_cast<int*>(&settings.height));
+				if (settings.fullscreen)
+				{
+					SDL_GetWindowSizeInPixels(window, reinterpret_cast<int*>(&settings.width),
+											  reinterpret_cast<int*>(&settings.height));
+				}
 			}
 
 			m_window = window;
 
-			m_glContext = SDL_GL_CreateContext(m_window);
-			if (!m_glContext)
+			if (m_useFBDevEGL)
 			{
-				throw std::runtime_error("Failed to create OpenGL context.");
+				int fbWidth, fbHeight;
+				if (!InitFBDevEGL(fbWidth, fbHeight))
+				{
+					throw std::runtime_error("Failed to initialize fbdev EGL");
+				}
+				m_glContext = nullptr;
+				settings.width = fbWidth;
+				settings.height = fbHeight;
+
+				std::cout << "Loading GLAD via GetEGLProcAddress..." << std::endl;
+				if (!gladLoadGLES2Loader((GLADloadproc)GetEGLProcAddress))
+				{
+					throw std::runtime_error("Failed to initialize GLAD via EGL.");
+				}
+				std::cout << "GLAD loaded successfully." << std::endl;
+			}
+			else
+			{
+				m_glContext = SDL_GL_CreateContext(m_window);
+				if (!m_glContext)
+				{
+					throw std::runtime_error("Failed to create OpenGL context.");
+				}
+
+				SDL_GL_MakeCurrent(m_window, m_glContext);
+
+				if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
+				{
+					throw std::runtime_error("Failed to initialize GLAD.");
+				}
 			}
 
-			SDL_GL_MakeCurrent(m_window, m_glContext);
+			std::cout << "GL_VENDOR: " << (const char*)glGetString(GL_VENDOR) << std::endl;
+			std::cout << "GL_RENDERER: " << (const char*)glGetString(GL_RENDERER) << std::endl;
+			std::cout << "GL_VERSION: " << (const char*)glGetString(GL_VERSION) << std::endl;
+			std::cout << "GL_SHADING_LANGUAGE_VERSION: "
+					  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
-			if (!gladLoadGLES2Loader((GLADloadproc)SDL_GL_GetProcAddress))
-			{
-				throw std::runtime_error("Failed to initialize GLAD.");
-			}
-
+#ifndef WEIRD_DISABLE_IMGUI
 			IMGUI_CHECKVERSION();
 			ImGui::CreateContext();
 			ImGui::StyleColorsDark();
 
+			std::cout << "Initializing ImGui SDL3..." << std::endl;
 			ImGui_ImplSDL3_InitForOpenGL(m_window, m_glContext);
+			std::cout << "Initializing ImGui OpenGL3..." << std::endl;
 			ImGui_ImplOpenGL3_Init("#version 300 es"); // matches your GL ES 3.0 context
+			std::cout << "ImGui initialized successfully." << std::endl;
+#endif
 
 #ifndef NDEBUG
 			// Enable debug output via KHR_debug extension if supported
@@ -136,21 +201,38 @@ namespace WeirdEngine
 													  AudioEngine::data_callback, &audioEngine);
 			if (!m_audioStream)
 			{
-				throw std::runtime_error("Failed to open audio stream.");
+				// Audio is not critical: log and keep running silent.
+				std::cerr << "Failed to open audio stream: " << SDL_GetError()
+						  << " - continuing without audio" << std::endl;
 			}
-
-			SDL_AudioDeviceID deviceID = SDL_GetAudioStreamDevice(m_audioStream);
-			SDL_ResumeAudioDevice(deviceID);
+			else
+			{
+				SDL_AudioDeviceID deviceID = SDL_GetAudioStreamDevice(m_audioStream);
+				SDL_ResumeAudioDevice(deviceID);
+			}
 		}
 
 		SDLInitializer::~SDLInitializer()
 		{
+#ifndef WEIRD_DISABLE_IMGUI
 			ImGui_ImplOpenGL3_Shutdown();
 			ImGui_ImplSDL3_Shutdown();
 			ImGui::DestroyContext();
+#endif
 
-			SDL_DestroyAudioStream(m_audioStream);
-			SDL_GL_DestroyContext(m_glContext);
+			if (m_audioStream)
+			{
+				SDL_DestroyAudioStream(m_audioStream);
+			}
+
+			if (m_useFBDevEGL)
+			{
+				ShutdownFBDevEGL();
+			}
+			else
+			{
+				SDL_GL_DestroyContext(m_glContext);
+			}
 			SDL_DestroyWindow(m_window);
 			SDL_Quit();
 		}

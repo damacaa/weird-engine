@@ -1,7 +1,9 @@
 
 #include "weird-renderer/core/MeshRenderPipeline.h"
 
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
+#endif
 
 #include "weird-engine/Scene.h"
 
@@ -162,6 +164,7 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 
 		void MeshRenderPipeline::showDebugUI()
 		{
+#ifndef WEIRD_DISABLE_IMGUI
 			const char* label = "Mesh Render Settings";
 			if (!ImGui::CollapsingHeader(label))
 				return;
@@ -171,6 +174,7 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 			ImGui::TextDisabled("Render queue: not yet implemented");
 
 			ImGui::PopID();
+#endif
 		}
 
 	} // namespace WeirdRenderer

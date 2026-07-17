@@ -1,7 +1,9 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/SceneManager.h"
 
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
+#endif
 
 #include "weird-engine/Input.h"
 #include "weird-engine/math/Default2DSDFs.h"
@@ -677,6 +679,7 @@ namespace WeirdEngine
 
 	void Scene::renderImGui()
 	{
+#ifndef WEIRD_DISABLE_IMGUI
 		const char* label = "Settings";
 		if (ImGui::CollapsingHeader(label))
 		{
@@ -746,10 +749,12 @@ namespace WeirdEngine
 
 			ImGui::PopID();
 		}
+#endif
 	}
 
 	void Scene::renderPhysicsStatsUI()
 	{
+#ifndef WEIRD_DISABLE_IMGUI
 		auto simStats = m_simulation2D.getPerformanceStats();
 		ImGui::Text("Step:  %.2f ms", simStats.timePerStepMs);
 		ImGui::Text("  Broad Phase: %.3f ms", simStats.broadPhaseMs);
@@ -758,6 +763,7 @@ namespace WeirdEngine
 		ImGui::Text("  Collisions:  %.3f ms", simStats.collisionEventsMs);
 		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
 		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
+#endif
 	}
 
 	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,

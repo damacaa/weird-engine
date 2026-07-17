@@ -4,10 +4,15 @@
 #define ENGINE_PATH "../weird-engine"
 #endif // !ENGINE_PATH
 
+#include <cstdlib>
+#include <iostream>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_timer.h>
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
+#endif
 
 #include "weird-engine/Input.h"
 #include "weird-engine/Profiler.h"
@@ -65,6 +70,11 @@ namespace WeirdEngine
 			double timeDiff = 0.0;
 			unsigned int frameCounter = 0;
 			bool quit = false;
+
+			// Testing/diagnostics support
+			double startTime = 0.0;
+			double autoQuitAt = -1.0; // absolute time to quit, -1 disables
+			unsigned long long totalFrames = 0;
 		};
 
 		inline void runFrame(RuntimeContext& ctx)
@@ -93,6 +103,20 @@ namespace WeirdEngine
 
 			WeirdEngine::Profiler::get().update();
 
+			// Test hooks: auto-quit and periodic heartbeat logging (useful on
+			// headless devices where log.txt is the only output).
+			ctx.totalFrames++;
+			if (ctx.totalFrames % 120 == 0)
+			{
+				std::cout << "[WeirdEngine] frame " << ctx.totalFrames
+						  << " (t=" << (ctx.time - ctx.startTime) << "s)" << std::endl;
+			}
+			if (ctx.autoQuitAt > 0.0 && ctx.time >= ctx.autoQuitAt)
+			{
+				std::cout << "[WeirdEngine] Auto-quit time reached, exiting cleanly." << std::endl;
+				ctx.quit = true;
+			}
+
 			PROFILE_SCOPE("Frame");
 
 			bool newResolution = false;
@@ -101,6 +125,7 @@ namespace WeirdEngine
 				PROFILE_SCOPE("Input events");
 				Input::update(ctx.renderer.getWindow());
 
+#ifndef WEIRD_DISABLE_IMGUI
 				// Suppress game input when ImGui has focus
 				{
 					const ImGuiIO& io = ImGui::GetIO();
@@ -109,11 +134,14 @@ namespace WeirdEngine
 					if (io.WantCaptureKeyboard)
 						Input::suppressKeyboardInput();
 				}
+#endif
 				
 				SDL_Event event;
 				while (SDL_PollEvent(&event))
 				{
+#ifndef WEIRD_DISABLE_IMGUI
 					ImGui_ImplSDL3_ProcessEvent(&event);
+#endif
 					
 					if (event.type == SDL_EVENT_QUIT)
 					{
@@ -286,6 +314,7 @@ namespace WeirdEngine
 		};
 		Detail::g_emscriptenEnv->runtimeContext->time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		Detail::g_emscriptenEnv->runtimeContext->prevTime = Detail::g_emscriptenEnv->runtimeContext->time;
+		Detail::g_emscriptenEnv->runtimeContext->startTime = Detail::g_emscriptenEnv->runtimeContext->time;
 
 		emscripten_set_main_loop(Detail::runFrameEmscripten, 0, 1);
 #else
@@ -306,6 +335,18 @@ namespace WeirdEngine
 		Detail::RuntimeContext runtimeContext{sceneManager, renderer, audioEngine};
 		runtimeContext.time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		runtimeContext.prevTime = runtimeContext.time;
+		runtimeContext.startTime = runtimeContext.time;
+
+		// Optional self-termination after N seconds (WEIRD_AUTO_QUIT_SECONDS),
+		// so headless test runs always return to the launcher.
+		if (const char* aq = SDL_getenv("WEIRD_AUTO_QUIT_SECONDS"))
+		{
+			double seconds = atof(aq);
+			if (seconds > 0.0)
+			{
+				runtimeContext.autoQuitAt = runtimeContext.time + seconds;
+			}
+		}
 
 		while (!runtimeContext.quit)
 		{

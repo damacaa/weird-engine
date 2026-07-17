@@ -6,8 +6,8 @@
 // Replaced glad and GLFW with SDL3.
 // Note: If you use OpenGL with SDL, you'll still need a GL loader like glad,
 // but it's not required for the input handling itself.
-#include <SDL/include/SDL3/SDL.h>
-// #include <SDL/src/events/SDL_mouse_c.h>
+#include <SDL3/SDL.h>
+// #include <SDL3/SDL_mouse.h>
 #include "weird-renderer/core/Display.h"
 
 /// <summary>

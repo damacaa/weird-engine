@@ -1,5 +1,4 @@
 #include "weird-renderer/core/Renderer.h"
-
 #include "weird-renderer/core/WeirdFBDevEGL.h"
 
 #include <ctime>
@@ -139,25 +138,6 @@ namespace WeirdEngine
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
 			PROFILE_SCOPE("Scene render");
-
-			// Test hook: WEIRD_SCREENSHOT_FRAME=N saves a screenshot on frame N
-			// (lets us verify rendering on headless devices).
-			{
-				static long screenshotFrame = -2;
-				static unsigned long frameCount = 0;
-				if (screenshotFrame == -2)
-				{
-					const char* env = SDL_getenv("WEIRD_SCREENSHOT_FRAME");
-					screenshotFrame = env ? atol(env) : -1;
-				}
-				frameCount++;
-				if (screenshotFrame > 0 && frameCount >= (unsigned long)screenshotFrame)
-				{
-					m_takeScreenshot = true;
-					screenshotFrame = -1;
-				}
-			}
-
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
@@ -214,43 +194,39 @@ namespace WeirdEngine
 							m_3DWorldPipeline->showDebugUI();
 							m_meshPipeline->showDebugUI();
 
-							// Dithering Configuration
-							const char* label = m_ditheringEnabled ? "Dithering [ON]" : "Dithering [OFF]";
-							if (!m_ditheringEnabled)
-								ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-
-							if (ImGui::CollapsingHeader(label))
+							// Output settings
 							{
-								ImGui::PushID(label);
-								
-								if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+								const char* label = "Output Settings";
+								if (ImGui::CollapsingHeader(label))
 								{
-									// Update combination pipeline if initialized
-									if (m_combinationRender.isInitialized())
-									{
-										m_combinationRender.getShader().setUniform("u_ditheringEnabled", m_ditheringEnabled);
-									}
-								}
-								ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
-								ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
-								
-								ImGui::Separator();
-								if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
-								{
-									// Update combination pipeline if initialized
-									if (m_combinationRender.isInitialized())
-									{
-										m_combinationRender.getShader().setUniform("u_surfaceBlurEnabled", m_surfaceBlurEnabled);
-									}
-								}
-								ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
-								ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f,
-												   100.0f);
+									ImGui::PushID(label);
 
-								ImGui::PopID();
+									if (ImGui::Checkbox("Enable Dithering", &m_ditheringEnabled))
+									{
+										if (m_ditheringEnabled)
+											m_outputShaderProgram.addDefine("DITHERING");
+										else
+											m_outputShaderProgram.removeDefine("DITHERING");
+									}
+
+									ImGui::SliderFloat("Dithering Spread", &m_ditheringSpread, 0.0f, 1.0f);
+									ImGui::SliderInt("Dithering Color Count", &m_ditheringColorCount, 2, 32);
+
+									ImGui::Separator();
+									if (ImGui::Checkbox("Enable Surface Blur", &m_surfaceBlurEnabled))
+									{
+										if (m_surfaceBlurEnabled)
+											m_outputShaderProgram.addDefine("SURFACE_BLUR");
+										else
+											m_outputShaderProgram.removeDefine("SURFACE_BLUR");
+									}
+									ImGui::SliderFloat("Surface Blur Radius", &m_surfaceBlurRadius, 1.0f, 12.0f);
+									ImGui::SliderFloat("Surface Blur Edge Threshold", &m_surfaceBlurSigmaColor, 0.01f,
+													   1.0f);
+
+									ImGui::PopID();
+								}
 							}
-							if (!m_ditheringEnabled)
-								ImGui::PopStyleColor();
 
 							if (ImGui::Button("Take Screenshot"))
 							{
@@ -265,18 +241,18 @@ namespace WeirdEngine
 
 							if (ImGui::Checkbox("VSync", &m_vSyncEnabled))
 							{
-								setVSync(m_vSyncEnabled);
+								updateVSyncSetting();
 							}
 
 							bool isMuted = AudioEngine::getInstance().isMuted();
 							if (ImGui::Checkbox("Mute Audio", &isMuted))
 							{
-								AudioEngine::getInstance().setMuted(isMuted);
+								if (isMuted) AudioEngine::getInstance().mute();
+								else AudioEngine::getInstance().unmute();
 							}
 
 							if (!m_lastScreenshotPath.empty())
 							{
-								ImGui::Text("Screenshot saved: ");
 								ImGui::SameLine();
 								ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
 								ImGui::TextUnformatted(m_lastScreenshotPath.c_str());
@@ -288,10 +264,8 @@ namespace WeirdEngine
 								}
 								if (ImGui::IsItemClicked())
 								{
-									// Open the screenshot
-									// Windows: ShellExecute, Linux: xdg-open, Mac: open
-									std::string command = "xdg-open " + m_lastScreenshotPath;
-									system(command.c_str());
+									std::string url = "file://" + m_lastScreenshotPath;
+									SDL_OpenURL(url.c_str());
 								}
 							}
 							ImGui::EndTabItem();
@@ -324,7 +298,7 @@ namespace WeirdEngine
 
 			{
 				PROFILE_SCOPE("Synchronization");
-				if (IsFBDevEGLActive())
+								if (IsFBDevEGLActive())
 				{
 					SwapFBDevBuffers();
 				}
@@ -489,80 +463,86 @@ namespace WeirdEngine
 			// FPS / Frametime header
 			ImGui::Text("FPS: %.1f  |  Frame: %.2f ms", fps, frameTimeMs);
 
-			// Plot frametime history
-			auto ftOverlay = std::format("Frametime: {:.1f} ms", frameTimeMs);
+			char ftOverlay[32];
+			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
 			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
-							 ftOverlay.c_str(), 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
+							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
 
 			ImGui::Spacing();
 
 			ImGui::TextDisabled("Profiler Scopes  (last frame)");
 			ImGui::Spacing();
 
-			Profiler& profiler = Profiler::get();
-			const auto& frameData = profiler.getCurrentFrame();
+			auto& profiler = Profiler::get();
+			const auto& stats = profiler.getLastFrameStats();
 
-			if (frameData.stats.empty())
+			if (stats.empty())
 			{
 				ImGui::TextDisabled("Warming up...");
 				ImGui::End();
 				return;
 			}
 
-			// Some nice colors for depth layers (up to 8 deep)
-			static const ImVec4 depthColors[8] = {
-				ImVec4(0.2f, 0.6f, 1.0f, 1.0f),
-				ImVec4(0.9f, 0.4f, 0.3f, 1.0f),
-				ImVec4(0.4f, 0.8f, 0.4f, 1.0f),
-				ImVec4(0.8f, 0.7f, 0.2f, 1.0f),
-				ImVec4(0.6f, 0.3f, 0.8f, 1.0f),
-				ImVec4(0.3f, 0.8f, 0.8f, 1.0f),
-				ImVec4(0.9f, 0.6f, 0.3f, 1.0f),
-				ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+			// Top-level scope time as the 100% baseline
+			double topMs = 0.0;
+			for (const auto& s : stats)
+			{
+				if (s.depth == 0 && s.count > 0)
+				{
+					topMs = s.totalTimeMs / s.count;
+					break;
+				}
+			}
+
+			if (topMs <= 0.0)
+				topMs = 1.0;
+
+			static const ImVec4 depthColors[] = {
+				{0.30f, 0.70f, 1.00f, 1.0f},  // depth 0 — blue
+				{0.35f, 0.90f, 0.50f, 1.0f},  // depth 1 — green
+				{1.00f, 0.70f, 0.25f, 1.0f},  // depth 2 — orange
+				{0.85f, 0.40f, 0.90f, 1.0f},  // depth 3 — purple
+				{0.85f, 0.35f, 0.35f, 1.0f},  // depth 4 — red
 			};
-
-			double totalFrameTime = frameData.totalFrameTimeMs;
-			if (totalFrameTime <= 0.0)
-				totalFrameTime = 0.001; // prevent div/0
-
+			constexpr int MAX_DEPTH_COLORS = 5;
+			const float NAME_COLUMN_W = 180.0f;
+			const float INDENT_PX = 16.0f;
 			const float ROW_H = ImGui::GetTextLineHeight() + 2.0f;
-			const float NAME_COLUMN_W = 200.0f;
 
 			if (ImGui::BeginTabBar("ProfilerTabs"))
 			{
 				if (ImGui::BeginTabItem("List View"))
 				{
-					if (ImGui::BeginChild("##listview", ImVec2(0, 0), true))
+					for (size_t i = 0; i < stats.size(); ++i)
 					{
-						for (const auto& stat : frameData.stats)
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0)
+							continue;
+
+						double avgMs = stat.totalTimeMs / stat.count;
+
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float indentOff = (stat.depth - 1) * INDENT_PX;
+						float availW = ImGui::GetContentRegionAvail().x;
+
+						// Scope name (indented)
+						ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
+						ImGui::TextUnformatted(stat.name);
+
+						// Progress bar on the same line
+						ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
+						char barLabel[64];
+						snprintf(barLabel, sizeof(barLabel), "%.3f ms  %.3f%%", avgMs, fraction * 100.0f);
+						float barW = availW - NAME_COLUMN_W - indentOff - 10.0f;
+						if (barW > 10.0f)
 						{
-							double avgMs = stat.avgDurationMs;
-							double fraction = avgMs / totalFrameTime;
-
-							int depth = stat.depth;
-							int ci = depth % 8;
-
-							float indentOff = depth * 15.0f;
-							float availW = ImGui::GetContentRegionAvail().x;
-							float barW = availW - NAME_COLUMN_W - indentOff - 20.0f;
-							if (barW < 50.0f) barW = 50.0f;
-
-							ImGui::SetCursorPosX(ImGui::GetCursorPosX() + indentOff);
-							ImGui::TextUnformatted(stat.name);
-
-							// Put the bar on the same line, offset correctly
-							ImGui::SameLine(NAME_COLUMN_W + indentOff + 10.0f);
-
-							char barLabel[64];
-							snprintf(barLabel, sizeof(barLabel), "%.3f ms (%.1f%%)", avgMs, fraction * 100.0f);
-
-							// Style the progress bar
+							int ci = std::min(stat.depth - 1, MAX_DEPTH_COLORS - 1);
 							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, depthColors[ci]);
-							ImGui::ProgressBar((float)fraction, ImVec2(barW, ROW_H), barLabel);
+							ImGui::ProgressBar(fraction, ImVec2(barW, ROW_H), barLabel);
 							ImGui::PopStyleColor();
 						}
 					}
-					ImGui::EndChild();
 					ImGui::EndTabItem();
 				}
 
@@ -573,53 +553,53 @@ namespace WeirdEngine
 					float availW = ImGui::GetContentRegionAvail().x;
 					float rowH = ImGui::GetTextLineHeight() + 4.0f;
 
-					// Determine max depth to calculate total height
 					int maxDepth = 0;
-					for (const auto& stat : frameData.stats)
-						if (stat.depth > maxDepth) maxDepth = stat.depth;
+					for (const auto& s : stats)
+					{
+						if (s.depth > 0)
+							maxDepth = std::max(maxDepth, s.depth - 1);
+					}
 
 					float totalH = (maxDepth + 1) * rowH;
-
-					// Allocate space
 					ImGui::InvisibleButton("##timeline", ImVec2(availW, totalH));
 
-					// Track horizontal position per depth
 					float currentX[32] = {0};
 
-					for (const auto& stat : frameData.stats)
+					for (size_t i = 0; i < stats.size(); ++i)
 					{
-						int renderDepth = stat.depth;
-						if (renderDepth >= 32) renderDepth = 31;
+						const auto& stat = stats[i];
+						if (stat.count == 0 || stat.depth == 0 || stat.depth >= 33)
+							continue;
 
-						double avgMs = stat.avgDurationMs;
-						float fraction = (float)(avgMs / totalFrameTime);
+						int renderDepth = stat.depth - 1;
+						double avgMs = stat.totalTimeMs / stat.count;
+						float fraction = (float)(avgMs / topMs);
+						fraction = std::min(1.0f, std::max(0.0f, fraction));
+						float w = std::max(1.0f, fraction * availW);
 
-						float w = fraction * availW;
-						float x = p0.x + currentX[renderDepth];
-						float y = p0.y + renderDepth * rowH;
+						float x = currentX[renderDepth];
+						float y = renderDepth * rowH;
 
-						ImVec2 rectMin(x, y);
-						ImVec2 rectMax(x + w, y + rowH - 1.0f);
+						ImVec2 rectMin = ImVec2(p0.x + x, p0.y + y);
+						ImVec2 rectMax = ImVec2(p0.x + x + w, p0.y + y + rowH - 1.0f);
 
-						int ci = renderDepth % 8;
+						int ci = std::min(renderDepth, MAX_DEPTH_COLORS - 1);
 						ImU32 col = ImGui::ColorConvertFloat4ToU32(depthColors[ci]);
 
 						bool hovered = ImGui::IsMouseHoveringRect(rectMin, rectMax);
 						if (hovered)
 						{
-							// brighten color
 							ImVec4 hc = depthColors[ci];
-							hc.x = std::min(1.0f, hc.x + 0.2f);
-							hc.y = std::min(1.0f, hc.y + 0.2f);
-							hc.z = std::min(1.0f, hc.z + 0.2f);
+							hc.x = std::min(1.0f, hc.x * 1.2f);
+							hc.y = std::min(1.0f, hc.y * 1.2f);
+							hc.z = std::min(1.0f, hc.z * 1.2f);
 							col = ImGui::ColorConvertFloat4ToU32(hc);
 						}
 
 						drawList->AddRectFilled(rectMin, rectMax, col);
-						drawList->AddRect(rectMin, rectMax, IM_COL32(0,0,0,100)); // faint border
+						drawList->AddRect(rectMin, rectMax, IM_COL32(0, 0, 0, 100));
 
-						// Label if it fits
-						if (w > 30.0f)
+						if (w > 20.0f)
 						{
 							ImGui::PushClipRect(rectMin, rectMax, true);
 							drawList->AddText(ImVec2(rectMin.x + 2, rectMin.y + 1), IM_COL32(255, 255, 255, 255), stat.name);
@@ -635,6 +615,8 @@ namespace WeirdEngine
 						}
 
 						currentX[renderDepth] += w;
+						if (renderDepth + 1 < 32)
+							currentX[renderDepth + 1] = x;
 					}
 					ImGui::EndTabItem();
 				}
@@ -650,19 +632,74 @@ namespace WeirdEngine
 			ImGui::Spacing();
 			ImGui::Separator();
 
-			// Profiler control
 			if (profiler.isRealtime())
 			{
-				if (ImGui::Button("Pause & Inspect Frame"))
+				bool historyEnabled = profiler.isHistoryEnabled();
+				if (ImGui::Checkbox("Enable History Buffer", &historyEnabled))
 				{
-					profiler.pause();
+					profiler.setHistoryEnabled(historyEnabled);
+				}
+
+				if (historyEnabled)
+				{
+					ImGui::SameLine();
+					ImGui::TextDisabled("(%d/%d frames captured)", profiler.getHistoryCapturedCount(), profiler.getHistoryCapacity());
+				}
+
+				if (profiler.isPaused())
+				{
+					if (ImGui::Button("Resume Profiler"))
+					{
+						profiler.resume();
+					}
+
+					if (historyEnabled && profiler.getHistoryCapturedCount() > 0)
+					{
+						int maxIdx = profiler.getHistoryCapturedCount() - 1;
+						if (maxIdx < 0) maxIdx = 0;
+						int pIndex = profiler.getPlaybackIndex();
+						if (ImGui::SliderInt("Scrub History", &pIndex, 0, maxIdx))
+						{
+							profiler.setPlaybackIndex(pIndex);
+						}
+					}
+				}
+				else
+				{
+					if (ImGui::Button("Pause & Inspect Frame"))
+					{
+						profiler.pause();
+					}
+				}
+
+				if (ImGui::Button("Start Average Report"))
+				{
+					profiler.startRecording();
 				}
 			}
-			else
+			else if (profiler.isRecordingReport())
 			{
-				if (ImGui::Button("Resume Profiler"))
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report... (%.1fs / 10.0s)", profiler.getReportProgressSeconds());
+				if (ImGui::Button("Cancel & Return to Realtime"))
 				{
-					profiler.resume();
+					profiler.enableRealtime();
+				}
+			}
+			else if (profiler.isReportFinished())
+			{
+				ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Average Report Completed");
+				if (ImGui::Button("Restart Average Report"))
+				{
+					profiler.startRecording();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Return to Realtime"))
+				{
+					profiler.enableRealtime();
+				}
+				if (ImGui::Button("Copy Report to Clipboard"))
+				{
+					ImGui::SetClipboardText(profiler.getReportString().c_str());
 				}
 			}
 

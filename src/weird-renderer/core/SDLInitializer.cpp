@@ -126,12 +126,10 @@ namespace WeirdEngine
 				settings.width = fbWidth;
 				settings.height = fbHeight;
 
-				std::cout << "Loading GLAD via GetEGLProcAddress..." << std::endl;
 				if (!gladLoadGLES2Loader((GLADloadproc)GetEGLProcAddress))
 				{
 					throw std::runtime_error("Failed to initialize GLAD via EGL.");
 				}
-				std::cout << "GLAD loaded successfully." << std::endl;
 			}
 			else
 			{
@@ -149,9 +147,6 @@ namespace WeirdEngine
 				}
 			}
 
-			std::cout << "GL_VENDOR: " << (const char*)glGetString(GL_VENDOR) << std::endl;
-			std::cout << "GL_RENDERER: " << (const char*)glGetString(GL_RENDERER) << std::endl;
-			std::cout << "GL_VERSION: " << (const char*)glGetString(GL_VERSION) << std::endl;
 			std::cout << "GL_SHADING_LANGUAGE_VERSION: "
 					  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
@@ -160,11 +155,8 @@ namespace WeirdEngine
 			ImGui::CreateContext();
 			ImGui::StyleColorsDark();
 
-			std::cout << "Initializing ImGui SDL3..." << std::endl;
 			ImGui_ImplSDL3_InitForOpenGL(m_window, m_glContext);
-			std::cout << "Initializing ImGui OpenGL3..." << std::endl;
 			ImGui_ImplOpenGL3_Init("#version 300 es"); // matches your GL ES 3.0 context
-			std::cout << "ImGui initialized successfully." << std::endl;
 #endif
 
 #ifndef NDEBUG

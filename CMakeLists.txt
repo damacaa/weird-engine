@@ -144,7 +144,7 @@ target_include_directories(glad
             glad
     )
     if(NOT WEIRD_DISABLE_IMGUI)
-        target_link_libraries(${PROJECT_NAME} PRIVATE imgui)
+        target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
     else()
         target_compile_definitions(${PROJECT_NAME} PUBLIC WEIRD_DISABLE_IMGUI)
     endif()

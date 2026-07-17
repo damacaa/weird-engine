@@ -7,7 +7,7 @@
 # to force a fresh toolchain setup.
 
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."
 
 IMAGE=weird-muos-builder
 

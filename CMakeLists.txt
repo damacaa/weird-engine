@@ -34,6 +34,10 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 add_library(glad STATIC third-party/glad/glad.c)
 
 option(WEIRD_DISABLE_IMGUI "Disable ImGui" OFF)
+option(WEIRD_TEST_HOOKS "Enable test hooks (auto-quit, screenshot frame)" OFF)
+if(WEIRD_TEST_HOOKS)
+    add_compile_definitions(WEIRD_TEST_HOOKS)
+endif()
 
 if(NOT WEIRD_DISABLE_IMGUI)
 # ImGui setup

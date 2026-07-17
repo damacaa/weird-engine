@@ -1,1 +1,0 @@
-./WeirdSamples: symbol lookup error: /mnt/sdcard/ports/weird-samples/libSDL3.so.0: undefined symbol: gbm_surface_lock_front_buffer

@@ -2,6 +2,7 @@
 #include "weird-renderer/core/WeirdFBDevEGL.h"
 
 #include <ctime>
+#include <cstdlib>
 #include <filesystem>
 #include <sys/stat.h>
 
@@ -138,6 +139,27 @@ namespace WeirdEngine
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
 			PROFILE_SCOPE("Scene render");
+
+#ifdef WEIRD_TEST_HOOKS
+			// Test hook: WEIRD_SCREENSHOT_FRAME=N saves a screenshot on frame N
+			// (lets us verify rendering on headless devices).
+			{
+				static long screenshotFrame = -2;
+				static unsigned long frameCount = 0;
+				if (screenshotFrame == -2)
+				{
+					const char* env = SDL_getenv("WEIRD_SCREENSHOT_FRAME");
+					screenshotFrame = env ? atol(env) : -1;
+				}
+				frameCount++;
+				if (screenshotFrame > 0 && frameCount >= (unsigned long)screenshotFrame)
+				{
+					m_takeScreenshot = true;
+					screenshotFrame = -1;
+				}
+			}
+#endif
+
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 

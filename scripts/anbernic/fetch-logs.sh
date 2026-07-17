@@ -2,7 +2,7 @@
 # Fetches log.txt and any screenshots from the device after a test run.
 
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."
 
 MTP_GAME="mtp:/RG35XX-H/SD2/ports/weird-samples"
 OUT="device-logs/$(date +%Y%m%d_%H%M%S)"

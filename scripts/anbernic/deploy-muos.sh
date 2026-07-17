@@ -7,15 +7,28 @@
 #   mtp:/RG35XX-H/SD2/Roms/PORTS/Weird Samples.sh  <- launcher
 
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."
 
 MTP_GAME="mtp:/RG35XX-H/SD2/ports/weird-samples"
 MTP_PORTS="mtp:/RG35XX-H/SD2/Roms/PORTS"
 BUILD_DIR="build-muos/examples/sample-scenes"
 STAGE="dist-muos"
 
-if [ "$1" != "--no-build" ]; then
-  ./build-muos.sh
+BUILD="yes"
+LAUNCHER="scripts/anbernic/Weird_Samples_MTP.sh"
+
+for arg in "$@"; do
+  if [ "$arg" = "--no-build" ]; then
+    BUILD="no"
+  elif [ "$arg" = "--diag" ]; then
+    LAUNCHER="scripts/anbernic/Weird Samples.sh"
+  elif [ "$arg" = "--mtp" ]; then
+    LAUNCHER="scripts/anbernic/Weird_Samples_MTP.sh"
+  fi
+done
+
+if [ "$BUILD" = "yes" ]; then
+  ./scripts/anbernic/build-muos.sh
 fi
 
 echo "== Staging files in $STAGE/"
@@ -27,7 +40,7 @@ cp "$BUILD_DIR/libSDL3.so.0.2.16" "$STAGE/libSDL3.so.0"
 cp -r "$BUILD_DIR/assets" "$STAGE/"
 cp -r "$BUILD_DIR/fonts" "$STAGE/"
 cp -r "$BUILD_DIR/shaders" "$STAGE/"
-cp "Weird Samples.sh" "$STAGE/"
+cp "$LAUNCHER" "$STAGE/Weird Samples.sh"
 # Strip stale junk the build system leaves behind
 rm -rf "$STAGE/shaders/.vscode" 2>/dev/null || true
 
@@ -49,4 +62,4 @@ kioclient5 --noninteractive --overwrite cp "$PWD/$STAGE/Weird Samples.sh" "$MTP_
 
 echo "== Deploy complete."
 echo "   On the device, run 'Weird Samples' from the Ports menu."
-echo "   Afterwards fetch the log with:  ./fetch-logs.sh"
+echo "   Afterwards fetch the log with:  ./scripts/anbernic/fetch-logs.sh"

@@ -51,7 +51,9 @@ add_library(imgui STATIC
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
-target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_ES3)
+if(NOT WIN32)
+    target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_ES3)
+endif()
 target_include_directories(imgui
     PUBLIC
         ${IMGUI_DIR}

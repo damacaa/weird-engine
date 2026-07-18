@@ -1,6 +1,4 @@
 
-#include <iostream>
-
 #include <weird-engine.h>
 
 #include "CollisionHandling.h"
@@ -21,12 +19,6 @@ WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 
 int main(int argc, char* argv[])
 {
-	// Ensure log output survives a crash when piping to a file (headless devices)
-	setvbuf(stdout, nullptr, _IONBF, 0);
-	setvbuf(stderr, nullptr, _IONBF, 0);
-
-	std::cout << "[WeirdSamples] Starting up..." << std::endl;
-
 	SceneManager& sceneManager = SceneManager::getInstance();
 
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
@@ -41,9 +33,9 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<WalkScene>("walk");
 
 	DisplaySettings displaySettings{};
-	displaySettings.width = 640;
-	displaySettings.height = 480;
-	displaySettings.fullscreen = true;
+	displaySettings.width = 800;
+	displaySettings.height = 800;
+	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 	displaySettings.distanceSampleScale = 0.5f;
 

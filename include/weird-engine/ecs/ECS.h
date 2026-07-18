@@ -95,6 +95,11 @@ namespace WeirdEngine
 			return getComponentManager<T>()->getComponent(entity);
 		}
 
+		template <typename T> Entity getComponentOwner(const T& component)
+		{
+			return getComponentManager<T>()->getComponentArray()->getEntityFromComponent(component);
+		}
+
 		template <typename T> bool hasComponent(Entity entity) const
 		{
 			size_t id = internal::getComponentTypeId<T>();

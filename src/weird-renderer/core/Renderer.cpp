@@ -1,12 +1,16 @@
 #include "weird-renderer/core/Renderer.h"
+#include "weird-renderer/core/WeirdFBDevEGL.h"
 
 #include <ctime>
+#include <cstdlib>
 #include <filesystem>
 #include <sys/stat.h>
 
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
+#endif
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
 
@@ -135,6 +139,27 @@ namespace WeirdEngine
 		void Renderer::render(Scene& scene, const double time, const double delta)
 		{
 			PROFILE_SCOPE("Scene render");
+
+#ifdef WEIRD_TEST_HOOKS
+			// Test hook: WEIRD_SCREENSHOT_FRAME=N saves a screenshot on frame N
+			// (lets us verify rendering on headless devices).
+			{
+				static long screenshotFrame = -2;
+				static unsigned long frameCount = 0;
+				if (screenshotFrame == -2)
+				{
+					const char* env = SDL_getenv("WEIRD_SCREENSHOT_FRAME");
+					screenshotFrame = env ? atol(env) : -1;
+				}
+				frameCount++;
+				if (screenshotFrame > 0 && frameCount >= (unsigned long)screenshotFrame)
+				{
+					m_takeScreenshot = true;
+					screenshotFrame = -1;
+				}
+			}
+#endif
+
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
@@ -142,6 +167,7 @@ namespace WeirdEngine
 			output(scene, result, clampedDelta);
 			glFinish();
 
+#ifndef WEIRD_DISABLE_IMGUI
 			{
 				PROFILE_SCOPE("ImGui");
 				static bool showDebugUI = false;
@@ -290,10 +316,18 @@ namespace WeirdEngine
 				glViewport(0, 0, m_windowWidth, m_windowHeight);
 				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 			}
+#endif
 
 			{
 				PROFILE_SCOPE("Synchronization");
-				SDL_GL_SwapWindow(m_window);
+								if (IsFBDevEGLActive())
+				{
+					SwapFBDevBuffers();
+				}
+				else
+				{
+					SDL_GL_SwapWindow(m_window);
+				}
 			}
 		}
 
@@ -438,6 +472,7 @@ namespace WeirdEngine
 
 		void Renderer::drawStatsUI(Scene& scene, double delta)
 		{
+#ifndef WEIRD_DISABLE_IMGUI
 			float fps = delta > 0.0 ? (float)(1.0 / delta) : 0.0f;
 			float frameTimeMs = (float)(delta * 1000.0);
 
@@ -691,6 +726,7 @@ namespace WeirdEngine
 			}
 
 			ImGui::End();
+#endif
 		}
 
 		Texture& Renderer::renderScene(Scene& scene, const double time, const double delta)

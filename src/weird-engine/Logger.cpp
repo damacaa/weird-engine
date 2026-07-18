@@ -1,6 +1,8 @@
 #include "weird-engine/Logger.h"
 #include <iostream>
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
+#endif
 
 namespace WeirdEngine
 {
@@ -35,32 +37,34 @@ namespace WeirdEngine
             std::cerr << "[ERROR] " << message << std::endl;
     }
 
-    void Logger::drawImGuiConsole()
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
+	void Logger::drawImGuiConsole()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		std::lock_guard<std::mutex> lock(s_mutex);
 
-        ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-        for (const auto& msg : s_messages)
-        {
-            ImVec4 color;
-            switch (msg.level)
-            {
-                case LogLevel::Info:    color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); break; // White
-                case LogLevel::Warning: color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); break; // Yellow
-                case LogLevel::Error:   color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); break; // Red
-            }
-            ImGui::PushStyleColor(ImGuiCol_Text, color);
-            ImGui::TextUnformatted(msg.message.c_str());
-            ImGui::PopStyleColor();
-        }
+		for (const auto& msg : s_messages)
+		{
+			ImVec4 color;
+			switch (msg.level)
+			{
+				case LogLevel::Info:	color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); break; // White
+				case LogLevel::Warning: color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); break; // Yellow
+				case LogLevel::Error:   color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); break; // Red
+			}
+			ImGui::PushStyleColor(ImGuiCol_Text, color);
+			ImGui::TextUnformatted(msg.message.c_str());
+			ImGui::PopStyleColor();
+		}
 
-        // Auto-scroll to bottom
-        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-        {
-            ImGui::SetScrollHereY(1.0f);
-        }
+		// Auto-scroll to bottom
+		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+		{
+			ImGui::SetScrollHereY(1.0f);
+		}
 
-        ImGui::EndChild();
-    }
+		ImGui::EndChild();
+#endif
+	}
 }

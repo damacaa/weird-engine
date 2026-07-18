@@ -29,7 +29,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			return;
 		}
 
-		Logger::log("Updating shader code for " + std::string(typeid(ShapeClass).name()) + "s...");
+		std::cout << "Updating shader code for: " << std::string(typeid(ShapeClass).name());
 
 		ctx.shapesNeedUpdate = false;
 

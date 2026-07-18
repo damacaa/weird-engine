@@ -1,6 +1,4 @@
 
-#include <iostream>
-
 #include <weird-engine.h>
 
 #include "CollisionHandling.h"
@@ -24,8 +22,8 @@ int main(int argc, char* argv[])
 	SceneManager& sceneManager = SceneManager::getInstance();
 
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
-	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
+	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");

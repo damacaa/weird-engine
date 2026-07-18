@@ -40,6 +40,9 @@ bld/
 # CMake
 .vscode/
 [Bb]uild/
+[Bb]uild*/
+[Dd]ist*/
+device-logs/
 
 # Ignore CLion build/temporary directories
 cmake-build*/

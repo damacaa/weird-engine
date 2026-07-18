@@ -2,7 +2,9 @@
 
 #include <algorithm>
 
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
+#endif
 
 #include "weird-engine/vec.h"
 #include "weird-engine/Profiler.h"
@@ -872,6 +874,7 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::showDebugUI()
 		{
+#ifndef WEIRD_DISABLE_IMGUI
 			const char* label = m_config.isUI ? "UI Pipeline" : "World Pipeline";
 			if (!ImGui::CollapsingHeader(label))
 				return;
@@ -934,6 +937,7 @@ namespace WeirdEngine
 			ImGui::SliderFloat("Smooth Factor (k)", &m_config.ballK, 0.0f, 50.0f);
 
 			ImGui::PopID();
+#endif
 		}
 
 		Shader& SDF2DRenderPipeline::getDistanceShader()

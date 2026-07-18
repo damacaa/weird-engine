@@ -13,6 +13,10 @@ fi
 
 source "$controlfolder/control.txt"
 
+# [NEW] Source custom CFW mod files and fetch device-specific controls
+[ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
+get_controls
+
 GAMEDIR="/$directory/ports/weird-samples"
 cd "$GAMEDIR" || exit 1
 
@@ -69,12 +73,22 @@ run_test() {
   echo ""
   echo "############ RUN: $name ############"
   echo "cmd: env $* ./WeirdSamples"
+
+  # [NEW] Make sure virtual keyboard/mouse subsystem is writable and launch gptokeyb to listen for the exit hotkey
+  $ESUDO chmod 666 /dev/uinput
+  $GPTOKEYB "WeirdSamples" &
+
   if command -v timeout >/dev/null 2>&1; then
     env "$@" timeout -s KILL 90 ./WeirdSamples
   else
     env "$@" ./WeirdSamples
   fi
   code=$?
+
+  # [NEW] Force kill gptokeyb instances for this test loop once the binary exits
+  $ESUDO kill -9 $(pidof gptokeyb) 2>/dev/null
+  $ESUDO kill -9 $(pidof gptokeyb2) 2>/dev/null
+
   echo "############ EXIT ($name): $code ############"
   echo ""
   return $code
@@ -99,5 +113,8 @@ run_test() {
 
   echo "=== DONE ==="
 } >> "$LOG" 2>&1
+
+# [NEW] Final PortMaster wrapper cleanup
+pm_finish
 
 sync

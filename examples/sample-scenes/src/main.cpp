@@ -1,6 +1,7 @@
 
 #include <weird-engine.h>
 
+#include "AquariumScene.h"
 #include "CollisionHandling.h"
 #include "DestroyScene.h"
 #include "ImageScene.h"
@@ -21,6 +22,7 @@ int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 
+	sceneManager.registerScene<AquariumScene>("aquarium");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<RopeScene>("rope");

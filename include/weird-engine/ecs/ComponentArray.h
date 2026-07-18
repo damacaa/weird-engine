@@ -117,6 +117,16 @@ namespace WeirdEngine
 			return false;
 		}
 
+		Entity getEntityFromComponent(const T& component) const
+		{
+			ptrdiff_t diff = &component - values.data();
+			if (diff >= 0 && diff < static_cast<ptrdiff_t>(size))
+			{
+				return indexToEntityMap[diff];
+			}
+			return INVALID_ENTITY;
+		}
+
 		bool isEntityDirty(Entity entity)
 		{
 			if (!hasData(entity)) return false;

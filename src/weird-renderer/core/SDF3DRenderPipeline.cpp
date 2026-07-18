@@ -2,7 +2,9 @@
 #include "weird-renderer/core/SDF3DRenderPipeline.h"
 
 #include <algorithm>
+#ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
+#endif
 #include "weird-engine/Profiler.h"
 
 #ifndef SHADERS_PATH
@@ -216,6 +218,7 @@ namespace WeirdEngine
 
 		void SDF3DRenderPipeline::showDebugUI()
 		{
+#ifndef WEIRD_DISABLE_IMGUI
 			const char* label = "3D SDF Settings";
 			if (!ImGui::CollapsingHeader(label))
 				return;
@@ -260,6 +263,7 @@ namespace WeirdEngine
 			}
 
 			ImGui::PopID();
+#endif
 		}
 
 	} // namespace WeirdRenderer

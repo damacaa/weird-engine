@@ -3,11 +3,7 @@
 #include <iostream>
 #include <string>
 
-// Replaced glad and GLFW with SDL3.
-// Note: If you use OpenGL with SDL, you'll still need a GL loader like glad,
-// but it's not required for the input handling itself.
-#include <SDL/include/SDL3/SDL.h>
-// #include <SDL/src/events/SDL_mouse_c.h>
+#include <SDL3/SDL.h>
 #include "weird-renderer/core/Display.h"
 
 /// <summary>
@@ -19,7 +15,6 @@
 #define FIRST_PRESSED 2		   /// Started pressing the button in current frame.
 /// </summary>
 
-// Replaced hardcoded key count with SDL's constant for the number of scancodes.
 #define SUPPORTED_KEYS SDL_NUM_SCANCODES
 
 namespace WeirdEngine
@@ -60,7 +55,7 @@ namespace WeirdEngine
 			delete[] m_mouseKeysTable;
 		}
 
-		// Singleton pattern remains the same
+		// Singleton pattern
 		static Input& getInstance()
 		{
 			static Input _instance; // Modern C++ handles static local initialization safely

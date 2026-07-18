@@ -22,10 +22,9 @@ int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 
-	sceneManager.registerScene<AquariumScene>("aquarium");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
-	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<RopeScene>("rope");
+	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<ImageScene>("image");
 	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
@@ -33,6 +32,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<WalkScene>("walk");
+	sceneManager.registerScene<AquariumScene>("aquarium");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;

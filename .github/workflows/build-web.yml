@@ -1,0 +1,75 @@
+name: Build Web
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Ensure submodules are up-to-date
+        run: git submodule update --init --recursive
+
+      - name: Install dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y 
+          cmake build-essential libgl-dev libegl-dev 
+          libwayland-dev libxkbcommon-dev wayland-protocols 
+          libasound2-dev libpulse-dev libpipewire-0.3-dev 
+          libx11-dev libxext-dev libxcursor-dev libxi-dev 
+          libxrandr-dev libxss-dev libxtst-dev
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Build WeirdSamples for Web
+        run: |
+          mkdir build && cd build
+          
+          # Using emcmake and emmake to compile for the web.
+          # We only build the WeirdSamples target to avoid overwriting issues.
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWEIRD_ENGINE_BUILD_EXAMPLES=ON \
+            -DBUILD_WEB=ON \
+            -DCMAKE_C_FLAGS="-pthread" \
+            -DCMAKE_CXX_FLAGS="-pthread" \
+            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 -o index.html --preload-file ../examples/sample-scenes/assets@/assets --preload-file ../src/weird-renderer/fonts@/fonts --preload-file ../src/weird-renderer/shaders@/shaders"
+          
+          emmake make WeirdSamples
+
+      - name: Prepare Artifact
+        run: |
+          mkdir -p game_export
+          
+          # Emscripten outputs multiple files based on flags:
+          # index.html, index.wasm, index.js, index.worker.js, and index.data
+          cp build/index.* game_export/
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/ || true
+          
+          # Assets were copied to the target directory by our CMake template
+          cp -r build/examples/sample-scenes/assets game_export/ || true
+          cp -r build/examples/sample-scenes/fonts game_export/ || true
+          cp -r build/examples/sample-scenes/shaders game_export/ || true
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weird-engine-web-sample
+          path: game_export/

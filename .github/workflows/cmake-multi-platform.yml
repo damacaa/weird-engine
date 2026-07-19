@@ -31,14 +31,37 @@ jobs:
       
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_TEST_HOOKS=ON
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-      - name: Test
-        working-directory: ${{github.workspace}}/build
-        run: ctest -C ${{env.BUILD_TYPE}}
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        working-directory: ${{github.workspace}}/build/examples/sample-scenes
+        env:
+          WEIRD_AUTO_QUIT_SECONDS: 3
+          WEIRD_SCREENSHOT_FRAME: 10
+        run: xvfb-run -a ./WeirdSamples
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ${{github.workspace}}/build/examples/sample-scenes/Release
+        env:
+          WEIRD_AUTO_QUIT_SECONDS: 3
+          WEIRD_SCREENSHOT_FRAME: 10
+        run: ./WeirdSamples.exe
+
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.os }}
+          path: |
+            ${{github.workspace}}/build/examples/sample-scenes/log.txt
+            ${{github.workspace}}/build/examples/sample-scenes/screenshot_*.bmp
+            ${{github.workspace}}/build/examples/sample-scenes/Release/log.txt
+            ${{github.workspace}}/build/examples/sample-scenes/Release/screenshot_*.bmp

@@ -71,29 +71,34 @@ namespace WeirdEngine
 							}
 						}
 
-						if (Input::GetMouseButtonDown(Input::LeftClick))
-						{
-						}
-
 						// Handles key inputs
+						float leftY = Input::GetGamepadAxis(Input::GamepadAxis::LeftY);
+						float leftX = Input::GetGamepadAxis(Input::GamepadAxis::LeftX);
+						if (std::abs(leftY) < 0.1f) leftY = 0.0f;
+						if (std::abs(leftX) < 0.1f) leftX = 0.0f;
+
 						if (!Input::GetKey(Input::LeftCtrl))
 						{
-							if (Input::GetKey(Input::W))
+							if (Input::GetKey(Input::W) || leftY < -0.1f)
 							{
-								targetPosition += t.position.z * safeDelta * flyComponent.speed * c.camera.up;
+								float multi = Input::GetKey(Input::W) ? 1.0f : -leftY;
+								targetPosition += t.position.z * safeDelta * flyComponent.speed * multi * c.camera.up;
 							}
-							if (Input::GetKey(Input::A))
+							if (Input::GetKey(Input::A) || leftX < -0.1f)
 							{
-								targetPosition += t.position.z * safeDelta * flyComponent.speed *
+								float multi = Input::GetKey(Input::A) ? 1.0f : -leftX;
+								targetPosition += t.position.z * safeDelta * flyComponent.speed * multi *
 												  -glm::normalize(glm::cross(t.rotation, c.camera.up));
 							}
-							if (Input::GetKey(Input::S))
+							if (Input::GetKey(Input::S) || leftY > 0.1f)
 							{
-								targetPosition += t.position.z * safeDelta * flyComponent.speed * -c.camera.up;
+								float multi = Input::GetKey(Input::S) ? 1.0f : leftY;
+								targetPosition += t.position.z * safeDelta * flyComponent.speed * multi * -c.camera.up;
 							}
-							if (Input::GetKey(Input::D))
+							if (Input::GetKey(Input::D) || leftX > 0.1f)
 							{
-								targetPosition += t.position.z * safeDelta * flyComponent.speed *
+								float multi = Input::GetKey(Input::D) ? 1.0f : leftX;
+								targetPosition += t.position.z * safeDelta * flyComponent.speed * multi *
 												  glm::normalize(glm::cross(t.rotation, c.camera.up));
 							}
 						}
@@ -123,6 +128,16 @@ namespace WeirdEngine
 							float safeZoom = std::max(std::abs(t.position.z), 0.001f);
 							targetPosition += flyComponent.scrollSpeed * flyComponent.speed *
 											  vec3(travel.x / safeZoom, travel.y / safeZoom, 0);
+						}
+
+						float rightTrigger = Input::GetGamepadAxis(Input::GamepadAxis::RightTrigger);
+						float leftTrigger = Input::GetGamepadAxis(Input::GamepadAxis::LeftTrigger);
+
+						float zoomInput = rightTrigger - leftTrigger;
+						
+						if (std::abs(zoomInput) > 0.1f)
+						{
+							targetPosition += flyComponent.scrollSpeed * flyComponent.speed * zoomInput * 20.0f * safeDelta * t.rotation;
 						}
 
 						if (targetPosition.z < 5.0f)
@@ -167,21 +182,30 @@ namespace WeirdEngine
 						glm::vec3 right = glm::normalize(glm::cross(forward, c.camera.up));
 
 						// Handles key inputs
-						if (Input::GetKey(Input::W))
+						float leftY = Input::GetGamepadAxis(Input::GamepadAxis::LeftY);
+						float leftX = Input::GetGamepadAxis(Input::GamepadAxis::LeftX);
+						if (std::abs(leftY) < 0.1f) leftY = 0.0f;
+						if (std::abs(leftX) < 0.1f) leftX = 0.0f;
+
+						if (Input::GetKey(Input::W) || leftY < -0.1f)
 						{
-							t.position += safeDelta * flyComponent.speed * forward;
+							float multi = Input::GetKey(Input::W) ? 1.0f : -leftY;
+							t.position += safeDelta * flyComponent.speed * multi * forward;
 						}
-						if (Input::GetKey(Input::A))
+						if (Input::GetKey(Input::A) || leftX < -0.1f)
 						{
-							t.position += safeDelta * flyComponent.speed * -right;
+							float multi = Input::GetKey(Input::A) ? 1.0f : -leftX;
+							t.position += safeDelta * flyComponent.speed * multi * -right;
 						}
-						if (Input::GetKey(Input::S))
+						if (Input::GetKey(Input::S) || leftY > 0.1f)
 						{
-							t.position += safeDelta * flyComponent.speed * -forward;
+							float multi = Input::GetKey(Input::S) ? 1.0f : leftY;
+							t.position += safeDelta * flyComponent.speed * multi * -forward;
 						}
-						if (Input::GetKey(Input::D))
+						if (Input::GetKey(Input::D) || leftX > 0.1f)
 						{
-							t.position += safeDelta * flyComponent.speed * right;
+							float multi = Input::GetKey(Input::D) ? 1.0f : leftX;
+							t.position += safeDelta * flyComponent.speed * multi * right;
 						}
 						if (Input::GetKey(Input::Space))
 						{
@@ -210,6 +234,17 @@ namespace WeirdEngine
 							c.camera.fov = std::max(20.0f, c.camera.fov - 2.0f);
 						}
 
+						float rightTrigger = Input::GetGamepadAxis(Input::GamepadAxis::RightTrigger);
+						float leftTrigger = Input::GetGamepadAxis(Input::GamepadAxis::LeftTrigger);
+						if (rightTrigger > 0.1f)
+						{
+							c.camera.fov = std::max(20.0f, c.camera.fov - 40.0f * rightTrigger * safeDelta);
+						}
+						else if (leftTrigger > 0.1f)
+						{
+							c.camera.fov = std::min(120.0f, c.camera.fov + 40.0f * leftTrigger * safeDelta);
+						}
+
 						if (Input::GetKey(Input::KeyCode::Esc))
 						{
 							m_locked3D = false;
@@ -226,19 +261,34 @@ namespace WeirdEngine
 							Input::HideMouse();
 						}
 
+						float rightX = Input::GetGamepadAxis(Input::GamepadAxis::RightX);
+						float rightY = Input::GetGamepadAxis(Input::GamepadAxis::RightY);
+						if (std::abs(rightX) < 0.1f) rightX = 0.0f;
+						if (std::abs(rightY) < 0.1f) rightY = 0.0f;
+
+						float rotX = 0.0f;
+						float rotY = 0.0f;
+
 						if (m_locked3D)
 						{
 							if (m_skipMouseDelta3D)
 							{
 								m_skipMouseDelta3D = false;
-								return;
 							}
+							else
+							{
+								float fovMultiplier = c.camera.fov / 90.0f;
+								rotX += fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaYRaw();
+								rotY += fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaXRaw();
+							}
+						}
 
-							// Relative mouse deltas already include frame-time; do not multiply by delta.
-							float fovMultiplier = c.camera.fov / 90.0f;
-							float rotX = fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaYRaw();
-							float rotY = fovMultiplier * flyComponent.sensitivity * Input::GetMouseDeltaXRaw();
+						float fovMultiplier = c.camera.fov / 90.0f;
+						rotX += fovMultiplier * flyComponent.sensitivity * rightY * 1500.0f * safeDelta;
+						rotY += fovMultiplier * flyComponent.sensitivity * rightX * 1500.0f * safeDelta;
 
+						if (rotX != 0.0f || rotY != 0.0f)
+						{
 							// Calculates upcoming vertical change in the Orientation
 							glm::vec3 newOrientation = glm::rotate(t.rotation, glm::radians(-rotX), right);
 							newOrientation = glm::normalize(newOrientation);

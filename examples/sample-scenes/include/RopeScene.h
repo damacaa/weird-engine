@@ -14,19 +14,18 @@ public:
 	}
 
 private:
-	Entity m_star;
+	Entity m_star = INVALID_ENTITY;
 	double m_lastSpawnTime = 0.0;
-	std::vector<Entity> m_audioEntities;
 
-	std::vector<Entity> balls;
+	std::vector<Entity> m_balls;
 
 	void onStart(ECSManager& ecs) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
 
-		constexpr int numBalls = 60;
 		constexpr int rowWidth = 30;
+		constexpr int numBalls = rowWidth * 2;
 		constexpr float startY = 20.0f + (numBalls / rowWidth);
 		constexpr float stiffness = 1.0f;
 
@@ -46,7 +45,7 @@ private:
 			sdf.materialId = material;
 
 			auto& rb = ecs.addComponent<RigidBody2D>(entity);
-			balls.push_back(entity);
+			m_balls.push_back(entity);
 		}
 
 		// Connect balls with springs (down and right)
@@ -61,8 +60,8 @@ private:
 			{
 				Entity springEnt = ecs.createEntity();
 				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = balls[i];
-				spring.entityB = balls[i + rowWidth];
+				spring.entityA = m_balls[i];
+				spring.entityB = m_balls[i + rowWidth];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.0f;
 			}
@@ -71,8 +70,8 @@ private:
 			{
 				Entity springEnt = ecs.createEntity();
 				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = balls[i];
-				spring.entityB = balls[i + 1];
+				spring.entityA = m_balls[i];
+				spring.entityB = m_balls[i + 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.0f;
 			}
@@ -82,8 +81,8 @@ private:
 			{
 				Entity springEnt = ecs.createEntity();
 				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = balls[i];
-				spring.entityB = balls[i + rowWidth + 1];
+				spring.entityA = m_balls[i];
+				spring.entityB = m_balls[i + rowWidth + 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.4142f;
 			}
@@ -92,24 +91,24 @@ private:
 			{
 				Entity springEnt = ecs.createEntity();
 				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = balls[i];
-				spring.entityB = balls[i + rowWidth - 1];
+				spring.entityA = m_balls[i];
+				spring.entityB = m_balls[i + rowWidth - 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.4142f;
 			}
 		}
 
 		// Fix corners
-		ecs.getComponent<RigidBody2D>(balls[0]).isFixed = true;
-		ecs.setEntityDirty<RigidBody2D>(balls[0], true);
-		if (numBalls >= rowWidth)
+		ecs.getComponent<RigidBody2D>(m_balls[0]).isFixed = true;
+		ecs.setEntityDirty<RigidBody2D>(m_balls[0], true);
+		if (numBalls > rowWidth)
 		{
-			ecs.getComponent<RigidBody2D>(balls[rowWidth - 1]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(balls[rowWidth - 1], true);
-			ecs.getComponent<RigidBody2D>(balls[rowWidth]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(balls[rowWidth], true);
-			ecs.getComponent<RigidBody2D>(balls[(2 * rowWidth) - 1]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(balls[(2 * rowWidth) - 1], true);
+			ecs.getComponent<RigidBody2D>(m_balls[rowWidth - 1]).isFixed = true;
+			ecs.setEntityDirty<RigidBody2D>(m_balls[rowWidth - 1], true);
+			ecs.getComponent<RigidBody2D>(m_balls[rowWidth]).isFixed = true;
+			ecs.setEntityDirty<RigidBody2D>(m_balls[rowWidth], true);
+			ecs.getComponent<RigidBody2D>(m_balls[(2 * rowWidth) - 1]).isFixed = true;
+			ecs.setEntityDirty<RigidBody2D>(m_balls[(2 * rowWidth) - 1], true);
 		}
 
 		// Add base shapes (walls, ground, custom)
@@ -117,36 +116,10 @@ private:
 		addShape(DefaultShapes::SINE, vars0, 3);
 
 		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		m_star = addShape(DefaultShapes::STAR, vars1, 3);
-
-		float vars2[8] = {30.5f, 3.5f, 30.0f, 3.0f};
-		// addScreenSpaceShape(3, vars2); // UI overlay shape
+		// m_star = addShape(DefaultShapes::STAR, vars1, 3);
 
 		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
 		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
-
-		{
-			Entity text = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(text);
-			t.position = vec3(Display::width / 2.0f, 20.0f, 0.0f);
-			auto& textRenderer = ecs.addComponent<UITextRenderer>(text);
-			textRenderer.text = "Nice rope dude!";
-			textRenderer.material = 4;
-			textRenderer.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-			textRenderer.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
-		}
-
-		for (int i = 0; i < 8; ++i)
-		{
-			// float value = AudioEngine::getAudioVisuals().waveform[i];
-			Entity e = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(e);
-			t.position = vec3((i + 1) * 20, 20.0f, 0.0f);
-			auto& ui = ecs.addComponent<UIDot>(e);
-			ui.materialId = 4 + (i % 12);
-
-			m_audioEntities.push_back(e);
-		}
 
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
@@ -182,12 +155,13 @@ private:
 	{
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 		}
 
 		// Animate custom shape over time
+		if(m_star != INVALID_ENTITY)
 		{
 			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track delta.
 			static float animTime = 0.0f;
@@ -198,22 +172,7 @@ private:
 			ecs.setComponentDirty(cs);
 		}
 
-		auto audioVisualData = AudioEngine::getInstance().getAudioData();
-
-		if (audioVisualData.waveform.size() > 0)
-		{
-			int skip = audioVisualData.waveform.size() / m_audioEntities.size();
-			for (int i = 0; i < m_audioEntities.size(); ++i)
-			{
-				float value = audioVisualData.waveform[i * skip];
-				auto& t = ecs.getComponent<Transform>(m_audioEntities[i]);
-				float nextPos = Display::height - ((50.0f * value) + 20.0f);
-				// t.position.y += (std::min)(nextPos - t.position.y, 100.0f * delta);
-				t.position.y = nextPos;
-			}
-		}
-
-		if (Input::GetKey(Input::E))
+		if (Input::GetKey(Input::E) || Input::GetGamepadButton(Input::GamepadButton::West))
 		{
 			throwBalls(ecs);
 		}
@@ -266,54 +225,12 @@ private:
 
 		if (Input::GetKeyDown(Input::N))
 		{
-			// Duplicate last SDF, add new shape with it
-			registerSDF(m_sdfs.back());
-
 			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
 			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
-			addShape(m_sdfs.size() - 1, vars, 3);
-		}
-
-		if (Input::GetKeyDown(Input::K))
-		{
-			auto components = ecs.getComponentArray<CustomShape>();
-			int id = components->getSize() - 1;
-
-			// We shouldn't call getSimulation() here. 
-			// We can mark the custom shape entity for destruction or something.
-			ecs.destroyEntity(components->getEntityAtIdx(id));
-		}
-	}
-
-	void onPhysicsStep(Simulation2D& simulation) override
-	{
-		if (!Input::GetKey(Input::R))
-			return;
-
-		auto size = simulation.getSize();
-
-		for (int i = 0; i < size; i++)
-		{
-			auto p = simulation.getPosition(i);
-
-			if (p.x > 29.5f)
-			{
-				p.x = 29.5f;
-				simulation.setPosition(i, p);
-			}
-			else if (p.x < 0.5f)
-			{
-				p.x = 0.5f;
-				simulation.setPosition(i, p);
-			}
-			else if (p.y < 0.5f)
-			{
-				p.y = 0.5f;
-				simulation.setPosition(i, p);
-			}
+			addShape(DefaultShapes::STAR, vars, 3);
 		}
 	}
 };

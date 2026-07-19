@@ -2,9 +2,12 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <cmath>
 
 #include <SDL3/SDL.h>
 #include "weird-renderer/core/Display.h"
+#include "weird-engine/Logger.h"
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
@@ -39,6 +42,10 @@ namespace WeirdEngine
 		// Store the state of every key and mouse button
 		int* m_keyTable;
 		int* m_mouseKeysTable;
+		int* m_gamepadButtonTable;
+		float* m_gamepadAxisTable;
+
+		std::vector<SDL_Gamepad*> m_gamepads;
 
 		bool m_uiFlag = false;
 
@@ -47,12 +54,20 @@ namespace WeirdEngine
 			// Use SDL_NUM_SCANCODES for the key table size
 			m_keyTable = new int[SDL_SCANCODE_COUNT]{0};
 			m_mouseKeysTable = new int[5]{0};
+			m_gamepadButtonTable = new int[SDL_GAMEPAD_BUTTON_COUNT]{0};
+			m_gamepadAxisTable = new float[SDL_GAMEPAD_AXIS_COUNT]{0.0f};
 		}
 
 		~Input()
 		{
 			delete[] m_keyTable;
 			delete[] m_mouseKeysTable;
+			delete[] m_gamepadButtonTable;
+			delete[] m_gamepadAxisTable;
+			for (auto pad : m_gamepads)
+			{
+				if (pad) SDL_CloseGamepad(pad);
+			}
 		}
 
 		// Singleton pattern
@@ -301,6 +316,70 @@ namespace WeirdEngine
 
 #pragma endregion
 
+#pragma region Gamepad
+
+		enum GamepadButton
+		{
+			South = SDL_GAMEPAD_BUTTON_SOUTH, // A
+			East = SDL_GAMEPAD_BUTTON_EAST,   // B
+			West = SDL_GAMEPAD_BUTTON_WEST,   // X
+			North = SDL_GAMEPAD_BUTTON_NORTH, // Y
+			Back = SDL_GAMEPAD_BUTTON_BACK,
+			Guide = SDL_GAMEPAD_BUTTON_GUIDE,
+			Start = SDL_GAMEPAD_BUTTON_START,
+			LeftStick = SDL_GAMEPAD_BUTTON_LEFT_STICK,
+			RightStick = SDL_GAMEPAD_BUTTON_RIGHT_STICK,
+			LeftShoulder = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
+			RightShoulder = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
+			DpadUp = SDL_GAMEPAD_BUTTON_DPAD_UP,
+			DpadDown = SDL_GAMEPAD_BUTTON_DPAD_DOWN,
+			DpadLeft = SDL_GAMEPAD_BUTTON_DPAD_LEFT,
+			DpadRight = SDL_GAMEPAD_BUTTON_DPAD_RIGHT
+		};
+
+		enum GamepadAxis
+		{
+			LeftX = SDL_GAMEPAD_AXIS_LEFTX,
+			LeftY = SDL_GAMEPAD_AXIS_LEFTY,
+			RightX = SDL_GAMEPAD_AXIS_RIGHTX,
+			RightY = SDL_GAMEPAD_AXIS_RIGHTY,
+			LeftTrigger = SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
+			RightTrigger = SDL_GAMEPAD_AXIS_RIGHT_TRIGGER
+		};
+
+		static int AddGamepadMapping(const char* mapping)
+		{
+			return SDL_AddGamepadMapping(mapping);
+		}
+
+		static const char* GetGamepadMappingForGUID(const char* guid)
+		{
+			SDL_GUID g = SDL_StringToGUID(guid);
+			return SDL_GetGamepadMappingForGUID(g);
+		}
+
+		static bool GetGamepadButton(GamepadButton button)
+		{
+			return getInstance().m_gamepadButtonTable[(int)button] >= IS_PRESSED;
+		}
+
+		static bool GetGamepadButtonDown(GamepadButton button)
+		{
+			return getInstance().m_gamepadButtonTable[(int)button] == FIRST_PRESSED;
+		}
+
+		static bool GetGamepadButtonUp(GamepadButton button)
+		{
+			return getInstance().m_gamepadButtonTable[(int)button] == RELEASED_THIS_FRAME;
+		}
+
+		static float GetGamepadAxis(GamepadAxis axis)
+		{
+			return getInstance().m_gamepadAxisTable[(int)axis];
+		}
+
+#pragma endregion
+
 	public:
 		// Main update function, to be called once per frame.
 		static void update(SDL_Window* window)
@@ -326,6 +405,38 @@ namespace WeirdEngine
 
 		switch (event.type)
 		{
+			case SDL_EVENT_GAMEPAD_ADDED:
+			{
+				SDL_Gamepad* pad = SDL_OpenGamepad(event.gdevice.which);
+				if (pad)
+				{
+					m_gamepads.push_back(pad);
+
+					const char* name = SDL_GetGamepadName(pad);
+					SDL_JoystickID id = SDL_GetGamepadID(pad);
+					char guid[64];
+					SDL_GUIDToString(SDL_GetGamepadGUIDForID(id), guid, sizeof(guid));
+
+					const char* mapping = SDL_GetGamepadMapping(pad);
+					Logger::log("Gamepad connected: " + std::string(name ? name : "Unknown")
+								+ " [GUID: " + std::string(guid) + "]"
+								+ " mapping: " + std::string(mapping ? mapping : "(none)"));
+				}
+				break;
+			}
+			case SDL_EVENT_GAMEPAD_REMOVED:
+			{
+				for (auto it = m_gamepads.begin(); it != m_gamepads.end(); ++it)
+				{
+					if (SDL_GetGamepadID(*it) == event.gdevice.which)
+					{
+						SDL_CloseGamepad(*it);
+						m_gamepads.erase(it);
+						break;
+					}
+				}
+				break;
+			}
 				// Handle mouse wheel separately as it's an event, not a persistent state.
 			case SDL_EVENT_MOUSE_WHEEL:
 				if (event.wheel.y > 0)
@@ -370,6 +481,17 @@ namespace WeirdEngine
 			else if (m_mouseKeysTable[i] == RELEASED_THIS_FRAME)
 			{
 				m_mouseKeysTable[i] = NOT_PRESSED;
+			}
+		}
+		for (int i = 0; i < SDL_GAMEPAD_BUTTON_COUNT; ++i)
+		{
+			if (m_gamepadButtonTable[i] == FIRST_PRESSED)
+			{
+				m_gamepadButtonTable[i] = IS_PRESSED;
+			}
+			else if (m_gamepadButtonTable[i] == RELEASED_THIS_FRAME)
+			{
+				m_gamepadButtonTable[i] = NOT_PRESSED;
 			}
 		}
 		// Mouse wheel is event-driven, so reset its state each frame before polling.
@@ -437,6 +559,46 @@ namespace WeirdEngine
 			{
 				m_keyTable[i] = RELEASED_THIS_FRAME;
 			}
+		}
+
+		// --- GAMEPAD ---
+		for (int i = 0; i < SDL_GAMEPAD_BUTTON_COUNT; i++)
+		{
+			bool isPressed = false;
+			for (auto* pad : m_gamepads)
+			{
+				if (SDL_GetGamepadButton(pad, (SDL_GamepadButton)i))
+				{
+					isPressed = true;
+					break;
+				}
+			}
+			int current = isPressed ? IS_PRESSED : NOT_PRESSED;
+			int previous = m_gamepadButtonTable[i];
+
+			if (current == IS_PRESSED && (previous == NOT_PRESSED || previous == RELEASED_THIS_FRAME))
+			{
+				m_gamepadButtonTable[i] = FIRST_PRESSED;
+			}
+			else if (current == NOT_PRESSED && (previous == IS_PRESSED || previous == FIRST_PRESSED))
+			{
+				m_gamepadButtonTable[i] = RELEASED_THIS_FRAME;
+			}
+		}
+
+		for (int i = 0; i < SDL_GAMEPAD_AXIS_COUNT; i++)
+		{
+			float value = 0.0f;
+			for (auto* pad : m_gamepads)
+			{
+				Sint16 raw = SDL_GetGamepadAxis(pad, (SDL_GamepadAxis)i);
+				float normalized = raw < 0 ? raw / 32768.0f : raw / 32767.0f;
+				if (std::abs(normalized) > std::abs(value))
+				{
+					value = normalized;
+				}
+			}
+			m_gamepadAxisTable[i] = value;
 		}
 	}
 } // namespace WeirdEngine

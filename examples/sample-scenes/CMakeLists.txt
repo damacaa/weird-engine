@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
+
+# ==============================================================================
+# 1. Project Configuration
+# ==============================================================================
 project(WeirdSamples)
+
+# Path to the WeirdEngine directory. Change this depending on where your project is located.
+# Examples inside weird-engine use "../../"
+# External projects usually use "../weird-engine/" or similar.
+set(WEIRD_ENGINE_LOCAL_PATH "../../")
+# ==============================================================================
 
 # Create folders if they don't exist
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets")
@@ -12,11 +22,17 @@ set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
 
 # Option to switch between local and online version of WeirdEngine
 option(USE_LOCAL_WEIRD_ENGINE "Use local version of WeirdEngine" ON)
-# Set paths for the local WeirdEngine
-set(WEIRD_ENGINE_LOCAL_PATH "../../")
+
+# Option to build for web (Emscripten)
+option(BUILD_WEB "Build for web using Emscripten" OFF)
 
 # Option to build for standalone deployment
 option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" OFF)
+
+# Force DEPLOY_STANDALONE when building for web
+if(BUILD_WEB)
+    set(DEPLOY_STANDALONE ON CACHE BOOL "" FORCE)
+endif()
 
 if(DEPLOY_STANDALONE)
     message(STATUS ">> DEPLOY MODE: Assets will be copied to output. Paths set to relative.")
@@ -32,7 +48,7 @@ endif()
 if(NOT TARGET WeirdEngine)
     if(USE_LOCAL_WEIRD_ENGINE)
         # Use the local version of WeirdEngine
-        message(STATUS "Using local version of WeirdEngine")
+        message(STATUS "Using local version of WeirdEngine at ${WEIRD_ENGINE_LOCAL_PATH}")
         add_subdirectory(${WEIRD_ENGINE_LOCAL_PATH} ${CMAKE_BINARY_DIR}/weird-engine)
         
         # Resolve the local path to an absolute path for copying files later
@@ -40,11 +56,13 @@ if(NOT TARGET WeirdEngine)
     else()
         # Fetch WeirdEngine from GitHub
         message(STATUS "Using online version of WeirdEngine")
+        set(WEIRD_ENGINE_GIT_REF "main")
+        
         include(FetchContent)
         FetchContent_Declare(
             WeirdEngine
             GIT_REPOSITORY https://github.com/damacaa/weird-engine
-            GIT_TAG main
+            GIT_TAG ${WEIRD_ENGINE_GIT_REF}
         )
         FetchContent_MakeAvailable(WeirdEngine)
         
@@ -73,13 +91,12 @@ set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRU
 add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
 # Set include directories.
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Link to WeirdEngine.
 target_link_libraries(${PROJECT_NAME} PRIVATE WeirdEngine)
 
 # Set Asset Path Macro
-
 if(DEPLOY_STANDALONE)
     set(ASSETS_PATH "./assets/")
 else()
@@ -96,30 +113,38 @@ endif()
 # -------------------------------------------------------------------------
 # POST BUILD COMMANDS (DLLs + Assets + Fonts + Shaders)
 # -------------------------------------------------------------------------
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    # 1. Copy DLLs (SDL3)
-    # COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    #    $<TARGET_FILE:SDL3::SDL3>
-    #    $<TARGET_FILE_DIR:${PROJECT_NAME}>
+if(DEPLOY_STANDALONE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        # 1. Copy Project ASSETS folder -> Build/assets
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
 
-    # 2. Copy Project ASSETS folder -> Build/assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
+        # 2. Copy WeirdEngine FONTS -> Build/fonts
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${WEIRD_ENGINE_REAL_SOURCE}/src/weird-renderer/fonts"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/fonts"
 
-    # 3. Copy WeirdEngine FONTS -> Build/fonts
-    # We look into the captured WEIRD_ENGINE_REAL_SOURCE/src/weird-renderer/fonts
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${WEIRD_ENGINE_REAL_SOURCE}/src/weird-renderer/fonts"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/fonts"
+        # 3. Copy WeirdEngine SHADERS -> Build/shaders
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${WEIRD_ENGINE_REAL_SOURCE}/src/weird-renderer/shaders"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders"
 
-    # 4. Copy WeirdEngine SHADERS -> Build/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${WEIRD_ENGINE_REAL_SOURCE}/src/weird-renderer/shaders"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders"
+        COMMENT "Copying Game Assets, Engine Fonts, and Engine Shaders"
+    )
 
-    COMMENT "Copying Runtime DLLs, Game Assets, Engine Fonts, and Engine Shaders"
-)
+    if(BUILD_WEB)
+        # For web builds, copy index.html if it exists
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/index.html")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/src/index.html"
+                    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/index.html"
+                COMMENT "Copying index.html for web build"
+            )
+        endif()
+    endif()
+endif()
 
 # -------------------------------------------------------------------------
 # SOURCE GROUPS

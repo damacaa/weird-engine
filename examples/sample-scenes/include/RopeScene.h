@@ -232,5 +232,19 @@ private:
 			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
 			addShape(DefaultShapes::STAR, vars, 3);
 		}
+
+		if (Input::GetKey(Input::R) || Input::GetGamepadButton(Input::GamepadButton::South))
+		{
+			ecs.forEach<RigidBody2D, Transform>(
+				[&](Entity e, RigidBody2D& rb, Transform& t)
+				{
+					vec2 force(0, -0.001f * (t.position.y * t.position.y));
+					force.x += t.position.x < 0.0f ? - t.position.x : 0.0f;
+					force.x -= t.position.x > 30.0f ? t.position.x - 30.0f : 0.0f;
+					force.x = 10.0f / delta * glm::clamp(force.x, -1.0f, 1.0f);
+
+					rb.pendingContinuousForce = force;
+				});
+		}
 	}
 };

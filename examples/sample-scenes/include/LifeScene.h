@@ -16,7 +16,7 @@ struct Head
 	Head() {};
 
 	vec2 direction = vec2(0.0f, 1.0f);
-	float forceMagnitude = 10.0f;
+	float forceMagnitude = 500.0f;
 	bool directionChanged = false;
 };
 
@@ -79,9 +79,10 @@ private:
 						ecs.addComponent<Head>(firstCreated);
 					}
 
-					++i;
 					// break;
 				}
+
+				++i;
 			}
 		}
 
@@ -97,12 +98,12 @@ private:
 			setSceneComplete();
 		}
 
-		updatePhysics(delta, ecs);
+		updateHeads(delta, ecs);
 	}
 
-	void updatePhysics(float delta, ECSManager& ecs)
+	void updateHeads(float delta, ECSManager& ecs)
 	{
-		float timeDelta = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
+		float animationT = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
 
 		auto headArray = ecs.getComponentArray<Head>();
 
@@ -112,9 +113,9 @@ private:
 			Entity headEntity = headArray->getEntityAtIdx(i);
 
 			auto& rb = ecs.getComponent<RigidBody2D>(headEntity);
-			rb.pendingImpulseForce += head.forceMagnitude * head.direction * timeDelta;
+			rb.pendingContinuousForce += head.forceMagnitude * head.direction * animationT;
 
-			if (timeDelta < 0.0f && !head.directionChanged)
+			if (animationT < 0.0f && !head.directionChanged)
 			{ // rotate direction by random amount between -45 and 45 degrees
 				constexpr float MAX_ANGLE = 45.0f;
 				float angle = (rand() / (float)RAND_MAX) * MAX_ANGLE - (MAX_ANGLE / 2.0f);

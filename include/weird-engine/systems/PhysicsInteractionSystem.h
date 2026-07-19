@@ -336,11 +336,15 @@ namespace WeirdEngine
 
 					float distance = glm::length(static_cast<vec2>(t.position) - m_loadStartPosition);
 					// float maxDistance = (0.5f * dragDistance);
-					float maxDistance = 5.0f;
-					vec2 force = 1.0f * glm::clamp(maxDistance - distance, 0.0f, 1.0f) * direction;
+					constexpr float MAX_DISTANCE = 5.0f;
 
-					rb.pendingImpulseForce += force;
-					componentArray->setDirty(i, true);
+					if(distance <= MAX_DISTANCE)
+					{
+						vec2 force = 1.0f * glm::clamp(MAX_DISTANCE - distance, 0.0f, 1.0f) * direction;
+
+						rb.pendingImpulseForce += force;
+						componentArray->setDirty(i, true);
+					}
 				}
 			}
 		}

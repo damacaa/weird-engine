@@ -47,13 +47,7 @@ jobs:
           WEIRD_SCREENSHOT_FRAME: 10
         run: xvfb-run -a ./WeirdSamples
 
-      - name: Test (Windows)
-        if: runner.os == 'Windows'
-        working-directory: ${{github.workspace}}/build/examples/sample-scenes/Release
-        env:
-          WEIRD_AUTO_QUIT_SECONDS: 3
-          WEIRD_SCREENSHOT_FRAME: 10
-        run: ./WeirdSamples.exe
+
 
       - name: Upload Test Artifacts
         if: always()

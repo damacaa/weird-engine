@@ -95,6 +95,13 @@ run_test() {
 }
 
 {
+  # Known-good SDL3 event* mapping (see scripts/anbernic/backup/).
+  export SDL_GAMECONTROLLERCONFIG="19004ca6010000000100000000010000,Deeplay-keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,
+19004ca6010000000100000000010000,muOS-Keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,"
+  export SDL_JOYSTICK_LINUX_CLASSIC=0
+  echo "SDL_GAMECONTROLLERCONFIG: $SDL_GAMECONTROLLERCONFIG" >> "$LOG"
+  echo "SDL_GAMECONTROLLERCONFIG_FILE: $SDL_GAMECONTROLLERCONFIG_FILE" >> "$LOG"
+
   diag
 
   run_test "fbdev-egl" \

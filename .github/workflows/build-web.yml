@@ -58,15 +58,14 @@ jobs:
         run: |
           mkdir -p game_export
           
-          # Emscripten outputs multiple files based on flags:
-          # index.html, index.wasm, index.js, index.worker.js, and index.data
-          cp build/index.* game_export/
-          cp build/examples/sample-scenes/WeirdSamples.* game_export/ || true
+          # Emscripten outputs multiple files named after the CMake target (WeirdSamples):
+          # WeirdSamples.html, WeirdSamples.wasm, WeirdSamples.js, WeirdSamples.worker.js, WeirdSamples.data
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/
           
           # Assets were copied to the target directory by our CMake template
-          cp -r build/examples/sample-scenes/assets game_export/ || true
-          cp -r build/examples/sample-scenes/fonts game_export/ || true
-          cp -r build/examples/sample-scenes/shaders game_export/ || true
+          cp -r build/examples/sample-scenes/assets game_export/
+          cp -r build/examples/sample-scenes/fonts game_export/
+          cp -r build/examples/sample-scenes/shaders game_export/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

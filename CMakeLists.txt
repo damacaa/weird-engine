@@ -60,7 +60,10 @@ target_include_directories(imgui
         ${IMGUI_DIR}/backends
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/SDL/include
 )
-target_link_libraries(imgui PRIVATE glad GLESv2 EGL dl)
+target_link_libraries(imgui PRIVATE glad)
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+    target_link_libraries(imgui PRIVATE GLESv2 EGL dl)
+endif()
 endif()
 
 target_include_directories(${PROJECT_NAME} 
@@ -94,7 +97,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
 
 # Force SDL3 to dynamically load KMSDRM libraries via dlopen instead of hard-linking.
 # This is necessary because cmake_dependent_option overrides our FORCE cache entries.
-if(TARGET SDL3-static)
+if(TARGET SDL3-static AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   target_compile_definitions(SDL3-static PRIVATE
     "SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC=\"libdrm.so.2\""
     "SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM=\"libgbm.so.1\""
@@ -149,11 +152,12 @@ target_include_directories(glad
         PUBLIC 
             SDL3::SDL3
         PRIVATE 
-            GLESv2
-            EGL
-            dl
             glad
     )
+    if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+        target_link_libraries(${PROJECT_NAME} PRIVATE GLESv2 EGL dl)
+    endif()
+
     if(NOT WEIRD_DISABLE_IMGUI)
         target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
     else()

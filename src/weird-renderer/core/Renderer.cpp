@@ -52,13 +52,13 @@ namespace WeirdEngine
 			worldConfig.distanceOverscan = settings.worldDistanceOverscan;
 			worldConfig.renderScale = m_renderScale;
 			worldConfig.isUI = false;
-			worldConfig.enableShadows = true;
+			worldConfig.enableShadows = settings.enable2DLigthing;
 			worldConfig.enableLongShadows = settings.enableLongShadows;
 			worldConfig.shadowTint = settings.shadowTint;
 			worldConfig.enableRefraction = true;
 			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			worldConfig.enableMotionBlur = true;
-			worldConfig.materialBlendIterations = 1;
+			worldConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			worldConfig.materialBlendSpeed = 10.0f;
 			worldConfig.motionBlurBlendSpeed = 10.0f;
 			worldConfig.debugDistanceField = false;
@@ -81,7 +81,7 @@ namespace WeirdEngine
 			uiConfig.enableRefraction = true;
 			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			uiConfig.enableMotionBlur = true;
-			uiConfig.materialBlendIterations = 1;
+			uiConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			uiConfig.materialBlendSpeed = 5.0f;
 			uiConfig.motionBlurBlendSpeed = 5.0f;
 			uiConfig.debugDistanceField = false;

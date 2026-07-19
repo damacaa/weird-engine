@@ -55,11 +55,15 @@ namespace WeirdEngine
 
 			// Load shaders
 			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_distance.frag");
-			m_distanceShader.addDefine("BLEND_SHAPES");
+
+			if(config.ballK > 0.0f)
+				m_distanceShader.addDefine("BLEND_SHAPES");
+
 			if (m_config.enableMotionBlur)
 			{
 				m_distanceShader.addDefine("MOTION_BLUR");
 			}
+
 			if (m_config.isUI)
 			{
 				m_distanceShader.addDefine("UI_PIPELINE");
@@ -749,6 +753,7 @@ namespace WeirdEngine
 
 				horizontal = !horizontal;
 			}
+			
 			Profiler::get().gpuSync();
 		}
 

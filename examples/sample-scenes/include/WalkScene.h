@@ -41,7 +41,7 @@ private:
 		m_background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
 		m_background.scale = 0.2f;
 
-		auto tags = loadWeirdFile(ASSETS_PATH "Organisms/man.weird");
+		auto tags = loadWeirdFile(ASSETS_PATH "man.weird");
 
 		Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
 
@@ -77,7 +77,7 @@ private:
 	{
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 		}

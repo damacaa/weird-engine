@@ -158,7 +158,7 @@ private:
 		m_tempEcs = &ecs;
 		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 			return;

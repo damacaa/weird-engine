@@ -13,6 +13,10 @@ fi
 
 source "$controlfolder/control.txt"
 
+# [NEW] Source custom CFW mod files and fetch device-specific controls
+[ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
+get_controls
+
 GAMEDIR="/$directory/ports/weird-samples"
 cd "$GAMEDIR" || exit 1
 
@@ -69,18 +73,35 @@ run_test() {
   echo ""
   echo "############ RUN: $name ############"
   echo "cmd: env $* ./WeirdSamples"
+
+  # [NEW] Make sure virtual keyboard/mouse subsystem is writable and launch gptokeyb to listen for the exit hotkey
+  $ESUDO chmod 666 /dev/uinput
+  $GPTOKEYB "WeirdSamples" &
+
   if command -v timeout >/dev/null 2>&1; then
     env "$@" timeout -s KILL 90 ./WeirdSamples
   else
     env "$@" ./WeirdSamples
   fi
   code=$?
+
+  # [NEW] Force kill gptokeyb instances for this test loop once the binary exits
+  $ESUDO kill -9 $(pidof gptokeyb) 2>/dev/null
+  $ESUDO kill -9 $(pidof gptokeyb2) 2>/dev/null
+
   echo "############ EXIT ($name): $code ############"
   echo ""
   return $code
 }
 
 {
+  # Known-good SDL3 event* mapping (see scripts/anbernic/backup/).
+  export SDL_GAMECONTROLLERCONFIG="19004ca6010000000100000000010000,Deeplay-keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,
+19004ca6010000000100000000010000,muOS-Keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,"
+  export SDL_JOYSTICK_LINUX_CLASSIC=0
+  echo "SDL_GAMECONTROLLERCONFIG: $SDL_GAMECONTROLLERCONFIG" >> "$LOG"
+  echo "SDL_GAMECONTROLLERCONFIG_FILE: $SDL_GAMECONTROLLERCONFIG_FILE" >> "$LOG"
+
   diag
 
   run_test "fbdev-egl" \
@@ -99,5 +120,8 @@ run_test() {
 
   echo "=== DONE ==="
 } >> "$LOG" 2>&1
+
+# [NEW] Final PortMaster wrapper cleanup
+pm_finish
 
 sync

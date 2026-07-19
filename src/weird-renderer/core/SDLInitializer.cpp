@@ -48,11 +48,11 @@ namespace WeirdEngine
 				SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
 			}
 #endif
-			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
+			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
 			{
 				std::cout << "SDL_Init with audio failed: " << SDL_GetError()
 						  << " - retrying without audio" << std::endl;
-				if (!SDL_Init(SDL_INIT_VIDEO))
+				if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 				{
 					std::string errorMsg = "SDL could not initialize! SDL_Error: ";
 					errorMsg += SDL_GetError();

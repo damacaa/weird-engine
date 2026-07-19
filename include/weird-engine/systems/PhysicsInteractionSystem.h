@@ -34,6 +34,29 @@ namespace WeirdEngine
 
 		inline InteractionMode m_currentInteractionMode = InteractionMode::Drag;
 
+		inline bool m_usingController = false;
+
+		inline bool getLeftClickDown()
+		{
+			if (Input::GetMouseButtonDown(Input::LeftClick)) { m_usingController = false; return true; }
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::RightShoulder)) { m_usingController = true; return true; }
+			return false;
+		}
+
+		inline bool getRightClickDown()
+		{
+			if (Input::GetMouseButtonDown(Input::RightClick)) { m_usingController = false; return true; }
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::LeftShoulder)) { m_usingController = true; return true; }
+			return false;
+		}
+
+		inline bool getRightClickUp()
+		{
+			if (Input::GetMouseButtonUp(Input::RightClick)) { m_usingController = false; return true; }
+			if (Input::GetGamepadButtonUp(Input::GamepadButton::LeftShoulder)) { m_usingController = true; return true; }
+			return false;
+		}
+
 		inline vec2 getMousePositionInWorld(ECSManager& ecs);
 		inline void drag(ECSManager& ecs);
 		inline void impulse(ECSManager& ecs);
@@ -59,7 +82,7 @@ namespace WeirdEngine
 		inline void update(ECSManager& ecs)
 		{
 			// Spawn ball
-			if (Input::GetMouseButtonDown(Input::LeftClick))
+			if (getLeftClickDown())
 			{
 				// Get mouse coordinates world space
 				vec2 mousePositionInWorld = getMousePositionInWorld(ecs);
@@ -73,7 +96,11 @@ namespace WeirdEngine
 				dot.materialId = m_currentMaterial + 4;
 
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
-				rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
+				if (!m_usingController) {
+					rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
+				} else {
+					rb.pendingImpulseForce += 10.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX), -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
+				}
 
 				m_firstIdInSpring = INVALID_ENTITY;
 			}
@@ -134,6 +161,18 @@ namespace WeirdEngine
 				reset();
 			}
 
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::DpadRight))
+			{
+				m_currentInteractionMode = (InteractionMode)(((int)m_currentInteractionMode + 1) % 5);
+				reset();
+			}
+
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::DpadLeft))
+			{
+				m_currentInteractionMode = (InteractionMode)(((int)m_currentInteractionMode + 4) % 5);
+				reset();
+			}
+
 			// Add force to last ball
 			if (Input::GetKey(Input::T))
 			{
@@ -168,8 +207,8 @@ namespace WeirdEngine
 		{
 			// Get mouse coordinates
 			auto& cameraTransform = ecs.getComponent<Transform>(0); // m_mainCamera
-			float x = Input::GetMouseX();
-			float y = Input::GetMouseY();
+			float x = m_usingController ? (WeirdRenderer::Display::width / 2.0f) : Input::GetMouseX();
+			float y = m_usingController ? (WeirdRenderer::Display::height / 2.0f) : Input::GetMouseY();
 
 			// Transform mouse coordinates to world space
 			vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
@@ -179,7 +218,7 @@ namespace WeirdEngine
 
 		inline void drag(ECSManager& ecs)
 		{
-			if (Input::GetMouseButtonDown(Input::RightClick))
+			if (getRightClickDown())
 			{
 				auto rbs = ecs.getComponentArray<RigidBody2D>();
 
@@ -212,13 +251,17 @@ namespace WeirdEngine
 				
 			}
 
-			if (Input::GetMouseButtonUp(Input::RightClick))
+			if (getRightClickUp())
 			{
 				if (m_dragId != INVALID_ENTITY)
 				{
 					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
 					rb.isFixed = false;
-					rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
+					if (!m_usingController) {
+						rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
+					} else {
+						rb.pendingImpulseForce += 1000.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX), -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
+					}
 					ecs.getComponentArray<RigidBody2D>()->setEntityDirty(m_dragId, true);
 
 					m_dragId = INVALID_ENTITY;
@@ -259,7 +302,7 @@ namespace WeirdEngine
 
 		inline void impulse(ECSManager& ecs)
 		{
-			if (Input::GetMouseButtonDown(Input::RightClick))
+			if (getRightClickDown())
 			{
 				if (m_loadingImpulse)
 					return;
@@ -268,7 +311,7 @@ namespace WeirdEngine
 				m_loadStartPosition = getMousePositionInWorld(ecs);
 			}
 
-			if (Input::GetMouseButtonUp(Input::RightClick))
+			if (getRightClickUp())
 			{
 				if (!m_loadingImpulse)
 					return;
@@ -304,7 +347,7 @@ namespace WeirdEngine
 
 		inline void fix(ECSManager& ecs)
 		{
-			if (Input::GetMouseButtonDown(Input::RightClick))
+			if (getRightClickDown())
 			{
 				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
 				if (id != INVALID_ENTITY)
@@ -319,7 +362,7 @@ namespace WeirdEngine
 		inline void spring(ECSManager& ecs)
 		{
 
-			if (Input::GetMouseButtonDown(Input::RightClick))
+			if (getRightClickDown())
 			{
 				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
 				if (id != INVALID_ENTITY)
@@ -332,7 +375,7 @@ namespace WeirdEngine
 				}
 			}
 
-			if (Input::GetMouseButtonUp(Input::RightClick))
+			if (getRightClickUp())
 			{
 				if (m_firstIdInSpring != INVALID_ENTITY)
 				{
@@ -357,7 +400,7 @@ namespace WeirdEngine
 		inline void positionConstraint(ECSManager& ecs)
 		{
 
-			if (Input::GetMouseButtonDown(Input::RightClick))
+			if (getRightClickDown())
 			{
 				Entity id = getEntityAtPosition(ecs, getMousePositionInWorld(ecs));
 				if (id != INVALID_ENTITY)
@@ -370,7 +413,7 @@ namespace WeirdEngine
 				}
 			}
 
-			if (Input::GetMouseButtonUp(Input::RightClick))
+			if (getRightClickUp())
 			{
 				if (m_firstIdInSpring != INVALID_ENTITY)
 				{

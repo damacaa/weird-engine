@@ -38,56 +38,61 @@ private:
 		settings.damping = 0.1f;
 		ecs.setComponentDirty(settings);
 
-
 		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
-		for (size_t j = 0; j < 3; j++)
 		{
 			int i = 0;
+
 			for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
 			{
+				Logger::log(entry.path());
+
 				if (!entry.is_regular_file() || entry.path().extension() != ".weird")
 					continue;
 
-				Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
-
-				auto tags = loadWeirdFile(entry.path().string());
-
-				Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
-
-				for (Entity e = 0; e < (lastCreated - firstCreated); e++)
+				for (size_t j = 0; j < 3; j++)
 				{
-					if(!ecs.hasComponent<Transform>(firstCreated + e))
+					Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
+
+					auto tags = loadWeirdFile(entry.path().string());
+
+					Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
+
+					for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 					{
-						continue;
+						if (!ecs.hasComponent<Transform>(firstCreated + e))
+						{
+							continue;
+						}
+
+						auto& t = ecs.getComponent<Transform>(firstCreated + e);
+						t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
 					}
 
-					auto& t = ecs.getComponent<Transform>(firstCreated + e);
-					t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
-				}
+					if (tags.contains("head"))
+					{
+						Entity headEntity = tags["head"];
+						ecs.addComponent<Head>(headEntity);
+					}
+					else
+					{
+						auto& a = ecs.getComponent<Dot>(firstCreated);
+						ecs.addComponent<Head>(firstCreated);
+					}
 
-				if (tags.contains("head"))
-				{
-					Entity headEntity = tags["head"];
-					ecs.addComponent<Head>(headEntity);
+					++i;
+					// break;
 				}
-				else
-				{
-					auto& a = ecs.getComponent<Dot>(firstCreated);
-					ecs.addComponent<Head>(firstCreated);
-				}
-
-				++i;
 			}
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
-	}
+			ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		}
 
 	void onUpdate(float delta, ECSManager& ecs) override
 	{
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 		}

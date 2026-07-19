@@ -15,9 +15,7 @@ public:
 	}
 
 private:
-	Entity m_circle;
-	Entity m_circle2 = 0;
-	Entity m_text = 0;
+	Entity m_circle = INVALID_ENTITY;
 	float m_circleRadious = 0.0f;
 	vec2 m_initialMousePositionInWorld;
 
@@ -89,17 +87,6 @@ private:
 			m_uiPoints.push_back(ee);
 		}
 
-		{
-			Entity text = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(text);
-			auto& uiText = ecs.addComponent<UITextRenderer>(text);
-			uiText.text = "";
-			uiText.material = 12;
-			t.position = vec3(150.0f, 150.0f, 0.0f);
-
-			m_text = text;
-		}
-
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
@@ -107,7 +94,7 @@ private:
 	{
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 		}
@@ -116,18 +103,6 @@ private:
 		float x = Input::GetMouseX();
 		float y = Input::GetMouseY();
 
-		{
-			auto& text = ecs.getComponent<UITextRenderer>(m_text);
-			bool hideText = Input::GetKey(Input::LeftAlt);
-			text.text =
-				hideText ? "" : "Balls:" + std::to_string(static_cast<int>(ecs.getComponentArray<Dot>()->getSize()));
-			ecs.setComponentDirty(text);
-
-			auto& textTransform = ecs.getComponent<Transform>(m_text);
-			textTransform.position.x = x;
-			textTransform.position.y = y;
-		}
-
 		// Transform mouse coordinates to world space
 		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
@@ -135,11 +110,23 @@ private:
 		{
 			m_initialMousePositionInWorld = mousePositionInWorld;
 		}
+		else if (Input::GetGamepadButtonDown(Input::GamepadButton::LeftShoulder))
+		{
+			float halfWidth = Display::width / 2.0f;
+			float halfHeight = Display::height / 2.0f;
+
+			m_initialMousePositionInWorld =
+				ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(halfWidth, halfHeight));			
+		}
 
 		if (Input::GetMouseButton(Input::RightClick))
 		{
 			vec2 v = mousePositionInWorld - m_initialMousePositionInWorld;
 			m_circleRadious = (std::min)(10.0f, length(v));
+		}
+		else if (Input::GetGamepadButton(Input::GamepadButton::LeftShoulder))
+		{
+			m_circleRadious = (std::min)(10.0f, m_circleRadious + (10.0f * delta));
 		}
 		else
 		{
@@ -152,16 +139,6 @@ private:
 			cs.parameters[0] = m_initialMousePositionInWorld.x;
 			cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
 			cs.parameters[2] = m_circleRadious;
-
-			ecs.setComponentDirty(cs);
-		}
-
-		if (m_circle2)
-		{
-			CustomShape& cs = ecs.getComponent<CustomShape>(m_circle2);
-			cs.parameters[0] = m_initialMousePositionInWorld.x;
-			cs.parameters[1] = m_initialMousePositionInWorld.y;
-			cs.parameters[2] = (std::max)(0.0f, m_circleRadious - 0.1f);
 
 			ecs.setComponentDirty(cs);
 		}

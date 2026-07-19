@@ -26,6 +26,7 @@ namespace WeirdEngine
 			bool fullscreen = false, vSyncEnabled = true;
 			float distanceSampleScale = 0.5f, internalResolutionScale = 1.0f, refreshRate = 60.0f;
 			float worldDistanceOverscan = 0.1f;
+			bool enableMaterialBlending = true;
 			bool enableDithering = true;
 			float ditheringSpread = 0.05f;
 			int ditheringColorCount = 16;
@@ -36,6 +37,7 @@ namespace WeirdEngine
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;
 			float uiSmoothFactor = 3.0f;
+			bool enable2DLigthing = true;
 			float raymarching3DContrast = 1.2f;
 			bool enable3DPathTracer = true;
 

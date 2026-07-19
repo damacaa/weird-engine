@@ -24,19 +24,19 @@ int main(int argc, char* argv[])
 
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
-	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
-	sceneManager.registerScene<ImageScene>("image");
-	sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
-	sceneManager.registerScene<DestroyScene>("destroy-test");
-	sceneManager.registerScene<SceneLoadExample>("scene-editor", ASSETS_PATH "example.weird");
-	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
+	// sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
+	// sceneManager.registerScene<ImageScene>("image");
+	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
+	// sceneManager.registerScene<DestroyScene>("destroy-test");
+	// sceneManager.registerScene<SceneLoadExample>("scene-editor", ASSETS_PATH "example.weird");
+	// sceneManager.registerScene<MoleculeEditor>("molecule-editor");
 	sceneManager.registerScene<LifeScene>("life");
-	sceneManager.registerScene<WalkScene>("walk");
-	sceneManager.registerScene<AquariumScene>("aquarium");
+	// sceneManager.registerScene<WalkScene>("walk");
+	// sceneManager.registerScene<AquariumScene>("aquarium");
 
 	DisplaySettings displaySettings{};
-	displaySettings.width = 800;
-	displaySettings.height = 800;
+	displaySettings.width = 640;
+	displaySettings.height = 480;
 	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 	displaySettings.distanceSampleScale = 0.5f;

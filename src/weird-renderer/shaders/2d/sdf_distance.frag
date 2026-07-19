@@ -150,6 +150,10 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 	finalMaterialId = count / 10; // Color cells based on how many objects they contain, for debugging purposes
 #endif
 
+#ifndef BLEND_SHAPES
+	mask = 1.0;
+#endif
+
 	return vec3(minDist, max(float(finalMaterialId), 0.0), mask);
 }
 

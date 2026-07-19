@@ -169,7 +169,7 @@ private:
 
 	void onUpdate(float delta, ECSManager& ecs) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
 			setSceneComplete();
 		}

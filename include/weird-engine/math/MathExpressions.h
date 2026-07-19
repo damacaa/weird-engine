@@ -24,7 +24,6 @@ namespace WeirdEngine
 	{
 	private:
 		std::ptrdiff_t m_offset;
-		
 
 	public:
 		explicit FloatVariable(std::ptrdiff_t offset)
@@ -428,7 +427,6 @@ namespace WeirdEngine
 		}
 	};
 
-
 	// Three float operation
 	struct ThreeFloatOperation : IMathExpression
 	{
@@ -445,7 +443,8 @@ namespace WeirdEngine
 		{
 		}
 
-		ThreeFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, std::shared_ptr<IMathExpression> c)
+		ThreeFloatOperation(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b,
+							std::shared_ptr<IMathExpression> c)
 			: valueA(std::move(a))
 			, valueB(std::move(b))
 			, valueC(std::move(c))
@@ -459,7 +458,8 @@ namespace WeirdEngine
 		{
 		}
 
-		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b, std::shared_ptr<IMathExpression> c)
+		void setValues(std::shared_ptr<IMathExpression> a, std::shared_ptr<IMathExpression> b,
+					   std::shared_ptr<IMathExpression> c)
 		{
 			valueA = (std::move(a));
 			valueB = (std::move(b));

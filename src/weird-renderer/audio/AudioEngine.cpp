@@ -1,9 +1,9 @@
 #include "weird-renderer/audio/AudioEngine.h"
+#include "weird-engine/Logger.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
-#include "weird-engine/Logger.h"
 
 #define MA_NO_DEVICE_IO
 #define MINIAUDIO_IMPLEMENTATION

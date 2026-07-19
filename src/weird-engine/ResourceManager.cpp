@@ -87,7 +87,8 @@ namespace WeirdEngine
 		m_resourcesUsedByEntity.erase(entity);
 	}
 
-	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes, glm::mat4 transform)
+	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes,
+								   glm::mat4 transform)
 	{
 		// Get all accessor indices
 		unsigned int posAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
@@ -113,12 +114,12 @@ namespace WeirdEngine
 			for (auto& v : vertices)
 			{
 				v.position = glm::vec3(transform * glm::vec4(v.position, 1.0f));
-				v.normal   = glm::normalize(normalMatrix * v.normal);
+				v.normal = glm::normalize(normalMatrix * v.normal);
 			}
 		}
 
 		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
-		
+
 		std::vector<Texture> textures = getTextures(file);
 
 		// Combine the vertices, indices, and textures into a mesh

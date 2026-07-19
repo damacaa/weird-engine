@@ -4,8 +4,8 @@
 
 #include <filesystem>
 
-#include <vector>
 #include "weird-physics/components/GlobalPhysicsSettings.h"
+#include <vector>
 
 #include "globals.h"
 
@@ -23,7 +23,7 @@ struct Head
 class LifeScene : public Scene2D
 {
 public:
-	LifeScene(){};
+	LifeScene() {};
 
 private:
 	// Inherited via Scene
@@ -86,8 +86,8 @@ private:
 			}
 		}
 
-			ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
-		}
+		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+	}
 
 	void onUpdate(float delta, ECSManager& ecs) override
 	{

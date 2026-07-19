@@ -129,7 +129,8 @@ namespace WeirdEngine
 
 		bool isEntityDirty(Entity entity)
 		{
-			if (!hasData(entity)) return false;
+			if (!hasData(entity))
+				return false;
 			return dirtyFlags[entityToIndexMap[entity]];
 		}
 

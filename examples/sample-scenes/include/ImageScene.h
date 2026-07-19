@@ -10,7 +10,7 @@ using namespace WeirdEngine;
 class ImageScene : public Scene2D
 {
 public:
-	ImageScene(){};
+	ImageScene() {};
 
 private:
 	std::string binaryString;

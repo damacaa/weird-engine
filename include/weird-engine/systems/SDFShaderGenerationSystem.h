@@ -1,4 +1,4 @@
-  #pragma once
+#pragma once
 
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
@@ -6,6 +6,7 @@
 #include "weird-renderer/resources/Shader.h"
 
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -14,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <cctype>
 
 namespace WeirdEngine::SDFShaderGenerationSystem
 {
@@ -33,7 +33,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 		ctx.shapesNeedUpdate = false;
 
-		auto toGlslFloat = [](float value) {
+		auto toGlslFloat = [](float value)
+		{
 			std::ostringstream ss;
 			ss << std::fixed << std::setprecision(6) << value;
 			return ss.str();
@@ -60,8 +61,9 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			orderedIndices.push_back(i);
 		}
 
-		std::stable_sort(orderedIndices.begin(), orderedIndices.end(), [&](size_t a, size_t b)
-				  { return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx; });
+		std::stable_sort(
+			orderedIndices.begin(), orderedIndices.end(), [&](size_t a, size_t b)
+			{ return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx; });
 
 		for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
 		{
@@ -75,7 +77,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 				{
 					oss << "if(" << groupDistanceVariable
 						<< " <= max(minDist, 0.0)){ finalMaterialId = currentGroupColor;}\n";
-					oss << "if(" << groupDistanceVariable << " <= minDist) { globalBlend = " << groupBlendVariable << "; }\n";
+					oss << "if(" << groupDistanceVariable << " <= minDist) { globalBlend = " << groupBlendVariable
+						<< "; }\n";
 					oss << "if(minDist > " << groupDistanceVariable << "){ minDist = " << groupDistanceVariable
 						<< ";}\n";
 				}
@@ -100,24 +103,26 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, ivec2((idx + 1) % 16384, (idx + 1) / 16384), 0);\n";
 
 			auto fragmentCode = sdfs[shape.distanceFieldId]->print();
-			
+
 			// Replace integer literals with floats manually to avoid std::regex ABI issues
 			std::string resultStr;
 			resultStr.reserve(fragmentCode.size() * 2);
-			for (size_t k = 0; k < fragmentCode.size(); )
+			for (size_t k = 0; k < fragmentCode.size();)
 			{
-				bool isPrevValid = (k == 0) || ( !std::isalnum(fragmentCode[k-1]) && fragmentCode[k-1] != '_' && fragmentCode[k-1] != '.' );
-				
+				bool isPrevValid = (k == 0) || (!std::isalnum(fragmentCode[k - 1]) && fragmentCode[k - 1] != '_' &&
+												fragmentCode[k - 1] != '.');
+
 				if (isPrevValid && std::isdigit(fragmentCode[k]))
 				{
 					size_t start = k;
 					while (k < fragmentCode.size() && std::isdigit(fragmentCode[k]))
 						k++;
-					
-					bool isNextValid = (k == fragmentCode.size()) || ( !std::isalnum(fragmentCode[k]) && fragmentCode[k] != '_' && fragmentCode[k] != '.' );
-					
+
+					bool isNextValid = (k == fragmentCode.size()) || (!std::isalnum(fragmentCode[k]) &&
+																	  fragmentCode[k] != '_' && fragmentCode[k] != '.');
+
 					resultStr.append(fragmentCode, start, k - start);
-					
+
 					if (isNextValid)
 						resultStr.append(".0");
 				}
@@ -184,8 +189,12 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 			oss << arrayPreamble;
 			oss << "float dist = " << fragmentCode << ";\n";
-			
-      // 3D shader uses this to apply dithering to the distance of shapes with transparent materials, this creates paterns where the shape is partially rendered, which creates the illusion of transparency without needing to sort objects or use alpha blending, which can be costly in raymarching shaders. The 2D shader ignores this step for now, but it could be used in the future if we decide to add transparency to 2D shapes as well.
+
+			// 3D shader uses this to apply dithering to the distance of shapes with transparent materials, this creates
+			// paterns where the shape is partially rendered, which creates the illusion of transparency without needing
+			// to sort objects or use alpha blending, which can be costly in raymarching shaders. The 2D shader ignores
+			// this step for now, but it could be used in the future if we decide to add transparency to 2D shapes as
+			// well.
 			oss << "dist = modifyDistanceBasedOnMaterial(dist, " << shape.material << ", idx);\n";
 
 			oss << "float currentMinDistance = " << (globalEffect ? "minDist" : groupDistanceVariable) << ";\n";
@@ -213,8 +222,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 				}
 				case CombinationType::SmoothAddition:
 				{
-					oss << "vec2 res = fOpUnionSoft_blend(currentMinDistance, dist, "
-						<< toGlslFloat(shape.smoothFactor) << ");\n";
+					oss << "vec2 res = fOpUnionSoft_blend(currentMinDistance, dist, " << toGlslFloat(shape.smoothFactor)
+						<< ");\n";
 					oss << "if (res.y > 0.0) { currentBlend = max(currentBlend, res.y); }\n";
 					oss << "else if (dist < currentMinDistance) { currentBlend = 0.0; }\n";
 					oss << "currentMinDistance = res.x;\n";

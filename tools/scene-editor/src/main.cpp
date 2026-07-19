@@ -1,5 +1,5 @@
-#include <weird-engine.h>
 #include "SceneEditor.h"
+#include <weird-engine.h>
 
 using namespace WeirdEngine;
 

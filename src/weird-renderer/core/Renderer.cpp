@@ -1,8 +1,8 @@
 #include "weird-renderer/core/Renderer.h"
 #include "weird-renderer/core/WeirdFBDevEGL.h"
 
-#include <ctime>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <sys/stat.h>
 
@@ -14,10 +14,10 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
 
-#include "weird-engine/Profiler.h"
 #include "weird-engine/Logger.h"
-#include "weird-renderer/core/MeshRenderPipeline.h"
+#include "weird-engine/Profiler.h"
 #include "weird-renderer/audio/AudioEngine.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
 
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
@@ -97,8 +97,7 @@ namespace WeirdEngine
 			sdf3DConfig.renderHeight = m_renderHeight;
 			sdf3DConfig.contrast = settings.raymarching3DContrast;
 			sdf3DConfig.enablePathTracer = settings.enable3DPathTracer;
-			m_3DWorldPipeline =
-				new SDF3DRenderPipeline(sdf3DConfig, m_renderPlane);
+			m_3DWorldPipeline = new SDF3DRenderPipeline(sdf3DConfig, m_renderPlane);
 
 			// Initialize mesh pipeline
 			m_meshPipeline = new MeshRenderPipeline();
@@ -114,8 +113,8 @@ namespace WeirdEngine
 			if (m_ditheringEnabled)
 				m_outputShaderProgram.addDefine("DITHERING");
 
-			m_surfaceBlurEnabled    = settings.enableSurfaceBlur;
-			m_surfaceBlurRadius     = std::max(1.0f, settings.surfaceBlurRadius);
+			m_surfaceBlurEnabled = settings.enableSurfaceBlur;
+			m_surfaceBlurRadius = std::max(1.0f, settings.surfaceBlurRadius);
 			m_surfaceBlurSigmaColor = std::max(0.001f, settings.surfaceBlurSigmaColor);
 			if (m_surfaceBlurEnabled)
 				m_outputShaderProgram.addDefine("SURFACE_BLUR");
@@ -269,8 +268,10 @@ namespace WeirdEngine
 							bool isMuted = AudioEngine::getInstance().isMuted();
 							if (ImGui::Checkbox("Mute Audio", &isMuted))
 							{
-								if (isMuted) AudioEngine::getInstance().mute();
-								else AudioEngine::getInstance().unmute();
+								if (isMuted)
+									AudioEngine::getInstance().mute();
+								else
+									AudioEngine::getInstance().unmute();
 							}
 
 							if (!m_lastScreenshotPath.empty())
@@ -320,7 +321,7 @@ namespace WeirdEngine
 
 			{
 				PROFILE_SCOPE("Synchronization");
-								if (IsFBDevEGLActive())
+				if (IsFBDevEGLActive())
 				{
 					SwapFBDevBuffers();
 				}
@@ -399,8 +400,8 @@ namespace WeirdEngine
 			scene.getUIData(uiData, dataSize, shapeCount);
 
 			double time = scene.getTime();
-			auto& m_finalResultTexture =
-				m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta, scene.getBackground(), &texture);
+			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta,
+															  scene.getBackground(), &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
@@ -487,8 +488,8 @@ namespace WeirdEngine
 
 			char ftOverlay[32];
 			snprintf(ftOverlay, sizeof(ftOverlay), "%.2f ms", frameTimeMs);
-			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset,
-							 ftOverlay, 0.0f, 100.0f, ImVec2(ImGui::GetContentRegionAvail().x, 50));
+			ImGui::PlotLines("##ft", m_frametimeHistory, STATS_HISTORY_SIZE, m_historyOffset, ftOverlay, 0.0f, 100.0f,
+							 ImVec2(ImGui::GetContentRegionAvail().x, 50));
 
 			ImGui::Spacing();
 
@@ -520,11 +521,11 @@ namespace WeirdEngine
 				topMs = 1.0;
 
 			static const ImVec4 depthColors[] = {
-				{0.30f, 0.70f, 1.00f, 1.0f},  // depth 0 — blue
-				{0.35f, 0.90f, 0.50f, 1.0f},  // depth 1 — green
-				{1.00f, 0.70f, 0.25f, 1.0f},  // depth 2 — orange
-				{0.85f, 0.40f, 0.90f, 1.0f},  // depth 3 — purple
-				{0.85f, 0.35f, 0.35f, 1.0f},  // depth 4 — red
+				{0.30f, 0.70f, 1.00f, 1.0f}, // depth 0 — blue
+				{0.35f, 0.90f, 0.50f, 1.0f}, // depth 1 — green
+				{1.00f, 0.70f, 0.25f, 1.0f}, // depth 2 — orange
+				{0.85f, 0.40f, 0.90f, 1.0f}, // depth 3 — purple
+				{0.85f, 0.35f, 0.35f, 1.0f}, // depth 4 — red
 			};
 			constexpr int MAX_DEPTH_COLORS = 5;
 			const float NAME_COLUMN_W = 180.0f;
@@ -624,7 +625,8 @@ namespace WeirdEngine
 						if (w > 20.0f)
 						{
 							ImGui::PushClipRect(rectMin, rectMax, true);
-							drawList->AddText(ImVec2(rectMin.x + 2, rectMin.y + 1), IM_COL32(255, 255, 255, 255), stat.name);
+							drawList->AddText(ImVec2(rectMin.x + 2, rectMin.y + 1), IM_COL32(255, 255, 255, 255),
+											  stat.name);
 							ImGui::PopClipRect();
 						}
 
@@ -665,7 +667,8 @@ namespace WeirdEngine
 				if (historyEnabled)
 				{
 					ImGui::SameLine();
-					ImGui::TextDisabled("(%d/%d frames captured)", profiler.getHistoryCapturedCount(), profiler.getHistoryCapacity());
+					ImGui::TextDisabled("(%d/%d frames captured)", profiler.getHistoryCapturedCount(),
+										profiler.getHistoryCapacity());
 				}
 
 				if (profiler.isPaused())
@@ -678,7 +681,8 @@ namespace WeirdEngine
 					if (historyEnabled && profiler.getHistoryCapturedCount() > 0)
 					{
 						int maxIdx = profiler.getHistoryCapturedCount() - 1;
-						if (maxIdx < 0) maxIdx = 0;
+						if (maxIdx < 0)
+							maxIdx = 0;
 						int pIndex = profiler.getPlaybackIndex();
 						if (ImGui::SliderInt("Scrub History", &pIndex, 0, maxIdx))
 						{
@@ -701,7 +705,8 @@ namespace WeirdEngine
 			}
 			else if (profiler.isRecordingReport())
 			{
-				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report... (%.1fs / 10.0s)", profiler.getReportProgressSeconds());
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Recording average report... (%.1fs / 10.0s)",
+								   profiler.getReportProgressSeconds());
 				if (ImGui::Button("Cancel & Return to Realtime"))
 				{
 					profiler.enableRealtime();
@@ -742,7 +747,7 @@ namespace WeirdEngine
 			// Get camera
 			auto& sceneCamera = scene.getCamera();
 
-			if(renderMode == Scene::RenderMode::RayMarchingBoth)
+			if (renderMode == Scene::RenderMode::RayMarchingBoth)
 			{
 				sceneCamera.fov = 90.0f;
 			}
@@ -790,16 +795,11 @@ namespace WeirdEngine
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
 
-					m_3DWorldPipeline->render(
-						data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
-						m_meshPipeline->getGBufferAlbedo(),
-						m_meshPipeline->getGBufferWorldPos(),
-						m_meshPipeline->getGBufferNormal(),
-						m_meshPipeline->getGBufferMaterial(),
-						m_meshPipeline->getDepthTexture(),
-						m_meshPipeline->getBackDepthTexture(),
-						scene.getMaterials()
-					);
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
+											  m_meshPipeline->getGBufferAlbedo(), m_meshPipeline->getGBufferWorldPos(),
+											  m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
+											  m_meshPipeline->getDepthTexture(), m_meshPipeline->getBackDepthTexture(),
+											  scene.getMaterials());
 
 					glEnable(GL_CULL_FACE);
 					glEnable(GL_DEPTH_TEST);
@@ -831,8 +831,9 @@ namespace WeirdEngine
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta, scene.getBackground(),
-												  enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
+				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
+														scene.getBackground(),
+														enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
 				return texture;

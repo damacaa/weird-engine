@@ -34,7 +34,7 @@ vec3 surfaceBlur(sampler2D tex, vec2 uv, vec2 texelSize)
 	vec3 result = vec3(0.0);
 	float totalWeight = 0.0;
 
-	float sigmaSpace  = max(u_surfaceBlurRadius * 0.5, 0.5);
+	float sigmaSpace = max(u_surfaceBlurRadius * 0.5, 0.5);
 	float sigmaSpace2 = 2.0 * sigmaSpace * sigmaSpace;
 	float sigmaColor2 = 2.0 * u_surfaceBlurSigmaColor * u_surfaceBlurSigmaColor;
 
@@ -47,11 +47,11 @@ vec3 surfaceBlur(sampler2D tex, vec2 uv, vec2 texelSize)
 			vec3 s = texture(tex, uv + offset).rgb;
 
 			float spatialDist2 = float(x * x + y * y);
-			vec3  diff         = s - center;
-			float colorDist2   = dot(diff, diff);
+			vec3 diff = s - center;
+			float colorDist2 = dot(diff, diff);
 
 			float w = exp(-spatialDist2 / sigmaSpace2 - colorDist2 / sigmaColor2);
-			result      += s * w;
+			result += s * w;
 			totalWeight += w;
 		}
 	}
@@ -77,7 +77,7 @@ void main()
 	vec2 renderCoord = gl_FragCoord.xy * (u_renderResolution / u_resolution);
 	int x = int(renderCoord.x);
 	int y = int(renderCoord.y);
-	
+
 	// Boost saturation slightly before dithering to avoid "muddy" colors
 	float luminance = dot(col, vec3(0.299, 0.587, 0.114));
 	col = mix(vec3(luminance), col, 1.5);
@@ -85,7 +85,7 @@ void main()
 
 	col += u_ditheringSpread * getBayer4(x, y);
 
-	vec3 levels = vec3(u_ditheringColorCount); 
+	vec3 levels = vec3(u_ditheringColorCount);
 
 	col = floor(col * levels + 0.5) / levels;
 

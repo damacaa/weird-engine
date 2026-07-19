@@ -2,7 +2,6 @@
 #include "weird-engine/ecs/ECS.h"
 #include "weird-engine/Input.h"
 
-
 namespace WeirdEngine
 {
 	using namespace ECS;
@@ -38,22 +37,46 @@ namespace WeirdEngine
 
 		inline bool getLeftClickDown()
 		{
-			if (Input::GetMouseButtonDown(Input::LeftClick)) { m_usingController = false; return true; }
-			if (Input::GetGamepadButtonDown(Input::GamepadButton::RightShoulder)) { m_usingController = true; return true; }
+			if (Input::GetMouseButtonDown(Input::LeftClick))
+			{
+				m_usingController = false;
+				return true;
+			}
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::RightShoulder))
+			{
+				m_usingController = true;
+				return true;
+			}
 			return false;
 		}
 
 		inline bool getRightClickDown()
 		{
-			if (Input::GetMouseButtonDown(Input::RightClick)) { m_usingController = false; return true; }
-			if (Input::GetGamepadButtonDown(Input::GamepadButton::LeftShoulder)) { m_usingController = true; return true; }
+			if (Input::GetMouseButtonDown(Input::RightClick))
+			{
+				m_usingController = false;
+				return true;
+			}
+			if (Input::GetGamepadButtonDown(Input::GamepadButton::LeftShoulder))
+			{
+				m_usingController = true;
+				return true;
+			}
 			return false;
 		}
 
 		inline bool getRightClickUp()
 		{
-			if (Input::GetMouseButtonUp(Input::RightClick)) { m_usingController = false; return true; }
-			if (Input::GetGamepadButtonUp(Input::GamepadButton::LeftShoulder)) { m_usingController = true; return true; }
+			if (Input::GetMouseButtonUp(Input::RightClick))
+			{
+				m_usingController = false;
+				return true;
+			}
+			if (Input::GetGamepadButtonUp(Input::GamepadButton::LeftShoulder))
+			{
+				m_usingController = true;
+				return true;
+			}
 			return false;
 		}
 
@@ -96,10 +119,14 @@ namespace WeirdEngine
 				dot.materialId = m_currentMaterial + 4;
 
 				RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
-				if (!m_usingController) {
+				if (!m_usingController)
+				{
 					rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
-				} else {
-					rb.pendingImpulseForce += 10.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX), -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
+				}
+				else
+				{
+					rb.pendingImpulseForce += 10.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX),
+														   -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
 				}
 
 				m_firstIdInSpring = INVALID_ENTITY;
@@ -222,7 +249,6 @@ namespace WeirdEngine
 			{
 				auto rbs = ecs.getComponentArray<RigidBody2D>();
 
-
 				float minD2 = 1.0f;
 
 				vec2 mouseInWorld = getMousePositionInWorld(ecs);
@@ -241,14 +267,12 @@ namespace WeirdEngine
 					}
 				}
 
-
-				if(m_dragId != INVALID_ENTITY)
+				if (m_dragId != INVALID_ENTITY)
 				{
 					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
 					rb.isFixed = true;
 					rbs->setEntityDirty(m_dragId, true);
 				}
-				
 			}
 
 			if (getRightClickUp())
@@ -257,10 +281,14 @@ namespace WeirdEngine
 				{
 					auto& rb = ecs.getComponent<RigidBody2D>(m_dragId);
 					rb.isFixed = false;
-					if (!m_usingController) {
+					if (!m_usingController)
+					{
 						rb.pendingImpulseForce += 1000.0f * vec2(Input::GetMouseDeltaX(), -Input::GetMouseDeltaY());
-					} else {
-						rb.pendingImpulseForce += 1000.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX), -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
+					}
+					else
+					{
+						rb.pendingImpulseForce += 1000.0f * vec2(Input::GetGamepadAxis(Input::GamepadAxis::RightX),
+																 -Input::GetGamepadAxis(Input::GamepadAxis::RightY));
 					}
 					ecs.getComponentArray<RigidBody2D>()->setEntityDirty(m_dragId, true);
 
@@ -338,7 +366,7 @@ namespace WeirdEngine
 					// float maxDistance = (0.5f * dragDistance);
 					constexpr float MAX_DISTANCE = 5.0f;
 
-					if(distance <= MAX_DISTANCE)
+					if (distance <= MAX_DISTANCE)
 					{
 						vec2 force = 1.0f * glm::clamp(MAX_DISTANCE - distance, 0.0f, 1.0f) * direction;
 

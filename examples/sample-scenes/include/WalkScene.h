@@ -24,10 +24,9 @@ struct Foot
 class WalkScene : public Scene2D
 {
 public:
-	WalkScene(){};
+	WalkScene() {};
 
 private:
-
 	Entity m_head;
 
 	// Inherited via Scene
@@ -61,9 +60,9 @@ private:
 
 		m_head = tags["head"];
 
-
 		float boundsVars2[8]{0.0f, -24.0f, 200.0f, 20.0f};
-		Entity inside = addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen, CombinationType::Addition);
+		Entity inside =
+			addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen, CombinationType::Addition);
 
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 
@@ -97,9 +96,9 @@ private:
 			auto& foot = componentArray->getDataAtIdx(i);
 			auto& rb = rigidBodies->getDataFromEntity(componentArray->getEntityAtIdx(i));
 
-			if(i != m_currentFoot)
+			if (i != m_currentFoot)
 			{
-				if(foot.onFloor)
+				if (foot.onFloor)
 				{
 					rb.isFixed = true;
 					ecs.setComponentDirty(rb);
@@ -152,7 +151,7 @@ private:
 						f = (foot.direction + vec2(0.0f, -10.0f * foot.t)) * foot.forceMagnitude * foot.t;
 					}
 
-					if(m_feetTouching)
+					if (m_feetTouching)
 						f.x = 0.0f;
 
 					rb.pendingImpulseForce += f;
@@ -164,7 +163,7 @@ private:
 				}
 			}
 		}
-		
+
 		m_feetTouching = false;
 	}
 

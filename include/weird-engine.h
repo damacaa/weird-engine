@@ -15,8 +15,8 @@
 #endif
 
 #include "weird-engine/Input.h"
-#include "weird-engine/Profiler.h"
 #include "weird-engine/Logger.h"
+#include "weird-engine/Profiler.h"
 #include "weird-engine/SceneManager.h"
 #include "weird-renderer/core/Renderer.h"
 #include "weird-renderer/core/SDLInitializer.h"
@@ -39,7 +39,6 @@ extern "C"
 #ifndef SHADERS_PATH
 #define SHADERS_PATH
 #endif // !SHADERS_PATH
-
 
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-renderer/audio/AudioEngine.h"
@@ -82,7 +81,8 @@ namespace WeirdEngine
 		inline void runFrame(RuntimeContext& ctx)
 		{
 			// Measure time
-			ctx.time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
+			ctx.time =
+				static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 			ctx.delta = ctx.time - ctx.prevTime;
 			ctx.timeDiff += ctx.delta;
 			ctx.prevTime = ctx.time;
@@ -111,8 +111,8 @@ namespace WeirdEngine
 			ctx.totalFrames++;
 			if (ctx.totalFrames % 120 == 0)
 			{
-				std::cout << "[WeirdEngine] frame " << ctx.totalFrames
-						  << " (t=" << (ctx.time - ctx.startTime) << "s)" << std::endl;
+				std::cout << "[WeirdEngine] frame " << ctx.totalFrames << " (t=" << (ctx.time - ctx.startTime) << "s)"
+						  << std::endl;
 			}
 			if (ctx.autoQuitAt > 0.0 && ctx.time >= ctx.autoQuitAt)
 			{
@@ -139,14 +139,14 @@ namespace WeirdEngine
 						Input::suppressKeyboardInput();
 				}
 #endif
-				
+
 				SDL_Event event;
 				while (SDL_PollEvent(&event))
 				{
 #ifndef WEIRD_DISABLE_IMGUI
 					ImGui_ImplSDL3_ProcessEvent(&event);
 #endif
-					
+
 					if (event.type == SDL_EVENT_QUIT)
 					{
 						ctx.quit = true;
@@ -155,9 +155,10 @@ namespace WeirdEngine
 					{
 						int newWidth = event.window.data1;
 						int newHeight = event.window.data2;
-						
-						WeirdEngine::Logger::log("Window resized to: " + std::to_string(newWidth) + "x" + std::to_string(newHeight));
-						
+
+						WeirdEngine::Logger::log("Window resized to: " + std::to_string(newWidth) + "x" +
+												 std::to_string(newHeight));
+
 						ctx.renderer.setWindowSize(newWidth, newHeight);
 						newResolution = true;
 					}
@@ -259,15 +260,13 @@ namespace WeirdEngine
 			if (arg == "--fullscreen" || arg == "-f")
 			{
 				displaySettings.fullscreen = true;
-			}else if ((arg == "--scene" || arg == "-s") && i + 1 < argc)
+			}
+			else if ((arg == "--scene" || arg == "-s") && i + 1 < argc)
 			{
 				startupScene = argv[++i]; // Get the next argument as the scene name
 				WeirdEngine::Logger::log("Startup scene set to: " + startupScene);
 			}
 		}
-
-		
-
 
 		sceneManager.setPhysicsSettings(physicsSettings);
 
@@ -277,11 +276,12 @@ namespace WeirdEngine
 #ifdef __EMSCRIPTEN__
 		// In Emscripten, allocate all resources on the heap to prevent stack unwinding issues
 		Detail::g_emscriptenEnv = new Detail::EmscriptenRuntimeEnvironment();
-		
+
 		// Create SDLInitializer and Renderer on the heap
 		try
 		{
-			Detail::g_emscriptenEnv->sdlInitializer = new SDLInitializer(displaySettings, Detail::g_windowHandle, audioEngine);
+			Detail::g_emscriptenEnv->sdlInitializer =
+				new SDLInitializer(displaySettings, Detail::g_windowHandle, audioEngine);
 			Detail::g_emscriptenEnv->renderer = new Renderer(displaySettings, Detail::g_windowHandle);
 		}
 		catch (...)
@@ -311,12 +311,10 @@ namespace WeirdEngine
 		}
 
 		// Time - create RuntimeContext with references to heap-allocated objects
-		Detail::g_emscriptenEnv->runtimeContext = new Detail::RuntimeContext{
-			sceneManager,
-			*Detail::g_emscriptenEnv->renderer,
-			audioEngine
-		};
-		Detail::g_emscriptenEnv->runtimeContext->time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
+		Detail::g_emscriptenEnv->runtimeContext =
+			new Detail::RuntimeContext{sceneManager, *Detail::g_emscriptenEnv->renderer, audioEngine};
+		Detail::g_emscriptenEnv->runtimeContext->time =
+			static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		Detail::g_emscriptenEnv->runtimeContext->prevTime = Detail::g_emscriptenEnv->runtimeContext->time;
 #ifdef WEIRD_TEST_HOOKS
 		Detail::g_emscriptenEnv->runtimeContext->startTime = Detail::g_emscriptenEnv->runtimeContext->time;
@@ -339,7 +337,8 @@ namespace WeirdEngine
 
 		// Time
 		Detail::RuntimeContext runtimeContext{sceneManager, renderer, audioEngine};
-		runtimeContext.time = static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
+		runtimeContext.time =
+			static_cast<double>(SDL_GetPerformanceCounter()) / static_cast<double>(SDL_GetPerformanceFrequency());
 		runtimeContext.prevTime = runtimeContext.time;
 #ifdef WEIRD_TEST_HOOKS
 		runtimeContext.startTime = runtimeContext.time;

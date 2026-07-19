@@ -1,8 +1,8 @@
 #pragma once
 
+#include "weird-engine/Logger.h"
 #include "weird-engine/vec.h"
 #include <array>
-#include "weird-engine/Logger.h"
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
 #include <string>

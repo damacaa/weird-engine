@@ -11,8 +11,7 @@ using namespace WeirdEngine;
 class ShapeCombinatiosScene : public Scene2D
 {
 public:
-	ShapeCombinatiosScene(){
-	}
+	ShapeCombinatiosScene() {}
 
 private:
 	Entity m_circle = INVALID_ENTITY;
@@ -116,7 +115,7 @@ private:
 			float halfHeight = Display::height / 2.0f;
 
 			m_initialMousePositionInWorld =
-				ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(halfWidth, halfHeight));			
+				ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(halfWidth, halfHeight));
 		}
 
 		if (Input::GetMouseButton(Input::RightClick))

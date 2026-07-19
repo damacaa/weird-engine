@@ -1,9 +1,9 @@
 #include "weird-renderer/resources/Shader.h"
 
+#include "weird-engine/Logger.h"
 #include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "weird-engine/Logger.h"
 
 // #define LOG_SHADER_COMPILATION
 
@@ -428,8 +428,9 @@ namespace WeirdEngine
 #if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-			
-			std::string logMsg = std::string("Compiling program: \n   V -> ") + m_vertexFile + "\n   F -> " + m_fragmentFile + "\n";
+
+			std::string logMsg =
+				std::string("Compiling program: \n   V -> ") + m_vertexFile + "\n   F -> " + m_fragmentFile + "\n";
 			for (const auto& define : m_activeDefines)
 			{
 				logMsg += define + "\n";
@@ -453,7 +454,8 @@ namespace WeirdEngine
 				glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
-					std::string logMsg = std::string("Compiling Shader Program:\n	VS: ") + m_vertexFile + "\n	FS: " + m_fragmentFile;
+					std::string logMsg =
+						std::string("Compiling Shader Program:\n	VS: ") + m_vertexFile + "\n	FS: " + m_fragmentFile;
 					glGetShaderInfoLog(shader, 1024, NULL, infoLog);
 					WeirdEngine::Logger::error(logMsg + "\nSHADER_COMPILATION_ERROR for:" + type + "\n" + infoLog);
 				}
@@ -463,7 +465,8 @@ namespace WeirdEngine
 				glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
 				if (hasCompiled == GL_FALSE)
 				{
-					std::string logMsg = std::string("Compiling Shader Program:\n	VS: ") + m_vertexFile + "\n	FS: " + m_fragmentFile;
+					std::string logMsg =
+						std::string("Compiling Shader Program:\n	VS: ") + m_vertexFile + "\n	FS: " + m_fragmentFile;
 					glGetProgramInfoLog(shader, 1024, NULL, infoLog);
 					WeirdEngine::Logger::error(logMsg + "\nSHADER_LINKING_ERROR for:" + type + "\n" + infoLog);
 				}

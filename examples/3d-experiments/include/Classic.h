@@ -18,10 +18,10 @@ private:
 
 		auto& redMat = createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
-		
+
 		auto& orangeMat = createMaterial();
 		orangeMat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
-		
+
 		auto& floorMaterial = createMaterial();
 		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		floorMaterial.secondaryColor = vec4(0.4f, 0.4f, 0.6f, 1.0f);
@@ -64,8 +64,8 @@ private:
 			Entity start = addShape(DefaultShapes3D::PLANE, vars1, floorMaterial, CombinationType::Addition, false);
 		}
 
-		getLigths().push_back(
-			Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+		getLigths().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
+									glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
 	}

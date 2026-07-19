@@ -7,7 +7,7 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 		Camera::Camera(glm::vec3 position)
-				: position(position)
+			: position(position)
 		{
 		}
 

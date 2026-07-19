@@ -1,5 +1,5 @@
-#include <weird-engine.h>
 #include "MoleculeEditor.h"
+#include <weird-engine.h>
 
 using namespace WeirdEngine;
 

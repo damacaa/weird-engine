@@ -97,42 +97,34 @@ float logisticDepth(float depth, float steepness, float offset)
 	return 1.0 / (1.0 + exp(-steepness * (z - offset)));
 }
 
-const int bayer4x4[16] = int[16](
-	0, 8, 2, 10,
-	12, 4, 14, 6,
-	3, 11, 1, 9,
-	15, 7, 13, 5
-);
+const int bayer4x4[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
 
-float GetBayerThreshold(vec2 coord) 
+float GetBayerThreshold(vec2 coord)
 {
 	int x = int(coord.x) % 4;
 	int y = int(coord.y) % 4;
 	float bayerValue = float(bayer4x4[y * 4 + x]) + 0.5;
-	return bayerValue / 16.0; 
+	return bayerValue / 16.0;
 }
 
 // Generates a consistent 2D offset based on an object ID to prevent Dither Correlation
-vec2 HashID(float id) 
+vec2 HashID(float id)
 {
-	return vec2(
-		fract(sin(id * 12.9898) * 43758.5453) * 100.0,
-		fract(sin(id * 78.233) * 43758.5453) * 100.0
-	);
+	return vec2(fract(sin(id * 12.9898) * 43758.5453) * 100.0, fract(sin(id * 78.233) * 43758.5453) * 100.0);
 }
 
 void main()
 {
 	float alpha = 1.0;
-	
-	if (alpha < 1.0) 
+
+	if (alpha < 1.0)
 	{
 		vec2 offset = HashID(float(2));
-		
+
 		// Note: Change 1.0 to 2.0 or 4.0 here if you want chunkier retro dither pixels
-		float bayer = GetBayerThreshold((gl_FragCoord.xy + offset) / 1.0); 
-		
-		if (alpha <= bayer) 
+		float bayer = GetBayerThreshold((gl_FragCoord.xy + offset) / 1.0);
+
+		if (alpha <= bayer)
 		{
 			discard; // Skip surface by pushing distance past the FAR plane
 		}

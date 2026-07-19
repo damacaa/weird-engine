@@ -6,8 +6,8 @@
 #include <imgui.h>
 #endif
 
-#include "weird-engine/vec.h"
 #include "weird-engine/Profiler.h"
+#include "weird-engine/vec.h"
 
 #include <glm/gtx/color_space.hpp>
 
@@ -56,7 +56,7 @@ namespace WeirdEngine
 			// Load shaders
 			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_distance.frag");
 
-			if(config.ballK > 0.0f)
+			if (config.ballK > 0.0f)
 				m_distanceShader.addDefine("BLEND_SHAPES");
 
 			if (m_config.enableMotionBlur)
@@ -179,7 +179,8 @@ namespace WeirdEngine
 			m_postProcessDoubleBuffer[0] = &m_postProcessRenderFront;
 			m_postProcessDoubleBuffer[1] = &m_postProcessRenderBack;
 
-			m_backgroundTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundTextureFront =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
 			m_backgroundTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
 			m_backgroundRenderFront = RenderTarget(false);
 			m_backgroundRenderBack = RenderTarget(false);
@@ -319,7 +320,8 @@ namespace WeirdEngine
 			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
 
-			m_backgroundTextureFront = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
+			m_backgroundTextureFront =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
 			m_backgroundTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Color);
 			m_backgroundRenderFront.bindColorTextureToFrameBuffer(m_backgroundTextureFront);
 			m_backgroundRenderBack.bindColorTextureToFrameBuffer(m_backgroundTextureBack);
@@ -344,7 +346,7 @@ namespace WeirdEngine
 			upscaleDistance();
 			renderMaterialColors(camera, time, delta);
 			blendMaterials(time);
-			if (!backgroundTexture) 
+			if (!backgroundTexture)
 			{
 				renderBackground(camera, time, bgParams);
 			}
@@ -354,19 +356,20 @@ namespace WeirdEngine
 
 			// Shift hue slightly (e.g. +15 degrees) to make shadows more interesting
 			hsvAmbient.x += 15.0f;
-			if (hsvAmbient.x >= 360.0f) hsvAmbient.x -= 360.0f;
+			if (hsvAmbient.x >= 360.0f)
+				hsvAmbient.x -= 360.0f;
 
 			// Increase saturation to get a pure, vibrant color tone
 			hsvAmbient.y = std::min(hsvAmbient.y * 1.5f + 0.2f, 1.0f);
 			hsvAmbient.z = 1.0f;
 
 			glm::vec3 vibrantColor = glm::rgbColor(hsvAmbient);
-			
-			// Map the vibrant color to a valid transmittance range. 
-			// We want the shadow to block at most ~25% of light (0.75 transmittance) 
+
+			// Map the vibrant color to a valid transmittance range.
+			// We want the shadow to block at most ~25% of light (0.75 transmittance)
 			// to keep it from getting too dark, while fully letting the tinted color through.
 			glm::vec3 shadowTransmittance = glm::mix(glm::vec3(0.75f), glm::vec3(1.0f), vibrantColor);
-			
+
 			m_config.shadowTint = shadowTransmittance;
 
 			applyLighting(camera, time, backgroundTexture);
@@ -562,7 +565,7 @@ namespace WeirdEngine
 					m_oldCameraMatrix = camera.view;
 					m_prevFrameCameraMatrix = camera.view;
 				}
-				
+
 				m_distanceShader.setUniform("u_camMatrix", camera.view);
 				m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 				m_oldCameraMatrix = camera.view;
@@ -683,7 +686,6 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE(m_config.isUI ? "upscaleDistance (UI)" : "upscaleDistance (World)");
 
-
 			m_distanceUpscaler.bind();
 
 			m_distanceUpscalerShader.use();
@@ -703,7 +705,6 @@ namespace WeirdEngine
 		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time, double delta)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderMaterialColors (UI)" : "renderMaterialColors (World)");
-
 
 			m_colorRender.bind();
 
@@ -730,7 +731,7 @@ namespace WeirdEngine
 		void SDF2DRenderPipeline::blendMaterials(double time)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "blendMaterials (UI)" : "blendMaterials (World)");
-			
+
 			m_materialBlendShader.use();
 			m_materialBlendShader.setUniform("t_colorTexture", 0);
 			m_materialBlendShader.setUniform("u_time", time);
@@ -753,7 +754,7 @@ namespace WeirdEngine
 
 				horizontal = !horizontal;
 			}
-			
+
 			Profiler::get().gpuSync();
 		}
 
@@ -765,8 +766,9 @@ namespace WeirdEngine
 			if (bgParams.isDirty)
 			{
 				std::string injectedCode = "";
-				
-				switch (bgParams.type) {
+
+				switch (bgParams.type)
+				{
 					case BackgroundType::Solid:
 						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) { return u_bgPrimaryColor.rgb; }";
 						break;
@@ -777,21 +779,23 @@ namespace WeirdEngine
 									   "    float threshold = 2.0 * freq * zoom / u_resolution.y;\n"
 									   "    float gridLine = (fract(freq * worldPos.x) >= threshold && \n"
 									   "                      fract(freq * worldPos.y) >= threshold) ? 1.0 : 0.0;\n"
-									   "    return mix(u_bgPrimaryColor.rgb, u_bgSecondaryColor.rgb, 1.0 - gridLine) * u_bgIntensity;\n"
+									   "    return mix(u_bgPrimaryColor.rgb, u_bgSecondaryColor.rgb, 1.0 - gridLine) * "
+									   "u_bgIntensity;\n"
 									   "}";
 						break;
 					case BackgroundType::Sky:
-						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
-									   "    float freq = 0.1 * u_bgScale;\n"
-									   "    float t = clamp((worldPos.y * freq + 1.0) * 0.5, 0.0, 1.0);\n"
-									   "    return mix(u_bgSecondaryColor.rgb, u_bgPrimaryColor.rgb, t) * u_bgIntensity;\n"
-									   "}";
+						injectedCode =
+							"vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
+							"    float freq = 0.1 * u_bgScale;\n"
+							"    float t = clamp((worldPos.y * freq + 1.0) * 0.5, 0.0, 1.0);\n"
+							"    return mix(u_bgSecondaryColor.rgb, u_bgPrimaryColor.rgb, t) * u_bgIntensity;\n"
+							"}";
 						break;
 					case BackgroundType::Custom:
 						injectedCode = bgParams.customShaderCode;
 						break;
 				}
-				
+
 				injectedCode = "#define HAS_CUSTOM_BACKGROUND\n" + injectedCode;
 				m_defaultBackgroundShader.setFragmentIncludeCode(0, injectedCode);
 			}
@@ -801,16 +805,19 @@ namespace WeirdEngine
 
 			m_defaultBackgroundShader.use();
 			m_defaultBackgroundShader.setUniform("t_prevBackground", 0);
-			if (m_backgroundDoubleBufferIdx == 0) {
+			if (m_backgroundDoubleBufferIdx == 0)
+			{
 				m_backgroundTextureFront.bind(0);
-			} else {
+			}
+			else
+			{
 				m_backgroundTextureBack.bind(0);
 			}
 			m_defaultBackgroundShader.setUniform("u_camMatrix", camera.view);
 			m_defaultBackgroundShader.setUniform("u_time", time);
 			m_defaultBackgroundShader.setUniform("u_resolution",
 												 glm::vec2(m_config.renderWidth, m_config.renderHeight));
-												 
+
 			// Background params
 			m_defaultBackgroundShader.setUniform("u_bgPrimaryColor", bgParams.primaryColor);
 			m_defaultBackgroundShader.setUniform("u_bgSecondaryColor", bgParams.secondaryColor);
@@ -862,9 +869,12 @@ namespace WeirdEngine
 			}
 			else
 			{
-				if (m_backgroundDoubleBufferIdx == 0) {
+				if (m_backgroundDoubleBufferIdx == 0)
+				{
 					m_backgroundTextureFront.bind(2);
-				} else {
+				}
+				else
+				{
 					m_backgroundTextureBack.bind(2);
 				}
 			}
@@ -889,48 +899,64 @@ namespace WeirdEngine
 			ImGui::SeparatorText("Shadows");
 			if (ImGui::Checkbox("Shadows", &m_config.enableShadows))
 			{
-				if (m_config.enableShadows) m_lightingShader.addDefine("SHADOWS_ENABLED");
-				else m_lightingShader.removeDefine("SHADOWS_ENABLED");
+				if (m_config.enableShadows)
+					m_lightingShader.addDefine("SHADOWS_ENABLED");
+				else
+					m_lightingShader.removeDefine("SHADOWS_ENABLED");
 			}
 			if (ImGui::Checkbox("Long Shadows", &m_config.enableLongShadows))
 			{
-				if (m_config.enableLongShadows) m_lightingShader.addDefine("LONG_SHADOWS");
-				else m_lightingShader.removeDefine("LONG_SHADOWS");
+				if (m_config.enableLongShadows)
+					m_lightingShader.addDefine("LONG_SHADOWS");
+				else
+					m_lightingShader.removeDefine("LONG_SHADOWS");
 			}
 
 			ImGui::SeparatorText("Rendering");
 			if (ImGui::Checkbox("Antialiasing", &m_config.enableAntialiasing))
 			{
-				if (m_config.enableAntialiasing) m_lightingShader.addDefine("ANTIALIASING");
-				else m_lightingShader.removeDefine("ANTIALIASING");
+				if (m_config.enableAntialiasing)
+					m_lightingShader.addDefine("ANTIALIASING");
+				else
+					m_lightingShader.removeDefine("ANTIALIASING");
 			}
 			if (ImGui::Checkbox("Motion Blur", &m_config.enableMotionBlur))
 			{
-				if (m_config.enableMotionBlur) m_distanceShader.addDefine("MOTION_BLUR");
-				else m_distanceShader.removeDefine("MOTION_BLUR");
+				if (m_config.enableMotionBlur)
+					m_distanceShader.addDefine("MOTION_BLUR");
+				else
+					m_distanceShader.removeDefine("MOTION_BLUR");
 			}
 			if (ImGui::Checkbox("Refraction", &m_config.enableRefraction))
 			{
-				if (m_config.enableRefraction) m_lightingShader.addDefine("REFRACTION");
-				else m_lightingShader.removeDefine("REFRACTION");
+				if (m_config.enableRefraction)
+					m_lightingShader.addDefine("REFRACTION");
+				else
+					m_lightingShader.removeDefine("REFRACTION");
 			}
 
 			ImGui::SeparatorText("Debug");
 			if (ImGui::Checkbox("Show Distance Field", &m_config.debugDistanceField))
 			{
-				if (m_config.debugDistanceField) m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
-				else m_lightingShader.removeDefine("DEBUG_SHOW_DISTANCE");
+				if (m_config.debugDistanceField)
+					m_lightingShader.addDefine("DEBUG_SHOW_DISTANCE");
+				else
+					m_lightingShader.removeDefine("DEBUG_SHOW_DISTANCE");
 			}
 			if (ImGui::Checkbox("Show Material Colors", &m_config.debugMaterialColors))
 			{
-				if (m_config.debugMaterialColors) m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
-				else m_lightingShader.removeDefine("DEBUG_SHOW_COLORS");
+				if (m_config.debugMaterialColors)
+					m_lightingShader.addDefine("DEBUG_SHOW_COLORS");
+				else
+					m_lightingShader.removeDefine("DEBUG_SHOW_COLORS");
 			}
 
 			if (ImGui::Checkbox("Show grid", &m_config.debugGrid))
 			{
-				if (m_config.debugGrid) m_distanceShader.addDefine("DEBUG_SHOW_GRID");
-				else m_distanceShader.removeDefine("DEBUG_SHOW_GRID");
+				if (m_config.debugGrid)
+					m_distanceShader.addDefine("DEBUG_SHOW_GRID");
+				else
+					m_distanceShader.removeDefine("DEBUG_SHOW_GRID");
 			}
 
 			ImGui::SeparatorText("Ambient Occlusion");

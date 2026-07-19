@@ -13,10 +13,9 @@
 #include <unordered_set>
 #include <vector>
 
-
 #include "weird-engine/math/Default2DSDFs.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/DistanceConstraint.h"
+#include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
 #include <glm/gtx/norm.hpp>
 
@@ -27,8 +26,7 @@ using namespace WeirdEngine;
 class MoleculeEditor : public Scene2D
 {
 public:
-	MoleculeEditor(){
-	}
+	MoleculeEditor() {}
 
 	ECSManager* m_tempEcs = nullptr;
 
@@ -618,7 +616,7 @@ private:
 		vec2 startPos = getMouseWorldPosition();
 		if (m_gridMode)
 			startPos = snapToGrid(startPos, m_draggedBall);
-		
+
 		auto& t = m_tempEcs->getComponent<Transform>(m_draggedBall);
 		t.position = vec3(startPos.x, startPos.y, 0.0f);
 		m_tempEcs->setComponentDirty(t);
@@ -1157,7 +1155,7 @@ private:
 		}
 
 		std::string loadMsg = "[MoleculeEditor] Loaded " + std::to_string(simIdToEntity.size()) + " balls and " +
-				  std::to_string(newSprings + newDists) + " links from " + path;
+							  std::to_string(newSprings + newDists) + " links from " + path;
 		WeirdEngine::Logger::log(loadMsg);
 	}
 

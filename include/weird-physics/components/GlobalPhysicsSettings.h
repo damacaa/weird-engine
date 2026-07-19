@@ -7,9 +7,10 @@ namespace WeirdEngine
 	struct GlobalPhysicsSettings
 	{
 		GlobalPhysicsSettings()
-			: gravity(0.0f), damping(0.05f) {};
-			
+			: gravity(0.0f)
+			, damping(0.05f) {};
+
 		float gravity;
 		float damping;
 	};
-}
+} // namespace WeirdEngine

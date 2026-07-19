@@ -93,7 +93,7 @@ namespace WeirdEngine
 				// textures[i].bind(i);
 				// textures[i].texUnit(shader, ("t_" + type + num).c_str(), unit);
 			}
-			
+
 			glUniform1i(glGetUniformLocation(shader.ID, "u_materialIndex"), materialIndex);
 			glUniform1i(glGetUniformLocation(shader.ID, "u_hasDiffuse"), textures.size() > 0 ? 1 : 0);
 

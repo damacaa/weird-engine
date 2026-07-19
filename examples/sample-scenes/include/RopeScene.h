@@ -10,8 +10,7 @@ using namespace WeirdEngine;
 class RopeScene : public Scene2D
 {
 public:
-	RopeScene(){
-	}
+	RopeScene() {}
 
 private:
 	Entity m_star = INVALID_ENTITY;
@@ -161,9 +160,10 @@ private:
 		}
 
 		// Animate custom shape over time
-		if(m_star != INVALID_ENTITY)
+		if (m_star != INVALID_ENTITY)
 		{
-			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track delta.
+			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track
+			// delta.
 			static float animTime = 0.0f;
 			animTime += delta;
 			auto& cs = ecs.getComponent<CustomShape>(m_star);
@@ -239,7 +239,7 @@ private:
 				[&](Entity e, RigidBody2D& rb, Transform& t)
 				{
 					vec2 force(0, -0.001f * (t.position.y * t.position.y));
-					force.x += t.position.x < 0.0f ? - t.position.x : 0.0f;
+					force.x += t.position.x < 0.0f ? -t.position.x : 0.0f;
 					force.x -= t.position.x > 30.0f ? t.position.x - 30.0f : 0.0f;
 					force.x = 10.0f / delta * glm::clamp(force.x, -1.0f, 1.0f);
 

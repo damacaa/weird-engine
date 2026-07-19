@@ -8,7 +8,7 @@ using namespace WeirdEngine;
 class LinesScene : public Scene3D
 {
 public:
-	LinesScene(){};
+	LinesScene() {};
 
 private:
 	uint16_t m_whiteMatId;
@@ -26,7 +26,7 @@ private:
 
 	void onCreate() override
 	{
-		
+
 		{
 			auto& whiteMat = createMaterial();
 			m_whiteMatId = whiteMat.id;
@@ -47,8 +47,7 @@ private:
 		m_lineTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_lineRender->bindColorTextureToFrameBuffer(*m_lineTexture);
 
-		m_combinationShader =
-			new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/combination.frag");
+		m_combinationShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/combination.frag");
 	}
 
 	// Inherited via Scene

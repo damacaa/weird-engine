@@ -8,7 +8,7 @@ using namespace WeirdEngine;
 class CollisionHandlingScene : public Scene2D
 {
 public:
-	CollisionHandlingScene(){};
+	CollisionHandlingScene() {};
 
 private:
 	// Inherited via Scene

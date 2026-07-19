@@ -8,7 +8,7 @@ using namespace WeirdEngine;
 class MouseCollisionScene : public Scene2D
 {
 public:
-	MouseCollisionScene(){};
+	MouseCollisionScene() {};
 
 private:
 	Entity m_cursorShape;

@@ -436,7 +436,7 @@ namespace WeirdEngine
 				logMsg += define + "\n";
 			}
 			logMsg += "Elapsed time:" + std::to_string(ms) + " ms \n\n";
-			WeirdEngine::Logger::Log(logMsg);
+			WeirdEngine::Logger::log(logMsg);
 #endif
 
 			m_uniformLocationCache.clear();

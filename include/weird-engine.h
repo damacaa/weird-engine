@@ -223,7 +223,7 @@ namespace WeirdEngine
 
 			if (g_emscriptenEnv->runtimeContext->quit)
 			{
-				WeirdEngine::Logger::Log("Quitting...");
+				WeirdEngine::Logger::log("Quitting...");
 				// Clean up heap-allocated resources
 				if (g_emscriptenEnv->runtimeContext != nullptr)
 				{

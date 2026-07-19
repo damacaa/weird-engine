@@ -44,7 +44,7 @@ private:
 
 			for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
 			{
-				Logger::log(entry.path());
+				Logger::log(entry.path().string());
 
 				if (!entry.is_regular_file() || entry.path().extension() != ".weird")
 					continue;

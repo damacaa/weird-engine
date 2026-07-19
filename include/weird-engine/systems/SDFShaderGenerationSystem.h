@@ -61,9 +61,10 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			orderedIndices.push_back(i);
 		}
 
-		std::stable_sort(
-			orderedIndices.begin(), orderedIndices.end(), [&](size_t a, size_t b)
-			{ return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx; });
+		std::stable_sort(orderedIndices.begin(), orderedIndices.end(),
+						 [&](size_t a, size_t b) {
+							 return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx;
+						 });
 
 		for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
 		{

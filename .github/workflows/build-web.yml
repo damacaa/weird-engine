@@ -50,7 +50,7 @@ jobs:
             -DBUILD_WEB=ON \
             -DCMAKE_C_FLAGS="-pthread" \
             -DCMAKE_CXX_FLAGS="-pthread" \
-            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 -o index.html --preload-file \${GITHUB_WORKSPACE}/examples/sample-scenes/assets@/assets --preload-file \${GITHUB_WORKSPACE}/src/weird-renderer/fonts@/fonts --preload-file \${GITHUB_WORKSPACE}/src/weird-renderer/shaders@/shaders"
+            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 -o index.html --preload-file ${GITHUB_WORKSPACE}/examples/sample-scenes/assets@/assets --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/fonts@/fonts --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/shaders@/shaders"
           
           emmake make WeirdSamples
 

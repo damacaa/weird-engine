@@ -6,14 +6,18 @@
 #include <random>
 #include <weird-engine.h>
 
-#include "globals.h"
+
+#include "weird-engine/math/Default2DSDFs.h"
+#include <glm/gtx/norm.hpp>
+
+extern WeirdEngine::vec3 g_cameraPositon;
 
 using namespace WeirdEngine;
 
-class SceneLoadExample : public Scene2D
+class SceneEditor : public Scene2D
 {
 public:
-	SceneLoadExample() : m_rng(12345)
+	SceneEditor() : m_rng(12345)
 
 	{
 	}

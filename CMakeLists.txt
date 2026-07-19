@@ -210,3 +210,9 @@ if(WEIRD_ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples/opengl-experiments)
     add_subdirectory(examples/sample-scenes)
 endif()
+
+# Tools
+option(WEIRD_ENGINE_BUILD_TOOLS "Build tool projects" OFF)
+if(WEIRD_ENGINE_BUILD_TOOLS)
+    add_subdirectory(tools)
+endif()

@@ -58,9 +58,10 @@ jobs:
         run: |
           mkdir -p game_export
           
-          # Emscripten outputs multiple files named after the CMake target (WeirdSamples):
-          # WeirdSamples.html, WeirdSamples.wasm, WeirdSamples.js, WeirdSamples.worker.js, WeirdSamples.data
-          cp build/examples/sample-scenes/WeirdSamples.* game_export/
+          # Emscripten outputs multiple files based on the -o index.html linker flag:
+          # index.html, index.wasm, index.js, index.worker.js, index.data
+          cp build/examples/sample-scenes/index.* game_export/
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/ 2>/dev/null || true
           
           # Assets were copied to the target directory by our CMake template
           cp -r build/examples/sample-scenes/assets game_export/

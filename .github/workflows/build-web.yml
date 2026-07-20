@@ -43,14 +43,14 @@ jobs:
           mkdir build && cd build
           
           # Using emcmake and emmake to compile for the web.
-          # We only build the WeirdSamples target to avoid overwriting issues.
           emcmake cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DWEIRD_ENGINE_BUILD_EXAMPLES=ON \
             -DBUILD_WEB=ON \
             -DCMAKE_C_FLAGS="-pthread" \
             -DCMAKE_CXX_FLAGS="-pthread" \
-            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 -o index.html --preload-file ${GITHUB_WORKSPACE}/examples/sample-scenes/assets@/assets --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/fonts@/fonts --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/shaders@/shaders"
+            -DCMAKE_EXECUTABLE_SUFFIX=".html" \
+            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file ${GITHUB_WORKSPACE}/examples/sample-scenes/assets@/assets --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/fonts@/fonts --preload-file ${GITHUB_WORKSPACE}/src/weird-renderer/shaders@/shaders"
           
           emmake make WeirdSamples
 
@@ -58,10 +58,10 @@ jobs:
         run: |
           mkdir -p game_export
           
-          # Emscripten outputs multiple files based on the -o index.html linker flag:
-          # index.html, index.wasm, index.js, index.worker.js, index.data
-          cp build/examples/sample-scenes/index.* game_export/
-          cp build/examples/sample-scenes/WeirdSamples.* game_export/ 2>/dev/null || true
+          # Emscripten outputs files named after the CMake target (WeirdSamples) since we used CMAKE_EXECUTABLE_SUFFIX:
+          # WeirdSamples.html, WeirdSamples.wasm, WeirdSamples.js, WeirdSamples.worker.js, WeirdSamples.data
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/
+          mv game_export/WeirdSamples.html game_export/index.html
           
           # Assets were copied to the target directory by our CMake template
           cp -r build/examples/sample-scenes/assets game_export/

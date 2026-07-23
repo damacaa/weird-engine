@@ -29,8 +29,9 @@ option(BUILD_WEB "Build for web using Emscripten" OFF)
 # Option to build for standalone deployment
 option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distribution" OFF)
 
-# Force DEPLOY_STANDALONE when building for web
-if(BUILD_WEB)
+# Auto-detect Emscripten toolchain or explicit BUILD_WEB flag
+if(EMSCRIPTEN OR BUILD_WEB)
+    set(BUILD_WEB ON CACHE BOOL "" FORCE)
     set(DEPLOY_STANDALONE ON CACHE BOOL "" FORCE)
 endif()
 

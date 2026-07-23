@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(WeirdEngine)
 
-execute_process(COMMAND git submodule update --init --recursive)
+execute_process(COMMAND git submodule update --init --recursive WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -170,6 +170,10 @@ endif()
     
 
 # Shaders
+if(EMSCRIPTEN)
+    set(WEIRD_ENGINE_USE_RUNTIME_ASSETS ON CACHE BOOL "Load shaders/assets from runtime folder instead of source tree" FORCE)
+endif()
+
 option(WEIRD_ENGINE_USE_RUNTIME_ASSETS
     "Load shaders/assets from runtime folder instead of source tree"
     OFF

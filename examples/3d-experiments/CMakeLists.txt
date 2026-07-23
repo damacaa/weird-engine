@@ -91,6 +91,10 @@ set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRU
 # Add executable including both sources and headers.
 add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
+if(BUILD_WEB)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "index")
+endif()
+
 # Set include directories.
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 

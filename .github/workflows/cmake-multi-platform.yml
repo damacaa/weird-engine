@@ -8,6 +8,8 @@ on:
 
 env:
   BUILD_TYPE: Release
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+  ACTIONS_RUNNER_FORCE_NODE24: "true"
 
 jobs:
   build:
@@ -48,7 +50,6 @@ jobs:
         uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
-          actions-cache-folder: 'emsdk-cache'
 
       # ------------------------------------------------------------------------
       # Desktop Builds (Windows & Linux)
@@ -69,8 +70,8 @@ jobs:
           WEIRD_SCREENSHOT_FRAME: 10
         run: xvfb-run -a ./WeirdSamples
 
-      - name: Upload Test Artifacts (Desktop)
-        if: matrix.target != 'web' && always()
+      - name: Upload Test Artifacts (Linux)
+        if: matrix.target == 'linux' && always()
         uses: actions/upload-artifact@v4
         with:
           name: test-artifacts-${{ matrix.target }}

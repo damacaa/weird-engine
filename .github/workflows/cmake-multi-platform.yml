@@ -10,6 +10,7 @@ env:
   BUILD_TYPE: Release
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
   ACTIONS_RUNNER_FORCE_NODE24: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
@@ -110,6 +111,8 @@ jobs:
           if [ ! -f game_export/index.html ]; then
             if [ -f game_export/WeirdSamples.html ]; then
               cp game_export/WeirdSamples.html game_export/index.html
+            elif [ -f game_export/index.js ]; then
+              echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>WeirdEngine Web</title><style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;justify-content:center;align-items:center;}canvas{width:100%;height:100%;outline:none;border:0;}</style></head><body><canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas><script>var Module={canvas:document.getElementById("canvas")};</script><script src="index.js"></script></body></html>' > game_export/index.html
             fi
           fi
 

@@ -94,7 +94,7 @@ set_source_files_properties(${WEIRDGAME_HEADERS} PROPERTIES HEADER_FILE_ONLY TRU
 add_executable(${PROJECT_NAME} ${WEIRDGAME_SOURCES} ${WEIRDGAME_HEADERS} ${WEIRDGAME_ASSETS})
 
 if(BUILD_WEB)
-    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "index")
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "index" SUFFIX ".html")
 endif()
 
 # Set include directories.

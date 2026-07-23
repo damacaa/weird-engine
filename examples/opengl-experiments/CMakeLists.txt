@@ -32,7 +32,9 @@ option(DEPLOY_STANDALONE "Configure paths and copy assets for a standalone distr
 # Auto-detect Emscripten toolchain or explicit BUILD_WEB flag
 if(EMSCRIPTEN OR BUILD_WEB)
     set(BUILD_WEB ON CACHE BOOL "" FORCE)
+    set(BUILD_WEB ON)
     set(DEPLOY_STANDALONE ON CACHE BOOL "" FORCE)
+    set(DEPLOY_STANDALONE ON)
 endif()
 
 if(DEPLOY_STANDALONE)

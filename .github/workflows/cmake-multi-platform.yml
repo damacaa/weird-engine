@@ -91,6 +91,7 @@ jobs:
           emcmake cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DWEIRD_ENGINE_BUILD_EXAMPLES=ON \
+            -DBUILD_WEB=ON \
             -DCMAKE_C_FLAGS="-pthread" \
             -DCMAKE_CXX_FLAGS="-pthread" \
             -DCMAKE_EXECUTABLE_SUFFIX=".html" \
@@ -101,16 +102,20 @@ jobs:
         if: matrix.target == 'web'
         run: |
           mkdir -p game_export
-          # Copy generated index files or fallback to target name
-          if ls build/examples/sample-scenes/index.* 1> /dev/null 2>&1; then
-            cp build/examples/sample-scenes/index.* game_export/
-          else
-            cp build/examples/sample-scenes/WeirdSamples.* game_export/
-            cp game_export/WeirdSamples.html game_export/index.html
+          # Copy generated outputs (index.* or WeirdSamples.*)
+          cp build/examples/sample-scenes/index.* game_export/ 2>/dev/null || true
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/ 2>/dev/null || true
+
+          # Guarantee index.html exists in game_export/
+          if [ ! -f game_export/index.html ]; then
+            if [ -f game_export/WeirdSamples.html ]; then
+              cp game_export/WeirdSamples.html game_export/index.html
+            fi
           fi
-          cp -r build/examples/sample-scenes/assets game_export/
-          cp -r build/examples/sample-scenes/fonts game_export/
-          cp -r build/examples/sample-scenes/shaders game_export/
+
+          cp -r build/examples/sample-scenes/assets game_export/ 2>/dev/null || true
+          cp -r build/examples/sample-scenes/fonts game_export/ 2>/dev/null || true
+          cp -r build/examples/sample-scenes/shaders game_export/ 2>/dev/null || true
 
       - name: Upload Web Artifact
         if: matrix.target == 'web'

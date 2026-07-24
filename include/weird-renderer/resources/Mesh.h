@@ -43,11 +43,13 @@ namespace WeirdEngine
 			~Mesh();
 
 			// Draws the mesh
-			void draw(Shader& shader, const Camera& camera, glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
+			void draw(Shader& shader, const Camera& camera, glm::vec3 translation = glm::vec3(0),
+					  glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
 
 			// Draws the mesh
-			void drawInstances(Shader& shader, const Camera& camera, unsigned int instances, glm::vec3 translation = glm::vec3(0),
-							   glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
+			void drawInstances(Shader& shader, const Camera& camera, unsigned int instances,
+							   glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0),
+							   glm::vec3 scale = glm::vec3(1), int materialIndex = 0) const;
 
 			void free();
 

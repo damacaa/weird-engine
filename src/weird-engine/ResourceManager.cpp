@@ -87,7 +87,8 @@ namespace WeirdEngine
 		m_resourcesUsedByEntity.erase(entity);
 	}
 
-	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes, glm::mat4 transform)
+	void ResourceManager::loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes,
+								   glm::mat4 transform)
 	{
 		// Get all accessor indices
 		unsigned int posAccInd = m_json["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
@@ -113,12 +114,12 @@ namespace WeirdEngine
 			for (auto& v : vertices)
 			{
 				v.position = glm::vec3(transform * glm::vec4(v.position, 1.0f));
-				v.normal   = glm::normalize(normalMatrix * v.normal);
+				v.normal = glm::normalize(normalMatrix * v.normal);
 			}
 		}
 
 		std::vector<GLuint> indices = getIndices(m_json["accessors"][indAccInd]);
-		
+
 		std::vector<Texture> textures = getTextures(file);
 
 		// Combine the vertices, indices, and textures into a mesh
@@ -318,7 +319,7 @@ namespace WeirdEngine
 			// Add it to mesh textures
 			return m_textureMap[path];
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception&)
 		{
 			// Couldn't load texture, using missing texture
 			return m_textureMap[MISSING_TEXTURE];
@@ -385,12 +386,14 @@ namespace WeirdEngine
 			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos ||
 				texPath.find("albedo") != std::string::npos)
 			{
-				textures.push_back(getTexture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size()));
+				textures.push_back(
+					getTexture((fileDirectory + texPath).c_str(), DIFFUSE, static_cast<GLuint>(textures.size())));
 			}
 			// Load defaultSpecular texture
 			else if (texPath.find("roughness") != std::string::npos || texPath.find("specular") != std::string::npos)
 			{
-				textures.push_back(getTexture((fileDirectory + texPath).c_str(), SPECULAR, textures.size()));
+				textures.push_back(
+					getTexture((fileDirectory + texPath).c_str(), SPECULAR, static_cast<GLuint>(textures.size())));
 				hasSpecular = true;
 			}
 		}

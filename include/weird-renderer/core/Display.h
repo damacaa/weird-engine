@@ -80,8 +80,6 @@ namespace WeirdEngine
 				vec4(0.4f, 0.25f, 0.1f, 1.0f)		// Brown
 			};
 
-
-
 			std::string windowTitle = "Weird Engine";
 		};
 	} // namespace WeirdRenderer

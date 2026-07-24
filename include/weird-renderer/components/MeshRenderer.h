@@ -18,6 +18,7 @@ namespace WeirdEngine
 			: mesh(mesh) {};
 
 		MeshRenderer(MeshID mesh, int materialIndex)
-			: mesh(mesh), materialIndex(materialIndex) {};
+			: mesh(mesh)
+			, materialIndex(materialIndex) {};
 	};
 } // namespace WeirdEngine

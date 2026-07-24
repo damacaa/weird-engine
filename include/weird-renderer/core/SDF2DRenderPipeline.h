@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-engine/Background.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
@@ -7,7 +8,6 @@
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
-#include "weird-engine/Background.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -119,12 +119,15 @@ namespace WeirdEngine
 			DataBuffer m_gridIndicesBuffer;
 
 			// Reusable scratch buffers for grid building — allocated once, reused every frame
-			struct ObjBounds { int minX, minY, maxX, maxY; };
-			std::vector<ObjBounds>    m_gridObjBounds;
-			std::vector<int>          m_gridCellCounts;
-			std::vector<int>          m_gridCellOffsets;
-			std::vector<glm::vec4>    m_gridHeader;
-			std::vector<glm::vec4>    m_gridIndices;
+			struct ObjBounds
+			{
+				int minX, minY, maxX, maxY;
+			};
+			std::vector<ObjBounds> m_gridObjBounds;
+			std::vector<int> m_gridCellCounts;
+			std::vector<int> m_gridCellOffsets;
+			std::vector<glm::vec4> m_gridHeader;
+			std::vector<glm::vec4> m_gridIndices;
 
 			glm::mat4 m_oldCameraMatrix;
 			glm::mat4
@@ -134,10 +137,15 @@ namespace WeirdEngine
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange = glm::vec3(0.0f);
 
-			struct GridInfo { float minX, minY, stepX, stepY; int gridCols, gridRows, indexTexWidth, indexTexHeight; };
+			struct GridInfo
+			{
+				float minX, minY, stepX, stepY;
+				int gridCols, gridRows, indexTexWidth, indexTexHeight;
+			};
 			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-										const Camera& camera);			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
-										double time, double delta);
+										   const Camera& camera);
+			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
+									 double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
 			void renderMaterialColors(const Camera& camera, double time, double delta);

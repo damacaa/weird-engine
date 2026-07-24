@@ -6,14 +6,18 @@
 #include <random>
 #include <weird-engine.h>
 
-#include "globals.h"
+#include "weird-engine/math/Default2DSDFs.h"
+#include <glm/gtx/norm.hpp>
+
+extern WeirdEngine::vec3 g_cameraPositon;
 
 using namespace WeirdEngine;
 
-class SceneLoadExample : public Scene2D
+class SceneEditor : public Scene2D
 {
 public:
-	SceneLoadExample() : m_rng(12345)
+	SceneEditor()
+		: m_rng(12345)
 
 	{
 	}
@@ -150,8 +154,8 @@ private:
 	// =====================================================================
 	void buildShapeButtons()
 	{
-		const uint16_t types[] = {DefaultShapes::CIRCLE, DefaultShapes::BOX, DefaultShapes::TRIANGLE, DefaultShapes::LINE, DefaultShapes::RAMP,
-								  DefaultShapes::STAR};
+		const uint16_t types[] = {DefaultShapes::CIRCLE, DefaultShapes::BOX,  DefaultShapes::TRIANGLE,
+								  DefaultShapes::LINE,	 DefaultShapes::RAMP, DefaultShapes::STAR};
 
 		for (int i = 0; i < 6; i++)
 		{
@@ -548,7 +552,9 @@ private:
 		if (idx >= pc)
 			return;
 
-		std::string msg = "[" + std::string(shapeName(cs.distanceFieldId)) + "] " + std::string(paramName(cs.distanceFieldId, idx)) + " (now " + std::to_string(cs.parameters[idx]) + "): ";
+		std::string msg = "[" + std::string(shapeName(cs.distanceFieldId)) + "] " +
+						  std::string(paramName(cs.distanceFieldId, idx)) + " (now " +
+						  std::to_string(cs.parameters[idx]) + "): ";
 		WeirdEngine::Logger::log(msg);
 
 		float v;
@@ -662,29 +668,47 @@ private:
 	// =====================================================================
 	static const char* shapeName(uint16_t t)
 	{
-		if (t == DefaultShapes::CIRCLE) return "Circle";
-		if (t == DefaultShapes::BOX) return "Box";
-		if (t == DefaultShapes::BOX_LINE) return "BoxLine";
-		if (t == DefaultShapes::TRIANGLE) return "Triangle";
-		if (t == DefaultShapes::TRIANGLE_LINE) return "TriangleLine";
-		if (t == DefaultShapes::LINE) return "Line";
-		if (t == DefaultShapes::RAMP) return "Ramp";
-		if (t == DefaultShapes::SINE) return "Sine";
-		if (t == DefaultShapes::STAR) return "Star";
+		if (t == DefaultShapes::CIRCLE)
+			return "Circle";
+		if (t == DefaultShapes::BOX)
+			return "Box";
+		if (t == DefaultShapes::BOX_LINE)
+			return "BoxLine";
+		if (t == DefaultShapes::TRIANGLE)
+			return "Triangle";
+		if (t == DefaultShapes::TRIANGLE_LINE)
+			return "TriangleLine";
+		if (t == DefaultShapes::LINE)
+			return "Line";
+		if (t == DefaultShapes::RAMP)
+			return "Ramp";
+		if (t == DefaultShapes::SINE)
+			return "Sine";
+		if (t == DefaultShapes::STAR)
+			return "Star";
 		return "Shape";
 	}
 
 	static int paramCount(uint16_t t)
 	{
-		if (t == DefaultShapes::CIRCLE) return 3;
-		if (t == DefaultShapes::BOX) return 4;
-		if (t == DefaultShapes::BOX_LINE) return 5;
-		if (t == DefaultShapes::TRIANGLE) return 5;
-		if (t == DefaultShapes::TRIANGLE_LINE) return 6;
-		if (t == DefaultShapes::LINE) return 5;
-		if (t == DefaultShapes::RAMP) return 5;
-		if (t == DefaultShapes::SINE) return 4;
-		if (t == DefaultShapes::STAR) return 6;
+		if (t == DefaultShapes::CIRCLE)
+			return 3;
+		if (t == DefaultShapes::BOX)
+			return 4;
+		if (t == DefaultShapes::BOX_LINE)
+			return 5;
+		if (t == DefaultShapes::TRIANGLE)
+			return 5;
+		if (t == DefaultShapes::TRIANGLE_LINE)
+			return 6;
+		if (t == DefaultShapes::LINE)
+			return 5;
+		if (t == DefaultShapes::RAMP)
+			return 5;
+		if (t == DefaultShapes::SINE)
+			return 4;
+		if (t == DefaultShapes::STAR)
+			return 6;
 		return 3;
 	}
 
@@ -699,15 +723,24 @@ private:
 		static const char* R[] = {"posX", "posY", "w", "h", "skew"};
 		static const char* SI[] = {"amp", "per", "spd", "yOff"};
 		static const char* ST[] = {"posX", "posY", "rad", "disp", "pts", "spin"};
-		if (t == DefaultShapes::CIRCLE) return C[i];
-		if (t == DefaultShapes::BOX) return B[i];
-		if (t == DefaultShapes::BOX_LINE) return BL[i];
-		if (t == DefaultShapes::TRIANGLE) return T[i];
-		if (t == DefaultShapes::TRIANGLE_LINE) return TL[i];
-		if (t == DefaultShapes::LINE) return L[i];
-		if (t == DefaultShapes::RAMP) return R[i];
-		if (t == DefaultShapes::SINE) return SI[i];
-		if (t == DefaultShapes::STAR) return ST[i];
+		if (t == DefaultShapes::CIRCLE)
+			return C[i];
+		if (t == DefaultShapes::BOX)
+			return B[i];
+		if (t == DefaultShapes::BOX_LINE)
+			return BL[i];
+		if (t == DefaultShapes::TRIANGLE)
+			return T[i];
+		if (t == DefaultShapes::TRIANGLE_LINE)
+			return TL[i];
+		if (t == DefaultShapes::LINE)
+			return L[i];
+		if (t == DefaultShapes::RAMP)
+			return R[i];
+		if (t == DefaultShapes::SINE)
+			return SI[i];
+		if (t == DefaultShapes::STAR)
+			return ST[i];
 		return "?";
 	}
 

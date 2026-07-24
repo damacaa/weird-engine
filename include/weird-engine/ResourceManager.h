@@ -43,7 +43,8 @@ namespace WeirdEngine
 		json m_json;
 
 		// Loads a single mesh by its index, applying the given node world transform
-		void loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes, glm::mat4 transform = glm::mat4(1.0f));
+		void loadMesh(const char* file, unsigned int indMesh, std::vector<Mesh*>& meshes,
+					  glm::mat4 transform = glm::mat4(1.0f));
 
 		// Traverses a node recursively, so it essentially traverses all connected nodes
 		void traverseNode(const char* file, unsigned int nextNode, std::vector<Mesh*>& meshes,

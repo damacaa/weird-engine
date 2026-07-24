@@ -129,7 +129,8 @@ namespace WeirdEngine
 
 		bool isEntityDirty(Entity entity)
 		{
-			if (!hasData(entity)) return false;
+			if (!hasData(entity))
+				return false;
 			return dirtyFlags[entityToIndexMap[entity]];
 		}
 
@@ -148,7 +149,7 @@ namespace WeirdEngine
 		// Function to get the size of the array
 		int getSize() const
 		{
-			return size;
+			return static_cast<int>(size);
 		}
 
 	private:

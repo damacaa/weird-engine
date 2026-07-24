@@ -17,9 +17,9 @@ uniform sampler2D t_flameShape;
 
 const int NUM_STOPS = 4;
 const vec3 colors[NUM_STOPS] = vec3[](vec3(0.1, 0.1, 0.1), // Grey
-								  vec3(0.8, 0.3, 0.2), // Red
-								  vec3(1.1, 0.7, 0.2), // Orange
-								  vec3(1.2, 1.2, 1.2)	 // White
+									  vec3(0.8, 0.3, 0.2), // Red
+									  vec3(1.1, 0.7, 0.2), // Orange
+									  vec3(1.2, 1.2, 1.2)  // White
 );
 
 const float stops[NUM_STOPS] = float[](0.0, 0.7, 0.9, 1.0);

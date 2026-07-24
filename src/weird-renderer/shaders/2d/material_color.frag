@@ -71,7 +71,7 @@ void main()
 	vec4 diff = clamp((c - currentColor), -1.0, 1.0);
 	vec4 blendedColor = currentColor + (min(u_deltaTime * u_materialBlendSpeed, 1.0) * diff);
 
-	// Use the mask to force the centers of the dots to get the instantaneous color every frame, 
+	// Use the mask to force the centers of the dots to get the instantaneous color every frame,
 	// while still allowing temporal blending at the edges and outside.
 	c = mix(blendedColor, c, clamp(mask, 0.0, 1.0));
 

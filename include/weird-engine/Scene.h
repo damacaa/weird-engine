@@ -10,10 +10,10 @@
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
 
+#include "weird-engine/Background.h"
+#include "weird-engine/Material3D.h"
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-physics/Simulation2D.h"
-#include "weird-engine/Material3D.h"
-#include "weird-engine/Background.h"
 
 #include <string>
 #include <unordered_map>
@@ -68,15 +68,30 @@ namespace WeirdEngine
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLigths();
 
-		Simulation2D& getSimulation2D() { return m_simulation2D; }
+		Simulation2D& getSimulation2D()
+		{
+			return m_simulation2D;
+		}
 
 		Material3D& createMaterial();
 
-		Material3D& getMaterial(int index) { return m_materials[index]; }
-		const Material3D* getMaterials() const { return m_materials; }
+		Material3D& getMaterial(int index)
+		{
+			return m_materials[index];
+		}
+		const Material3D* getMaterials() const
+		{
+			return m_materials;
+		}
 
-		BackgroundParams& getBackground() { return m_background; }
-		const BackgroundParams& getBackground() const { return m_background; }
+		BackgroundParams& getBackground()
+		{
+			return m_background;
+		}
+		const BackgroundParams& getBackground() const
+		{
+			return m_background;
+		}
 
 		float getTime();
 
@@ -120,7 +135,8 @@ namespace WeirdEngine
 		};
 
 		// Physics queries
-		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f, float maxDistance = 150.0f);
+		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f,
+								float maxDistance = 150.0f);
 
 		void renderImGui();
 		void renderPhysicsStatsUI();
@@ -135,12 +151,12 @@ namespace WeirdEngine
 		virtual void onUpdate(float delta, ECSManager& ecs) = 0;
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onImGuiRender() {};
-		
+
 		// Physics thread callbacks (No m_ecs access recommended!)
 		virtual void onPhysicsStep(Simulation2D& simulation) {};
 		virtual void onCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) {};
 		virtual void onShapeCollision(Simulation2D& simulation, WeirdEngine::ShapeCollisionEvent& event) {};
-		
+
 		// Main thread callbacks (m_ecs is safe to use here) // ARE YOU SURE???
 		virtual void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) {};
 		virtual void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) {};
@@ -154,7 +170,7 @@ namespace WeirdEngine
 
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
-		
+
 		Material3D m_materials[16];
 		uint16_t m_materialCount = 0;
 
@@ -169,7 +185,7 @@ namespace WeirdEngine
 		{
 			return addShape(shapeId, variables, material.id, combination, hasCollision, group);
 		}
-		
+
 		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
 						  CombinationType combination = CombinationType::Addition, int group = 0);
 		Entity addUIShape(ShapeId shapeId, float* variables, const Material3D& material,
@@ -204,7 +220,8 @@ namespace WeirdEngine
 		SDFRenderSystemContext m_3DWorldRenderContext;
 		SDFRenderSystemContext m_UIRenderContext;
 		// Resolve a physics SimulationID to the owning entity.
-		Entity getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
+		Entity getEntityForSimulationId(SimulationID simulationId,
+										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
 
 		bool m_debugFly = false;
 		bool m_debugInput = false;
@@ -224,7 +241,7 @@ namespace WeirdEngine
 
 		// Path to a .weird file to load when the scene starts (set via setSceneFilePath or registerScene)
 		std::string m_sceneFilePath;
-		
+
 		BackgroundParams m_background;
 
 	private:
@@ -262,18 +279,27 @@ namespace WeirdEngine
 	class Scene2D : public Scene
 	{
 	public:
-		Scene2D() { m_renderMode = RenderMode::RayMarching2D; }
+		Scene2D()
+		{
+			m_renderMode = RenderMode::RayMarching2D;
+		}
 	};
 
 	class Scene3D : public Scene
 	{
 	public:
-		Scene3D() { m_renderMode = RenderMode::RayMarching3D; }
+		Scene3D()
+		{
+			m_renderMode = RenderMode::RayMarching3D;
+		}
 	};
 
 	class SceneBoth : public Scene
 	{
 	public:
-		SceneBoth() { m_renderMode = RenderMode::RayMarchingBoth; }
+		SceneBoth()
+		{
+			m_renderMode = RenderMode::RayMarchingBoth;
+		}
 	};
 } // namespace WeirdEngine

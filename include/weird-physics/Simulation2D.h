@@ -134,7 +134,8 @@ namespace WeirdEngine
 		bool isFixed(SimulationID id);
 
 		// Performance Stats
-		struct PerformanceStats {
+		struct PerformanceStats
+		{
 			double timePerStepMs = 0.0;
 			double simulationRatio = 0.0;
 			double broadPhaseMs = 0.0;
@@ -172,7 +173,6 @@ namespace WeirdEngine
 		SimulationID raycast(vec2 pos);
 		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
 		float raymarch(vec2 pos, vec2 direction, const float FAR, int& closestShape);
-		
 
 		void setGravity(float gravity)
 		{

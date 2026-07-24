@@ -44,7 +44,7 @@ namespace WeirdEngine
 			UploadUniforms(shader, camera, translation, rotation, scale, materialIndex);
 
 			// Draw the actual mesh
-			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 		}
 
 		void Mesh::drawInstances(Shader& shader, const Camera& camera, unsigned int instances, glm::vec3 translation,
@@ -53,7 +53,7 @@ namespace WeirdEngine
 			UploadUniforms(shader, camera, translation, rotation, scale, materialIndex);
 
 			// Draw the actual mesh
-			glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0, instances);
+			glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0, instances);
 		}
 
 		void Mesh::free()

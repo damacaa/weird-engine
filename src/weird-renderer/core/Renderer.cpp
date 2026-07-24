@@ -344,8 +344,8 @@ namespace WeirdEngine
 		{
 			m_windowWidth = width;
 			m_windowHeight = height;
-			m_renderWidth = width * m_renderScale;
-			m_renderHeight = height * m_renderScale;
+			m_renderWidth = static_cast<unsigned int>(width * m_renderScale);
+			m_renderHeight = static_cast<unsigned int>(height * m_renderScale);
 
 			Display::width = m_windowWidth;
 			Display::height = m_windowHeight;
@@ -429,7 +429,13 @@ namespace WeirdEngine
 				m_takeScreenshot = false;
 				std::time_t t = std::time(nullptr);
 				char timeBuf[32];
-				std::strftime(timeBuf, sizeof(timeBuf), "%Y%m%d_%H%M%S", std::localtime(&t));
+				struct tm tmBuf;
+#if defined(_WIN32)
+				localtime_s(&tmBuf, &t);
+#else
+				localtime_r(&t, &tmBuf);
+#endif
+				std::strftime(timeBuf, sizeof(timeBuf), "%Y%m%d_%H%M%S", &tmBuf);
 				std::string filename = std::string("screenshot_") + timeBuf + ".bmp";
 				m_outputResolutionRender.bind();
 				m_renderPlane.draw(m_outputShaderProgram);

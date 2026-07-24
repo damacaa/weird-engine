@@ -22,7 +22,7 @@ private:
 		for (size_t i = 0; i < 9900; i++)
 		{
 
-			float y = (int)(i / 20);
+			float y = static_cast<float>(i / 20);
 			float x = 5 + (i % 20) + sin(y);
 
 			int material = 4 + (i % 12);

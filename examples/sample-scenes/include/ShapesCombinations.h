@@ -34,11 +34,11 @@ private:
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		float range = 20.0f;
-		std::uniform_real_distribution<> distrib(-range, range);
+		std::uniform_real_distribution<float> distrib(-range, range);
 
 		// Boxes
 		{
-			std::uniform_real_distribution<> distribY(0, 5);
+			std::uniform_real_distribution<float> distribY(0.0f, 5.0f);
 
 			for (int i = 0; i < 0; ++i)
 			{

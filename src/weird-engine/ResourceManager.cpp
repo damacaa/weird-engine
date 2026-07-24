@@ -319,7 +319,7 @@ namespace WeirdEngine
 			// Add it to mesh textures
 			return m_textureMap[path];
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception&)
 		{
 			// Couldn't load texture, using missing texture
 			return m_textureMap[MISSING_TEXTURE];
@@ -386,12 +386,14 @@ namespace WeirdEngine
 			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos ||
 				texPath.find("albedo") != std::string::npos)
 			{
-				textures.push_back(getTexture((fileDirectory + texPath).c_str(), DIFFUSE, textures.size()));
+				textures.push_back(
+					getTexture((fileDirectory + texPath).c_str(), DIFFUSE, static_cast<GLuint>(textures.size())));
 			}
 			// Load defaultSpecular texture
 			else if (texPath.find("roughness") != std::string::npos || texPath.find("specular") != std::string::npos)
 			{
-				textures.push_back(getTexture((fileDirectory + texPath).c_str(), SPECULAR, textures.size()));
+				textures.push_back(
+					getTexture((fileDirectory + texPath).c_str(), SPECULAR, static_cast<GLuint>(textures.size())));
 				hasSpecular = true;
 			}
 		}

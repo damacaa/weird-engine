@@ -301,8 +301,8 @@ namespace WeirdEngine
 					if (m_stats[i].name == name && m_stats[i].depth == m_currentDepth &&
 						m_stats[i].parentIndex == parentIdx)
 					{
-						statIndex = i;
-						m_currentIndex = i + 1;
+						statIndex = static_cast<int>(i);
+						m_currentIndex = static_cast<int>(i + 1);
 						found = true;
 						break;
 					}
@@ -310,8 +310,8 @@ namespace WeirdEngine
 				if (!found)
 				{
 					m_stats.push_back({name, m_currentDepth, 0.0, 0, parentIdx});
-					statIndex = m_stats.size() - 1;
-					m_currentIndex = m_stats.size();
+					statIndex = static_cast<int>(m_stats.size() - 1);
+					m_currentIndex = static_cast<int>(m_stats.size());
 				}
 			}
 

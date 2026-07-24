@@ -49,7 +49,7 @@ namespace WeirdEngine
 							text.bufferedDotCount += ctx.font.getCharData(c).dotCount;
 						}
 
-						int charCount = text.text.length();
+						int charCount = static_cast<int>(text.text.length());
 						text.width = (charCount * ctx.font.getCharWidth() * 2 * ctx.dotRadious) +
 									 ((charCount - 1) * ctx.charSpacing);
 						text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
@@ -95,7 +95,7 @@ namespace WeirdEngine
 					data[dotIdx].x = t.position.x;
 					data[dotIdx].y = t.position.y;
 					data[dotIdx].z = t.position.z;
-					data[dotIdx].w = dotComp.materialId;
+					data[dotIdx].w = static_cast<float>(dotComp.materialId);
 					dotIdx++;
 				});
 
@@ -106,7 +106,7 @@ namespace WeirdEngine
 			ecs.forEach<TextClass, Transform>(
 				[&](Entity entity, TextClass& text, Transform& t)
 				{
-					int charCount = text.text.length();
+					int charCount = static_cast<int>(text.text.length());
 
 					float horizontalOffset = 0.0f;
 					switch (text.horizontalAlignment)

@@ -5,12 +5,18 @@
 #include "globals.h"
 
 using namespace WeirdEngine;
+
 class MouseCollisionScene : public Scene2D
 {
 public:
 	MouseCollisionScene() {};
 
 private:
+	struct CollisionCounter
+	{
+		int count;
+	};
+
 	Entity m_cursorShape;
 
 	// Inherited via Scene
@@ -38,9 +44,10 @@ private:
 			}
 
 			Dot& dot = ecs.addComponent<Dot>(entity);
-			dot.materialId = material;
+			dot.materialId = 0;
 
 			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
+			CollisionCounter& counter = ecs.addComponent<CollisionCounter>(entity);
 		}
 
 		// Floor
@@ -93,6 +100,52 @@ private:
 			cs.parameters[0] = mousePositionInWorld.x;
 			cs.parameters[1] = mousePositionInWorld.y;
 			ecs.setComponentDirty(cs);
+		}
+	}
+
+	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	{
+		if (ecs.hasComponent<CollisionCounter>(event.entityA))
+		{
+			auto& counter = ecs.getComponent<CollisionCounter>(event.entityA);
+			counter.count++;
+
+			constexpr int COLLISIONS_PER_MATERIAL = 50;
+			if (counter.count <= 10 * COLLISIONS_PER_MATERIAL && counter.count % COLLISIONS_PER_MATERIAL == 0)
+			{
+				auto& dot = ecs.getComponent<Dot>(event.entityA);
+				dot.materialId++;
+
+				if (counter.count == 10 * COLLISIONS_PER_MATERIAL)
+					dot.materialId = 0;
+			}
+		}
+
+		if (ecs.hasComponent<CollisionCounter>(event.entityB))
+		{
+			auto& counter = ecs.getComponent<CollisionCounter>(event.entityB);
+			counter.count++;
+
+			constexpr int COLLISIONS_PER_MATERIAL = 50;
+			if (counter.count <= 10 * COLLISIONS_PER_MATERIAL && counter.count % COLLISIONS_PER_MATERIAL == 0)
+			{
+				auto& dot = ecs.getComponent<Dot>(event.entityB);
+				dot.materialId++;
+
+				if (counter.count == 10 * COLLISIONS_PER_MATERIAL)
+					dot.materialId = 0;
+			}
+		}
+	}
+
+	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	{
+		if (ecs.hasComponent<CollisionCounter>(event.entity))
+		{
+			auto& counter = ecs.getComponent<CollisionCounter>(event.entity);
+			counter.count = 0;
+			auto& dot = ecs.getComponent<Dot>(event.entity);
+			dot.materialId = 0;
 		}
 	}
 };

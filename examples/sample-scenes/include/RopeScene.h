@@ -115,7 +115,7 @@ private:
 		addShape(DefaultShapes::SINE, vars0, 3);
 
 		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		// m_star = addShape(DefaultShapes::STAR, vars1, 3);
+		m_star = addShape(DefaultShapes::STAR, vars1, 3);
 
 		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
 		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);

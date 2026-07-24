@@ -9,6 +9,7 @@
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
+#include "TextScene.h"
 #include "WalkScene.h"
 
 #include "globals.h"
@@ -22,17 +23,19 @@ int main(int argc, char* argv[])
 
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
-	// sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
-	// sceneManager.registerScene<ImageScene>("image");
-	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
-	// sceneManager.registerScene<DestroyScene>("destroy-test");
+	sceneManager.registerScene<TextScene>("text");
 	sceneManager.registerScene<LifeScene>("life");
+	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
+	sceneManager.registerScene<DestroyScene>("destroy-test");
+
+	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
+	// sceneManager.registerScene<ImageScene>("image");
 	// sceneManager.registerScene<WalkScene>("walk");
 	// sceneManager.registerScene<AquariumScene>("aquarium");
 
 	DisplaySettings displaySettings{};
-	displaySettings.width = 640;
-	displaySettings.height = 480;
+	displaySettings.width = 800;
+	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 	displaySettings.distanceSampleScale = 0.5f;

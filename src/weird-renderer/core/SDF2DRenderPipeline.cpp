@@ -614,8 +614,9 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE(m_config.isUI ? "applyJumpFloodCorrection (UI)" : "applyJumpFloodCorrection (World)");
 
-			float maxDim = std::max<float>(m_distanceSampleWidth, m_distanceSampleHeight);
-			uint16_t jumpFloodIterations = largestPowerOfTwoBelow(maxDim);
+			float maxDim =
+				std::max(static_cast<float>(m_distanceSampleWidth), static_cast<float>(m_distanceSampleHeight));
+			uint16_t jumpFloodIterations = static_cast<uint16_t>(largestPowerOfTwoBelow(static_cast<int>(maxDim)));
 			bool pingpong = true;
 
 			// Initialize

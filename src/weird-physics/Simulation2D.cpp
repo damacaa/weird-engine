@@ -434,7 +434,7 @@ namespace WeirdEngine
 			// Check
 			bool currentCollision = false;
 			ShapeCollisionEvent collisionEvent;
-			collisionEvent.body = i;
+			collisionEvent.body = static_cast<SimulationID>(i);
 
 			// Static shapes
 			int shapeIdx;
@@ -568,7 +568,7 @@ namespace WeirdEngine
 				continue;
 			}
 
-			obj.parameters[8] = m_simulationTime;
+			obj.parameters[8] = static_cast<float>(m_simulationTime);
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
@@ -652,7 +652,7 @@ namespace WeirdEngine
 				continue;
 			}
 
-			obj.parameters[8] = m_simulationTime;
+			obj.parameters[8] = static_cast<float>(m_simulationTime);
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
@@ -955,7 +955,7 @@ namespace WeirdEngine
 	{
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
-		SimulationID id = m_allocated;
+		SimulationID id = static_cast<SimulationID>(m_allocated);
 
 		// Initialize particle with safe defaults so the physics
 		// thread never processes stale/garbage data.
@@ -1125,7 +1125,8 @@ namespace WeirdEngine
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_distanceConstraints.emplace_back(
 			a, b, distance,
-			std::pow(stiffness, std::sqrt(m_relaxationSteps))); // Square to make stiffness more intuitive
+			static_cast<float>(
+				std::pow(stiffness, std::sqrt(m_relaxationSteps)))); // Square to make stiffness more intuitive
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
@@ -1310,7 +1311,7 @@ namespace WeirdEngine
 		{
 			// Key does not exist
 			m_objects.push_back(sdf);
-			ShapeId id = m_objects.size() - 1;
+			ShapeId id = static_cast<ShapeId>(m_objects.size() - 1);
 			m_entityToObjectsIdx[owner] = id;
 			shape.simulationId = id;
 		}
@@ -1367,7 +1368,7 @@ namespace WeirdEngine
 
 			if (distanceSquared < m_radious * m_radious)
 			{
-				return i;
+				return static_cast<SimulationID>(i);
 			}
 		}
 
@@ -1416,7 +1417,7 @@ namespace WeirdEngine
 			}
 			else
 			{
-				int delay = std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000); // ms
+				int delay = static_cast<int>(std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000)); // ms
 				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 			}
 		}

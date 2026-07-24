@@ -149,7 +149,7 @@ namespace WeirdEngine
 		// Function to get the size of the array
 		int getSize() const
 		{
-			return size;
+			return static_cast<int>(size);
 		}
 
 	private:

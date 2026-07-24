@@ -15,7 +15,7 @@ namespace WeirdEngine
 							 void* offset)
 		{
 			VBO.bind();
-			glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
+			glVertexAttribPointer(layout, numComponents, type, GL_FALSE, static_cast<GLsizei>(stride), offset);
 			glEnableVertexAttribArray(layout);
 			VBO.unbind();
 		}

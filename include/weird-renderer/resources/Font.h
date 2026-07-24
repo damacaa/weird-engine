@@ -45,21 +45,21 @@ namespace WeirdEngine::WeirdRenderer
 			int columns = width / charWidth;
 			int rows = height / charHeight;
 
-			int charCount = charList.length();
+			int charCount = static_cast<int>(charList.length());
 
-			for (size_t i = 0; i < charCount; i++)
+			for (size_t i = 0; i < static_cast<size_t>(charCount); i++)
 			{
 				CharData charData;
 
-				int startX = charWidth * (i % columns);
-				int startY = (charHeight * (i / columns));
+				int startX = charWidth * static_cast<int>(i % columns);
+				int startY = (charHeight * static_cast<int>(i / columns));
 
-				for (size_t offsetX = 0; offsetX < charWidth; offsetX++)
+				for (size_t offsetX = 0; offsetX < static_cast<size_t>(charWidth); offsetX++)
 				{
-					for (size_t offsetY = 0; offsetY < charHeight; offsetY++)
+					for (size_t offsetY = 0; offsetY < static_cast<size_t>(charHeight); offsetY++)
 					{
-						int x = startX + offsetX;
-						int y = startY + offsetY;
+						int x = startX + static_cast<int>(offsetX);
+						int y = startY + static_cast<int>(offsetY);
 
 						// Calculate the index of the pixel in the image data
 						int index = (y * width + x) * channels;
@@ -77,14 +77,14 @@ namespace WeirdEngine::WeirdRenderer
 
 						if (r < 50)
 						{
-							float localX = offsetX;
-							float localY = (charHeight * 0.5f) - offsetY;
+							float localX = static_cast<float>(offsetX);
+							float localY = (charHeight * 0.5f) - static_cast<float>(offsetY);
 							charData.positions.emplace_back(localX, localY);
 						}
 					}
 				}
 
-				charData.dotCount = charData.positions.size();
+				charData.dotCount = static_cast<int>(charData.positions.size());
 				m_charData[charList[i]] = charData;
 			}
 

@@ -21,8 +21,8 @@ private:
 
 		for (size_t i = 0; i < 10; i++)
 		{
-			float y = 10 + i;
-			float x = 2 * i;
+			float y = 10.0f + static_cast<float>(i);
+			float x = 2.0f * static_cast<float>(i);
 
 			int material = 4 + (i % 12);
 

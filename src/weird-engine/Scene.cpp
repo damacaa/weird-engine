@@ -167,7 +167,7 @@ namespace WeirdEngine
 		{
 			if (m_debugFly)
 			{
-				PlayerMovementSystem::update(m_ecs, delta);
+				PlayerMovementSystem::update(m_ecs, static_cast<float>(delta));
 			}
 
 			CameraSystem::update(m_ecs);
@@ -246,7 +246,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("OnUpdate");
-			onUpdate(delta, m_ecs);
+			onUpdate(static_cast<float>(delta), m_ecs);
 		}
 
 		{
@@ -259,7 +259,7 @@ namespace WeirdEngine
 
 	float Scene::getTime()
 	{
-		return m_simulation2D.getSimulationTime();
+		return static_cast<float>(m_simulation2D.getSimulationTime());
 	}
 
 	void Scene::handlePhysicsStep(void* userData)
@@ -368,7 +368,7 @@ namespace WeirdEngine
 		m_sdfs.push_back(sdf);
 		m_simulation2D.setSDFs(m_sdfs);
 
-		return m_sdfs.size() - 1;
+		return static_cast<ShapeId>(m_sdfs.size() - 1);
 	}
 
 	// AUDIO

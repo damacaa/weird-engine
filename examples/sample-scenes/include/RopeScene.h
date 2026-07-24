@@ -167,7 +167,7 @@ private:
 			static float animTime = 0.0f;
 			animTime += delta;
 			auto& cs = ecs.getComponent<CustomShape>(m_star);
-			cs.parameters[4] = static_cast<int>(std::floor(animTime)) % 5 + 2;
+			cs.parameters[4] = static_cast<float>((static_cast<int>(std::floor(animTime)) % 5) + 2);
 			cs.parameters[3] = std::sin(3.1416f * animTime);
 			ecs.setComponentDirty(cs);
 		}

@@ -7,8 +7,8 @@
 #include <glad/glad.h>
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
-#include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl3.h>
 #endif
 
 #include "weird-renderer/core/WeirdFBDevEGL.h"
@@ -50,8 +50,8 @@ namespace WeirdEngine
 #endif
 			if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
 			{
-				std::cout << "SDL_Init with audio failed: " << SDL_GetError()
-						  << " - retrying without audio" << std::endl;
+				std::cout << "SDL_Init with audio failed: " << SDL_GetError() << " - retrying without audio"
+						  << std::endl;
 				if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 				{
 					std::string errorMsg = "SDL could not initialize! SDL_Error: ";
@@ -147,8 +147,8 @@ namespace WeirdEngine
 				}
 			}
 
-			std::cout << "GL_SHADING_LANGUAGE_VERSION: "
-					  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+			std::cout << "GL_SHADING_LANGUAGE_VERSION: " << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)
+					  << std::endl;
 
 #ifndef WEIRD_DISABLE_IMGUI
 			IMGUI_CHECKVERSION();
@@ -194,8 +194,8 @@ namespace WeirdEngine
 			if (!m_audioStream)
 			{
 				// Audio is not critical: log and keep running silent.
-				std::cerr << "Failed to open audio stream: " << SDL_GetError()
-						  << " - continuing without audio" << std::endl;
+				std::cerr << "Failed to open audio stream: " << SDL_GetError() << " - continuing without audio"
+						  << std::endl;
 			}
 			else
 			{

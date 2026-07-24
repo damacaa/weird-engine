@@ -25,7 +25,8 @@ namespace WeirdEngine
 			, m_oldCameraMatrix(glm::mat4(0.0f))
 		{
 			m_sdfShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "3d/sdf_raymarching.frag");
-			m_resolveShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/linear_to_srgb.frag");
+			m_resolveShader =
+				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/linear_to_srgb.frag");
 			m_shapeDataBuffer = new DataBuffer();
 			resize(config.renderWidth, config.renderHeight);
 
@@ -53,19 +54,11 @@ namespace WeirdEngine
 			return m_sdfShader;
 		}
 
-		void SDF3DRenderPipeline::render(
-			vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-			const std::vector<Light>& lights,
-			const Camera& camera,
-			double time,
-			Texture& gbufferAlbedo,
-			Texture& gbufferWorldPos,
-			Texture& gbufferNormal,
-			Texture& gbufferMaterial,
-			Texture& gbufferDepth,
-			Texture& gbufferBackDepth,
-			const Material3D* materials
-		)
+		void SDF3DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+										 const std::vector<Light>& lights, const Camera& camera, double time,
+										 Texture& gbufferAlbedo, Texture& gbufferWorldPos, Texture& gbufferNormal,
+										 Texture& gbufferMaterial, Texture& gbufferDepth, Texture& gbufferBackDepth,
+										 const Material3D* materials)
 		{
 			// Reset frame counter when path tracer is disabled (no accumulation)
 			if (!m_config.enablePathTracer)
@@ -132,11 +125,11 @@ namespace WeirdEngine
 			m_shapeDataBuffer->bind(2);
 
 			// GBuffer colour attachments
-			m_sdfShader.setUniform("t_gbufferAlbedo",   3);
+			m_sdfShader.setUniform("t_gbufferAlbedo", 3);
 			gbufferAlbedo.bind(3);
 			m_sdfShader.setUniform("t_gbufferWorldPos", 4);
 			gbufferWorldPos.bind(4);
-			m_sdfShader.setUniform("t_gbufferNormal",   5);
+			m_sdfShader.setUniform("t_gbufferNormal", 5);
 			gbufferNormal.bind(5);
 			m_sdfShader.setUniform("t_gbufferMaterial", 6);
 			gbufferMaterial.bind(6);
@@ -154,7 +147,7 @@ namespace WeirdEngine
 
 			// Resolve accumulation result to the main output target (applying gamma)
 			m_outputRender.bind();
-			
+
 			m_resolveShader.use();
 			m_resolveShader.setUniform("t_input", 0);
 			m_accumTexture[m_accumIdx].bind(0);
@@ -226,20 +219,22 @@ namespace WeirdEngine
 			ImGui::PushID(label);
 
 			if (ImGui::Checkbox("Enable Path Tracer", &m_config.enablePathTracer))
-			{	
-				WeirdEngine::Logger::log(std::string("Path tracer ") + (m_config.enablePathTracer ? "enabled" : "disabled"));
+			{
+				WeirdEngine::Logger::log(std::string("Path tracer ") +
+										 (m_config.enablePathTracer ? "enabled" : "disabled"));
 
-				if(m_config.enablePathTracer)
+				if (m_config.enablePathTracer)
 					m_sdfShader.addDefine("PATH_TRACING");
 				else
 					m_sdfShader.removeDefine("PATH_TRACING");
 			}
 
 			if (ImGui::Checkbox("Enable Anti-Aliasing", &m_config.enableAntialiasing))
-			{	
-				WeirdEngine::Logger::log(std::string("Anti-Aliasing ") + (m_config.enableAntialiasing ? "enabled" : "disabled"));
+			{
+				WeirdEngine::Logger::log(std::string("Anti-Aliasing ") +
+										 (m_config.enableAntialiasing ? "enabled" : "disabled"));
 
-				if(m_config.enableAntialiasing)
+				if (m_config.enableAntialiasing)
 					m_sdfShader.addDefine("ANTIALIASING");
 				else
 					m_sdfShader.removeDefine("ANTIALIASING");
@@ -252,7 +247,7 @@ namespace WeirdEngine
 
 			if (m_config.enablePathTracer)
 			{
-				if(ImGui::SliderInt("Bounces", &m_config.rayBounces, 1, 10))
+				if (ImGui::SliderInt("Bounces", &m_config.rayBounces, 1, 10))
 					m_frameCounter = 0;
 
 				if (ImGui::SliderInt("Max Accumulation Frames", &m_config.maxAccumulationFrames, 10, 1000))

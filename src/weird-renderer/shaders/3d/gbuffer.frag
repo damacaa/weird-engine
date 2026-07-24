@@ -3,9 +3,9 @@ precision highp float;
 precision highp int;
 
 // GBuffer outputs
-layout(location = 0) out vec4 out_albedo;    // RGB = diffuse color, A = specular intensity
-layout(location = 1) out vec4 out_worldPos;  // RGB = world position, A = 1.0 (marks valid pixel)
-layout(location = 2) out vec4 out_normal;    // RGB = world normal (signed, not remapped), A = unused
+layout(location = 0) out vec4 out_albedo;	// RGB = diffuse color, A = specular intensity
+layout(location = 1) out vec4 out_worldPos; // RGB = world position, A = 1.0 (marks valid pixel)
+layout(location = 2) out vec4 out_normal;	// RGB = world normal (signed, not remapped), A = unused
 layout(location = 3) out int out_material;
 
 // Inputs from vertex shader
@@ -45,8 +45,8 @@ void main()
 
 	albedo = vec3(1.0); // Override albedo to white for testing purposes
 
-	out_albedo   = vec4(albedo, specVal);
+	out_albedo = vec4(albedo, specVal);
 	out_worldPos = vec4(v_worldPos, 1.0);
-	out_normal   = vec4(normalize(v_normal), 0.0);
+	out_normal = vec4(normalize(v_normal), 0.0);
 	out_material = u_materialIndex;
 }

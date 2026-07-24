@@ -14,11 +14,13 @@ namespace WeirdEngine
 
 	public:
 		CustomShapeManager(Simulation2D& simulation, SDFRenderSystemContext& renderContext)
-			: m_simulation(&simulation), m_renderContext(&renderContext)
+			: m_simulation(&simulation)
+			, m_renderContext(&renderContext)
 		{
 		}
 
-		// Can't add the shape to the simulation here because the component data is not initialized yet, so we will add it in the next update of the PhysicsSystem2D
+		// Can't add the shape to the simulation here because the component data is not initialized yet, so we will add
+		// it in the next update of the PhysicsSystem2D
 		void handleNewComponent(Entity entity, CustomShape& component) override
 		{
 			m_renderContext->shapesNeedUpdate = true;
@@ -37,8 +39,7 @@ namespace WeirdEngine
 	class CustomUIShapeManager : public ComponentManager<UIShape>
 	{
 	private:
-	SDFRenderSystemContext* m_renderContext;
-
+		SDFRenderSystemContext* m_renderContext;
 
 	public:
 		CustomUIShapeManager(SDFRenderSystemContext& context)

@@ -35,10 +35,10 @@ void main()
 	float maxHeight = 1.5 + (fract(instanceId * 123.45678) - 0.5); // Constant + random offset
 	float y = plateauFunction(2.0 * delta, maxHeight, 0.8);
 
-	float distanceToCenterXZ = 0.1 + (0.3 * smoothstep(0.0, 1.0, sqrt(1.5 * delta))); // TODO: find an alternative to sqrt
+	float distanceToCenterXZ =
+		0.1 + (0.3 * smoothstep(0.0, 1.0, sqrt(1.5 * delta))); // TODO: find an alternative to sqrt
 
-	vec3 offset =
-		vec3(distanceToCenterXZ * sin(u_time + instanceId), y, distanceToCenterXZ * cos(u_time + instanceId));
+	vec3 offset = vec3(distanceToCenterXZ * sin(u_time + instanceId), y, distanceToCenterXZ * cos(u_time + instanceId));
 
 	v_worldPos = vec3(u_model * vec4(2.0 * (1.0 - delta * delta) * in_position, 1.0)) + offset;
 	v_normal = u_normalMatrix * in_normal;

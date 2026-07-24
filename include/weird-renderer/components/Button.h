@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <bitset>
 
 namespace WeirdEngine

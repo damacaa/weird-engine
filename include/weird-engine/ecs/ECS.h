@@ -8,15 +8,15 @@
 #include <limits>
 #include <memory>
 #include <queue>
+#include <string>
 #include <tuple>
 #include <typeindex>
+#include <typeinfo>
 #include <unordered_map>
 #include <vector>
-#include <string>
-#include <typeinfo>
 #if defined(__GNUC__) || defined(__clang__)
-#include <cxxabi.h>
 #include <cstdlib>
+#include <cxxabi.h>
 #endif
 
 namespace WeirdEngine
@@ -128,8 +128,7 @@ namespace WeirdEngine
 		// =====================================================================
 
 		// Primary form: lambda receives (Entity e, T&...)
-		template <typename... Ts, typename Func>
-		void forEach(Func&& func)
+		template <typename... Ts, typename Func> void forEach(Func&& func)
 		{
 			// Grab all the component arrays up front
 			auto arrays = std::make_tuple(getComponentArray<Ts>()...);
@@ -140,8 +139,9 @@ namespace WeirdEngine
 			size_t smallestIdx = 0;
 			size_t idx = 0;
 			((void)(getComponentArray<Ts>()->getSize() < smallestSize
-				? (smallestSize = getComponentArray<Ts>()->getSize(), smallestIdx = idx++, true)
-				: (idx++, false)), ...);
+						? (smallestSize = getComponentArray<Ts>()->getSize(), smallestIdx = idx++, true)
+						: (idx++, false)),
+			 ...);
 
 			// Dispatch to the driver that iterates the smallest array
 			idx = 0;
@@ -149,7 +149,6 @@ namespace WeirdEngine
 		}
 
 	private:
-
 		// Driver: called once per type in the pack. Only the one matching
 		// smallestIdx actually runs the loop; the others return false.
 		template <typename Driver, typename... Ts, typename Func, typename Arrays>
@@ -177,7 +176,6 @@ namespace WeirdEngine
 		}
 
 	public:
-
 		template <typename T> void registerComponent()
 		{
 
@@ -255,19 +253,24 @@ namespace WeirdEngine
 	private:
 		template <typename T> void cacheComponentName(size_t id)
 		{
-			if (m_componentNames.find(id) != m_componentNames.end()) return;
+			if (m_componentNames.find(id) != m_componentNames.end())
+				return;
 
 			const char* rawName = typeid(T).name();
 			std::string finalName;
 #if defined(__GNUC__) || defined(__clang__)
 			int status = -4;
 			char* demangled = abi::__cxa_demangle(rawName, nullptr, nullptr, &status);
-			if (status == 0 && demangled) {
+			if (status == 0 && demangled)
+			{
 				finalName = demangled;
 				std::free(demangled);
-			} else {
+			}
+			else
+			{
 				finalName = rawName;
-				if (demangled) std::free(demangled);
+				if (demangled)
+					std::free(demangled);
 			}
 #else
 			finalName = rawName;
@@ -275,12 +278,16 @@ namespace WeirdEngine
 
 			// Strip namespaces (e.g. "WeirdEngine::Transform" -> "Transform")
 			size_t colonPos = finalName.rfind("::");
-			if (colonPos != std::string::npos) {
+			if (colonPos != std::string::npos)
+			{
 				finalName = finalName.substr(colonPos + 2);
-			} else {
+			}
+			else
+			{
 				// Strip "class " or "struct " prefixes if there was no namespace (mostly for MSVC)
 				size_t spacePos = finalName.rfind(" ");
-				if (spacePos != std::string::npos) {
+				if (spacePos != std::string::npos)
+				{
 					finalName = finalName.substr(spacePos + 1);
 				}
 			}

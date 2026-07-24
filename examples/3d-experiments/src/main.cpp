@@ -4,8 +4,8 @@
 #include <weird-engine.h>
 
 #include "Classic.h"
-#include "MaterialShowcase.h"
 #include "CornellBox.h"
+#include "MaterialShowcase.h"
 
 int main(int argc, char* argv[])
 {
@@ -30,8 +30,6 @@ int main(int argc, char* argv[])
 	displaySettings.ditheringSpread = 0.3f;
 
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 1.0f;
-
-
 
 	PhysicsSettings physicsSettings{};
 

@@ -30,7 +30,10 @@ uniform bool u_enableBlend;
 #include "background_injection"
 
 #ifndef HAS_CUSTOM_BACKGROUND
-vec3 getBackground(vec2 uv, vec2 worldPos) { return u_bgPrimaryColor.rgb; }
+vec3 getBackground(vec2 uv, vec2 worldPos)
+{
+	return u_bgPrimaryColor.rgb;
+}
 #endif
 
 void main()
@@ -43,12 +46,13 @@ void main()
 
 	vec3 background = getBackground(uv, pos);
 
-	if (u_enableBlend) {
+	if (u_enableBlend)
+	{
 		vec3 prevBackground = texture(t_prevBackground, v_texCoord).rgb;
-		
+
 		vec3 diff = background - prevBackground;
 		vec3 blendStep = diff * 0.05;
-		
+
 		// Ensure we don't get stuck due to 8-bit color quantization
 		blendStep += sign(diff) * (1.5 / 255.0);
 		blendStep = clamp(blendStep, -abs(diff), abs(diff));

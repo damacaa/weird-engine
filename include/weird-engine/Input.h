@@ -1,13 +1,13 @@
 #pragma once
 
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
 
-#include <SDL3/SDL.h>
-#include "weird-renderer/core/Display.h"
 #include "weird-engine/Logger.h"
+#include "weird-renderer/core/Display.h"
+#include <SDL3/SDL.h>
 
 /// <summary>
 /// Stores the state of every key in the keyboard and mouse.
@@ -66,7 +66,8 @@ namespace WeirdEngine
 			delete[] m_gamepadAxisTable;
 			for (auto pad : m_gamepads)
 			{
-				if (pad) SDL_CloseGamepad(pad);
+				if (pad)
+					SDL_CloseGamepad(pad);
 			}
 		}
 
@@ -273,11 +274,11 @@ namespace WeirdEngine
 			auto& instance = getInstance();
 			for (int i = 0; i < 5; ++i)
 			{
-				if (instance.m_mouseKeysTable[i] > NOT_PRESSED)           // IS_PRESSED or FIRST_PRESSED
-					instance.m_mouseKeysTable[i] = RELEASED_THIS_FRAME;    // fire key-up
+				if (instance.m_mouseKeysTable[i] > NOT_PRESSED)			// IS_PRESSED or FIRST_PRESSED
+					instance.m_mouseKeysTable[i] = RELEASED_THIS_FRAME; // fire key-up
 				else if (instance.m_mouseKeysTable[i] == RELEASED_THIS_FRAME)
-					instance.m_mouseKeysTable[i] = NOT_PRESSED;            // clear existing key-up
-				// NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
+					instance.m_mouseKeysTable[i] = NOT_PRESSED; // clear existing key-up
+																// NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
 			}
 		}
 
@@ -286,11 +287,11 @@ namespace WeirdEngine
 			auto& instance = getInstance();
 			for (int i = 0; i < SDL_SCANCODE_COUNT; ++i)
 			{
-				if (instance.m_keyTable[i] > NOT_PRESSED)                 // IS_PRESSED or FIRST_PRESSED
-					instance.m_keyTable[i] = RELEASED_THIS_FRAME;          // fire key-up
+				if (instance.m_keyTable[i] > NOT_PRESSED)		  // IS_PRESSED or FIRST_PRESSED
+					instance.m_keyTable[i] = RELEASED_THIS_FRAME; // fire key-up
 				else if (instance.m_keyTable[i] == RELEASED_THIS_FRAME)
-					instance.m_keyTable[i] = NOT_PRESSED;                  // clear existing key-up
-				// NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
+					instance.m_keyTable[i] = NOT_PRESSED; // clear existing key-up
+														  // NOT_PRESSED stays NOT_PRESSED — no spurious key-ups
 			}
 		}
 
@@ -321,8 +322,8 @@ namespace WeirdEngine
 		enum GamepadButton
 		{
 			South = SDL_GAMEPAD_BUTTON_SOUTH, // A
-			East = SDL_GAMEPAD_BUTTON_EAST,   // B
-			West = SDL_GAMEPAD_BUTTON_WEST,   // X
+			East = SDL_GAMEPAD_BUTTON_EAST,	  // B
+			West = SDL_GAMEPAD_BUTTON_WEST,	  // X
 			North = SDL_GAMEPAD_BUTTON_NORTH, // Y
 			Back = SDL_GAMEPAD_BUTTON_BACK,
 			Guide = SDL_GAMEPAD_BUTTON_GUIDE,
@@ -418,9 +419,8 @@ namespace WeirdEngine
 					SDL_GUIDToString(SDL_GetGamepadGUIDForID(id), guid, sizeof(guid));
 
 					const char* mapping = SDL_GetGamepadMapping(pad);
-					Logger::log("Gamepad connected: " + std::string(name ? name : "Unknown")
-								+ " [GUID: " + std::string(guid) + "]"
-								+ " mapping: " + std::string(mapping ? mapping : "(none)"));
+					Logger::log("Gamepad connected: " + std::string(name ? name : "Unknown") + " [GUID: " +
+								std::string(guid) + "]" + " mapping: " + std::string(mapping ? mapping : "(none)"));
 				}
 				break;
 			}

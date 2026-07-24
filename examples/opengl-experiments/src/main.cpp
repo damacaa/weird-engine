@@ -31,8 +31,6 @@ int main(int argc, char* argv[])
 
 	displaySettings.colorPalette[DisplaySettings::Orange].a = 1.0f;
 
-
-
 	PhysicsSettings physicsSettings{};
 
 	AudioSettings audioSettings{};

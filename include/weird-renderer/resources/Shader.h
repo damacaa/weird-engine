@@ -46,7 +46,7 @@ namespace WeirdEngine
 
 			void setUniform(const std::string& name, double value) const
 			{
-				glUniform1f(getUniformLocation(name), value);
+				glUniform1f(getUniformLocation(name), static_cast<GLfloat>(value));
 			}
 
 			void setUniform(const std::string& name, int value) const

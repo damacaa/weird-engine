@@ -1,13 +1,13 @@
 #include "weird-engine/SceneSerializer.h"
 #include "weird-engine/Scene.h"
 
+#include "weird-physics/components/DistanceConstraint.h"
+#include "weird-physics/components/GlobalPhysicsSettings.h"
+#include "weird-physics/components/Spring.h"
 #include <fstream>
 #include <iostream>
 #include <json/json.h>
 #include <unordered_map>
-#include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/Spring.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
 
 namespace WeirdEngine
 {
@@ -120,12 +120,10 @@ namespace WeirdEngine
 				auto& rb = rigidBodyArray->getDataAtIdx(i);
 				vec2 simPos = scene.m_simulation2D.getPosition(rb.simulationId);
 				auto& ej = collectEntity(e);
-				ej["rigidBody2D"] = {
-					{"simulationId", rb.simulationId}, 
-					{"physicsPosition", {simPos.x, simPos.y}},
-					{"velocity", {rb.velocity.x, rb.velocity.y}},
-					{"isFixed", rb.isFixed}
-				};
+				ej["rigidBody2D"] = {{"simulationId", rb.simulationId},
+									 {"physicsPosition", {simPos.x, simPos.y}},
+									 {"velocity", {rb.velocity.x, rb.velocity.y}},
+									 {"isFixed", rb.isFixed}};
 			}
 
 			// TextRenderer
@@ -147,7 +145,8 @@ namespace WeirdEngine
 				for (size_t i = 0; i < globalSettingsArray->getSize(); i++)
 				{
 					Entity e = globalSettingsArray->getEntityAtIdx(i);
-					if (isBlacklisted(e)) continue;
+					if (isBlacklisted(e))
+						continue;
 					auto& gs = globalSettingsArray->getDataAtIdx(i);
 					auto& ej = collectEntity(e);
 					ej["globalPhysicsSettings"] = {{"gravity", gs.gravity}, {"damping", gs.damping}};
@@ -194,9 +193,11 @@ namespace WeirdEngine
 				for (size_t i = 0; i < distConstraintArray->getSize(); i++)
 				{
 					Entity e = distConstraintArray->getEntityAtIdx(i);
-					if (isBlacklisted(e)) continue;
+					if (isBlacklisted(e))
+						continue;
 					auto& dc = distConstraintArray->getDataAtIdx(i);
-					distanceConstraintsJson.push_back({{"entityA", dc.entityA}, {"entityB", dc.entityB}, {"distance", dc.distance}});
+					distanceConstraintsJson.push_back(
+						{{"entityA", dc.entityA}, {"entityB", dc.entityB}, {"distance", dc.distance}});
 				}
 			}
 
@@ -207,9 +208,13 @@ namespace WeirdEngine
 				for (size_t i = 0; i < springArray->getSize(); i++)
 				{
 					Entity e = springArray->getEntityAtIdx(i);
-					if (isBlacklisted(e)) continue;
+					if (isBlacklisted(e))
+						continue;
 					auto& sp = springArray->getDataAtIdx(i);
-					springsJson.push_back({{"entityA", sp.entityA}, {"entityB", sp.entityB}, {"distance", sp.restDistance}, {"k", sp.stiffness}});
+					springsJson.push_back({{"entityA", sp.entityA},
+										   {"entityB", sp.entityB},
+										   {"distance", sp.restDistance},
+										   {"k", sp.stiffness}});
 				}
 			}
 
@@ -373,7 +378,8 @@ namespace WeirdEngine
 					{
 						rb.isFixed = rbj.value("isFixed", false);
 					}
-					scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(entity, true); // Sync velocity and fixed state to simulation
+					scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(
+						entity, true); // Sync velocity and fixed state to simulation
 
 					if (rbj.contains("physicsPosition"))
 					{
@@ -430,18 +436,23 @@ namespace WeirdEngine
 				{
 					Entity entityA = INVALID_ENTITY, entityB = INVALID_ENTITY;
 
-					if (dcj.contains("A")) { // Legacy format
+					if (dcj.contains("A"))
+					{ // Legacy format
 						int savedA = dcj.value("A", -1);
 						int savedB = dcj.value("B", -1);
-						if (simIdMap.find(savedA) != simIdMap.end() && simIdMap.find(savedB) != simIdMap.end()) {
+						if (simIdMap.find(savedA) != simIdMap.end() && simIdMap.find(savedB) != simIdMap.end())
+						{
 							entityA = simIdToEntityMap[savedA];
 							entityB = simIdToEntityMap[savedB];
 						}
 					}
-					else if (dcj.contains("entityA")) { // Modern format
+					else if (dcj.contains("entityA"))
+					{ // Modern format
 						Entity savedA = dcj.value("entityA", INVALID_ENTITY);
 						Entity savedB = dcj.value("entityB", INVALID_ENTITY);
-						if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end()) {
+						if (entityIdMap.find(savedA) != entityIdMap.end() &&
+							entityIdMap.find(savedB) != entityIdMap.end())
+						{
 							entityA = entityIdMap[savedA];
 							entityB = entityIdMap[savedB];
 						}

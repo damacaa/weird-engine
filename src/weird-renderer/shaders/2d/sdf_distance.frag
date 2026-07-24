@@ -123,12 +123,12 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 		int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
-			float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
+		float objectDist = shape_circle(p - positionSizeMaterial.xy, 5.0);
 #else
-			float objectDist = shape_circle(p - positionSizeMaterial.xy);
+		float objectDist = shape_circle(p - positionSizeMaterial.xy);
 #endif
 
-			mask = max(mask, -objectDist * 4.0);
+		mask = max(mask, -objectDist * 4.0);
 
 #ifdef BLEND_SHAPES
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
@@ -284,9 +284,8 @@ void main()
 
 #ifdef DEBUG_SHOW_GRID
 	vec2 localP = pos - u_gridBoundsMin;
-	bool inBounds = localP.x >= 0.0 && localP.y >= 0.0 &&
-	                localP.x < float(u_gridCols) * u_gridStep.x &&
-	                localP.y < float(u_gridRows) * u_gridStep.y;
+	bool inBounds = localP.x >= 0.0 && localP.y >= 0.0 && localP.x < float(u_gridCols) * u_gridStep.x &&
+					localP.y < float(u_gridRows) * u_gridStep.y;
 	if (inBounds)
 	{
 		vec2 fracLocal = mod(localP, u_gridStep);

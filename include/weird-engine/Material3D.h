@@ -21,4 +21,4 @@ namespace WeirdEngine
 		MaterialPattern pattern = MaterialPattern::None;
 		float patternScale = 1.0f;
 	};
-}
+} // namespace WeirdEngine

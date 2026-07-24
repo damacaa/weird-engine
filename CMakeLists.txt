@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(WeirdEngine)
 
-execute_process(COMMAND git submodule update --init --recursive)
+execute_process(COMMAND git submodule update --init --recursive WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -60,6 +60,10 @@ target_include_directories(imgui
         ${IMGUI_DIR}/backends
         ${CMAKE_CURRENT_SOURCE_DIR}/third-party/SDL/include
 )
+target_link_libraries(imgui PRIVATE glad)
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+    target_link_libraries(imgui PRIVATE GLESv2 EGL dl)
+endif()
 endif()
 
 target_include_directories(${PROJECT_NAME} 
@@ -78,37 +82,41 @@ target_include_directories(glad
 
 # SDL3 setup
 # FORCE SDL3 to build as a STATIC library.
-# This prevents the creation of libSDL3.so and embeds the code
-# directly into your engine/game.
-set(SDL_SHARED ON CACHE BOOL "Build SDL shared library" FORCE)
-set(SDL_STATIC OFF CACHE BOOL "Build SDL static library" FORCE)
-set(SDL_DEPS_SHARED ON CACHE BOOL "Load dependencies dynamically" FORCE)
-set(SDL_KMSDRM_SHARED ON CACHE BOOL "Dynamically load KMS DRM support" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "Build SDL shared library" FORCE)
+set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
+
+if(EMSCRIPTEN)
+    set(SDL_DEPS_SHARED OFF CACHE BOOL "Load dependencies dynamically" FORCE)
+    set(SDL_KMSDRM_SHARED OFF CACHE BOOL "Dynamically load KMS DRM support" FORCE)
+else()
+    set(SDL_DEPS_SHARED ON CACHE BOOL "Load dependencies dynamically" FORCE)
+    set(SDL_KMSDRM_SHARED ON CACHE BOOL "Dynamically load KMS DRM support" FORCE)
+endif()
 # Add dependencies
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
 
 # Force SDL3 to dynamically load KMSDRM libraries via dlopen instead of hard-linking.
 # This is necessary because cmake_dependent_option overrides our FORCE cache entries.
-if(TARGET SDL3-shared)
-  target_compile_definitions(SDL3-shared PRIVATE
+if(TARGET SDL3-static AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+  target_compile_definitions(SDL3-static PRIVATE
     "SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC=\"libdrm.so.2\""
     "SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM=\"libgbm.so.1\""
   )
   # Keep the include directories for compilation but remove link dependencies
-  target_include_directories(SDL3-shared PRIVATE
+  target_include_directories(SDL3-static PRIVATE
     /usr/include/libdrm
     /usr/include
   )
   # Remove the hard link dependencies that SDL added
-  get_target_property(_libs SDL3-shared LINK_LIBRARIES)
+  get_target_property(_libs SDL3-static LINK_LIBRARIES)
   if(_libs)
     list(FILTER _libs EXCLUDE REGEX "PC_LIBDRM|PC_GBM")
-    set_target_properties(SDL3-shared PROPERTIES LINK_LIBRARIES "${_libs}")
+    set_target_properties(SDL3-static PROPERTIES LINK_LIBRARIES "${_libs}")
   endif()
-  get_target_property(_iface_libs SDL3-shared INTERFACE_LINK_LIBRARIES)
+  get_target_property(_iface_libs SDL3-static INTERFACE_LINK_LIBRARIES)
   if(_iface_libs)
     list(FILTER _iface_libs EXCLUDE REGEX "PC_LIBDRM|PC_GBM")
-    set_target_properties(SDL3-shared PROPERTIES INTERFACE_LINK_LIBRARIES "${_iface_libs}")
+    set_target_properties(SDL3-static PROPERTIES INTERFACE_LINK_LIBRARIES "${_iface_libs}")
   endif()
 endif()
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL_image)
@@ -144,11 +152,12 @@ target_include_directories(glad
         PUBLIC 
             SDL3::SDL3
         PRIVATE 
-            GLESv2
-            EGL
-            dl
             glad
     )
+    if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
+        target_link_libraries(${PROJECT_NAME} PRIVATE GLESv2 EGL dl)
+    endif()
+
     if(NOT WEIRD_DISABLE_IMGUI)
         target_link_libraries(${PROJECT_NAME} PUBLIC imgui)
     else()
@@ -161,6 +170,10 @@ endif()
     
 
 # Shaders
+if(EMSCRIPTEN)
+    set(WEIRD_ENGINE_USE_RUNTIME_ASSETS ON CACHE BOOL "Load shaders/assets from runtime folder instead of source tree" FORCE)
+endif()
+
 option(WEIRD_ENGINE_USE_RUNTIME_ASSETS
     "Load shaders/assets from runtime folder instead of source tree"
     OFF
@@ -209,4 +222,10 @@ if(WEIRD_ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples/3d-experiments)
     add_subdirectory(examples/opengl-experiments)
     add_subdirectory(examples/sample-scenes)
+endif()
+
+# Tools
+option(WEIRD_ENGINE_BUILD_TOOLS "Build tool projects" OFF)
+if(WEIRD_ENGINE_BUILD_TOOLS)
+    add_subdirectory(tools)
 endif()

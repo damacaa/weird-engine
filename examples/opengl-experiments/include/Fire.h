@@ -6,7 +6,7 @@ using namespace WeirdEngine;
 class FireScene : public Scene3D
 {
 public:
-	FireScene(){};
+	FireScene() {};
 
 private:
 	Shader m_flameShader;
@@ -58,12 +58,9 @@ private:
 		m_heatDistortionShader =
 			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
+		getLigths().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
 		getLigths().push_back(
-			Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)}
-		);
-		getLigths().push_back(
-		Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)}
-		);
+			Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		// Load meshes
 		// Quad geom
@@ -309,7 +306,7 @@ private:
 
 		m_renderPlane.draw(m_backgroundShader);
 
-glEnable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
 
 		// Render stuff

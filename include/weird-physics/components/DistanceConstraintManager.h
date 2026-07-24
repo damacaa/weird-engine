@@ -1,9 +1,9 @@
 #pragma once
 
 #include "weird-engine/ecs/ComponentManager.h"
-#include "weird-physics/Simulation2D.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/RigidBody.h"
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {
@@ -24,9 +24,9 @@ namespace WeirdEngine
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<DistanceConstraint>>(m_componentArray);
 			DistanceConstraint& removedConstraint = componentArray->getDataFromEntity(entity);
-			
-			if (m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityA) && 
-			    m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityB))
+
+			if (m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityA) &&
+				m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityB))
 			{
 				auto simIdA = m_ecs->getComponent<RigidBody2D>(removedConstraint.entityA).simulationId;
 				auto simIdB = m_ecs->getComponent<RigidBody2D>(removedConstraint.entityB).simulationId;

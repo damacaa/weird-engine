@@ -10,8 +10,7 @@ using namespace WeirdEngine;
 class RopeScene : public Scene2D
 {
 public:
-	RopeScene(){
-	}
+	RopeScene() {}
 
 private:
 	Entity m_star = INVALID_ENTITY;
@@ -116,7 +115,7 @@ private:
 		addShape(DefaultShapes::SINE, vars0, 3);
 
 		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		// m_star = addShape(DefaultShapes::STAR, vars1, 3);
+		m_star = addShape(DefaultShapes::STAR, vars1, 3);
 
 		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
 		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
@@ -161,13 +160,14 @@ private:
 		}
 
 		// Animate custom shape over time
-		if(m_star != INVALID_ENTITY)
+		if (m_star != INVALID_ENTITY)
 		{
-			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track delta.
+			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track
+			// delta.
 			static float animTime = 0.0f;
 			animTime += delta;
 			auto& cs = ecs.getComponent<CustomShape>(m_star);
-			cs.parameters[4] = static_cast<int>(std::floor(animTime)) % 5 + 2;
+			cs.parameters[4] = static_cast<float>((static_cast<int>(std::floor(animTime)) % 5) + 2);
 			cs.parameters[3] = std::sin(3.1416f * animTime);
 			ecs.setComponentDirty(cs);
 		}
@@ -239,7 +239,7 @@ private:
 				[&](Entity e, RigidBody2D& rb, Transform& t)
 				{
 					vec2 force(0, -0.001f * (t.position.y * t.position.y));
-					force.x += t.position.x < 0.0f ? - t.position.x : 0.0f;
+					force.x += t.position.x < 0.0f ? -t.position.x : 0.0f;
 					force.x -= t.position.x > 30.0f ? t.position.x - 30.0f : 0.0f;
 					force.x = 10.0f / delta * glm::clamp(force.x, -1.0f, 1.0f);
 

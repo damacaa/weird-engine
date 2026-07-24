@@ -41,8 +41,8 @@ void main()
 	float bestDist = data.z;
 
 	// 8 directions
-	const vec2 OFFSETS[8] =
-		vec2[8](vec2(-1.0, 0.0), vec2(1.0, 0.0), vec2(0.0, -1.0), vec2(0.0, 1.0), vec2(-1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, -1.0), vec2(1.0, 1.0));
+	const vec2 OFFSETS[8] = vec2[8](vec2(-1.0, 0.0), vec2(1.0, 0.0), vec2(0.0, -1.0), vec2(0.0, 1.0), vec2(-1.0, -1.0),
+									vec2(-1.0, 1.0), vec2(1.0, -1.0), vec2(1.0, 1.0));
 
 	// Check neighbors at jump distance
 	for (int i = 0; i < 8; i++)

@@ -12,9 +12,9 @@ uniform sampler2D t_lines;
 
 const int NUM_STOPS = 4;
 const vec3 colors[NUM_STOPS] = vec3[](vec3(0.82, 0.74, 0.88), // Muted lavender
-								  vec3(0.78, 0.94, 0.76), // Pale pistachio
-								  vec3(0.98, 0.85, 0.72), // Dusty pastel orange
-								  vec3(0.68, 0.96, 0.95)	// Soft cyan mist
+									  vec3(0.78, 0.94, 0.76), // Pale pistachio
+									  vec3(0.98, 0.85, 0.72), // Dusty pastel orange
+									  vec3(0.68, 0.96, 0.95)  // Soft cyan mist
 );
 
 const float stops[NUM_STOPS] = float[](0.0, 0.33, 0.66, 1.0);

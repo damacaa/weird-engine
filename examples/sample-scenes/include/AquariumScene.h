@@ -379,9 +379,8 @@ private:
 							ecs.destroyEntity(foodEntity);
 
 							Entity lastSeg = eel.segments.back();
-							Entity prevSeg = eel.segments.size() > 1
-												 ? eel.segments[eel.segments.size() - 2]
-												 : eel.segments[0];
+							Entity prevSeg =
+								eel.segments.size() > 1 ? eel.segments[eel.segments.size() - 2] : eel.segments[0];
 							auto& lastT = transformArray->getDataFromEntity(lastSeg);
 							auto& prevT = transformArray->getDataFromEntity(prevSeg);
 
@@ -398,8 +397,8 @@ private:
 											   lastT.position.y + tailDir.y * eel.segmentSpacing, 0.0f);
 
 							auto& nd = ecs.addComponent<Dot>(newSeg);
-							nd.materialId = static_cast<unsigned int>(eel.baseMaterial +
-																	   static_cast<int>(eel.segments.size() % 4));
+							nd.materialId =
+								static_cast<unsigned int>(eel.baseMaterial + static_cast<int>(eel.segments.size() % 4));
 
 							ecs.addComponent<RigidBody2D>(newSeg);
 
@@ -610,8 +609,8 @@ private:
 				if (length(cohesion) > 0.001f)
 					cohesion = normalize(cohesion) * fd.maxSpeed - fd.velocity;
 
-				boidsForce = separation * fd.separationWeight + alignment * fd.alignmentWeight +
-							 cohesion * fd.cohesionWeight;
+				boidsForce =
+					separation * fd.separationWeight + alignment * fd.alignmentWeight + cohesion * fd.cohesionWeight;
 			}
 
 			if (seekingMate && closestMateDistSq > 0.000001f && closestMateDistSq < MATE_RADIUS * MATE_RADIUS)

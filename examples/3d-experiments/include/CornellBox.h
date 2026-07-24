@@ -11,7 +11,7 @@ using namespace WeirdEngine;
 class CornellBox : public Scene3D
 {
 public:
-	CornellBox(){};
+	CornellBox() {};
 
 private:
 	// Inherited via Scene

@@ -84,7 +84,8 @@ namespace WeirdEngine
 				if (data != nullptr)
 					return data;
 
-				zeroDataU8.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0u);
+				zeroDataU8.assign(
+					static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0u);
 				return zeroDataU8.data();
 			};
 
@@ -93,7 +94,8 @@ namespace WeirdEngine
 				if (data != nullptr)
 					return data;
 
-				zeroDataF32.assign(static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0.0f);
+				zeroDataF32.assign(
+					static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channels), 0.0f);
 				return zeroDataF32.data();
 			};
 
@@ -116,7 +118,8 @@ namespace WeirdEngine
 					// Handle color texture
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+								 getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -132,7 +135,8 @@ namespace WeirdEngine
 					// Handle color with alpha texture
 					// Use sized internal format GL_RGBA8; GL_RGBA (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, getUploadDataU8(4));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+								 getUploadDataU8(4));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -146,7 +150,8 @@ namespace WeirdEngine
 				case TextureType::SingleChannel:
 				{
 
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, getUploadDataU8(1));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE,
+								 getUploadDataU8(1));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -181,7 +186,8 @@ namespace WeirdEngine
 				}
 				case TextureType::Data:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT,
+								 getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -192,7 +198,8 @@ namespace WeirdEngine
 				}
 				case TextureType::LinearData:
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT,
+								 getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -204,7 +211,8 @@ namespace WeirdEngine
 				case TextureType::AccumulationData:
 				{
 					// Use 32-bit floats for accumulation to avoid precision stalling over thousands of frames
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, getUploadDataF32(4));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT,
+								 getUploadDataF32(4));
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -217,7 +225,8 @@ namespace WeirdEngine
 				{
 					// Use sized internal format GL_RGB8; GL_RGB (unsized) is not guaranteed
 					// to be color-renderable as a framebuffer attachment in GLES 3.0.
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, getUploadDataU8(3));
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+								 getUploadDataU8(3));
 
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -230,7 +239,8 @@ namespace WeirdEngine
 				case TextureType::IntData:
 				{
 					std::vector<int> zeroDataI32(width * height, 0);
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, width, height, 0, GL_RED_INTEGER, GL_INT, zeroDataI32.data());
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, width, height, 0, GL_RED_INTEGER, GL_INT,
+								 zeroDataI32.data());
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -279,10 +289,11 @@ namespace WeirdEngine
 				return;
 			}
 
-			// In GLES, reading from floating-point or integer framebuffers using GL_UNSIGNED_BYTE 
+			// In GLES, reading from floating-point or integer framebuffers using GL_UNSIGNED_BYTE
 			// can fail with GL_INVALID_OPERATION. We must query the attachment component type.
 			GLint attachmentType = 0;
-			glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, &attachmentType);
+			glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+												  GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, &attachmentType);
 
 			unsigned char* pixels_uchar = new unsigned char[width * height * 4];
 
@@ -304,7 +315,8 @@ namespace WeirdEngine
 
 				for (int i = 0; i < width * height * 4; ++i)
 				{
-					pixels_uchar[i] = static_cast<unsigned char>(glm::clamp((float)pixels_i[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[i] =
+						static_cast<unsigned char>(glm::clamp((float)pixels_i[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
 				}
 				delete[] pixels_i;
 			}
@@ -315,7 +327,8 @@ namespace WeirdEngine
 
 				for (int i = 0; i < width * height * 4; ++i)
 				{
-					pixels_uchar[i] = static_cast<unsigned char>(glm::clamp((float)pixels_ui[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
+					pixels_uchar[i] =
+						static_cast<unsigned char>(glm::clamp((float)pixels_ui[i] / 255.0f, 0.0f, 1.0f) * 255.0f);
 				}
 				delete[] pixels_ui;
 			}
@@ -375,7 +388,7 @@ namespace WeirdEngine
 			glGetTexImage(GL_TEXTURE_2D, 0, format, GL_FLOAT, pixels);
 
 			unsigned char* pixels_uchar = new unsigned char[(size_t)width * height * 4];
-			
+
 			for (int y = 0; y < height; y++)
 			{
 				size_t src_row_start = (size_t)format_channels * width * y;
@@ -388,7 +401,7 @@ namespace WeirdEngine
 
 					pixels_uchar[dest_idx] =
 						static_cast<unsigned char>(glm::clamp(pixels[src_idx], 0.0f, 1.0f) * 255.0f);
-					
+
 					if (format_channels >= 3)
 					{
 						pixels_uchar[dest_idx + 1] =

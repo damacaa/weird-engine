@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-engine/Material3D.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderPlane.h"
@@ -9,7 +10,6 @@
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
 #include "weird-renderer/scene/Light.h"
-#include "weird-engine/Material3D.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -41,19 +41,10 @@ namespace WeirdEngine
 			// Renders the SDF 3D scene using ray marching with path-traced accumulation.
 			// GBuffer textures come from MeshRenderPipeline and allow the shader to composite
 			// mesh surfaces with SDF lighting (SDFs cast light on meshes; meshes don't affect SDFs).
-			void render(
-				vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-				const std::vector<Light>& lights,
-				const Camera& camera,
-				double time,
-				Texture& gbufferAlbedo,
-				Texture& gbufferWorldPos,
-				Texture& gbufferNormal,
-				Texture& gbufferMaterial,
-				Texture& gbufferDepth,
-				Texture& gbufferBackDepth,
-				const Material3D* materials
-			);
+			void render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light>& lights,
+						const Camera& camera, double time, Texture& gbufferAlbedo, Texture& gbufferWorldPos,
+						Texture& gbufferNormal, Texture& gbufferMaterial, Texture& gbufferDepth,
+						Texture& gbufferBackDepth, const Material3D* materials);
 
 			RenderTarget& getRenderTarget();
 			Texture& getOutputTexture();
@@ -62,7 +53,10 @@ namespace WeirdEngine
 			void free();
 			void showDebugUI();
 
-			Config& getConfig() { return m_config; }
+			Config& getConfig()
+			{
+				return m_config;
+			}
 
 		private:
 			Config m_config;

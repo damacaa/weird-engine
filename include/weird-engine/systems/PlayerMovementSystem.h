@@ -74,8 +74,10 @@ namespace WeirdEngine
 						// Handles key inputs
 						float leftY = Input::GetGamepadAxis(Input::GamepadAxis::LeftY);
 						float leftX = Input::GetGamepadAxis(Input::GamepadAxis::LeftX);
-						if (std::abs(leftY) < 0.1f) leftY = 0.0f;
-						if (std::abs(leftX) < 0.1f) leftX = 0.0f;
+						if (std::abs(leftY) < 0.1f)
+							leftY = 0.0f;
+						if (std::abs(leftX) < 0.1f)
+							leftX = 0.0f;
 
 						if (!Input::GetKey(Input::LeftCtrl))
 						{
@@ -134,10 +136,11 @@ namespace WeirdEngine
 						float leftTrigger = Input::GetGamepadAxis(Input::GamepadAxis::LeftTrigger);
 
 						float zoomInput = rightTrigger - leftTrigger;
-						
+
 						if (std::abs(zoomInput) > 0.1f)
 						{
-							targetPosition += flyComponent.scrollSpeed * flyComponent.speed * zoomInput * 20.0f * safeDelta * t.rotation;
+							targetPosition += flyComponent.scrollSpeed * flyComponent.speed * zoomInput * 20.0f *
+											  safeDelta * t.rotation;
 						}
 
 						if (targetPosition.z < 5.0f)
@@ -184,8 +187,10 @@ namespace WeirdEngine
 						// Handles key inputs
 						float leftY = Input::GetGamepadAxis(Input::GamepadAxis::LeftY);
 						float leftX = Input::GetGamepadAxis(Input::GamepadAxis::LeftX);
-						if (std::abs(leftY) < 0.1f) leftY = 0.0f;
-						if (std::abs(leftX) < 0.1f) leftX = 0.0f;
+						if (std::abs(leftY) < 0.1f)
+							leftY = 0.0f;
+						if (std::abs(leftX) < 0.1f)
+							leftX = 0.0f;
 
 						if (Input::GetKey(Input::W) || leftY < -0.1f)
 						{
@@ -263,8 +268,10 @@ namespace WeirdEngine
 
 						float rightX = Input::GetGamepadAxis(Input::GamepadAxis::RightX);
 						float rightY = Input::GetGamepadAxis(Input::GamepadAxis::RightY);
-						if (std::abs(rightX) < 0.1f) rightX = 0.0f;
-						if (std::abs(rightY) < 0.1f) rightY = 0.0f;
+						if (std::abs(rightX) < 0.1f)
+							rightX = 0.0f;
+						if (std::abs(rightY) < 0.1f)
+							rightY = 0.0f;
 
 						float rotX = 0.0f;
 						float rotY = 0.0f;

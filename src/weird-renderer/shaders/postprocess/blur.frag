@@ -15,7 +15,7 @@ const float u_weight[5] = float[5](0.227027, 0.1945946, 0.1216216, 0.054054, 0.0
 // Taken form learnopengl.com and optimized it to reduce branching
 void main()
 {
-	vec2 tex_offset = 1.0 / vec2(textureSize(t_colorTexture, 0));				 // gets size of single texel
+	vec2 tex_offset = 1.0 / vec2(textureSize(t_colorTexture, 0));		 // gets size of single texel
 	vec3 result = texture(t_colorTexture, v_texCoord).rgb * u_weight[0]; // current fragment's contribution
 
 	for (int i = 1; i < 5; ++i)

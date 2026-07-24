@@ -120,8 +120,6 @@ namespace WeirdEngine
 		process();
 	}
 
-
-
 	void Simulation2D::process()
 	{
 		int steps = 0;
@@ -142,54 +140,57 @@ namespace WeirdEngine
 			{
 				switch (cmd.type)
 				{
-				case PhysicsCommandType::SetVelocity:
-					m_velocities[cmd.id] = cmd.vectorData;
-					break;
-				case PhysicsCommandType::SetPosition:
-					m_positions[cmd.id] = cmd.vectorData;
-					m_previousPositions[cmd.id] = cmd.vectorData;
+					case PhysicsCommandType::SetVelocity:
+						m_velocities[cmd.id] = cmd.vectorData;
+						break;
+					case PhysicsCommandType::SetPosition:
+						m_positions[cmd.id] = cmd.vectorData;
+						m_previousPositions[cmd.id] = cmd.vectorData;
+						{
+							std::lock_guard<std::mutex> rLock(m_readMutex);
+							m_positionsRead[cmd.id] = cmd.vectorData;
+						}
+						break;
+					case PhysicsCommandType::SetMass:
+						m_mass[cmd.id] = cmd.floatData;
+						if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end())
+						{
+							m_invMass[cmd.id] = cmd.floatData > 0.0f ? 1.0f / cmd.floatData : 0.0f;
+						}
+						break;
+					case PhysicsCommandType::Fix:
+						if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end())
+						{
+							m_fixedObjects.emplace_back(cmd.id);
+							m_invMass[cmd.id] = 0.0f;
+							m_velocities[cmd.id] = vec2(0.0f);
+							m_forces[cmd.id] = vec2(0.0f);
+						}
+						break;
+					case PhysicsCommandType::UnFix:
 					{
-						std::lock_guard<std::mutex> rLock(m_readMutex);
-						m_positionsRead[cmd.id] = cmd.vectorData;
+						auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id);
+						if (it != m_fixedObjects.end())
+						{
+							m_fixedObjects.erase(it);
+							m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
+						}
+						break;
 					}
-					break;
-				case PhysicsCommandType::SetMass:
-					m_mass[cmd.id] = cmd.floatData;
-					if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end()) {
-						m_invMass[cmd.id] = cmd.floatData > 0.0f ? 1.0f / cmd.floatData : 0.0f;
+					case PhysicsCommandType::ActivatePending:
+					{
+						m_size = m_allocated;
+						break;
 					}
-					break;
-				case PhysicsCommandType::Fix:
-					if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end()) {
-						m_fixedObjects.emplace_back(cmd.id);
-						m_invMass[cmd.id] = 0.0f;
-						m_velocities[cmd.id] = vec2(0.0f);
-						m_forces[cmd.id] = vec2(0.0f);
+					case PhysicsCommandType::AddImpulse:
+					{
+						std::lock_guard<std::mutex> lock(m_externalForcesMutex);
+						m_impulsesSinceLastUpdate = true;
+						m_impulses[cmd.id] += cmd.vectorData;
+						break;
 					}
-					break;
-				case PhysicsCommandType::UnFix:
-				{
-					auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id);
-					if (it != m_fixedObjects.end()) {
-						m_fixedObjects.erase(it);
-						m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
-					}
-					break;
-				}
-				case PhysicsCommandType::ActivatePending:
-				{
-					m_size = m_allocated;
-					break;
-				}
-				case PhysicsCommandType::AddImpulse:
-				{
-					std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-					m_impulsesSinceLastUpdate = true;
-					m_impulses[cmd.id] += cmd.vectorData;
-					break;
-				}
-				default:
-					break;
+					default:
+						break;
 				}
 			}
 
@@ -219,7 +220,8 @@ namespace WeirdEngine
 				auto timerForceStart = std::chrono::high_resolution_clock::now();
 				applyForces();
 				auto timerForceEnd = std::chrono::high_resolution_clock::now();
-				double timerCollisionEvents = std::chrono::duration<double, std::milli>(timerForceEnd - timerForceStart).count();
+				double timerCollisionEvents =
+					std::chrono::duration<double, std::milli>(timerForceEnd - timerForceStart).count();
 
 				auto timerIntStart = std::chrono::high_resolution_clock::now();
 				// 1. Predict where particles will go based on velocity and forces
@@ -235,7 +237,8 @@ namespace WeirdEngine
 				// 3. Derive the exact velocity based on how much the constraints moved the particles
 				integrateVelocity((float)m_fixedDeltaTime);
 				auto timerIntEnd = std::chrono::high_resolution_clock::now();
-				double timerIntegration = std::chrono::duration<double, std::milli>(timerIntEnd - timerIntStart).count();
+				double timerIntegration =
+					std::chrono::duration<double, std::milli>(timerIntEnd - timerIntStart).count();
 
 				{
 					std::lock_guard<std::mutex> lock(m_statsMutex);
@@ -274,11 +277,12 @@ namespace WeirdEngine
 
 			auto end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> durationMs = end - start;
-			
+
 			{
 				std::lock_guard<std::mutex> lock(m_statsMutex);
 				m_stats.timePerStepMs = durationMs.count();
-				m_stats.simulationRatio = durationMs.count() > 0.0 ? (m_fixedDeltaTime * 1000.0) / durationMs.count() : 0.0;
+				m_stats.simulationRatio =
+					durationMs.count() > 0.0 ? (m_fixedDeltaTime * 1000.0) / durationMs.count() : 0.0;
 			}
 		}
 	}
@@ -359,15 +363,15 @@ namespace WeirdEngine
 		// Update the spatial grid snapshot for read-only access (e.g. by raymarching in the main thread)
 		{
 			// TODO: [PERFORMANCE] Avoid heap allocation every physics step.
-			// Currently, we allocate a new std::shared_ptr and its internal std::vector buffers 
+			// Currently, we allocate a new std::shared_ptr and its internal std::vector buffers
 			// (head, next, positions) on the heap every single time this function runs.
-			// While std::shared_ptr safely manages the memory lifecycle for the main thread, 
+			// While std::shared_ptr safely manages the memory lifecycle for the main thread,
 			// this causes unnecessary memory fragmentation and malloc overhead.
-			// 
+			//
 			// PROPOSED SOLUTION: Implement an Object Pool (e.g. std::vector<SpatialGridSnapshot*>)
-			// with a custom std::shared_ptr deleter. Instead of allocating a new object here, 
-			// pop an old one from the pool (which reuses the vector capacities). When the main 
-			// thread's shared_ptr reference count drops to 0, the custom deleter should push 
+			// with a custom std::shared_ptr deleter. Instead of allocating a new object here,
+			// pop an old one from the pool (which reuses the vector capacities). When the main
+			// thread's shared_ptr reference count drops to 0, the custom deleter should push
 			// the object back into the pool instead of deleting it.
 			auto snapshot = std::make_shared<SpatialGridSnapshot>();
 			snapshot->head = m_head;
@@ -411,7 +415,6 @@ namespace WeirdEngine
 							{
 								m_collisions.emplace_back(Collision(i, j, ij));
 							}
-
 						}
 
 						j = m_next[j]; // Move to the next particle in the cell
@@ -431,7 +434,7 @@ namespace WeirdEngine
 			// Check
 			bool currentCollision = false;
 			ShapeCollisionEvent collisionEvent;
-			collisionEvent.body = i;
+			collisionEvent.body = static_cast<SimulationID>(i);
 
 			// Static shapes
 			int shapeIdx;
@@ -553,8 +556,8 @@ namespace WeirdEngine
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
-			DistanceFieldObject2D& obj = m_objects[i];	
-			if(obj.groupId == CustomShape::GLOBAL_GROUP)
+			DistanceFieldObject2D& obj = m_objects[i];
+			if (obj.groupId == CustomShape::GLOBAL_GROUP)
 			{
 				globalShapes.push_back(i);
 				continue;
@@ -565,7 +568,7 @@ namespace WeirdEngine
 				continue;
 			}
 
-			obj.parameters[8] = m_simulationTime;
+			obj.parameters[8] = static_cast<float>(m_simulationTime);
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
@@ -634,7 +637,6 @@ namespace WeirdEngine
 			groupState->minDistance = currentMinDistance;
 		}
 
-
 		for (const auto& group : groups)
 		{
 			d = std::min(d, group.minDistance);
@@ -643,14 +645,14 @@ namespace WeirdEngine
 		// Apply global shapes as well, but without grouping (they affect everything)
 		for (int shapeIdx : globalShapes)
 		{
-			DistanceFieldObject2D& obj = m_objects[shapeIdx];	
+			DistanceFieldObject2D& obj = m_objects[shapeIdx];
 
 			if (obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
 			}
 
-			obj.parameters[8] = m_simulationTime;
+			obj.parameters[8] = static_cast<float>(m_simulationTime);
 			obj.parameters[9] = p.x;
 			obj.parameters[10] = p.y;
 
@@ -709,7 +711,7 @@ namespace WeirdEngine
 		// External forces
 		{
 			std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-			
+
 			for (size_t i = 0; i < m_size; i++)
 			{
 				m_forces[i] += m_continuousForcesRead[i];
@@ -744,7 +746,7 @@ namespace WeirdEngine
 			float restitution = 0.5f;
 			vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
 			float velocityAlongNormal = glm::dot(normal, vRel);
-			
+
 			// Only apply impulse if objects are moving towards each other
 			if (velocityAlongNormal < 0.0f)
 			{
@@ -770,8 +772,6 @@ namespace WeirdEngine
 				CollisionEvent event{col.A, col.B};
 				m_collisionCallback(event, m_callbackUserData);
 			}
-
-
 		}
 
 		// Shape collisions
@@ -788,7 +788,7 @@ namespace WeirdEngine
 
 			// Use the current velocity of the body for accurate response
 			vec2 vel = m_velocities[collisionEvent.body];
-			
+
 			float v_n = glm::dot(vel, collisionEvent.normal);
 			vec2 vel_t = vel - (v_n * collisionEvent.normal);
 			float speed_t = length(vel_t);
@@ -798,27 +798,30 @@ namespace WeirdEngine
 			{
 				// Normal acceleration from the penalty method (calculated below: push * penetration^2)
 				float normalAcceleration = m_push * collisionEvent.penetration * collisionEvent.penetration;
-				
+
 				// Coulomb friction (constant sliding resistance based on normal force)
 				float coulombDrop = collisionEvent.friction * normalAcceleration * m_fixedDeltaTimeF;
-				
+
 				// Viscous friction (increases with speed to slow it down more when moving fast)
 				float viscousDrop = collisionEvent.friction * speed_t * 10.0f * m_fixedDeltaTimeF;
-				
+
 				float totalDrop = coulombDrop + viscousDrop;
-				
+
 				// Clamp velocity drop so it never reverses the direction (fixes low-speed jitter)
 				float drop = std::min(totalDrop, speed_t);
-				
+
 				m_velocities[collisionEvent.body] -= drop * (vel_t / speed_t);
 			}
 
 			// Absorption (Damping on the normal axis to prevent infinite bouncing)
 			// Apply damping proportional to the normal velocity
 			float dampingDrop = collisionEvent.absortion * v_n * m_fixedDeltaTimeF;
-			if (v_n > 0.0f) {
+			if (v_n > 0.0f)
+			{
 				dampingDrop = std::min(dampingDrop, v_n);
-			} else {
+			}
+			else
+			{
 				dampingDrop = std::max(dampingDrop, v_n);
 			}
 			m_velocities[collisionEvent.body] -= dampingDrop * collisionEvent.normal;
@@ -893,7 +896,6 @@ namespace WeirdEngine
 		// 	m_forces[constraint.A] += f * n;
 		// 	m_forces[constraint.B] -= f * n;
 		// }
-
 	}
 
 	void Simulation2D::integratePredict(const float timeStep)
@@ -953,7 +955,7 @@ namespace WeirdEngine
 	{
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
-		SimulationID id = m_allocated;
+		SimulationID id = static_cast<SimulationID>(m_allocated);
 
 		// Initialize particle with safe defaults so the physics
 		// thread never processes stale/garbage data.
@@ -1024,12 +1026,9 @@ namespace WeirdEngine
 		// Remove constraints that affect deleted object
 		auto RemoveByID = [toId](auto& container)
 		{
-			container.erase(std::remove_if(container.begin(), container.end(),
-											[toId](const auto& constraint)
-											{
-												return constraint.A == toId || constraint.B == toId;
-											}),
-						container.end());
+			container.erase(std::remove_if(container.begin(), container.end(), [toId](const auto& constraint)
+										   { return constraint.A == toId || constraint.B == toId; }),
+							container.end());
 		};
 
 		RemoveByID(m_distanceConstraints);
@@ -1126,7 +1125,8 @@ namespace WeirdEngine
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_distanceConstraints.emplace_back(
 			a, b, distance,
-			std::pow(stiffness, std::sqrt(m_relaxationSteps))); // Square to make stiffness more intuitive
+			static_cast<float>(
+				std::pow(stiffness, std::sqrt(m_relaxationSteps)))); // Square to make stiffness more intuitive
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
@@ -1175,17 +1175,16 @@ namespace WeirdEngine
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 
 		size_t previousSize = m_distanceConstraints.size();
-		m_distanceConstraints.erase(
-			std::remove_if(m_distanceConstraints.begin(), m_distanceConstraints.end(),
-				[a, b](const DistanceConstraint& constraint)
-				{
-					bool sameDirection =
-						(constraint.A == static_cast<int>(a) && constraint.B == static_cast<int>(b));
-					bool reverseDirection =
-						(constraint.A == static_cast<int>(b) && constraint.B == static_cast<int>(a));
-					return sameDirection || reverseDirection;
-				}),
-			m_distanceConstraints.end());
+		m_distanceConstraints.erase(std::remove_if(m_distanceConstraints.begin(), m_distanceConstraints.end(),
+												   [a, b](const DistanceConstraint& constraint)
+												   {
+													   bool sameDirection = (constraint.A == static_cast<int>(a) &&
+																			 constraint.B == static_cast<int>(b));
+													   bool reverseDirection = (constraint.A == static_cast<int>(b) &&
+																				constraint.B == static_cast<int>(a));
+													   return sameDirection || reverseDirection;
+												   }),
+									m_distanceConstraints.end());
 
 		return previousSize != m_distanceConstraints.size();
 	}
@@ -1238,7 +1237,7 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(m_commandMutex);
 			m_pendingCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
-			
+
 			std::lock_guard<std::mutex> readLock(m_readMutex);
 			m_positionsRead[id] = pos;
 		}
@@ -1259,7 +1258,7 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(m_commandMutex);
 			m_pendingCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
-			
+
 			std::lock_guard<std::mutex> readLock(m_readMutex);
 			m_velocitiesRead[id] = vel;
 		}
@@ -1276,7 +1275,7 @@ namespace WeirdEngine
 	{
 		PhysicsCommand cmd = {PhysicsCommandType::SetMass, id};
 		cmd.floatData = mass;
-		
+
 		if (std::this_thread::get_id() == m_physicsThreadId)
 		{
 			m_internalCommands.push_back(cmd);
@@ -1298,8 +1297,7 @@ namespace WeirdEngine
 		if (!shape.hasCollisions)
 			return;
 
-		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx,
-								  shape.parameters);
+		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(owner);
@@ -1313,7 +1311,7 @@ namespace WeirdEngine
 		{
 			// Key does not exist
 			m_objects.push_back(sdf);
-			ShapeId id = m_objects.size() - 1;
+			ShapeId id = static_cast<ShapeId>(m_objects.size() - 1);
 			m_entityToObjectsIdx[owner] = id;
 			shape.simulationId = id;
 		}
@@ -1370,7 +1368,7 @@ namespace WeirdEngine
 
 			if (distanceSquared < m_radious * m_radious)
 			{
-				return i;
+				return static_cast<SimulationID>(i);
 			}
 		}
 
@@ -1419,7 +1417,7 @@ namespace WeirdEngine
 			}
 			else
 			{
-				int delay = std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000); // ms
+				int delay = static_cast<int>(std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000)); // ms
 				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 			}
 		}

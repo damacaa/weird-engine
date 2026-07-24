@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 
-
 namespace WeirdEngine
 {
 	struct TextRenderer

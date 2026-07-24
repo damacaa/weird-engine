@@ -60,14 +60,14 @@ layout(location = 0) out vec4 FragColor;
 in vec2 v_texCoord;
 
 uniform sampler2D t_previousColor;
-uniform sampler2D t_depthTexture;       // GBuffer depth (mesh geometry)
+uniform sampler2D t_depthTexture; // GBuffer depth (mesh geometry)
 uniform highp sampler2D t_shapeBuffer;
 // Deferred GBuffer
-uniform sampler2D t_gbufferAlbedo;      // RGB = mesh diffuse, A = specular
-uniform sampler2D t_gbufferWorldPos;    // RGB = world-space position, A = 1 if valid
-uniform sampler2D t_gbufferNormal;      // RGB = world-space normal
-uniform isampler2D t_gbufferMaterial;   // R = material ID
-uniform sampler2D t_gbufferBackDepth;   // Back-face depth
+uniform sampler2D t_gbufferAlbedo;	  // RGB = mesh diffuse, A = specular
+uniform sampler2D t_gbufferWorldPos;  // RGB = world-space position, A = 1 if valid
+uniform sampler2D t_gbufferNormal;	  // RGB = world-space normal
+uniform isampler2D t_gbufferMaterial; // R = material ID
+uniform sampler2D t_gbufferBackDepth; // Back-face depth
 
 uniform int u_loadedObjects;
 uniform int u_customShapeCount;
@@ -173,9 +173,7 @@ float perlin(vec2 p)
 // Hash 3D
 vec3 hash3D(vec3 p)
 {
-	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)),
-			 dot(p, vec3(269.5, 183.3, 246.1)),
-			 dot(p, vec3(113.5, 271.9, 124.6)));
+	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
 	return normalize(fract(sin(p) * 43758.5453123) * 2.0 - 1.0);
 }
 
@@ -265,25 +263,27 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 // projects outside the screen or behind the camera.
 vec2 worldToGBufferUV(vec3 worldPos, out bool valid)
 {
-    vec4 clipPos = u_viewProjection * vec4(worldPos, 1.0);
+	vec4 clipPos = u_viewProjection * vec4(worldPos, 1.0);
 
-    // Behind the camera
-    if (clipPos.w <= 0.0) {
-        valid = false;
-        return vec2(0.0);
-    }
+	// Behind the camera
+	if (clipPos.w <= 0.0)
+	{
+		valid = false;
+		return vec2(0.0);
+	}
 
-    vec3 ndc = clipPos.xyz / clipPos.w;  // [-1, 1]
+	vec3 ndc = clipPos.xyz / clipPos.w; // [-1, 1]
 
-    // Out-of-screen check with a small margin to avoid edge artifacts
-    const float MARGIN = 0.02;
-    if (abs(ndc.x) > 1.0 - MARGIN || abs(ndc.y) > 1.0 - MARGIN || ndc.z > 1.0 || ndc.z < -1.0) {
-        valid = false;
-        return vec2(0.0);
-    }
+	// Out-of-screen check with a small margin to avoid edge artifacts
+	const float MARGIN = 0.02;
+	if (abs(ndc.x) > 1.0 - MARGIN || abs(ndc.y) > 1.0 - MARGIN || ndc.z > 1.0 || ndc.z < -1.0)
+	{
+		valid = false;
+		return vec2(0.0);
+	}
 
-    valid = true;
-    return ndc.xy * 0.5 + 0.5;  // [0, 1] UV
+	valid = true;
+	return ndc.xy * 0.5 + 0.5; // [0, 1] UV
 }
 
 // Forward declaration
@@ -293,71 +293,71 @@ float linearizeGBufferDepth(float d);
 // Returns a large positive value if no mesh is visible at this projection.
 float meshSDF(vec3 p)
 {
-    bool valid;
-    vec2 uv = worldToGBufferUV(p, valid);
+	bool valid;
+	vec2 uv = worldToGBufferUV(p, valid);
 
-    if (!valid)
-        return u_far;  // No mesh data here — don't occlude
+	if (!valid)
+		return u_far; // No mesh data here — don't occlude
 
-    float frontDepthRaw = texture(t_depthTexture, uv).r;
-    if (frontDepthRaw > 1.0 - 0.0001)
-        return u_far;  // Sky pixel — no mesh
+	float frontDepthRaw = texture(t_depthTexture, uv).r;
+	if (frontDepthRaw > 1.0 - 0.0001)
+		return u_far; // Sky pixel — no mesh
 
-    float backDepthRaw  = texture(t_gbufferBackDepth, uv).r;
+	float backDepthRaw = texture(t_gbufferBackDepth, uv).r;
 
-    float frontDepthLinear = linearizeGBufferDepth(frontDepthRaw);
-    float backDepthLinear  = linearizeGBufferDepth(backDepthRaw);
+	float frontDepthLinear = linearizeGBufferDepth(frontDepthRaw);
+	float backDepthLinear = linearizeGBufferDepth(backDepthRaw);
 
-    vec4 clipPos = u_viewProjection * vec4(p, 1.0);
-    float sampleDepthRaw = clipPos.z / clipPos.w * 0.5 + 0.5;
-    float sampleDepthLinear = linearizeGBufferDepth(sampleDepthRaw);
+	vec4 clipPos = u_viewProjection * vec4(p, 1.0);
+	float sampleDepthRaw = clipPos.z / clipPos.w * 0.5 + 0.5;
+	float sampleDepthLinear = linearizeGBufferDepth(sampleDepthRaw);
 
-    // We are inside the mesh if our depth is between front and back faces
-    bool insideSlab = (sampleDepthLinear > frontDepthLinear) && (sampleDepthLinear < backDepthLinear);
+	// We are inside the mesh if our depth is between front and back faces
+	bool insideSlab = (sampleDepthLinear > frontDepthLinear) && (sampleDepthLinear < backDepthLinear);
 
-    // Shrink the mesh slightly to prevent self-shadowing acne
-    const float SHADOW_BIAS = 0.05;
+	// Shrink the mesh slightly to prevent self-shadowing acne
+	const float SHADOW_BIAS = 0.05;
 
-    if (insideSlab)
-    {
-        // Distance from sample to front face
-        vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
-        float distToFront = length(p - meshWorldPos);
+	if (insideSlab)
+	{
+		// Distance from sample to front face
+		vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
+		float distToFront = length(p - meshWorldPos);
 
-        // Acne zone for front face
-        if (distToFront < SHADOW_BIAS)
-        {
-            return SHADOW_BIAS - distToFront;
-        }
+		// Acne zone for front face
+		if (distToFront < SHADOW_BIAS)
+		{
+			return SHADOW_BIAS - distToFront;
+		}
 
-        // Acne zone for back face (using Z depth difference as approximation)
-        float zDistToBack = backDepthLinear - sampleDepthLinear;
-        if (zDistToBack < SHADOW_BIAS)
-        {
-            return SHADOW_BIAS - zDistToBack;
-        }
+		// Acne zone for back face (using Z depth difference as approximation)
+		float zDistToBack = backDepthLinear - sampleDepthLinear;
+		if (zDistToBack < SHADOW_BIAS)
+		{
+			return SHADOW_BIAS - zDistToBack;
+		}
 
-        // Deep inside the mesh: return 0.0 to immediately register a hit!
-        // DO NOT return a negative value, otherwise the raymarcher will step backwards and rattle.
-        return 0.0;
-    }
-    else
-    {
-        if (sampleDepthLinear <= frontDepthLinear)
-        {
-            // In front of the mesh. Return Euclidean distance + bias so it overshoots
-            // slightly into the mesh, landing exactly at the 0.0 boundary.
-            vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
-            float distToFront = length(p - meshWorldPos);
-            return min(distToFront + SHADOW_BIAS, 2.0);
-        }
-        else
-        {
-            // Behind the back face. Return safe distance + bias.
-            float zDistToBack = sampleDepthLinear - backDepthLinear;
-            return min(zDistToBack * 0.5 + SHADOW_BIAS, 2.0);
-        }
-    }
+		// Deep inside the mesh: return 0.0 to immediately register a hit!
+		// DO NOT return a negative value, otherwise the raymarcher will step backwards and rattle.
+		return 0.0;
+	}
+	else
+	{
+		if (sampleDepthLinear <= frontDepthLinear)
+		{
+			// In front of the mesh. Return Euclidean distance + bias so it overshoots
+			// slightly into the mesh, landing exactly at the 0.0 boundary.
+			vec3 meshWorldPos = texture(t_gbufferWorldPos, uv).rgb;
+			float distToFront = length(p - meshWorldPos);
+			return min(distToFront + SHADOW_BIAS, 2.0);
+		}
+		else
+		{
+			// Behind the back face. Return safe distance + bias.
+			float zDistToBack = sampleDepthLinear - backDepthLinear;
+			return min(zDistToBack * 0.5 + SHADOW_BIAS, 2.0);
+		}
+	}
 }
 
 vec3 sceneSdf(vec3 p)
@@ -399,11 +399,14 @@ vec3 sceneSdf(vec3 p)
 		objectDist = modifyDistanceBasedOnMaterial(objectDist, materialId, i);
 
 		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-		
+
 		vec2 res = fOpUnionSoft_blend(minDist, objectDist, DOT_BLEND_K);
-		if (res.y > 0.0) {
+		if (res.y > 0.0)
+		{
 			globalBlend = max(globalBlend, res.y);
-		} else if (objectDist < minDist) {
+		}
+		else if (objectDist < minDist)
+		{
 			globalBlend = 0.0;
 		}
 		minDist = res.x;
@@ -412,9 +415,10 @@ vec3 sceneSdf(vec3 p)
 #ifdef MESH_SHADOW_SDF
 	{
 		float mDist = meshSDF(p);
-		if (mDist < minDist) {
+		if (mDist < minDist)
+		{
 			minDist = mDist;
-			finalMaterialId = 15;  // Use a designated "mesh shadow" material slot
+			finalMaterialId = 15; // Use a designated "mesh shadow" material slot
 		}
 	}
 #endif
@@ -429,7 +433,7 @@ vec3 getMaterial(vec3 p, int id)
 	int pattern = id < 16 ? u_materials[id].pattern : 0;
 	float patternScale = id < 16 ? u_materials[id].patternScale : 1.0;
 
-	if(pattern > 0)
+	if (pattern > 0)
 	{
 		float patternShape = 0.0;
 		vec3 sp = p * patternScale;
@@ -438,21 +442,18 @@ vec3 getMaterial(vec3 p, int id)
 		{
 			patternShape = mod(floor(sp.x) + floor(sp.y) + floor(sp.z), 2.0);
 		}
-		else if(pattern == 2) // Perlin Noise
+		else if (pattern == 2) // Perlin Noise
 		{
 			patternShape = perlin3D(sp.xyz * 10.0);
 		}
-		else if(pattern == 3) // Waves
+		else if (pattern == 3) // Waves
 		{
-			patternShape = (sin(10.0  * perlin3D(sp.xyz * 10.0)) + 1.0) * 0.5;
+			patternShape = (sin(10.0 * perlin3D(sp.xyz * 10.0)) + 1.0) * 0.5;
 			patternShape = smoothstep(0.3, 0.7, patternShape);
-
 		}
 
 		return mix(color, secondaryColor, patternShape);
 	}
-
-	
 
 	return color;
 }
@@ -625,14 +626,15 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	vec3 specMultiplier = vec3(5.0f);
 	// ===============================================================
 
-	
 	// Perform bounces
-
 
 	for (int bounce = 0; bounce <= u_rayBounces; bounce++)
 	{
 		float currentF0 = f0;
-		float currentRoughness = u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
+		float currentRoughness =
+			u_rayBounces == 1 ? max(roughness, 0.2)
+							  : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)),
+									1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
 		fresnelPower = mix(50.0, 1.0, currentF0);
 
 		// On the first bounce use the injected normal (supports both SDF and mesh
@@ -723,12 +725,12 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		// Add all direct light contributions for this bounce
 		finalColor += throughput * directLighting;
 
-		if (bounce == u_rayBounces) 
+		if (bounce == u_rayBounces)
 		{
 
 			// If this final hit is in a shadow, it will still evaluate to black.
 			// Add a little bit of sky ambient so deep shadows always have some color.
-			if (bounce > 0) 
+			if (bounce > 0)
 			{
 				finalColor += throughput * currentAlbedo * getSkyColor(N) * 0.15;
 			}
@@ -762,9 +764,9 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		{
 			// Hit sky (ambient bounding) or ran out of steps grazing a surface
 			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome!
-			
+
 			// Keep sky at full brightness for reflections, but dim it for diffuse ambient lighting
-			float skyIntensity = isSpecular ? 1.0 : 0.5; 
+			float skyIntensity = isSpecular ? 1.0 : 0.5;
 			finalColor += throughput * getSkyColor(bounceDir) * skyIntensity;
 			break;
 		}
@@ -886,8 +888,6 @@ vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId, vec3 N)
 	return directLighting + ambient;
 }
 
-
-
 // Returns the linearised (eye-space) depth from a [0,1] depth-buffer value.
 float linearizeGBufferDepth(float d)
 {
@@ -912,8 +912,8 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;  // [0,1], 1.0 = no mesh
-	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample);  // eye-space metres
+	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;	// [0,1], 1.0 = no mesh
+	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample); // eye-space metres
 
 	// Ray march SDF
 	float object = rayMarch(ro, rd);
@@ -932,7 +932,7 @@ vec4 render(in vec2 uv)
 	float sdfDepthNDC = (z_n + 1.0) * 0.5;
 
 	// Determine whether a valid mesh pixel is closer than the SDF hit
-	bool meshValid  = (meshDepthSample < 1.0 - 0.0001);
+	bool meshValid = (meshDepthSample < 1.0 - 0.0001);
 	bool meshInFront = meshValid && (meshDepthLinear < minDepth);
 
 	// Output color
@@ -959,10 +959,10 @@ vec4 render(in vec2 uv)
 		vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
 
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
-		vec3  meshAlbedo   = texture(t_gbufferAlbedo,   gbufferUV).rgb;
-		vec3  meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
+		vec3 meshAlbedo = texture(t_gbufferAlbedo, gbufferUV).rgb;
+		vec3 meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
 		// float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
-		vec3  meshNormal   = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
+		vec3 meshNormal = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
 		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
 		meshAlbedo *= getMaterial(meshWorldPos, materialId); // Apply material palette color to mesh albedo
@@ -972,7 +972,6 @@ vec4 render(in vec2 uv)
 #else
 		col = standardLighting(meshWorldPos, rd, meshAlbedo, materialId, meshNormal);
 #endif
-		
 
 		// Fog at mesh depth
 		float fog = smoothstep(u_far * 0.0, u_far, meshDepthLinear);
@@ -1062,7 +1061,7 @@ void main()
 	{
 		col *= 3.0 / maxComp;
 	}
-	
+
 	// Apply contrast pivoting around mid-gray
 	col = mix(vec3(0.5), col, u_contrast);
 	// Clamp to ensure no weird artifacts from exceeding bounds
@@ -1072,9 +1071,9 @@ void main()
 	if (u_frameCounter > 0)
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
-		
-		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap 
-		// to prevent the weight from becoming too small, allowing the image to 
+
+		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap
+		// to prevent the weight from becoming too small, allowing the image to
 		// continually refine and denoise even after many frames.
 		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
 		col = mix(prevColor.xyz, col, weight);

@@ -11,7 +11,7 @@ uniform mat4 u_camMatrix;
 uniform float u_fov;
 uniform vec2 u_resolution;
 
-const float gridScale = 1.0;     // Size of each grid cell in world units
+const float gridScale = 1.0;	  // Size of each grid cell in world units
 const vec3 gridColor = vec3(1.0); // Color of the grid lines
 const vec3 backgroundColor = vec3(0.0);
 const float lineThickness = 0.2; // Thickness of the grid lines

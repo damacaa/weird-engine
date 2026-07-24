@@ -1,13 +1,13 @@
 #pragma once
+#include "weird-engine/Logger.h"
 #include <chrono>
-#include <iomanip>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
 #include <deque>
 #include <glad/glad.h>
-#include "weird-engine/Logger.h"
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -56,13 +56,22 @@ namespace WeirdEngine
 			m_pendingRealtimeEnable = false;
 		}
 
-		bool isRealtime() const { return m_realtimeMode; }
+		bool isRealtime() const
+		{
+			return m_realtimeMode;
+		}
 
-		double getUnaccountedThreshold() const { return m_unaccountedThresholdPct; }
-		void setUnaccountedThreshold(double threshold) { m_unaccountedThresholdPct = threshold; }
+		double getUnaccountedThreshold() const
+		{
+			return m_unaccountedThresholdPct;
+		}
+		void setUnaccountedThreshold(double threshold)
+		{
+			m_unaccountedThresholdPct = threshold;
+		}
 
-		const std::vector<ScopeStats>& getLastFrameStats() const 
-		{ 
+		const std::vector<ScopeStats>& getLastFrameStats() const
+		{
 			if (m_paused && m_historyEnabled && !m_historyBuffer.empty())
 			{
 				if (m_playbackIndex >= 0 && m_playbackIndex < m_historyBuffer.size())
@@ -70,7 +79,7 @@ namespace WeirdEngine
 					return m_historyBuffer[m_playbackIndex];
 				}
 			}
-			return m_lastFrameStats; 
+			return m_lastFrameStats;
 		}
 
 		void setHistoryEnabled(bool enabled)
@@ -85,16 +94,40 @@ namespace WeirdEngine
 				}
 			}
 		}
-		bool isHistoryEnabled() const { return m_historyEnabled; }
-		int getHistoryCapturedCount() const { return (int)m_historyBuffer.size(); }
-		int getHistoryCapacity() const { return m_historyCapacity; }
+		bool isHistoryEnabled() const
+		{
+			return m_historyEnabled;
+		}
+		int getHistoryCapturedCount() const
+		{
+			return (int)m_historyBuffer.size();
+		}
+		int getHistoryCapacity() const
+		{
+			return m_historyCapacity;
+		}
 
-		void pause() { m_pendingPause = true; }
-		void resume() { m_pendingResume = true; }
-		bool isPaused() const { return m_paused; }
+		void pause()
+		{
+			m_pendingPause = true;
+		}
+		void resume()
+		{
+			m_pendingResume = true;
+		}
+		bool isPaused() const
+		{
+			return m_paused;
+		}
 
-		int getPlaybackIndex() const { return m_playbackIndex; }
-		void setPlaybackIndex(int idx) { m_playbackIndex = idx; }
+		int getPlaybackIndex() const
+		{
+			return m_playbackIndex;
+		}
+		void setPlaybackIndex(int idx)
+		{
+			m_playbackIndex = idx;
+		}
 
 		double getReportProgressSeconds() const
 		{
@@ -107,8 +140,14 @@ namespace WeirdEngine
 			return 0.0;
 		}
 
-		bool isReportFinished() const { return m_reportFinished; }
-		bool isRecordingReport() const { return m_recording && !m_realtimeMode; }
+		bool isReportFinished() const
+		{
+			return m_reportFinished;
+		}
+		bool isRecordingReport() const
+		{
+			return m_recording && !m_realtimeMode;
+		}
 
 		std::string getReportString() const
 		{
@@ -116,7 +155,7 @@ namespace WeirdEngine
 			ss << "Profiler Average Report\n";
 			ss << "=======================\n";
 			const auto& stats = getLastFrameStats();
-			
+
 			double topMs = 0.0;
 			for (const auto& s : stats)
 			{
@@ -126,15 +165,18 @@ namespace WeirdEngine
 					break;
 				}
 			}
-			if (topMs <= 0.0) topMs = 1.0;
+			if (topMs <= 0.0)
+				topMs = 1.0;
 
 			for (const auto& s : stats)
 			{
-				if (s.count == 0 || s.depth == 0) continue;
+				if (s.count == 0 || s.depth == 0)
+					continue;
 				double avgMs = s.totalTimeMs / s.count;
 				float fraction = (float)(avgMs / topMs);
 				fraction = std::min(1.0f, std::max(0.0f, fraction));
-				for (int i = 1; i < s.depth; ++i) ss << "  ";
+				for (int i = 1; i < s.depth; ++i)
+					ss << "  ";
 				ss << s.name << ": ";
 				ss << std::fixed << std::setprecision(3) << avgMs << " ms (";
 				ss << std::fixed << std::setprecision(1) << (fraction * 100.0f) << "%)\n";
@@ -245,7 +287,8 @@ namespace WeirdEngine
 
 			int parentIdx = m_stack.empty() ? -1 : m_stack.back().statIndex;
 			int statIndex = -1;
-			if (m_currentIndex < m_stats.size() && m_stats[m_currentIndex].name == name && m_stats[m_currentIndex].parentIndex == parentIdx)
+			if (m_currentIndex < m_stats.size() && m_stats[m_currentIndex].name == name &&
+				m_stats[m_currentIndex].parentIndex == parentIdx)
 			{
 				statIndex = m_currentIndex;
 				m_currentIndex++;
@@ -255,10 +298,11 @@ namespace WeirdEngine
 				bool found = false;
 				for (size_t i = 0; i < m_stats.size(); ++i)
 				{
-					if (m_stats[i].name == name && m_stats[i].depth == m_currentDepth && m_stats[i].parentIndex == parentIdx)
+					if (m_stats[i].name == name && m_stats[i].depth == m_currentDepth &&
+						m_stats[i].parentIndex == parentIdx)
 					{
-						statIndex = i;
-						m_currentIndex = i + 1;
+						statIndex = static_cast<int>(i);
+						m_currentIndex = static_cast<int>(i + 1);
 						found = true;
 						break;
 					}
@@ -266,8 +310,8 @@ namespace WeirdEngine
 				if (!found)
 				{
 					m_stats.push_back({name, m_currentDepth, 0.0, 0, parentIdx});
-					statIndex = m_stats.size() - 1;
-					m_currentIndex = m_stats.size();
+					statIndex = static_cast<int>(m_stats.size() - 1);
+					m_currentIndex = static_cast<int>(m_stats.size());
 				}
 			}
 
@@ -300,7 +344,8 @@ namespace WeirdEngine
 		}
 
 	private:
-		void injectOthersRange(size_t start, size_t end, const std::vector<ScopeStats>& inStats, std::vector<ScopeStats>& outStats)
+		void injectOthersRange(size_t start, size_t end, const std::vector<ScopeStats>& inStats,
+							   std::vector<ScopeStats>& outStats)
 		{
 			size_t i = start;
 			while (i < end)
@@ -324,7 +369,8 @@ namespace WeirdEngine
 					injectOthersRange(i + 1, subEnd, inStats, outStats);
 
 					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
-					double unaccountedPctOfScope = stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
+					double unaccountedPctOfScope =
+						stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
 					if (unaccountedPctOfScope > m_unaccountedThresholdPct)
 					{
 						outStats.push_back({"Others", stat.depth + 1, unaccountedMs, stat.count, stat.parentIndex});
@@ -334,8 +380,6 @@ namespace WeirdEngine
 				i = subEnd;
 			}
 		}
-
-
 
 		struct StackItem
 		{
@@ -379,6 +423,7 @@ namespace WeirdEngine
 			if (m_active)
 				Profiler::get().endScope();
 		}
+
 	private:
 		bool m_active;
 	};

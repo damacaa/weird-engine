@@ -1,14 +1,14 @@
 #pragma once
 
-#include <weird-engine.h>
 #include "WaterPlane.h"
+#include <weird-engine.h>
 
 using namespace WeirdEngine;
 
 class WaterScene : public Scene3D
 {
 public:
-	WaterScene(){};
+	WaterScene() {};
 
 private:
 	Shader m_waterShader;
@@ -18,10 +18,10 @@ private:
 	// Scene snapshot – taken each frame before the water draw to avoid
 	// reading from and writing to the same framebuffer attachment.
 	RenderTarget m_snapshotRender;
-	Texture      m_snapshotColor;
-	Texture      m_snapshotDepth;
-	int          m_snapshotW = 0;
-	int          m_snapshotH = 0;
+	Texture m_snapshotColor;
+	Texture m_snapshotDepth;
+	int m_snapshotW = 0;
+	int m_snapshotH = 0;
 
 	WaterPlane m_waterPlane;
 
@@ -33,8 +33,8 @@ private:
 			m_snapshotColor.dispose();
 			m_snapshotDepth.dispose();
 		}
-		m_snapshotColor  = Texture(w, h, Texture::TextureType::Data);
-		m_snapshotDepth  = Texture(w, h, Texture::TextureType::Depth);
+		m_snapshotColor = Texture(w, h, Texture::TextureType::Data);
+		m_snapshotDepth = Texture(w, h, Texture::TextureType::Depth);
 		m_snapshotRender = RenderTarget(false);
 		m_snapshotRender.bindColorTextureToFrameBuffer(m_snapshotColor);
 		m_snapshotRender.bindDepthTextureToFrameBuffer(m_snapshotDepth);
@@ -42,14 +42,12 @@ private:
 		m_snapshotH = h;
 	}
 
-
 	// -------------------------------------------------------------------------
 
 	void onCreate() override
 	{
 
-		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert",
-		                       ASSETS_PATH "water/shaders/water.frag");
+		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert", ASSETS_PATH "water/shaders/water.frag");
 
 		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
 									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
@@ -102,7 +100,7 @@ private:
 			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
 			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
 			mr.mesh = id;
-			
+
 			ecs.addComponent<Floatable>(entity);
 		}
 
@@ -120,31 +118,28 @@ private:
 
 		m_time += delta;
 
-		
 		const auto& floatables = ecs.getComponentArray<Floatable>();
 
-		for(int i = 0; i < floatables->getSize(); i++)
+		for (int i = 0; i < floatables->getSize(); i++)
 		{
 			auto& floatable = floatables->getDataAtIdx(i);
 
 			// Keep the dot riding the water surface
 			Transform& transform = ecs.getComponent<Transform>(floatables->getEntityAtIdx(i));
-			glm::vec2 flatPos = { transform.position.x, transform.position.z };
+			glm::vec2 flatPos = {transform.position.x, transform.position.z};
 			float centerHeight = m_waterPlane.waterHeightAt(flatPos, m_time);
 			transform.position.y = centerHeight;
 
 			// Derive surface normal via central finite difference, then drift along it
 			const float fdStep = 0.05f;
 			float heightPlusX = m_waterPlane.waterHeightAt(flatPos + glm::vec2(fdStep, 0.0f), m_time);
-			float heightPlusZ = m_waterPlane.waterHeightAt(flatPos + glm::vec2(0.0f,  fdStep), m_time);
+			float heightPlusZ = m_waterPlane.waterHeightAt(flatPos + glm::vec2(0.0f, fdStep), m_time);
 
-			glm::vec3 surfaceNormal = glm::normalize(glm::vec3(heightPlusX - centerHeight, fdStep, heightPlusZ - centerHeight));
+			glm::vec3 surfaceNormal =
+				glm::normalize(glm::vec3(heightPlusX - centerHeight, fdStep, heightPlusZ - centerHeight));
 			transform.position.x += surfaceNormal.x * delta * floatable.buoyancy;
 			transform.position.z += surfaceNormal.z * delta * floatable.buoyancy;
 		}
-
-		
-
 	}
 
 	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
@@ -153,7 +148,6 @@ private:
 		float time = getTime();
 
 		auto& lights = getLigths();
-
 
 		// ── Snapshot the current scene colour + depth ────────────────────────
 		// We need to read from these textures while drawing the water plane,
@@ -180,28 +174,28 @@ private:
 		glDisable(GL_BLEND);
 
 		m_waterShader.use();
-		m_waterShader.setUniform("u_time",      time);
-		m_waterShader.setUniform("u_camPos",    sceneCamera.position);
+		m_waterShader.setUniform("u_time", time);
+		m_waterShader.setUniform("u_camPos", sceneCamera.position);
 		m_waterShader.setUniform("u_camMatrix", sceneCamera.cameraMatrix);
-		m_waterShader.setUniform("u_near",      sceneCamera.nearPlane);
-		m_waterShader.setUniform("u_far",       sceneCamera.farPlane);
+		m_waterShader.setUniform("u_near", sceneCamera.nearPlane);
+		m_waterShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Scene snapshot textures for underwater effects
-		m_waterShader.setUniform("u_sceneColor",    0);
+		m_waterShader.setUniform("u_sceneColor", 0);
 		m_snapshotColor.bind(0);
-		m_waterShader.setUniform("u_sceneDepth",    1);
+		m_waterShader.setUniform("u_sceneDepth", 1);
 		m_snapshotDepth.bind(1);
-		m_waterShader.setUniform("u_screenSize",    glm::vec2((float)w, (float)h));
+		m_waterShader.setUniform("u_screenSize", glm::vec2((float)w, (float)h));
 
 		int numLights = (std::min)((int)lights.size(), 8);
 		m_waterShader.setUniform("u_numLights", numLights);
 		for (int i = 0; i < numLights; i++)
 		{
 			std::string prefix = "u_lights[" + std::to_string(i) + "].";
-			m_waterShader.setUniform(prefix + "position",  lights[i].position);
+			m_waterShader.setUniform(prefix + "position", lights[i].position);
 			m_waterShader.setUniform(prefix + "direction", lights[i].rotation);
-			m_waterShader.setUniform(prefix + "color",     lights[i].color);
-			m_waterShader.setUniform(prefix + "type",      (int)lights[i].type);
+			m_waterShader.setUniform(prefix + "color", lights[i].color);
+			m_waterShader.setUniform(prefix + "type", (int)lights[i].type);
 		}
 
 		glm::mat4 waterModel = glm::mat4(1.0f);

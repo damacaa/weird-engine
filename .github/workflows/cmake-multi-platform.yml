@@ -8,37 +8,121 @@ on:
 
 env:
   BUILD_TYPE: Release
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+  ACTIONS_RUNNER_FORCE_NODE24: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-2025, ubuntu-latest]
-
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            target: windows
+          - name: Linux
+            os: ubuntu-latest
+            target: linux
+          - name: Web (WASM)
+            os: ubuntu-22.04
+            target: web
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Ensure submodules are up-to-date
-        run: git submodule update --init --recursive
-
-      - name: Check submodulesversions
-        run: git submodule status
-      
+      # ------------------------------------------------------------------------
+      # Linux Dependencies
+      # ------------------------------------------------------------------------
       - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+        if: matrix.target == 'linux'
+        run: sudo apt update && sudo apt install -y cmake g++ make xorg-dev libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev xvfb
 
-      - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      # ------------------------------------------------------------------------
+      # Web / Emscripten Dependencies
+      # ------------------------------------------------------------------------
+      - name: Setup Emscripten (Web)
+        if: matrix.target == 'web'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
 
-      - name: Build
+      # ------------------------------------------------------------------------
+      # Desktop Builds (Windows & Linux)
+      # ------------------------------------------------------------------------
+      - name: Configure CMake (Desktop)
+        if: matrix.target != 'web'
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_TEST_HOOKS=ON
+
+      - name: Build (Desktop)
+        if: matrix.target != 'web'
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-      - name: Test
-        working-directory: ${{github.workspace}}/build
-        run: ctest -C ${{env.BUILD_TYPE}}
+      - name: Test (Linux)
+        if: matrix.target == 'linux'
+        working-directory: ${{github.workspace}}/build/examples/sample-scenes
+        env:
+          WEIRD_AUTO_QUIT_SECONDS: 3
+          WEIRD_SCREENSHOT_FRAME: 10
+        run: xvfb-run -a ./WeirdSamples
+
+      - name: Upload Test Artifacts (Linux)
+        if: matrix.target == 'linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.target }}
+          path: |
+            ${{github.workspace}}/build/examples/sample-scenes/log.txt
+            ${{github.workspace}}/build/examples/sample-scenes/screenshot_*.bmp
+            ${{github.workspace}}/build/examples/sample-scenes/Release/log.txt
+            ${{github.workspace}}/build/examples/sample-scenes/Release/screenshot_*.bmp
+
+      # ------------------------------------------------------------------------
+      # Web Build (Emscripten / WASM)
+      # ------------------------------------------------------------------------
+      - name: Build WeirdSamples for Web
+        if: matrix.target == 'web'
+        run: |
+          mkdir build && cd build
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWEIRD_ENGINE_BUILD_EXAMPLES=ON \
+            -DBUILD_WEB=ON \
+            -DCMAKE_C_FLAGS="-pthread" \
+            -DCMAKE_CXX_FLAGS="-pthread" \
+            -DCMAKE_EXECUTABLE_SUFFIX=".html" \
+            -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file ${{github.workspace}}/examples/sample-scenes/assets@/assets --preload-file ${{github.workspace}}/src/weird-renderer/fonts@/fonts --preload-file ${{github.workspace}}/src/weird-renderer/shaders@/shaders"
+          emmake make WeirdSamples
+
+      - name: Prepare Web Artifact
+        if: matrix.target == 'web'
+        run: |
+          mkdir -p game_export
+          # Copy generated outputs (index.* or WeirdSamples.*)
+          cp build/examples/sample-scenes/index.* game_export/ 2>/dev/null || true
+          cp build/examples/sample-scenes/WeirdSamples.* game_export/ 2>/dev/null || true
+
+          # Guarantee index.html exists in game_export/
+          if [ ! -f game_export/index.html ]; then
+            if [ -f game_export/WeirdSamples.html ]; then
+              cp game_export/WeirdSamples.html game_export/index.html
+            elif [ -f game_export/index.js ]; then
+              echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>WeirdEngine Web</title><style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;justify-content:center;align-items:center;}canvas{width:100%;height:100%;outline:none;border:0;}</style></head><body><canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas><script>var Module={canvas:document.getElementById("canvas")};</script><script src="index.js"></script></body></html>' > game_export/index.html
+            fi
+          fi
+
+          cp -r build/examples/sample-scenes/assets game_export/ 2>/dev/null || true
+          cp -r build/examples/sample-scenes/fonts game_export/ 2>/dev/null || true
+          cp -r build/examples/sample-scenes/shaders game_export/ 2>/dev/null || true
+
+      - name: Upload Web Artifact
+        if: matrix.target == 'web'
+        uses: actions/upload-artifact@v4
+        with:
+          name: weird-engine-web-sample
+          path: game_export/

@@ -10,12 +10,10 @@
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-physics/components/CustomShapeManager.h"
-#include "weird-physics/components/CustomShapeManager.h"
 #include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
 #include "weird-physics/components/SpringManager.h"
 
-#include "weird-engine/systems/SDFShaderGenerationSystem.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"
 #include "weird-engine/systems/PhysicsInteractionSystem.h"
@@ -23,7 +21,7 @@
 #include "weird-engine/systems/PlayerMovementSystem.h"
 #include "weird-engine/systems/RenderSystem.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
-#include "weird-engine/systems/SDFRenderSystem.h"
+#include "weird-engine/systems/SDFShaderGenerationSystem.h"
 
 namespace WeirdEngine
 {
@@ -49,7 +47,6 @@ namespace WeirdEngine
 		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
 		, m_runSimulationInThread(true)
 	{
-		
 	}
 
 	Scene::~Scene()
@@ -66,27 +63,29 @@ namespace WeirdEngine
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
 
-		if(m_renderMode == RenderMode::RayMarching2D)
+		if (m_renderMode == RenderMode::RayMarching2D)
 		{
-			std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D, m_2DWorldRenderContext);
+			std::shared_ptr<CustomShapeManager> shapeManager =
+				std::make_shared<CustomShapeManager>(m_simulation2D, m_2DWorldRenderContext);
 			m_ecs.registerComponent<CustomShape>(shapeManager);
 		}
 		else
 		{
-			std::shared_ptr<CustomShapeManager> shapeManager = std::make_shared<CustomShapeManager>(m_simulation2D, m_3DWorldRenderContext);
+			std::shared_ptr<CustomShapeManager> shapeManager =
+				std::make_shared<CustomShapeManager>(m_simulation2D, m_3DWorldRenderContext);
 			m_ecs.registerComponent<CustomShape>(shapeManager);
 		}
 
-		std::shared_ptr<DistanceConstraintManager> distManager = std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
+		std::shared_ptr<DistanceConstraintManager> distManager =
+			std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
 		m_ecs.registerComponent<DistanceConstraint>(distManager);
 
 		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_ecs);
 		m_ecs.registerComponent<Spring>(springManager);
 
-		std::shared_ptr<CustomUIShapeManager> uiShapeManager = std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
+		std::shared_ptr<CustomUIShapeManager> uiShapeManager =
+			std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
 		m_ecs.registerComponent<UIShape>(uiShapeManager);
-
-
 
 		// Shapes
 		m_sdfs = Scene::getGlobalSDFs();
@@ -108,7 +107,7 @@ namespace WeirdEngine
 		// Initialize 2D world render context
 		m_2DWorldRenderContext.dotRadious = 0.5f;
 		m_2DWorldRenderContext.charSpacing = 1.0f;
-		
+
 		auto& defaultMaterial = createMaterial();
 		defaultMaterial.color = vec4(1.0f);
 		defaultMaterial.metallic = 0.5f;
@@ -151,7 +150,7 @@ namespace WeirdEngine
 			default:
 				break;
 		}
-		
+
 		PhysicsSystem2D::update(m_ecs, m_simulation2D);
 	}
 
@@ -168,7 +167,7 @@ namespace WeirdEngine
 		{
 			if (m_debugFly)
 			{
-				PlayerMovementSystem::update(m_ecs, delta);
+				PlayerMovementSystem::update(m_ecs, static_cast<float>(delta));
 			}
 
 			CameraSystem::update(m_ecs);
@@ -205,10 +204,11 @@ namespace WeirdEngine
 			}
 
 			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
-			
+
 			for (auto& ev : collisions)
 			{
-				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies), getEntityForSimulationId(ev.bodyB, rigidBodies)};
+				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
+												 getEntityForSimulationId(ev.bodyB, rigidBodies)};
 				onEntityCollision(m_ecs, entityEvent);
 			}
 
@@ -239,14 +239,14 @@ namespace WeirdEngine
 					playSound(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(ev.position, 0.0f)});
 				}
 			}
-			
+
 			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
 			m_frictionSoundLevel = 0.0f;
 		}
 
 		{
 			PROFILE_SCOPE("OnUpdate");
-			onUpdate(delta, m_ecs);
+			onUpdate(static_cast<float>(delta), m_ecs);
 		}
 
 		{
@@ -259,7 +259,7 @@ namespace WeirdEngine
 
 	float Scene::getTime()
 	{
-		return m_simulation2D.getSimulationTime();
+		return static_cast<float>(m_simulation2D.getSimulationTime());
 	}
 
 	void Scene::handlePhysicsStep(void* userData)
@@ -272,7 +272,7 @@ namespace WeirdEngine
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onCollision(self->m_simulation2D, event);
-		
+
 		std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
 		self->m_queuedCollisions.push_back(event);
 	}
@@ -281,7 +281,7 @@ namespace WeirdEngine
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onShapeCollision(self->m_simulation2D, event);
-		
+
 		{
 			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
 			self->m_queuedShapeCollisions.push_back(event);
@@ -355,7 +355,7 @@ namespace WeirdEngine
 
 	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)
 	{
-		if(m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
+		if (m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
 		{
 			onRender(renderTarget);
 		}
@@ -368,7 +368,7 @@ namespace WeirdEngine
 		m_sdfs.push_back(sdf);
 		m_simulation2D.setSDFs(m_sdfs);
 
-		return m_sdfs.size() - 1;
+		return static_cast<ShapeId>(m_sdfs.size() - 1);
 	}
 
 	// AUDIO
@@ -441,7 +441,8 @@ namespace WeirdEngine
 		return it->second;
 	}
 
-	Entity Scene::getEntityForSimulationId(SimulationID simulationId, std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
+	Entity Scene::getEntityForSimulationId(SimulationID simulationId,
+										   std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
 	{
 		if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
 			return INVALID_ENTITY;
@@ -479,7 +480,7 @@ namespace WeirdEngine
 		float time = getTime();
 		auto gridSnapshot = m_simulation2D.getSpatialGridSnapshot();
 
-		if(epsilon <= 0.0f)
+		if (epsilon <= 0.0f)
 		{
 			epsilon = 0.001f; // Default epsilon
 		}
@@ -511,7 +512,7 @@ namespace WeirdEngine
 
 				if (!shape.hasCollisions)
 					continue;
-					
+
 				if (shape.distanceFieldId >= m_sdfs.size())
 					continue;
 
@@ -694,13 +695,13 @@ namespace WeirdEngine
 			}
 
 			ImGui::SeparatorText("Background");
-			const char* bgTypes[] = { "Solid", "Grid", "Sky", "Custom" };
+			const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
 			int bgTypeIdx = static_cast<int>(m_background.type);
 			if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
 			{
 				m_background.type = static_cast<BackgroundType>(bgTypeIdx);
 			}
-			
+
 			if (m_background.type != BackgroundType::Custom)
 			{
 				ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
@@ -814,11 +815,11 @@ namespace WeirdEngine
 			// Max materials reached, return the last one
 			return m_materials[15];
 		}
-		
+
 		Material3D& mat = m_materials[m_materialCount];
 		mat.id = m_materialCount;
 		m_materialCount++;
-		
+
 		return mat;
 	}
 } // namespace WeirdEngine

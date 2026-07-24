@@ -13,7 +13,10 @@ namespace WeirdEngine
 	struct RigidBody2D
 	{
 		RigidBody2D()
-			: simulationId(-1), velocity(0.0f, 0.0f), pendingImpulseForce(0.0f, 0.0f), isFixed(false) {};
+			: simulationId(-1)
+			, velocity(0.0f, 0.0f)
+			, pendingImpulseForce(0.0f, 0.0f)
+			, isFixed(false) {};
 		unsigned int simulationId;
 		glm::vec2 velocity;
 		glm::vec2 pendingImpulseForce;

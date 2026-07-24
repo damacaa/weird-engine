@@ -37,7 +37,7 @@ namespace WeirdEngine
 			return m_instancedGeometryShader;
 		}
 
-Texture& MeshRenderPipeline::getGBufferAlbedo()
+		Texture& MeshRenderPipeline::getGBufferAlbedo()
 		{
 			return m_gbufferAlbedo;
 		}
@@ -68,7 +68,7 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 		}
 
 		void MeshRenderPipeline::render(Scene& scene, RenderTarget& outputTarget, const Camera& camera,
-									const std::vector<Light>& lights)
+										const std::vector<Light>& lights)
 		{
 			// Set GBuffer uniforms for both shaders
 			m_gbufferShader.use();
@@ -79,7 +79,8 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 
 			// Bind GBuffer FBO and activate all 4 colour draw buffers
 			m_gbufferRender.bind();
-			const GLenum drawBuffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+			const GLenum drawBuffers[4] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2,
+										   GL_COLOR_ATTACHMENT3};
 			glDrawBuffers(4, drawBuffers);
 
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -117,7 +118,8 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 
 				for (const auto& cmd : drawQueue)
 				{
-					cmd.mesh->draw(m_gbufferShader, camera, cmd.translation, cmd.rotation, cmd.scale, cmd.materialIndex);
+					cmd.mesh->draw(m_gbufferShader, camera, cmd.translation, cmd.rotation, cmd.scale,
+								   cmd.materialIndex);
 				}
 
 				glCullFace(GL_BACK);
@@ -132,21 +134,21 @@ Texture& MeshRenderPipeline::getGBufferAlbedo()
 		{
 			free();
 
-			m_gbufferAlbedo   = Texture(newWidth, newHeight, Texture::TextureType::Data);
+			m_gbufferAlbedo = Texture(newWidth, newHeight, Texture::TextureType::Data);
 			m_gbufferWorldPos = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
-			m_gbufferNormal   = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
+			m_gbufferNormal = Texture(newWidth, newHeight, Texture::TextureType::LinearData);
 			m_gbufferMaterial = Texture(newWidth, newHeight, Texture::TextureType::IntData);
-			m_depthTexture    = Texture(newWidth, newHeight, Texture::TextureType::Depth);
+			m_depthTexture = Texture(newWidth, newHeight, Texture::TextureType::Depth);
 
 			m_gbufferRender = RenderTarget(false);
-			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferAlbedo,   0);
+			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferAlbedo, 0);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferWorldPos, 1);
-			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferNormal,   2);
+			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferNormal, 2);
 			m_gbufferRender.bindColorTextureToFrameBuffer(m_gbufferMaterial, 3);
 			m_gbufferRender.bindDepthTextureToFrameBuffer(m_depthTexture);
 
 			m_backDepthTexture = Texture(newWidth, newHeight, Texture::TextureType::Depth);
-			m_backDepthRender  = RenderTarget(false);
+			m_backDepthRender = RenderTarget(false);
 			m_backDepthRender.bindDepthTextureToFrameBuffer(m_backDepthTexture);
 		}
 

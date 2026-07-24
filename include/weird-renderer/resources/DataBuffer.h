@@ -1,8 +1,8 @@
 #pragma once
 #include <cassert>
 #include <cstring>
-#include <vector>
 #include <glad/glad.h>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -74,17 +74,17 @@ namespace WeirdEngine
 				}
 
 				GLint previousActiveTexture = 0;
- 				GLint previousTextureBinding2D = 0;
- 				glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
- 				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
- 				glBindTexture(GL_TEXTURE_2D, m_texture);
- 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texW, texH, 0, GL_RGBA, GL_FLOAT, uploadPtr);
- 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
- 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
- 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
- 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
- 				glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTextureBinding2D));
- 				glActiveTexture(static_cast<GLenum>(previousActiveTexture));
+				GLint previousTextureBinding2D = 0;
+				glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
+				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
+				glBindTexture(GL_TEXTURE_2D, m_texture);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texW, texH, 0, GL_RGBA, GL_FLOAT, uploadPtr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTextureBinding2D));
+				glActiveTexture(static_cast<GLenum>(previousActiveTexture));
 			}
 
 			template <typename T> void uploadData(const T* data, size_t count) const
@@ -104,7 +104,8 @@ namespace WeirdEngine
 				glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture);
 				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
 				glBindTexture(GL_TEXTURE_2D, m_texture);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, GL_RGBA, GL_FLOAT, data);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0,
+							 GL_RGBA, GL_FLOAT, data);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

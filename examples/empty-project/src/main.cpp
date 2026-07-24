@@ -13,9 +13,7 @@ public:
 	}
 
 private:
-	void onStart() override
-	{
-	}
+	void onStart() override {}
 
 	void onUpdate(float delta) override {}
 	void onCreate() override {}

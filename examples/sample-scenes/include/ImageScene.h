@@ -10,7 +10,7 @@ using namespace WeirdEngine;
 class ImageScene : public Scene2D
 {
 public:
-	ImageScene(){};
+	ImageScene() {};
 
 private:
 	std::string binaryString;
@@ -48,7 +48,7 @@ private:
 			float y;
 			int material = 0;
 
-			x = 15 + sin(i);
+			x = 15.0f + static_cast<float>(sin(i));
 			y = 10 + (1.0f * i);
 
 			std::string materialId;
@@ -188,8 +188,8 @@ private:
 				Entity rbOwner = components->getEntityAtIdx(i);
 				Transform& t = ecs.getComponent<Transform>(rbOwner);
 
-				int x = floor(t.position.x);
-				int y = floor(30 - t.position.y);
+				int x = static_cast<int>(floor(t.position.x));
+				int y = static_cast<int>(floor(30.0f - t.position.y));
 
 				vec2 uv = vec2(x, y) / 30.0f;
 

@@ -1,7 +1,7 @@
 #include "weird-renderer/core/RenderTarget.h"
 
-#include <iostream>
 #include "weird-engine/Logger.h"
+#include <iostream>
 #include <stdexcept>
 
 namespace WeirdEngine

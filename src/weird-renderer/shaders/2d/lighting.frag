@@ -45,8 +45,8 @@ uniform float u_ambienOcclusionStrength;
 uniform float u_overscan;
 uniform vec3 u_shadowTint;
 
-// For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union artifacts
-// Real distance in screen UV space
+// For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union
+// artifacts Real distance in screen UV space
 float mapOutside(vec2 p)
 {
 	// Remap screen UV to overscan texture UV
@@ -75,7 +75,8 @@ vec2 softShadow(vec2 ro, vec2 rd, float initialDistance, float far, float k)
 			break;
 		}
 
-		// Sample distance in screen UV space, which is the same space we're raymarching through, so no correction needed
+		// Sample distance in screen UV space, which is the same space we're raymarching through, so no correction
+		// needed
 		float h = mapOutside(ro + rd * t);
 
 		// Track where the shadow is strongest (closest approach to an occluder)
@@ -131,9 +132,9 @@ float renderShadows(vec2 uv, vec2 rd)
 	return shadowValue;
 }
 
-
 // Ligthing inside shapes uses the original distance field, without correction (world coordinates)
-// Only really used for normals, but it also gives a more consistent light falloff near edges that isn't affected by zoom level
+// Only really used for normals, but it also gives a more consistent light falloff near edges that isn't affected by
+// zoom level
 float mapInside(vec2 p)
 {
 	return texture(t_distanceSampledTexture, p).x;
@@ -158,10 +159,9 @@ float calculateLight(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDi
 	// Apply border mask
 	float lightOnBorderOnly = extraLight * borderMask;
 	float light = 1.0 + lightOnBorderOnly;
-	
+
 	return clamp(light, 0.0, 10.0);
 }
-
 
 void main()
 {
@@ -209,8 +209,6 @@ void main()
 	shapeFactor = 1.0;
 #endif
 
-
-
 	// Point light
 	// vec2 rd = normalize(vec2(1.0) - screenUV);
 
@@ -230,7 +228,8 @@ void main()
 #else
 
 	float shadows = 1.0;
-	float t = SHADOW_VALUE; // Force ambient occlusion to be fully applied when shadows are disabled, so we can still get darkening without directional light
+	float t = SHADOW_VALUE; // Force ambient occlusion to be fully applied when shadows are disabled, so we can still
+							// get darkening without directional light
 
 #endif
 
@@ -282,7 +281,8 @@ void main()
 
 	vec3 backgroundColor = (col0 + col1 + col2 + col3) * 0.25;
 
-	// Blend with the non-refraction-sampled background color based on shape factor to show refraction only inside shapes
+	// Blend with the non-refraction-sampled background color based on shape factor to show refraction only inside
+	// shapes
 	backgroundColor = mix(texture(t_backgroundTexture, screenUV).rgb, backgroundColor, shapeFactor);
 
 #else
@@ -298,13 +298,13 @@ void main()
 	color = vec3(normal, 0.0);
 #endif
 
-	// Remap the shadow value (which normally goes from SHADOW_VALUE to 1.0) 
+	// Remap the shadow value (which normally goes from SHADOW_VALUE to 1.0)
 	// so we can apply the full shadow tint when fully shadowed.
 	float litFactor = clamp((shadows - SHADOW_VALUE) / (1.0 - SHADOW_VALUE), 0.0, 1.0);
-	
+
 	// If AO pushes shadows below SHADOW_VALUE, we darken the ambient tint itself
 	float ambientOcclusion = clamp(shadows / SHADOW_VALUE, 0.0, 1.0);
-	
+
 	vec3 shadowTransmittance = mix(u_shadowTint * ambientOcclusion, vec3(1.0), litFactor);
 	vec3 shadedBackground = backgroundColor * shadowTransmittance;
 

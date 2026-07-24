@@ -1,9 +1,9 @@
 #pragma once
 
 #include "weird-engine/ecs/ComponentManager.h"
-#include "weird-physics/Simulation2D.h"
-#include "weird-physics/components/Spring.h"
 #include "weird-physics/components/RigidBody.h"
+#include "weird-physics/components/Spring.h"
+#include "weird-physics/Simulation2D.h"
 
 namespace WeirdEngine
 {
@@ -24,9 +24,9 @@ namespace WeirdEngine
 		{
 			auto componentArray = std::static_pointer_cast<ComponentArray<Spring>>(m_componentArray);
 			Spring& removedSpring = componentArray->getDataFromEntity(entity);
-			
-			if (m_ecs->hasComponent<RigidBody2D>(removedSpring.entityA) && 
-			    m_ecs->hasComponent<RigidBody2D>(removedSpring.entityB))
+
+			if (m_ecs->hasComponent<RigidBody2D>(removedSpring.entityA) &&
+				m_ecs->hasComponent<RigidBody2D>(removedSpring.entityB))
 			{
 				auto simIdA = m_ecs->getComponent<RigidBody2D>(removedSpring.entityA).simulationId;
 				auto simIdB = m_ecs->getComponent<RigidBody2D>(removedSpring.entityB).simulationId;

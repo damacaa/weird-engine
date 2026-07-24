@@ -5,10 +5,10 @@
 
 #include "weird-renderer/audio/AudioEngine.h"
 #include "weird-renderer/core/Display.h"
+#include "weird-renderer/core/MeshRenderPipeline.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/core/SDF2DRenderPipeline.h"
 #include "weird-renderer/core/SDF3DRenderPipeline.h"
-#include "weird-renderer/core/MeshRenderPipeline.h"
 #include "weird-renderer/core/SDLInitializer.h"
 #include "weird-renderer/resources/DataBuffer.h"
 

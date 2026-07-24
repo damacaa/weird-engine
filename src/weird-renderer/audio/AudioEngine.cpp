@@ -1,12 +1,15 @@
 #include "weird-renderer/audio/AudioEngine.h"
+#include "weird-engine/Logger.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
-#include "weird-engine/Logger.h"
 
 #define MA_NO_DEVICE_IO
 #define MINIAUDIO_IMPLEMENTATION
+#ifdef APIENTRY
+#undef APIENTRY
+#endif
 #include <miniaudio/miniaudio.h>
 
 #include "weird-engine/Input.h"
@@ -125,7 +128,6 @@ namespace WeirdEngine
 
 			// 2. Round to nearest integer (nearest semitone)
 			int roundedNote = static_cast<int>(std::round(continuousNote));
-
 			// 3. Define a "Safe" Scale (C Major Pentatonic: C, D, E, G, A)
 			// Notes relative to C: 0, 2, 4, 7, 9
 			// This removes notes that create high tension (like F and B)
@@ -136,7 +138,7 @@ namespace WeirdEngine
 			// If the current note isn't allowed, find the closest one that is.
 
 			int closestNote = roundedNote;
-			int minDistance = 100;
+			float minDistance = 100.0f;
 
 			// Search neighboring notes to find the closest allowed note
 			for (int offset = -2; offset <= 2; ++offset)
@@ -154,9 +156,10 @@ namespace WeirdEngine
 					if (interval == allowed)
 					{
 						// If this allowed note is closer to original, pick it
-						if (std::abs(candidate - continuousNote) < minDistance)
+						float dist = std::abs(static_cast<float>(candidate) - continuousNote);
+						if (dist < minDistance)
 						{
-							minDistance = std::abs(candidate - continuousNote);
+							minDistance = dist;
 							closestNote = candidate;
 						}
 					}

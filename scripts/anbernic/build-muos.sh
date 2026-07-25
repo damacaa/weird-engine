@@ -1,13 +1,14 @@
 #!/bin/bash
-# Cross-compiles WeirdSamples for the Anbernic RG35XXH (aarch64, muOS).
-#
-# Uses a persistent podman image (weird-muos-builder) with all dependencies
-# preinstalled so rebuilds are incremental and fast. Delete the image with
-#   podman rmi weird-muos-builder
-# to force a fresh toolchain setup.
-
+# Generic cross-compiler for muOS
 set -e
-cd "$(dirname "$0")/../.."
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <path_to_project>"
+    exit 1
+fi
+
+PROJECT_DIR=$(realpath "$1")
+WEIRD_ENGINE_DIR=$(realpath "$(dirname "$0")/../..")
 
 IMAGE=weird-muos-builder
 
@@ -32,7 +33,19 @@ RUN dpkg --add-architecture arm64 \
 EOF
 fi
 
-podman run --rm -v "$(pwd):/workspace:z" -w /workspace "$IMAGE" bash -c "
+if [ "$PROJECT_DIR" = "$WEIRD_ENGINE_DIR" ]; then
+    MOUNT_WEIRD_ENGINE=""
+    TOOLCHAIN_FILE="/workspace/toolchain-aarch64.cmake"
+else
+    MOUNT_WEIRD_ENGINE="-v $WEIRD_ENGINE_DIR:/weird-engine:z"
+    TOOLCHAIN_FILE="/weird-engine/toolchain-aarch64.cmake"
+fi
+
+podman run --rm \
+    -v "$PROJECT_DIR:/workspace:z" \
+    $MOUNT_WEIRD_ENGINE \
+    -w /workspace \
+    "$IMAGE" bash -c "
 set -e
 export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
 export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
@@ -40,11 +53,8 @@ export PKG_CONFIG_SYSROOT_DIR=/
 
 cmake -B build-muos -S . \
   -DCMAKE_BUILD_TYPE=Release \
-  -DWEIRD_DISABLE_IMGUI=ON \
-  -DCMAKE_TOOLCHAIN_FILE=toolchain-aarch64.cmake \
-  -DWEIRD_ENGINE_BUILD_EXAMPLES=ON \
+  -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
   -DWEIRD_USE_FBDEV_EGL=ON \
-  -DWEIRD_ENGINE_USE_RUNTIME_ASSETS=ON \
   -DDEPLOY_STANDALONE=ON \
   -DCMAKE_EXE_LINKER_FLAGS='-static-libgcc -static-libstdc++' \
   -DSDL_UNIX_CONSOLE_BUILD=ON \
@@ -56,10 +66,9 @@ cmake -B build-muos -S . \
   -DALSA_INCLUDE_DIR=/usr/include \
   -DALSA_LIBRARY=/usr/lib/aarch64-linux-gnu/libasound.so
 
-cmake --build build-muos -j\$(nproc) --target WeirdSamples
+rm -f /weird-engine/lib/libWeirdEngine.a 2>/dev/null || true
 
-# Ship the SDL3 shared library next to the executable
-find build-muos -name 'libSDL3.so*' -exec cp -a {} build-muos/examples/sample-scenes/ \;
+cmake --build build-muos -j\$(nproc)
 "
 
-echo "== Build finished: build-muos/examples/sample-scenes/WeirdSamples"
+echo "== Build finished in $PROJECT_DIR/build-muos"

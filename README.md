@@ -30,5 +30,37 @@ rm -rf .git/modules/third-party/SDL
 rm -rf third-party/SDL
 
 git submodule add https://github.com/libsdl-org/SDL.git third-party/SDL
-git submodule update --init --recursive
 ```
+
+## Anbernic muOS Deployment
+
+Weird Engine includes generic scripts for building and deploying games directly to Anbernic handheld consoles running muOS over MTP. These scripts are located in `scripts/anbernic/`.
+
+You can use these generic scripts to deploy *any* game built with Weird Engine without needing to copy the scripts to your game's folder. The scripts automatically detect your project's name, cross-compile it via Podman, package assets, generate launcher scripts, and push the files to the device.
+
+### Prerequisites
+
+- [Podman](https://podman.io/) installed on your machine (used to safely isolate the cross-compiler toolchain).
+- The device must be connected to your PC via USB and mounted via MTP (e.g., `mtp:/RG35XX-H/SD2`).
+
+### Deploying a Game
+
+To build and deploy a game to the console:
+
+```bash
+# General Usage
+/path/to/weird-engine/scripts/anbernic/deploy-muos.sh <path_to_game_project> <mtp_base_path>
+
+# Example: Deploying a game from its own directory
+cd my-awesome-game
+../weird-engine/scripts/anbernic/deploy-muos.sh . mtp:/RG35XX-H/SD2
+```
+
+### Fetching Device Logs
+
+If you need to retrieve `log.txt` or screenshots from the device after running your game:
+
+```bash
+../weird-engine/scripts/anbernic/fetch-logs.sh . mtp:/RG35XX-H/SD2
+```
+Logs will be saved to a timestamped folder inside your project's `device-logs/` directory.

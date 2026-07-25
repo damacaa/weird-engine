@@ -30,6 +30,7 @@ namespace WeirdEngine
 				bool enableLongShadows = false;
 				glm::vec3 shadowTint = glm::vec3(0.4f, 0.6f, 0.8f);
 				bool enableRefraction;
+				float refractionIntensity = 1.0f;
 				bool enableAntialiasing;
 				bool enableMotionBlur;
 

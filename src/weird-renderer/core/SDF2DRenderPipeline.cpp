@@ -845,6 +845,7 @@ namespace WeirdEngine
 			m_lightingShader.setUniform("u_ambienOcclusionStrength", m_config.ambienOcclusionStrength);
 			m_lightingShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_lightingShader.setUniform("u_shadowTint", m_config.shadowTint);
+			m_lightingShader.setUniform("u_refractionIntensity", m_config.refractionIntensity);
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);

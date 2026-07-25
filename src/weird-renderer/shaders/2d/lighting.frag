@@ -44,6 +44,7 @@ uniform float u_ambienOcclusionRadius;
 uniform float u_ambienOcclusionStrength;
 uniform float u_overscan;
 uniform vec3 u_shadowTint;
+uniform float u_refractionIntensity;
 
 // For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union
 // artifacts Real distance in screen UV space
@@ -256,7 +257,7 @@ void main()
 	// Sample background with refraction
 	float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
 	refractionDistance = max(0.0, refractionDistance - 0.1);
-	vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal;
+	vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal * u_refractionIntensity;
 	backgroundOffset.x *= u_resolution.y / u_resolution.x;
 
 	// Calculate the base UV

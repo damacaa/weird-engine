@@ -56,6 +56,7 @@ namespace WeirdEngine
 			worldConfig.enableLongShadows = settings.enableLongShadows;
 			worldConfig.shadowTint = settings.shadowTint;
 			worldConfig.enableRefraction = true;
+			worldConfig.refractionIntensity = 1.0f;
 			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			worldConfig.enableMotionBlur = true;
 			worldConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
@@ -79,6 +80,7 @@ namespace WeirdEngine
 			uiConfig.enableShadows = false;
 			uiConfig.enableLongShadows = false;
 			uiConfig.enableRefraction = true;
+			uiConfig.refractionIntensity = 0.1f;
 			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
 			uiConfig.enableMotionBlur = true;
 			uiConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;

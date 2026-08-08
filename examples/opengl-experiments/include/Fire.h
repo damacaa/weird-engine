@@ -58,8 +58,8 @@ private:
 		m_heatDistortionShader =
 			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
-		getLigths().push_back(
+		getLights().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
+		getLights().push_back(
 			Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		// Load meshes
@@ -321,7 +321,7 @@ private:
 		m_litShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Pass light rotation
-		auto& lights = getLigths();
+		auto& lights = getLights();
 		glm::vec3 position = lights[1].position;
 		m_litShader.setUniform("u_lightPos", position);
 		glm::vec3 direction = lights[1].rotation;

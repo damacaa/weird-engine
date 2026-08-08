@@ -45,7 +45,7 @@ namespace WeirdEngine
 
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
-		, m_runSimulationInThread(true)
+		, m_runSimulationInThread(SceneManager::getInstance().getPhysicsSettings().runSimulationInThread)
 	{
 	}
 
@@ -348,7 +348,7 @@ namespace WeirdEngine
 		return m_drawQueue;
 	}
 
-	std::vector<WeirdRenderer::Light>& Scene::getLigths()
+	std::vector<WeirdRenderer::Light>& Scene::getLights()
 	{
 		return m_lights;
 	}

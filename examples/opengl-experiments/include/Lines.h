@@ -54,7 +54,7 @@ private:
 	void onStart(ECSManager& ecs) override
 	{
 		m_debugFly = false;
-		getLigths().push_back(Light{});
+		getLights().push_back(Light{});
 
 		{
 			Entity entity = ecs.createEntity();

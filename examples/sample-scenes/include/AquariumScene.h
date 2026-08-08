@@ -673,8 +673,6 @@ private:
 
 	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.raw.friction *= 50.0f;
-
 		if (std::rand() % 8 == 0)
 		{
 			playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(event.raw.position, 0.0f), 1});

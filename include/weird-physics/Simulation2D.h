@@ -151,13 +151,40 @@ namespace WeirdEngine
 			return m_stats;
 		}
 
-		// Retrieve results
+		// Retrieve published results. Safe from any thread, including physics
+		// callbacks (they just pay a per-call lock). For reading many bodies
+		// at once on the main thread, copy them into a ReadBufferSnapshot via
+		// copyReadBuffers() instead.
 		vec2 getPosition(SimulationID id);
 		void setPosition(SimulationID id, vec2 pos);
 		vec2 getVelocity(SimulationID id);
 		void setVelocity(SimulationID id, vec2 vel);
-		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
+
+		// Published physics state copied out under a brief lock. Fill it once
+		// per frame with copyReadBuffers(), then iterate the ECS without
+		// holding the simulation mutex.
+		struct ReadBufferSnapshot
+		{
+			std::vector<vec2> positions;
+			std::vector<vec2> velocities;
+		};
+
+		// Copies the published positions/velocities into the snapshot under a
+		// short lock. The snapshot's buffers grow as needed but keep their
+		// capacity across calls. Main thread only; must NOT be called from
+		// physics execution (WEIRD_ASSERT enforces this in debug builds).
+		void copyReadBuffers(ReadBufferSnapshot& snapshot);
+
+		// Current working physics state. PHYSICS EXECUTION ONLY: call these
+		// from onPhysicsStep/onCollision/onShapeCollision callbacks, never
+		// from the main thread (WEIRD_ASSERT enforces this in debug builds).
+		vec2 getPhysicsPosition(SimulationID id) const;
+		vec2 getPhysicsVelocity(SimulationID id) const;
+
+		// True while inside a physics step (physics thread in threaded mode,
+		// main thread in single-threaded mode).
+		static bool isPhysicsExecutionContext();
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
@@ -335,9 +362,9 @@ namespace WeirdEngine
 		float m_fixedDeltaTimeF;
 		int m_relaxationSteps;
 
-		bool m_isPaused;
-		bool m_simulating;
-		double m_simulationDelay;
+		std::atomic<bool> m_isPaused{false};
+		std::atomic<bool> m_simulating{false};
+		std::atomic<double> m_simulationDelay{0.0};
 		std::atomic<double> m_simulationTime{0.0};
 
 		bool m_useSimdOperations;

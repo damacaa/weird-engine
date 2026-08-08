@@ -8,5 +8,6 @@ namespace WeirdEngine
 		float damping = 0.001f;
 		float simulationFrequency = 100.0f;
 		int relaxationSteps = 10;
+		bool runSimulationInThread = true;
 	};
 } // namespace WeirdEngine

@@ -23,6 +23,8 @@ namespace WeirdEngine
 
 			inline void update(ECSManager& ecs, Simulation2D& simulation)
 			{
+				// Pass 1: ECS -> physics. Writes are queued as commands and the
+				// physics thread applies them on its next step.
 				ecs.forEach<RigidBody2D, Transform>(
 					[&](Entity entity, RigidBody2D& rb, Transform& transform)
 					{
@@ -56,8 +58,6 @@ namespace WeirdEngine
 							simulation.setContinuousForce(rb.simulationId, rb.pendingContinuousForce);
 							rb.pendingContinuousForce = glm::vec2(0.0f);
 						}
-
-						simulation.updateTransform(transform, rb.simulationId);
 					});
 
 				ecs.forEach<CustomShape>(
@@ -122,6 +122,24 @@ namespace WeirdEngine
 				// initialization commands (position, velocity, mass, etc.)
 				// have been queued ahead of this in m_pendingCommands.
 				simulation.activatePendingBodies();
+
+				// Pass 2: physics -> ECS readback. The published buffers are
+				// copied into a reusable snapshot under a short lock; the ECS
+				// iteration then runs without holding the simulation mutex, so
+				// the physics thread can keep stepping meanwhile.
+				static Simulation2D::ReadBufferSnapshot readSnapshot;
+
+				simulation.copyReadBuffers(readSnapshot);
+
+				ecs.forEach<RigidBody2D, Transform>(
+					[&](Entity entity, RigidBody2D& rb, Transform& transform)
+					{
+						vec2 position = readSnapshot.positions[rb.simulationId];
+						transform.position.x = position.x;
+						transform.position.y = position.y;
+
+						rb.velocity = readSnapshot.velocities[rb.simulationId];
+					});
 			}
 		} // namespace PhysicsSystem2D
 	} // namespace ECS

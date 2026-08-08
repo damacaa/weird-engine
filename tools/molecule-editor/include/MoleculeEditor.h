@@ -1162,6 +1162,5 @@ private:
 	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		m_tempEcs = &ecs;
-		event.raw.friction *= 100.0f;
 	}
 };

@@ -27,6 +27,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 | `WEIRD_DISABLE_IMGUI` | `OFF` | Strip ImGui (used for muOS build) |
 | `WEIRD_TEST_HOOKS` | `OFF` | Enables `WEIRD_AUTO_QUIT_SECONDS` / `WEIRD_SCREENSHOT_FRAME` env vars |
 | `WEIRD_ENGINE_ENABLE_ASAN` | `OFF` | AddressSanitizer |
+| `WEIRD_ENGINE_ENABLE_ASSERTS` | Debug/RelWithDebInfo | Enables `WEIRD_ASSERT` runtime assertions (abort on violation); disabled in Release |
 | `WEIRD_USE_FBDEV_EGL` | `OFF` | fbdev EGL backend for Mali devices (no GBM/KMS) |
 | `WEIRD_ENGINE_USE_RUNTIME_ASSETS` | `OFF` | Load shaders/fonts from `./shaders/` `./fonts/` instead of source tree |
 

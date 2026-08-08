@@ -171,8 +171,6 @@ private:
 
 	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.raw.friction *= 100.0f;
-
 		if (std::rand() % 20 == 0)
 		{
 			Entity e = event.entity;

@@ -64,7 +64,7 @@ private:
 			Entity start = addShape(DefaultShapes3D::PLANE, vars1, floorMaterial, CombinationType::Addition, false);
 		}
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
+		getLights().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
 									glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
 		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);

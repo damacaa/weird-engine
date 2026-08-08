@@ -25,14 +25,18 @@ namespace WeirdEngine
 
 	struct EntityCollisionEvent
 	{
-		CollisionEvent& raw;
+		// Raw event data from the physics thread. Read-only: the physics
+		// response has already been applied by the time this is dispatched.
+		const CollisionEvent& raw;
 		Entity entityA;
 		Entity entityB;
 	};
 
 	struct EntityShapeCollisionEvent
 	{
-		ShapeCollisionEvent& raw;
+		// Raw event data from the physics thread. Read-only: the physics
+		// response has already been applied by the time this is dispatched.
+		const ShapeCollisionEvent& raw;
 		Entity entity;
 	};
 
@@ -66,7 +70,7 @@ namespace WeirdEngine
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 
 		WeirdRenderer::Camera& getCamera();
-		std::vector<WeirdRenderer::Light>& getLigths();
+		std::vector<WeirdRenderer::Light>& getLights();
 
 		Simulation2D& getSimulation2D()
 		{
@@ -138,6 +142,11 @@ namespace WeirdEngine
 		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f,
 								float maxDistance = 150.0f);
 
+		// Called by SceneManager right before this scene is destroyed during
+		// a scene transition. Runs on the main thread; the physics thread may
+		// still be stepping, so keep the same thread rules as the callbacks below.
+		virtual void onDestroy() {};
+
 		void renderImGui();
 		void renderPhysicsStatsUI();
 
@@ -152,15 +161,18 @@ namespace WeirdEngine
 		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
 		virtual void onImGuiRender() {};
 
-		// Physics thread callbacks (No m_ecs access recommended!)
+		// Physics thread callbacks. Fire on the physics thread mid-step; no
+		// ECS access here. Use them for simulation-coupled logic only (contact
+		// tuning, immediate impulses). Everything else belongs in the main
+		// thread callbacks below.
 		virtual void onPhysicsStep(Simulation2D& simulation) {};
 		virtual void onCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) {};
 		virtual void onShapeCollision(Simulation2D& simulation, WeirdEngine::ShapeCollisionEvent& event) {};
 
-		// Main thread callbacks (m_ecs is safe to use here) // ARE YOU SURE???
+		// Main thread callbacks (m_ecs is safe to use here; the physics
+		// thread only ever touches Simulation2D internals, never the ECS)
 		virtual void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) {};
 		virtual void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) {};
-		virtual void onDestroy() {};
 
 		void setSceneComplete(std::string nextScene = "")
 		{

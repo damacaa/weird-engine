@@ -16,8 +16,6 @@ namespace WeirdEngine
 	public:
 		~SceneManager();
 
-		void loadProject(std::string projectDir);
-
 		Scene* getCurrentScene();
 
 		void setPhysicsSettings(const PhysicsSettings& settings)

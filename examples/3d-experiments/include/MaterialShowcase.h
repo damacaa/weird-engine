@@ -155,13 +155,13 @@ private:
 			Entity start = addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
+		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
 									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
 
-		// getLigths().push_back(
+		// getLights().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});
 
-		// getLigths().push_back(
+		// getLights().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
 		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
@@ -178,12 +178,12 @@ private:
 
 		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
 
-		// getLigths()[0].position.x = cameraTransform.position.x;
-		// getLigths()[0].position.y = cameraTransform.position.y;
-		// getLigths()[0].position.z = cameraTransform.position.z;
+		// getLights()[0].position.x = cameraTransform.position.x;
+		// getLights()[0].position.y = cameraTransform.position.y;
+		// getLights()[0].position.z = cameraTransform.position.z;
 
-		// getLigths()[0].rotation.x = -cameraTransform.rotation.x;
-		// getLigths()[0].rotation.y = -cameraTransform.rotation.y;
-		// getLigths()[0].rotation.z = -cameraTransform.rotation.z;
+		// getLights()[0].rotation.x = -cameraTransform.rotation.x;
+		// getLights()[0].rotation.y = -cameraTransform.rotation.y;
+		// getLights()[0].rotation.z = -cameraTransform.rotation.z;
 	}
 };

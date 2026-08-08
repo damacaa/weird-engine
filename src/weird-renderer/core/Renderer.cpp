@@ -768,7 +768,7 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE("3D Render", enable2D);
 
-				auto& lights = scene.getLigths();
+				auto& lights = scene.getLights();
 
 				// --- 1. GBuffer pass: render mesh geometry first ---
 				// Depth testing and culling must be enabled for correct GBuffer writes.

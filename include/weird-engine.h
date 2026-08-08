@@ -248,8 +248,9 @@ namespace WeirdEngine
 #endif
 	} // namespace Detail
 
-	void start(SceneManager& sceneManager, DisplaySettings displaySettings = {}, PhysicsSettings physicsSettings = {},
-			   AudioSettings audioSettings = {}, int argc = 0, char** argv = nullptr)
+	inline void start(SceneManager& sceneManager, DisplaySettings displaySettings = {},
+					  PhysicsSettings physicsSettings = {}, AudioSettings audioSettings = {}, int argc = 0,
+					  char** argv = nullptr)
 	{
 		WeirdEngine::Logger::log("Starting Weird Engine...");
 

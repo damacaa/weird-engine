@@ -1,26 +1,23 @@
-#include <iostream>		  // Only needed for debug output, can remove if unused
 #include <weird-engine.h> // Main engine include
 
 using namespace WeirdEngine;
 
-// Example scene demonstrating how to create a rope of connected circles using springs.
+// Starter template for a new game. Register scenes in main() and the engine
+// takes care of the rest. Override the callbacks you need:
+//   onCreate            - once, before the physics thread starts
+//   onStart(ecs[, tags])- after the ECS is ready and the physics thread runs
+//   onUpdate(dt, ecs)   - game logic, once per frame (pure virtual)
+//   onRender(target)    - extra 3D rendering
+//   onImGuiRender       - debug UI
+//   onCollision / onShapeCollision             - physics thread, no ECS access
+//   onEntityCollision / onEntityShapeCollision - main thread, ECS safe
+//   onDestroy           - before the scene is replaced during a transition
 class EmptyScene : public Scene2D
 {
-public:
-	EmptyScene()
-		: Scene()
-	{
-	}
-
 private:
-	void onStart() override {}
+	void onStart(ECSManager& ecs) override {}
 
-	void onUpdate(float delta) override {}
-	void onCreate() override {}
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override {}
-	void onCollision(WeirdEngine::CollisionEvent& event) override {}
-	void onShapeCollision(WeirdEngine::ShapeCollisionEvent& event) override {}
-	void onDestroy() override {}
+	void onUpdate(float delta, ECSManager& ecs) override {}
 };
 
 int main(int argc, char* argv[])

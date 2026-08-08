@@ -49,7 +49,7 @@ private:
 
 		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert", ASSETS_PATH "water/shaders/water.frag");
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
+		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
 									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
 
 		m_waterPlane.build();
@@ -147,7 +147,7 @@ private:
 		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();
 
-		auto& lights = getLigths();
+		auto& lights = getLights();
 
 		// ── Snapshot the current scene colour + depth ────────────────────────
 		// We need to read from these textures while drawing the water plane,

@@ -215,8 +215,8 @@ namespace WeirdEngine
 		}
 	};
 
-	// Substract
-	struct Substraction : TwoFloatOperation
+	// Subtraction
+	struct Subtraction : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
@@ -232,6 +232,9 @@ namespace WeirdEngine
 			return "(" + valueA->print() + " - " + valueB->print() + ")";
 		}
 	};
+
+	// Deprecated alias of Subtraction
+	using Substraction = Subtraction;
 
 	// Multiplication
 	struct Multiplication : TwoFloatOperation

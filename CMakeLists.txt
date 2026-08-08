@@ -39,6 +39,20 @@ if(WEIRD_TEST_HOOKS)
     add_compile_definitions(WEIRD_TEST_HOOKS)
 endif()
 
+# Runtime assertions: enabled by default in debug-like configurations
+# (Debug, RelWithDebInfo), disabled in Release/MinSizeRel. Games that build
+# the engine via add_subdirectory inherit this through the PUBLIC definition.
+set(WEIRD_ENGINE_ENABLE_ASSERTS_DEFAULT OFF)
+if(CMAKE_BUILD_TYPE MATCHES "^(Debug|RelWithDebInfo)$"
+   OR CMAKE_CONFIGURATION_TYPES MATCHES "(^|;)Debug(;|$)"
+   OR CMAKE_CONFIGURATION_TYPES MATCHES "(^|;)RelWithDebInfo(;|$)")
+    set(WEIRD_ENGINE_ENABLE_ASSERTS_DEFAULT ON)
+endif()
+option(WEIRD_ENGINE_ENABLE_ASSERTS "Enable runtime assertions (WEIRD_ASSERT)" ${WEIRD_ENGINE_ENABLE_ASSERTS_DEFAULT})
+if(WEIRD_ENGINE_ENABLE_ASSERTS)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC WEIRD_ENABLE_ASSERTS=1)
+endif()
+
 if(NOT WEIRD_DISABLE_IMGUI)
 # ImGui setup
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/imgui)
@@ -222,6 +236,7 @@ if(WEIRD_ENGINE_BUILD_EXAMPLES)
     add_subdirectory(examples/3d-experiments)
     add_subdirectory(examples/opengl-experiments)
     add_subdirectory(examples/sample-scenes)
+    add_subdirectory(examples/empty-project)
 endif()
 
 # Tools

@@ -29,8 +29,8 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
@@ -38,7 +38,7 @@ private:
 		settings.damping = 0.1f;
 		ecs.setComponentDirty(settings);
 
-		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
+		const std::filesystem::path organismsDir(services.resources().assetPath("Organisms"));
 		{
 			int i = 0;
 
@@ -53,7 +53,7 @@ private:
 				{
 					Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
 
-					auto tags = loadWeirdFile(entry.path().string());
+					auto tags = services.serialization().loadWeirdFile(entry.path().string());
 
 					Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
 
@@ -86,17 +86,17 @@ private:
 			}
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		updateHeads(delta, ecs);

@@ -22,8 +22,8 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		for (size_t i = 0; i < 9900; i++)
 		{
@@ -53,46 +53,46 @@ private:
 		// Floor
 		{
 			float variables[8]{0.0f, 1.5f, 1.0f};
-			addShape(DefaultShapes::SINE, variables, 3);
+			services.shapes().addShape(DefaultShapes::SINE, variables, 3);
 		}
 
 		// Wall right
 		{
 			float variables[8]{30 + 5, 0, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
+			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall left
 		{
 			float variables[8]{-5, 0, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
+			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		{
 			float variables[8]{-15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f};
-			Entity star = addShape(DefaultShapes::CIRCLE, variables, 7);
+			Entity star = services.shapes().addShape(DefaultShapes::CIRCLE, variables, 7);
 
 			m_cursorShape = star;
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		// Move wall to mouse
 		{
 			CustomShape& cs = ecs.getComponent<CustomShape>(m_cursorShape);
-			auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
-			float x = Input::GetMouseX();
-			float y = Input::GetMouseY();
+			auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			float x = services.input().getMouseX();
+			float y = services.input().getMouseY();
 
 			// Transform mouse coordinates to world space
 			vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));

@@ -20,8 +20,8 @@ private:
 
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		constexpr int rowWidth = 30;
 		constexpr int numBalls = rowWidth * 2;
@@ -112,15 +112,15 @@ private:
 
 		// Add base shapes (walls, ground, custom)
 		float vars0[8] = {1.0f, 0.5f, 1.0f}; // Floor shape
-		addShape(DefaultShapes::SINE, vars0, 3);
+		services.shapes().addShape(DefaultShapes::SINE, vars0, 3);
 
 		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		m_star = addShape(DefaultShapes::STAR, vars1, 3);
+		m_star = services.shapes().addShape(DefaultShapes::STAR, vars1, 3);
 
 		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
-		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
+		services.shapes().addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void throwBalls(ECSManager& ecs)
@@ -153,11 +153,11 @@ private:
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		// Animate custom shape over time
@@ -173,17 +173,17 @@ private:
 			ecs.setComponentDirty(cs);
 		}
 
-		if (Input::GetKey(Input::E) || Input::GetGamepadButton(Input::GamepadButton::West))
+		if (services.input().getKey(Input::E) || services.input().getGamepadButton(Input::GamepadButton::West))
 		{
 			throwBalls(ecs);
 		}
 
 		static vec2 boxStart;
 		static bool createBoxInUI = true;
-		if (Input::GetKeyDown(Input::M))
+		if (services.input().getKeyDown(Input::M))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 
 			if (createBoxInUI)
 			{
@@ -195,10 +195,10 @@ private:
 				boxStart = world;
 			}
 		}
-		else if (Input::GetKeyUp(Input::M))
+		else if (services.input().getKeyUp(Input::M))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			vec2 boxEnd;
@@ -218,23 +218,24 @@ private:
 			float vars[8] = {x, y, w, h, 1.2f};
 
 			if (createBoxInUI)
-				addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
+				services.shapes().addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
 			else
-				addShape(DefaultShapes::BOX, vars, 4 + ecs.getComponentArray<CustomShape>()->getSize() % 12,
-						 CombinationType::SmoothAddition, true, ecs.getComponentArray<CustomShape>()->getSize());
+				services.shapes().addShape(
+					DefaultShapes::BOX, vars, 4 + ecs.getComponentArray<CustomShape>()->getSize() % 12,
+					CombinationType::SmoothAddition, true, ecs.getComponentArray<CustomShape>()->getSize());
 		}
 
-		if (Input::GetKeyDown(Input::N))
+		if (services.input().getKeyDown(Input::N))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
-			addShape(DefaultShapes::STAR, vars, 3);
+			services.shapes().addShape(DefaultShapes::STAR, vars, 3);
 		}
 
-		if (Input::GetKey(Input::R) || Input::GetGamepadButton(Input::GamepadButton::South))
+		if (services.input().getKey(Input::R) || services.input().getGamepadButton(Input::GamepadButton::South))
 		{
 			ecs.forEach<RigidBody2D, Transform>(
 				[&](Entity e, RigidBody2D& rb, Transform& t)

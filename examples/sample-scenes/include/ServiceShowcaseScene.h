@@ -270,13 +270,13 @@ namespace ServiceShowcase
 		State& state = getState(ecs, services);
 
 		// Scene transition through the provider
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
 			services.sceneControl().goToNextScene();
 		}
 
 		// Pause / resume through the provider
-		if (Input::GetKeyDown(Input::Space))
+		if (services.input().getKeyDown(Input::Space))
 		{
 			if (services.physics().isPaused())
 				services.physics().resume();
@@ -285,48 +285,49 @@ namespace ServiceShowcase
 		}
 
 		// Real-time physics settings through the provider
-		if (Input::GetKeyDown(Input::Up))
+		if (services.input().getKeyDown(Input::Up))
 		{
 			state.gravity = std::clamp(state.gravity + 1.0f, -30.0f, 0.0f);
 			services.physics().setGravity(state.gravity);
 		}
-		if (Input::GetKeyDown(Input::Down))
+		if (services.input().getKeyDown(Input::Down))
 		{
 			state.gravity = std::clamp(state.gravity - 1.0f, -30.0f, 0.0f);
 			services.physics().setGravity(state.gravity);
 		}
-		if (Input::GetKeyDown(Input::Left))
+		if (services.input().getKeyDown(Input::Left))
 		{
 			state.damping = std::max(0.0f, state.damping - 0.05f);
 			services.physics().setDamping(state.damping);
 		}
-		if (Input::GetKeyDown(Input::Right))
+		if (services.input().getKeyDown(Input::Right))
 		{
 			state.damping += 0.05f;
 			services.physics().setDamping(state.damping);
 		}
 
 		// Spawn a ball where the mouse points
-		if (Input::GetMouseButtonDown(Input::LeftClick) && !Input::isUIClick())
+		if (services.input().getMouseButtonDown(Input::LeftClick) && !services.input().isUIClick())
 		{
 			auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 			vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(
-				cameraTransform, vec2(Input::GetMouseX(), Input::GetMouseY()));
+				cameraTransform, vec2(services.input().getMouseX(), services.input().getMouseY()));
 			spawnBall(ecs, mouseWorld);
 			state.ballsSpawned++;
 		}
 
 		// Serialization through the provider
-		if (Input::GetKeyDown(Input::S) && Input::GetKey(Input::LeftCtrl))
+		if (services.input().getKeyDown(Input::S) && services.input().getKey(Input::LeftCtrl))
 		{
-			services.serialization().saveScene(ASSETS_PATH "scenes/service_showcase.weird");
+			services.serialization().saveScene(services.resources().assetPath("scenes/service_showcase.weird"));
 			std::cout << "[ServiceShowcase] scene saved" << std::endl;
 		}
-		if (Input::GetKeyDown(Input::L) && Input::GetKey(Input::LeftCtrl))
+		if (services.input().getKeyDown(Input::L) && services.input().getKey(Input::LeftCtrl))
 		{
 			// blacklistEntities = true: entities loaded from disk are excluded
 			// from future saves, so saving again does not duplicate them.
-			TagMap loaded = services.serialization().loadWeirdFile(ASSETS_PATH "scenes/service_showcase.weird", true);
+			TagMap loaded = services.serialization().loadWeirdFile(
+				services.resources().assetPath("scenes/service_showcase.weird"), true);
 			for (const auto& [name, entity] : loaded)
 				std::cout << "[ServiceShowcase] loaded tag '" << name << "' -> entity " << entity << std::endl;
 		}
@@ -534,7 +535,7 @@ private:
 	// Note the firing rules: onRender only fires for 3D / both render modes,
 	// while onImGuiRender fires for every scene, 2D and 3D alike (it is just
 	// the debug UI).
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
 	{
 		static bool logged = false;
 		if (!logged)

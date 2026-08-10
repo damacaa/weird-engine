@@ -47,7 +47,8 @@ private:
 	void onCreate(ECSManager& ecs, ServiceProvider& services) override
 	{
 
-		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert", ASSETS_PATH "water/shaders/water.frag");
+		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
+							   services.resources().assetPath("water/shaders/water.frag"));
 
 		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
 									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
@@ -78,7 +79,7 @@ private:
 
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
 		auto& redMat = createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
@@ -98,13 +99,13 @@ private:
 			t.position = vec3(3, 0, 0);
 
 			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
-			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
+			auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity, true);
 			mr.mesh = id;
 
 			ecs.addComponent<Floatable>(entity);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 3, 20);
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 3, 20);
 	}
 
 	float m_time = 0.0f;
@@ -112,9 +113,9 @@ private:
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_time += delta;
@@ -143,7 +144,7 @@ private:
 		}
 	}
 
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
 	{
 		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();

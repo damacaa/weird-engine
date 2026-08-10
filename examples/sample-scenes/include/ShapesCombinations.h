@@ -22,13 +22,13 @@ private:
 
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		// Floor shape
 		{
 			float vars0[8] = {0.5f, 2.5f, 1.0f};
-			addShape(DefaultShapes::SINE, vars0, 2, CombinationType::Addition, true, 0);
+			services.shapes().addShape(DefaultShapes::SINE, vars0, 2, CombinationType::Addition, true, 0);
 		}
 
 		std::random_device rd;
@@ -46,32 +46,33 @@ private:
 				float y = -2.0f + distribY(gen);
 
 				float vars2[8] = {x, y, 3.0f, 5.0f, 1.0f, 0.0f}; // Custom shape
-				addShape(DefaultShapes::BOX, vars2, 4 + i, CombinationType::Addition, true, 1);
+				services.shapes().addShape(DefaultShapes::BOX, vars2, 4 + i, CombinationType::Addition, true, 1);
 			}
 		}
 
 		// Circle
 		{
 			float vars[8] = {15.0f, 7.5f, 5.0f};
-			addShape(DefaultShapes::CIRCLE, vars, 7, CombinationType::Addition, true, 2);
+			services.shapes().addShape(DefaultShapes::CIRCLE, vars, 7, CombinationType::Addition, true, 2);
 		}
 
 		// Subtract star
 		{
 			float vars[8] = {-2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f};
-			addShape(DefaultShapes::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
+			services.shapes().addShape(DefaultShapes::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
 		}
 
 		// Cursor circle
 		{
 			float vars2[8] = {250.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // Custom shape
-			m_circle = addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Subtraction, true,
-								CustomShape::GLOBAL_GROUP);
+			m_circle = services.shapes().addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Subtraction, true,
+												  CustomShape::GLOBAL_GROUP);
 		}
 
 		{
 			float vars2[8] = {15.0f, 0.0f, 30.0f, 0.0f, 0.0f, 0.0f}; // Custom shape
-			addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true, CustomShape::GLOBAL_GROUP);
+			services.shapes().addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true,
+									   CustomShape::GLOBAL_GROUP);
 		}
 
 		for (int i = 0; i < 10; ++i)
@@ -86,31 +87,31 @@ private:
 			m_uiPoints.push_back(ee);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
-		float x = Input::GetMouseX();
-		float y = Input::GetMouseY();
+		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		float x = services.input().getMouseX();
+		float y = services.input().getMouseY();
 
 		// Transform mouse coordinates to world space
 		vec2 mousePositionInWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(x, y));
 
-		if (Input::GetMouseButtonDown(Input::RightClick))
+		if (services.input().getMouseButtonDown(Input::RightClick))
 		{
 			m_initialMousePositionInWorld = mousePositionInWorld;
 		}
-		else if (Input::GetGamepadButtonDown(Input::GamepadButton::LeftShoulder))
+		else if (services.input().getGamepadButtonDown(Input::GamepadButton::LeftShoulder))
 		{
 			float halfWidth = Display::width / 2.0f;
 			float halfHeight = Display::height / 2.0f;
@@ -119,12 +120,12 @@ private:
 				ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(halfWidth, halfHeight));
 		}
 
-		if (Input::GetMouseButton(Input::RightClick))
+		if (services.input().getMouseButton(Input::RightClick))
 		{
 			vec2 v = mousePositionInWorld - m_initialMousePositionInWorld;
 			m_circleRadious = (std::min)(10.0f, length(v));
 		}
-		else if (Input::GetGamepadButton(Input::GamepadButton::LeftShoulder))
+		else if (services.input().getGamepadButton(Input::GamepadButton::LeftShoulder))
 		{
 			m_circleRadious = (std::min)(10.0f, m_circleRadious + (10.0f * delta));
 		}

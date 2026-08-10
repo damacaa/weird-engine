@@ -26,15 +26,16 @@ private:
 
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		{
 			float vars[8] = {15.0f, -50.0f, 250.0f, 50.0f};
-			addShape(DefaultShapes::BOX, vars, DisplaySettings::LightGray, CombinationType::SmoothAddition);
+			services.shapes().addShape(DefaultShapes::BOX, vars, DisplaySettings::LightGray,
+									   CombinationType::SmoothAddition);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 		m_lastResolutionHash = Display::width + Display::height;
 
 		{
@@ -125,9 +126,9 @@ private:
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_counter++;
@@ -137,13 +138,13 @@ private:
 			ecs.setComponentDirty(text);
 
 			auto& t = ecs.getComponent<Transform>(m_counterText);
-			t.position.x = Input::GetMouseX() + 20.0f;
-			t.position.y = Input::GetMouseY() + 10.0f;
+			t.position.x = services.input().getMouseX() + 20.0f;
+			t.position.y = services.input().getMouseY() + 10.0f;
 		}
 
 		{
-			auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 mouseScreen = vec2(Input::GetMouseX() + 20.0f, Input::GetMouseY() - 10.0f);
+			auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 mouseScreen = vec2(services.input().getMouseX() + 20.0f, services.input().getMouseY() - 10.0f);
 			vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, mouseScreen);
 
 			auto& t = ecs.getComponent<Transform>(m_worldMouseText);

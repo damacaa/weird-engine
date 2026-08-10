@@ -14,7 +14,7 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
 		auto& redMat = createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
@@ -36,7 +36,7 @@ private:
 
 			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
 
-			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
+			auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity, true);
 			mr.mesh = id;
 			// mr.materialIndex = floorMaterial.id;
 
@@ -56,28 +56,30 @@ private:
 
 		{
 			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f}; // Custom shape
-			Entity start = addShape(DefaultShapes::STAR, vars1, orangeMat, CombinationType::Addition, true, 0);
+			Entity start =
+				services.shapes().addShape(DefaultShapes::STAR, vars1, orangeMat, CombinationType::Addition, true, 0);
 		}
 
 		{
 			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(DefaultShapes3D::PLANE, vars1, floorMaterial, CombinationType::Addition, false);
+			Entity start = services.shapes().addShape(DefaultShapes3D::PLANE, vars1, floorMaterial,
+													  CombinationType::Addition, false);
 		}
 
 		getLights().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
 									glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2, 10);
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 
 		return;
 

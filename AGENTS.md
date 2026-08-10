@@ -60,3 +60,9 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 - The `build/` and `build-muos/` directories are separate CMake trees; do not mix them.
 - `compile_flags.txt` exists for clangd; it does not drive the actual build.
 - The `.vscode/settings.json` enables `WEIRD_ENGINE_BUILD_EXAMPLES=ON` by default.
+
+## Commit Guidelines
+
+- **Naming Convention**: Prefix all commit messages with the affected module or system name, followed by a colon and a space. Keep the prefix lowercase.
+  - Prefix Examples: `scene:`, `core:`, `physics:`, `renderer:`, `examples:`, `tools:`, `core/assert:`
+  - Full Example: `physics: add BodyUserData for attaching custom data to rigidbodies`

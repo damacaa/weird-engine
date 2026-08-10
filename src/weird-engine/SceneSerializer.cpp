@@ -418,8 +418,8 @@ namespace WeirdEngine
 					}
 					else
 					{
-						// Use scene's tag() method to keep both maps in sync
-						scene.tag(newEntity, name);
+						// Use service provider to keep both maps in sync
+						scene.m_services.tags().tag(newEntity, name);
 					}
 				}
 			}

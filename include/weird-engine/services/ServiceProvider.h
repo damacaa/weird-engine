@@ -12,9 +12,11 @@
 
 #include "weird-engine/Background.h"
 #include "weird-engine/ecs/ECS.h"
+#include "weird-engine/Input.h"
 #include "weird-engine/Material3D.h"
 #include "weird-engine/ResourceManager.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
+#include "weird-engine/Utils.h"
 #include "weird-engine/vec.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
@@ -466,13 +468,151 @@ namespace WeirdEngine
 		}
 	};
 
+	struct InputService
+	{
+		bool getKey(Input::KeyCode key) const
+		{
+			return Input::GetKey(key);
+		}
+		bool getKeyDown(Input::KeyCode key) const
+		{
+			return Input::GetKeyDown(key);
+		}
+		bool getKeyUp(Input::KeyCode key) const
+		{
+			return Input::GetKeyUp(key);
+		}
+
+		float getMouseX() const
+		{
+			return Input::GetMouseX();
+		}
+		float getMouseY() const
+		{
+			return Input::GetMouseY();
+		}
+		float getMouseDeltaX() const
+		{
+			return Input::GetMouseDeltaX();
+		}
+		float getMouseDeltaY() const
+		{
+			return Input::GetMouseDeltaY();
+		}
+		float getMouseDeltaXRaw() const
+		{
+			return Input::GetMouseDeltaXRaw();
+		}
+		float getMouseDeltaYRaw() const
+		{
+			return Input::GetMouseDeltaYRaw();
+		}
+		bool getMouseButton(Input::MouseButton button) const
+		{
+			return Input::GetMouseButton(button);
+		}
+		bool getMouseButtonDown(Input::MouseButton button) const
+		{
+			return Input::GetMouseButtonDown(button);
+		}
+		bool getMouseButtonUp(Input::MouseButton button) const
+		{
+			return Input::GetMouseButtonUp(button);
+		}
+		void setMousePosition(float x, float y)
+		{
+			Input::SetMousePosition(x, y);
+		}
+		void showMouse()
+		{
+			Input::ShowMouse();
+		}
+		void hideMouse()
+		{
+			Input::HideMouse();
+		}
+		bool isUIClick() const
+		{
+			return Input::isUIClick();
+		}
+		void flagUIClick()
+		{
+			Input::flagUIClick();
+		}
+
+		bool getGamepadButton(Input::GamepadButton button) const
+		{
+			return Input::GetGamepadButton(button);
+		}
+		bool getGamepadButtonDown(Input::GamepadButton button) const
+		{
+			return Input::GetGamepadButtonDown(button);
+		}
+		bool getGamepadButtonUp(Input::GamepadButton button) const
+		{
+			return Input::GetGamepadButtonUp(button);
+		}
+		float getGamepadAxis(Input::GamepadAxis axis) const
+		{
+			return Input::GetGamepadAxis(axis);
+		}
+
+		void suppressMouseInput()
+		{
+			Input::suppressMouseInput();
+		}
+		void suppressKeyboardInput()
+		{
+			Input::suppressKeyboardInput();
+		}
+	};
+
 	struct ResourceService
 	{
 		ResourceManager& resourceManager;
+		std::string assetsBasePath;
 
 		ResourceManager& resources()
 		{
 			return resourceManager;
+		}
+
+		void setAssetsBasePath(const std::string& path)
+		{
+			assetsBasePath = path;
+		}
+
+		std::string assetPath(const std::string& relative) const
+		{
+			return assetsBasePath + relative;
+		}
+
+		MeshID getMeshId(const std::string& path, Entity entity, bool instancing = false)
+		{
+			return resourceManager.getMeshId(assetPath(path).c_str(), entity, instancing);
+		}
+
+		std::string readTextFile(const std::string& path) const
+		{
+			return get_file_contents(path.c_str());
+		}
+
+		void writeTextFile(const std::string& path, const std::string& content) const
+		{
+			saveToFile(path.c_str(), content);
+		}
+
+		bool fileExists(const std::string& path) const
+		{
+			return checkIfFileExists(path.c_str());
+		}
+
+		void ensureDirectory(const std::string& path) const
+		{
+			if (!std::filesystem::exists(path))
+			{
+				std::filesystem::create_directory(path);
+			}
 		}
 	};
 
@@ -570,6 +710,11 @@ namespace WeirdEngine
 			return m_debug;
 		}
 
+		InputService& input()
+		{
+			return m_input;
+		}
+
 	private:
 		ECSManager& m_ecs;
 		TimeService m_time;
@@ -583,5 +728,6 @@ namespace WeirdEngine
 		SceneControlService m_sceneControl;
 		ResourceService m_resources;
 		DebugService m_debug;
+		InputService m_input;
 	};
 } // namespace WeirdEngine

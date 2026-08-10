@@ -43,11 +43,13 @@ namespace WeirdEngine
 
 	// Forward declaration – full definition in SceneSerializer.h
 	class SceneSerializer;
+	class SceneManager;
 
 	class Scene
 	{
 		// Serialization and the service provider reach into the scene's
 		// private state (storage lives here; the provider is a facade).
+		friend class SceneManager;
 		friend class SceneSerializer;
 		friend class ServiceProvider;
 		friend struct SerializationService;
@@ -147,7 +149,7 @@ namespace WeirdEngine
 		virtual void onStart(ECSManager& ecs, ServiceProvider& services) {}
 		virtual void onUpdate(ECSManager& ecs, ServiceProvider& services) {};
 		virtual void onDestroy(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onRender(WeirdRenderer::RenderTarget& renderTarget) {};
+		virtual void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) {};
 		virtual void onImGuiRender(ECSManager& ecs, ServiceProvider& services) {};
 
 		// ---- Main thread collision callbacks (onEntity* family). Fire after
@@ -170,71 +172,9 @@ namespace WeirdEngine
 		virtual void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) {};
 		virtual void onPhysicsShapeCollision(Simulation2D& simulation, WeirdEngine::ShapeCollisionEvent& event) {};
 
-		// ---- Scene control helper
-		void goToNextScene(std::string nextScene = "")
-		{
-			m_isSceneComplete = true;
-			m_nextScene = nextScene;
-		};
+		ServiceProvider m_services;
 
-		// Deprecated alias of goToNextScene.
-		void setSceneComplete(std::string nextScene = "")
-		{
-			goToNextScene(nextScene);
-		};
-
-		// ---- Shape creation & SDF registration
-		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf);
-		Entity addShape(ShapeId shapeId, float* variables, uint16_t material,
-						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
-						int group = 0);
-		Entity addShape(ShapeId shapeId, float* variables, const Material3D& material,
-						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
-						int group = 0)
-		{
-			return addShape(shapeId, variables, material.id, combination, hasCollision, group);
-		}
-
-		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
-						  CombinationType combination = CombinationType::Addition, int group = 0);
-		Entity addUIShape(ShapeId shapeId, float* variables, const Material3D& material,
-						  CombinationType combination = CombinationType::Addition, int group = 0)
-		{
-			return addUIShape(shapeId, variables, material.id, combination, group);
-		}
-		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0);
-
-		// ---- Entity helpers
-		// Assign a unique tag to an entity. If the tag is already owned by
-		// another entity, it is moved to this one.  An empty name is treated
-		// as a removal request (equivalent to calling removeTag).
-		void tag(Entity entity, const std::string& name);
-		// Remove any tag currently assigned to an entity.
-		void removeTag(Entity entity);
-		// Return the tag of an entity, or "" if none.
-		std::string getEntityTag(Entity entity) const;
-		// Return the entity that owns a tag, or MAX_ENTITIES if none.
-		Entity getEntityByTag(const std::string& name) const;
-
-		// Entities in this set will be skipped during scene serialization
-		void blacklistEntity(Entity e)
-		{
-			m_serializationBlacklist.insert(e);
-		}
-
-		// ---- Persistence & physics queries
-		// Save the current scene state to a .weird JSON file
-		void saveScene(const std::string& filename);
-
-		// Dynamically load a .weird file and add its contents to the scene.
-		// If blacklistEntities is true, all entities created by the load will be
-		// excluded from future scene serialization.
-		// Returns a map of tag names to their corresponding entities.
-		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false);
-
-		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f,
-								float maxDistance = 150.0f);
-
+	private:
 		// ---- Shared state (available to derived scenes)
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
@@ -242,7 +182,6 @@ namespace WeirdEngine
 		bool m_debugFly = false;
 		bool m_debugInput = false;
 
-	private:
 		// ---- Internal helpers
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(CollisionEvent& event, void* userData);
@@ -291,10 +230,7 @@ namespace WeirdEngine
 		TagMap m_tagToEntity;
 		std::unordered_map<Entity, std::string> m_entityToTag;
 
-		// ---- Service provider binding (must be the last declared member: it
-		// holds references to the members above).
 		float m_lastDelta = 0.0f;
-		ServiceProvider m_services;
 	};
 	class Scene2D : public Scene
 	{

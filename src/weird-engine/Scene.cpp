@@ -124,7 +124,7 @@ namespace WeirdEngine
 
 		// Create camera
 		m_mainCamera = m_ecs.createEntity();
-		tag(m_mainCamera, "mainCamera");
+		m_services.tags().tag(m_mainCamera, "mainCamera");
 		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
@@ -364,19 +364,11 @@ namespace WeirdEngine
 	{
 		if (m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
 		{
-			onRender(renderTarget);
+			onRender(m_ecs, renderTarget, m_services);
 		}
 	}
 
 	// SDFs
-
-	ShapeId Scene::registerSDF(std::shared_ptr<IMathExpression> sdf)
-	{
-		m_sdfs.push_back(sdf);
-		m_simulation2D.setSDFs(m_sdfs);
-
-		return static_cast<ShapeId>(m_sdfs.size() - 1);
-	}
 
 	// AUDIO
 
@@ -397,57 +389,6 @@ namespace WeirdEngine
 
 	// Serialization
 
-	void Scene::tag(Entity entity, const std::string& name)
-	{
-		if (name.empty())
-		{
-			removeTag(entity);
-			return;
-		}
-
-		// If the tag is already owned by another entity, remove it from that entity
-		auto existingOwner = m_tagToEntity.find(name);
-		if (existingOwner != m_tagToEntity.end() && existingOwner->second != entity)
-		{
-			m_entityToTag.erase(existingOwner->second);
-		}
-
-		// Remove any previous tag this entity had
-		auto existingTag = m_entityToTag.find(entity);
-		if (existingTag != m_entityToTag.end() && existingTag->second != name)
-		{
-			m_tagToEntity.erase(existingTag->second);
-		}
-
-		m_tagToEntity[name] = entity;
-		m_entityToTag[entity] = name;
-	}
-
-	void Scene::removeTag(Entity entity)
-	{
-		auto it = m_entityToTag.find(entity);
-		if (it == m_entityToTag.end())
-			return;
-		m_tagToEntity.erase(it->second);
-		m_entityToTag.erase(it);
-	}
-
-	std::string Scene::getEntityTag(Entity entity) const
-	{
-		auto it = m_entityToTag.find(entity);
-		if (it == m_entityToTag.end())
-			return "";
-		return it->second;
-	}
-
-	Entity Scene::getEntityByTag(const std::string& name) const
-	{
-		auto it = m_tagToEntity.find(name);
-		if (it == m_tagToEntity.end())
-			return MAX_ENTITIES;
-		return it->second;
-	}
-
 	Entity Scene::getEntityForSimulationId(SimulationID simulationId,
 										   std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies)
 	{
@@ -455,25 +396,6 @@ namespace WeirdEngine
 			return INVALID_ENTITY;
 
 		return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
-	}
-
-	void Scene::saveScene(const std::string& filename)
-	{
-		SceneSerializer::save(*this, filename);
-	}
-
-	Scene::TagMap Scene::loadWeirdFile(const std::string& path, bool blacklistEntities)
-	{
-		TagMap loadedTags;
-		Entity firstNewEntity = m_ecs.getEntityCount();
-		SceneSerializer::load(*this, path, &loadedTags);
-		if (blacklistEntities)
-		{
-			Entity lastNewEntity = m_ecs.getEntityCount();
-			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
-				m_serializationBlacklist.insert(entity);
-		}
-		return loadedTags;
 	}
 
 	void Scene::loadFromWeirdFile(const std::string& path)
@@ -495,8 +417,9 @@ namespace WeirdEngine
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
-		, m_resources(scene.m_resourceManager)
+		, m_resources{scene.m_resourceManager, ""}
 		, m_debug(scene.m_debugFly, scene.m_debugInput)
+		, m_input()
 	{
 	}
 
@@ -507,17 +430,21 @@ namespace WeirdEngine
 
 	void SerializationService::saveScene(const std::string& filename)
 	{
-		scene.saveScene(filename);
+		SceneSerializer::save(scene, filename);
 	}
 
 	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities)
 	{
-		return scene.loadWeirdFile(path, blacklistEntities);
-	}
-
-	Scene::RaymarchResult Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance)
-	{
-		return raymarchScene(m_ecs, m_sdfs, m_simulation2D, getTime(), origin, direction, epsilon, maxDistance);
+		TagMap loadedTags;
+		Entity firstNewEntity = scene.m_ecs.getEntityCount();
+		SceneSerializer::load(scene, path, &loadedTags);
+		if (blacklistEntities)
+		{
+			Entity lastNewEntity = scene.m_ecs.getEntityCount();
+			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
+				scene.m_serializationBlacklist.insert(entity);
+		}
+		return loadedTags;
 	}
 
 	RaymarchResult raymarchScene(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
@@ -785,7 +712,7 @@ namespace WeirdEngine
 				if (componentIDs.empty())
 					continue;
 
-				std::string tag = getEntityTag(e);
+				std::string tag = m_services.tags().getEntityTag(e);
 				std::string label =
 					tag.empty() ? ("Entity " + std::to_string(e)) : (tag + " (ID: " + std::to_string(e) + ")");
 
@@ -820,47 +747,6 @@ namespace WeirdEngine
 		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
 		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
 #endif
-	}
-
-	Entity Scene::addShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
-						   bool hasCollision, int group)
-	{
-		Entity entity = m_ecs.createEntity();
-		CustomShape& shape = m_ecs.addComponent<CustomShape>(entity);
-		shape.distanceFieldId = shapeId;
-		shape.combination = combination;
-		shape.hasCollisions = hasCollision;
-		shape.groupIdx = group;
-		shape.material = material;
-		std::copy(variables, variables + 8, shape.parameters);
-
-		return entity;
-	}
-
-	Entity Scene::addUIShape(ShapeId shapeId, float* variables, uint16_t material, CombinationType combination,
-							 int group)
-	{
-		Entity entity = m_ecs.createEntity();
-		UIShape& shape = m_ecs.addComponent<UIShape>(entity);
-		shape.distanceFieldId = shapeId;
-		shape.combination = combination;
-		shape.groupIdx = group;
-		shape.material = material;
-		std::copy(variables, variables + 8, shape.parameters);
-
-		return entity;
-	}
-
-	UIShape& Scene::addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group)
-	{
-		entity = m_ecs.createEntity();
-		UIShape& component = m_ecs.addComponent<UIShape>(entity);
-		component.distanceFieldId = shapeId;
-		component.groupIdx = group;
-		component.smoothFactor = 100.0f;
-		std::copy(variables, variables + 8, component.parameters);
-
-		return component;
 	}
 
 	Material3D& Scene::createMaterial()

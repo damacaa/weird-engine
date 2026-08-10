@@ -9,12 +9,6 @@ cmake --build build
 
 # Run the main example
 ./build/examples/sample-scenes/WeirdSamples
-
-# muOS cross-compile (aarch64, uses podman)
-./scripts/anbernic/build-muos.sh
-./scripts/anbernic/deploy-muos.sh          # build + deploy via MTP
-./scripts/anbernic/deploy-muos.sh --no-build  # deploy only
-./scripts/anbernic/fetch-logs.sh           # pull log.txt + screenshots
 ```
 
 There are no tests. CI runs `ctest` but no test targets are defined.
@@ -42,6 +36,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
   - `sample-scenes` → `WeirdSamples` (main demo)
   - `3d-experiments`, `opengl-experiments` — other demos
   - `empty-project` — starter template
+- **ServiceProvider pattern**: `Scene` state is highly encapsulated. Game systems should use `ServiceProvider` (passed into update/render loops) to interact with rendering, audio, or physics systems instead of accessing `Scene` internals.
 - Entry point for games: `WeirdEngine::start(sceneManager, ...)` in `include/weird-engine.h`.
 
 ## Dependencies

@@ -74,8 +74,8 @@ private:
 
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		auto& background = getBackground();
 		background.type = BackgroundType::Sky;
@@ -89,10 +89,10 @@ private:
 		settings.damping = 0.025f;
 		ecs.setComponentDirty(settings);
 
-		createJellyfish(ecs, 0.0f, 25.0f, 4 + 0, 1.3f, 0.0f);
-		createJellyfish(ecs, 15.0f, 20.0f, 4 + 3, 1.6f, 1.5f);
-		createJellyfish(ecs, 30.0f, 28.0f, 4 + 6, 1.1f, 3.0f);
-		createJellyfish(ecs, 40.0f, 15.0f, 4 + 9, 1.4f, 4.5f);
+		createJellyfish(ecs, services, 0.0f, 25.0f, 4 + 0, 1.3f, 0.0f);
+		createJellyfish(ecs, services, 15.0f, 20.0f, 4 + 3, 1.6f, 1.5f);
+		createJellyfish(ecs, services, 30.0f, 28.0f, 4 + 6, 1.1f, 3.0f);
+		createJellyfish(ecs, services, 40.0f, 15.0f, 4 + 9, 1.4f, 4.5f);
 
 		createEel(ecs, -10.0f, 50.0f, 20, 1.0f, 4);
 		createEel(ecs, 40.0f, 40.0f, 18, 1.0f, 8);
@@ -100,27 +100,27 @@ private:
 
 		{
 			float seaweedVars[8] = {3.0f, 1.2f, 2.5f};
-			Entity seaweed = addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::Green);
+			Entity seaweed = services.shapes().addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::Green);
 			auto& sw = ecs.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 0.0f;
 		}
 
 		{
 			float seaweedVars[8] = {2.0f, 2.0f, 1.8f};
-			Entity seaweed = addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::LightGreen);
+			Entity seaweed = services.shapes().addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::LightGreen);
 			auto& sw = ecs.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 1.5f;
 		}
 
 		{
 			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H};
-			Entity box =
-				addShape(DefaultShapes::BOX, boxVars, DisplaySettings::LightBlue, CombinationType::Intersection);
+			Entity box = services.shapes().addShape(DefaultShapes::BOX, boxVars, DisplaySettings::LightBlue,
+													CombinationType::Intersection);
 		}
 
 		{
 			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H, 1.0f};
-			Entity box = addShape(DefaultShapes::BOX_LINE, boxVars, DisplaySettings::LightBlue);
+			Entity box = services.shapes().addShape(DefaultShapes::BOX_LINE, boxVars, DisplaySettings::LightBlue);
 		}
 
 		for (int i = 0; i < 40; i++)
@@ -148,10 +148,11 @@ private:
 			fishComp.perceptionRadius = 5.0f;
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(TANK_CX, TANK_CY, 45.0f);
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(TANK_CX, TANK_CY, 45.0f);
 	}
 
-	void createJellyfish(ECSManager& ecs, float x, float y, int material, float scale, float phase)
+	void createJellyfish(ECSManager& ecs, ServiceProvider& services, float x, float y, int material, float scale,
+						 float phase)
 	{
 		Entity bellEntity = ecs.createEntity();
 		auto& t = ecs.addComponent<Transform>(bellEntity);
@@ -161,7 +162,8 @@ private:
 		auto& rb = ecs.addComponent<RigidBody2D>(bellEntity);
 
 		float bellVars[8] = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f};
-		Entity bellShape = addShape(DefaultShapes::STAR, bellVars, material, CombinationType::Addition, false);
+		Entity bellShape =
+			services.shapes().addShape(DefaultShapes::STAR, bellVars, material, CombinationType::Addition, false);
 
 		auto& jf = ecs.addComponent<JellyfishComponent>(bellEntity);
 		jf.bellShape = bellShape;
@@ -252,20 +254,20 @@ private:
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_time += delta;
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
-		vec2 mouseWorld =
-			ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(
+			cameraTransform, vec2(services.input().getMouseX(), services.input().getMouseY()));
 
-		if (Input::GetKeyDown(Input::E))
+		if (services.input().getKeyDown(Input::E))
 		{
 			constexpr int FOOD_COUNT = 30;
 			for (int i = 0; i < FOOD_COUNT; i++)

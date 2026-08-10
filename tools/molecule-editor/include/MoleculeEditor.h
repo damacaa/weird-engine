@@ -128,11 +128,11 @@ private:
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
-		m_debugFly = true;
+		m_services.debug().setDebugFly(true);
 
 		g_cameraPositon.x = 0.0f;
 		g_cameraPositon.y = 0.0f;
-		m_tempEcs->getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity()).position = g_cameraPositon;
 
 		// Request neutral simulation behavior for this editor scene.
 		Entity globalSettingsEnt = m_tempEcs->createEntity();
@@ -147,29 +147,31 @@ private:
 
 		{
 			float boundsVars[8]{0.0f, 0.0f, 3000.0f};
-			Entity outside = addShape(DefaultShapes::CIRCLE, boundsVars, 17, CombinationType::Addition);
+			Entity outside =
+				m_services.shapes().addShape(DefaultShapes::CIRCLE, boundsVars, 17, CombinationType::Addition);
 
 			float boundsVars2[8]{0.0f, 0.0f, 20.0f, 20.0f};
-			Entity inside =
-				addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::Black, CombinationType::Subtraction);
+			Entity inside = m_services.shapes().addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::Black,
+														 CombinationType::Subtraction);
 
-			blacklistEntity(outside);
-			blacklistEntity(inside);
+			m_services.serialization().blacklistEntity(outside);
+			m_services.serialization().blacklistEntity(inside);
 		}
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
-		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (m_services.input().getKeyDown(Input::Q) ||
+			m_services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			m_services.sceneControl().goToNextScene();
 			return;
 		}
 
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::S))
+		if (m_services.input().getKey(Input::LeftCtrl) && m_services.input().getKeyDown(Input::S))
 		{
 			WeirdEngine::Logger::log("Save scene name: ");
 
@@ -185,11 +187,11 @@ private:
 				{
 					fileName += ".weird";
 				}
-				saveScene(ASSETS_PATH "Organisms/" + fileName);
+				m_services.serialization().saveScene(m_services.resources().assetPath("Organisms/") + fileName);
 			}
 		}
 
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::L))
+		if (m_services.input().getKey(Input::LeftCtrl) && m_services.input().getKeyDown(Input::L))
 		{
 			WeirdEngine::Logger::log("Load scene name: ");
 
@@ -205,11 +207,11 @@ private:
 				{
 					fileName += ".weird";
 				}
-				loadMolecule(ASSETS_PATH "Organisms/" + fileName);
+				loadMolecule(m_services.resources().assetPath("Organisms/") + fileName);
 			}
 		}
 
-		if (Input::GetMouseButtonDown(Input::LeftClick) && !Input::isUIClick())
+		if (m_services.input().getMouseButtonDown(Input::LeftClick) && !m_services.input().isUIClick())
 		{
 			spawnBallAtMouse();
 		}
@@ -310,7 +312,7 @@ private:
 			float px = START_X + i * MAT_SPACING;
 			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
 			Entity e;
-			UIShape& sh = addUIShape(DefaultShapes::CIRCLE, p, e);
+			UIShape& sh = m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p, e);
 			sh.material = static_cast<uint16_t>(i);
 
 			auto& tog = m_tempEcs->addComponent<ShapeToggle>(e);
@@ -319,7 +321,7 @@ private:
 			tog.modifierAmount = 5.0f;
 
 			m_materialToggles[i] = e;
-			blacklistEntity(e);
+			m_services.serialization().blacklistEntity(e);
 		}
 
 		m_tempEcs->getComponent<ShapeToggle>(m_materialToggles[m_selectedMaterial]).active = true;
@@ -369,14 +371,14 @@ private:
 		{
 			float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
 			float p[8]{TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF};
-			Entity e = addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+			Entity e = m_services.shapes().addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
 			auto& tog = m_tempEcs->addComponent<ShapeToggle>(e);
 			tog.clickPadding = TOOL_BTN_HALF + 8.0f;
 			tog.parameterModifierMask.set(2);
 			tog.parameterModifierMask.set(3);
 			tog.modifierAmount = 3.0f;
 			m_toolToggles[i] = e;
-			blacklistEntity(e);
+			m_services.serialization().blacklistEntity(e);
 
 			Entity lbl = m_tempEcs->createEntity();
 			auto& lt = m_tempEcs->addComponent<Transform>(lbl);
@@ -386,27 +388,27 @@ private:
 			tx.material = 1;
 			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-			blacklistEntity(lbl);
+			m_services.serialization().blacklistEntity(lbl);
 		}
 		m_tempEcs->getComponent<ShapeToggle>(m_toolToggles[0]).active = true;
 
 		float starP[8]{Display::width - GRAV_Y, Display::height - GRAV_Y, GRAV_Y * 0.5f, 5.0f, 10.0f, 0.0f};
-		m_gravityToggleEntity = addUIShape(DefaultShapes::STAR, starP, static_cast<uint16_t>(2));
+		m_gravityToggleEntity = m_services.shapes().addUIShape(DefaultShapes::STAR, starP, static_cast<uint16_t>(2));
 		auto& gravTog = m_tempEcs->addComponent<ShapeToggle>(m_gravityToggleEntity);
 		gravTog.clickPadding = 18.0f;
 		// gravTog.parameterModifierMask.set(2);
 		gravTog.parameterModifierMask.set(5);
 		gravTog.modifierAmount = 10.0f;
-		blacklistEntity(m_gravityToggleEntity);
+		m_services.serialization().blacklistEntity(m_gravityToggleEntity);
 
 		float gridP[8]{Display::width - GRAV_Y, Display::height - GRID_Y, 12.0f, 12.0f};
-		m_gridToggleEntity = addUIShape(DefaultShapes::BOX, gridP, static_cast<uint16_t>(2));
+		m_gridToggleEntity = m_services.shapes().addUIShape(DefaultShapes::BOX, gridP, static_cast<uint16_t>(2));
 		auto& gridTog = m_tempEcs->addComponent<ShapeToggle>(m_gridToggleEntity);
 		gridTog.clickPadding = 18.0f;
 		gridTog.parameterModifierMask.set(2);
 		gridTog.parameterModifierMask.set(3);
 		gridTog.modifierAmount = 3.0f;
-		blacklistEntity(m_gridToggleEntity);
+		m_services.serialization().blacklistEntity(m_gridToggleEntity);
 	}
 
 	void syncToolbar()
@@ -457,8 +459,9 @@ private:
 
 	void spawnBallAtMouse()
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
-		vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
+		vec2 world = ECS::Camera::screenPositionToWorldPosition2D(
+			cam, vec2(m_services.input().getMouseX(), m_services.input().getMouseY()));
 
 		if (m_gridMode)
 			world = snapToGrid(world);
@@ -479,8 +482,9 @@ private:
 
 	vec2 getMouseWorldPosition()
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
-		return ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
+		return ECS::Camera::screenPositionToWorldPosition2D(
+			cam, vec2(m_services.input().getMouseX(), m_services.input().getMouseY()));
 	}
 
 	vec2 snapToGrid(vec2 pos, Entity exclude = static_cast<Entity>(-1))
@@ -545,7 +549,7 @@ private:
 
 	void handleRightMouseDragInput()
 	{
-		bool rightDown = Input::GetMouseButton(Input::RightClick);
+		bool rightDown = m_services.input().getMouseButton(Input::RightClick);
 
 		if (rightDown && !m_rightWasDown)
 		{
@@ -627,7 +631,7 @@ private:
 		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
 			return;
 
-		if (Input::GetKeyDown(Input::F))
+		if (m_services.input().getKeyDown(Input::F))
 		{
 			m_keepFixedAfterDrag = true;
 		}
@@ -691,8 +695,9 @@ private:
 
 	Entity pickBallAtMouse()
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
-		vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
+		vec2 world = ECS::Camera::screenPositionToWorldPosition2D(
+			cam, vec2(m_services.input().getMouseX(), m_services.input().getMouseY()));
 
 		float best = BALL_HIT_RADIUS;
 		Entity bestEntity = static_cast<Entity>(-1);
@@ -768,13 +773,13 @@ private:
 
 		float lineVars[8]{};
 		computeScreenLineParams(pa, pb, lineVars);
-		Entity line = addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+		Entity line = m_services.shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
 
 		auto& btn = m_tempEcs->addComponent<ShapeButton>(line);
 		btn.clickPadding = 8.0f;
 		btn.modifierAmount = 0.0f;
 
-		blacklistEntity(line);
+		m_services.serialization().blacklistEntity(line);
 
 		m_links.push_back({a, b, idA, idB, restDistance, line, type, constraintEnt});
 	}
@@ -805,7 +810,7 @@ private:
 	void handleConstraintLineClicks()
 	{
 		// Detect click-down via ShapeButton state.
-		// ButtonSystem already calls Input::flagUIClick() when a line is clicked,
+		// ButtonSystem already calls m_services.input().flagUIClick() when a line is clicked,
 		// so ball spawning is suppressed automatically.
 		for (auto& link : m_links)
 		{
@@ -815,7 +820,7 @@ private:
 			if (btn.state == ButtonState::Down)
 			{
 				m_draggedLink = &link;
-				m_linkDragStartX = Input::GetMouseX();
+				m_linkDragStartX = m_services.input().getMouseX();
 				m_linkDragStartDist = link.restDistance;
 				m_dragLinkSimIdA.store(link.simulationIdA, std::memory_order_relaxed);
 				m_dragLinkSimIdB.store(link.simulationIdB, std::memory_order_relaxed);
@@ -823,7 +828,7 @@ private:
 			}
 		}
 
-		if (!Input::GetMouseButton(Input::LeftClick))
+		if (!m_services.input().getMouseButton(Input::LeftClick))
 		{
 			m_draggedLink = nullptr;
 			return;
@@ -832,7 +837,7 @@ private:
 		if (m_draggedLink == nullptr)
 			return;
 
-		float dx = (Input::GetMouseX() - m_linkDragStartX) * 0.3f;
+		float dx = (m_services.input().getMouseX() - m_linkDragStartX) * 0.3f;
 		float newDist = std::round((m_linkDragStartDist + dx) * 10.0f) / 10.0f;
 		newDist = (std::clamp)(newDist, 1.0f, 10.0f);
 		m_draggedLink->restDistance = newDist;
@@ -843,7 +848,7 @@ private:
 
 	void updateConstraintLines()
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
 
 		for (auto& link : m_links)
 		{
@@ -869,7 +874,7 @@ private:
 
 	void computeScreenLineParams(const vec2& aWorld, const vec2& bWorld, float outParams[8])
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
 		vec2 aScreen = ECS::Camera::worldPosition2DToScreenPosition(cam, aWorld);
 		vec2 bScreen = ECS::Camera::worldPosition2DToScreenPosition(cam, bWorld);
 
@@ -907,7 +912,7 @@ private:
 			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 			tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 			m_tagLabelEntity = lbl;
-			blacklistEntity(lbl);
+			m_services.serialization().blacklistEntity(lbl);
 		}
 
 		// "edit tag" button (a small box)
@@ -915,11 +920,11 @@ private:
 			static constexpr float BW = 40.0f;
 			static constexpr float BH = 14.0f;
 			float p[8]{Display::width * 0.5f, 90.0f, BW, BH};
-			m_tagEditButton = addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+			m_tagEditButton = m_services.shapes().addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
 			auto& btn = m_tempEcs->addComponent<ShapeButton>(m_tagEditButton);
 			btn.clickPadding = 6.0f;
 			btn.modifierAmount = 0.0f;
-			blacklistEntity(m_tagEditButton);
+			m_services.serialization().blacklistEntity(m_tagEditButton);
 		}
 	}
 
@@ -950,16 +955,18 @@ private:
 		if (m_tagCircleOuter == static_cast<Entity>(-1))
 		{
 			float p[8]{};
-			m_tagCircleOuter = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-										  CombinationType::Addition, TAG_RING_GROUP);
-			blacklistEntity(m_tagCircleOuter);
+			m_tagCircleOuter =
+				m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+											   CombinationType::Addition, TAG_RING_GROUP);
+			m_services.serialization().blacklistEntity(m_tagCircleOuter);
 
-			m_tagCircleInner = addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-										  CombinationType::Subtraction, TAG_RING_GROUP);
-			blacklistEntity(m_tagCircleInner);
+			m_tagCircleInner =
+				m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
+											   CombinationType::Subtraction, TAG_RING_GROUP);
+			m_services.serialization().blacklistEntity(m_tagCircleInner);
 		}
 
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
 		const auto& ht = m_tempEcs->getComponent<Transform>(m_tagSelectedEntity);
 		vec2 world(ht.position.x, ht.position.y);
 		vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cam, world);
@@ -977,7 +984,7 @@ private:
 		// Update the tag label text
 		if (m_tagLabelEntity != static_cast<Entity>(-1))
 		{
-			std::string currentTag = getEntityTag(m_tagSelectedEntity);
+			std::string currentTag = m_services.tags().getEntityTag(m_tagSelectedEntity);
 			auto& tx = m_tempEcs->getComponent<UITextRenderer>(m_tagLabelEntity);
 			std::string newText = currentTag.empty() ? "tag: (none)" : ("tag: " + currentTag);
 			if (tx.text != newText)
@@ -1000,11 +1007,11 @@ private:
 				std::getline(std::cin, newTag);
 				if (newTag.empty())
 				{
-					removeTag(m_tagSelectedEntity);
+					m_services.tags().removeTag(m_tagSelectedEntity);
 				}
 				else
 				{
-					tag(m_tagSelectedEntity, newTag);
+					m_services.tags().tag(m_tagSelectedEntity, newTag);
 				}
 			}
 		}
@@ -1050,12 +1057,12 @@ private:
 		size_t prevDistCount = m_tempEcs->getComponentArray<DistanceConstraint>()->getSize();
 
 		// Load the file — creates new entities / rigid bodies / constraints
-		TagMap loadedTags = loadWeirdFile(path);
+		TagMap loadedTags = m_services.serialization().loadWeirdFile(path);
 
 		// Apply loaded tags to the scene
 		for (const auto& [name, entity] : loadedTags)
 		{
-			tag(entity, name);
+			m_services.tags().tag(entity, name);
 		}
 
 		// Collect new balls: find entities with both Dot and RigidBody2D
@@ -1107,12 +1114,12 @@ private:
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
-			Entity line = addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+			Entity line = m_services.shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
 
 			auto& btn = m_tempEcs->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;
 			btn.modifierAmount = 0.0f;
-			blacklistEntity(line);
+			m_services.serialization().blacklistEntity(line);
 
 			int idA = m_tempEcs->getComponent<RigidBody2D>(a).simulationId;
 			int idB = m_tempEcs->getComponent<RigidBody2D>(b).simulationId;
@@ -1141,12 +1148,12 @@ private:
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
-			Entity line = addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+			Entity line = m_services.shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
 
 			auto& btn = m_tempEcs->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;
 			btn.modifierAmount = 0.0f;
-			blacklistEntity(line);
+			m_services.serialization().blacklistEntity(line);
 
 			int idA = m_tempEcs->getComponent<RigidBody2D>(a).simulationId;
 			int idB = m_tempEcs->getComponent<RigidBody2D>(b).simulationId;

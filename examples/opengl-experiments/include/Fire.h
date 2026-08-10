@@ -43,20 +43,21 @@ private:
 		// Base shaders
 		m_backgroundShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "misc/background_spherical_grid.frag");
-		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/lit.frag");
+		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/lit.frag"));
 		m_bloomShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bloom.frag");
 		m_blurShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/blur.frag");
 		m_brightFilterShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bright_filter.frag");
 
 		// Custom shaders
-		m_flameShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
-		m_particlesShader =
-			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
-		m_smokeShader =
-			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
+		m_flameShader =
+			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/flame.frag"));
+		m_particlesShader = Shader(services.resources().assetPath("fire/shaders/fireParticles.vert"),
+								   services.resources().assetPath("fire/shaders/fireParticles.frag"));
+		m_smokeShader = Shader(services.resources().assetPath("fire/shaders/smokeParticles.vert"),
+							   services.resources().assetPath("fire/shaders/smokeParticles.frag"));
 		m_heatDistortionShader =
-			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
+			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/heatDistortion.frag"));
 
 		getLights().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
 		getLights().push_back(
@@ -144,8 +145,8 @@ private:
 		}
 
 		// Fire textures
-		m_noiseTexture = new Texture(ASSETS_PATH "fire/fire.jpg");
-		m_flameShape = new Texture(ASSETS_PATH "fire/flame.png");
+		m_noiseTexture = new Texture(services.resources().assetPath("fire/fire.jpg"));
+		m_flameShape = new Texture(services.resources().assetPath("fire/flame.png"));
 
 		m_sceneTextureBeforeFire = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_postProcessTextureFront = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
@@ -209,27 +210,27 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugFly = false;
+		services.debug().setDebugFly(false);
 	}
 
 	float m_time = 3.1416f;
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
-		if (m_debugFly)
+		if (services.debug().debugFly())
 		{
 			return;
 		}
 
-		if (!Input::GetKey(Input::Space))
+		if (!services.input().getKey(Input::Space))
 		{
 			static float speed = 0.15f;
-			if (Input::GetKey(Input::R))
+			if (services.input().getKey(Input::R))
 			{
 				m_time -= delta * speed;
 			}
@@ -239,7 +240,7 @@ private:
 			}
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 
 		static float amplitude = 10.0f;
 
@@ -292,7 +293,7 @@ private:
 		glDisable(GL_BLEND);
 	}
 
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
 	{
 		WeirdRenderer::Camera& sceneCamera = getCamera();
 		float time = getTime();
@@ -400,7 +401,7 @@ private:
 		// Fire
 		renderFire(sceneCamera, time);
 
-		if (Input::GetKey(Input::P))
+		if (services.input().getKey(Input::P))
 		{
 			return;
 		}
@@ -452,7 +453,7 @@ private:
 		RenderTarget* finalTarget = m_postProcessDoubleBuffer[!horizontal];
 		finalTarget->getColorAttachment()->bind(1);
 
-		if (Input::GetKey(Input::B))
+		if (services.input().getKey(Input::B))
 		{
 			finalTarget->getColorAttachment()->bind(0);
 		}

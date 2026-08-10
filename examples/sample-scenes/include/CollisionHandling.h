@@ -14,8 +14,8 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		// Create a random number generator engine
 
@@ -41,28 +41,28 @@ private:
 		// Floor
 		{
 			float variables[8]{15.0f, 5.0f, 25.0f};
-			addShape(DefaultShapes::CIRCLE, variables, 3);
+			services.shapes().addShape(DefaultShapes::CIRCLE, variables, 3);
 		}
 
 		{
 			float variables[8]{15.0f, -50.0f, 250.0f, 50.0f};
-			auto floor = addShape(DefaultShapes::BOX, variables, 3, CombinationType::SmoothAddition);
+			auto floor = services.shapes().addShape(DefaultShapes::BOX, variables, 3, CombinationType::SmoothAddition);
 			ecs.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 		}
 
 		{
 			float variables[8]{15.0f, 5.0f, 20.0f};
-			addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
+			services.shapes().addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 	}
 

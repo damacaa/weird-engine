@@ -26,20 +26,20 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_timer += delta;
@@ -81,7 +81,8 @@ private:
 							float h = (float)(std::rand() % 4 + 1);
 							float variables[8]{w, y, x, h, 0.0f, 0.0f, 0.0f, 0.0f};
 							uint16_t material = std::rand() % 16;
-							Entity shape = addShape(DefaultShapes::BOX, variables, material, CombinationType::Addition);
+							Entity shape = services.shapes().addShape(DefaultShapes::BOX, variables, material,
+																	  CombinationType::Addition);
 							m_testShapes.push_back(shape);
 						}
 						break;

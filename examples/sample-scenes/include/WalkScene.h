@@ -32,8 +32,8 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		auto& background = getBackground();
 		background.type = BackgroundType::Sky;
@@ -41,7 +41,7 @@ private:
 		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
 		background.scale = 0.2f;
 
-		auto tags = loadWeirdFile(ASSETS_PATH "man.weird");
+		auto tags = services.serialization().loadWeirdFile(services.resources().assetPath("man.weird"));
 
 		Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
 
@@ -62,10 +62,10 @@ private:
 		m_head = tags["head"];
 
 		float boundsVars2[8]{0.0f, -24.0f, 200.0f, 20.0f};
-		Entity inside =
-			addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen, CombinationType::Addition);
+		Entity inside = services.shapes().addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen,
+												   CombinationType::Addition);
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
@@ -77,11 +77,11 @@ private:
 	{
 		float delta = services.time().deltaTime();
 
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		updatePhysics(delta, ecs);

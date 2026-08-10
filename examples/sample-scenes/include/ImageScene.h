@@ -15,13 +15,14 @@ public:
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
-	std::string imagePath = ASSETS_PATH "jimmy.jpg";
+	std::string imagePath;
 
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
+		imagePath = services.resources().assetPath("jimmy.jpg");
 
 		// Check if the folder exists
 		if (!std::filesystem::exists("cache/"))
@@ -73,22 +74,22 @@ private:
 		// Floor
 		{
 			float variables[8]{15, -5, 25.0f, 5.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
+			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall right
 		{
 			float variables[8]{30 + 5, 20, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
+			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
 		}
 
 		// Wall left
 		{
 			float variables[8]{0 - 5, 20, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
+			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	vec3 getColor(const char* path, float x, float y)
@@ -169,13 +170,13 @@ private:
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
 		// Get colors
-		if (Input::GetKeyDown(Input::P))
+		if (services.input().getKeyDown(Input::P))
 		{
 			auto components = ecs.getComponentArray<RigidBody2D>();
 

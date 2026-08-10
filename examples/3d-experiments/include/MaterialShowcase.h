@@ -17,7 +17,7 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
 		{
 			Entity entity = ecs.createEntity();
@@ -130,7 +130,8 @@ private:
 			floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
 
 			float vars[8] = {3};
-			Entity floor = addShape(DefaultShapes3D::PLANE, vars, floorMaterial, CombinationType::Addition, false);
+			Entity floor = services.shapes().addShape(DefaultShapes3D::PLANE, vars, floorMaterial,
+													  CombinationType::Addition, false);
 		}
 
 		auto& mirrorMaterial = createMaterial();
@@ -141,18 +142,18 @@ private:
 		{
 
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = registerSDF(box);
+			auto boxId = services.shapes().registerSDF(box);
 
 			float vars1[8] = {-5.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
+			Entity start = services.shapes().addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
 		{
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = registerSDF(box);
+			auto boxId = services.shapes().registerSDF(box);
 
 			float vars1[8] = {20.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
+			Entity start = services.shapes().addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
 		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
@@ -164,19 +165,19 @@ private:
 		// getLights().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position = vec3(12, -1, 12);
 		cameraTransform.rotation.x = -0.95f;
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 
 		// getLights()[0].position.x = cameraTransform.position.x;
 		// getLights()[0].position.y = cameraTransform.position.y;

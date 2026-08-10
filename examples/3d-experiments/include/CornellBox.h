@@ -17,7 +17,7 @@ private:
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
 		auto& ballMat = createMaterial();
 		ballMat.color = vec4(1.0f);
@@ -55,47 +55,48 @@ private:
 
 		{
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = registerSDF(box);
+			auto boxId = services.shapes().registerSDF(box);
 
 			// Left
 			{
 				float vars1[8] = {-2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, redMat, CombinationType::Addition, false);
+				Entity start = services.shapes().addShape(boxId, vars1, redMat, CombinationType::Addition, false);
 			}
 
 			// Right
 			{
 				float vars1[8] = {2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
+				Entity start = services.shapes().addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
 			}
 
 			// Back
 			{
 				float vars1[8] = {0.0f, 2.6f, -2.0f * 2.6f, 3.0f * 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
+				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
 			// Top
 			{
 				float vars1[8] = {0.0f, 3.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
+				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
 			// Light hole
 			{
 				float vars1[8] = {0.0f, 2.0f * 2.6f, 0.0f, 0.5f, 1.0f, 0.5f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
+				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
 			}
 
 			// Floor
 			{
 				float vars1[8] = {0.0f, -1.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
+				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
 			}
 
 			// {
 			// 	float vars1[8] = {0.0f, 2.6f, 0.0f, 2.7f, 2.7f, 2.7f}; // Custom shape
-			// 	Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Intersection, false);
+			// 	Entity start = services.shapes().addShape(boxId, vars1, DisplaySettings::White,
+			// CombinationType::Intersection, false);
 			// }
 		}
 
@@ -112,17 +113,17 @@ private:
 		// getLights().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2.6f, 12.0f);
+		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2.6f, 12.0f);
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			goToNextScene();
+			services.sceneControl().goToNextScene();
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 
 		// getLights()[0].position.x = cameraTransform.position.x;
 		// getLights()[0].position.y = cameraTransform.position.y;

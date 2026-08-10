@@ -89,9 +89,9 @@ private:
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
-		m_debugInput = true;
-		m_debugFly = true;
-		m_tempEcs->getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		m_services.debug().setDebugInput(true);
+		m_services.debug().setDebugFly(true);
+		m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity()).position = g_cameraPositon;
 
 		buildShapeButtons();
 		buildCombToggles();
@@ -102,27 +102,29 @@ private:
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
-		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_mainCamera).position;
+		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
-			goToNextScene();
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown(Input::S))
-			saveScene(ASSETS_PATH "example.weird");
+		if (m_services.input().getKeyDown(Input::Q) ||
+			m_services.input().getGamepadButtonDown(Input::GamepadButton::North))
+			m_services.sceneControl().goToNextScene();
+		if (m_services.input().getKey(Input::LeftCtrl) && m_services.input().getKeyDown(Input::S))
+			m_services.serialization().saveScene(m_services.resources().assetPath("example.weird"));
 
 		syncMaterialToggles();
 		syncCombToggles();
 
-		if (Input::GetMouseButtonDown(Input::LeftClick))
+		if (m_services.input().getMouseButtonDown(Input::LeftClick))
 			onLeftClick();
-		if (Input::GetMouseButton(Input::LeftClick))
+		if (m_services.input().getMouseButton(Input::LeftClick))
 		{
-			auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
-			vec2 wp = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+			auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
+			vec2 wp = ECS::Camera::screenPositionToWorldPosition2D(
+				cam, vec2(m_services.input().getMouseX(), m_services.input().getMouseY()));
 			spawnPhysicsEntity(wp);
 		}
-		if (Input::GetMouseButtonDown(Input::RightClick))
+		if (m_services.input().getMouseButtonDown(Input::RightClick))
 			onRightClick();
-		if (Input::GetKeyDown(Input::X) && m_hasSelection)
+		if (m_services.input().getKeyDown(Input::X) && m_hasSelection)
 			deleteSelected();
 
 		refreshPanel();
@@ -139,7 +141,7 @@ private:
 		{
 			auto& transform = transformArray->getDataAtIdx(i);
 			Entity entity = transformArray->getEntityAtIdx(i);
-			if (entity == m_mainCamera)
+			if (entity == m_services.render().getCameraEntity())
 				continue;
 
 			if (transform.position.y < -10.0f)
@@ -164,13 +166,13 @@ private:
 			float p[8]{};
 			previewParams(types[i], cx, cy, p);
 
-			Entity e = addUIShape(types[i], p, 2);
+			Entity e = m_services.shapes().addUIShape(types[i], p, 2);
 			auto& b = m_tempEcs->addComponent<ShapeButton>(e);
 			b.modifierAmount = 1.0f;
 			b.clickPadding = 8.0f;
 
 			m_shapeButtons.push_back({e, types[i]});
-			blacklistEntity(e);
+			m_services.serialization().blacklistEntity(e);
 		}
 	}
 
@@ -244,10 +246,11 @@ private:
 			int g = COMB_GRP_BASE + i;
 
 			float p1[8]{cx - off * 0.5f, cy, r};
-			Entity e1 = addUIShape(DefaultShapes::CIRCLE, p1, static_cast<uint16_t>(1), CombinationType::Addition, g);
+			Entity e1 = m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p1, static_cast<uint16_t>(1),
+													   CombinationType::Addition, g);
 
 			float p2[8]{cx + off * 0.5f, cy, r};
-			Entity e2 = addUIShape(DefaultShapes::CIRCLE, p2, static_cast<uint16_t>(1), ct[i], g);
+			Entity e2 = m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p2, static_cast<uint16_t>(1), ct[i], g);
 
 			if (ct[i] == CombinationType::SmoothAddition || ct[i] == CombinationType::SmoothSubtraction)
 				m_tempEcs->getComponent<UIShape>(e2).smoothFactor = 5.0f;
@@ -265,9 +268,9 @@ private:
 			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 
 			m_combButtons.push_back({e1, ct[i]});
-			blacklistEntity(e1);
-			blacklistEntity(e2);
-			blacklistEntity(lbl);
+			m_services.serialization().blacklistEntity(e1);
+			m_services.serialization().blacklistEntity(e2);
+			m_services.serialization().blacklistEntity(lbl);
 		}
 		m_tempEcs->getComponent<ShapeToggle>(m_combButtons[0].toggleEntity).active = true;
 	}
@@ -282,7 +285,7 @@ private:
 			float px = START_X + i * MAT_SPACING;
 			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
 			Entity e;
-			UIShape& sh = addUIShape(DefaultShapes::CIRCLE, p, e);
+			UIShape& sh = m_services.shapes().addUIShape(DefaultShapes::CIRCLE, p, e);
 			sh.material = static_cast<uint16_t>(i);
 
 			auto& tog = m_tempEcs->addComponent<ShapeToggle>(e);
@@ -291,7 +294,7 @@ private:
 			tog.modifierAmount = 5.0f;
 
 			m_materialToggles[i] = e;
-			blacklistEntity(e);
+			m_services.serialization().blacklistEntity(e);
 		}
 		m_tempEcs->getComponent<ShapeToggle>(m_materialToggles[m_selectedMaterial]).active = true;
 	}
@@ -309,14 +312,14 @@ private:
 		auto& hdr = m_tempEcs->addComponent<UITextRenderer>(m_selInfoText);
 		hdr.material = 1;
 		hdr.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
-		blacklistEntity(m_selInfoText);
+		m_services.serialization().blacklistEntity(m_selInfoText);
 
 		for (int i = 0; i < 8; i++)
 		{
 			float py = PANEL_TOP_Y - i * PARAM_GAP;
 
 			float bp[8]{HIDDEN, py, P_BTN_W, P_BTN_H};
-			Entity be = addUIShape(DefaultShapes::BOX, bp, static_cast<uint16_t>(3));
+			Entity be = m_services.shapes().addUIShape(DefaultShapes::BOX, bp, static_cast<uint16_t>(3));
 			auto& btn = m_tempEcs->addComponent<ShapeButton>(be);
 			btn.modifierAmount = 1.0f;
 			btn.clickPadding = 3.0f;
@@ -331,8 +334,8 @@ private:
 			tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 
 			m_paramBtns[i] = {be, te};
-			blacklistEntity(be);
-			blacklistEntity(te);
+			m_services.serialization().blacklistEntity(be);
+			m_services.serialization().blacklistEntity(te);
 		}
 	}
 
@@ -365,8 +368,9 @@ private:
 
 	void onRightClick()
 	{
-		auto& cam = m_tempEcs->getComponent<Transform>(m_mainCamera);
-		vec2 wp = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cam = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
+		vec2 wp = ECS::Camera::screenPositionToWorldPosition2D(
+			cam, vec2(m_services.input().getMouseX(), m_services.input().getMouseY()));
 		selectNearest(wp);
 	}
 
@@ -392,7 +396,7 @@ private:
 			std::copy(std::begin(s.parameters), std::end(s.parameters), p);
 			p[9] = pos.x;
 			p[10] = pos.y;
-			float d = m_sdfs[s.distanceFieldId]->getValue(p);
+			float d = m_services.shapes().getSDFs()[s.distanceFieldId]->getValue(p);
 			if (d < best)
 			{
 				best = d;
@@ -644,7 +648,8 @@ private:
 	{
 		float p[8]{};
 		fillRandomParams(type, p);
-		Entity e = addShape(type, p, static_cast<uint16_t>(m_selectedMaterial), m_selectedCombination);
+		Entity e =
+			m_services.shapes().addShape(type, p, static_cast<uint16_t>(m_selectedMaterial), m_selectedCombination);
 		if (m_selectedCombination == CombinationType::SmoothAddition ||
 			m_selectedCombination == CombinationType::SmoothSubtraction)
 			m_tempEcs->getComponent<CustomShape>(e).smoothFactor = 1.5f;
@@ -660,7 +665,7 @@ private:
 		auto& sdf = m_tempEcs->addComponent<Dot>(e);
 		sdf.materialId = static_cast<unsigned int>(m_selectedMaterial);
 		m_tempEcs->addComponent<RigidBody2D>(e);
-		blacklistEntity(e);
+		m_services.serialization().blacklistEntity(e);
 	}
 
 	// =====================================================================
@@ -755,7 +760,7 @@ private:
 
 	vec2 camCentre()
 	{
-		auto& t = m_tempEcs->getComponent<Transform>(m_mainCamera);
+		auto& t = m_tempEcs->getComponent<Transform>(m_services.render().getCameraEntity());
 		return vec2(t.position.x, t.position.y);
 	}
 

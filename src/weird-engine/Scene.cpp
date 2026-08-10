@@ -46,7 +46,14 @@ namespace WeirdEngine
 	Scene::Scene()
 		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
 		, m_runSimulationInThread(SceneManager::getInstance().getPhysicsSettings().runSimulationInThread)
+		, m_services(*this)
 	{
+	}
+
+	Scene::Scene(RenderMode mode)
+		: Scene()
+	{
+		m_renderMode = mode;
 	}
 
 	Scene::~Scene()
@@ -59,6 +66,8 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
+		onCreate(m_ecs, m_services);
+
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_ecs.registerComponent<RigidBody2D>(rbManager);
@@ -120,18 +129,14 @@ namespace WeirdEngine
 		t.rotation = vec3(0, 0, -1.0f);
 		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
 
-		onCreate();
-
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
 		// restore saved scene state before the derived class's onStart() runs.
-		TagMap loadedTags;
 		if (!m_sceneFilePath.empty())
 		{
 			SceneSerializer::load(*this, m_sceneFilePath);
-			loadedTags = m_tagToEntity;
 		}
 
-		onStart(m_ecs, loadedTags);
+		onStart(m_ecs, m_services);
 
 		switch (m_renderMode)
 		{
@@ -157,6 +162,8 @@ namespace WeirdEngine
 	void Scene::update(double delta, double time)
 	{
 		PROFILE_SCOPE("Scene Update");
+
+		m_lastDelta = static_cast<float>(delta);
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
@@ -209,13 +216,13 @@ namespace WeirdEngine
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
 												 getEntityForSimulationId(ev.bodyB, rigidBodies)};
-				onEntityCollision(m_ecs, entityEvent);
+				onEntityCollision(m_ecs, m_services, entityEvent);
 			}
 
 			for (auto& ev : shapeCollisions)
 			{
 				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body, rigidBodies)};
-				onEntityShapeCollision(m_ecs, entityEvent);
+				onEntityShapeCollision(m_ecs, m_services, entityEvent);
 
 				const float m_soundFalloff = 0.1f;
 				bool spatialAudio = false;
@@ -246,7 +253,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("OnUpdate");
-			onUpdate(static_cast<float>(delta), m_ecs);
+			onUpdate(m_ecs, m_services);
 		}
 
 		{
@@ -271,7 +278,7 @@ namespace WeirdEngine
 	void Scene::handleCollision(CollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onCollision(self->m_simulation2D, event);
+		self->onPhysicsRigidBodyCollision(self->m_simulation2D, event);
 
 		std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
 		self->m_queuedCollisions.push_back(event);
@@ -280,7 +287,7 @@ namespace WeirdEngine
 	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
-		self->onShapeCollision(self->m_simulation2D, event);
+		self->onPhysicsShapeCollision(self->m_simulation2D, event);
 
 		{
 			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
@@ -474,11 +481,51 @@ namespace WeirdEngine
 		SceneSerializer::load(*this, path);
 	}
 
+	// ServiceProvider
+
+	ServiceProvider::ServiceProvider(Scene& scene)
+		: m_ecs(scene.m_ecs)
+		, m_time(scene.m_simulation2D, scene.m_lastDelta)
+		, m_physics(scene.m_ecs, scene.m_simulation2D, scene.m_sdfs)
+		, m_shapes(scene.m_ecs, scene.m_simulation2D, scene.m_sdfs)
+		, m_render(scene.m_ecs, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
+				   scene.m_UIRenderContext, scene.m_lights, scene.m_background, scene.m_renderMode)
+		, m_materials(scene.m_materials, scene.m_materialCount)
+		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead)
+		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
+		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
+		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
+		, m_resources(scene.m_resourceManager)
+		, m_debug(scene.m_debugFly, scene.m_debugInput)
+	{
+	}
+
+	ShapeId ShapeService::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
+	{
+		return Scene::registerDefaultSDF(std::move(sdf));
+	}
+
+	void SerializationService::saveScene(const std::string& filename)
+	{
+		scene.saveScene(filename);
+	}
+
+	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	{
+		return scene.loadWeirdFile(path, blacklistEntities);
+	}
+
 	Scene::RaymarchResult Scene::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance)
 	{
+		return raymarchScene(m_ecs, m_sdfs, m_simulation2D, getTime(), origin, direction, epsilon, maxDistance);
+	}
+
+	RaymarchResult raymarchScene(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
+								 Simulation2D& simulation, float time, glm::vec2 origin, glm::vec2 direction,
+								 float epsilon, float maxDistance)
+	{
 		float traveled = 0.0f;
-		float time = getTime();
-		auto gridSnapshot = m_simulation2D.getSpatialGridSnapshot();
+		auto gridSnapshot = simulation.getSpatialGridSnapshot();
 
 		if (epsilon <= 0.0f)
 		{
@@ -503,9 +550,9 @@ namespace WeirdEngine
 			groups.reserve(16);
 
 			// Cache the rigid bodies component array to avoid repeated lookups in the ECS during the raymarching loop
-			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
+			auto rigidBodies = ecs.getComponentArray<RigidBody2D>();
 
-			auto shapeArray = m_ecs.getComponentArray<CustomShape>();
+			auto shapeArray = ecs.getComponentArray<CustomShape>();
 			for (size_t j = 0; j < shapeArray->getSize(); j++)
 			{
 				auto& shape = shapeArray->getDataAtIdx(j);
@@ -513,7 +560,7 @@ namespace WeirdEngine
 				if (!shape.hasCollisions)
 					continue;
 
-				if (shape.distanceFieldId >= m_sdfs.size())
+				if (shape.distanceFieldId >= sdfs.size())
 					continue;
 
 				float parameters[11];
@@ -522,7 +569,7 @@ namespace WeirdEngine
 				parameters[9] = p.x;
 				parameters[10] = p.y;
 
-				float dist = m_sdfs[shape.distanceFieldId]->getValue(parameters);
+				float dist = sdfs[shape.distanceFieldId]->getValue(parameters);
 				float currentMinDistance = d;
 				Entity currentEntity = INVALID_ENTITY;
 
@@ -613,6 +660,14 @@ namespace WeirdEngine
 				float minRigidbodyDist = 1000.0f;
 				Entity closestRbEntity = INVALID_ENTITY;
 
+				auto entityForSimulationId = [&](SimulationID simulationId) -> Entity
+				{
+					if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
+						return INVALID_ENTITY;
+
+					return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
+				};
+
 				int gx = static_cast<int>(std::floor(p.x * gridSnapshot->invCellSize));
 				int gy = static_cast<int>(std::floor(p.y * gridSnapshot->invCellSize));
 				const int TABLE_SIZE = 8191; // Must match Simulation2D.cpp
@@ -643,7 +698,7 @@ namespace WeirdEngine
 							if (dist < minRigidbodyDist)
 							{
 								minRigidbodyDist = dist;
-								closestRbEntity = getEntityForSimulationId(rbIndex, rigidBodies);
+								closestRbEntity = entityForSimulationId(rbIndex);
 							}
 
 							rbIndex = gridSnapshot->next[rbIndex];
@@ -712,7 +767,7 @@ namespace WeirdEngine
 
 			ImGui::Separator();
 
-			onImGuiRender();
+			onImGuiRender(m_ecs, m_services);
 
 			ImGui::PopID();
 		}

@@ -364,7 +364,7 @@ namespace WeirdEngine
 	{
 		if (m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
 		{
-			onRender(m_ecs, renderTarget, m_services);
+			onRender(m_ecs, m_services, renderTarget);
 		}
 	}
 

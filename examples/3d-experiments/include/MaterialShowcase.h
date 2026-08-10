@@ -25,7 +25,7 @@ private:
 			Transform& t = ecs.addComponent<Transform>(entity);
 			t.position = vec3(-0.5f, -2.0f, 0);
 
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(1.0f);
 			mat.metallic = 1.0f;
 			mat.roughness = 0.0f;
@@ -47,7 +47,7 @@ private:
 		};
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
 			mat.metallic = 0.5f;
 			mat.roughness = 0.1f;
@@ -58,7 +58,7 @@ private:
 		}
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(0.5f, 1.0f, 0.5f, 1.0f);
 			mat.metallic = 0.05f;
 			mat.roughness = 0.99f;
@@ -69,7 +69,7 @@ private:
 		}
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(1.0f, 0.3f, .6f, 1.0f);
 			mat.secondaryColor = vec4(1.0f, 0.2f, 0.05f, 1.0f);
 
@@ -81,7 +81,7 @@ private:
 		}
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(0.0f, 10.9f, 10.9f, 1.0f);
 			mat.metallic = 0.05f;
 			mat.roughness = 0.99f;
@@ -92,7 +92,7 @@ private:
 		}
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(0.5f, 0.5f, 0.8f, 1.0f);
 			mat.secondaryColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			mat.metallic = 0.3f;
@@ -104,7 +104,7 @@ private:
 		}
 
 		{
-			auto& mat = createMaterial();
+			auto& mat = services.materials().createMaterial();
 			mat.color = vec4(0.85f, 0.7f, 0.1f, 0.5f);
 			mat.metallic = 0.5f;
 			mat.roughness = 0.0f;
@@ -123,7 +123,7 @@ private:
 		}
 
 		{
-			auto& floorMaterial = createMaterial();
+			auto& floorMaterial = services.materials().createMaterial();
 			floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 			floorMaterial.metallic = 0.1f;
 			floorMaterial.roughness = 0.3f;
@@ -135,7 +135,7 @@ private:
 													  CombinationType::Addition, false);
 		}
 
-		auto& mirrorMaterial = createMaterial();
+		auto& mirrorMaterial = services.materials().createMaterial();
 		mirrorMaterial.color = vec4(1.0f);
 		mirrorMaterial.metallic = 1.0f;
 		mirrorMaterial.roughness = 0.0f;

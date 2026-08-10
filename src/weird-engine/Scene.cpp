@@ -200,8 +200,8 @@ namespace WeirdEngine
 			// Process queued collisions
 			// Static vectors retain heap capacity across frames, avoiding
 			// repeated allocations when thousands of collisions are generated.
-			static std::vector<CollisionEvent> collisions;
-			static std::vector<ShapeCollisionEvent> shapeCollisions;
+			static std::vector<PhysicsCollisionEvent> collisions;
+			static std::vector<PhysicsShapeCollisionEvent> shapeCollisions;
 			collisions.clear();
 			shapeCollisions.clear();
 			{
@@ -258,7 +258,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Render Queue update");
-			RenderSystem::update(m_ecs, m_resourceManager, m_drawQueue);
+			RenderSystem::update(m_ecs, m_resourceManager, m_drawQueue, m_lights);
 		}
 
 		m_ecs.freeRemovedComponents();
@@ -275,7 +275,7 @@ namespace WeirdEngine
 		self->onPhysicsStep(self->m_simulation2D);
 	}
 
-	void Scene::handleCollision(CollisionEvent& event, void* userData)
+	void Scene::handleCollision(PhysicsCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsRigidBodyCollision(self->m_simulation2D, event);
@@ -284,7 +284,7 @@ namespace WeirdEngine
 		self->m_queuedCollisions.push_back(event);
 	}
 
-	void Scene::handleShapeCollision(ShapeCollisionEvent& event, void* userData)
+	void Scene::handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsShapeCollision(self->m_simulation2D, event);

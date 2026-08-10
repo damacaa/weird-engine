@@ -56,7 +56,11 @@ private:
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(false);
-		getLights().push_back(Light{});
+		{
+			Entity entity = ecs.createEntity();
+			ecs.addComponent<Transform>(entity);
+			ecs.addComponent<LightComponent>(entity);
+		}
 
 		{
 			Entity entity = ecs.createEntity();

@@ -760,7 +760,8 @@ namespace WeirdEngine
 					glFrontFace(GL_CCW);
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
-					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
+					m_meshPipeline->render(m_3DWorldPipeline->getRenderTarget(), scene.getDrawQueue(), sceneCamera,
+										   lights);
 					Profiler::get().gpuSync();
 				}
 
@@ -781,12 +782,13 @@ namespace WeirdEngine
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
 
-					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
-											  m_meshPipeline->getGBufferAlbedo(), m_meshPipeline->getGBufferWorldPos(),
-											  m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
-											  m_meshPipeline->getDepthTexture(), m_meshPipeline->getBackDepthTexture(),
-											  scene.getMaterials());
+					SDF3DRenderPipeline::GBuffer gbuffer = {
+						m_meshPipeline->getGBufferAlbedo(), m_meshPipeline->getGBufferWorldPos(),
+						m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
+						m_meshPipeline->getDepthTexture(),	m_meshPipeline->getBackDepthTexture()};
 
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
+											  gbuffer, scene.getMaterials());
 					glEnable(GL_CULL_FACE);
 					glEnable(GL_DEPTH_TEST);
 					glDepthFunc(GL_LEQUAL);

@@ -501,7 +501,7 @@ namespace WeirdEngine
 
 			// Check
 			bool currentCollision = false;
-			ShapeCollisionEvent collisionEvent;
+			PhysicsShapeCollisionEvent collisionEvent;
 			collisionEvent.body = static_cast<SimulationID>(i);
 
 			// Static shapes
@@ -837,8 +837,8 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				CollisionEvent event{col.A, col.B};
-				m_collisionCallback(event, m_callbackUserData);
+				PhysicsCollisionEvent event{col.A, col.B};
+				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
 			}
 		}
 

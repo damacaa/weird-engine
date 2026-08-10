@@ -410,7 +410,7 @@ namespace ServiceShowcase
 	// -------------------------------------------------------------- onPhysicsRigidBodyCollision
 	// Physics thread. Body-body collisions: push the pair apart based on their
 	// relative velocity.
-	inline void onPhysicsRigidBodyCollisionSystem(Simulation2D& simulation, CollisionEvent& event)
+	inline void onPhysicsRigidBodyCollisionSystem(Simulation2D& simulation, PhysicsCollisionEvent& event)
 	{
 		vec2 va = simulation.getPhysicsVelocity(event.bodyA);
 		vec2 vb = simulation.getPhysicsVelocity(event.bodyB);
@@ -425,7 +425,7 @@ namespace ServiceShowcase
 	// when the penetration is deep enough. The character (identified via its
 	// per-body user data) gets a bouncier, more slippery response by tuning
 	// the event before the solver reads it.
-	inline void onPhysicsShapeCollisionSystem(Simulation2D& simulation, ShapeCollisionEvent& event)
+	inline void onPhysicsShapeCollisionSystem(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)
 	{
 		if (event.state == CollisionState::START && event.penetration > 0.1f)
 		{
@@ -569,12 +569,12 @@ private:
 		ServiceShowcase::onPhysicsStepSystem(simulation);
 	}
 
-	void onPhysicsRigidBodyCollision(Simulation2D& simulation, CollisionEvent& event) override
+	void onPhysicsRigidBodyCollision(Simulation2D& simulation, PhysicsCollisionEvent& event) override
 	{
 		ServiceShowcase::onPhysicsRigidBodyCollisionSystem(simulation, event);
 	}
 
-	void onPhysicsShapeCollision(Simulation2D& simulation, ShapeCollisionEvent& event) override
+	void onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEvent& event) override
 	{
 		ServiceShowcase::onPhysicsShapeCollisionSystem(simulation, event);
 	}

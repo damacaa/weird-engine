@@ -14,6 +14,7 @@ public:
 	CornellBox() {};
 
 private:
+	Entity m_sunLight;
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
@@ -101,11 +102,27 @@ private:
 		}
 
 		// Sun
-		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.0f, 0.0f)),
-									glm::vec4(1.0f, 1.0f, 1.0f, 0.0f)});
+		{
+			m_sunLight = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(m_sunLight);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.0f, 0.0f));
 
-		getLights().push_back(Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f),
-									glm::vec4(1.0f, 1.0f, 1.0f, 3.0f)});
+			LightComponent& lc = ecs.addComponent<LightComponent>(m_sunLight);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+		}
+
+		{
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
+			t.position = glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f);
+			t.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(entity);
+			lc.type = LightType::Point;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
+		}
 
 		// getLights().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});
@@ -125,12 +142,8 @@ private:
 
 		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
 
-		// getLights()[0].position.x = cameraTransform.position.x;
-		// getLights()[0].position.y = cameraTransform.position.y;
-		// getLights()[0].position.z = cameraTransform.position.z;
-
-		// getLights()[0].rotation.x = -cameraTransform.rotation.x;
-		// getLights()[0].rotation.y = -cameraTransform.rotation.y;
-		// getLights()[0].rotation.z = -cameraTransform.rotation.z;
+		auto& lightTransform = ecs.getComponent<Transform>(m_sunLight);
+		lightTransform.position = cameraTransform.position;
+		lightTransform.rotation = -cameraTransform.rotation;
 	}
 };

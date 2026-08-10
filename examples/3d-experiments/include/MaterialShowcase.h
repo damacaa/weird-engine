@@ -14,6 +14,7 @@ public:
 	MaterialShowcaseScene() {};
 
 private:
+	Entity m_sunLight;
 	// Inherited via Scene
 	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
@@ -124,7 +125,7 @@ private:
 		{
 			auto& floorMaterial = createMaterial();
 			floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-			floorMaterial.metallic = 0.0f;
+			floorMaterial.metallic = 0.1f;
 			floorMaterial.roughness = 0.3f;
 			floorMaterial.pattern = MaterialPattern::Checkers;
 			floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
@@ -156,8 +157,16 @@ private:
 			Entity start = services.shapes().addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
 		}
 
-		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
-									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
+		{
+			m_sunLight = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(m_sunLight);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(m_sunLight);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.75f);
+		}
 
 		// getLights().push_back(
 		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});
@@ -176,15 +185,5 @@ private:
 		{
 			services.sceneControl().goToNextScene();
 		}
-
-		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
-
-		// getLights()[0].position.x = cameraTransform.position.x;
-		// getLights()[0].position.y = cameraTransform.position.y;
-		// getLights()[0].position.z = cameraTransform.position.z;
-
-		// getLights()[0].rotation.x = -cameraTransform.rotation.x;
-		// getLights()[0].rotation.y = -cameraTransform.rotation.y;
-		// getLights()[0].rotation.z = -cameraTransform.rotation.z;
 	}
 };

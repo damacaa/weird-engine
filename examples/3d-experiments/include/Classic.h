@@ -36,7 +36,7 @@ private:
 
 			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
 
-			auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity, true);
+			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 			// mr.materialIndex = floorMaterial.id;
 
@@ -66,8 +66,16 @@ private:
 													  CombinationType::Addition, false);
 		}
 
-		getLights().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
-									glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+		{
+			Entity entity = ecs.createEntity();
+			Transform& t = ecs.addComponent<Transform>(entity);
+			t.position = glm::vec3(0.0f, 3.0f, 0.0f);
+			t.rotation = glm::vec3(0.35f, 0.45f, 0.5f);
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(entity);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
+		}
 
 		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2, 10);
 	}

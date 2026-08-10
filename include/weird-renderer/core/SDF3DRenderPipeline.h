@@ -38,13 +38,21 @@ namespace WeirdEngine
 
 			Shader& getShader();
 
+			struct GBuffer
+			{
+				Texture& albedo;
+				Texture& worldPos;
+				Texture& normal;
+				Texture& material;
+				Texture& depth;
+				Texture& backDepth;
+			};
+
 			// Renders the SDF 3D scene using ray marching with path-traced accumulation.
 			// GBuffer textures come from MeshRenderPipeline and allow the shader to composite
 			// mesh surfaces with SDF lighting (SDFs cast light on meshes; meshes don't affect SDFs).
 			void render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light>& lights,
-						const Camera& camera, double time, Texture& gbufferAlbedo, Texture& gbufferWorldPos,
-						Texture& gbufferNormal, Texture& gbufferMaterial, Texture& gbufferDepth,
-						Texture& gbufferBackDepth, const Material3D* materials);
+						const Camera& camera, double time, const GBuffer& gbuffer, const Material3D* materials);
 
 			RenderTarget& getRenderTarget();
 			Texture& getOutputTexture();

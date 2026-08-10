@@ -52,6 +52,12 @@ namespace WeirdEngine
 		class MeshRenderPipeline;
 	} // namespace WeirdRenderer
 
+	namespace Detail
+	{
+		struct RuntimeContext;
+		void runFrame(RuntimeContext& ctx);
+	} // namespace Detail
+
 	class Scene
 	{
 		// Serialization and the service provider reach into the scene's
@@ -63,6 +69,7 @@ namespace WeirdEngine
 
 		friend class WeirdRenderer::AudioEngine;
 		friend class WeirdRenderer::Renderer;
+		friend void Detail::runFrame(Detail::RuntimeContext& ctx);
 
 	public:
 		// ---- Types
@@ -73,88 +80,15 @@ namespace WeirdEngine
 
 		using RaymarchResult = ::WeirdEngine::RaymarchResult;
 
-		// ---- Lifecycle (engine-driven)
-		Scene();
 		virtual ~Scene();
-		void start();
-
-		// Called by the engine once per frame with the variable frame delta.
-		void update(double delta, double time);
-
-		// Called by SceneManager right before this scene is destroyed during
-		// a scene transition. Runs on the main thread; the physics thread may
-		// still be stepping, so keep the same thread rules as the callbacks.
-		void destroy()
-		{
-			onDestroy(m_ecs, m_services);
-		}
-
-		// ---- Rendering pipeline (engine-driven)
-		void renderExtra(WeirdRenderer::RenderTarget& renderTarget);
-		void update2DWorldShader(WeirdRenderer::Shader& shader);
-		void update3DWorldShader(WeirdRenderer::Shader& shader);
-		void updateUIShader(WeirdRenderer::Shader& shader);
-		void forceShaderRefresh();
-		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
-		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
-		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
-		void renderImGui();
-		void renderPhysicsStatsUI();
-
-	private:
-		// ---- Scene state access (engine-driven)
-		WeirdRenderer::Camera& getCamera();
-		std::vector<WeirdRenderer::Light>& getLights();
-		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
-		float getFrictionSound();
-
-	public:
-		BackgroundParams& getBackground()
-		{
-			return m_background;
-		}
-
-		const BackgroundParams& getBackground() const
-		{
-			return m_background;
-		}
-
-		RenderMode getRenderMode() const;
-		float getTime();
-		Material3D& createMaterial();
-		Material3D& getMaterial(int index)
-		{
-			return m_materials[index];
-		}
-		const Material3D* getMaterials() const
-		{
-			return m_materials;
-		}
-
-	public:
-		// ---- Scene control
-		bool isSceneComplete() const
-		{
-			return m_isSceneComplete;
-		};
-		std::string getNextScene() const
-		{
-			return m_nextScene;
-		};
-
-		// Set the path to a .weird file to load when the scene starts
-		void setSceneFilePath(const std::string& path)
-		{
-			m_sceneFilePath = path;
-		}
 
 		// ---- Global SDF registry (engine-level, shared across scenes)
 		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
 		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
 
 	protected:
-		// Internal constructor: sets the render mode for Scene2D/Scene3D/SceneBoth.
+		// Internal constructors: sets the render mode for Scene2D/Scene3D/SceneBoth.
+		Scene();
 		Scene(RenderMode mode);
 
 		// ---- Lifecycle callbacks
@@ -162,8 +96,8 @@ namespace WeirdEngine
 		virtual void onStart(ECSManager& ecs, ServiceProvider& services) {}
 		virtual void onUpdate(ECSManager& ecs, ServiceProvider& services) {};
 		virtual void onDestroy(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) {};
 		virtual void onImGuiRender(ECSManager& ecs, ServiceProvider& services) {};
+		virtual void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) {};
 
 		// ---- Main thread collision callbacks (onEntity* family). Fire after
 		// the physics response has been applied; the events are read-only.
@@ -187,15 +121,71 @@ namespace WeirdEngine
 		virtual void onPhysicsShapeCollision(Simulation2D& simulation, WeirdEngine::PhysicsShapeCollisionEvent& event) {
 		};
 
-		ServiceProvider m_services;
-
 	private:
-		// ---- Shared state (available to derived scenes)
-		Entity m_mainCamera;
-		ResourceManager m_resourceManager;
-		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
-		bool m_debugFly = false;
-		bool m_debugInput = false;
+		// ---- Lifecycle (engine-driven)
+		void start();
+		void update(double delta, double time);
+		void destroy()
+		{
+			onDestroy(m_ecs, m_services);
+		}
+
+		// ---- Rendering pipeline (engine-driven)
+		void renderExtra(WeirdRenderer::RenderTarget& renderTarget);
+		void update2DWorldShader(WeirdRenderer::Shader& shader);
+		void update3DWorldShader(WeirdRenderer::Shader& shader);
+		void updateUIShader(WeirdRenderer::Shader& shader);
+		void forceShaderRefresh();
+		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
+		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
+		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
+		void renderImGui();
+		void renderPhysicsStatsUI();
+
+		// ---- Scene state access (engine-driven)
+		WeirdRenderer::Camera& getCamera();
+		std::vector<WeirdRenderer::Light>& getLights();
+		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
+		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
+		float getFrictionSound();
+
+		BackgroundParams& getBackground()
+		{
+			return m_background;
+		}
+
+		const BackgroundParams& getBackground() const
+		{
+			return m_background;
+		}
+
+		RenderMode getRenderMode() const;
+		float getTime();
+		Material3D& createMaterial();
+		Material3D& getMaterial(int index)
+		{
+			return m_materials[index];
+		}
+		const Material3D* getMaterials() const
+		{
+			return m_materials;
+		}
+
+		// ---- Scene control
+		bool isSceneComplete() const
+		{
+			return m_isSceneComplete;
+		};
+		std::string getNextScene() const
+		{
+			return m_nextScene;
+		};
+
+		// Set the path to a .weird file to load when the scene starts
+		void setSceneFilePath(const std::string& path)
+		{
+			m_sceneFilePath = path;
+		}
 
 		// ---- Internal helpers
 		static void handlePhysicsStep(void* userData);
@@ -207,6 +197,15 @@ namespace WeirdEngine
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId,
 										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
+
+		ServiceProvider m_services;
+
+		// ---- Shared state (managed via ServiceProvider)
+		Entity m_mainCamera;
+		ResourceManager m_resourceManager;
+		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
+		bool m_debugFly = false;
+		bool m_debugInput = false;
 
 		// ---- Simulation
 		ECSManager m_ecs;
@@ -237,7 +236,6 @@ namespace WeirdEngine
 		SDFRenderSystemContext m_UIRenderContext;
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
-	public:
 		// ---- Scene control state
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;

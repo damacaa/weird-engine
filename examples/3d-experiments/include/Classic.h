@@ -16,13 +16,13 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
-		auto& orangeMat = createMaterial();
+		auto& orangeMat = services.materials().createMaterial();
 		orangeMat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
 
-		auto& floorMaterial = createMaterial();
+		auto& floorMaterial = services.materials().createMaterial();
 		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		floorMaterial.secondaryColor = vec4(0.4f, 0.4f, 0.6f, 1.0f);
 		floorMaterial.metallic = 0.7f;
@@ -97,9 +97,9 @@ private:
 
 		{
 			Transform& t = ecs.getComponent<Transform>(m_ball);
-			// t.position.z = 10 * sinf(getTime());
-			t.position.x = 2.0f * sinf(-getTime());
-			t.position.z = 2.0f * cosf(-getTime());
+			// t.position.z = 10 * sinf(services.time().time());
+			t.position.x = 2.0f * sinf(-services.time().time());
+			t.position.z = 2.0f * cosf(-services.time().time());
 		}
 
 		// t.position = cameraTransform.position + vec3(-10, -6, -20);

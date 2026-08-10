@@ -312,11 +312,11 @@ private:
 		glDisable(GL_BLEND);
 	}
 
-	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
+	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		WeirdRenderer::Camera& sceneCamera =
 			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
-		float time = getTime();
+		float time = services.time().time();
 
 		glDepthMask(GL_FALSE);
 		glDisable(GL_DEPTH_TEST);

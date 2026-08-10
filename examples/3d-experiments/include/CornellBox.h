@@ -20,20 +20,20 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& ballMat = createMaterial();
+		auto& ballMat = services.materials().createMaterial();
 		ballMat.color = vec4(1.0f);
 		ballMat.metallic = 1.0f;
 		ballMat.roughness = 0.005f;
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
-		auto& greenMat = createMaterial();
+		auto& greenMat = services.materials().createMaterial();
 		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
 		greenMat.metallic = 0.5f;
 		greenMat.roughness = 0.1f;
 
-		auto& whiteMat = createMaterial();
+		auto& whiteMat = services.materials().createMaterial();
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 		{

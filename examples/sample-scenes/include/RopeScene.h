@@ -123,9 +123,9 @@ private:
 		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void throwBalls(ECSManager& ecs)
+	void throwBalls(ECSManager& ecs, ServiceProvider& services)
 	{
-		if (getTime() <= m_lastSpawnTime + 0.1)
+		if (services.time().time() <= m_lastSpawnTime + 0.1)
 		{
 			return;
 		}
@@ -147,7 +147,7 @@ private:
 			rb.pendingImpulseForce += vec2(20.0f, 0.0f);
 		}
 
-		m_lastSpawnTime = getTime();
+		m_lastSpawnTime = services.time().time();
 	}
 
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
@@ -163,8 +163,8 @@ private:
 		// Animate custom shape over time
 		if (m_star != INVALID_ENTITY)
 		{
-			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track
-			// delta.
+			// Instead of getSimulation().getSimulationTime(), we can just use services.time().time() if Scene provides
+			// it, or track delta.
 			static float animTime = 0.0f;
 			animTime += delta;
 			auto& cs = ecs.getComponent<CustomShape>(m_star);
@@ -175,7 +175,7 @@ private:
 
 		if (services.input().getKey(Input::E) || services.input().getGamepadButton(Input::GamepadButton::West))
 		{
-			throwBalls(ecs);
+			throwBalls(ecs, services);
 		}
 
 		static vec2 boxStart;

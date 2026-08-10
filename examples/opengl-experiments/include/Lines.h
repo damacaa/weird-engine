@@ -28,7 +28,7 @@ private:
 	{
 
 		{
-			auto& whiteMat = createMaterial();
+			auto& whiteMat = services.materials().createMaterial();
 			m_whiteMatId = whiteMat.id;
 			whiteMat.pattern = MaterialPattern::Checkers;
 
@@ -96,7 +96,7 @@ private:
 		monkeyTransform.position.z -= 5.0f;
 	}
 
-	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
+	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		m_lineRender->bind();
 		glClearColor(0, 0, 0, 0);							// Set clear color

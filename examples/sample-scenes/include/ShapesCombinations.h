@@ -154,7 +154,7 @@ private:
 		for (int i = 0; i < m_uiPoints.size(); i++)
 		{
 			// Calculate angle: Time moves them, 'i' spreads them out
-			float angle = (getTime() * speed) + (i * spacing);
+			float angle = (services.time().time() * speed) + (i * spacing);
 
 			float x = center.x + std::cos(angle) * radius;
 			float y = center.y + std::sin(angle) * radius;

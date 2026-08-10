@@ -135,8 +135,8 @@ namespace ServiceShowcase
 
 		// Materials through the provider
 		Material3D& floorMaterial = services.materials().createMaterial();
-		floorMaterial.color = vec4(0.2f, 0.5f, 0.9f, 1.0f);
-		floorMaterial.metallic = 0.5f;
+		floorMaterial.color = vec4(0.8f, 0.8f, 0.8f, 1.0f);
+		floorMaterial.roughness = 1.0f;
 
 		Material3D& ringMaterial = services.materials().createMaterial();
 		ringMaterial.color = vec4(0.9f, 0.3f, 0.2f, 1.0f);
@@ -536,7 +536,7 @@ private:
 	// Note the firing rules: onRender only fires for 3D / both render modes,
 	// while onImGuiRender fires for every scene, 2D and 3D alike (it is just
 	// the debug UI).
-	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
+	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		static bool logged = false;
 		if (!logged)

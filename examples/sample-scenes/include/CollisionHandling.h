@@ -58,8 +58,10 @@ private:
 		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
+	float m_currentTime = 0.0f;
 	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		m_currentTime = services.time().time();
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
 			services.sceneControl().goToNextScene();
@@ -69,7 +71,7 @@ private:
 	float m_lastTime = 0.0f;
 	void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::PhysicsCollisionEvent& event) override
 	{
-		float t = getTime();
+		float t = m_currentTime;
 		if (t - m_lastTime < 0.1f)
 			return; // Avoid multiple collisions in a short time
 

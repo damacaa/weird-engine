@@ -90,7 +90,7 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
 		{
@@ -153,11 +153,11 @@ private:
 		}
 	}
 
-	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
+	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		WeirdRenderer::Camera& sceneCamera =
 			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
-		float time = getTime();
+		float time = services.time().time();
 
 		auto& light0_t = ecs.getComponent<Transform>(m_light0);
 		auto& light0_lc = ecs.getComponent<LightComponent>(m_light0);

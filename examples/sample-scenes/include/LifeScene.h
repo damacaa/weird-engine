@@ -99,12 +99,12 @@ private:
 			services.sceneControl().goToNextScene();
 		}
 
-		updateHeads(delta, ecs);
+		updateHeads(delta, ecs, services);
 	}
 
-	void updateHeads(float delta, ECSManager& ecs)
+	void updateHeads(float delta, ECSManager& ecs, ServiceProvider& services)
 	{
-		float animationT = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
+		float animationT = std::sin(services.time().time() * 10.0f) * 0.5f + 0.25f;
 
 		auto headArray = ecs.getComponentArray<Head>();
 

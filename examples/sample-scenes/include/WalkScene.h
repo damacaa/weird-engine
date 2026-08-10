@@ -35,7 +35,7 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		auto& background = getBackground();
+		auto& background = services.render().getBackground();
 		background.type = BackgroundType::Sky;
 		background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
 		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);

@@ -41,7 +41,7 @@ namespace WeirdEngine
 		{
 			// Main-thread cleanup hook. The physics thread may still be
 			// stepping, so only touch ECS/sim state from the main thread here.
-			currentScene->onDestroy();
+			currentScene->destroy();
 		}
 
 		currentScene = nullptr;

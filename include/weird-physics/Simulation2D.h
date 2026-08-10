@@ -20,6 +20,7 @@
 #include "weird-engine/vec.h"
 
 #include "PhysicsSettings.h"
+#include "weird-physics/BodyUserData.h"
 
 namespace WeirdEngine
 {
@@ -210,6 +211,49 @@ namespace WeirdEngine
 			m_damping = damping;
 		}
 
+		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps
+		// simulation IDs back to entities via the RigidBody2D component array).
+		// Must be heap-allocated: the simulation owns the pointer and deletes
+		// it when the body is removed (removeObject) and when the simulation
+		// is destroyed. setUserData() is main-thread only; getUserData()/
+		// getUserDataAs()/forEachUserData() are safe from the physics
+		// callbacks without locks.
+		void setUserData(SimulationID id, BodyUserData* data);
+		BodyUserData* getUserData(SimulationID id);
+
+		// Type-checked cast: returns nullptr unless the attached data exists
+		// and its `type` matches T::TYPE.
+		template <typename T> T* getUserDataAs(SimulationID id)
+		{
+			BodyUserData* data = getUserData(id);
+			if (!data || data->type != T::TYPE)
+				return nullptr;
+			return static_cast<T*>(data);
+		}
+
+		// Calls fn(SimulationID, BodyUserData&) for every active body that has
+		// user data attached. Lock-free from physics callbacks (the step
+		// already holds the structural mutex); serialized on the main thread.
+		template <typename Fn> void forEachUserData(Fn&& fn)
+		{
+			if (isPhysicsExecutionContext())
+			{
+				for (SimulationID id = 0; id < m_size; ++id)
+				{
+					if (m_userData[id])
+						fn(id, *m_userData[id]);
+				}
+				return;
+			}
+
+			std::lock_guard<std::mutex> lock(m_structuralMutex);
+			for (SimulationID id = 0; id < m_size; ++id)
+			{
+				if (m_userData[id])
+					fn(id, *m_userData[id]);
+			}
+		}
+
 		// Constraint structs (public for serialization)
 		struct DistanceConstraint
 		{
@@ -392,6 +436,10 @@ namespace WeirdEngine
 
 		float* m_mass;
 		float* m_invMass;
+
+		// Per-body user data, parallel to the body arrays. Swapped in
+		// removeObject() so the data follows the body through renumbering.
+		BodyUserData** m_userData;
 
 		const float m_diameter;
 		const float m_diameterSquared;

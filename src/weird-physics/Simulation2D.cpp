@@ -58,6 +58,7 @@ namespace WeirdEngine
 		, m_continuousForcesWrite(new vec2[size])
 		, m_mass(new float[size])
 		, m_invMass(new float[size])
+		, m_userData(new BodyUserData*[size])
 		, m_maxSize(size)
 		, m_size(0)
 		, m_allocated(0)
@@ -92,6 +93,7 @@ namespace WeirdEngine
 
 			m_mass[i] = 1000.0f;
 			m_invMass[i] = 0.001f;
+			m_userData[i] = nullptr;
 		}
 
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>();
@@ -99,6 +101,14 @@ namespace WeirdEngine
 
 	Simulation2D::~Simulation2D()
 	{
+		// Free any user data still attached to live bodies (the simulation
+		// owns these pointers; removed bodies free theirs in removeObject).
+		for (size_t i = 0; i < m_allocated; ++i)
+		{
+			delete m_userData[i];
+			m_userData[i] = nullptr;
+		}
+
 		delete[] m_positions;
 		delete[] m_positionsRead;
 		delete[] m_positionsAux;
@@ -112,6 +122,7 @@ namespace WeirdEngine
 		delete[] m_continuousForcesWrite;
 		delete[] m_mass;
 		delete[] m_invMass;
+		delete[] m_userData;
 	}
 
 	void Simulation2D::pause()
@@ -316,6 +327,38 @@ namespace WeirdEngine
 	{
 		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
+	}
+	void Simulation2D::setUserData(SimulationID id, BodyUserData* data)
+	{
+		WEIRD_ASSERT(!isPhysicsExecutionContext(), "setUserData() may not be called from physics execution context");
+
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
+
+		// Bounds-check against m_allocated, not m_size: bodies can carry user
+		// data before they are activated (ActivatePending) later in the frame.
+		if (id >= m_allocated)
+			return;
+
+		m_userData[id] = data;
+	}
+
+	BodyUserData* Simulation2D::getUserData(SimulationID id)
+	{
+		// Inside a physics step the structural mutex is already held, so the
+		// read is lock-free; on the main thread it is serialized against
+		// structural changes (removeObject renumbering).
+		if (isPhysicsExecutionContext())
+		{
+			if (id >= m_allocated)
+				return nullptr;
+			return m_userData[id];
+		}
+
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
+
+		if (id >= m_allocated)
+			return nullptr;
+		return m_userData[id];
 	}
 
 	void Simulation2D::startSimulationThread()
@@ -999,6 +1042,7 @@ namespace WeirdEngine
 		m_mass[id] = 1.0f;
 		m_invMass[id] = 1.0f;
 		m_collisionMap[id] = false;
+		m_userData[id] = nullptr;
 
 		m_allocated++;
 		return id;
@@ -1027,6 +1071,12 @@ namespace WeirdEngine
 
 		if (toId != fromId)
 		{
+			// The simulation owns user data: free the removed body's data and
+			// move the swapped body's data along with it.
+			delete m_userData[toId];
+			m_userData[toId] = m_userData[fromId];
+			m_userData[fromId] = nullptr;
+
 			m_positions[toId] = m_positions[fromId];
 			m_positionsRead[toId] = m_positionsRead[fromId];
 			m_positionsAux[toId] = m_positionsAux[fromId];
@@ -1045,6 +1095,12 @@ namespace WeirdEngine
 			{
 				m_collisionMap[toId] = m_collisionMap[fromId];
 			}
+		}
+		else
+		{
+			// Removing the last body: just free its user data.
+			delete m_userData[toId];
+			m_userData[toId] = nullptr;
 		}
 
 		// Fix constraints (potentially slow...)

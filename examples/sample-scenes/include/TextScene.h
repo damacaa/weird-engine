@@ -24,7 +24,7 @@ private:
 	int m_counter = 0;
 	int m_lastResolutionHash = 0;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -123,11 +123,11 @@ private:
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		m_counter++;

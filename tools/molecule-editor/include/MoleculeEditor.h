@@ -125,7 +125,7 @@ private:
 	static constexpr float TAG_INNER_RADIUS = 25.0f;
 	static constexpr int TAG_RING_GROUP = 8;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
 		m_debugFly = true;
@@ -158,14 +158,14 @@ private:
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_tempEcs = &ecs;
 		g_cameraPositon = m_tempEcs->getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 			return;
 		}
 
@@ -1159,7 +1159,8 @@ private:
 		WeirdEngine::Logger::log(loadMsg);
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		m_tempEcs = &ecs;
 	}

@@ -18,7 +18,7 @@ private:
 	std::string imagePath = ASSETS_PATH "jimmy.jpg";
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -167,11 +167,11 @@ private:
 		return closestIndex;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		// Get colors

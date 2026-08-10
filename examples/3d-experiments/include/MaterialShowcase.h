@@ -15,7 +15,7 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugFly = true;
 
@@ -169,11 +169,11 @@ private:
 		cameraTransform.rotation.x = -0.95f;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		if (Input::GetKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);

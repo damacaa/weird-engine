@@ -24,7 +24,7 @@ private:
 	float m_timer = 0.0f;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -32,13 +32,14 @@ private:
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		m_timer += delta;
@@ -152,7 +153,8 @@ private:
 		}
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(ECSManager& ecs, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		if (std::rand() % 5 != 0)
 			return;
@@ -166,10 +168,11 @@ private:
 			ecs.getComponent<CollisionTracker>(a).collisionCount++;
 		}
 
-		playSound({0.02f, 400.0f + (std::rand() % 200), false, vec3(0.0f), 1});
+		services.audio().playSound({0.02f, 400.0f + (std::rand() % 200), false, vec3(0.0f), 1});
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		if (std::rand() % 20 == 0)
 		{
@@ -195,7 +198,7 @@ private:
 
 		if (std::rand() % 5 == 0)
 		{
-			playSound({0.02f, 200.0f + (std::rand() % 100), false, vec3(event.raw.position, 0.0f), 1});
+			services.audio().playSound({0.02f, 200.0f + (std::rand() % 100), false, vec3(event.raw.position, 0.0f), 1});
 		}
 	}
 };

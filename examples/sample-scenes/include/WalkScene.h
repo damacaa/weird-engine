@@ -30,15 +30,16 @@ private:
 	Entity m_head;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
 
-		m_background.type = BackgroundType::Sky;
-		m_background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
-		m_background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
-		m_background.scale = 0.2f;
+		auto& background = getBackground();
+		background.type = BackgroundType::Sky;
+		background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
+		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
+		background.scale = 0.2f;
 
 		auto tags = loadWeirdFile(ASSETS_PATH "man.weird");
 
@@ -72,13 +73,15 @@ private:
 		ecs.setComponentDirty(settings);
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
+
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		updatePhysics(delta, ecs);
@@ -167,7 +170,8 @@ private:
 		m_feetTouching = false;
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(ECSManager& ecs, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		Entity entityA = event.entityA;
 		Entity entityB = event.entityB;
@@ -178,7 +182,8 @@ private:
 		}
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		Entity entity = event.entity;
 		if (ecs.hasComponent<Foot>(entity))

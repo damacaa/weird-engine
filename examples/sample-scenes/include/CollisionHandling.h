@@ -12,7 +12,7 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -58,16 +58,16 @@ private:
 		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 	}
 
 	float m_lastTime = 0.0f;
-	void onCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) override
+	void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) override
 	{
 		float t = getTime();
 		if (t - m_lastTime < 0.1f)

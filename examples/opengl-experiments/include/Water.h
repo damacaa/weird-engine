@@ -44,7 +44,7 @@ private:
 
 	// -------------------------------------------------------------------------
 
-	void onCreate() override
+	void onCreate(ECSManager& ecs, ServiceProvider& services) override
 	{
 
 		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert", ASSETS_PATH "water/shaders/water.frag");
@@ -55,7 +55,7 @@ private:
 		m_waterPlane.build();
 	}
 
-	void onDestroy() override
+	void onDestroy(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_waterShader.free();
 
@@ -76,7 +76,7 @@ private:
 		float buoyancy = 10.0f; // how strongly this entity is affected by the water surface
 	};
 
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugFly = true;
 
@@ -109,11 +109,12 @@ private:
 
 	float m_time = 0.0f;
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		if (Input::GetKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		m_time += delta;

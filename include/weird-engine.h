@@ -165,6 +165,7 @@ namespace WeirdEngine
 					else
 					{
 						Input::handleEvent(event);
+						ctx.renderer.handleEvent(event);
 					}
 				}
 			}
@@ -250,8 +251,9 @@ namespace WeirdEngine
 
 	inline void start(SceneManager& sceneManager, DisplaySettings displaySettings = {},
 					  PhysicsSettings physicsSettings = {}, AudioSettings audioSettings = {}, int argc = 0,
-					  char** argv = nullptr)
+					  char** argv = nullptr, const std::string& assetsPath = ASSETS_PATH)
 	{
+		sceneManager.setAssetsPath(assetsPath);
 		WeirdEngine::Logger::log("Starting Weird Engine...");
 
 		std::string startupScene;

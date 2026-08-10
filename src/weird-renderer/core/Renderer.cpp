@@ -171,34 +171,12 @@ namespace WeirdEngine
 #ifndef WEIRD_DISABLE_IMGUI
 			{
 				PROFILE_SCOPE("ImGui");
-				static bool showDebugUI = false;
-				static bool showStatsUI = false;
-
-				if (Input::GetKeyDown(Input::F3))
-				{
-					showDebugUI = !showDebugUI;
-				}
-
-				if (Input::GetKeyDown(Input::F4))
-				{
-					showStatsUI = !showStatsUI;
-					if (showStatsUI)
-						Profiler::get().enableRealtime();
-					else
-						Profiler::get().disableRealtime();
-				}
-
-				if (Input::GetKeyDown(Input::F11))
-				{
-					bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
-					SDL_SetWindowFullscreen(m_window, !isFullscreen);
-				}
 
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplSDL3_NewFrame();
 				ImGui::NewFrame();
 
-				if (showDebugUI)
+				if (m_showDebugUI)
 				{
 					ImGui::Begin("Engine Settings");
 
@@ -309,7 +287,7 @@ namespace WeirdEngine
 					ImGui::End();
 				}
 
-				if (showStatsUI)
+				if (m_showStatsUI)
 				{
 					drawStatsUI(scene, delta);
 				}
@@ -851,5 +829,36 @@ namespace WeirdEngine
 			return m_3DWorldPipeline->getOutputTexture();
 		}
 
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
+namespace WeirdEngine
+{
+	namespace WeirdRenderer
+	{
+		void Renderer::handleEvent(const SDL_Event& event)
+		{
+			if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat)
+			{
+				switch (event.key.key)
+				{
+					case SDLK_F3:
+						m_showDebugUI = !m_showDebugUI;
+						break;
+					case SDLK_F4:
+						m_showStatsUI = !m_showStatsUI;
+						if (m_showStatsUI)
+							Profiler::get().enableRealtime();
+						else
+							Profiler::get().disableRealtime();
+						break;
+					case SDLK_F11:
+					{
+						bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+						SDL_SetWindowFullscreen(m_window, !isFullscreen);
+						break;
+					}
+				}
+			}
+		}
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

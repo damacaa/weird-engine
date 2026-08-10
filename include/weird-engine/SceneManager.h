@@ -27,6 +27,11 @@ namespace WeirdEngine
 			return m_physicsSettings;
 		}
 
+		void setAssetsPath(const std::string& path)
+		{
+			m_assetsPath = path;
+		}
+
 		static SceneManager& getInstance()
 		{
 			static SceneManager _instance;
@@ -48,6 +53,7 @@ namespace WeirdEngine
 		int currentSceneIdx = 0;
 		int targetSceneIdx = 0;
 		PhysicsSettings m_physicsSettings;
+		std::string m_assetsPath;
 	};
 
 	// ChatGPT: Template method declarations and definitions are usually placed in header files.

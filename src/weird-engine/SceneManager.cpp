@@ -46,6 +46,7 @@ namespace WeirdEngine
 
 		currentScene = nullptr;
 		currentScene = sceneFactories[sceneName](); // Instantiate the scene
+		currentScene->m_services.resources().setAssetsBasePath(m_assetsPath);
 		currentScene->start();
 #ifndef NDEBUG
 		WeirdEngine::Logger::log("Changed to " + sceneName + " scene");

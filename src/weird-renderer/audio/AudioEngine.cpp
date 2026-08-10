@@ -175,9 +175,6 @@ namespace WeirdEngine
 			if (m_mute)
 				return;
 
-			if (Input::GetKeyDown(Input::C))
-				playSineSound(getPleasantFrequency(200.0f), 1.0f, 0.1f);
-
 			float frictionValue = scene.getFrictionSound();
 			setFrictionLevel(frictionValue);
 

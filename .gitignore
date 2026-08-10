@@ -414,3 +414,4 @@ FodyWeavers.xsd
 
 # JetBrains CLion
 .idea
+imgui.ini

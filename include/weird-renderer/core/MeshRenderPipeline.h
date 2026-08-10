@@ -1,17 +1,12 @@
 #pragma once
 
 #include "weird-renderer/core/RenderTarget.h"
+#include "weird-renderer/resources/DrawCommand.h"
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
 #include "weird-renderer/scene/Light.h"
 #include <vector>
-
-// Forward declaration to avoid pulling in the full Scene header
-namespace WeirdEngine
-{
-	class Scene;
-}
 
 namespace WeirdEngine
 {
@@ -42,8 +37,8 @@ namespace WeirdEngine
 
 			// Renders 3D models into the internal GBuffer.
 			// outputTarget is forwarded to Scene::onRender for custom per-scene rendering.
-			void render(Scene& scene, RenderTarget& outputTarget, const Camera& camera,
-						const std::vector<Light>& lights);
+			void render(RenderTarget& outputTarget, const std::vector<WeirdRenderer::DrawCommand>& drawQueue,
+						const Camera& camera, const std::vector<Light>& lights);
 
 			// Recreates internal textures for a new resolution.
 			void resize(unsigned int newWidth, unsigned int newHeight);

@@ -67,7 +67,7 @@ private:
 	}
 
 	float m_lastTime = 0.0f;
-	void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) override
+	void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::PhysicsCollisionEvent& event) override
 	{
 		float t = getTime();
 		if (t - m_lastTime < 0.1f)

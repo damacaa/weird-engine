@@ -56,9 +56,7 @@ namespace WeirdEngine
 
 		void SDF3DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
 										 const std::vector<Light>& lights, const Camera& camera, double time,
-										 Texture& gbufferAlbedo, Texture& gbufferWorldPos, Texture& gbufferNormal,
-										 Texture& gbufferMaterial, Texture& gbufferDepth, Texture& gbufferBackDepth,
-										 const Material3D* materials)
+										 const GBuffer& gbuffer, const Material3D* materials)
 		{
 			// Reset frame counter when path tracer is disabled (no accumulation)
 			if (!m_config.enablePathTracer)
@@ -117,7 +115,7 @@ namespace WeirdEngine
 			m_accumTexture[previousAccumIdx].bind(0);
 
 			m_sdfShader.setUniform("t_depthTexture", 1);
-			gbufferDepth.bind(1);
+			gbuffer.depth.bind(1);
 
 			// Shape data buffer
 			m_sdfShader.setUniform("t_shapeBuffer", 2);
@@ -126,16 +124,16 @@ namespace WeirdEngine
 
 			// GBuffer colour attachments
 			m_sdfShader.setUniform("t_gbufferAlbedo", 3);
-			gbufferAlbedo.bind(3);
+			gbuffer.albedo.bind(3);
 			m_sdfShader.setUniform("t_gbufferWorldPos", 4);
-			gbufferWorldPos.bind(4);
+			gbuffer.worldPos.bind(4);
 			m_sdfShader.setUniform("t_gbufferNormal", 5);
-			gbufferNormal.bind(5);
+			gbuffer.normal.bind(5);
 			m_sdfShader.setUniform("t_gbufferMaterial", 6);
-			gbufferMaterial.bind(6);
+			gbuffer.material.bind(6);
 
 			m_sdfShader.setUniform("t_gbufferBackDepth", 7);
-			gbufferBackDepth.bind(7);
+			gbuffer.backDepth.bind(7);
 
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);

@@ -11,6 +11,7 @@ public:
 	WaterScene() {};
 
 private:
+	Entity m_light0;
 	Shader m_waterShader;
 
 	RenderPlane m_renderPlane;
@@ -50,8 +51,16 @@ private:
 		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
 							   services.resources().assetPath("water/shaders/water.frag"));
 
-		getLights().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
-									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
+		m_light0 = ecs.createEntity();
+		{
+			Transform& t = ecs.addComponent<Transform>(m_light0);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(m_light0);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.5f);
+		}
 
 		m_waterPlane.build();
 	}
@@ -99,7 +108,7 @@ private:
 			t.position = vec3(3, 0, 0);
 
 			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
-			auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity, true);
+			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 
 			ecs.addComponent<Floatable>(entity);
@@ -146,10 +155,12 @@ private:
 
 	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
 	{
-		WeirdRenderer::Camera& sceneCamera = getCamera();
+		WeirdRenderer::Camera& sceneCamera =
+			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
 		float time = getTime();
 
-		auto& lights = getLights();
+		auto& light0_t = ecs.getComponent<Transform>(m_light0);
+		auto& light0_lc = ecs.getComponent<LightComponent>(m_light0);
 
 		// ── Snapshot the current scene colour + depth ────────────────────────
 		// We need to read from these textures while drawing the water plane,
@@ -189,15 +200,15 @@ private:
 		m_snapshotDepth.bind(1);
 		m_waterShader.setUniform("u_screenSize", glm::vec2((float)w, (float)h));
 
-		int numLights = (std::min)((int)lights.size(), 8);
+		int numLights = 1;
 		m_waterShader.setUniform("u_numLights", numLights);
 		for (int i = 0; i < numLights; i++)
 		{
 			std::string prefix = "u_lights[" + std::to_string(i) + "].";
-			m_waterShader.setUniform(prefix + "position", lights[i].position);
-			m_waterShader.setUniform(prefix + "direction", lights[i].rotation);
-			m_waterShader.setUniform(prefix + "color", lights[i].color);
-			m_waterShader.setUniform(prefix + "type", (int)lights[i].type);
+			m_waterShader.setUniform(prefix + "position", light0_t.position);
+			m_waterShader.setUniform(prefix + "direction", light0_t.rotation);
+			m_waterShader.setUniform(prefix + "color", light0_lc.color);
+			m_waterShader.setUniform(prefix + "type", (int)light0_lc.type);
 		}
 
 		glm::mat4 waterModel = glm::mat4(1.0f);

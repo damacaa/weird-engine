@@ -9,6 +9,8 @@ public:
 	FireScene() {};
 
 private:
+	Entity m_light0;
+	Entity m_light1;
 	Shader m_flameShader;
 	Shader m_particlesShader;
 	Shader m_smokeShader;
@@ -59,9 +61,26 @@ private:
 		m_heatDistortionShader =
 			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/heatDistortion.frag"));
 
-		getLights().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
-		getLights().push_back(
-			Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+		m_light0 = ecs.createEntity();
+		{
+			Transform& t = ecs.addComponent<Transform>(m_light0);
+			t.position = glm::vec3(0.0f);
+			t.rotation = glm::vec3(0.0f);
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(m_light0);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(0.0f);
+		}
+		m_light1 = ecs.createEntity();
+		{
+			Transform& t = ecs.addComponent<Transform>(m_light1);
+			t.position = glm::vec3(0.0f, 1.0f, 0.0f);
+			t.rotation = glm::vec3(0.0f);
+
+			LightComponent& lc = ecs.addComponent<LightComponent>(m_light1);
+			lc.type = LightType::Point;
+			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
+		}
 
 		// Load meshes
 		// Quad geom
@@ -295,7 +314,8 @@ private:
 
 	void onRender(ECSManager& ecs, WeirdRenderer::RenderTarget& renderTarget, ServiceProvider& services) override
 	{
-		WeirdRenderer::Camera& sceneCamera = getCamera();
+		WeirdRenderer::Camera& sceneCamera =
+			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
 		float time = getTime();
 
 		glDepthMask(GL_FALSE);
@@ -323,12 +343,15 @@ private:
 		m_litShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Pass light rotation
-		auto& lights = getLights();
-		glm::vec3 position = lights[1].position;
+		auto& light0_t = ecs.getComponent<Transform>(m_light0);
+		auto& light0_lc = ecs.getComponent<LightComponent>(m_light0);
+		auto& light1_t = ecs.getComponent<Transform>(m_light1);
+		auto& light1_lc = ecs.getComponent<LightComponent>(m_light1);
+		glm::vec3 position = light1_t.position;
 		m_litShader.setUniform("u_lightPos", position);
-		glm::vec3 direction = lights[1].rotation;
+		glm::vec3 direction = light1_t.rotation;
 		m_litShader.setUniform("u_directionalLightDir", direction);
-		glm::vec4 color = lights[1].color;
+		glm::vec4 color = light1_lc.color;
 		m_litShader.setUniform("u_lightColor", color);
 
 		// bind current FBO

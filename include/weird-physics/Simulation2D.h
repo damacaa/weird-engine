@@ -55,14 +55,14 @@ namespace WeirdEngine
 		END
 	};
 
-	struct CollisionEvent
+	struct PhysicsCollisionEvent
 	{
 		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
 	};
 
-	struct ShapeCollisionEvent
+	struct PhysicsShapeCollisionEvent
 	{
 		CollisionState state;
 		SimulationID body;
@@ -79,8 +79,8 @@ namespace WeirdEngine
 	using StepCallbackFn = void (*)(void*);
 
 	// Define the function pointer type and include a user data pointer
-	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
-	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
+	using CollisionCallbackFn = void (*)(PhysicsCollisionEvent&, void*);
+	using ShapeCollisionCallbackFn = void (*)(PhysicsShapeCollisionEvent&, void*);
 
 	struct SpatialGridSnapshot
 	{
@@ -456,7 +456,7 @@ namespace WeirdEngine
 		std::vector<DistanceFieldObject2D> m_objects;
 
 		std::vector<uint8_t> m_collisionMap;
-		std::vector<ShapeCollisionEvent> m_collisionQueue;
+		std::vector<PhysicsShapeCollisionEvent> m_collisionQueue;
 
 		float map(vec2 p);
 		float map(vec2 p, int& closestShape);

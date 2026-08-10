@@ -28,7 +28,7 @@ namespace WeirdEngine
 	{
 		// Raw event data from the physics thread. Read-only: the physics
 		// response has already been applied by the time this is dispatched.
-		const CollisionEvent& raw;
+		const PhysicsCollisionEvent& raw;
 		Entity entityA;
 		Entity entityB;
 	};
@@ -37,13 +37,20 @@ namespace WeirdEngine
 	{
 		// Raw event data from the physics thread. Read-only: the physics
 		// response has already been applied by the time this is dispatched.
-		const ShapeCollisionEvent& raw;
+		const PhysicsShapeCollisionEvent& raw;
 		Entity entity;
 	};
 
 	// Forward declaration – full definition in SceneSerializer.h
 	class SceneSerializer;
 	class SceneManager;
+
+	namespace WeirdRenderer
+	{
+		class AudioEngine;
+		class Renderer;
+		class MeshRenderPipeline;
+	} // namespace WeirdRenderer
 
 	class Scene
 	{
@@ -53,6 +60,9 @@ namespace WeirdEngine
 		friend class SceneSerializer;
 		friend class ServiceProvider;
 		friend struct SerializationService;
+
+		friend class WeirdRenderer::AudioEngine;
+		friend class WeirdRenderer::Renderer;
 
 	public:
 		// ---- Types
@@ -91,6 +101,7 @@ namespace WeirdEngine
 		void renderImGui();
 		void renderPhysicsStatsUI();
 
+	private:
 		// ---- Scene state access (engine-driven)
 		WeirdRenderer::Camera& getCamera();
 		std::vector<WeirdRenderer::Light>& getLights();
@@ -98,6 +109,7 @@ namespace WeirdEngine
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 		float getFrictionSound();
 
+	public:
 		BackgroundParams& getBackground()
 		{
 			return m_background;
@@ -120,6 +132,7 @@ namespace WeirdEngine
 			return m_materials;
 		}
 
+	public:
 		// ---- Scene control
 		bool isSceneComplete() const
 		{
@@ -169,8 +182,10 @@ namespace WeirdEngine
 		// behavior. Everything else belongs in the onEntity* main-thread
 		// callbacks above (post-response, read-only).
 		virtual void onPhysicsStep(Simulation2D& simulation) {};
-		virtual void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::CollisionEvent& event) {};
-		virtual void onPhysicsShapeCollision(Simulation2D& simulation, WeirdEngine::ShapeCollisionEvent& event) {};
+		virtual void onPhysicsRigidBodyCollision(Simulation2D& simulation, WeirdEngine::PhysicsCollisionEvent& event) {
+		};
+		virtual void onPhysicsShapeCollision(Simulation2D& simulation, WeirdEngine::PhysicsShapeCollisionEvent& event) {
+		};
 
 		ServiceProvider m_services;
 
@@ -184,8 +199,8 @@ namespace WeirdEngine
 
 		// ---- Internal helpers
 		static void handlePhysicsStep(void* userData);
-		static void handleCollision(CollisionEvent& event, void* userData);
-		static void handleShapeCollision(ShapeCollisionEvent& event, void* userData);
+		static void handleCollision(PhysicsCollisionEvent& event, void* userData);
+		static void handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData);
 		// Load scene state from a .weird JSON file
 		void loadFromWeirdFile(const std::string& path);
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
@@ -201,8 +216,8 @@ namespace WeirdEngine
 
 		// ---- Collision queues (physics thread pushes, main thread drains)
 		std::mutex m_collisionQueueMutex;
-		std::vector<CollisionEvent> m_queuedCollisions;
-		std::vector<ShapeCollisionEvent> m_queuedShapeCollisions;
+		std::vector<PhysicsCollisionEvent> m_queuedCollisions;
+		std::vector<PhysicsShapeCollisionEvent> m_queuedShapeCollisions;
 
 		// ---- Audio, draw queue, lights
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
@@ -222,6 +237,7 @@ namespace WeirdEngine
 		SDFRenderSystemContext m_UIRenderContext;
 		RenderMode m_renderMode = RenderMode::RayMarching2D;
 
+	public:
 		// ---- Scene control state
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;

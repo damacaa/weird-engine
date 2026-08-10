@@ -351,7 +351,8 @@ namespace ServiceShowcase
 
 		auto& rb = ecs.getComponent<RigidBody2D>(leader);
 		glm::vec2 current = glm::vec2(ecs.getComponent<Transform>(leader).position);
-		services.physics().sim().setVelocity(rb.simulationId, (target - current) * 2.0f);
+		rb.velocity = (target - current) * 2.0f;
+		ecs.setComponentDirty(rb);
 	}
 
 	// -------------------------------------------------------- update: ui system

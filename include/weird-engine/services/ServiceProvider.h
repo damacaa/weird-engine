@@ -81,10 +81,10 @@ namespace WeirdEngine
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
 
-		Simulation2D& sim()
-		{
-			return simulation;
-		}
+		// Simulation2D& sim()
+		// {
+		// 	return simulation;
+		// }
 
 		void setGravity(float gravity)
 		{

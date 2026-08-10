@@ -18,7 +18,7 @@ private:
 
 	std::vector<Entity> m_balls;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
@@ -150,13 +150,14 @@ private:
 		m_lastSpawnTime = getTime();
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		// Animate custom shape over time

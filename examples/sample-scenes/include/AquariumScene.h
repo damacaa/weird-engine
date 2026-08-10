@@ -72,15 +72,16 @@ private:
 	static constexpr float TANK_W = TANK_RIGHT - TANK_LEFT;
 	static constexpr float TANK_H = TANK_TOP - TANK_BOTTOM;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugInput = true;
 		m_debugFly = true;
 
-		m_background.type = BackgroundType::Sky;
-		m_background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
-		m_background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
-		m_background.scale = 0.15f;
+		auto& background = getBackground();
+		background.type = BackgroundType::Sky;
+		background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
+		background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
+		background.scale = 0.15f;
 
 		Entity globalSettingsEnt = ecs.createEntity();
 		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
@@ -248,13 +249,14 @@ private:
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
 		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		m_time += delta;
@@ -671,11 +673,12 @@ private:
 		}
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		if (std::rand() % 8 == 0)
 		{
-			playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(event.raw.position, 0.0f), 1});
+			services.audio().playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(event.raw.position, 0.0f), 1});
 		}
 
 		auto eelArray = ecs.getComponentArray<EelComponent>();
@@ -696,7 +699,8 @@ private:
 		}
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(ECSManager& ecs, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		Entity a = event.entityA;
 		Entity b = event.entityB;
@@ -706,7 +710,7 @@ private:
 
 		if (std::rand() % 10 == 0)
 		{
-			playSound({0.01f, 300.0f + (std::rand() % 200), true, vec3(0.0f), 1});
+			services.audio().playSound({0.01f, 300.0f + (std::rand() % 200), true, vec3(0.0f), 1});
 		}
 
 		if (ecs.hasComponent<Fish>(a) && ecs.hasComponent<Fish>(b))

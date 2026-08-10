@@ -37,7 +37,7 @@ private:
 
 	RenderPlane m_renderPlane;
 
-	void onCreate() override
+	void onCreate(ECSManager& ecs, ServiceProvider& services) override
 	{
 
 		// Base shaders
@@ -166,7 +166,7 @@ private:
 		m_bloomRenderTarget->bindColorTextureToFrameBuffer(*m_brightPassTexture);
 	}
 
-	void onDestroy() override
+	void onDestroy(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_flameShader.free();
 		m_particlesShader.free();
@@ -207,17 +207,18 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugFly = false;
 	}
 
 	float m_time = 3.1416f;
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		if (Input::GetKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		if (m_debugFly)

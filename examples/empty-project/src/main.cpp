@@ -15,9 +15,9 @@ using namespace WeirdEngine;
 class EmptyScene : public Scene2D
 {
 private:
-	void onStart(ECSManager& ecs) override {}
+	void onStart(ECSManager& ecs, ServiceProvider& services) override {}
 
-	void onUpdate(float delta, ECSManager& ecs) override {}
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override {}
 };
 
 int main(int argc, char* argv[])

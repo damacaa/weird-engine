@@ -8,6 +8,7 @@
 #include "LifeScene.h"
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
+#include "ServiceShowcaseScene.h"
 #include "ShapesCombinations.h"
 #include "TextScene.h"
 #include "WalkScene.h"
@@ -21,6 +22,7 @@ int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 
+	sceneManager.registerScene<ServiceShowcaseScene>("service-showcase");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<TextScene>("text");

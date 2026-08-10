@@ -24,7 +24,7 @@ private:
 
 	Entity m_monkey;
 
-	void onCreate() override
+	void onCreate(ECSManager& ecs, ServiceProvider& services) override
 	{
 
 		{
@@ -51,7 +51,7 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(ECSManager& ecs, ServiceProvider& services) override
 	{
 		m_debugFly = false;
 		getLights().push_back(Light{});
@@ -73,11 +73,12 @@ private:
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
 	{
+		float delta = services.time().deltaTime();
 		if (Input::GetKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			goToNextScene();
 		}
 
 		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);

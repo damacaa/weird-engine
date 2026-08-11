@@ -54,17 +54,18 @@ private:
 			m_ball = entity;
 		}
 
-		{
-			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f}; // Custom shape
-			Entity start =
-				services.shapes().addShape(DefaultShapes::STAR, vars1, orangeMat, CombinationType::Addition, true, 0);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+									.variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f},
+									.material = orangeMat,
+									.combination = CombinationType::Addition,
+									.hasCollision = true,
+									.group = 0});
 
-		{
-			float vars1[8] = {}; // Custom shape
-			Entity start = services.shapes().addShape(DefaultShapes3D::PLANE, vars1, floorMaterial,
-													  CombinationType::Addition, false);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes3D::PLANE,
+									.variables = {},
+									.material = floorMaterial,
+									.combination = CombinationType::Addition,
+									.hasCollision = false});
 
 		{
 			Entity entity = registry.createEntity();

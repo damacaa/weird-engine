@@ -162,27 +162,35 @@ namespace ServiceShowcase
 
 			ringShape = services.shapes().registerSDF(ring);
 
-			float vars[8] = {15.0f, 20.0f, 5.0f, 4.0f};
-			Entity ringEntity =
-				services.shapes().addShape(ringShape, vars, ringMaterial, CombinationType::Addition, true, 0);
+			Entity ringEntity = services.shapes().addShape({.shapeId = ringShape,
+															.variables = {15.0f, 20.0f, 5.0f, 4.0f},
+															.material = ringMaterial,
+															.combination = CombinationType::Addition,
+															.hasCollision = true,
+															.group = 0});
 			registry.getComponent<CustomShape>(ringEntity).smoothFactor = 2.0f;
 		}
 
 		// Floor
-		{
-			float vars[8] = {15.0f, -50.0f, 250.0f, 50.0f};
-			Entity floor =
-				services.shapes().addShape(DefaultShapes::BOX, vars, floorMaterial, CombinationType::SmoothAddition);
-			services.tags().tag(floor, "floor");
-			registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
-		}
+		Entity floor = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+												   .variables = {{Primitives::Box::POS_X, 15.0f},
+																 {Primitives::Box::POS_Y, -50.0f},
+																 {Primitives::Box::SIZE_X, 250.0f},
+																 {Primitives::Box::SIZE_Y, 50.0f}},
+												   .material = floorMaterial,
+												   .combination = CombinationType::SmoothAddition});
+		services.tags().tag(floor, "floor");
+		registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 
 		// Pit: a subtraction shape; balls that roll into it fall through
-		{
-			float vars[8] = {30.0f, 5.0f, 4.0f};
-			services.shapes().addShape(DefaultShapes::CIRCLE, vars, 0, CombinationType::Subtraction, true,
-									   CustomShape::GLOBAL_GROUP);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+									.variables = {{Primitives::Circle::POS_X, 30.0f},
+												  {Primitives::Circle::POS_Y, 5.0f},
+												  {Primitives::Circle::RADIUS, 4.0f}},
+									.material = 0,
+									.combination = CombinationType::Subtraction,
+									.hasCollision = true,
+									.group = CustomShape::GLOBAL_GROUP});
 
 		// Camera
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;

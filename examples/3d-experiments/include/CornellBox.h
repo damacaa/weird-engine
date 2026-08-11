@@ -59,40 +59,76 @@ private:
 			auto boxId = services.shapes().registerSDF(box);
 
 			// Left
-			{
-				float vars1[8] = {-2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, redMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, -2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = redMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Right
-			{
-				float vars1[8] = {2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = greenMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Back
-			{
-				float vars1[8] = {0.0f, 2.6f, -2.0f * 2.6f, 3.0f * 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Top
-			{
-				float vars1[8] = {0.0f, 3.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 3.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.0f * 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Light hole
-			{
-				float vars1[8] = {0.0f, 2.0f * 2.6f, 0.0f, 0.5f, 1.0f, 0.5f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 0.5f},
+													  {Primitives3D::Box::SIZE_Y, 1.0f},
+													  {Primitives3D::Box::SIZE_Z, 0.5f}},
+										.material = whiteMat,
+										.combination = CombinationType::Subtraction,
+										.hasCollision = false});
 
 			// Floor
-			{
-				float vars1[8] = {0.0f, -1.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = services.shapes().addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, -1.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.0f * 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// {
 			// 	float vars1[8] = {0.0f, 2.6f, 0.0f, 2.7f, 2.7f, 2.7f}; // Custom shape

@@ -99,29 +99,41 @@ private:
 		createEel(registry, 10.0f, 30.0f, 22, 0.9f, 6);
 
 		{
-			float seaweedVars[8] = {3.0f, 1.2f, 2.5f};
-			Entity seaweed = services.shapes().addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::Green);
+			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+														 .variables = {{Primitives::SineWave::AMPLITUDE, 3.0f},
+																	   {Primitives::SineWave::PERIOD, 1.2f},
+																	   {Primitives::SineWave::SPEED, 2.5f}},
+														 .material = static_cast<uint16_t>(DisplaySettings::Green)});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 0.0f;
 		}
 
 		{
-			float seaweedVars[8] = {2.0f, 2.0f, 1.8f};
-			Entity seaweed = services.shapes().addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::LightGreen);
+			Entity seaweed =
+				services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+											.variables = {{Primitives::SineWave::AMPLITUDE, 2.0f},
+														  {Primitives::SineWave::PERIOD, 2.0f},
+														  {Primitives::SineWave::SPEED, 1.8f}},
+											.material = static_cast<uint16_t>(DisplaySettings::LightGreen)});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 1.5f;
 		}
 
-		{
-			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H};
-			Entity box = services.shapes().addShape(DefaultShapes::BOX, boxVars, DisplaySettings::LightBlue,
-													CombinationType::Intersection);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, TANK_CX},
+												  {Primitives::Box::POS_Y, TANK_CY},
+												  {Primitives::Box::SIZE_X, TANK_W},
+												  {Primitives::Box::SIZE_Y, TANK_H}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightBlue),
+									.combination = CombinationType::Intersection});
 
-		{
-			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H, 1.0f};
-			Entity box = services.shapes().addShape(DefaultShapes::BOX_LINE, boxVars, DisplaySettings::LightBlue);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX_LINE,
+									.variables = {{Primitives::Box::POS_X, TANK_CX},
+												  {Primitives::Box::POS_Y, TANK_CY},
+												  {Primitives::Box::SIZE_X, TANK_W},
+												  {Primitives::Box::SIZE_Y, TANK_H},
+												  {4, 1.0f}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightBlue)});
 
 		for (int i = 0; i < 40; i++)
 		{
@@ -161,9 +173,11 @@ private:
 		dot.materialId = material;
 		auto& rb = registry.addComponent<RigidBody2D>(bellEntity);
 
-		float bellVars[8] = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f};
-		Entity bellShape =
-			services.shapes().addShape(DefaultShapes::STAR, bellVars, material, CombinationType::Addition, false);
+		Entity bellShape = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+													   .variables = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f},
+													   .material = static_cast<uint16_t>(material),
+													   .combination = CombinationType::Addition,
+													   .hasCollision = false});
 
 		auto& jf = registry.addComponent<JellyfishComponent>(bellEntity);
 		jf.bellShape = bellShape;

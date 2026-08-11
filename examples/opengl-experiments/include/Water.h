@@ -45,19 +45,19 @@ private:
 
 	// -------------------------------------------------------------------------
 
-	void onCreate(ECSManager& ecs, ServiceProvider& services) override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
 		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
 							   services.resources().assetPath("water/shaders/water.frag"));
 
-		m_light0 = ecs.createEntity();
+		m_light0 = registry.createEntity();
 		{
-			Transform& t = ecs.addComponent<Transform>(m_light0);
+			Transform& t = registry.addComponent<Transform>(m_light0);
 			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
 			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(m_light0);
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
 			lc.type = LightType::Directional;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.5f);
 		}
@@ -65,7 +65,7 @@ private:
 		m_waterPlane.build();
 	}
 
-	void onDestroy(ECSManager& ecs, ServiceProvider& services) override
+	void onDestroy(Registry& registry, ServiceProvider& services) override
 	{
 		m_waterShader.free();
 
@@ -86,7 +86,7 @@ private:
 		float buoyancy = 10.0f; // how strongly this entity is affected by the water surface
 	};
 
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(true);
 
@@ -94,32 +94,32 @@ private:
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
 		{
-			m_dot = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(m_dot);
+			m_dot = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(m_dot);
 			t.position = vec3(0, 0, 0);
-			auto& renderer = ecs.addComponent<Dot>(m_dot);
+			auto& renderer = registry.addComponent<Dot>(m_dot);
 			renderer.materialId = redMat.id;
-			ecs.addComponent<Floatable>(m_dot);
+			registry.addComponent<Floatable>(m_dot);
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(3, 0, 0);
 
-			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
+			MeshRenderer& mr = registry.addComponent<MeshRenderer>(entity);
 			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 
-			ecs.addComponent<Floatable>(entity);
+			registry.addComponent<Floatable>(entity);
 		}
 
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 3, 20);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 3, 20);
 	}
 
 	float m_time = 0.0f;
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
 		if (services.input().getKeyDown(Input::Q))
@@ -129,14 +129,14 @@ private:
 
 		m_time += delta;
 
-		const auto& floatables = ecs.getComponentArray<Floatable>();
+		const auto& floatables = registry.getComponentArray<Floatable>();
 
 		for (int i = 0; i < floatables->getSize(); i++)
 		{
 			auto& floatable = floatables->getDataAtIdx(i);
 
 			// Keep the dot riding the water surface
-			Transform& transform = ecs.getComponent<Transform>(floatables->getEntityAtIdx(i));
+			Transform& transform = registry.getComponent<Transform>(floatables->getEntityAtIdx(i));
 			glm::vec2 flatPos = {transform.position.x, transform.position.z};
 			float centerHeight = m_waterPlane.waterHeightAt(flatPos, m_time);
 			transform.position.y = centerHeight;
@@ -153,14 +153,14 @@ private:
 		}
 	}
 
-	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		WeirdRenderer::Camera& sceneCamera =
-			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
+			registry.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
 		float time = services.time().time();
 
-		auto& light0_t = ecs.getComponent<Transform>(m_light0);
-		auto& light0_lc = ecs.getComponent<LightComponent>(m_light0);
+		auto& light0_t = registry.getComponent<Transform>(m_light0);
+		auto& light0_lc = registry.getComponent<LightComponent>(m_light0);
 
 		// ── Snapshot the current scene colour + depth ────────────────────────
 		// We need to read from these textures while drawing the water plane,

@@ -20,13 +20,13 @@ using namespace WeirdEngine;
 // thin wrappers that delegate to a plain free function (a "system") of the
 // form:
 //
-//     void system(ECSManager& ecs, ServiceProvider& services, ...);
+//     void system(Registry& registry, ServiceProvider& services, ...);
 //
 // (onRender and the physics-thread callbacks are inlined in the scene
 // instead, see below: the dispatcher is deliberately not involved there.)
 //
 // Systems never touch Scene internals: everything they need is either on the
-// ECSManager& or on the ServiceProvider& passed to the callback. Even the
+// Registry& or on the ServiceProvider& passed to the callback. Even the
 // scene's own state lives in the ECS (see State below): a single "state"
 // entity owns it, and systems reach it through the component array.
 //
@@ -93,23 +93,23 @@ namespace ServiceShowcase
 	// State entity lookup: there is exactly one State component in the scene
 	// (created by onCreateSystem), so it always lives at index 0 of the State
 	// component array.
-	inline State& getState(ECSManager& ecs, ServiceProvider& services)
+	inline State& getState(Registry& registry, ServiceProvider& services)
 	{
-		return ecs.getComponentArray<State>()->getDataAtIdx(0);
+		return registry.getComponentArray<State>()->getDataAtIdx(0);
 	}
 
-	inline Entity spawnBall(ECSManager& ecs, vec2 position)
+	inline Entity spawnBall(Registry& registry, vec2 position)
 	{
-		Entity entity = ecs.createEntity();
-		auto& t = ecs.addComponent<Transform>(entity);
+		Entity entity = registry.createEntity();
+		auto& t = registry.addComponent<Transform>(entity);
 		t.position = vec3(position, 0.0f);
 
-		auto& dot = ecs.addComponent<Dot>(entity);
+		auto& dot = registry.addComponent<Dot>(entity);
 		dot.materialId = DisplaySettings::LightGray;
 
-		auto& rb = ecs.addComponent<RigidBody2D>(entity);
+		auto& rb = registry.addComponent<RigidBody2D>(entity);
 		rb.velocity = vec2((std::rand() % 200 - 100) / 40.0f, 0.0f);
-		ecs.setComponentDirty(rb);
+		registry.setComponentDirty(rb);
 
 		return entity;
 	}
@@ -118,22 +118,22 @@ namespace ServiceShowcase
 	// Runs after the ECS, materials and camera exist, before any scene file is
 	// loaded and before onStart. Creates the "state" entity that owns the
 	// scene's State component.
-	inline void onCreateSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void onCreateSystem(Registry& registry, ServiceProvider& services)
 	{
-		Entity stateEntity = ecs.createEntity();
-		ecs.addComponent<State>(stateEntity);
+		Entity stateEntity = registry.createEntity();
+		registry.addComponent<State>(stateEntity);
 		services.tags().tag(stateEntity, "state");
 		services.serialization().blacklistEntity(stateEntity);
 
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 		state.initialTime = services.time().time();
 		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
 	// ----------------------------------------------------------------- onStart
-	inline void onStartSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void onStartSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 
 		// Debug flags through the provider
 		services.debug().setDebugFly(true);
@@ -165,7 +165,7 @@ namespace ServiceShowcase
 			float vars[8] = {15.0f, 20.0f, 5.0f, 4.0f};
 			Entity ringEntity =
 				services.shapes().addShape(ringShape, vars, ringMaterial, CombinationType::Addition, true, 0);
-			ecs.getComponent<CustomShape>(ringEntity).smoothFactor = 2.0f;
+			registry.getComponent<CustomShape>(ringEntity).smoothFactor = 2.0f;
 		}
 
 		// Floor
@@ -174,7 +174,7 @@ namespace ServiceShowcase
 			Entity floor =
 				services.shapes().addShape(DefaultShapes::BOX, vars, floorMaterial, CombinationType::SmoothAddition);
 			services.tags().tag(floor, "floor");
-			ecs.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
+			registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 		}
 
 		// Pit: a subtraction shape; balls that roll into it fall through
@@ -185,19 +185,19 @@ namespace ServiceShowcase
 		}
 
 		// Camera
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 
 		// Leader ball: orbits a point (moved by FollowSystem through the
 		// physics simulation)
 		{
-			Entity leader = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(leader);
+			Entity leader = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(leader);
 			t.position = vec3(15.0f, 12.0f, 0.0f);
 
-			auto& dot = ecs.addComponent<Dot>(leader);
+			auto& dot = registry.addComponent<Dot>(leader);
 			dot.materialId = DisplaySettings::Yellow;
 
-			ecs.addComponent<RigidBody2D>(leader);
+			registry.addComponent<RigidBody2D>(leader);
 			services.tags().tag(leader, "leader");
 		}
 
@@ -207,14 +207,14 @@ namespace ServiceShowcase
 		// to the simulation; the callbacks reach it through the simulation id
 		// stored in the RigidBody2D component.
 		{
-			Entity character = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(character);
+			Entity character = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(character);
 			t.position = vec3(15.0f, 15.0f, 0.0f);
 
-			auto& dot = ecs.addComponent<Dot>(character);
+			auto& dot = registry.addComponent<Dot>(character);
 			dot.materialId = DisplaySettings::Blue;
 
-			auto& rb = ecs.addComponent<RigidBody2D>(character);
+			auto& rb = registry.addComponent<RigidBody2D>(character);
 			services.tags().tag(character, "character");
 
 			// Configure the data before handing ownership to the simulation;
@@ -234,20 +234,20 @@ namespace ServiceShowcase
 		{
 			float x = 8.0f + (i % 4) * 3.0f;
 			float y = 28.0f + (i / 4) * 4.0f;
-			spawnBall(ecs, vec2(x, y));
+			spawnBall(registry, vec2(x, y));
 		}
 
 		// UI text (screen space; blacklisted so it is never serialized)
 		{
 			auto makeText = [&](const char* initial, vec2 screenPosition, Entity& outEntity, int material)
 			{
-				outEntity = ecs.createEntity();
+				outEntity = registry.createEntity();
 				services.serialization().blacklistEntity(outEntity);
 
-				auto& t = ecs.addComponent<Transform>(outEntity);
+				auto& t = registry.addComponent<Transform>(outEntity);
 				t.position = vec3(screenPosition, 0.0f);
 
-				auto& text = ecs.addComponent<UITextRenderer>(outEntity);
+				auto& text = registry.addComponent<UITextRenderer>(outEntity);
 				text.text = initial;
 				text.material = material;
 				text.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
@@ -267,24 +267,24 @@ namespace ServiceShowcase
 
 	// ----------------------------------------------------- update: spawn system
 	// Periodically drops a new ball from the top of the world.
-	inline void spawnSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void spawnSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 
 		state.spawnTimer += services.time().deltaTime();
-		if (state.spawnTimer > 0.35f && ecs.getEntityCount() < 160)
+		if (state.spawnTimer > 0.35f && registry.getEntityCount() < 160)
 		{
 			state.spawnTimer = 0.0f;
 			float x = 3.0f + static_cast<float>(std::rand() % 240) / 10.0f;
-			spawnBall(ecs, vec2(x, 35.0f));
+			spawnBall(registry, vec2(x, 35.0f));
 			state.ballsSpawned++;
 		}
 	}
 
 	// ----------------------------------------------------- update: input system
-	inline void inputSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void inputSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 
 		// Scene transition through the provider
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
@@ -326,10 +326,10 @@ namespace ServiceShowcase
 		// Spawn a ball where the mouse points
 		if (services.input().getMouseButtonDown(Input::LeftClick) && !services.input().isUIClick())
 		{
-			auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 			vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(
 				cameraTransform, vec2(services.input().getMouseX(), services.input().getMouseY()));
-			spawnBall(ecs, mouseWorld);
+			spawnBall(registry, mouseWorld);
 			state.ballsSpawned++;
 		}
 
@@ -353,9 +353,9 @@ namespace ServiceShowcase
 	// ----------------------------------------------------- update: follow system
 	// Orbits the "leader" ball around a point by writing its velocity straight
 	// into the physics simulation through the provider.
-	inline void followSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void followSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 
 		Entity leader = services.tags().getEntityByTag("leader");
 		if (leader == INVALID_ENTITY)
@@ -366,56 +366,56 @@ namespace ServiceShowcase
 		glm::vec2 center(15.0f, 18.0f);
 		glm::vec2 target = center + 6.0f * glm::vec2(std::cos(state.leaderAngle), std::sin(state.leaderAngle));
 
-		auto& rb = ecs.getComponent<RigidBody2D>(leader);
-		glm::vec2 current = glm::vec2(ecs.getComponent<Transform>(leader).position);
+		auto& rb = registry.getComponent<RigidBody2D>(leader);
+		glm::vec2 current = glm::vec2(registry.getComponent<Transform>(leader).position);
 		rb.velocity = (target - current) * 2.0f;
-		ecs.setComponentDirty(rb);
+		registry.setComponentDirty(rb);
 	}
 
 	// -------------------------------------------------------- update: ui system
-	inline void uiSystem(ECSManager& ecs, ServiceProvider& services)
+	inline void uiSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 
 		char buffer[64];
 
-		auto& timeText = ecs.getComponent<UITextRenderer>(state.timeText);
+		auto& timeText = registry.getComponent<UITextRenderer>(state.timeText);
 		std::snprintf(buffer, sizeof(buffer), "time %.1fs", services.time().time());
 		timeText.text = buffer;
-		ecs.setComponentDirty(timeText);
+		registry.setComponentDirty(timeText);
 
-		auto& entitiesText = ecs.getComponent<UITextRenderer>(state.entitiesText);
-		std::snprintf(buffer, sizeof(buffer), "entities %d (balls spawned: %d)", services.ecs().getEntityCount(),
+		auto& entitiesText = registry.getComponent<UITextRenderer>(state.entitiesText);
+		std::snprintf(buffer, sizeof(buffer), "entities %d (balls spawned: %d)", services.registry().getEntityCount(),
 					  state.ballsSpawned);
 		entitiesText.text = buffer;
-		ecs.setComponentDirty(entitiesText);
+		registry.setComponentDirty(entitiesText);
 
-		auto& collisionsText = ecs.getComponent<UITextRenderer>(state.collisionsText);
+		auto& collisionsText = registry.getComponent<UITextRenderer>(state.collisionsText);
 		std::snprintf(buffer, sizeof(buffer), "collisions %d body / %d shape", state.entityCollisions,
 					  state.shapeCollisions);
 		collisionsText.text = buffer;
-		ecs.setComponentDirty(collisionsText);
+		registry.setComponentDirty(collisionsText);
 	}
 
 	// ------------------------------------------------------- onEntityCollision
 	// Main thread. Body-body collisions mapped to entities: count them, flash
 	// the colliding ball and play a sound through the provider.
-	inline void onEntityCollisionSystem(ECSManager& ecs, ServiceProvider& services, EntityCollisionEvent& event)
+	inline void onEntityCollisionSystem(Registry& registry, ServiceProvider& services, EntityCollisionEvent& event)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 		state.entityCollisions++;
 
 		// Flash the colliding ball orange, but keep the character's identity
 		// color: it is identified through its per-body user data.
-		if (event.entityA != INVALID_ENTITY && ecs.hasComponent<Dot>(event.entityA) &&
-			ecs.hasComponent<RigidBody2D>(event.entityA))
+		if (event.entityA != INVALID_ENTITY && registry.hasComponent<Dot>(event.entityA) &&
+			registry.hasComponent<RigidBody2D>(event.entityA))
 		{
-			RigidBody2D& rb = ecs.getComponent<RigidBody2D>(event.entityA);
+			RigidBody2D& rb = registry.getComponent<RigidBody2D>(event.entityA);
 			if (services.physics().getUserDataAs<CharacterData>(rb.simulationId) == nullptr)
 			{
-				auto& dot = ecs.getComponent<Dot>(event.entityA);
+				auto& dot = registry.getComponent<Dot>(event.entityA);
 				dot.materialId = DisplaySettings::Orange;
-				ecs.setComponentDirty(dot);
+				registry.setComponentDirty(dot);
 			}
 		}
 
@@ -425,10 +425,10 @@ namespace ServiceShowcase
 	// --------------------------------------------------- onEntityShapeCollision
 	// Main thread. Shape collisions mapped to entities: count them and play a
 	// spatial sound at the contact point.
-	inline void onEntityShapeCollisionSystem(ECSManager& ecs, ServiceProvider& services,
+	inline void onEntityShapeCollisionSystem(Registry& registry, ServiceProvider& services,
 											 EntityShapeCollisionEvent& event)
 	{
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 		state.shapeCollisions++;
 
 		if (event.entity != INVALID_ENTITY)
@@ -439,11 +439,11 @@ namespace ServiceShowcase
 	}
 
 	// ---------------------------------------------------------------- onDestroy
-	inline void onDestroySystem(ECSManager& ecs, ServiceProvider& services)
+	inline void onDestroySystem(Registry& registry, ServiceProvider& services)
 	{
 		std::cout << "[ServiceShowcase] scene destroyed at " << services.time().time() << "s" << std::endl;
 
-		State& state = getState(ecs, services);
+		State& state = getState(registry, services);
 		state.ballsSpawned = 0;
 		state.entityCollisions = 0;
 		state.shapeCollisions = 0;
@@ -470,12 +470,12 @@ public:
 		addDestroySystem(ServiceShowcase::onDestroySystem);
 
 		addImGuiRenderSystem(
-			[](ECSManager& ecs, ServiceProvider& services)
+			[](Registry& registry, ServiceProvider& services)
 			{
-				auto& state = ServiceShowcase::getState(ecs, services);
+				auto& state = ServiceShowcase::getState(registry, services);
 
 				ImGui::Text("Time: %.2fs", services.time().time());
-				ImGui::Text("Entities: %d", services.ecs().getEntityCount());
+				ImGui::Text("Entities: %d", services.registry().getEntityCount());
 				ImGui::Text("Gravity: %.1f | Damping: %.2f | Physics %s", state.gravity, state.damping,
 							services.physics().isPaused() ? "paused" : "running");
 				ImGui::Text("Collisions: %d body / %d shape", state.entityCollisions, state.shapeCollisions);
@@ -489,7 +489,7 @@ public:
 	}
 
 private:
-	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		static bool logged = false;
 		if (!logged)

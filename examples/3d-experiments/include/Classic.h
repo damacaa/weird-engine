@@ -12,7 +12,7 @@ private:
 	Entity m_ball;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(true);
 
@@ -30,11 +30,11 @@ private:
 		floorMaterial.pattern = MaterialPattern::Checkers;
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0, 1, 0);
 
-			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
+			MeshRenderer& mr = registry.addComponent<MeshRenderer>(entity);
 
 			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
@@ -44,11 +44,11 @@ private:
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(2, 3, 2);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = redMat.id;
 
 			m_ball = entity;
@@ -67,36 +67,36 @@ private:
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = glm::vec3(0.0f, 3.0f, 0.0f);
 			t.rotation = glm::vec3(0.35f, 0.45f, 0.5f);
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(entity);
+			LightComponent& lc = registry.addComponent<LightComponent>(entity);
 			lc.type = LightType::Directional;
 			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
 		}
 
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2, 10);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2, 10);
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		if (services.input().getKeyDown(Input::Q))
 		{
 			services.sceneControl().goToNextScene();
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 
 		return;
 
 		{
-			Transform& t = ecs.getComponent<Transform>(m_monkey);
+			Transform& t = registry.getComponent<Transform>(m_monkey);
 		}
 
 		{
-			Transform& t = ecs.getComponent<Transform>(m_ball);
+			Transform& t = registry.getComponent<Transform>(m_ball);
 			// t.position.z = 10 * sinf(services.time().time());
 			t.position.x = 2.0f * sinf(-services.time().time());
 			t.position.z = 2.0f * cosf(-services.time().time());

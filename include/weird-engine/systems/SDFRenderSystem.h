@@ -1,5 +1,5 @@
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/resources/Font.h"
 #include <stb/stb_image.h>
@@ -27,19 +27,19 @@ namespace WeirdEngine
 	{
 
 		template <typename DotClass, typename ShapeClass, typename TextClass>
-		inline void update(ECSManager& ecs, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
+		inline void update(Registry& registry, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
 		{
 			uint32_t normalDots = 0;
-			if (auto dotArray = ecs.getComponentArray<DotClass>())
+			if (auto dotArray = registry.getComponentArray<DotClass>())
 			{
 				normalDots = dotArray->getSize();
 			}
 
 			uint32_t textDots = 0;
-			ecs.forEach<TextClass>(
+			registry.forEach<TextClass>(
 				[&](Entity entity, TextClass& text)
 				{
-					if (ecs.isComponentDirty(text))
+					if (registry.isComponentDirty(text))
 					{
 						// Update dot count
 						text.bufferedDotCount = 0;
@@ -54,7 +54,7 @@ namespace WeirdEngine
 									 ((charCount - 1) * ctx.charSpacing);
 						text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
 
-						ecs.setComponentDirty(text, false);
+						registry.setComponentDirty(text, false);
 					}
 
 					textDots += text.bufferedDotCount;
@@ -63,7 +63,7 @@ namespace WeirdEngine
 			uint32_t dotCount = normalDots + textDots;
 
 			uint32_t shapeCount = 0;
-			if (auto shapeArray = ecs.getComponentArray<ShapeClass>())
+			if (auto shapeArray = registry.getComponentArray<ShapeClass>())
 			{
 				shapeCount = shapeArray->getSize();
 			}
@@ -89,7 +89,7 @@ namespace WeirdEngine
 
 			// Process DotClass instances
 			int dotIdx = 0;
-			ecs.forEach<DotClass, Transform>(
+			registry.forEach<DotClass, Transform>(
 				[&](Entity entity, DotClass& dotComp, Transform& t)
 				{
 					data[dotIdx].x = t.position.x;
@@ -103,7 +103,7 @@ namespace WeirdEngine
 
 			// Text
 			int dotIndex = 0;
-			ecs.forEach<TextClass, Transform>(
+			registry.forEach<TextClass, Transform>(
 				[&](Entity entity, TextClass& text, Transform& t)
 				{
 					int charCount = static_cast<int>(text.text.length());
@@ -161,7 +161,7 @@ namespace WeirdEngine
 
 			// Process ShapeClass instances
 			int shapeIdx = 0;
-			ecs.forEach<ShapeClass>(
+			registry.forEach<ShapeClass>(
 				[&](Entity entity, ShapeClass& shapeComp)
 				{
 					// Assuming ShapeClass has m_parameters[0] through m_parameters[7]

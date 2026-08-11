@@ -1,5 +1,5 @@
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/ResourceManager.h"
 
 #include "weird-renderer/resources/DrawCommand.h"
@@ -12,14 +12,14 @@ namespace WeirdEngine
 
 	namespace RenderSystem
 	{
-		inline void update(ECSManager& ecs, ResourceManager& resourceManager,
+		inline void update(Registry& registry, ResourceManager& resourceManager,
 						   std::vector<WeirdRenderer::DrawCommand>& drawQueue,
 						   std::vector<WeirdRenderer::Light>& lights)
 		{
 			drawQueue.clear();
 			lights.clear();
 
-			ecs.forEach<MeshRenderer, Transform>(
+			registry.forEach<MeshRenderer, Transform>(
 				[&](Entity mOwner, MeshRenderer& mr, Transform& t)
 				{
 					WeirdRenderer::DrawCommand cmd;
@@ -32,7 +32,7 @@ namespace WeirdEngine
 					drawQueue.push_back(cmd);
 				});
 
-			ecs.forEach<LightComponent, Transform>(
+			registry.forEach<LightComponent, Transform>(
 				[&](Entity mOwner, LightComponent& lc, Transform& t)
 				{
 					WeirdRenderer::Light light;

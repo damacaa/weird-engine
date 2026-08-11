@@ -37,8 +37,10 @@ namespace WeirdEngine
 		}
 	} // namespace internal
 
-	// ECSManager Manager
-	class ECSManager
+	// Entity + component storage. Systems are not managed here: scheduling
+	// lives on Scene, which dispatches them with a Registry& and
+	// ServiceProvider&.
+	class Registry
 	{
 	public:
 		Entity createEntity()

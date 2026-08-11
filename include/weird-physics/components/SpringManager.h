@@ -11,12 +11,12 @@ namespace WeirdEngine
 	{
 	private:
 		Simulation2D* m_simulation;
-		ECSManager* m_ecs;
+		Registry* m_registry;
 
 	public:
-		SpringManager(Simulation2D& simulation, ECSManager& ecs)
+		SpringManager(Simulation2D& simulation, Registry& registry)
 			: m_simulation(&simulation)
-			, m_ecs(&ecs)
+			, m_registry(&registry)
 		{
 		}
 
@@ -25,11 +25,11 @@ namespace WeirdEngine
 			auto componentArray = std::static_pointer_cast<ComponentArray<Spring>>(m_componentArray);
 			Spring& removedSpring = componentArray->getDataFromEntity(entity);
 
-			if (m_ecs->hasComponent<RigidBody2D>(removedSpring.entityA) &&
-				m_ecs->hasComponent<RigidBody2D>(removedSpring.entityB))
+			if (m_registry->hasComponent<RigidBody2D>(removedSpring.entityA) &&
+				m_registry->hasComponent<RigidBody2D>(removedSpring.entityB))
 			{
-				auto simIdA = m_ecs->getComponent<RigidBody2D>(removedSpring.entityA).simulationId;
-				auto simIdB = m_ecs->getComponent<RigidBody2D>(removedSpring.entityB).simulationId;
+				auto simIdA = m_registry->getComponent<RigidBody2D>(removedSpring.entityA).simulationId;
+				auto simIdB = m_registry->getComponent<RigidBody2D>(removedSpring.entityB).simulationId;
 				// DistanceConstraints and Springs are treated identically for removal in Simulation2D
 				m_simulation->removeDistanceConstraint(simIdA, simIdB);
 			}

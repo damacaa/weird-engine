@@ -39,7 +39,7 @@ private:
 
 	RenderPlane m_renderPlane;
 
-	void onCreate(ECSManager& ecs, ServiceProvider& services) override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
 		// Base shaders
@@ -61,23 +61,23 @@ private:
 		m_heatDistortionShader =
 			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/heatDistortion.frag"));
 
-		m_light0 = ecs.createEntity();
+		m_light0 = registry.createEntity();
 		{
-			Transform& t = ecs.addComponent<Transform>(m_light0);
+			Transform& t = registry.addComponent<Transform>(m_light0);
 			t.position = glm::vec3(0.0f);
 			t.rotation = glm::vec3(0.0f);
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(m_light0);
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
 			lc.type = LightType::Directional;
 			lc.color = glm::vec4(0.0f);
 		}
-		m_light1 = ecs.createEntity();
+		m_light1 = registry.createEntity();
 		{
-			Transform& t = ecs.addComponent<Transform>(m_light1);
+			Transform& t = registry.addComponent<Transform>(m_light1);
 			t.position = glm::vec3(0.0f, 1.0f, 0.0f);
 			t.rotation = glm::vec3(0.0f);
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(m_light1);
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light1);
 			lc.type = LightType::Point;
 			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
 		}
@@ -186,7 +186,7 @@ private:
 		m_bloomRenderTarget->bindColorTextureToFrameBuffer(*m_brightPassTexture);
 	}
 
-	void onDestroy(ECSManager& ecs, ServiceProvider& services) override
+	void onDestroy(Registry& registry, ServiceProvider& services) override
 	{
 		m_flameShader.free();
 		m_particlesShader.free();
@@ -227,13 +227,13 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(false);
 	}
 
 	float m_time = 3.1416f;
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
 		if (services.input().getKeyDown(Input::Q))
@@ -259,7 +259,7 @@ private:
 			}
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 
 		static float amplitude = 10.0f;
 
@@ -312,10 +312,10 @@ private:
 		glDisable(GL_BLEND);
 	}
 
-	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		WeirdRenderer::Camera& sceneCamera =
-			ecs.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
+			registry.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
 		float time = services.time().time();
 
 		glDepthMask(GL_FALSE);
@@ -343,10 +343,10 @@ private:
 		m_litShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Pass light rotation
-		auto& light0_t = ecs.getComponent<Transform>(m_light0);
-		auto& light0_lc = ecs.getComponent<LightComponent>(m_light0);
-		auto& light1_t = ecs.getComponent<Transform>(m_light1);
-		auto& light1_lc = ecs.getComponent<LightComponent>(m_light1);
+		auto& light0_t = registry.getComponent<Transform>(m_light0);
+		auto& light0_lc = registry.getComponent<LightComponent>(m_light0);
+		auto& light1_t = registry.getComponent<Transform>(m_light1);
+		auto& light1_lc = registry.getComponent<LightComponent>(m_light1);
 		glm::vec3 position = light1_t.position;
 		m_litShader.setUniform("u_lightPos", position);
 		glm::vec3 direction = light1_t.rotation;

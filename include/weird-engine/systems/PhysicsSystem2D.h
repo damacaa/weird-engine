@@ -1,6 +1,6 @@
 #pragma once
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
@@ -14,28 +14,28 @@ namespace WeirdEngine
 		namespace PhysicsSystem2D
 		{
 
-			inline void init(ECSManager& ecs, Simulation2D& simulation)
+			inline void init(Registry& registry, Simulation2D& simulation)
 			{
-				ecs.registerComponent<GlobalPhysicsSettings>();
-				ecs.registerComponent<Spring>();
-				ecs.registerComponent<DistanceConstraint>();
+				registry.registerComponent<GlobalPhysicsSettings>();
+				registry.registerComponent<Spring>();
+				registry.registerComponent<DistanceConstraint>();
 			}
 
-			inline void update(ECSManager& ecs, Simulation2D& simulation)
+			inline void update(Registry& registry, Simulation2D& simulation)
 			{
 				// Pass 1: ECS -> physics. Writes are queued as commands and the
 				// physics thread applies them on its next step.
-				ecs.forEach<RigidBody2D, Transform>(
+				registry.forEach<RigidBody2D, Transform>(
 					[&](Entity entity, RigidBody2D& rb, Transform& transform)
 					{
-						if (ecs.isComponentDirty(transform))
+						if (registry.isComponentDirty(transform))
 						{
 							// Override simulation transform
 							simulation.setPosition(rb.simulationId, glm::vec2(transform.position));
-							ecs.setComponentDirty(transform, false); // TODO: move somewhere else
+							registry.setComponentDirty(transform, false); // TODO: move somewhere else
 						}
 
-						if (ecs.isComponentDirty(rb))
+						if (registry.isComponentDirty(rb))
 						{
 							simulation.setVelocity(rb.simulationId, rb.velocity);
 
@@ -44,7 +44,7 @@ namespace WeirdEngine
 							else
 								simulation.unFix(rb.simulationId);
 
-							ecs.setComponentDirty(rb, false);
+							registry.setComponentDirty(rb, false);
 						}
 
 						if (glm::length2(rb.pendingImpulseForce) > 0.0001f)
@@ -60,57 +60,57 @@ namespace WeirdEngine
 						}
 					});
 
-				ecs.forEach<CustomShape>(
+				registry.forEach<CustomShape>(
 					[&](Entity entity, CustomShape& shape)
 					{
-						if (ecs.isComponentDirty(shape))
+						if (registry.isComponentDirty(shape))
 						{
 							simulation.updateShape(entity, shape);
-							ecs.setComponentDirty(shape, false);
+							registry.setComponentDirty(shape, false);
 						}
 					});
 
-				ecs.forEach<GlobalPhysicsSettings>(
+				registry.forEach<GlobalPhysicsSettings>(
 					[&](Entity entity, GlobalPhysicsSettings& settings)
 					{
-						if (ecs.isComponentDirty(settings))
+						if (registry.isComponentDirty(settings))
 						{
 							simulation.setGravity(settings.gravity);
 							simulation.setDamping(settings.damping);
-							ecs.setComponentDirty(settings, false);
+							registry.setComponentDirty(settings, false);
 						}
 					});
 
-				ecs.forEach<Spring>(
+				registry.forEach<Spring>(
 					[&](Entity entity, Spring& spring)
 					{
-						if (ecs.isComponentDirty(spring) && spring.entityA != INVALID_ENTITY &&
+						if (registry.isComponentDirty(spring) && spring.entityA != INVALID_ENTITY &&
 							spring.entityB != INVALID_ENTITY)
 						{
-							if (ecs.hasComponent<RigidBody2D>(spring.entityA) &&
-								ecs.hasComponent<RigidBody2D>(spring.entityB))
+							if (registry.hasComponent<RigidBody2D>(spring.entityA) &&
+								registry.hasComponent<RigidBody2D>(spring.entityB))
 							{
-								auto simIdA = ecs.getComponent<RigidBody2D>(spring.entityA).simulationId;
-								auto simIdB = ecs.getComponent<RigidBody2D>(spring.entityB).simulationId;
+								auto simIdA = registry.getComponent<RigidBody2D>(spring.entityA).simulationId;
+								auto simIdB = registry.getComponent<RigidBody2D>(spring.entityB).simulationId;
 								simulation.addSpring(simIdA, simIdB, spring.stiffness, spring.restDistance);
-								ecs.setComponentDirty(spring, false);
+								registry.setComponentDirty(spring, false);
 							}
 						}
 					});
 
-				ecs.forEach<DistanceConstraint>(
+				registry.forEach<DistanceConstraint>(
 					[&](Entity entity, DistanceConstraint& constraint)
 					{
-						if (ecs.isComponentDirty(constraint) && constraint.entityA != INVALID_ENTITY &&
+						if (registry.isComponentDirty(constraint) && constraint.entityA != INVALID_ENTITY &&
 							constraint.entityB != INVALID_ENTITY)
 						{
-							if (ecs.hasComponent<RigidBody2D>(constraint.entityA) &&
-								ecs.hasComponent<RigidBody2D>(constraint.entityB))
+							if (registry.hasComponent<RigidBody2D>(constraint.entityA) &&
+								registry.hasComponent<RigidBody2D>(constraint.entityB))
 							{
-								auto simIdA = ecs.getComponent<RigidBody2D>(constraint.entityA).simulationId;
-								auto simIdB = ecs.getComponent<RigidBody2D>(constraint.entityB).simulationId;
+								auto simIdA = registry.getComponent<RigidBody2D>(constraint.entityA).simulationId;
+								auto simIdB = registry.getComponent<RigidBody2D>(constraint.entityB).simulationId;
 								simulation.addPositionConstraint(simIdA, simIdB, constraint.distance);
-								ecs.setComponentDirty(constraint, false);
+								registry.setComponentDirty(constraint, false);
 							}
 						}
 					});
@@ -131,7 +131,7 @@ namespace WeirdEngine
 
 				simulation.copyReadBuffers(readSnapshot);
 
-				ecs.forEach<RigidBody2D, Transform>(
+				registry.forEach<RigidBody2D, Transform>(
 					[&](Entity entity, RigidBody2D& rb, Transform& transform)
 					{
 						vec2 position = readSnapshot.positions[rb.simulationId];

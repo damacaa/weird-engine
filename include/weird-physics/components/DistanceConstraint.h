@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 
 namespace WeirdEngine
 {

@@ -16,13 +16,13 @@ public:
 private:
 	Entity m_sunLight;
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(true);
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(-0.5f, -2.0f, 0);
 
 			auto& mat = services.materials().createMaterial();
@@ -30,7 +30,7 @@ private:
 			mat.metallic = 1.0f;
 			mat.roughness = 0.0f;
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = mat.id;
 		}
 
@@ -114,11 +114,11 @@ private:
 
 		for (size_t i = 0; i < randomMats.size(); i++)
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(1.0f + (i), -2.0f, 0);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = randomMats[i];
 		}
 
@@ -158,12 +158,12 @@ private:
 		}
 
 		{
-			m_sunLight = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(m_sunLight);
+			m_sunLight = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(m_sunLight);
 			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
 			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(m_sunLight);
+			LightComponent& lc = registry.addComponent<LightComponent>(m_sunLight);
 			lc.type = LightType::Directional;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.75f);
 		}
@@ -174,12 +174,12 @@ private:
 		// getLights().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position = vec3(12, -1, 12);
 		cameraTransform.rotation.x = -0.95f;
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		if (services.input().getKeyDown(Input::Q))
 		{

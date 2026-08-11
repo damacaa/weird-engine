@@ -16,7 +16,7 @@ public:
 private:
 	Entity m_sunLight;
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(true);
 
@@ -37,20 +37,20 @@ private:
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0.0f, 0.75f, 0.0f);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = ballMat.id;
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(20.0f, 20.0f, 0.0f);
 
-			auto& text = ecs.addComponent<UITextRenderer>(entity);
+			auto& text = registry.addComponent<UITextRenderer>(entity);
 			text.text = "Cornell Box";
 		}
 
@@ -103,23 +103,23 @@ private:
 
 		// Sun
 		{
-			m_sunLight = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(m_sunLight);
+			m_sunLight = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(m_sunLight);
 			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
 			t.rotation = normalize(glm::vec3(0.0f, 0.0f, 0.0f));
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(m_sunLight);
+			LightComponent& lc = registry.addComponent<LightComponent>(m_sunLight);
 			lc.type = LightType::Directional;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f);
 			t.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 
-			LightComponent& lc = ecs.addComponent<LightComponent>(entity);
+			LightComponent& lc = registry.addComponent<LightComponent>(entity);
 			lc.type = LightType::Point;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
 		}
@@ -130,19 +130,19 @@ private:
 		// getLights().push_back(
 		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
 
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2.6f, 12.0f);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2.6f, 12.0f);
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		if (services.input().getKeyDown(Input::Q))
 		{
 			services.sceneControl().goToNextScene();
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 
-		auto& lightTransform = ecs.getComponent<Transform>(m_sunLight);
+		auto& lightTransform = registry.getComponent<Transform>(m_sunLight);
 		lightTransform.position = cameraTransform.position;
 		lightTransform.rotation = -cameraTransform.rotation;
 	}

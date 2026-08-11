@@ -48,6 +48,7 @@ void main()
 	vec4 c = materialId < 16 ? u_staticColors[materialId] : vec4(1.0, 1.0, 1.0, 0.0);
 	c = vec4(toLinear(c.rgb), c.a);
 
+#ifdef MATERIAL_BLENDING
 	// Get current material color
 	// Compensate for both camera translation and zoom change to find the same world point in the previous frame.
 	// prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom * [aspectRatio, 1])
@@ -74,6 +75,7 @@ void main()
 	// Use the mask to force the centers of the dots to get the instantaneous color every frame,
 	// while still allowing temporal blending at the edges and outside.
 	c = mix(blendedColor, c, clamp(mask, 0.0, 1.0));
+#endif
 
 	FragColor = c;
 }

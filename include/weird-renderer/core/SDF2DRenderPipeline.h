@@ -138,6 +138,9 @@ namespace WeirdEngine
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange = glm::vec3(0.0f);
 
+			BackgroundType m_lastBackgroundType = (BackgroundType)-1;
+			std::string m_lastBackgroundCustomCode = "";
+
 			struct GridInfo
 			{
 				float minX, minY, stepX, stepY;

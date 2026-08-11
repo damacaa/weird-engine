@@ -27,6 +27,7 @@ namespace WeirdEngine
 			float distanceSampleScale = 0.5f, internalResolutionScale = 1.0f, refreshRate = 60.0f;
 			float worldDistanceOverscan = 0.1f;
 			bool enableMaterialBlending = true;
+			bool enableMotionBlur = true;
 			bool enableDithering = true;
 			float ditheringSpread = 0.05f;
 			int ditheringColorCount = 16;

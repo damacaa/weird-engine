@@ -67,6 +67,10 @@ namespace WeirdEngine
 	void Scene::start()
 	{
 		onCreate(m_ecs, m_services);
+		for (auto& sys : m_createSystems)
+		{
+			sys(m_ecs, m_services);
+		}
 
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
@@ -137,6 +141,10 @@ namespace WeirdEngine
 		}
 
 		onStart(m_ecs, m_services);
+		for (auto& sys : m_startSystems)
+		{
+			sys(m_ecs, m_services);
+		}
 
 		switch (m_renderMode)
 		{
@@ -217,12 +225,20 @@ namespace WeirdEngine
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
 												 getEntityForSimulationId(ev.bodyB, rigidBodies)};
 				onEntityCollision(m_ecs, m_services, entityEvent);
+				for (auto& sys : m_entityCollisionSystems)
+				{
+					sys(m_ecs, m_services, entityEvent);
+				}
 			}
 
 			for (auto& ev : shapeCollisions)
 			{
 				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body, rigidBodies)};
 				onEntityShapeCollision(m_ecs, m_services, entityEvent);
+				for (auto& sys : m_entityShapeCollisionSystems)
+				{
+					sys(m_ecs, m_services, entityEvent);
+				}
 
 				const float m_soundFalloff = 0.1f;
 				bool spatialAudio = false;
@@ -254,6 +270,10 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("OnUpdate");
 			onUpdate(m_ecs, m_services);
+			for (auto& sys : m_updateSystems)
+			{
+				sys(m_ecs, m_services);
+			}
 		}
 
 		{
@@ -695,6 +715,10 @@ namespace WeirdEngine
 			ImGui::Separator();
 
 			onImGuiRender(m_ecs, m_services);
+			for (auto& sys : m_imguiSystems)
+			{
+				sys(m_ecs, m_services);
+			}
 
 			ImGui::PopID();
 		}

@@ -16,6 +16,7 @@
 #include "weird-physics/PhysicsSettings.h"
 #include "weird-physics/Simulation2D.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -44,6 +45,11 @@ namespace WeirdEngine
 	// Forward declaration – full definition in SceneSerializer.h
 	class SceneSerializer;
 	class SceneManager;
+
+	// ---- System Signatures ----
+	using CoreSystem = std::function<void(ECSManager&, ServiceProvider&)>;
+	using EntityCollisionSystem = std::function<void(ECSManager&, ServiceProvider&, EntityCollisionEvent&)>;
+	using EntityShapeCollisionSystem = std::function<void(ECSManager&, ServiceProvider&, EntityShapeCollisionEvent&)>;
 
 	namespace WeirdRenderer
 	{
@@ -85,6 +91,36 @@ namespace WeirdEngine
 		// ---- Global SDF registry (engine-level, shared across scenes)
 		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
 		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
+
+		// ---- System Dispatcher (Register systems to be called automatically)
+		void addCreateSystem(CoreSystem system)
+		{
+			m_createSystems.push_back(std::move(system));
+		}
+		void addStartSystem(CoreSystem system)
+		{
+			m_startSystems.push_back(std::move(system));
+		}
+		void addUpdateSystem(CoreSystem system)
+		{
+			m_updateSystems.push_back(std::move(system));
+		}
+		void addDestroySystem(CoreSystem system)
+		{
+			m_destroySystems.push_back(std::move(system));
+		}
+		void addImGuiRenderSystem(CoreSystem system)
+		{
+			m_imguiSystems.push_back(std::move(system));
+		}
+		void addEntityCollisionSystem(EntityCollisionSystem system)
+		{
+			m_entityCollisionSystems.push_back(std::move(system));
+		}
+		void addEntityShapeCollisionSystem(EntityShapeCollisionSystem system)
+		{
+			m_entityShapeCollisionSystems.push_back(std::move(system));
+		}
 
 	protected:
 		// Internal constructors: sets the render mode for Scene2D/Scene3D/SceneBoth.
@@ -128,6 +164,10 @@ namespace WeirdEngine
 		void destroy()
 		{
 			onDestroy(m_ecs, m_services);
+			for (auto& sys : m_destroySystems)
+			{
+				sys(m_ecs, m_services);
+			}
 		}
 
 		// ---- Rendering pipeline (engine-driven)
@@ -243,6 +283,15 @@ namespace WeirdEngine
 		// ---- Entity tag storage (bidirectional maps kept in sync)
 		TagMap m_tagToEntity;
 		std::unordered_map<Entity, std::string> m_entityToTag;
+
+		// ---- Registered Systems
+		std::vector<CoreSystem> m_createSystems;
+		std::vector<CoreSystem> m_startSystems;
+		std::vector<CoreSystem> m_updateSystems;
+		std::vector<CoreSystem> m_destroySystems;
+		std::vector<CoreSystem> m_imguiSystems;
+		std::vector<EntityCollisionSystem> m_entityCollisionSystems;
+		std::vector<EntityShapeCollisionSystem> m_entityShapeCollisionSystems;
 
 		float m_lastDelta = 0.0f;
 	};

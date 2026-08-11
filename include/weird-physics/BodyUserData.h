@@ -8,9 +8,15 @@ namespace WeirdEngine
 	// discriminator, and use Simulation2D::getUserDataAs<T>() (which checks
 	// `T::TYPE` against `type` before casting) or check `type` manually.
 	//
-	// The pointer must be heap-allocated with `new`. The simulation takes
-	// ownership: it deletes the data when the body is removed and deletes all
-	// remaining data when the simulation is destroyed (scene teardown).
+	// Set `type` in the derived class's constructor (e.g.
+	// `MyData() { type = TYPE; }`) so the discriminator can never drift out
+	// of sync with T::TYPE.
+	//
+	// Ownership is transferred to the simulation with std::unique_ptr (e.g.
+	// std::make_unique<MyData>()): it deletes the data when the body is
+	// removed and deletes all remaining data when the simulation is destroyed
+	// (scene teardown). Do not retain the pointer after setUserData(); query
+	// it back via getUserData()/getUserDataAs<T>() instead.
 	struct BodyUserData
 	{
 		int type = 0;

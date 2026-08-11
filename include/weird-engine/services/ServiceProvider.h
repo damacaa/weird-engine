@@ -121,12 +121,14 @@ namespace WeirdEngine
 		}
 
 		// Per-body user data. Set the data right after adding the RigidBody2D
-		// component (read rb.simulationId from it). The pointer must be
-		// heap-allocated: the simulation owns it and deletes it when the body
-		// is removed or when the simulation is destroyed.
-		void setUserData(SimulationID id, BodyUserData* data)
+		// component (read rb.simulationId from it). Ownership is transferred to
+		// the simulation (e.g. std::make_unique<CharacterData>()): it deletes
+		// the data when the body is removed or when the simulation is
+		// destroyed. Do not retain the pointer after the call; query it back
+		// through getUserData()/getUserDataAs<T>().
+		void setUserData(SimulationID id, std::unique_ptr<BodyUserData> data)
 		{
-			simulation.setUserData(id, data);
+			simulation.setUserData(id, std::move(data));
 		}
 
 		BodyUserData* getUserData(SimulationID id)

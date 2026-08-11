@@ -328,7 +328,7 @@ namespace WeirdEngine
 		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
 	}
-	void Simulation2D::setUserData(SimulationID id, BodyUserData* data)
+	void Simulation2D::setUserData(SimulationID id, std::unique_ptr<BodyUserData> data)
 	{
 		WEIRD_ASSERT(!isPhysicsExecutionContext(), "setUserData() may not be called from physics execution context");
 
@@ -336,10 +336,11 @@ namespace WeirdEngine
 
 		// Bounds-check against m_allocated, not m_size: bodies can carry user
 		// data before they are activated (ActivatePending) later in the frame.
-		if (id >= m_allocated)
-			return;
+		WEIRD_ASSERT(id < m_allocated, "setUserData() called with invalid simulation id");
 
-		m_userData[id] = data;
+		// Free any prior data attached to this body before overwriting.
+		delete m_userData[id];
+		m_userData[id] = data.release();
 	}
 
 	BodyUserData* Simulation2D::getUserData(SimulationID id)

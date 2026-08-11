@@ -4,6 +4,7 @@
 #include <bitset>
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <set>
@@ -121,6 +122,10 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
+		// One-shot kick applied to a body. With massIndependent = false the
+		// impulse is a force scaled by the simulation frequency; with
+		// massIndependent = true it is applied as a direct velocity change
+		// (the parameter is the desired delta-v in m/s, regardless of mass).
 		void addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent = false);
 		void setContinuousForce(SimulationID id, const vec2& force, bool massIndependent = false);
 		void swapContinuousForces();
@@ -213,12 +218,13 @@ namespace WeirdEngine
 
 		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps
 		// simulation IDs back to entities via the RigidBody2D component array).
-		// Must be heap-allocated: the simulation owns the pointer and deletes
-		// it when the body is removed (removeObject) and when the simulation
-		// is destroyed. setUserData() is main-thread only; getUserData()/
-		// getUserDataAs()/forEachUserData() are safe from the physics
-		// callbacks without locks.
-		void setUserData(SimulationID id, BodyUserData* data);
+		// Takes ownership via unique_ptr: the simulation deletes the data when
+		// the body is removed (removeObject) and when the simulation is
+		// destroyed. Do not retain the pointer after the call; read or modify
+		// it through getUserData()/getUserDataAs<T>() instead. setUserData() is
+		// main-thread only; getUserData()/getUserDataAs<T>()/forEachUserData()
+		// are safe from the physics callbacks without locks.
+		void setUserData(SimulationID id, std::unique_ptr<BodyUserData> data);
 		BodyUserData* getUserData(SimulationID id);
 
 		// Type-checked cast: returns nullptr unless the attached data exists

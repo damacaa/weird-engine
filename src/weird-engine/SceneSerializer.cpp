@@ -4,6 +4,7 @@
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <json/json.h>
@@ -219,6 +220,12 @@ namespace WeirdEngine
 			}
 
 			j["physics"] = {{"distanceConstraints", distanceConstraintsJson}, {"springs", springsJson}};
+		}
+
+		std::filesystem::path filePath(filename);
+		if (filePath.has_parent_path())
+		{
+			std::filesystem::create_directories(filePath.parent_path());
 		}
 
 		std::ofstream outFile(filename);

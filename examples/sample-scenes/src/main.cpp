@@ -22,13 +22,13 @@ int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 
-	sceneManager.registerScene<ServiceShowcaseScene>("service-showcase");
 	sceneManager.registerScene<ShapeCombinatiosScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<TextScene>("text");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
+	// sceneManager.registerScene<ServiceShowcaseScene>("service-showcase");
 
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	// sceneManager.registerScene<ImageScene>("image");

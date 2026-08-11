@@ -11,12 +11,12 @@ namespace WeirdEngine
 	{
 	private:
 		Simulation2D* m_simulation;
-		ECSManager* m_ecs;
+		Registry* m_registry;
 
 	public:
-		DistanceConstraintManager(Simulation2D& simulation, ECSManager& ecs)
+		DistanceConstraintManager(Simulation2D& simulation, Registry& registry)
 			: m_simulation(&simulation)
-			, m_ecs(&ecs)
+			, m_registry(&registry)
 		{
 		}
 
@@ -25,11 +25,11 @@ namespace WeirdEngine
 			auto componentArray = std::static_pointer_cast<ComponentArray<DistanceConstraint>>(m_componentArray);
 			DistanceConstraint& removedConstraint = componentArray->getDataFromEntity(entity);
 
-			if (m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityA) &&
-				m_ecs->hasComponent<RigidBody2D>(removedConstraint.entityB))
+			if (m_registry->hasComponent<RigidBody2D>(removedConstraint.entityA) &&
+				m_registry->hasComponent<RigidBody2D>(removedConstraint.entityB))
 			{
-				auto simIdA = m_ecs->getComponent<RigidBody2D>(removedConstraint.entityA).simulationId;
-				auto simIdB = m_ecs->getComponent<RigidBody2D>(removedConstraint.entityB).simulationId;
+				auto simIdA = m_registry->getComponent<RigidBody2D>(removedConstraint.entityA).simulationId;
+				auto simIdB = m_registry->getComponent<RigidBody2D>(removedConstraint.entityB).simulationId;
 				m_simulation->removeDistanceConstraint(simIdA, simIdB);
 			}
 		}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/ECS.h"
+#include "ecs/Registry.h"
 #include "ResourceManager.h"
 
 #include "weird-engine/systems/SDFRenderSystem.h"
@@ -47,9 +47,9 @@ namespace WeirdEngine
 	class SceneManager;
 
 	// ---- System Signatures ----
-	using CoreSystem = std::function<void(ECSManager&, ServiceProvider&)>;
-	using EntityCollisionSystem = std::function<void(ECSManager&, ServiceProvider&, EntityCollisionEvent&)>;
-	using EntityShapeCollisionSystem = std::function<void(ECSManager&, ServiceProvider&, EntityShapeCollisionEvent&)>;
+	using CoreSystem = std::function<void(Registry&, ServiceProvider&)>;
+	using EntityCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityCollisionEvent&)>;
+	using EntityShapeCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityShapeCollisionEvent&)>;
 
 	namespace WeirdRenderer
 	{
@@ -128,21 +128,22 @@ namespace WeirdEngine
 		Scene(RenderMode mode);
 
 		// ---- Lifecycle callbacks
-		virtual void onCreate(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onStart(ECSManager& ecs, ServiceProvider& services) {}
-		virtual void onUpdate(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onDestroy(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onImGuiRender(ECSManager& ecs, ServiceProvider& services) {};
-		virtual void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) {};
+		virtual void onCreate(Registry& registry, ServiceProvider& services) {};
+		virtual void onStart(Registry& registry, ServiceProvider& services) {}
+		virtual void onUpdate(Registry& registry, ServiceProvider& services) {};
+		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
+		virtual void onImGuiRender(Registry& registry, ServiceProvider& services) {};
+		virtual void onRender(Registry& registry, ServiceProvider& services,
+							  WeirdRenderer::RenderTarget& renderTarget) {};
 
 		// ---- Main thread collision callbacks (onEntity* family). Fire after
 		// the physics response has been applied; the events are read-only.
-		// m_ecs is safe to use here (the physics thread only ever touches
+		// m_registry is safe to use here (the physics thread only ever touches
 		// Simulation2D internals). See the onPhysics* callbacks below for the
 		// pre-response, mutable equivalents.
-		virtual void onEntityCollision(ECSManager& ecs, ServiceProvider& services,
+		virtual void onEntityCollision(Registry& registry, ServiceProvider& services,
 									   WeirdEngine::EntityCollisionEvent& event) {};
-		virtual void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+		virtual void onEntityShapeCollision(Registry& registry, ServiceProvider& services,
 											WeirdEngine::EntityShapeCollisionEvent& event) {};
 
 		// ---- Physics thread callbacks (onPhysics* family). Fire on the
@@ -163,10 +164,10 @@ namespace WeirdEngine
 		void update(double delta, double time);
 		void destroy()
 		{
-			onDestroy(m_ecs, m_services);
+			onDestroy(m_registry, m_services);
 			for (auto& sys : m_destroySystems)
 			{
-				sys(m_ecs, m_services);
+				sys(m_registry, m_services);
 			}
 		}
 
@@ -248,7 +249,7 @@ namespace WeirdEngine
 		bool m_debugInput = false;
 
 		// ---- Simulation
-		ECSManager m_ecs;
+		Registry m_registry;
 		Simulation2D m_simulation2D;
 		bool m_runSimulationInThread;
 		bool m_simulationIsPaused = false;

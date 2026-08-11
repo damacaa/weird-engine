@@ -24,7 +24,7 @@ private:
 
 	Entity m_monkey;
 
-	void onCreate(ECSManager& ecs, ServiceProvider& services) override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
 		{
@@ -53,33 +53,33 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugFly(false);
 		{
-			Entity entity = ecs.createEntity();
-			ecs.addComponent<Transform>(entity);
-			ecs.addComponent<LightComponent>(entity);
+			Entity entity = registry.createEntity();
+			registry.addComponent<Transform>(entity);
+			registry.addComponent<LightComponent>(entity);
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0, 0, 0);
 
-			// MeshRenderer &mr = ecs.addComponent<MeshRenderer>(entity);
+			// MeshRenderer &mr = registry.addComponent<MeshRenderer>(entity);
 
 			// auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity,
 			// true); mr.mesh = id;
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = m_whiteMatId;
 
 			m_monkey = entity;
 		}
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
 		if (services.input().getKeyDown(Input::Q))
@@ -87,16 +87,16 @@ private:
 			services.sceneControl().goToNextScene();
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position.y = 5.0f;
 		cameraTransform.position.z -= 10.0f * delta;
 
-		Transform& monkeyTransform = ecs.getComponent<Transform>(m_monkey);
+		Transform& monkeyTransform = registry.getComponent<Transform>(m_monkey);
 		monkeyTransform.position = cameraTransform.position;
 		monkeyTransform.position.z -= 5.0f;
 	}
 
-	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		m_lineRender->bind();
 		glClearColor(0, 0, 0, 0);							// Set clear color

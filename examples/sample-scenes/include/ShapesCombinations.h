@@ -20,7 +20,7 @@ private:
 
 	std::vector<Entity> m_uiPoints;
 
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
@@ -77,30 +77,30 @@ private:
 
 		for (int i = 0; i < 10; ++i)
 		{
-			auto ee = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(ee);
+			auto ee = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(ee);
 			t.position = vec3(15.0f, 15.0f, 10.0f);
 
-			auto& ui = ecs.addComponent<UIDot>(ee);
+			auto& ui = registry.addComponent<UIDot>(ee);
 			ui.materialId = 4 + (i % 12);
 
 			m_uiPoints.push_back(ee);
 		}
 
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
 		float delta = services.time().deltaTime();
-		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
 			services.sceneControl().goToNextScene();
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		float x = services.input().getMouseX();
 		float y = services.input().getMouseY();
 
@@ -136,12 +136,12 @@ private:
 		}
 
 		{
-			CustomShape& cs = ecs.getComponent<CustomShape>(m_circle);
+			CustomShape& cs = registry.getComponent<CustomShape>(m_circle);
 			cs.parameters[0] = m_initialMousePositionInWorld.x;
 			cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
 			cs.parameters[2] = m_circleRadious;
 
-			ecs.setComponentDirty(cs);
+			registry.setComponentDirty(cs);
 		}
 
 		float volume = AudioEngine::getInstance().getAudioData().currentVolume;
@@ -159,7 +159,7 @@ private:
 			float x = center.x + std::cos(angle) * radius;
 			float y = center.y + std::sin(angle) * radius;
 
-			auto& t = ecs.getComponent<Transform>(m_uiPoints[i]);
+			auto& t = registry.getComponent<Transform>(m_uiPoints[i]);
 			t.position = vec3(x, y, 0.0f);
 		}
 	}

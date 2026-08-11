@@ -20,7 +20,7 @@ namespace WeirdEngine
 
 		// Save camera state
 		{
-			auto& camTransform = scene.m_ecs.getComponent<Transform>(scene.m_mainCamera);
+			auto& camTransform = scene.m_registry.getComponent<Transform>(scene.m_mainCamera);
 			j["camera"]["position"] = {camTransform.position.x, camTransform.position.y, camTransform.position.z};
 			j["camera"]["rotation"] = {camTransform.rotation.x, camTransform.rotation.y, camTransform.rotation.z};
 			j["camera"]["scale"] = {camTransform.scale.x, camTransform.scale.y, camTransform.scale.z};
@@ -33,12 +33,12 @@ namespace WeirdEngine
 		auto isBlacklisted = [&](Entity e) { return e == scene.m_mainCamera || blacklist.count(e); };
 
 		{
-			auto transformArray = scene.m_ecs.getComponentArray<Transform>();
-			auto customShapeArray = scene.m_ecs.getComponentArray<CustomShape>();
-			auto uiShapeArray = scene.m_ecs.getComponentArray<UIShape>();
-			auto dotArray = scene.m_ecs.getComponentArray<Dot>();
-			auto rigidBodyArray = scene.m_ecs.getComponentArray<RigidBody2D>();
-			auto textArray = scene.m_ecs.getComponentArray<TextRenderer>();
+			auto transformArray = scene.m_registry.getComponentArray<Transform>();
+			auto customShapeArray = scene.m_registry.getComponentArray<CustomShape>();
+			auto uiShapeArray = scene.m_registry.getComponentArray<UIShape>();
+			auto dotArray = scene.m_registry.getComponentArray<Dot>();
+			auto rigidBodyArray = scene.m_registry.getComponentArray<RigidBody2D>();
+			auto textArray = scene.m_registry.getComponentArray<TextRenderer>();
 
 			std::unordered_map<Entity, json> entityMap;
 
@@ -139,7 +139,7 @@ namespace WeirdEngine
 			}
 
 			// GlobalPhysicsSettings
-			auto globalSettingsArray = scene.m_ecs.getComponentArray<GlobalPhysicsSettings>();
+			auto globalSettingsArray = scene.m_registry.getComponentArray<GlobalPhysicsSettings>();
 			if (globalSettingsArray)
 			{
 				for (size_t i = 0; i < globalSettingsArray->getSize(); i++)
@@ -157,7 +157,7 @@ namespace WeirdEngine
 			// Entity order is very important for correct SDF operations
 			// BIG TODO: when entities are added/removed, ensure this order is maintained
 			// (deleted entitiy ids can be reused)
-			for (Entity e = 0; e < scene.m_ecs.getEntityCount(); ++e)
+			for (Entity e = 0; e < scene.m_registry.getEntityCount(); ++e)
 			{
 				if (isBlacklisted(e))
 					continue;
@@ -187,7 +187,7 @@ namespace WeirdEngine
 		// Save physics constraints directly from ECS components
 		{
 			json distanceConstraintsJson = json::array();
-			auto distConstraintArray = scene.m_ecs.getComponentArray<DistanceConstraint>();
+			auto distConstraintArray = scene.m_registry.getComponentArray<DistanceConstraint>();
 			if (distConstraintArray)
 			{
 				for (size_t i = 0; i < distConstraintArray->getSize(); i++)
@@ -202,7 +202,7 @@ namespace WeirdEngine
 			}
 
 			json springsJson = json::array();
-			auto springArray = scene.m_ecs.getComponentArray<Spring>();
+			auto springArray = scene.m_registry.getComponentArray<Spring>();
 			if (springArray)
 			{
 				for (size_t i = 0; i < springArray->getSize(); i++)
@@ -256,12 +256,12 @@ namespace WeirdEngine
 		// Restore camera state
 		if (j.contains("camera"))
 		{
-			auto& camTransform = scene.m_ecs.getComponent<Transform>(scene.m_mainCamera);
+			auto& camTransform = scene.m_registry.getComponent<Transform>(scene.m_mainCamera);
 			const auto& cam = j["camera"];
 			if (cam.contains("position"))
 			{
 				camTransform.position = vec3(cam["position"][0], cam["position"][1], cam["position"][2]);
-				scene.m_ecs.getComponentArray<Transform>()->setEntityDirty(scene.m_mainCamera, true);
+				scene.m_registry.getComponentArray<Transform>()->setEntityDirty(scene.m_mainCamera, true);
 			}
 			if (cam.contains("rotation"))
 				camTransform.rotation = vec3(cam["rotation"][0], cam["rotation"][1], cam["rotation"][2]);
@@ -281,7 +281,7 @@ namespace WeirdEngine
 		{
 			for (const auto& ej : j["entities"])
 			{
-				Entity entity = scene.m_ecs.createEntity();
+				Entity entity = scene.m_registry.createEntity();
 
 				// Track saved-id → new-entity mapping for tag remapping
 				if (ej.contains("id"))
@@ -289,7 +289,7 @@ namespace WeirdEngine
 
 				if (ej.contains("transform"))
 				{
-					auto& t = scene.m_ecs.addComponent<Transform>(entity);
+					auto& t = scene.m_registry.addComponent<Transform>(entity);
 					const auto& tj = ej["transform"];
 					if (tj.contains("position"))
 						t.position = vec3(tj["position"][0], tj["position"][1], tj["position"][2]);
@@ -297,12 +297,12 @@ namespace WeirdEngine
 						t.rotation = vec3(tj["rotation"][0], tj["rotation"][1], tj["rotation"][2]);
 					if (tj.contains("scale"))
 						t.scale = vec3(tj["scale"][0], tj["scale"][1], tj["scale"][2]);
-					scene.m_ecs.getComponentArray<Transform>()->setEntityDirty(entity, true);
+					scene.m_registry.getComponentArray<Transform>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("customShape"))
 				{
-					auto& s = scene.m_ecs.addComponent<CustomShape>(entity);
+					auto& s = scene.m_registry.addComponent<CustomShape>(entity);
 					const auto& sj = ej["customShape"];
 					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
 					s.combination = static_cast<CombinationType>(sj.value("combination", 0));
@@ -315,13 +315,13 @@ namespace WeirdEngine
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] = sj["parameters"][pi].get<float>();
 					}
-					scene.m_ecs.getComponentArray<CustomShape>()->setEntityDirty(entity, true);
+					scene.m_registry.getComponentArray<CustomShape>()->setEntityDirty(entity, true);
 					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
 				}
 
 				if (ej.contains("uiShape"))
 				{
-					auto& s = scene.m_ecs.addComponent<UIShape>(entity);
+					auto& s = scene.m_registry.addComponent<UIShape>(entity);
 					const auto& sj = ej["uiShape"];
 					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
 					s.combination = static_cast<CombinationType>(sj.value("combination", 0));
@@ -338,7 +338,7 @@ namespace WeirdEngine
 
 				if (ej.contains("dot"))
 				{
-					auto& r = scene.m_ecs.addComponent<Dot>(entity);
+					auto& r = scene.m_registry.addComponent<Dot>(entity);
 					const auto& rj = ej["dot"];
 					r.isStatic = rj.value("isStatic", false);
 					r.materialId = static_cast<unsigned int>(rj.value("materialId", 0));
@@ -346,27 +346,27 @@ namespace WeirdEngine
 
 				if (ej.contains("textRenderer"))
 				{
-					auto& tr = scene.m_ecs.addComponent<TextRenderer>(entity);
+					auto& tr = scene.m_registry.addComponent<TextRenderer>(entity);
 					const auto& trj = ej["textRenderer"];
 					tr.text = trj.value("text", std::string{});
 					tr.material = static_cast<uint16_t>(trj.value("material", 0));
 					tr.width = trj.value("width", 0.0f);
 					tr.height = trj.value("height", 0.0f);
-					scene.m_ecs.getComponentArray<TextRenderer>()->setEntityDirty(entity, true);
+					scene.m_registry.getComponentArray<TextRenderer>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("globalPhysicsSettings"))
 				{
-					auto& gs = scene.m_ecs.addComponent<GlobalPhysicsSettings>(entity);
+					auto& gs = scene.m_registry.addComponent<GlobalPhysicsSettings>(entity);
 					const auto& gsj = ej["globalPhysicsSettings"];
 					gs.gravity = gsj.value("gravity", 0.0f);
 					gs.damping = gsj.value("damping", 0.05f);
-					scene.m_ecs.getComponentArray<GlobalPhysicsSettings>()->setEntityDirty(entity, true);
+					scene.m_registry.getComponentArray<GlobalPhysicsSettings>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("rigidBody2D"))
 				{
-					auto& rb = scene.m_ecs.addComponent<RigidBody2D>(entity);
+					auto& rb = scene.m_registry.addComponent<RigidBody2D>(entity);
 					const auto& rbj = ej["rigidBody2D"];
 					int savedSimId = rbj.value("simulationId", -1);
 
@@ -378,7 +378,7 @@ namespace WeirdEngine
 					{
 						rb.isFixed = rbj.value("isFixed", false);
 					}
-					scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(
+					scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(
 						entity, true); // Sync velocity and fixed state to simulation
 
 					if (rbj.contains("physicsPosition"))
@@ -465,16 +465,17 @@ namespace WeirdEngine
 					{
 						if (k >= 1.0f)
 						{
-							Entity constraintEnt = scene.m_ecs.createEntity();
-							auto& constraint = scene.m_ecs.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
+							Entity constraintEnt = scene.m_registry.createEntity();
+							auto& constraint =
+								scene.m_registry.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
 							constraint.entityA = entityA;
 							constraint.entityB = entityB;
 							constraint.distance = dist;
 						}
 						else
 						{
-							Entity springEnt = scene.m_ecs.createEntity();
-							auto& spring = scene.m_ecs.addComponent<WeirdEngine::Spring>(springEnt);
+							Entity springEnt = scene.m_registry.createEntity();
+							auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 							spring.entityA = entityA;
 							spring.entityB = entityB;
 							spring.stiffness = k;
@@ -493,8 +494,8 @@ namespace WeirdEngine
 
 					if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end())
 					{
-						Entity springEnt = scene.m_ecs.createEntity();
-						auto& spring = scene.m_ecs.addComponent<WeirdEngine::Spring>(springEnt);
+						Entity springEnt = scene.m_registry.createEntity();
+						auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 						spring.entityA = entityIdMap[savedA];
 						spring.entityB = entityIdMap[savedB];
 						spring.stiffness = spj.value("k", 1.0f);
@@ -529,11 +530,11 @@ namespace WeirdEngine
 					if (it != simIdMap.end())
 					{
 						Entity e = simIdToEntityMap[savedId];
-						if (scene.m_ecs.hasComponent<RigidBody2D>(e))
+						if (scene.m_registry.hasComponent<RigidBody2D>(e))
 						{
-							auto& rb = scene.m_ecs.getComponent<RigidBody2D>(e);
+							auto& rb = scene.m_registry.getComponent<RigidBody2D>(e);
 							rb.isFixed = true;
-							scene.m_ecs.getComponentArray<RigidBody2D>()->setEntityDirty(e, true);
+							scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(e, true);
 						}
 						// The actual fix will happen in PhysicsSystem2D::update thanks to isDirty=true
 					}

@@ -1,5 +1,5 @@
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
 
@@ -12,20 +12,20 @@ namespace WeirdEngine
 
 	namespace ButtonSystem
 	{
-		inline void updateButtons(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
-		inline void updateToggles(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
+		inline void updateButtons(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
+		inline void updateToggles(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time);
 
-		inline void update(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void update(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
-			updateButtons(ecs, sdfs, time);
-			updateToggles(ecs, sdfs, time);
+			updateButtons(registry, sdfs, time);
+			updateToggles(registry, sdfs, time);
 		}
 
-		inline void updateButtons(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void updateButtons(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
 			bool mouseIsClicking = Input::GetMouseButton(Input::LeftClick);
 
-			ecs.forEach<ShapeButton, UIShape>(
+			registry.forEach<ShapeButton, UIShape>(
 				[&](Entity buttonOwner, ShapeButton& buttonComponent, UIShape& shape)
 				{
 					{
@@ -95,11 +95,11 @@ namespace WeirdEngine
 				});
 		}
 
-		inline void updateToggles(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void updateToggles(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
 		{
 			bool mouseIsClicking = Input::GetMouseButtonDown(Input::LeftClick);
 
-			ecs.forEach<ShapeToggle, UIShape>(
+			registry.forEach<ShapeToggle, UIShape>(
 				[&](Entity toggleOwner, ShapeToggle& toggleComponent, UIShape& shape)
 				{
 					{

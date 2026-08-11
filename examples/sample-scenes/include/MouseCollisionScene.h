@@ -20,7 +20,7 @@ private:
 	Entity m_cursorShape;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
@@ -35,19 +35,19 @@ private:
 
 			float z = 0;
 
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 			if (i < 100)
 			{
 			}
 
-			Dot& dot = ecs.addComponent<Dot>(entity);
+			Dot& dot = registry.addComponent<Dot>(entity);
 			dot.materialId = 0;
 
-			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
-			CollisionCounter& counter = ecs.addComponent<CollisionCounter>(entity);
+			RigidBody2D& rb = registry.addComponent<RigidBody2D>(entity);
+			CollisionCounter& counter = registry.addComponent<CollisionCounter>(entity);
 		}
 
 		// Floor
@@ -75,12 +75,12 @@ private:
 			m_cursorShape = star;
 		}
 
-		ecs.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(services.render().getCameraEntity()).position;
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
@@ -89,8 +89,8 @@ private:
 
 		// Move wall to mouse
 		{
-			CustomShape& cs = ecs.getComponent<CustomShape>(m_cursorShape);
-			auto& cameraTransform = ecs.getComponent<Transform>(services.render().getCameraEntity());
+			CustomShape& cs = registry.getComponent<CustomShape>(m_cursorShape);
+			auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 			float x = services.input().getMouseX();
 			float y = services.input().getMouseY();
 
@@ -99,22 +99,22 @@ private:
 
 			cs.parameters[0] = mousePositionInWorld.x;
 			cs.parameters[1] = mousePositionInWorld.y;
-			ecs.setComponentDirty(cs);
+			registry.setComponentDirty(cs);
 		}
 	}
 
-	void onEntityCollision(ECSManager& ecs, ServiceProvider& services,
+	void onEntityCollision(Registry& registry, ServiceProvider& services,
 						   WeirdEngine::EntityCollisionEvent& event) override
 	{
-		if (ecs.hasComponent<CollisionCounter>(event.entityA))
+		if (registry.hasComponent<CollisionCounter>(event.entityA))
 		{
-			auto& counter = ecs.getComponent<CollisionCounter>(event.entityA);
+			auto& counter = registry.getComponent<CollisionCounter>(event.entityA);
 			counter.count++;
 
 			constexpr int COLLISIONS_PER_MATERIAL = 50;
 			if (counter.count <= 10 * COLLISIONS_PER_MATERIAL && counter.count % COLLISIONS_PER_MATERIAL == 0)
 			{
-				auto& dot = ecs.getComponent<Dot>(event.entityA);
+				auto& dot = registry.getComponent<Dot>(event.entityA);
 				dot.materialId++;
 
 				if (counter.count == 10 * COLLISIONS_PER_MATERIAL)
@@ -122,15 +122,15 @@ private:
 			}
 		}
 
-		if (ecs.hasComponent<CollisionCounter>(event.entityB))
+		if (registry.hasComponent<CollisionCounter>(event.entityB))
 		{
-			auto& counter = ecs.getComponent<CollisionCounter>(event.entityB);
+			auto& counter = registry.getComponent<CollisionCounter>(event.entityB);
 			counter.count++;
 
 			constexpr int COLLISIONS_PER_MATERIAL = 50;
 			if (counter.count <= 10 * COLLISIONS_PER_MATERIAL && counter.count % COLLISIONS_PER_MATERIAL == 0)
 			{
-				auto& dot = ecs.getComponent<Dot>(event.entityB);
+				auto& dot = registry.getComponent<Dot>(event.entityB);
 				dot.materialId++;
 
 				if (counter.count == 10 * COLLISIONS_PER_MATERIAL)
@@ -139,14 +139,14 @@ private:
 		}
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services,
+	void onEntityShapeCollision(Registry& registry, ServiceProvider& services,
 								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		if (ecs.hasComponent<CollisionCounter>(event.entity))
+		if (registry.hasComponent<CollisionCounter>(event.entity))
 		{
-			auto& counter = ecs.getComponent<CollisionCounter>(event.entity);
+			auto& counter = registry.getComponent<CollisionCounter>(event.entity);
 			counter.count = 0;
-			auto& dot = ecs.getComponent<Dot>(event.entity);
+			auto& dot = registry.getComponent<Dot>(event.entity);
 			dot.materialId = 0;
 		}
 	}

@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "weird-engine/Background.h"
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/Material3D.h"
 #include "weird-engine/ResourceManager.h"
@@ -50,7 +50,7 @@ namespace WeirdEngine
 
 	// Shared raymarch implementation used by both Scene::raymarch and
 	// PhysicsService::raymarch. Defined in Scene.cpp.
-	RaymarchResult raymarchScene(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
+	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
 								 Simulation2D& simulation, float time, glm::vec2 origin, glm::vec2 direction,
 								 float epsilon, float maxDistance);
 
@@ -77,7 +77,7 @@ namespace WeirdEngine
 
 	struct PhysicsService
 	{
-		ECSManager& ecs;
+		Registry& registry;
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
 
@@ -113,7 +113,7 @@ namespace WeirdEngine
 
 		Entity entityForSimulationId(SimulationID simulationId) const
 		{
-			auto rigidBodies = ecs.getComponentArray<RigidBody2D>();
+			auto rigidBodies = registry.getComponentArray<RigidBody2D>();
 			if (simulationId >= static_cast<SimulationID>(rigidBodies->getSize()))
 				return INVALID_ENTITY;
 
@@ -149,14 +149,14 @@ namespace WeirdEngine
 		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f,
 								float maxDistance = 150.0f)
 		{
-			return raymarchScene(ecs, sdfs, simulation, static_cast<float>(simulation.getSimulationTime()), origin,
+			return raymarchScene(registry, sdfs, simulation, static_cast<float>(simulation.getSimulationTime()), origin,
 								 direction, epsilon, maxDistance);
 		}
 	};
 
 	struct ShapeService
 	{
-		ECSManager& ecs;
+		Registry& registry;
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
 
@@ -179,8 +179,8 @@ namespace WeirdEngine
 						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
 						int group = 0)
 		{
-			Entity entity = ecs.createEntity();
-			CustomShape& shape = ecs.addComponent<CustomShape>(entity);
+			Entity entity = registry.createEntity();
+			CustomShape& shape = registry.addComponent<CustomShape>(entity);
 			shape.distanceFieldId = shapeId;
 			shape.combination = combination;
 			shape.hasCollisions = hasCollision;
@@ -201,8 +201,8 @@ namespace WeirdEngine
 		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
 						  CombinationType combination = CombinationType::Addition, int group = 0)
 		{
-			Entity entity = ecs.createEntity();
-			UIShape& shape = ecs.addComponent<UIShape>(entity);
+			Entity entity = registry.createEntity();
+			UIShape& shape = registry.addComponent<UIShape>(entity);
 			shape.distanceFieldId = shapeId;
 			shape.combination = combination;
 			shape.groupIdx = group;
@@ -220,8 +220,8 @@ namespace WeirdEngine
 
 		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0)
 		{
-			entity = ecs.createEntity();
-			UIShape& component = ecs.addComponent<UIShape>(entity);
+			entity = registry.createEntity();
+			UIShape& component = registry.addComponent<UIShape>(entity);
 			component.distanceFieldId = shapeId;
 			component.groupIdx = group;
 			component.smoothFactor = 100.0f;
@@ -233,7 +233,7 @@ namespace WeirdEngine
 
 	struct RenderService
 	{
-		ECSManager& ecs;
+		Registry& registry;
 		Entity& cameraEntity;
 		SDFRenderSystemContext& context2D;
 		SDFRenderSystemContext& context3D;
@@ -244,7 +244,7 @@ namespace WeirdEngine
 
 		WeirdRenderer::Camera& camera()
 		{
-			return ecs.getComponent<ECS::Camera>(cameraEntity).camera;
+			return registry.getComponent<ECS::Camera>(cameraEntity).camera;
 		}
 
 		Entity getCameraEntity() const
@@ -645,16 +645,16 @@ namespace WeirdEngine
 	};
 
 	// Central access point for all non-ECS scene functionality. Systems take
-	// a ServiceProvider& (plus the ECSManager&) and use it instead of reaching
+	// a ServiceProvider& (plus the Registry&) and use it instead of reaching
 	// into Scene internals. Owned by Scene, which binds it to its storage.
 	class ServiceProvider
 	{
 	public:
 		explicit ServiceProvider(Scene& scene);
 
-		ECSManager& ecs()
+		Registry& registry()
 		{
-			return m_ecs;
+			return m_registry;
 		}
 
 		TimeService& time()
@@ -718,7 +718,7 @@ namespace WeirdEngine
 		}
 
 	private:
-		ECSManager& m_ecs;
+		Registry& m_registry;
 		TimeService m_time;
 		PhysicsService m_physics;
 		ShapeService m_shapes;

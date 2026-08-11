@@ -66,46 +66,46 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
-		onCreate(m_ecs, m_services);
+		onCreate(m_registry, m_services);
 		for (auto& sys : m_createSystems)
 		{
-			sys(m_ecs, m_services);
+			sys(m_registry, m_services);
 		}
 
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
-		m_ecs.registerComponent<RigidBody2D>(rbManager);
+		m_registry.registerComponent<RigidBody2D>(rbManager);
 
 		if (m_renderMode == RenderMode::RayMarching2D)
 		{
 			std::shared_ptr<CustomShapeManager> shapeManager =
 				std::make_shared<CustomShapeManager>(m_simulation2D, m_2DWorldRenderContext);
-			m_ecs.registerComponent<CustomShape>(shapeManager);
+			m_registry.registerComponent<CustomShape>(shapeManager);
 		}
 		else
 		{
 			std::shared_ptr<CustomShapeManager> shapeManager =
 				std::make_shared<CustomShapeManager>(m_simulation2D, m_3DWorldRenderContext);
-			m_ecs.registerComponent<CustomShape>(shapeManager);
+			m_registry.registerComponent<CustomShape>(shapeManager);
 		}
 
 		std::shared_ptr<DistanceConstraintManager> distManager =
-			std::make_shared<DistanceConstraintManager>(m_simulation2D, m_ecs);
-		m_ecs.registerComponent<DistanceConstraint>(distManager);
+			std::make_shared<DistanceConstraintManager>(m_simulation2D, m_registry);
+		m_registry.registerComponent<DistanceConstraint>(distManager);
 
-		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_ecs);
-		m_ecs.registerComponent<Spring>(springManager);
+		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_registry);
+		m_registry.registerComponent<Spring>(springManager);
 
 		std::shared_ptr<CustomUIShapeManager> uiShapeManager =
 			std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
-		m_ecs.registerComponent<UIShape>(uiShapeManager);
+		m_registry.registerComponent<UIShape>(uiShapeManager);
 
 		// Shapes
 		m_sdfs = Scene::getGlobalSDFs();
 		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation
-		PhysicsSystem2D::init(m_ecs, m_simulation2D);
+		PhysicsSystem2D::init(m_registry, m_simulation2D);
 
 		// Start simulation if different thread
 		if (m_runSimulationInThread)
@@ -127,11 +127,11 @@ namespace WeirdEngine
 		defaultMaterial.roughness = 0.1f;
 
 		// Create camera
-		m_mainCamera = m_ecs.createEntity();
+		m_mainCamera = m_registry.createEntity();
 		m_services.tags().tag(m_mainCamera, "mainCamera");
-		Transform& t = m_ecs.addComponent<Transform>(m_mainCamera);
+		Transform& t = m_registry.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
-		ECS::Camera& c = m_ecs.addComponent<ECS::Camera>(m_mainCamera);
+		ECS::Camera& c = m_registry.addComponent<ECS::Camera>(m_mainCamera);
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
 		// restore saved scene state before the derived class's onStart() runs.
@@ -140,31 +140,31 @@ namespace WeirdEngine
 			SceneSerializer::load(*this, m_sceneFilePath);
 		}
 
-		onStart(m_ecs, m_services);
+		onStart(m_registry, m_services);
 		for (auto& sys : m_startSystems)
 		{
-			sys(m_ecs, m_services);
+			sys(m_registry, m_services);
 		}
 
 		switch (m_renderMode)
 		{
 			case WeirdEngine::Scene::RenderMode::RayMarching3D:
 			{
-				FlyMovement& fly = m_ecs.addComponent<FlyMovement>(m_mainCamera);
+				FlyMovement& fly = m_registry.addComponent<FlyMovement>(m_mainCamera);
 				break;
 			}
 			case WeirdEngine::Scene::RenderMode::RayMarching2D:
 			case WeirdEngine::Scene::RenderMode::RayMarchingBoth:
 			{
-				FlyMovement2D& fly = m_ecs.addComponent<FlyMovement2D>(m_mainCamera);
-				fly.targetPosition = m_ecs.getComponent<Transform>(m_mainCamera).position;
+				FlyMovement2D& fly = m_registry.addComponent<FlyMovement2D>(m_mainCamera);
+				fly.targetPosition = m_registry.getComponent<Transform>(m_mainCamera).position;
 				break;
 			}
 			default:
 				break;
 		}
 
-		PhysicsSystem2D::update(m_ecs, m_simulation2D);
+		PhysicsSystem2D::update(m_registry, m_simulation2D);
 	}
 
 	void Scene::update(double delta, double time)
@@ -182,21 +182,21 @@ namespace WeirdEngine
 		{
 			if (m_debugFly)
 			{
-				PlayerMovementSystem::update(m_ecs, static_cast<float>(delta));
+				PlayerMovementSystem::update(m_registry, static_cast<float>(delta));
 			}
 
-			CameraSystem::update(m_ecs);
+			CameraSystem::update(m_registry);
 		}
 
-		ButtonSystem::update(m_ecs, m_sdfs, getTime());
+		ButtonSystem::update(m_registry, m_sdfs, getTime());
 
 		{
 			PROFILE_SCOPE("Physics synchronization");
-			PhysicsSystem2D::update(m_ecs, m_simulation2D);
+			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			if (m_debugInput)
 			{
-				PhysicsInteractionSystem::update(m_ecs);
+				PhysicsInteractionSystem::update(m_registry);
 			}
 
 			m_simulation2D.update(delta);
@@ -218,26 +218,26 @@ namespace WeirdEngine
 				std::swap(shapeCollisions, m_queuedShapeCollisions);
 			}
 
-			auto rigidBodies = m_ecs.getComponentArray<RigidBody2D>();
+			auto rigidBodies = m_registry.getComponentArray<RigidBody2D>();
 
 			for (auto& ev : collisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
 												 getEntityForSimulationId(ev.bodyB, rigidBodies)};
-				onEntityCollision(m_ecs, m_services, entityEvent);
+				onEntityCollision(m_registry, m_services, entityEvent);
 				for (auto& sys : m_entityCollisionSystems)
 				{
-					sys(m_ecs, m_services, entityEvent);
+					sys(m_registry, m_services, entityEvent);
 				}
 			}
 
 			for (auto& ev : shapeCollisions)
 			{
 				EntityShapeCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.body, rigidBodies)};
-				onEntityShapeCollision(m_ecs, m_services, entityEvent);
+				onEntityShapeCollision(m_registry, m_services, entityEvent);
 				for (auto& sys : m_entityShapeCollisionSystems)
 				{
-					sys(m_ecs, m_services, entityEvent);
+					sys(m_registry, m_services, entityEvent);
 				}
 
 				const float m_soundFalloff = 0.1f;
@@ -269,19 +269,19 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("OnUpdate");
-			onUpdate(m_ecs, m_services);
+			onUpdate(m_registry, m_services);
 			for (auto& sys : m_updateSystems)
 			{
-				sys(m_ecs, m_services);
+				sys(m_registry, m_services);
 			}
 		}
 
 		{
 			PROFILE_SCOPE("Render Queue update");
-			RenderSystem::update(m_ecs, m_resourceManager, m_drawQueue, m_lights);
+			RenderSystem::update(m_registry, m_resourceManager, m_drawQueue, m_lights);
 		}
 
-		m_ecs.freeRemovedComponents();
+		m_registry.freeRemovedComponents();
 	}
 
 	float Scene::getTime()
@@ -324,43 +324,43 @@ namespace WeirdEngine
 
 	WeirdRenderer::Camera& Scene::getCamera()
 	{
-		return m_ecs.getComponent<Camera>(m_mainCamera).camera;
+		return m_registry.getComponent<Camera>(m_mainCamera).camera;
 	}
 
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
 		// PROFILE_SCOPE("Fetch World Data");
-		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_2DWorldRenderContext, data, size);
+		customShapeCount = m_registry.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size);
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
 	{
 		// PROFILE_SCOPE("Fetch 3D World Data");
-		customShapeCount = m_ecs.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_ecs, m_3DWorldRenderContext, data, size);
+		customShapeCount = m_registry.getComponentArray<CustomShape>()->getSize();
+		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
-		customShapeCount = m_ecs.getComponentArray<UIShape>()->getSize();
-		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_ecs, m_UIRenderContext, uiData, size);
+		customShapeCount = m_registry.getComponentArray<UIShape>()->getSize();
+		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_2DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape>(m_registry, m_2DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<CustomShape>(m_ecs, m_3DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape>(m_registry, m_3DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<UIShape>(m_ecs, m_UIRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<UIShape>(m_registry, m_UIRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::forceShaderRefresh()
@@ -384,7 +384,7 @@ namespace WeirdEngine
 	{
 		if (m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
 		{
-			onRender(m_ecs, m_services, renderTarget);
+			onRender(m_registry, m_services, renderTarget);
 		}
 	}
 
@@ -426,11 +426,11 @@ namespace WeirdEngine
 	// ServiceProvider
 
 	ServiceProvider::ServiceProvider(Scene& scene)
-		: m_ecs(scene.m_ecs)
+		: m_registry(scene.m_registry)
 		, m_time(scene.m_simulation2D, scene.m_lastDelta)
-		, m_physics(scene.m_ecs, scene.m_simulation2D, scene.m_sdfs)
-		, m_shapes(scene.m_ecs, scene.m_simulation2D, scene.m_sdfs)
-		, m_render(scene.m_ecs, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
+		, m_physics(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
+		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
+		, m_render(scene.m_registry, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
 				   scene.m_UIRenderContext, scene.m_lights, scene.m_background, scene.m_renderMode)
 		, m_materials(scene.m_materials, scene.m_materialCount)
 		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead)
@@ -456,18 +456,18 @@ namespace WeirdEngine
 	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities)
 	{
 		TagMap loadedTags;
-		Entity firstNewEntity = scene.m_ecs.getEntityCount();
+		Entity firstNewEntity = scene.m_registry.getEntityCount();
 		SceneSerializer::load(scene, path, &loadedTags);
 		if (blacklistEntities)
 		{
-			Entity lastNewEntity = scene.m_ecs.getEntityCount();
+			Entity lastNewEntity = scene.m_registry.getEntityCount();
 			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
 				scene.m_serializationBlacklist.insert(entity);
 		}
 		return loadedTags;
 	}
 
-	RaymarchResult raymarchScene(ECSManager& ecs, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
+	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
 								 Simulation2D& simulation, float time, glm::vec2 origin, glm::vec2 direction,
 								 float epsilon, float maxDistance)
 	{
@@ -497,9 +497,9 @@ namespace WeirdEngine
 			groups.reserve(16);
 
 			// Cache the rigid bodies component array to avoid repeated lookups in the ECS during the raymarching loop
-			auto rigidBodies = ecs.getComponentArray<RigidBody2D>();
+			auto rigidBodies = registry.getComponentArray<RigidBody2D>();
 
-			auto shapeArray = ecs.getComponentArray<CustomShape>();
+			auto shapeArray = registry.getComponentArray<CustomShape>();
 			for (size_t j = 0; j < shapeArray->getSize(); j++)
 			{
 				auto& shape = shapeArray->getDataAtIdx(j);
@@ -714,10 +714,10 @@ namespace WeirdEngine
 
 			ImGui::Separator();
 
-			onImGuiRender(m_ecs, m_services);
+			onImGuiRender(m_registry, m_services);
 			for (auto& sys : m_imguiSystems)
 			{
-				sys(m_ecs, m_services);
+				sys(m_registry, m_services);
 			}
 
 			ImGui::PopID();
@@ -729,9 +729,9 @@ namespace WeirdEngine
 
 			ImGui::PushID(label2);
 
-			for (Entity e = 0; e < m_ecs.getEntityCount(); ++e)
+			for (Entity e = 0; e < m_registry.getEntityCount(); ++e)
 			{
-				std::vector<size_t> componentIDs = m_ecs.getComponentTypes(e);
+				std::vector<size_t> componentIDs = m_registry.getComponentTypes(e);
 
 				if (componentIDs.empty())
 					continue;
@@ -746,7 +746,7 @@ namespace WeirdEngine
 
 					for (size_t compID : componentIDs)
 					{
-						std::string compName = m_ecs.getComponentName(compID);
+						std::string compName = m_registry.getComponentName(compID);
 						ImGui::BulletText("%s", compName.c_str());
 					}
 

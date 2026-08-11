@@ -22,16 +22,18 @@ using namespace WeirdEngine;
 //
 //     void system(ECSManager& ecs, ServiceProvider& services, ...);
 //
-// (onRender and onImGuiRender are inlined in the scene instead, see below.)
+// (onRender and the physics-thread callbacks are inlined in the scene
+// instead, see below: the dispatcher is deliberately not involved there.)
 //
 // Systems never touch Scene internals: everything they need is either on the
 // ECSManager& or on the ServiceProvider& passed to the callback. Even the
 // scene's own state lives in the ECS (see State below): a single "state"
 // entity owns it, and systems reach it through the component array.
 //
-// Callbacks covered: onCreate, onStart, onUpdate (4 systems), onRender,
-// onImGuiRender, onPhysicsStep, onPhysicsRigidBodyCollision, onPhysicsShapeCollision,
-// onEntityCollision, onEntityShapeCollision, onDestroy.
+// Registered as systems: onCreate, onStart, onUpdate (4 systems),
+// onImGuiRender, onEntityCollision, onEntityShapeCollision, onDestroy.
+// Inlined overrides: onRender and the physics-thread callbacks
+// (onPhysicsStep, onPhysicsRigidBodyCollision, onPhysicsShapeCollision).
 //
 // Controls:
 //   Left click     spawn a ball at the cursor
@@ -51,7 +53,16 @@ namespace ServiceShowcase
 	struct CharacterData : BodyUserData
 	{
 		static constexpr int TYPE = 1;
+
+		// The inherited `type` member must match TYPE or every
+		// getUserDataAs<T>() / forEachUserData() check will fail.
+		CharacterData()
+		{
+			type = TYPE;
+		}
+
 		float restitution = 1.2f;
+		float jumpStrength = 5.0f;
 	};
 
 	// Scene state as an ECS component: attached to a single "state" entity
@@ -70,10 +81,6 @@ namespace ServiceShowcase
 		float gravity = -9.8f;
 		float damping = 0.001f;
 		float initialTime = 0.0f;
-
-		// Heap-allocated (see onCreateSystem): the simulation owns per-body
-		// user data and deletes it when the body is removed or the scene ends.
-		CharacterData* characterData = nullptr;
 
 		// Each counter is only touched from the main thread (collision
 		// callbacks); plain ints are fine. Atomicity would require a custom
@@ -120,7 +127,6 @@ namespace ServiceShowcase
 
 		State& state = getState(ecs, services);
 		state.initialTime = services.time().time();
-		state.characterData = new CharacterData();
 		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
@@ -197,19 +203,30 @@ namespace ServiceShowcase
 
 		// Character ball: carries per-body user data so the physics callbacks
 		// can identify and tune it without touching the ECS (the physics
-		// thread must not access the ECS). The data pointer is read fresh from
-		// the RigidBody2D component at spawn time.
+		// thread must not access the ECS). Ownership of the data is handed off
+		// to the simulation; the callbacks reach it through the simulation id
+		// stored in the RigidBody2D component.
 		{
 			Entity character = ecs.createEntity();
 			auto& t = ecs.addComponent<Transform>(character);
 			t.position = vec3(15.0f, 15.0f, 0.0f);
 
 			auto& dot = ecs.addComponent<Dot>(character);
-			dot.materialId = DisplaySettings::Orange;
+			dot.materialId = DisplaySettings::Blue;
 
 			auto& rb = ecs.addComponent<RigidBody2D>(character);
 			services.tags().tag(character, "character");
-			services.physics().setUserData(rb.simulationId, state.characterData);
+
+			// Configure the data before handing ownership to the simulation;
+			// std::move() empties the local unique_ptr, so the only way to
+			// reach the data afterwards is getUserDataAs<T>().
+			auto characterData = std::make_unique<CharacterData>();
+			characterData->jumpStrength = 10.0f;
+			services.physics().setUserData(rb.simulationId, std::move(characterData));
+
+			// Reading and modifying the data after the handoff: no cached
+			// pointer is kept, everything goes through the physics service.
+			services.physics().getUserDataAs<CharacterData>(rb.simulationId)->restitution = 2.0f;
 		}
 
 		// Initial ball pile
@@ -380,67 +397,6 @@ namespace ServiceShowcase
 		ecs.setComponentDirty(collisionsText);
 	}
 
-	// ------------------------------------------------------------ onPhysicsStep
-	// Physics thread. Simulation-coupled logic only: no ECS access here (the
-	// engine does not allow touching the ECS from the physics thread), so the
-	// step counter is a local static rather than a component.
-	// Applies a gentle "wind" to every body every 60 steps. Physics-thread
-	// systems only receive the Simulation2D& (no ECS, no ServiceProvider).
-	inline void onPhysicsStepSystem(Simulation2D& simulation)
-	{
-		static int stepCounter = 0;
-		if (++stepCounter % 60 != 0)
-			return;
-
-		for (SimulationID id = 0; id < simulation.getSize(); ++id)
-			simulation.addImpulseForce(id, vec2(0.5f, 0.0f));
-
-		// Per-body user data: iterate only the bodies that opted in, and
-		// branch on the type discriminator. No ECS access needed here.
-		simulation.forEachUserData(
-			[&](SimulationID id, BodyUserData& data)
-			{
-				if (data.type == CharacterData::TYPE)
-				{
-					// Give the character a little extra lift each gust
-					simulation.addImpulseForce(id, vec2(0.0f, 4.0f));
-				}
-			});
-	}
-
-	// -------------------------------------------------------------- onPhysicsRigidBodyCollision
-	// Physics thread. Body-body collisions: push the pair apart based on their
-	// relative velocity.
-	inline void onPhysicsRigidBodyCollisionSystem(Simulation2D& simulation, PhysicsCollisionEvent& event)
-	{
-		vec2 va = simulation.getPhysicsVelocity(event.bodyA);
-		vec2 vb = simulation.getPhysicsVelocity(event.bodyB);
-
-		vec2 separation = (va - vb) * 0.05f;
-		simulation.addImpulseForce(event.bodyA, -separation);
-		simulation.addImpulseForce(event.bodyB, separation);
-	}
-
-	// --------------------------------------------------------- onPhysicsShapeCollision
-	// Physics thread. Shape collisions: bounce the body off the shape normal
-	// when the penetration is deep enough. The character (identified via its
-	// per-body user data) gets a bouncier, more slippery response by tuning
-	// the event before the solver reads it.
-	inline void onPhysicsShapeCollisionSystem(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)
-	{
-		if (event.state == CollisionState::START && event.penetration > 0.1f)
-		{
-			simulation.addImpulseForce(event.body, event.normal * (2.0f + event.penetration * 10.0f));
-		}
-
-		// Type-checked cast: nullptr unless this body carries CharacterData
-		if (auto* data = simulation.getUserDataAs<CharacterData>(event.body))
-		{
-			event.absortion *= 0.5f; // less normal damping = bouncier
-			event.friction *= 0.5f;	 // slippery character
-		}
-	}
-
 	// ------------------------------------------------------- onEntityCollision
 	// Main thread. Body-body collisions mapped to entities: count them, flash
 	// the colliding ball and play a sound through the provider.
@@ -449,11 +405,18 @@ namespace ServiceShowcase
 		State& state = getState(ecs, services);
 		state.entityCollisions++;
 
-		if (event.entityA != INVALID_ENTITY && ecs.hasComponent<Dot>(event.entityA))
+		// Flash the colliding ball orange, but keep the character's identity
+		// color: it is identified through its per-body user data.
+		if (event.entityA != INVALID_ENTITY && ecs.hasComponent<Dot>(event.entityA) &&
+			ecs.hasComponent<RigidBody2D>(event.entityA))
 		{
-			auto& dot = ecs.getComponent<Dot>(event.entityA);
-			dot.materialId = DisplaySettings::Orange;
-			ecs.setComponentDirty(dot);
+			RigidBody2D& rb = ecs.getComponent<RigidBody2D>(event.entityA);
+			if (services.physics().getUserDataAs<CharacterData>(rb.simulationId) == nullptr)
+			{
+				auto& dot = ecs.getComponent<Dot>(event.entityA);
+				dot.materialId = DisplaySettings::Orange;
+				ecs.setComponentDirty(dot);
+			}
 		}
 
 		services.audio().playSound({0.05f, 300.0f, false, vec3(0.0f), 1});
@@ -490,52 +453,42 @@ namespace ServiceShowcase
 class ServiceShowcaseScene : public Scene2D
 {
 public:
-	ServiceShowcaseScene() = default;
+	ServiceShowcaseScene()
+	{
+		addCreateSystem(ServiceShowcase::onCreateSystem);
+		addStartSystem(ServiceShowcase::onStartSystem);
+
+		// Multiple systems for the same stage run sequentially!
+		addUpdateSystem(ServiceShowcase::spawnSystem);
+		addUpdateSystem(ServiceShowcase::inputSystem);
+		addUpdateSystem(ServiceShowcase::followSystem);
+		addUpdateSystem(ServiceShowcase::uiSystem);
+
+		addEntityCollisionSystem(ServiceShowcase::onEntityCollisionSystem);
+		addEntityShapeCollisionSystem(ServiceShowcase::onEntityShapeCollisionSystem);
+
+		addDestroySystem(ServiceShowcase::onDestroySystem);
+
+		addImGuiRenderSystem(
+			[](ECSManager& ecs, ServiceProvider& services)
+			{
+				auto& state = ServiceShowcase::getState(ecs, services);
+
+				ImGui::Text("Time: %.2fs", services.time().time());
+				ImGui::Text("Entities: %d", services.ecs().getEntityCount());
+				ImGui::Text("Gravity: %.1f | Damping: %.2f | Physics %s", state.gravity, state.damping,
+							services.physics().isPaused() ? "paused" : "running");
+				ImGui::Text("Collisions: %d body / %d shape", state.entityCollisions, state.shapeCollisions);
+				ImGui::Text("Balls spawned: %d", state.ballsSpawned);
+
+				ImGui::Separator();
+				ImGui::Text("Left click: spawn ball | Space: pause/resume");
+				ImGui::Text("Up/Down: gravity | Left/Right: damping");
+				ImGui::Text("Ctrl+S: save scene | Ctrl+L: load scene | Q: next scene");
+			});
+	}
 
 private:
-	// Most callbacks are thin wrappers around a system. The ServiceProvider
-	// only reaches callbacks through their `services` parameter (getServices()
-	// is private); the scene owns no state at all (it lives in the State
-	// component on the "state" entity). onRender and onImGuiRender are
-	// inlined below instead of using systems.
-
-	void onCreate(ECSManager& ecs, ServiceProvider& services) override
-	{
-		ServiceShowcase::onCreateSystem(ecs, services);
-	}
-
-	void onStart(ECSManager& ecs, ServiceProvider& services) override
-	{
-		ServiceShowcase::onStartSystem(ecs, services);
-	}
-
-	void onUpdate(ECSManager& ecs, ServiceProvider& services) override
-	{
-		ServiceShowcase::spawnSystem(ecs, services);
-		ServiceShowcase::inputSystem(ecs, services);
-		ServiceShowcase::followSystem(ecs, services);
-		ServiceShowcase::uiSystem(ecs, services);
-	}
-
-	void onEntityCollision(ECSManager& ecs, ServiceProvider& services, EntityCollisionEvent& event) override
-	{
-		ServiceShowcase::onEntityCollisionSystem(ecs, services, event);
-	}
-
-	void onEntityShapeCollision(ECSManager& ecs, ServiceProvider& services, EntityShapeCollisionEvent& event) override
-	{
-		ServiceShowcase::onEntityShapeCollisionSystem(ecs, services, event);
-	}
-
-	void onDestroy(ECSManager& ecs, ServiceProvider& services) override
-	{
-		ServiceShowcase::onDestroySystem(ecs, services);
-	}
-
-	// Don't use systems for these callbacks (they are inlined below).
-	// Note the firing rules: onRender only fires for 3D / both render modes,
-	// while onImGuiRender fires for every scene, 2D and 3D alike (it is just
-	// the debug UI).
 	void onRender(ECSManager& ecs, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		static bool logged = false;
@@ -546,37 +499,77 @@ private:
 		}
 	}
 
-	void onImGuiRender(ECSManager& ecs, ServiceProvider& services) override
-	{
-		auto& state = ServiceShowcase::getState(ecs, services);
-
-		ImGui::Text("Time: %.2fs", services.time().time());
-		ImGui::Text("Entities: %d", services.ecs().getEntityCount());
-		ImGui::Text("Gravity: %.1f | Damping: %.2f | Physics %s", state.gravity, state.damping,
-					services.physics().isPaused() ? "paused" : "running");
-		ImGui::Text("Collisions: %d body / %d shape", state.entityCollisions, state.shapeCollisions);
-		ImGui::Text("Balls spawned: %d", state.ballsSpawned);
-
-		ImGui::Separator();
-		ImGui::Text("Left click: spawn ball | Space: pause/resume");
-		ImGui::Text("Up/Down: gravity | Left/Right: damping");
-		ImGui::Text("Ctrl+S: save scene | Ctrl+L: load scene | Q: next scene");
-	}
-
 	// Physics thread callbacks. Fire on the physics thread mid-step; no ECS
 	// access here. They delegate to Simulation2D-only systems.
 	void onPhysicsStep(Simulation2D& simulation) override
 	{
-		ServiceShowcase::onPhysicsStepSystem(simulation);
+		// ------------------------------------------------------------ onPhysicsStep
+		// Physics thread. Simulation-coupled logic only: no ECS access here (the
+		// engine does not allow touching the ECS from the physics thread), so the
+		// step counter is a local static rather than a component.
+		// Every 120 steps, applies a wind gust that alternates direction.
+		// Physics-thread systems only receive the Simulation2D& (no ECS, no
+		// ServiceProvider).
+		static int stepCounter = 0;
+		if (++stepCounter % 120 != 0)
+			return;
+
+		static float direction = 1.0f;
+		direction *= -1.0f;
+
+		for (SimulationID id = 0; id < simulation.getSize(); ++id)
+			simulation.addImpulseForce(id, vec2(2.5f * direction, 0.0f));
+
+		// Per-body user data: iterate only the bodies that opted in, and
+		// branch on the type discriminator. No ECS access needed here.
+		simulation.forEachUserData(
+			[&](SimulationID id, BodyUserData& data)
+			{
+				if (data.type == ServiceShowcase::CharacterData::TYPE)
+				{
+					auto characterData = simulation.getUserDataAs<ServiceShowcase::CharacterData>(id);
+
+					// Kick the character into a visible hop each gust.
+					// massIndependent = true: jumpStrength is the delta-v in
+					// m/s, regardless of the body's mass.
+					simulation.addImpulseForce(id, vec2(0.0f, characterData->jumpStrength), true);
+				}
+			});
 	}
 
 	void onPhysicsRigidBodyCollision(Simulation2D& simulation, PhysicsCollisionEvent& event) override
 	{
-		ServiceShowcase::onPhysicsRigidBodyCollisionSystem(simulation, event);
+		// -------------------------------------------------------------- onPhysicsRigidBodyCollision
+		// Physics thread. Body-body collisions: push the pair apart based on their
+		// relative velocity.
+		vec2 va = simulation.getPhysicsVelocity(event.bodyA);
+		vec2 vb = simulation.getPhysicsVelocity(event.bodyB);
+
+		vec2 separation = (va - vb) * 0.05f;
+		simulation.addImpulseForce(event.bodyA, -separation);
+		simulation.addImpulseForce(event.bodyB, separation);
 	}
 
 	void onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEvent& event) override
 	{
-		ServiceShowcase::onPhysicsShapeCollisionSystem(simulation, event);
+		// --------------------------------------------------------- onPhysicsShapeCollision
+		// Physics thread. Shape collisions: bounce the body off the shape normal
+		// when the penetration is deep enough. The character (identified via its
+		// per-body user data) gets a bouncier, more slippery response by tuning
+		// the event before the solver reads it.
+		if (event.state == CollisionState::START && event.penetration > 0.1f)
+		{
+			simulation.addImpulseForce(event.body, event.normal * (2.0f + event.penetration * 10.0f));
+		}
+
+		// Type-checked cast: nullptr unless this body carries CharacterData
+		if (auto* data = simulation.getUserDataAs<ServiceShowcase::CharacterData>(event.body))
+		{
+			// absortion damps the normal axis (more damping = less bounce), so
+			// higher restitution = bouncier. At restitution = 2.0 (set in
+			// onStartSystem) this equals the previous hard-coded 0.5x.
+			event.absortion *= 1.0f / data->restitution;
+			event.friction *= 0.5f; // slippery character
+		}
 	}
 };

@@ -24,72 +24,78 @@ private:
 
 	Entity m_monkey;
 
-	void onCreate() override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
 		{
-			auto& whiteMat = createMaterial();
+			auto& whiteMat = services.materials().createMaterial();
 			m_whiteMatId = whiteMat.id;
 			whiteMat.pattern = MaterialPattern::Checkers;
 
 			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
-			auto planeId = registerSDF(plane);
+			auto planeId = services.shapes().registerSDF(plane);
 
-			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(planeId, vars1, whiteMat);
+			Entity start = services.shapes().addShape({.shapeId = planeId, .variables = {}, .material = whiteMat});
 		}
 
 		m_renderPlane = new RenderPlane();
 		m_colorTextureCopy = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
-		m_lineShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/lines.frag");
+		m_lineShader =
+			new Shader(SHADERS_PATH "common/screen_plane.vert", services.resources().assetPath("lines/lines.frag"));
 
 		m_lineRender = new RenderTarget(false);
 		m_lineTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_lineRender->bindColorTextureToFrameBuffer(*m_lineTexture);
 
-		m_combinationShader = new Shader(SHADERS_PATH "common/screen_plane.vert", ASSETS_PATH "lines/combination.frag");
+		m_combinationShader = new Shader(SHADERS_PATH "common/screen_plane.vert",
+										 services.resources().assetPath("lines/combination.frag"));
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugFly = false;
-		getLigths().push_back(Light{});
+		services.debug().setDebugFly(false);
+		{
+			Entity entity = registry.createEntity();
+			registry.addComponent<Transform>(entity);
+			registry.addComponent<LightComponent>(entity);
+		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0, 0, 0);
 
-			// MeshRenderer &mr = ecs.addComponent<MeshRenderer>(entity);
+			// MeshRenderer &mr = registry.addComponent<MeshRenderer>(entity);
 
-			// auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
-			// mr.mesh = id;
+			// auto id = services.resources().getMeshId(services.resources().assetPath("monkey/demo.gltf"), entity,
+			// true); mr.mesh = id;
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = m_whiteMatId;
 
 			m_monkey = entity;
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		float delta = services.time().deltaTime();
+		if (services.input().getKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position.y = 5.0f;
 		cameraTransform.position.z -= 10.0f * delta;
 
-		Transform& monkeyTransform = ecs.getComponent<Transform>(m_monkey);
+		Transform& monkeyTransform = registry.getComponent<Transform>(m_monkey);
 		monkeyTransform.position = cameraTransform.position;
 		monkeyTransform.position.z -= 5.0f;
 	}
 
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
 		m_lineRender->bind();
 		glClearColor(0, 0, 0, 0);							// Set clear color

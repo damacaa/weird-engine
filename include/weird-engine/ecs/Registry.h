@@ -37,8 +37,10 @@ namespace WeirdEngine
 		}
 	} // namespace internal
 
-	// ECSManager Manager
-	class ECSManager
+	// Entity + component storage. Systems are not managed here: scheduling
+	// lives on Scene, which dispatches them with a Registry& and
+	// ServiceProvider&.
+	class Registry
 	{
 	public:
 		Entity createEntity()
@@ -311,6 +313,7 @@ namespace WeirdEngine
 #include "weird-renderer/components/Camera.h"
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/components/InstancedMeshRenderer.h"
+#include "weird-renderer/components/LightComponent.h"
 #include "weird-renderer/components/MeshRenderer.h"
 #include "weird-renderer/components/SDFRenderer.h"
 #include "weird-renderer/components/TextRenderer.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 
 #include <algorithm>
@@ -23,20 +23,20 @@ namespace WeirdEngine
 				return std::clamp(delta, 0.0f, MAX_DEBUG_CAMERA_DELTA);
 			}
 
-			inline void updateMovement2D(ECSManager& ecs, float delta);
-			inline void updateFly(ECSManager& ecs, float delta);
+			inline void updateMovement2D(Registry& registry, float delta);
+			inline void updateFly(Registry& registry, float delta);
 
-			inline void update(ECSManager& ecs, float delta)
+			inline void update(Registry& registry, float delta)
 			{
-				updateMovement2D(ecs, delta);
-				updateFly(ecs, delta);
+				updateMovement2D(registry, delta);
+				updateFly(registry, delta);
 			}
 
-			inline void updateMovement2D(ECSManager& ecs, float delta)
+			inline void updateMovement2D(Registry& registry, float delta)
 			{
 				float safeDelta = clampMovementDelta(delta);
 
-				ecs.forEach<FlyMovement2D, Transform, Camera>(
+				registry.forEach<FlyMovement2D, Transform, Camera>(
 					[&](Entity target, FlyMovement2D& flyComponent, Transform& t, Camera& c)
 					{
 						vec3 targetPosition = flyComponent.targetPosition;
@@ -174,11 +174,11 @@ namespace WeirdEngine
 					});
 			}
 
-			inline void updateFly(ECSManager& ecs, float delta)
+			inline void updateFly(Registry& registry, float delta)
 			{
 				float safeDelta = clampMovementDelta(delta);
 
-				ecs.forEach<FlyMovement, Transform, Camera>(
+				registry.forEach<FlyMovement, Transform, Camera>(
 					[&](Entity target, FlyMovement& flyComponent, Transform& t, Camera& c)
 					{
 						glm::vec3 forward = glm::normalize(t.rotation);

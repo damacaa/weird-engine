@@ -24,21 +24,22 @@ private:
 	float m_timer = 0.0f;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		float delta = services.time().deltaTime();
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_timer += delta;
@@ -58,13 +59,13 @@ private:
 						{
 							for (int j = 0; j < 10; ++j)
 							{
-								Entity e = ecs.createEntity();
-								auto& t = ecs.addComponent<Transform>(e);
+								Entity e = registry.createEntity();
+								auto& t = registry.addComponent<Transform>(e);
 								t.position = vec3((std::rand() % 200) - 100.0f, (std::rand() % 100) - 50.0f, 0.0f);
-								ecs.setComponentDirty(t);
-								auto& ui = ecs.addComponent<Dot>(e);
+								registry.setComponentDirty(t);
+								auto& ui = registry.addComponent<Dot>(e);
 								ui.materialId = 4 + (e % 12);
-								auto& rb = ecs.addComponent<RigidBody2D>(e);
+								auto& rb = registry.addComponent<RigidBody2D>(e);
 								m_testBalls.push_back(e);
 							}
 						}
@@ -78,9 +79,14 @@ private:
 							float y = (std::rand() % 100) - 50.0f;
 							float w = (float)(std::rand() % 4 + 1);
 							float h = (float)(std::rand() % 4 + 1);
-							float variables[8]{w, y, x, h, 0.0f, 0.0f, 0.0f, 0.0f};
 							uint16_t material = std::rand() % 16;
-							Entity shape = addShape(DefaultShapes::BOX, variables, material, CombinationType::Addition);
+							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+																	   .variables = {{Primitives::Box::POS_X, w},
+																					 {Primitives::Box::POS_Y, y},
+																					 {Primitives::Box::SIZE_X, x},
+																					 {Primitives::Box::SIZE_Y, h}},
+																	   .material = material,
+																	   .combination = CombinationType::Addition});
 							m_testShapes.push_back(shape);
 						}
 						break;
@@ -93,17 +99,18 @@ private:
 							int idx2 = std::rand() % m_testBalls.size();
 							if (idx1 != idx2)
 							{
-								Entity constraintEnt = ecs.createEntity();
+								Entity constraintEnt = registry.createEntity();
 								if (std::rand() % 2 == 0)
 								{
-									auto& constraint = ecs.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
+									auto& constraint =
+										registry.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
 									constraint.entityA = m_testBalls[idx1];
 									constraint.entityB = m_testBalls[idx2];
 									constraint.distance = 3.0f + (std::rand() % 5);
 								}
 								else
 								{
-									auto& spring = ecs.addComponent<WeirdEngine::Spring>(constraintEnt);
+									auto& spring = registry.addComponent<WeirdEngine::Spring>(constraintEnt);
 									spring.entityA = m_testBalls[idx1];
 									spring.entityB = m_testBalls[idx2];
 									spring.restDistance = 3.0f + (std::rand() % 5);
@@ -119,7 +126,7 @@ private:
 						if (!m_testShapes.empty())
 						{
 							int idx = std::rand() % m_testShapes.size();
-							ecs.destroyEntity(m_testShapes[idx]);
+							registry.destroyEntity(m_testShapes[idx]);
 							m_testShapes[idx] = m_testShapes.back();
 							m_testShapes.pop_back();
 						}
@@ -130,7 +137,7 @@ private:
 						if (!m_testBalls.empty())
 						{
 							int idx = std::rand() % m_testBalls.size();
-							ecs.destroyEntity(m_testBalls[idx]);
+							registry.destroyEntity(m_testBalls[idx]);
 							m_testBalls[idx] = m_testBalls.back();
 							m_testBalls.pop_back();
 						}
@@ -141,7 +148,7 @@ private:
 						if (!m_testConstraints.empty())
 						{
 							int idx = std::rand() % m_testConstraints.size();
-							ecs.destroyEntity(m_testConstraints[idx]);
+							registry.destroyEntity(m_testConstraints[idx]);
 							m_testConstraints[idx] = m_testConstraints.back();
 							m_testConstraints.pop_back();
 						}
@@ -152,7 +159,8 @@ private:
 		}
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(Registry& registry, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		if (std::rand() % 5 != 0)
 			return;
@@ -161,26 +169,25 @@ private:
 
 		if (a != INVALID_ENTITY)
 		{
-			if (!ecs.hasComponent<CollisionTracker>(a))
-				ecs.addComponent<CollisionTracker>(a);
-			ecs.getComponent<CollisionTracker>(a).collisionCount++;
+			if (!registry.hasComponent<CollisionTracker>(a))
+				registry.addComponent<CollisionTracker>(a);
+			registry.getComponent<CollisionTracker>(a).collisionCount++;
 		}
 
-		playSound({0.02f, 400.0f + (std::rand() % 200), false, vec3(0.0f), 1});
+		services.audio().playSound({0.02f, 400.0f + (std::rand() % 200), false, vec3(0.0f), 1});
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(Registry& registry, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.raw.friction *= 100.0f;
-
 		if (std::rand() % 20 == 0)
 		{
 			Entity e = event.entity;
-			if (e != INVALID_ENTITY && ecs.hasComponent<RigidBody2D>(e))
+			if (e != INVALID_ENTITY && registry.hasComponent<RigidBody2D>(e))
 			{
-				auto& rb = ecs.getComponent<RigidBody2D>(e);
+				auto& rb = registry.getComponent<RigidBody2D>(e);
 				rb.isFixed = true;
-				ecs.setComponentDirty(rb);
+				registry.setComponentDirty(rb);
 			}
 		}
 
@@ -188,16 +195,16 @@ private:
 		{
 			int idx = std::rand() % m_testConstraints.size();
 			Entity constraint = m_testConstraints[idx];
-			if (ecs.hasComponent<WeirdEngine::Spring>(constraint))
+			if (registry.hasComponent<WeirdEngine::Spring>(constraint))
 			{
-				auto& spring = ecs.getComponent<WeirdEngine::Spring>(constraint);
+				auto& spring = registry.getComponent<WeirdEngine::Spring>(constraint);
 				spring.restDistance = 1.0f + (std::rand() % 10);
 			}
 		}
 
 		if (std::rand() % 5 == 0)
 		{
-			playSound({0.02f, 200.0f + (std::rand() % 100), false, vec3(event.raw.position, 0.0f), 1});
+			services.audio().playSound({0.02f, 200.0f + (std::rand() % 100), false, vec3(event.raw.position, 0.0f), 1});
 		}
 	}
 };

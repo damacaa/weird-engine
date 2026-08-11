@@ -5,8 +5,6 @@
 #include <imgui.h>
 #endif
 
-#include "weird-engine/Scene.h"
-
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
@@ -67,7 +65,8 @@ namespace WeirdEngine
 			return m_backDepthTexture;
 		}
 
-		void MeshRenderPipeline::render(Scene& scene, RenderTarget& outputTarget, const Camera& camera,
+		void MeshRenderPipeline::render(RenderTarget& outputTarget,
+										const std::vector<WeirdRenderer::DrawCommand>& drawQueue, const Camera& camera,
 										const std::vector<Light>& lights)
 		{
 			// Set GBuffer uniforms for both shaders
@@ -87,7 +86,6 @@ namespace WeirdEngine
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			// Render scene meshes into the GBuffer.
-			const auto& drawQueue = scene.getDrawQueue();
 			for (const auto& cmd : drawQueue)
 			{
 				cmd.mesh->draw(m_gbufferShader, camera, cmd.translation, cmd.rotation, cmd.scale, cmd.materialIndex);

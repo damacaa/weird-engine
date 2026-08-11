@@ -22,6 +22,10 @@ namespace WeirdEngine
 			GLuint ID = -1;
 			// Constructor that build the Shader Program from 2 different shaders
 			Shader(const char* vertexFile, const char* fragmentFile);
+			Shader(const std::string& vertexFile, const std::string& fragmentFile)
+				: Shader(vertexFile.c_str(), fragmentFile.c_str())
+			{
+			}
 			Shader() {};
 
 			// Activates the Shader Program

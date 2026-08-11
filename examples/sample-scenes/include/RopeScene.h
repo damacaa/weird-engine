@@ -18,10 +18,10 @@ private:
 
 	std::vector<Entity> m_balls;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
 		constexpr int rowWidth = 30;
 		constexpr int numBalls = rowWidth * 2;
@@ -35,15 +35,15 @@ private:
 			float y = startY - static_cast<float>(i / rowWidth);
 			int material = 4 + (i % 12);
 
-			Entity entity = ecs.createEntity();
+			Entity entity = registry.createEntity();
 
-			auto& t = ecs.addComponent<Transform>(entity);
+			auto& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0.0f);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = material;
 
-			auto& rb = ecs.addComponent<RigidBody2D>(entity);
+			auto& rb = registry.addComponent<RigidBody2D>(entity);
 			m_balls.push_back(entity);
 		}
 
@@ -57,8 +57,8 @@ private:
 			// Structural Springs (Down and Right)
 			if (hasRowBelow) // Down
 			{
-				Entity springEnt = ecs.createEntity();
-				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
+				Entity springEnt = registry.createEntity();
+				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
 				spring.entityA = m_balls[i];
 				spring.entityB = m_balls[i + rowWidth];
 				spring.stiffness = stiffness;
@@ -67,8 +67,8 @@ private:
 
 			if (notRightEdge) // Right
 			{
-				Entity springEnt = ecs.createEntity();
-				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
+				Entity springEnt = registry.createEntity();
+				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
 				spring.entityA = m_balls[i];
 				spring.entityB = m_balls[i + 1];
 				spring.stiffness = stiffness;
@@ -78,8 +78,8 @@ private:
 			// Shear Springs (Diagonal)
 			if (hasRowBelow && notRightEdge) // Bottom-Right
 			{
-				Entity springEnt = ecs.createEntity();
-				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
+				Entity springEnt = registry.createEntity();
+				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
 				spring.entityA = m_balls[i];
 				spring.entityB = m_balls[i + rowWidth + 1];
 				spring.stiffness = stiffness;
@@ -88,8 +88,8 @@ private:
 
 			if (hasRowBelow && notLeftEdge) // Bottom-Left
 			{
-				Entity springEnt = ecs.createEntity();
-				auto& spring = ecs.addComponent<WeirdEngine::Spring>(springEnt);
+				Entity springEnt = registry.createEntity();
+				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
 				spring.entityA = m_balls[i];
 				spring.entityB = m_balls[i + rowWidth - 1];
 				spring.stiffness = stiffness;
@@ -98,34 +98,42 @@ private:
 		}
 
 		// Fix corners
-		ecs.getComponent<RigidBody2D>(m_balls[0]).isFixed = true;
-		ecs.setEntityDirty<RigidBody2D>(m_balls[0], true);
+		registry.getComponent<RigidBody2D>(m_balls[0]).isFixed = true;
+		registry.setEntityDirty<RigidBody2D>(m_balls[0], true);
 		if (numBalls > rowWidth)
 		{
-			ecs.getComponent<RigidBody2D>(m_balls[rowWidth - 1]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(m_balls[rowWidth - 1], true);
-			ecs.getComponent<RigidBody2D>(m_balls[rowWidth]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(m_balls[rowWidth], true);
-			ecs.getComponent<RigidBody2D>(m_balls[(2 * rowWidth) - 1]).isFixed = true;
-			ecs.setEntityDirty<RigidBody2D>(m_balls[(2 * rowWidth) - 1], true);
+			registry.getComponent<RigidBody2D>(m_balls[rowWidth - 1]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(m_balls[rowWidth - 1], true);
+			registry.getComponent<RigidBody2D>(m_balls[rowWidth]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(m_balls[rowWidth], true);
+			registry.getComponent<RigidBody2D>(m_balls[(2 * rowWidth) - 1]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(m_balls[(2 * rowWidth) - 1], true);
 		}
 
 		// Add base shapes (walls, ground, custom)
-		float vars0[8] = {1.0f, 0.5f, 1.0f}; // Floor shape
-		addShape(DefaultShapes::SINE, vars0, 3);
+		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+									.variables = {{Primitives::SineWave::AMPLITUDE, 1.0f},
+												  {Primitives::SineWave::PERIOD, 0.5f},
+												  {Primitives::SineWave::SPEED, 1.0f}},
+									.material = 3});
 
-		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		m_star = addShape(DefaultShapes::STAR, vars1, 3);
+		m_star = services.shapes().addShape(
+			{.shapeId = DefaultShapes::STAR, .variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}, .material = 3});
 
-		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
-		addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 15.0f},
+												  {Primitives::Box::POS_Y, -98.0f},
+												  {Primitives::Box::SIZE_X, 15.0f},
+												  {Primitives::Box::SIZE_Y, 100.0f}},
+									.material = 3,
+									.combination = CombinationType::Addition});
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void throwBalls(ECSManager& ecs)
+	void throwBalls(Registry& registry, ServiceProvider& services)
 	{
-		if (getTime() <= m_lastSpawnTime + 0.1)
+		if (services.time().time() <= m_lastSpawnTime + 0.1)
 		{
 			return;
 		}
@@ -135,54 +143,56 @@ private:
 		{
 			float y = 60.0f + (1.2f * i);
 
-			Entity entity = ecs.createEntity();
+			Entity entity = registry.createEntity();
 
-			auto& t = ecs.addComponent<Transform>(entity);
+			auto& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0.5f, y + 0.5f, 0.0f);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
-			sdf.materialId = 4 + ecs.getComponentArray<Dot>()->getSize() % 12;
+			auto& sdf = registry.addComponent<Dot>(entity);
+			sdf.materialId = 4 + registry.getComponentArray<Dot>()->getSize() % 12;
 
-			auto& rb = ecs.addComponent<RigidBody2D>(entity);
+			auto& rb = registry.addComponent<RigidBody2D>(entity);
 			rb.pendingImpulseForce += vec2(20.0f, 0.0f);
 		}
 
-		m_lastSpawnTime = getTime();
+		m_lastSpawnTime = services.time().time();
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		float delta = services.time().deltaTime();
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
+
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
 		// Animate custom shape over time
 		if (m_star != INVALID_ENTITY)
 		{
-			// Instead of getSimulation().getSimulationTime(), we can just use getTime() if Scene provides it, or track
-			// delta.
+			// Instead of getSimulation().getSimulationTime(), we can just use services.time().time() if Scene provides
+			// it, or track delta.
 			static float animTime = 0.0f;
 			animTime += delta;
-			auto& cs = ecs.getComponent<CustomShape>(m_star);
+			auto& cs = registry.getComponent<CustomShape>(m_star);
 			cs.parameters[4] = static_cast<float>((static_cast<int>(std::floor(animTime)) % 5) + 2);
 			cs.parameters[3] = std::sin(3.1416f * animTime);
-			ecs.setComponentDirty(cs);
+			registry.setComponentDirty(cs);
 		}
 
-		if (Input::GetKey(Input::E) || Input::GetGamepadButton(Input::GamepadButton::West))
+		if (services.input().getKey(Input::E) || services.input().getGamepadButton(Input::GamepadButton::West))
 		{
-			throwBalls(ecs);
+			throwBalls(registry, services);
 		}
 
 		static vec2 boxStart;
 		static bool createBoxInUI = true;
-		if (Input::GetKeyDown(Input::M))
+		if (services.input().getKeyDown(Input::M))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 
 			if (createBoxInUI)
 			{
@@ -194,10 +204,10 @@ private:
 				boxStart = world;
 			}
 		}
-		else if (Input::GetKeyUp(Input::M))
+		else if (services.input().getKeyUp(Input::M))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 			vec2 boxEnd;
@@ -214,28 +224,43 @@ private:
 			float y = (boxStart.y + boxEnd.y) / 2.0f;
 			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
 			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
-			float vars[8] = {x, y, w, h, 1.2f};
 
 			if (createBoxInUI)
-				addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
+				services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
+											  .variables = {{Primitives::Box::POS_X, x},
+															{Primitives::Box::POS_Y, y},
+															{Primitives::Box::SIZE_X, w},
+															{Primitives::Box::SIZE_Y, h},
+															{4, 1.2f}},
+											  .material = 7,
+											  .combination = CombinationType::SmoothAddition});
 			else
-				addShape(DefaultShapes::BOX, vars, 4 + ecs.getComponentArray<CustomShape>()->getSize() % 12,
-						 CombinationType::SmoothAddition, true, ecs.getComponentArray<CustomShape>()->getSize());
+				services.shapes().addShape(
+					{.shapeId = DefaultShapes::BOX,
+					 .variables = {{Primitives::Box::POS_X, x},
+								   {Primitives::Box::POS_Y, y},
+								   {Primitives::Box::SIZE_X, w},
+								   {Primitives::Box::SIZE_Y, h},
+								   {4, 1.2f}},
+					 .material = static_cast<uint16_t>(4 + registry.getComponentArray<CustomShape>()->getSize() % 12),
+					 .combination = CombinationType::SmoothAddition,
+					 .hasCollision = true,
+					 .group = static_cast<int>(registry.getComponentArray<CustomShape>()->getSize())});
 		}
 
-		if (Input::GetKeyDown(Input::N))
+		if (services.input().getKeyDown(Input::N))
 		{
-			auto& cam = ecs.getComponent<Transform>(m_mainCamera);
-			vec2 screen = {Input::GetMouseX(), Input::GetMouseY()};
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
-			addShape(DefaultShapes::STAR, vars, 3);
+			services.shapes().addShape(
+				{.shapeId = DefaultShapes::STAR, .variables = {world.x, world.y, 5.0f, 7.5f, 1.0f}, .material = 3});
 		}
 
-		if (Input::GetKey(Input::R) || Input::GetGamepadButton(Input::GamepadButton::South))
+		if (services.input().getKey(Input::R) || services.input().getGamepadButton(Input::GamepadButton::South))
 		{
-			ecs.forEach<RigidBody2D, Transform>(
+			registry.forEach<RigidBody2D, Transform>(
 				[&](Entity e, RigidBody2D& rb, Transform& t)
 				{
 					vec2 force(0, -0.001f * (t.position.y * t.position.y));

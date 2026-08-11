@@ -9,12 +9,6 @@ cmake --build build
 
 # Run the main example
 ./build/examples/sample-scenes/WeirdSamples
-
-# muOS cross-compile (aarch64, uses podman)
-./scripts/anbernic/build-muos.sh
-./scripts/anbernic/deploy-muos.sh          # build + deploy via MTP
-./scripts/anbernic/deploy-muos.sh --no-build  # deploy only
-./scripts/anbernic/fetch-logs.sh           # pull log.txt + screenshots
 ```
 
 There are no tests. CI runs `ctest` but no test targets are defined.
@@ -27,6 +21,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 | `WEIRD_DISABLE_IMGUI` | `OFF` | Strip ImGui (used for muOS build) |
 | `WEIRD_TEST_HOOKS` | `OFF` | Enables `WEIRD_AUTO_QUIT_SECONDS` / `WEIRD_SCREENSHOT_FRAME` env vars |
 | `WEIRD_ENGINE_ENABLE_ASAN` | `OFF` | AddressSanitizer |
+| `WEIRD_ENGINE_ENABLE_ASSERTS` | Debug/RelWithDebInfo | Enables `WEIRD_ASSERT` runtime assertions (abort on violation); disabled in Release |
 | `WEIRD_USE_FBDEV_EGL` | `OFF` | fbdev EGL backend for Mali devices (no GBM/KMS) |
 | `WEIRD_ENGINE_USE_RUNTIME_ASSETS` | `OFF` | Load shaders/fonts from `./shaders/` `./fonts/` instead of source tree |
 
@@ -41,6 +36,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
   - `sample-scenes` → `WeirdSamples` (main demo)
   - `3d-experiments`, `opengl-experiments` — other demos
   - `empty-project` — starter template
+- **ServiceProvider pattern**: `Scene` state is highly encapsulated. Game systems should use `ServiceProvider` (passed into update/render loops) to interact with rendering, audio, or physics systems instead of accessing `Scene` internals.
 - Entry point for games: `WeirdEngine::start(sceneManager, ...)` in `include/weird-engine.h`.
 
 ## Dependencies
@@ -59,3 +55,9 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 - The `build/` and `build-muos/` directories are separate CMake trees; do not mix them.
 - `compile_flags.txt` exists for clangd; it does not drive the actual build.
 - The `.vscode/settings.json` enables `WEIRD_ENGINE_BUILD_EXAMPLES=ON` by default.
+
+## Commit Guidelines
+
+- **Naming Convention**: Prefix all commit messages with the affected module or system name, followed by a colon and a space. Keep the prefix lowercase.
+  - Prefix Examples: `scene:`, `core:`, `physics:`, `renderer:`, `examples:`, `tools:`, `core/assert:`
+  - Full Example: `physics: add BodyUserData for attaching custom data to rigidbodies`

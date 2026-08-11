@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/resources/Shader.h"
@@ -19,10 +19,10 @@
 namespace WeirdEngine::SDFShaderGenerationSystem
 {
 	template <typename ShapeClass, typename RenderContext>
-	inline void update(ECSManager& ecs, RenderContext& ctx, WeirdRenderer::Shader& shader,
+	inline void update(Registry& registry, RenderContext& ctx, WeirdRenderer::Shader& shader,
 					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
-		const auto componentArray = ecs.getComponentManager<ShapeClass>()->getComponentArray();
+		const auto componentArray = registry.getComponentManager<ShapeClass>()->getComponentArray();
 
 		if (!ctx.shapesNeedUpdate)
 		{

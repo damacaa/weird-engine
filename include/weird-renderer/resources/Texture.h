@@ -35,6 +35,10 @@ namespace WeirdEngine
 				, height(0) {};
 
 			Texture(const char* image);
+			Texture(const std::string& image)
+				: Texture(image.c_str())
+			{
+			}
 
 			Texture(glm::vec4 color);
 

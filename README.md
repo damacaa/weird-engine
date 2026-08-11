@@ -1,66 +1,275 @@
+# Weird Engine
 
-# Weird Engine  
+Weird Engine is a C++20 game engine designed for 2D and 3D Signed Distance Field (SDF) rendering.
 
-## Overview  
+## Features
 
-Weird Engine is a simple yet unique game engine featuring:  
+- **Ray Marching Renderer**: Renders 2D and 3D Signed Distance Fields using custom OpenGL ES shaders.
+- **Physics Engine**: Calculates 2D Position-Based Dynamics (PBD) with SDF collision detection.
+- **Entity Component System (ECS)**: Manages entities, component storage, and system dispatching.
+- **Service Architecture**: Provides decoupled engine services through a single provider interface.
 
-- **Custom OpenGL Renderer**: Uses ray marching to render 2D Signed Distance Fields (SDFs).  
-- **Physics Engine**: Implements Position-Based Dynamics (PBD) with custom SDF-based collision detection.  
-- **ECS Architecture**: A fully custom-built Entity Component System (ECS).  
+---
 
-## Getting Started  
-
-### Creating Your First Project  
-
-1. Navigate to `/CMake/create-project`.  
-2. Place your header files (`.h`) in the `/include` directory.  
-3. Place your source files (`.cpp`) in the `/src` directory.  
-   - You can create subfolders for better organization.  
-4. Build witch CMake and run your project.  
-
-### Linux
-You'll need to install SDL3 dependencies:
-[SDL3 Linux README](https://wiki.libsdl.org/SDL3/README-linux)
-
-### Issues downloading SDL submodule
-```
-git rm --cached third-party/SDL
-rm -rf .git/modules/third-party/SDL
-rm -rf third-party/SDL
-
-git submodule add https://github.com/libsdl-org/SDL.git third-party/SDL
-```
-
-## Anbernic muOS Deployment
-
-Weird Engine includes generic scripts for building and deploying games directly to Anbernic handheld consoles running muOS over MTP. These scripts are located in `scripts/anbernic/`.
-
-You can use these generic scripts to deploy *any* game built with Weird Engine without needing to copy the scripts to your game's folder. The scripts automatically detect your project's name, cross-compile it via Podman, package assets, generate launcher scripts, and push the files to the device.
+## Getting Started
 
 ### Prerequisites
 
-- [Podman](https://podman.io/) installed on your machine (used to safely isolate the cross-compiler toolchain).
-- The device must be connected to your PC via USB and mounted via MTP (e.g., `mtp:/RG35XX-H/SD2`).
+Install the SDL3 development library for your operating system before building.
+Refer to the [SDL3 Linux README](https://wiki.libsdl.org/SDL3/README-linux) for Linux package names.
+
+### Building Your Project with the Template Preset
+
+Weird Engine provides a project template in `examples/empty-project`.
+Use this template to start building a new game.
+
+1. Copy the `examples/empty-project` directory to your project location.
+2. Open `CMakeLists.txt` in your new project directory.
+3. Configure the engine source location:
+   - **Local Engine (Default)**: Set `USE_LOCAL_WEIRD_ENGINE` to `ON`. Set `WEIRD_ENGINE_LOCAL_PATH` to your local engine directory.
+   - **Automatic Download**: Set `USE_LOCAL_WEIRD_ENGINE` to `OFF`. CMake automatically downloads Weird Engine from GitHub.
+4. Place your header files in `include/` and source files in `src/`.
+5. Place your game assets in `assets/`.
+6. Configure and build the project using CMake:
+
+```bash
+cmake -B build -S .
+cmake --build build
+```
+
+7. Run the compiled executable from the build directory.
+
+---
+
+## Engine Architecture
+
+For detailed guides, refer to:
+- [Scene and ECS Architecture Guide](docs/SCENE_AND_ECS.md)
+- [Defining Shapes with SDFs Guide](docs/SDF_SHAPES.md)
+
+### Creating a Scene
+
+Inherit from one of the scene base classes in `include/weird-engine/Scene.h`:
+
+- `Scene2D`: Uses 2D ray marching and 2D physics.
+- `Scene3D`: Uses 3D ray marching.
+- `SceneBoth`: Combines 2D and 3D ray marching paths.
+
+Register your scene in `main()` with the `SceneManager` instance:
+
+```cpp
+#include <weird-engine.h>
+
+using namespace WeirdEngine;
+
+class MyScene : public Scene2D
+{
+public:
+	MyScene()
+	{
+		addStartSystem(onStartSystem);
+	}
+};
+
+int main(int argc, char* argv[])
+{
+	SceneManager& sceneManager = SceneManager::getInstance();
+	sceneManager.registerScene<MyScene>("my-scene");
+	start(sceneManager, {}, {}, {}, argc, argv);
+}
+```
+
+### Entities and Components
+
+Entities are unique numerical identifiers.
+The `Registry` class manages entities and stores components.
+
+#### Creating an Entity
+
+Call `registry.createEntity()` to make a new entity:
+
+```cpp
+Entity entity = registry.createEntity();
+```
+
+#### Adding Components
+
+Call `registry.addComponent<T>(entity)` to attach a component to an entity:
+
+```cpp
+auto& transform = registry.addComponent<Transform>(entity);
+transform.position = vec3(0.0f, 10.0f, 0.0f);
+
+auto& dot = registry.addComponent<Dot>(entity);
+dot.materialId = DisplaySettings::LightGray;
+```
+
+If you modify a component after creation, mark it dirty if required:
+
+```cpp
+registry.setComponentDirty(transform);
+```
+
+#### Creating and Registering Custom Components
+
+Define custom components as C++ structures:
+
+```cpp
+struct Health
+{
+	int current = 100;
+	int max = 100;
+};
+```
+
+The `Registry` automatically registers new component types when first accessed.
+You can also register component types explicitly:
+
+```cpp
+registry.registerComponent<Health>();
+```
+
+#### Scene State Component Pattern
+
+Store scene variables in an ECS component instead of global variables.
+Create a `State` component and attach it to a dedicated entity:
+
+```cpp
+struct State
+{
+	int score = 0;
+	float timer = 0.0f;
+};
+
+void onCreateSystem(Registry& registry, ServiceProvider& services)
+{
+	Entity stateEntity = registry.createEntity();
+	registry.addComponent<State>(stateEntity);
+	services.tags().tag(stateEntity, "state");
+	services.serialization().blacklistEntity(stateEntity);
+}
+```
+
+### Systems and Logic
+
+Add game logic using the System Dispatcher or legacy callbacks.
+
+#### System Dispatcher (Recommended)
+
+Systems are plain free functions or lambdas with this signature:
+
+```cpp
+void system(Registry& registry, ServiceProvider& services);
+```
+
+Register systems inside your scene constructor:
+
+```cpp
+MyScene()
+{
+	addCreateSystem(onCreateSystem);
+	addStartSystem(onStartSystem);
+	addUpdateSystem(movementSystem);
+	addUpdateSystem(combatSystem);
+	addImGuiRenderSystem(uiSystem);
+	addEntityCollisionSystem(onCollisionSystem);
+	addEntityShapeCollisionSystem(onShapeCollisionSystem);
+	addDestroySystem(onDestroySystem);
+}
+```
+
+Systems registered to the same stage run sequentially in registration order.
+
+#### Service Provider Interface
+
+Systems access engine subsystems through the `ServiceProvider` facade:
+
+- `services.input()`: Read keyboard, mouse, and gamepad inputs.
+- `services.physics()`: Change gravity, damping, pause state, or run raycasts.
+- `services.render()`: Control camera, lights, and force shader updates.
+- `services.shapes()`: Register custom SDFs and add geometric shapes.
+- `services.materials()`: Create and query 3D materials.
+- `services.audio()`: Play sounds and check friction audio levels.
+- `services.tags()`: Assign unique string tags to entities and look up entities by tag.
+- `services.serialization()`: Save or load `.weird` scene files and blacklist entities.
+- `services.time()`: Read frame delta time and total simulation time.
+- `services.resources()`: Resolve asset paths and file input/output.
+- `services.sceneControl()`: Trigger scene transitions.
+
+#### Legacy Scene Callbacks
+
+Override virtual methods in `Scene` to use legacy callbacks:
+
+```cpp
+class MyScene : public Scene2D
+{
+protected:
+	void onStart(Registry& registry, ServiceProvider& services) override {}
+	void onUpdate(Registry& registry, ServiceProvider& services) override {}
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& target) override {}
+};
+```
+
+Note: Use `onRender` specifically when you need custom 3D render pipeline operations.
+
+#### Physics Thread Callbacks
+
+Physics simulation steps run on a dedicated thread.
+Override these virtual methods to execute logic mid-step:
+
+- `onPhysicsStep(Simulation2D& simulation)`
+- `onPhysicsRigidBodyCollision(Simulation2D& simulation, PhysicsCollisionEvent& event)`
+- `onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)`
+
+Physics callbacks receive `Simulation2D&` only.
+Physics callbacks cannot access `Registry` or `ServiceProvider` because the main thread owns the ECS.
+
+To associate custom data with physics bodies, derive from `BodyUserData`:
+
+```cpp
+struct CharacterData : BodyUserData
+{
+	static constexpr int TYPE = 1;
+	CharacterData() { type = TYPE; }
+	float jumpStrength = 10.0f;
+};
+
+// Hand off ownership to the simulation:
+services.physics().setUserData(rb.simulationId, std::make_unique<CharacterData>());
+
+// Query data back in physics callbacks:
+if (auto* data = simulation.getUserDataAs<CharacterData>(bodyId))
+{
+	simulation.addImpulseForce(bodyId, vec2(0.0f, data->jumpStrength));
+}
+```
+
+---
+
+## Anbernic muOS Deployment
+
+Weird Engine includes scripts for building and deploying games to Anbernic handhelds running muOS.
+Find these scripts in `scripts/anbernic/`.
+
+### Prerequisites
+
+- Install [Podman](https://podman.io/) on your PC.
+- Mount the console SD card over USB using MTP (for example `mtp:/RG35XX-H/SD2`).
 
 ### Deploying a Game
 
-To build and deploy a game to the console:
+Run `deploy-muos.sh` with your project path and MTP destination:
 
 ```bash
-# General Usage
-/path/to/weird-engine/scripts/anbernic/deploy-muos.sh <path_to_game_project> <mtp_base_path>
-
-# Example: Deploying a game from its own directory
-cd my-awesome-game
-../weird-engine/scripts/anbernic/deploy-muos.sh . mtp:/RG35XX-H/SD2
+/path/to/weird-engine/scripts/anbernic/deploy-muos.sh . mtp:/RG35XX-H/SD2
 ```
 
 ### Fetching Device Logs
 
-If you need to retrieve `log.txt` or screenshots from the device after running your game:
+Pull log files and screenshots from the device:
 
 ```bash
-../weird-engine/scripts/anbernic/fetch-logs.sh . mtp:/RG35XX-H/SD2
+/path/to/weird-engine/scripts/anbernic/fetch-logs.sh . mtp:/RG35XX-H/SD2
 ```
-Logs will be saved to a timestamped folder inside your project's `device-logs/` directory.
+
+Logs are saved to `device-logs/` inside your project directory.

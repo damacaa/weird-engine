@@ -11,6 +11,7 @@ public:
 	WaterScene() {};
 
 private:
+	Entity m_light0;
 	Shader m_waterShader;
 
 	RenderPlane m_renderPlane;
@@ -44,18 +45,27 @@ private:
 
 	// -------------------------------------------------------------------------
 
-	void onCreate() override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
-		m_waterShader = Shader(ASSETS_PATH "water/shaders/water.vert", ASSETS_PATH "water/shaders/water.frag");
+		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
+							   services.resources().assetPath("water/shaders/water.frag"));
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.4f, 1.0f)),
-									glm::vec4(1.0f, 1.0f, 1.0f, 0.5f)});
+		m_light0 = registry.createEntity();
+		{
+			Transform& t = registry.addComponent<Transform>(m_light0);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
+
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.5f);
+		}
 
 		m_waterPlane.build();
 	}
 
-	void onDestroy() override
+	void onDestroy(Registry& registry, ServiceProvider& services) override
 	{
 		m_waterShader.free();
 
@@ -76,56 +86,57 @@ private:
 		float buoyancy = 10.0f; // how strongly this entity is affected by the water surface
 	};
 
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
 		{
-			m_dot = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(m_dot);
+			m_dot = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(m_dot);
 			t.position = vec3(0, 0, 0);
-			auto& renderer = ecs.addComponent<Dot>(m_dot);
+			auto& renderer = registry.addComponent<Dot>(m_dot);
 			renderer.materialId = redMat.id;
-			ecs.addComponent<Floatable>(m_dot);
+			registry.addComponent<Floatable>(m_dot);
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(3, 0, 0);
 
-			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
-			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
+			MeshRenderer& mr = registry.addComponent<MeshRenderer>(entity);
+			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 
-			ecs.addComponent<Floatable>(entity);
+			registry.addComponent<Floatable>(entity);
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 3, 20);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 3, 20);
 	}
 
 	float m_time = 0.0f;
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		float delta = services.time().deltaTime();
+		if (services.input().getKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_time += delta;
 
-		const auto& floatables = ecs.getComponentArray<Floatable>();
+		const auto& floatables = registry.getComponentArray<Floatable>();
 
 		for (int i = 0; i < floatables->getSize(); i++)
 		{
 			auto& floatable = floatables->getDataAtIdx(i);
 
 			// Keep the dot riding the water surface
-			Transform& transform = ecs.getComponent<Transform>(floatables->getEntityAtIdx(i));
+			Transform& transform = registry.getComponent<Transform>(floatables->getEntityAtIdx(i));
 			glm::vec2 flatPos = {transform.position.x, transform.position.z};
 			float centerHeight = m_waterPlane.waterHeightAt(flatPos, m_time);
 			transform.position.y = centerHeight;
@@ -142,12 +153,14 @@ private:
 		}
 	}
 
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
-		WeirdRenderer::Camera& sceneCamera = getCamera();
-		float time = getTime();
+		WeirdRenderer::Camera& sceneCamera =
+			registry.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
+		float time = services.time().time();
 
-		auto& lights = getLigths();
+		auto& light0_t = registry.getComponent<Transform>(m_light0);
+		auto& light0_lc = registry.getComponent<LightComponent>(m_light0);
 
 		// ── Snapshot the current scene colour + depth ────────────────────────
 		// We need to read from these textures while drawing the water plane,
@@ -187,15 +200,15 @@ private:
 		m_snapshotDepth.bind(1);
 		m_waterShader.setUniform("u_screenSize", glm::vec2((float)w, (float)h));
 
-		int numLights = (std::min)((int)lights.size(), 8);
+		int numLights = 1;
 		m_waterShader.setUniform("u_numLights", numLights);
 		for (int i = 0; i < numLights; i++)
 		{
 			std::string prefix = "u_lights[" + std::to_string(i) + "].";
-			m_waterShader.setUniform(prefix + "position", lights[i].position);
-			m_waterShader.setUniform(prefix + "direction", lights[i].rotation);
-			m_waterShader.setUniform(prefix + "color", lights[i].color);
-			m_waterShader.setUniform(prefix + "type", (int)lights[i].type);
+			m_waterShader.setUniform(prefix + "position", light0_t.position);
+			m_waterShader.setUniform(prefix + "direction", light0_t.rotation);
+			m_waterShader.setUniform(prefix + "color", light0_lc.color);
+			m_waterShader.setUniform(prefix + "type", (int)light0_lc.type);
 		}
 
 		glm::mat4 waterModel = glm::mat4(1.0f);

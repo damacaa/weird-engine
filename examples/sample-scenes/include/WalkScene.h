@@ -30,66 +30,73 @@ private:
 	Entity m_head;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
-		m_background.type = BackgroundType::Sky;
-		m_background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
-		m_background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
-		m_background.scale = 0.2f;
+		auto& background = services.render().getBackground();
+		background.type = BackgroundType::Sky;
+		background.primaryColor = vec4(0.2f, 0.55f, 0.9f, 1.0f);
+		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
+		background.scale = 0.2f;
 
-		auto tags = loadWeirdFile(ASSETS_PATH "man.weird");
+		auto tags = services.serialization().loadWeirdFile(services.resources().assetPath("man.weird"));
 
-		Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
+		Entity firstCreated = static_cast<Entity>(registry.getEntityCount());
 
-		Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
+		Entity lastCreated = static_cast<Entity>(registry.getEntityCount());
 
 		for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 		{
-			auto& t = ecs.getComponent<Transform>(firstCreated + e);
+			auto& t = registry.getComponent<Transform>(firstCreated + e);
 			t.position += vec3(-10.0f, 0.0f, 0.0f);
 		}
 
 		Entity leftFootEntity = tags["foot_left"];
-		ecs.addComponent<Foot>(leftFootEntity);
+		registry.addComponent<Foot>(leftFootEntity);
 
 		Entity rightFootEntity = tags["foot_right"];
-		ecs.addComponent<Foot>(rightFootEntity);
+		registry.addComponent<Foot>(rightFootEntity);
 
 		m_head = tags["head"];
 
-		float boundsVars2[8]{0.0f, -24.0f, 200.0f, 20.0f};
-		Entity inside =
-			addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen, CombinationType::Addition);
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 0.0f},
+												  {Primitives::Box::POS_Y, -24.0f},
+												  {Primitives::Box::SIZE_X, 200.0f},
+												  {Primitives::Box::SIZE_Y, 20.0f}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightGreen),
+									.combination = CombinationType::Addition});
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 
-		Entity globalSettingsEnt = ecs.createEntity();
-		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
+		Entity globalSettingsEnt = registry.createEntity();
+		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = -10.0f;
-		ecs.setComponentDirty(settings);
+		registry.setComponentDirty(settings);
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		float delta = services.time().deltaTime();
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
+
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
-		updatePhysics(delta, ecs);
+		updatePhysics(delta, registry);
 	}
 
 	int m_currentFoot = 0;
 	bool m_feetTouching = false;
-	void updatePhysics(float delta, ECSManager& ecs)
+	void updatePhysics(float delta, Registry& registry)
 	{
-		auto componentArray = ecs.getComponentArray<Foot>();
-		auto rigidBodies = ecs.getComponentArray<RigidBody2D>();
+		auto componentArray = registry.getComponentArray<Foot>();
+		auto rigidBodies = registry.getComponentArray<RigidBody2D>();
 
 		for (size_t i = 0; i < componentArray->getSize(); i++)
 		{
@@ -101,28 +108,29 @@ private:
 				if (foot.onFloor)
 				{
 					rb.isFixed = true;
-					ecs.setComponentDirty(rb);
+					registry.setComponentDirty(rb);
 				}
 				continue;
 			}
 
-			auto& headRB = ecs.getComponent<RigidBody2D>(m_head);
+			auto& headRB = registry.getComponent<RigidBody2D>(m_head);
 			headRB.pendingImpulseForce += vec2(0.0f, 1.0f);
 
 			rb.isFixed = false;
-			ecs.setComponentDirty(rb);
+			registry.setComponentDirty(rb);
 
 			// Start step
 			if (!foot.stepStarted)
 			{
 				if (foot.onFloor)
 				{
-					foot.initialPos = vec2(ecs.getComponent<Transform>(componentArray->getEntityAtIdx(i)).position);
+					foot.initialPos =
+						vec2(registry.getComponent<Transform>(componentArray->getEntityAtIdx(i)).position);
 					foot.stepStarted = true;
 					foot.t = 0.0f;
 					// rb.position = foot.initialPos + vec2(0.0f, 0.1f);
 					rb.isFixed = false;
-					ecs.setComponentDirty(rb);
+					registry.setComponentDirty(rb);
 				}
 			}
 			else
@@ -167,23 +175,25 @@ private:
 		m_feetTouching = false;
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(Registry& registry, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		Entity entityA = event.entityA;
 		Entity entityB = event.entityB;
 
-		if (ecs.hasComponent<Foot>(entityA) && ecs.hasComponent<Foot>(entityB))
+		if (registry.hasComponent<Foot>(entityA) && registry.hasComponent<Foot>(entityB))
 		{
 			m_feetTouching = true;
 		}
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(Registry& registry, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
 		Entity entity = event.entity;
-		if (ecs.hasComponent<Foot>(entity))
+		if (registry.hasComponent<Foot>(entity))
 		{
-			auto& foot = ecs.getComponent<Foot>(entity);
+			auto& foot = registry.getComponent<Foot>(entity);
 			if (event.raw.state == CollisionState::START)
 			{
 				foot.onFloor = true;

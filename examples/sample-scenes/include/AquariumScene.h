@@ -72,72 +72,85 @@ private:
 	static constexpr float TANK_W = TANK_RIGHT - TANK_LEFT;
 	static constexpr float TANK_H = TANK_TOP - TANK_BOTTOM;
 
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
-		m_background.type = BackgroundType::Sky;
-		m_background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
-		m_background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
-		m_background.scale = 0.15f;
+		auto& background = services.render().getBackground();
+		background.type = BackgroundType::Sky;
+		background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
+		background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
+		background.scale = 0.15f;
 
-		Entity globalSettingsEnt = ecs.createEntity();
-		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
+		Entity globalSettingsEnt = registry.createEntity();
+		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = -10.0f;
 		settings.damping = 0.025f;
-		ecs.setComponentDirty(settings);
+		registry.setComponentDirty(settings);
 
-		createJellyfish(ecs, 0.0f, 25.0f, 4 + 0, 1.3f, 0.0f);
-		createJellyfish(ecs, 15.0f, 20.0f, 4 + 3, 1.6f, 1.5f);
-		createJellyfish(ecs, 30.0f, 28.0f, 4 + 6, 1.1f, 3.0f);
-		createJellyfish(ecs, 40.0f, 15.0f, 4 + 9, 1.4f, 4.5f);
+		createJellyfish(registry, services, 0.0f, 25.0f, 4 + 0, 1.3f, 0.0f);
+		createJellyfish(registry, services, 15.0f, 20.0f, 4 + 3, 1.6f, 1.5f);
+		createJellyfish(registry, services, 30.0f, 28.0f, 4 + 6, 1.1f, 3.0f);
+		createJellyfish(registry, services, 40.0f, 15.0f, 4 + 9, 1.4f, 4.5f);
 
-		createEel(ecs, -10.0f, 50.0f, 20, 1.0f, 4);
-		createEel(ecs, 40.0f, 40.0f, 18, 1.0f, 8);
-		createEel(ecs, 10.0f, 30.0f, 22, 0.9f, 6);
+		createEel(registry, -10.0f, 50.0f, 20, 1.0f, 4);
+		createEel(registry, 40.0f, 40.0f, 18, 1.0f, 8);
+		createEel(registry, 10.0f, 30.0f, 22, 0.9f, 6);
 
 		{
-			float seaweedVars[8] = {3.0f, 1.2f, 2.5f};
-			Entity seaweed = addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::Green);
-			auto& sw = ecs.addComponent<Seaweed>(seaweed);
+			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+														 .variables = {{Primitives::SineWave::AMPLITUDE, 3.0f},
+																	   {Primitives::SineWave::PERIOD, 1.2f},
+																	   {Primitives::SineWave::SPEED, 2.5f}},
+														 .material = static_cast<uint16_t>(DisplaySettings::Green)});
+			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 0.0f;
 		}
 
 		{
-			float seaweedVars[8] = {2.0f, 2.0f, 1.8f};
-			Entity seaweed = addShape(DefaultShapes::SINE, seaweedVars, DisplaySettings::LightGreen);
-			auto& sw = ecs.addComponent<Seaweed>(seaweed);
+			Entity seaweed =
+				services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+											.variables = {{Primitives::SineWave::AMPLITUDE, 2.0f},
+														  {Primitives::SineWave::PERIOD, 2.0f},
+														  {Primitives::SineWave::SPEED, 1.8f}},
+											.material = static_cast<uint16_t>(DisplaySettings::LightGreen)});
+			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 1.5f;
 		}
 
-		{
-			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H};
-			Entity box =
-				addShape(DefaultShapes::BOX, boxVars, DisplaySettings::LightBlue, CombinationType::Intersection);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, TANK_CX},
+												  {Primitives::Box::POS_Y, TANK_CY},
+												  {Primitives::Box::SIZE_X, TANK_W},
+												  {Primitives::Box::SIZE_Y, TANK_H}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightBlue),
+									.combination = CombinationType::Intersection});
 
-		{
-			float boxVars[8] = {TANK_CX, TANK_CY, TANK_W, TANK_H, 1.0f};
-			Entity box = addShape(DefaultShapes::BOX_LINE, boxVars, DisplaySettings::LightBlue);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX_LINE,
+									.variables = {{Primitives::Box::POS_X, TANK_CX},
+												  {Primitives::Box::POS_Y, TANK_CY},
+												  {Primitives::Box::SIZE_X, TANK_W},
+												  {Primitives::Box::SIZE_Y, TANK_H},
+												  {4, 1.0f}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightBlue)});
 
 		for (int i = 0; i < 40; i++)
 		{
-			Entity fish = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(fish);
+			Entity fish = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(fish);
 			float fx = TANK_LEFT + 5.0f + static_cast<float>(std::rand() % 60);
 			float fy = TANK_BOTTOM + 5.0f + static_cast<float>(std::rand() % 35);
 			t.position = vec3(fx, fy, 0.0f);
 
-			auto& dot = ecs.addComponent<Dot>(fish);
+			auto& dot = registry.addComponent<Dot>(fish);
 			dot.materialId = 4 + (i % 12);
 
-			auto& rb = ecs.addComponent<RigidBody2D>(fish);
+			auto& rb = registry.addComponent<RigidBody2D>(fish);
 			rb.pendingImpulseForce += vec2(static_cast<float>((std::rand() % 100) - 50) * 0.05f,
 										   static_cast<float>((std::rand() % 100) - 50) * 0.05f);
 
-			auto& fishComp = ecs.addComponent<Fish>(fish);
+			auto& fishComp = registry.addComponent<Fish>(fish);
 			float angle = static_cast<float>(std::rand() % 628) * 0.01f;
 			fishComp.velocity = vec2(std::cos(angle), std::sin(angle)) * 3.0f;
 			fishComp.maxSpeed = 5.0f;
@@ -147,22 +160,26 @@ private:
 			fishComp.perceptionRadius = 5.0f;
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(TANK_CX, TANK_CY, 45.0f);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(TANK_CX, TANK_CY, 45.0f);
 	}
 
-	void createJellyfish(ECSManager& ecs, float x, float y, int material, float scale, float phase)
+	void createJellyfish(Registry& registry, ServiceProvider& services, float x, float y, int material, float scale,
+						 float phase)
 	{
-		Entity bellEntity = ecs.createEntity();
-		auto& t = ecs.addComponent<Transform>(bellEntity);
+		Entity bellEntity = registry.createEntity();
+		auto& t = registry.addComponent<Transform>(bellEntity);
 		t.position = vec3(x, y, 0.0f);
-		auto& dot = ecs.addComponent<Dot>(bellEntity);
+		auto& dot = registry.addComponent<Dot>(bellEntity);
 		dot.materialId = material;
-		auto& rb = ecs.addComponent<RigidBody2D>(bellEntity);
+		auto& rb = registry.addComponent<RigidBody2D>(bellEntity);
 
-		float bellVars[8] = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f};
-		Entity bellShape = addShape(DefaultShapes::STAR, bellVars, material, CombinationType::Addition, false);
+		Entity bellShape = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+													   .variables = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f},
+													   .material = static_cast<uint16_t>(material),
+													   .combination = CombinationType::Addition,
+													   .hasCollision = false});
 
-		auto& jf = ecs.addComponent<JellyfishComponent>(bellEntity);
+		auto& jf = registry.addComponent<JellyfishComponent>(bellEntity);
 		jf.bellShape = bellShape;
 		jf.pulsePhase = phase;
 		jf.pulseSpeed = 0.5f + static_cast<float>(std::rand() % 100) * 0.01f;
@@ -181,19 +198,19 @@ private:
 
 			for (int s = 0; s < segmentsPerTentacle; s++)
 			{
-				Entity segment = ecs.createEntity();
-				auto& st = ecs.addComponent<Transform>(segment);
+				Entity segment = registry.createEntity();
+				auto& st = registry.addComponent<Transform>(segment);
 				st.position = vec3(x + offsetX, y - 2.5f * scale - s * 0.8f, 0.0f);
-				auto& sd = ecs.addComponent<Dot>(segment);
+				auto& sd = registry.addComponent<Dot>(segment);
 				sd.materialId = material;
-				auto& srb = ecs.addComponent<RigidBody2D>(segment);
+				auto& srb = registry.addComponent<RigidBody2D>(segment);
 
 				jf.tentacleSegments.push_back(segment);
 
 				if (s > 0)
 				{
-					Entity springEnt = ecs.createEntity();
-					auto& spring = ecs.addComponent<Spring>(springEnt);
+					Entity springEnt = registry.createEntity();
+					auto& spring = registry.addComponent<Spring>(springEnt);
 					spring.entityA = jf.tentacleSegments[jf.tentacleSegments.size() - 2];
 					spring.entityB = segment;
 					spring.stiffness = 0.8f;
@@ -201,8 +218,8 @@ private:
 				}
 			}
 
-			Entity springEnt = ecs.createEntity();
-			auto& spring = ecs.addComponent<Spring>(springEnt);
+			Entity springEnt = registry.createEntity();
+			auto& spring = registry.addComponent<Spring>(springEnt);
 			spring.entityA = bellEntity;
 			spring.entityB = jf.tentacleSegments[t_idx * segmentsPerTentacle];
 			spring.stiffness = 0.5f;
@@ -210,13 +227,13 @@ private:
 		}
 	}
 
-	void createEel(ECSManager& ecs, float x, float y, int numSegments, float spacing, int baseMaterial)
+	void createEel(Registry& registry, float x, float y, int numSegments, float spacing, int baseMaterial)
 	{
 		float angle = static_cast<float>(std::rand() % 628) * 0.01f;
 		vec2 dir(std::cos(angle), std::sin(angle));
 
-		Entity eelEnt = ecs.createEntity();
-		auto& eel = ecs.addComponent<EelComponent>(eelEnt);
+		Entity eelEnt = registry.createEntity();
+		auto& eel = registry.addComponent<EelComponent>(eelEnt);
 		eel.phaseOffset = static_cast<float>(std::rand() % 100) * 0.0628f;
 		eel.speed = 2.0f + static_cast<float>(std::rand() % 100) * 0.02f;
 		eel.direction = dir;
@@ -225,21 +242,21 @@ private:
 
 		for (int i = 0; i < numSegments; i++)
 		{
-			Entity seg = ecs.createEntity();
-			auto& t = ecs.addComponent<Transform>(seg);
+			Entity seg = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(seg);
 			t.position = vec3(x + dir.x * i * spacing, y + dir.y * i * spacing, 0.0f);
 
-			auto& dot = ecs.addComponent<Dot>(seg);
+			auto& dot = registry.addComponent<Dot>(seg);
 			dot.materialId = static_cast<unsigned int>(baseMaterial + (i % 4));
 
-			ecs.addComponent<RigidBody2D>(seg);
+			registry.addComponent<RigidBody2D>(seg);
 
 			eel.segments.push_back(seg);
 
 			if (i > 0)
 			{
-				Entity springEnt = ecs.createEntity();
-				auto& spring = ecs.addComponent<Spring>(springEnt);
+				Entity springEnt = registry.createEntity();
+				auto& spring = registry.addComponent<Spring>(springEnt);
 				spring.entityA = eel.segments[i - 1];
 				spring.entityB = seg;
 				spring.stiffness = 0.25f;
@@ -248,50 +265,51 @@ private:
 		}
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		float delta = services.time().deltaTime();
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
 		m_time += delta;
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
-		vec2 mouseWorld =
-			ECS::Camera::screenPositionToWorldPosition2D(cameraTransform, vec2(Input::GetMouseX(), Input::GetMouseY()));
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(
+			cameraTransform, vec2(services.input().getMouseX(), services.input().getMouseY()));
 
-		if (Input::GetKeyDown(Input::E))
+		if (services.input().getKeyDown(Input::E))
 		{
 			constexpr int FOOD_COUNT = 30;
 			for (int i = 0; i < FOOD_COUNT; i++)
 			{
-				Entity food = ecs.createEntity();
-				auto& ft = ecs.addComponent<Transform>(food);
+				Entity food = registry.createEntity();
+				auto& ft = registry.addComponent<Transform>(food);
 				float ox = static_cast<float>(std::rand() % 200 - 100) * 0.06f;
 				float oy = static_cast<float>(std::rand() % 200 - 100) * 0.06f;
 				ft.position = vec3(mouseWorld.x + ox, mouseWorld.y + oy, 0.0f);
-				ecs.setComponentDirty(ft);
-				auto& fd = ecs.addComponent<Dot>(food);
+				registry.setComponentDirty(ft);
+				auto& fd = registry.addComponent<Dot>(food);
 				fd.materialId = 8;
-				auto& frb = ecs.addComponent<RigidBody2D>(food);
+				auto& frb = registry.addComponent<RigidBody2D>(food);
 
-				ecs.addComponent<FishFood>(food);
+				registry.addComponent<FishFood>(food);
 			}
 		}
 
-		ecs.forEach<JellyfishComponent, Transform, RigidBody2D>(
+		registry.forEach<JellyfishComponent, Transform, RigidBody2D>(
 			[&](Entity bellEntity, JellyfishComponent& jf, Transform& bellT, RigidBody2D& rb)
 			{
-				auto& cs = ecs.getComponent<CustomShape>(jf.bellShape);
+				auto& cs = registry.getComponent<CustomShape>(jf.bellShape);
 				cs.parameters[0] = bellT.position.x;
 				cs.parameters[1] = bellT.position.y;
 				float pulse = std::sin(m_time * jf.pulseSpeed + jf.pulsePhase);
 				cs.parameters[3] = 1.0f + pulse * 0.8f;
 				cs.parameters[2] = 2.5f + pulse * 0.3f;
-				ecs.setComponentDirty(cs);
+				registry.setComponentDirty(cs);
 
 				float pulseUp = (pulse > 0.0f) ? pulse * pulse * 20.5f : 0.0f;
 				rb.pendingImpulseForce += jf.direction * pulseUp;
@@ -332,14 +350,14 @@ private:
 				}
 			});
 
-		ecs.forEach<Seaweed, CustomShape>(
+		registry.forEach<Seaweed, CustomShape>(
 			[&](Entity, Seaweed& sw, CustomShape& cs)
 			{
 				cs.parameters[3] = std::sin(m_time * 1.5f + sw.animationOffset) * 4.0f;
-				ecs.setComponentDirty(cs);
+				registry.setComponentDirty(cs);
 			});
 
-		ecs.forEach<EelComponent>(
+		registry.forEach<EelComponent>(
 			[&](Entity, EelComponent& eel)
 			{
 				if (std::rand() % 120 == 0)
@@ -353,15 +371,15 @@ private:
 				}
 
 				Entity head = eel.segments[0];
-				auto& headT = ecs.getComponent<Transform>(head);
+				auto& headT = registry.getComponent<Transform>(head);
 				vec2 headPos(headT.position);
 
-				auto& headRb = ecs.getComponent<RigidBody2D>(head);
+				auto& headRb = registry.getComponent<RigidBody2D>(head);
 				headRb.pendingContinuousForce += eel.direction * eel.speed * 120.0f;
 
 				{
-					auto foodArray = ecs.getComponentArray<FishFood>();
-					auto transformArray = ecs.getComponentArray<Transform>();
+					auto foodArray = registry.getComponentArray<FishFood>();
+					auto transformArray = registry.getComponentArray<Transform>();
 					constexpr float eatRadius = 2.0f;
 					for (size_t fi = 0; fi < foodArray->getSize(); fi++)
 					{
@@ -376,7 +394,7 @@ private:
 						if (toFood.x * toFood.x + toFood.y * toFood.y < eatRadius * eatRadius)
 						{
 							ff.eaten = true;
-							ecs.destroyEntity(foodEntity);
+							registry.destroyEntity(foodEntity);
 
 							Entity lastSeg = eel.segments.back();
 							Entity prevSeg =
@@ -391,19 +409,19 @@ private:
 							else
 								tailDir /= tailLen;
 
-							Entity newSeg = ecs.createEntity();
-							auto& nt = ecs.addComponent<Transform>(newSeg);
+							Entity newSeg = registry.createEntity();
+							auto& nt = registry.addComponent<Transform>(newSeg);
 							nt.position = vec3(lastT.position.x + tailDir.x * eel.segmentSpacing,
 											   lastT.position.y + tailDir.y * eel.segmentSpacing, 0.0f);
 
-							auto& nd = ecs.addComponent<Dot>(newSeg);
+							auto& nd = registry.addComponent<Dot>(newSeg);
 							nd.materialId =
 								static_cast<unsigned int>(eel.baseMaterial + static_cast<int>(eel.segments.size() % 4));
 
-							ecs.addComponent<RigidBody2D>(newSeg);
+							registry.addComponent<RigidBody2D>(newSeg);
 
-							Entity springEnt = ecs.createEntity();
-							auto& spring = ecs.addComponent<Spring>(springEnt);
+							Entity springEnt = registry.createEntity();
+							auto& spring = registry.addComponent<Spring>(springEnt);
 							spring.entityA = lastSeg;
 							spring.entityB = newSeg;
 							spring.stiffness = 0.25f;
@@ -417,8 +435,8 @@ private:
 
 				for (size_t i = 1; i < eel.segments.size(); i++)
 				{
-					auto& segT = ecs.getComponent<Transform>(eel.segments[i]);
-					auto& prevT = ecs.getComponent<Transform>(eel.segments[i - 1]);
+					auto& segT = registry.getComponent<Transform>(eel.segments[i]);
+					auto& prevT = registry.getComponent<Transform>(eel.segments[i - 1]);
 					vec2 bodyDir = vec2(segT.position) - vec2(prevT.position);
 					float bodyLen = length(bodyDir);
 
@@ -427,15 +445,15 @@ private:
 						vec2 normal(bodyDir.y, -bodyDir.x);
 						normal /= bodyLen;
 						float wave = std::sin(m_time * 5.0f + eel.phaseOffset + static_cast<float>(i) * 0.6f);
-						auto& segRb = ecs.getComponent<RigidBody2D>(eel.segments[i]);
+						auto& segRb = registry.getComponent<RigidBody2D>(eel.segments[i]);
 						segRb.pendingContinuousForce += normal * wave * 80.0f;
 					}
 				}
 
 				for (Entity seg : eel.segments)
 				{
-					auto& segT = ecs.getComponent<Transform>(seg);
-					auto& segRb = ecs.getComponent<RigidBody2D>(seg);
+					auto& segT = registry.getComponent<Transform>(seg);
+					auto& segRb = registry.getComponent<RigidBody2D>(seg);
 					segRb.pendingContinuousForce += vec2(0.0f, 5.0f);
 					if (segT.position.x < TANK_LEFT + 5.0f)
 						segRb.pendingImpulseForce += vec2(2.0f, 0.0f);
@@ -449,17 +467,17 @@ private:
 			});
 
 		// Boids
-		updateFishBoids(delta, ecs);
+		updateFishBoids(delta, registry);
 	}
 
-	void updateFishBoids(float delta, ECSManager& ecs)
+	void updateFishBoids(float delta, Registry& registry)
 	{
 		PROFILE_SCOPE("Boids");
 
-		auto fishArray = ecs.getComponentArray<Fish>();
-		auto foodArray = ecs.getComponentArray<FishFood>();
-		auto transformArray = ecs.getComponentArray<Transform>();
-		auto rbArray = ecs.getComponentArray<RigidBody2D>();
+		auto fishArray = registry.getComponentArray<Fish>();
+		auto foodArray = registry.getComponentArray<FishFood>();
+		auto transformArray = registry.getComponentArray<Transform>();
+		auto rbArray = registry.getComponentArray<RigidBody2D>();
 
 		const size_t fishCount = fishArray->getSize();
 		if (fishCount == 0)
@@ -651,7 +669,7 @@ private:
 				{
 					fd.energy += 1.0f;
 					foodArray->getDataFromEntity(fc.entity).eaten = true;
-					ecs.destroyEntity(fc.entity);
+					registry.destroyEntity(fc.entity);
 					foodCache[fi] = foodCache.back();
 					foodCache.pop_back();
 					fi--;
@@ -671,16 +689,15 @@ private:
 		}
 	}
 
-	void onEntityShapeCollision(ECSManager& ecs, WeirdEngine::EntityShapeCollisionEvent& event) override
+	void onEntityShapeCollision(Registry& registry, ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event) override
 	{
-		event.raw.friction *= 50.0f;
-
 		if (std::rand() % 8 == 0)
 		{
-			playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(event.raw.position, 0.0f), 1});
+			services.audio().playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(event.raw.position, 0.0f), 1});
 		}
 
-		auto eelArray = ecs.getComponentArray<EelComponent>();
+		auto eelArray = registry.getComponentArray<EelComponent>();
 		for (size_t i = 0; i < eelArray->getSize(); i++)
 		{
 			auto& eel = eelArray->getDataAtIdx(i);
@@ -691,14 +708,15 @@ private:
 			}
 		}
 
-		if (ecs.hasComponent<JellyfishComponent>(event.entity))
+		if (registry.hasComponent<JellyfishComponent>(event.entity))
 		{
-			auto& jf = ecs.getComponent<JellyfishComponent>(event.entity);
+			auto& jf = registry.getComponent<JellyfishComponent>(event.entity);
 			jf.direction = -jf.direction;
 		}
 	}
 
-	void onEntityCollision(ECSManager& ecs, WeirdEngine::EntityCollisionEvent& event) override
+	void onEntityCollision(Registry& registry, ServiceProvider& services,
+						   WeirdEngine::EntityCollisionEvent& event) override
 	{
 		Entity a = event.entityA;
 		Entity b = event.entityB;
@@ -708,13 +726,13 @@ private:
 
 		if (std::rand() % 10 == 0)
 		{
-			playSound({0.01f, 300.0f + (std::rand() % 200), true, vec3(0.0f), 1});
+			services.audio().playSound({0.01f, 300.0f + (std::rand() % 200), true, vec3(0.0f), 1});
 		}
 
-		if (ecs.hasComponent<Fish>(a) && ecs.hasComponent<Fish>(b))
+		if (registry.hasComponent<Fish>(a) && registry.hasComponent<Fish>(b))
 		{
-			auto& fishA = ecs.getComponent<Fish>(a);
-			auto& fishB = ecs.getComponent<Fish>(b);
+			auto& fishA = registry.getComponent<Fish>(a);
+			auto& fishB = registry.getComponent<Fish>(b);
 
 			if (fishA.energy >= 3.0f && fishB.energy >= 3.0f && fishA.mateCooldown <= 0.0f &&
 				fishB.mateCooldown <= 0.0f)
@@ -724,26 +742,26 @@ private:
 				fishA.mateCooldown = 5.0f;
 				fishB.mateCooldown = 5.0f;
 
-				auto& tA = ecs.getComponent<Transform>(a);
-				auto& tB = ecs.getComponent<Transform>(b);
-				auto& dotA = ecs.getComponent<Dot>(a);
+				auto& tA = registry.getComponent<Transform>(a);
+				auto& tB = registry.getComponent<Transform>(b);
+				auto& dotA = registry.getComponent<Dot>(a);
 
 				int numOffspring = 1 + (std::rand() % 4);
 				for (int i = 0; i < numOffspring; i++)
 				{
-					Entity baby = ecs.createEntity();
-					auto& bt = ecs.addComponent<Transform>(baby);
+					Entity baby = registry.createEntity();
+					auto& bt = registry.addComponent<Transform>(baby);
 					float ox = static_cast<float>(std::rand() % 100 - 50) * 0.03f;
 					float oy = static_cast<float>(std::rand() % 100 - 50) * 0.03f;
 					bt.position = (tA.position + tB.position) * 0.5f + vec3(ox, oy, 0.0f);
-					ecs.setComponentDirty(bt);
+					registry.setComponentDirty(bt);
 
-					auto& bd = ecs.addComponent<Dot>(baby);
+					auto& bd = registry.addComponent<Dot>(baby);
 					bd.materialId = static_cast<unsigned int>(dotA.materialId);
 
-					auto& brb = ecs.addComponent<RigidBody2D>(baby);
+					auto& brb = registry.addComponent<RigidBody2D>(baby);
 
-					auto& bFish = ecs.addComponent<Fish>(baby);
+					auto& bFish = registry.addComponent<Fish>(baby);
 					float angle = static_cast<float>(std::rand() % 628) * 0.01f;
 					bFish.velocity = vec2(std::cos(angle), std::sin(angle)) * 3.0f;
 					bFish.maxSpeed = fishA.maxSpeed;

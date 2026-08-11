@@ -9,6 +9,8 @@ public:
 	FireScene() {};
 
 private:
+	Entity m_light0;
+	Entity m_light1;
 	Shader m_flameShader;
 	Shader m_particlesShader;
 	Shader m_smokeShader;
@@ -37,30 +39,48 @@ private:
 
 	RenderPlane m_renderPlane;
 
-	void onCreate() override
+	void onCreate(Registry& registry, ServiceProvider& services) override
 	{
 
 		// Base shaders
 		m_backgroundShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "misc/background_spherical_grid.frag");
-		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/lit.frag");
+		m_litShader = Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/lit.frag"));
 		m_bloomShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bloom.frag");
 		m_blurShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/blur.frag");
 		m_brightFilterShader =
 			Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "postprocess/bright_filter.frag");
 
 		// Custom shaders
-		m_flameShader = Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/flame.frag");
-		m_particlesShader =
-			Shader(ASSETS_PATH "fire/shaders/fireParticles.vert", ASSETS_PATH "fire/shaders/fireParticles.frag");
-		m_smokeShader =
-			Shader(ASSETS_PATH "fire/shaders/smokeParticles.vert", ASSETS_PATH "fire/shaders/smokeParticles.frag");
+		m_flameShader =
+			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/flame.frag"));
+		m_particlesShader = Shader(services.resources().assetPath("fire/shaders/fireParticles.vert"),
+								   services.resources().assetPath("fire/shaders/fireParticles.frag"));
+		m_smokeShader = Shader(services.resources().assetPath("fire/shaders/smokeParticles.vert"),
+							   services.resources().assetPath("fire/shaders/smokeParticles.frag"));
 		m_heatDistortionShader =
-			Shader(SHADERS_PATH "3d/geometry.vert", ASSETS_PATH "fire/shaders/heatDistortion.frag");
+			Shader(SHADERS_PATH "3d/geometry.vert", services.resources().assetPath("fire/shaders/heatDistortion.frag"));
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f), 0, glm::vec3(0.0f), glm::vec4(0.0f)});
-		getLigths().push_back(
-			Light{1, glm::vec3(0.0f, 1.0f, 0.0f), 0, glm::vec3(0.0f), glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
+		m_light0 = registry.createEntity();
+		{
+			Transform& t = registry.addComponent<Transform>(m_light0);
+			t.position = glm::vec3(0.0f);
+			t.rotation = glm::vec3(0.0f);
+
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(0.0f);
+		}
+		m_light1 = registry.createEntity();
+		{
+			Transform& t = registry.addComponent<Transform>(m_light1);
+			t.position = glm::vec3(0.0f, 1.0f, 0.0f);
+			t.rotation = glm::vec3(0.0f);
+
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light1);
+			lc.type = LightType::Point;
+			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
+		}
 
 		// Load meshes
 		// Quad geom
@@ -144,8 +164,8 @@ private:
 		}
 
 		// Fire textures
-		m_noiseTexture = new Texture(ASSETS_PATH "fire/fire.jpg");
-		m_flameShape = new Texture(ASSETS_PATH "fire/flame.png");
+		m_noiseTexture = new Texture(services.resources().assetPath("fire/fire.jpg"));
+		m_flameShape = new Texture(services.resources().assetPath("fire/flame.png"));
 
 		m_sceneTextureBeforeFire = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_postProcessTextureFront = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
@@ -166,7 +186,7 @@ private:
 		m_bloomRenderTarget->bindColorTextureToFrameBuffer(*m_brightPassTexture);
 	}
 
-	void onDestroy() override
+	void onDestroy(Registry& registry, ServiceProvider& services) override
 	{
 		m_flameShader.free();
 		m_particlesShader.free();
@@ -207,28 +227,29 @@ private:
 	}
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugFly = false;
+		services.debug().setDebugFly(false);
 	}
 
 	float m_time = 3.1416f;
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		float delta = services.time().deltaTime();
+		if (services.input().getKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
-		if (m_debugFly)
+		if (services.debug().debugFly())
 		{
 			return;
 		}
 
-		if (!Input::GetKey(Input::Space))
+		if (!services.input().getKey(Input::Space))
 		{
 			static float speed = 0.15f;
-			if (Input::GetKey(Input::R))
+			if (services.input().getKey(Input::R))
 			{
 				m_time -= delta * speed;
 			}
@@ -238,7 +259,7 @@ private:
 			}
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 
 		static float amplitude = 10.0f;
 
@@ -291,10 +312,11 @@ private:
 		glDisable(GL_BLEND);
 	}
 
-	void onRender(WeirdRenderer::RenderTarget& renderTarget) override
+	void onRender(Registry& registry, ServiceProvider& services, WeirdRenderer::RenderTarget& renderTarget) override
 	{
-		WeirdRenderer::Camera& sceneCamera = getCamera();
-		float time = getTime();
+		WeirdRenderer::Camera& sceneCamera =
+			registry.getComponent<WeirdEngine::ECS::Camera>(services.render().getCameraEntity()).camera;
+		float time = services.time().time();
 
 		glDepthMask(GL_FALSE);
 		glDisable(GL_DEPTH_TEST);
@@ -321,12 +343,15 @@ private:
 		m_litShader.setUniform("u_far", sceneCamera.farPlane);
 
 		// Pass light rotation
-		auto& lights = getLigths();
-		glm::vec3 position = lights[1].position;
+		auto& light0_t = registry.getComponent<Transform>(m_light0);
+		auto& light0_lc = registry.getComponent<LightComponent>(m_light0);
+		auto& light1_t = registry.getComponent<Transform>(m_light1);
+		auto& light1_lc = registry.getComponent<LightComponent>(m_light1);
+		glm::vec3 position = light1_t.position;
 		m_litShader.setUniform("u_lightPos", position);
-		glm::vec3 direction = lights[1].rotation;
+		glm::vec3 direction = light1_t.rotation;
 		m_litShader.setUniform("u_directionalLightDir", direction);
-		glm::vec4 color = lights[1].color;
+		glm::vec4 color = light1_lc.color;
 		m_litShader.setUniform("u_lightColor", color);
 
 		// bind current FBO
@@ -399,7 +424,7 @@ private:
 		// Fire
 		renderFire(sceneCamera, time);
 
-		if (Input::GetKey(Input::P))
+		if (services.input().getKey(Input::P))
 		{
 			return;
 		}
@@ -451,7 +476,7 @@ private:
 		RenderTarget* finalTarget = m_postProcessDoubleBuffer[!horizontal];
 		finalTarget->getColorAttachment()->bind(1);
 
-		if (Input::GetKey(Input::B))
+		if (services.input().getKey(Input::B))
 		{
 			finalTarget->getColorAttachment()->bind(0);
 		}

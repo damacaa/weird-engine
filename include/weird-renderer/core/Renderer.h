@@ -31,6 +31,7 @@ namespace WeirdEngine
 			void render(Scene& scene, const double time, const double delta);
 			void setWindowTitle(const char* name);
 			void setWindowSize(unsigned int width, unsigned int height);
+			void handleEvent(const SDL_Event& event);
 
 			SDL_Window* getWindow();
 
@@ -78,6 +79,7 @@ namespace WeirdEngine
 			std::string m_lastScreenshotPath;
 
 			// Stats UI (F4)
+			bool m_showDebugUI = false;
 			bool m_showStatsUI = false;
 			static constexpr int STATS_HISTORY_SIZE = 128;
 			float m_frametimeHistory[STATS_HISTORY_SIZE] = {};

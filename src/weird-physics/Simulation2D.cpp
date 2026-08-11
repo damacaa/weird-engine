@@ -3,10 +3,37 @@
 #include <algorithm>
 
 #include "glm/gtx/norm.hpp"
+#include "weird-engine/Assert.h"
 #include "weird-engine/Logger.h"
 
 namespace WeirdEngine
 {
+
+	namespace
+	{
+		// True on whatever thread currently runs physics steps. Lets
+		// Simulation2D::isPhysicsExecutionContext() and the getPhysics*()
+		// assertions work in both threaded and single-threaded simulation.
+		thread_local bool g_inPhysicsExecution = false;
+
+		class PhysicsExecutionScope
+		{
+		public:
+			PhysicsExecutionScope()
+				: m_previous(g_inPhysicsExecution)
+			{
+				g_inPhysicsExecution = true;
+			}
+
+			~PhysicsExecutionScope()
+			{
+				g_inPhysicsExecution = m_previous;
+			}
+
+		private:
+			bool m_previous;
+		};
+	} // namespace
 
 #define MEASURE_PERFORMANCE false
 #define INTEGRATION_METHOD 1
@@ -17,8 +44,7 @@ namespace WeirdEngine
 	const float EPSILON = 0.0001f;
 
 	Simulation2D::Simulation2D(size_t size, const PhysicsSettings& settings)
-		: m_isPaused(false)
-		, m_positions(new vec2[size])
+		: m_positions(new vec2[size])
 		, m_positionsRead(new vec2[size])
 		, m_positionsAux(new vec2[size])
 		, m_previousPositions(new vec2[size])
@@ -32,11 +58,10 @@ namespace WeirdEngine
 		, m_continuousForcesWrite(new vec2[size])
 		, m_mass(new float[size])
 		, m_invMass(new float[size])
+		, m_userData(new BodyUserData*[size])
 		, m_maxSize(size)
 		, m_size(0)
 		, m_allocated(0)
-		, m_simulationDelay(0)
-		, m_simulationTime(0)
 		, m_substeps(1)
 		, m_simulationFrequency(settings.simulationFrequency)
 		, m_fixedDeltaTime(1.0 / static_cast<double>(settings.simulationFrequency))
@@ -45,7 +70,6 @@ namespace WeirdEngine
 		, m_gravity(settings.gravity)
 		, m_push(10.0f * settings.simulationFrequency)
 		, m_damping(settings.damping)
-		, m_simulating(false)
 		, m_collisionDetectionMethod(MethodNaive)
 		, m_useSimdOperations(false)
 		, m_diameter(1.0f)
@@ -69,6 +93,7 @@ namespace WeirdEngine
 
 			m_mass[i] = 1000.0f;
 			m_invMass[i] = 0.001f;
+			m_userData[i] = nullptr;
 		}
 
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>();
@@ -76,6 +101,14 @@ namespace WeirdEngine
 
 	Simulation2D::~Simulation2D()
 	{
+		// Free any user data still attached to live bodies (the simulation
+		// owns these pointers; removed bodies free theirs in removeObject).
+		for (size_t i = 0; i < m_allocated; ++i)
+		{
+			delete m_userData[i];
+			m_userData[i] = nullptr;
+		}
+
 		delete[] m_positions;
 		delete[] m_positionsRead;
 		delete[] m_positionsAux;
@@ -89,6 +122,7 @@ namespace WeirdEngine
 		delete[] m_continuousForcesWrite;
 		delete[] m_mass;
 		delete[] m_invMass;
+		delete[] m_userData;
 	}
 
 	void Simulation2D::pause()
@@ -122,6 +156,8 @@ namespace WeirdEngine
 
 	void Simulation2D::process()
 	{
+		PhysicsExecutionScope physicsExecution;
+
 		int steps = 0;
 
 		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
@@ -292,6 +328,39 @@ namespace WeirdEngine
 		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
 	}
+	void Simulation2D::setUserData(SimulationID id, std::unique_ptr<BodyUserData> data)
+	{
+		WEIRD_ASSERT(!isPhysicsExecutionContext(), "setUserData() may not be called from physics execution context");
+
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
+
+		// Bounds-check against m_allocated, not m_size: bodies can carry user
+		// data before they are activated (ActivatePending) later in the frame.
+		WEIRD_ASSERT(id < m_allocated, "setUserData() called with invalid simulation id");
+
+		// Free any prior data attached to this body before overwriting.
+		delete m_userData[id];
+		m_userData[id] = data.release();
+	}
+
+	BodyUserData* Simulation2D::getUserData(SimulationID id)
+	{
+		// Inside a physics step the structural mutex is already held, so the
+		// read is lock-free; on the main thread it is serialized against
+		// structural changes (removeObject renumbering).
+		if (isPhysicsExecutionContext())
+		{
+			if (id >= m_allocated)
+				return nullptr;
+			return m_userData[id];
+		}
+
+		std::lock_guard<std::mutex> lock(m_structuralMutex);
+
+		if (id >= m_allocated)
+			return nullptr;
+		return m_userData[id];
+	}
 
 	void Simulation2D::startSimulationThread()
 	{
@@ -433,7 +502,7 @@ namespace WeirdEngine
 
 			// Check
 			bool currentCollision = false;
-			ShapeCollisionEvent collisionEvent;
+			PhysicsShapeCollisionEvent collisionEvent;
 			collisionEvent.body = static_cast<SimulationID>(i);
 
 			// Static shapes
@@ -769,8 +838,8 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				CollisionEvent event{col.A, col.B};
-				m_collisionCallback(event, m_callbackUserData);
+				PhysicsCollisionEvent event{col.A, col.B};
+				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
 			}
 		}
 
@@ -954,6 +1023,7 @@ namespace WeirdEngine
 	SimulationID Simulation2D::generateSimulationID()
 	{
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
+		std::lock_guard<std::mutex> readLock(m_readMutex);
 
 		SimulationID id = static_cast<SimulationID>(m_allocated);
 
@@ -973,6 +1043,7 @@ namespace WeirdEngine
 		m_mass[id] = 1.0f;
 		m_invMass[id] = 1.0f;
 		m_collisionMap[id] = false;
+		m_userData[id] = nullptr;
 
 		m_allocated++;
 		return id;
@@ -989,7 +1060,7 @@ namespace WeirdEngine
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex);
+		std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex, m_readMutex);
 
 		if (m_size == 0 || id >= m_size)
 		{
@@ -1001,6 +1072,12 @@ namespace WeirdEngine
 
 		if (toId != fromId)
 		{
+			// The simulation owns user data: free the removed body's data and
+			// move the swapped body's data along with it.
+			delete m_userData[toId];
+			m_userData[toId] = m_userData[fromId];
+			m_userData[fromId] = nullptr;
+
 			m_positions[toId] = m_positions[fromId];
 			m_positionsRead[toId] = m_positionsRead[fromId];
 			m_positionsAux[toId] = m_positionsAux[fromId];
@@ -1019,6 +1096,12 @@ namespace WeirdEngine
 			{
 				m_collisionMap[toId] = m_collisionMap[fromId];
 			}
+		}
+		else
+		{
+			// Removing the last body: just free its user data.
+			delete m_userData[toId];
+			m_userData[toId] = nullptr;
 		}
 
 		// Fix constraints (potentially slow...)
@@ -1221,6 +1304,9 @@ namespace WeirdEngine
 		return std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) != m_fixedObjects.end();
 	}
 
+	// Safe from any thread (main thread, or physics callbacks while the
+	// physics thread runs). Prefer copyReadBuffers() when reading many
+	// bodies at once on the main thread.
 	vec2 Simulation2D::getPosition(SimulationID entity)
 	{
 		std::lock_guard<std::mutex> lock(m_readMutex);
@@ -1243,8 +1329,12 @@ namespace WeirdEngine
 		}
 	}
 
+	// Safe from any thread (main thread, or physics callbacks while the
+	// physics thread runs). Prefer copyReadBuffers() when reading many
+	// bodies at once on the main thread.
 	vec2 Simulation2D::getVelocity(SimulationID id)
 	{
+		std::lock_guard<std::mutex> lock(m_readMutex);
 		return m_velocitiesRead[id];
 	}
 
@@ -1264,11 +1354,51 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::updateTransform(Transform& transform, SimulationID id)
+	void Simulation2D::copyReadBuffers(ReadBufferSnapshot& snapshot)
 	{
+		// Reading the published buffers while physics is executing would race
+		// against the read-buffer swap that happens at the end of every step.
+		WEIRD_ASSERT(!isPhysicsExecutionContext(), "copyReadBuffers() may not be called from physics execution "
+												   "(onPhysicsStep/onCollision/onShapeCollision). "
+												   "Use simulation.getPhysicsPosition()/getPhysicsVelocity() instead.");
+
 		std::lock_guard<std::mutex> lock(m_readMutex);
-		transform.position.x = m_positionsRead[id].x;
-		transform.position.y = m_positionsRead[id].y;
+
+		// Copy every allocated slot, not just the active bodies: bodies
+		// created this frame have ids in [m_size, m_allocated) until their
+		// ActivatePending command is processed, and the readback must be able
+		// to look up those ids.
+		size_t count = m_allocated;
+		if (snapshot.positions.size() < count)
+			snapshot.positions.resize(count);
+		if (snapshot.velocities.size() < count)
+			snapshot.velocities.resize(count);
+
+		std::copy(m_positionsRead, m_positionsRead + count, snapshot.positions.begin());
+		std::copy(m_velocitiesRead, m_velocitiesRead + count, snapshot.velocities.begin());
+	}
+
+	bool Simulation2D::isPhysicsExecutionContext()
+	{
+		return g_inPhysicsExecution;
+	}
+
+	vec2 Simulation2D::getPhysicsPosition(SimulationID id) const
+	{
+		WEIRD_ASSERT(isPhysicsExecutionContext(), "getPhysicsPosition() may only be called from physics execution "
+												  "(onPhysicsStep/onCollision/onShapeCollision callbacks). "
+												  "Use simulation.getPosition() from the main thread instead.");
+
+		return m_positions[id];
+	}
+
+	vec2 Simulation2D::getPhysicsVelocity(SimulationID id) const
+	{
+		WEIRD_ASSERT(isPhysicsExecutionContext(), "getPhysicsVelocity() may only be called from physics execution "
+												  "(onPhysicsStep/onCollision/onShapeCollision callbacks). "
+												  "Use simulation.getVelocity() from the main thread instead.");
+
+		return m_velocities[id];
 	}
 
 	void Simulation2D::setMass(SimulationID id, float mass)

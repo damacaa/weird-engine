@@ -15,13 +15,14 @@ public:
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
-	std::string imagePath = ASSETS_PATH "jimmy.jpg";
+	std::string imagePath;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
+		imagePath = services.resources().assetPath("jimmy.jpg");
 
 		// Check if the folder exists
 		if (!std::filesystem::exists("cache/"))
@@ -60,35 +61,41 @@ private:
 
 			material = (materialId.size() > 0 && materialId.size() <= 2) ? std::stoi(materialId) : 0;
 
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(x + 0.5f, y + 0.5f, 0);
 
-			Dot& dot = ecs.addComponent<Dot>(entity);
+			Dot& dot = registry.addComponent<Dot>(entity);
 			dot.materialId = material;
 
-			RigidBody2D& rb = ecs.addComponent<RigidBody2D>(entity);
+			RigidBody2D& rb = registry.addComponent<RigidBody2D>(entity);
 		}
 
 		// Floor
-		{
-			float variables[8]{15, -5, 25.0f, 5.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 15.0f},
+												  {Primitives::Box::POS_Y, -5.0f},
+												  {Primitives::Box::SIZE_X, 25.0f},
+												  {Primitives::Box::SIZE_Y, 5.0f}},
+									.material = 3});
 
 		// Wall right
-		{
-			float variables[8]{30 + 5, 20, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 35.0f},
+												  {Primitives::Box::POS_Y, 20.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
 		// Wall left
-		{
-			float variables[8]{0 - 5, 20, 5.0f, 30.0f, 0.0f};
-			addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, -5.0f},
+												  {Primitives::Box::POS_Y, 20.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
 	vec3 getColor(const char* path, float x, float y)
@@ -167,17 +174,17 @@ private:
 		return closestIndex;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
 		// Get colors
-		if (Input::GetKeyDown(Input::P))
+		if (services.input().getKeyDown(Input::P))
 		{
-			auto components = ecs.getComponentArray<RigidBody2D>();
+			auto components = registry.getComponentArray<RigidBody2D>();
 
 			// Result string
 			std::string result;
@@ -186,7 +193,7 @@ private:
 			{
 				RigidBody2D& rb = components->getDataAtIdx(i);
 				Entity rbOwner = components->getEntityAtIdx(i);
-				Transform& t = ecs.getComponent<Transform>(rbOwner);
+				Transform& t = registry.getComponent<Transform>(rbOwner);
 
 				int x = static_cast<int>(floor(t.position.x));
 				int y = static_cast<int>(floor(30.0f - t.position.y));

@@ -8,6 +8,7 @@
 #include "LifeScene.h"
 #include "MouseCollisionScene.h"
 #include "RopeScene.h"
+#include "ServiceShowcaseScene.h"
 #include "ShapesCombinations.h"
 #include "TextScene.h"
 #include "WalkScene.h"
@@ -27,6 +28,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
 	sceneManager.registerScene<DestroyScene>("destroy-test");
+	// sceneManager.registerScene<ServiceShowcaseScene>("service-showcase");
 
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 	// sceneManager.registerScene<ImageScene>("image");

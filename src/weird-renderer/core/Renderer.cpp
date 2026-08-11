@@ -171,34 +171,12 @@ namespace WeirdEngine
 #ifndef WEIRD_DISABLE_IMGUI
 			{
 				PROFILE_SCOPE("ImGui");
-				static bool showDebugUI = false;
-				static bool showStatsUI = false;
-
-				if (Input::GetKeyDown(Input::F3))
-				{
-					showDebugUI = !showDebugUI;
-				}
-
-				if (Input::GetKeyDown(Input::F4))
-				{
-					showStatsUI = !showStatsUI;
-					if (showStatsUI)
-						Profiler::get().enableRealtime();
-					else
-						Profiler::get().disableRealtime();
-				}
-
-				if (Input::GetKeyDown(Input::F11))
-				{
-					bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
-					SDL_SetWindowFullscreen(m_window, !isFullscreen);
-				}
 
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplSDL3_NewFrame();
 				ImGui::NewFrame();
 
-				if (showDebugUI)
+				if (m_showDebugUI)
 				{
 					ImGui::Begin("Engine Settings");
 
@@ -309,7 +287,7 @@ namespace WeirdEngine
 					ImGui::End();
 				}
 
-				if (showStatsUI)
+				if (m_showStatsUI)
 				{
 					drawStatsUI(scene, delta);
 				}
@@ -768,7 +746,7 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE("3D Render", enable2D);
 
-				auto& lights = scene.getLigths();
+				auto& lights = scene.getLights();
 
 				// --- 1. GBuffer pass: render mesh geometry first ---
 				// Depth testing and culling must be enabled for correct GBuffer writes.
@@ -782,7 +760,8 @@ namespace WeirdEngine
 					glFrontFace(GL_CCW);
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
-					m_meshPipeline->render(scene, m_3DWorldPipeline->getRenderTarget(), sceneCamera, lights);
+					m_meshPipeline->render(m_3DWorldPipeline->getRenderTarget(), scene.getDrawQueue(), sceneCamera,
+										   lights);
 					Profiler::get().gpuSync();
 				}
 
@@ -803,12 +782,13 @@ namespace WeirdEngine
 					static vec4* data3D = nullptr;
 					scene.get3DShapesData(data3D, dataSize3D, shapeCount3D);
 
-					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
-											  m_meshPipeline->getGBufferAlbedo(), m_meshPipeline->getGBufferWorldPos(),
-											  m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
-											  m_meshPipeline->getDepthTexture(), m_meshPipeline->getBackDepthTexture(),
-											  scene.getMaterials());
+					SDF3DRenderPipeline::GBuffer gbuffer = {
+						m_meshPipeline->getGBufferAlbedo(), m_meshPipeline->getGBufferWorldPos(),
+						m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
+						m_meshPipeline->getDepthTexture(),	m_meshPipeline->getBackDepthTexture()};
 
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
+											  gbuffer, scene.getMaterials());
 					glEnable(GL_CULL_FACE);
 					glEnable(GL_DEPTH_TEST);
 					glDepthFunc(GL_LEQUAL);
@@ -851,5 +831,36 @@ namespace WeirdEngine
 			return m_3DWorldPipeline->getOutputTexture();
 		}
 
+	} // namespace WeirdRenderer
+} // namespace WeirdEngine
+namespace WeirdEngine
+{
+	namespace WeirdRenderer
+	{
+		void Renderer::handleEvent(const SDL_Event& event)
+		{
+			if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat)
+			{
+				switch (event.key.key)
+				{
+					case SDLK_F3:
+						m_showDebugUI = !m_showDebugUI;
+						break;
+					case SDLK_F4:
+						m_showStatsUI = !m_showStatsUI;
+						if (m_showStatsUI)
+							Profiler::get().enableRealtime();
+						else
+							Profiler::get().disableRealtime();
+						break;
+					case SDLK_F11:
+					{
+						bool isFullscreen = (SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN) != 0;
+						SDL_SetWindowFullscreen(m_window, !isFullscreen);
+						break;
+					}
+				}
+			}
+		}
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

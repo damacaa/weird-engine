@@ -12,17 +12,17 @@ private:
 	Entity m_ball;
 
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
-		auto& orangeMat = createMaterial();
+		auto& orangeMat = services.materials().createMaterial();
 		orangeMat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
 
-		auto& floorMaterial = createMaterial();
+		auto& floorMaterial = services.materials().createMaterial();
 		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		floorMaterial.secondaryColor = vec4(0.4f, 0.4f, 0.6f, 1.0f);
 		floorMaterial.metallic = 0.7f;
@@ -30,13 +30,13 @@ private:
 		floorMaterial.pattern = MaterialPattern::Checkers;
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0, 1, 0);
 
-			MeshRenderer& mr = ecs.addComponent<MeshRenderer>(entity);
+			MeshRenderer& mr = registry.addComponent<MeshRenderer>(entity);
 
-			auto id = m_resourceManager.getMeshId(ASSETS_PATH "monkey/demo.gltf", entity, true);
+			auto id = services.resources().getMeshId("monkey/demo.gltf", entity, true);
 			mr.mesh = id;
 			// mr.materialIndex = floorMaterial.id;
 
@@ -44,52 +44,63 @@ private:
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(2, 3, 2);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = redMat.id;
 
 			m_ball = entity;
 		}
 
-		{
-			float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f}; // Custom shape
-			Entity start = addShape(DefaultShapes::STAR, vars1, orangeMat, CombinationType::Addition, true, 0);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+									.variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f},
+									.material = orangeMat,
+									.combination = CombinationType::Addition,
+									.hasCollision = true,
+									.group = 0});
+
+		services.shapes().addShape({.shapeId = DefaultShapes3D::PLANE,
+									.variables = {},
+									.material = floorMaterial,
+									.combination = CombinationType::Addition,
+									.hasCollision = false});
 
 		{
-			float vars1[8] = {}; // Custom shape
-			Entity start = addShape(DefaultShapes3D::PLANE, vars1, floorMaterial, CombinationType::Addition, false);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
+			t.position = glm::vec3(0.0f, 3.0f, 0.0f);
+			t.rotation = glm::vec3(0.35f, 0.45f, 0.5f);
+
+			LightComponent& lc = registry.addComponent<LightComponent>(entity);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
 		}
 
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 3.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f),
-									glm::vec4(1.0f, 0.95f, 0.9f, 2.0f)});
-
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2, 10);
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2, 10);
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		if (Input::GetKeyDown(Input::Q))
+		if (services.input().getKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
-		Transform& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		Transform& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 
 		return;
 
 		{
-			Transform& t = ecs.getComponent<Transform>(m_monkey);
+			Transform& t = registry.getComponent<Transform>(m_monkey);
 		}
 
 		{
-			Transform& t = ecs.getComponent<Transform>(m_ball);
-			// t.position.z = 10 * sinf(getTime());
-			t.position.x = 2.0f * sinf(-getTime());
-			t.position.z = 2.0f * cosf(-getTime());
+			Transform& t = registry.getComponent<Transform>(m_ball);
+			// t.position.z = 10 * sinf(services.time().time());
+			t.position.x = 2.0f * sinf(-services.time().time());
+			t.position.z = 2.0f * cosf(-services.time().time());
 		}
 
 		// t.position = cameraTransform.position + vec3(-10, -6, -20);

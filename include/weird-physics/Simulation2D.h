@@ -4,6 +4,7 @@
 #include <bitset>
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <set>
@@ -20,6 +21,7 @@
 #include "weird-engine/vec.h"
 
 #include "PhysicsSettings.h"
+#include "weird-physics/BodyUserData.h"
 
 namespace WeirdEngine
 {
@@ -54,14 +56,14 @@ namespace WeirdEngine
 		END
 	};
 
-	struct CollisionEvent
+	struct PhysicsCollisionEvent
 	{
 		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
 	};
 
-	struct ShapeCollisionEvent
+	struct PhysicsShapeCollisionEvent
 	{
 		CollisionState state;
 		SimulationID body;
@@ -78,8 +80,8 @@ namespace WeirdEngine
 	using StepCallbackFn = void (*)(void*);
 
 	// Define the function pointer type and include a user data pointer
-	using CollisionCallbackFn = void (*)(CollisionEvent&, void*);
-	using ShapeCollisionCallbackFn = void (*)(ShapeCollisionEvent&, void*);
+	using CollisionCallbackFn = void (*)(PhysicsCollisionEvent&, void*);
+	using ShapeCollisionCallbackFn = void (*)(PhysicsShapeCollisionEvent&, void*);
 
 	struct SpatialGridSnapshot
 	{
@@ -120,6 +122,10 @@ namespace WeirdEngine
 		size_t getSize();
 
 		// Interaction
+		// One-shot kick applied to a body. With massIndependent = false the
+		// impulse is a force scaled by the simulation frequency; with
+		// massIndependent = true it is applied as a direct velocity change
+		// (the parameter is the desired delta-v in m/s, regardless of mass).
 		void addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent = false);
 		void setContinuousForce(SimulationID id, const vec2& force, bool massIndependent = false);
 		void swapContinuousForces();
@@ -151,13 +157,40 @@ namespace WeirdEngine
 			return m_stats;
 		}
 
-		// Retrieve results
+		// Retrieve published results. Safe from any thread, including physics
+		// callbacks (they just pay a per-call lock). For reading many bodies
+		// at once on the main thread, copy them into a ReadBufferSnapshot via
+		// copyReadBuffers() instead.
 		vec2 getPosition(SimulationID id);
 		void setPosition(SimulationID id, vec2 pos);
 		vec2 getVelocity(SimulationID id);
 		void setVelocity(SimulationID id, vec2 vel);
-		void updateTransform(Transform& transform, SimulationID id);
 		void setMass(SimulationID id, float mass);
+
+		// Published physics state copied out under a brief lock. Fill it once
+		// per frame with copyReadBuffers(), then iterate the ECS without
+		// holding the simulation mutex.
+		struct ReadBufferSnapshot
+		{
+			std::vector<vec2> positions;
+			std::vector<vec2> velocities;
+		};
+
+		// Copies the published positions/velocities into the snapshot under a
+		// short lock. The snapshot's buffers grow as needed but keep their
+		// capacity across calls. Main thread only; must NOT be called from
+		// physics execution (WEIRD_ASSERT enforces this in debug builds).
+		void copyReadBuffers(ReadBufferSnapshot& snapshot);
+
+		// Current working physics state. PHYSICS EXECUTION ONLY: call these
+		// from onPhysicsStep/onCollision/onShapeCollision callbacks, never
+		// from the main thread (WEIRD_ASSERT enforces this in debug builds).
+		vec2 getPhysicsPosition(SimulationID id) const;
+		vec2 getPhysicsVelocity(SimulationID id) const;
+
+		// True while inside a physics step (physics thread in threaded mode,
+		// main thread in single-threaded mode).
+		static bool isPhysicsExecutionContext();
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
@@ -181,6 +214,50 @@ namespace WeirdEngine
 		void setDamping(float damping)
 		{
 			m_damping = damping;
+		}
+
+		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps
+		// simulation IDs back to entities via the RigidBody2D component array).
+		// Takes ownership via unique_ptr: the simulation deletes the data when
+		// the body is removed (removeObject) and when the simulation is
+		// destroyed. Do not retain the pointer after the call; read or modify
+		// it through getUserData()/getUserDataAs<T>() instead. setUserData() is
+		// main-thread only; getUserData()/getUserDataAs<T>()/forEachUserData()
+		// are safe from the physics callbacks without locks.
+		void setUserData(SimulationID id, std::unique_ptr<BodyUserData> data);
+		BodyUserData* getUserData(SimulationID id);
+
+		// Type-checked cast: returns nullptr unless the attached data exists
+		// and its `type` matches T::TYPE.
+		template <typename T> T* getUserDataAs(SimulationID id)
+		{
+			BodyUserData* data = getUserData(id);
+			if (!data || data->type != T::TYPE)
+				return nullptr;
+			return static_cast<T*>(data);
+		}
+
+		// Calls fn(SimulationID, BodyUserData&) for every active body that has
+		// user data attached. Lock-free from physics callbacks (the step
+		// already holds the structural mutex); serialized on the main thread.
+		template <typename Fn> void forEachUserData(Fn&& fn)
+		{
+			if (isPhysicsExecutionContext())
+			{
+				for (SimulationID id = 0; id < m_size; ++id)
+				{
+					if (m_userData[id])
+						fn(id, *m_userData[id]);
+				}
+				return;
+			}
+
+			std::lock_guard<std::mutex> lock(m_structuralMutex);
+			for (SimulationID id = 0; id < m_size; ++id)
+			{
+				if (m_userData[id])
+					fn(id, *m_userData[id]);
+			}
 		}
 
 		// Constraint structs (public for serialization)
@@ -335,9 +412,9 @@ namespace WeirdEngine
 		float m_fixedDeltaTimeF;
 		int m_relaxationSteps;
 
-		bool m_isPaused;
-		bool m_simulating;
-		double m_simulationDelay;
+		std::atomic<bool> m_isPaused{false};
+		std::atomic<bool> m_simulating{false};
+		std::atomic<double> m_simulationDelay{0.0};
 		std::atomic<double> m_simulationTime{0.0};
 
 		bool m_useSimdOperations;
@@ -366,6 +443,10 @@ namespace WeirdEngine
 		float* m_mass;
 		float* m_invMass;
 
+		// Per-body user data, parallel to the body arrays. Swapped in
+		// removeObject() so the data follows the body through renumbering.
+		BodyUserData** m_userData;
+
 		const float m_diameter;
 		const float m_diameterSquared;
 		const float m_radious;
@@ -381,7 +462,7 @@ namespace WeirdEngine
 		std::vector<DistanceFieldObject2D> m_objects;
 
 		std::vector<uint8_t> m_collisionMap;
-		std::vector<ShapeCollisionEvent> m_collisionQueue;
+		std::vector<PhysicsShapeCollisionEvent> m_collisionQueue;
 
 		float map(vec2 p);
 		float map(vec2 p, int& closestShape);

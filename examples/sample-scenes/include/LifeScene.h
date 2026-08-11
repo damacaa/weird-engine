@@ -27,18 +27,18 @@ public:
 
 private:
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugInput = true;
-		m_debugFly = true;
+		services.debug().setDebugInput(true);
+		services.debug().setDebugFly(true);
 
-		Entity globalSettingsEnt = ecs.createEntity();
-		auto& settings = ecs.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
+		Entity globalSettingsEnt = registry.createEntity();
+		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
 		settings.gravity = 0.0f;
 		settings.damping = 0.1f;
-		ecs.setComponentDirty(settings);
+		registry.setComponentDirty(settings);
 
-		const std::filesystem::path organismsDir(ASSETS_PATH "Organisms");
+		const std::filesystem::path organismsDir(services.resources().assetPath("Organisms"));
 		{
 			int i = 0;
 
@@ -51,32 +51,32 @@ private:
 
 				for (size_t j = 0; j < 3; j++)
 				{
-					Entity firstCreated = static_cast<Entity>(ecs.getEntityCount());
+					Entity firstCreated = static_cast<Entity>(registry.getEntityCount());
 
-					auto tags = loadWeirdFile(entry.path().string());
+					auto tags = services.serialization().loadWeirdFile(entry.path().string());
 
-					Entity lastCreated = static_cast<Entity>(ecs.getEntityCount());
+					Entity lastCreated = static_cast<Entity>(registry.getEntityCount());
 
 					for (Entity e = 0; e < (lastCreated - firstCreated); e++)
 					{
-						if (!ecs.hasComponent<Transform>(firstCreated + e))
+						if (!registry.hasComponent<Transform>(firstCreated + e))
 						{
 							continue;
 						}
 
-						auto& t = ecs.getComponent<Transform>(firstCreated + e);
+						auto& t = registry.getComponent<Transform>(firstCreated + e);
 						t.position += vec3(-10.0f + (float)(i * 10), -10.0f + (float)(j * 10), 0.0f);
 					}
 
 					if (tags.contains("head"))
 					{
 						Entity headEntity = tags["head"];
-						ecs.addComponent<Head>(headEntity);
+						registry.addComponent<Head>(headEntity);
 					}
 					else
 					{
-						auto& a = ecs.getComponent<Dot>(firstCreated);
-						ecs.addComponent<Head>(firstCreated);
+						auto& a = registry.getComponent<Dot>(firstCreated);
+						registry.addComponent<Head>(firstCreated);
 					}
 
 					// break;
@@ -86,33 +86,34 @@ private:
 			}
 		}
 
-		ecs.getComponent<Transform>(m_mainCamera).position = g_cameraPositon;
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
 
-	void onUpdate(float delta, ECSManager& ecs) override
+	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-		g_cameraPositon = ecs.getComponent<Transform>(m_mainCamera).position;
+		float delta = services.time().deltaTime();
+		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
-		if (Input::GetKeyDown(Input::Q) || Input::GetGamepadButtonDown(Input::GamepadButton::North))
+		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
-			setSceneComplete();
+			services.sceneControl().goToNextScene();
 		}
 
-		updateHeads(delta, ecs);
+		updateHeads(delta, registry, services);
 	}
 
-	void updateHeads(float delta, ECSManager& ecs)
+	void updateHeads(float delta, Registry& registry, ServiceProvider& services)
 	{
-		float animationT = std::sin(getTime() * 10.0f) * 0.5f + 0.25f;
+		float animationT = std::sin(services.time().time() * 10.0f) * 0.5f + 0.25f;
 
-		auto headArray = ecs.getComponentArray<Head>();
+		auto headArray = registry.getComponentArray<Head>();
 
 		for (size_t i = 0; i < headArray->getSize(); i++)
 		{
 			auto& head = headArray->getDataAtIdx(i);
 			Entity headEntity = headArray->getEntityAtIdx(i);
 
-			auto& rb = ecs.getComponent<RigidBody2D>(headEntity);
+			auto& rb = registry.getComponent<RigidBody2D>(headEntity);
 			rb.pendingContinuousForce += head.forceMagnitude * head.direction * animationT;
 
 			if (animationT < 0.0f && !head.directionChanged)
@@ -132,7 +133,7 @@ private:
 				head.directionChanged = false;
 			}
 
-			vec2 positon = vec2(ecs.getComponent<Transform>(headEntity).position);
+			vec2 positon = vec2(registry.getComponent<Transform>(headEntity).position);
 			if (length(positon) > 50.0f)
 			{
 				head.direction = -normalize(positon);

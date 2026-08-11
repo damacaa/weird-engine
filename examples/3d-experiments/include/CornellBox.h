@@ -14,122 +14,172 @@ public:
 	CornellBox() {};
 
 private:
+	Entity m_sunLight;
 	// Inherited via Scene
-	void onStart(ECSManager& ecs) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		m_debugFly = true;
+		services.debug().setDebugFly(true);
 
-		auto& ballMat = createMaterial();
+		auto& ballMat = services.materials().createMaterial();
 		ballMat.color = vec4(1.0f);
 		ballMat.metallic = 1.0f;
 		ballMat.roughness = 0.005f;
 
-		auto& redMat = createMaterial();
+		auto& redMat = services.materials().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
-		auto& greenMat = createMaterial();
+		auto& greenMat = services.materials().createMaterial();
 		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
 		greenMat.metallic = 0.5f;
 		greenMat.roughness = 0.1f;
 
-		auto& whiteMat = createMaterial();
+		auto& whiteMat = services.materials().createMaterial();
 		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(0.0f, 0.75f, 0.0f);
 
-			auto& sdf = ecs.addComponent<Dot>(entity);
+			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = ballMat.id;
 		}
 
 		{
-			Entity entity = ecs.createEntity();
-			Transform& t = ecs.addComponent<Transform>(entity);
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(20.0f, 20.0f, 0.0f);
 
-			auto& text = ecs.addComponent<UITextRenderer>(entity);
+			auto& text = registry.addComponent<UITextRenderer>(entity);
 			text.text = "Cornell Box";
 		}
 
 		{
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = registerSDF(box);
+			auto boxId = services.shapes().registerSDF(box);
 
 			// Left
-			{
-				float vars1[8] = {-2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, redMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, -2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = redMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Right
-			{
-				float vars1[8] = {2.0f * 2.6f, 2.6f, 0.0f, 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, greenMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = greenMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Back
-			{
-				float vars1[8] = {0.0f, 2.6f, -2.0f * 2.6f, 3.0f * 2.6f, 2.6f, 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Top
-			{
-				float vars1[8] = {0.0f, 3.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 3.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.0f * 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// Light hole
-			{
-				float vars1[8] = {0.0f, 2.0f * 2.6f, 0.0f, 0.5f, 1.0f, 0.5f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Subtraction, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, 2.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 0.5f},
+													  {Primitives3D::Box::SIZE_Y, 1.0f},
+													  {Primitives3D::Box::SIZE_Z, 0.5f}},
+										.material = whiteMat,
+										.combination = CombinationType::Subtraction,
+										.hasCollision = false});
 
 			// Floor
-			{
-				float vars1[8] = {0.0f, -1.0f * 2.6f, -2.6f, 3.0f * 2.6f, 2.6f, 2.0f * 2.6f}; // Custom shape
-				Entity start = addShape(boxId, vars1, whiteMat, CombinationType::Addition, false);
-			}
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 0.0f},
+													  {Primitives3D::Box::POS_Y, -1.0f * 2.6f},
+													  {Primitives3D::Box::POS_Z, -2.6f},
+													  {Primitives3D::Box::SIZE_X, 3.0f * 2.6f},
+													  {Primitives3D::Box::SIZE_Y, 2.6f},
+													  {Primitives3D::Box::SIZE_Z, 2.0f * 2.6f}},
+										.material = whiteMat,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 
 			// {
 			// 	float vars1[8] = {0.0f, 2.6f, 0.0f, 2.7f, 2.7f, 2.7f}; // Custom shape
-			// 	Entity start = addShape(boxId, vars1, DisplaySettings::White, CombinationType::Intersection, false);
+			// 	Entity start = services.shapes().addShape(boxId, vars1, DisplaySettings::White,
+			// CombinationType::Intersection, false);
 			// }
 		}
 
 		// Sun
-		getLigths().push_back(Light{0, glm::vec3(0.0f, 0.0f, 0.0f), 0, normalize(glm::vec3(0.0f, 0.0f, 0.0f)),
-									glm::vec4(1.0f, 1.0f, 1.0f, 0.0f)});
-
-		getLigths().push_back(Light{1, glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f), 0, glm::vec3(0.0f, 0.0f, 0.0f),
-									glm::vec4(1.0f, 1.0f, 1.0f, 3.0f)});
-
-		// getLigths().push_back(
-		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});
-
-		// getLigths().push_back(
-		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
-
-		ecs.getComponent<Transform>(m_mainCamera).position = vec3(0, 2.6f, 12.0f);
-	}
-
-	void onUpdate(float delta, ECSManager& ecs) override
-	{
-		if (Input::GetKeyDown(Input::Q))
 		{
-			setSceneComplete();
+			m_sunLight = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(m_sunLight);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.0f, 0.0f));
+
+			LightComponent& lc = registry.addComponent<LightComponent>(m_sunLight);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
 		}
 
-		auto& cameraTransform = ecs.getComponent<Transform>(m_mainCamera);
+		{
+			Entity entity = registry.createEntity();
+			Transform& t = registry.addComponent<Transform>(entity);
+			t.position = glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f);
+			t.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 
-		// getLigths()[0].position.x = cameraTransform.position.x;
-		// getLigths()[0].position.y = cameraTransform.position.y;
-		// getLigths()[0].position.z = cameraTransform.position.z;
+			LightComponent& lc = registry.addComponent<LightComponent>(entity);
+			lc.type = LightType::Point;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
+		}
 
-		// getLigths()[0].rotation.x = -cameraTransform.rotation.x;
-		// getLigths()[0].rotation.y = -cameraTransform.rotation.y;
-		// getLigths()[0].rotation.z = -cameraTransform.rotation.z;
+		// getLights().push_back(
+		// 	Light{1, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.35f, 0.45f, 0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)});
+
+		// getLights().push_back(
+		// 	Light{2, glm::vec3(0.0f, 0.0f, 0.0f), 0, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 2.0f, 10.0f)});
+
+		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0, 2.6f, 12.0f);
+	}
+
+	void onUpdate(Registry& registry, ServiceProvider& services) override
+	{
+		if (services.input().getKeyDown(Input::Q))
+		{
+			services.sceneControl().goToNextScene();
+		}
+
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+
+		auto& lightTransform = registry.getComponent<Transform>(m_sunLight);
+		lightTransform.position = cameraTransform.position;
+		lightTransform.rotation = -cameraTransform.rotation;
 	}
 };

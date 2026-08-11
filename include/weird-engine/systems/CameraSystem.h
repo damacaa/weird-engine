@@ -1,5 +1,5 @@
 #pragma once
-#include "weird-engine/ecs/ECS.h"
+#include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 
 namespace WeirdEngine
@@ -8,9 +8,9 @@ namespace WeirdEngine
 	{
 		namespace CameraSystem
 		{
-			inline void update(ECSManager& ecs)
+			inline void update(Registry& registry)
 			{
-				ecs.forEach<Camera, Transform>(
+				registry.forEach<Camera, Transform>(
 					[](Entity camOwner, Camera& c, Transform& t)
 					{
 						c.camera.position = t.position;

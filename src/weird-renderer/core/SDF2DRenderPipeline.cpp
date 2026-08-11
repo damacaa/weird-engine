@@ -79,6 +79,11 @@ namespace WeirdEngine
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_upscaler.frag");
 			m_materialColorShader =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_color.frag");
+			if (m_config.materialBlendIterations > 0)
+			{
+				m_materialColorShader.addDefine("MATERIAL_BLENDING");
+			}
+
 			m_materialBlendShader =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/material_blend.frag");
 			m_defaultBackgroundShader =
@@ -764,8 +769,12 @@ namespace WeirdEngine
 			PROFILE_SCOPE(m_config.isUI ? "renderBackground (UI)" : "renderBackground (World)");
 
 			// Inject code if needed
-			if (bgParams.isDirty)
+			bool isDirty =
+				(m_lastBackgroundType != bgParams.type) || (m_lastBackgroundCustomCode != bgParams.customShaderCode);
+			if (isDirty)
 			{
+				m_lastBackgroundType = bgParams.type;
+				m_lastBackgroundCustomCode = bgParams.customShaderCode;
 				std::string injectedCode = "";
 
 				switch (bgParams.type)

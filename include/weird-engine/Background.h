@@ -21,7 +21,6 @@ namespace WeirdEngine
 		glm::vec4 secondaryColor{0.55f, 0.55f, 0.58f, 1.0f};
 		float scale = 1.0f;
 		float intensity = 1.0f;
-		bool isDirty = true;
 
 		std::string customShaderCode = "";
 	};

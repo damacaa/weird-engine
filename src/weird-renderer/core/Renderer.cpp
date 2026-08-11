@@ -58,7 +58,7 @@ namespace WeirdEngine
 			worldConfig.enableRefraction = true;
 			worldConfig.refractionIntensity = 1.0f;
 			worldConfig.enableAntialiasing = (m_renderScale >= 1.0f);
-			worldConfig.enableMotionBlur = true;
+			worldConfig.enableMotionBlur = settings.enableMotionBlur;
 			worldConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			worldConfig.materialBlendSpeed = 10.0f;
 			worldConfig.motionBlurBlendSpeed = 10.0f;
@@ -82,7 +82,7 @@ namespace WeirdEngine
 			uiConfig.enableRefraction = true;
 			uiConfig.refractionIntensity = 0.1f;
 			uiConfig.enableAntialiasing = (m_renderScale >= 1.0f);
-			uiConfig.enableMotionBlur = true;
+			uiConfig.enableMotionBlur = settings.enableMotionBlur;
 			uiConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			uiConfig.materialBlendSpeed = 5.0f;
 			uiConfig.motionBlurBlendSpeed = 5.0f;

@@ -169,7 +169,7 @@ private:
 			float p[8]{};
 			previewParams(types[i], cx, cy, p);
 
-			Entity e = m_tempSvc->shapes().addUIShape(types[i], p, 2);
+			Entity e = m_tempSvc->shapes().addUIShape({.shapeId = types[i], .variables = p, .material = 2});
 			auto& b = m_tempRegistry->addComponent<ShapeButton>(e);
 			b.modifierAmount = 1.0f;
 			b.clickPadding = 8.0f;
@@ -249,11 +249,15 @@ private:
 			int g = COMB_GRP_BASE + i;
 
 			float p1[8]{cx - off * 0.5f, cy, r};
-			Entity e1 = m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p1, static_cast<uint16_t>(1),
-													   CombinationType::Addition, g);
+			Entity e1 = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+														.variables = p1,
+														.material = 1,
+														.combination = CombinationType::Addition,
+														.group = g});
 
 			float p2[8]{cx + off * 0.5f, cy, r};
-			Entity e2 = m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p2, static_cast<uint16_t>(1), ct[i], g);
+			Entity e2 = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::CIRCLE, .variables = p2, .material = 1, .combination = ct[i], .group = g});
 
 			if (ct[i] == CombinationType::SmoothAddition || ct[i] == CombinationType::SmoothSubtraction)
 				m_tempRegistry->getComponent<UIShape>(e2).smoothFactor = 5.0f;
@@ -287,9 +291,8 @@ private:
 		{
 			float px = START_X + i * MAT_SPACING;
 			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
-			Entity e;
-			UIShape& sh = m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p, e);
-			sh.material = static_cast<uint16_t>(i);
+			Entity e = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::CIRCLE, .variables = p, .material = static_cast<uint16_t>(i)});
 
 			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
 			tog.clickPadding = BTN_SIZE + 3.0f;
@@ -321,8 +324,8 @@ private:
 		{
 			float py = PANEL_TOP_Y - i * PARAM_GAP;
 
-			float bp[8]{HIDDEN, py, P_BTN_W, P_BTN_H};
-			Entity be = m_tempSvc->shapes().addUIShape(DefaultShapes::BOX, bp, static_cast<uint16_t>(3));
+			Entity be = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::BOX, .variables = {HIDDEN, py, P_BTN_W, P_BTN_H}, .material = 3});
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(be);
 			btn.modifierAmount = 1.0f;
 			btn.clickPadding = 3.0f;
@@ -651,8 +654,10 @@ private:
 	{
 		float p[8]{};
 		fillRandomParams(type, p);
-		Entity e =
-			m_tempSvc->shapes().addShape(type, p, static_cast<uint16_t>(m_selectedMaterial), m_selectedCombination);
+		Entity e = m_tempSvc->shapes().addShape({.shapeId = type,
+												 .variables = p,
+												 .material = static_cast<uint16_t>(m_selectedMaterial),
+												 .combination = m_selectedCombination});
 		if (m_selectedCombination == CombinationType::SmoothAddition ||
 			m_selectedCombination == CombinationType::SmoothSubtraction)
 			m_tempRegistry->getComponent<CustomShape>(e).smoothFactor = 1.5f;

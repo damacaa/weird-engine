@@ -61,9 +61,13 @@ private:
 
 		m_head = tags["head"];
 
-		float boundsVars2[8]{0.0f, -24.0f, 200.0f, 20.0f};
-		Entity inside = services.shapes().addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::LightGreen,
-												   CombinationType::Addition);
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 0.0f},
+												  {Primitives::Box::POS_Y, -24.0f},
+												  {Primitives::Box::SIZE_X, 200.0f},
+												  {Primitives::Box::SIZE_Y, 20.0f}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightGreen),
+									.combination = CombinationType::Addition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 

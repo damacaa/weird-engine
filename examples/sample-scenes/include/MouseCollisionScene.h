@@ -51,29 +51,33 @@ private:
 		}
 
 		// Floor
-		{
-			float variables[8]{0.0f, 1.5f, 1.0f};
-			services.shapes().addShape(DefaultShapes::SINE, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+									.variables = {{Primitives::SineWave::AMPLITUDE, 0.0f},
+												  {Primitives::SineWave::PERIOD, 1.5f},
+												  {Primitives::SineWave::SPEED, 1.0f}},
+									.material = 3});
 
 		// Wall right
-		{
-			float variables[8]{30 + 5, 0, 5.0f, 30.0f, 0.0f};
-			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 35.0f},
+												  {Primitives::Box::POS_Y, 0.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
 		// Wall left
-		{
-			float variables[8]{-5, 0, 5.0f, 30.0f, 0.0f};
-			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, -5.0f},
+												  {Primitives::Box::POS_Y, 0.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
-		{
-			float variables[8]{-15.0f, 50.0f, 5.0f, 4.5f, 2.0f, 10.0f};
-			Entity star = services.shapes().addShape(DefaultShapes::CIRCLE, variables, 7);
-
-			m_cursorShape = star;
-		}
+		m_cursorShape = services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+													.variables = {{Primitives::Circle::POS_X, -15.0f},
+																  {Primitives::Circle::POS_Y, 50.0f},
+																  {Primitives::Circle::RADIUS, 5.0f}},
+													.material = 7});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}

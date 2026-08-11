@@ -72,22 +72,28 @@ private:
 		}
 
 		// Floor
-		{
-			float variables[8]{15, -5, 25.0f, 5.0f, 0.0f};
-			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 15.0f},
+												  {Primitives::Box::POS_Y, -5.0f},
+												  {Primitives::Box::SIZE_X, 25.0f},
+												  {Primitives::Box::SIZE_Y, 5.0f}},
+									.material = 3});
 
 		// Wall right
-		{
-			float variables[8]{30 + 5, 20, 5.0f, 30.0f, 0.0f};
-			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 35.0f},
+												  {Primitives::Box::POS_Y, 20.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
 		// Wall left
-		{
-			float variables[8]{0 - 5, 20, 5.0f, 30.0f, 0.0f};
-			services.shapes().addShape(DefaultShapes::BOX, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, -5.0f},
+												  {Primitives::Box::POS_Y, 20.0f},
+												  {Primitives::Box::SIZE_X, 5.0f},
+												  {Primitives::Box::SIZE_Y, 30.0f}},
+									.material = 3});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}

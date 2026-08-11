@@ -122,18 +122,18 @@ private:
 			sdf.materialId = randomMats[i];
 		}
 
-		{
-			auto& floorMaterial = services.materials().createMaterial();
-			floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-			floorMaterial.metallic = 0.1f;
-			floorMaterial.roughness = 0.3f;
-			floorMaterial.pattern = MaterialPattern::Checkers;
-			floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
+		auto& floorMaterial = services.materials().createMaterial();
+		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		floorMaterial.metallic = 0.1f;
+		floorMaterial.roughness = 0.3f;
+		floorMaterial.pattern = MaterialPattern::Checkers;
+		floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
 
-			float vars[8] = {3};
-			Entity floor = services.shapes().addShape(DefaultShapes3D::PLANE, vars, floorMaterial,
-													  CombinationType::Addition, false);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes3D::PLANE,
+									.variables = {3},
+									.material = floorMaterial,
+									.combination = CombinationType::Addition,
+									.hasCollision = false});
 
 		auto& mirrorMaterial = services.materials().createMaterial();
 		mirrorMaterial.color = vec4(1.0f);
@@ -141,20 +141,35 @@ private:
 		mirrorMaterial.roughness = 0.0f;
 
 		{
-
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
 			auto boxId = services.shapes().registerSDF(box);
 
-			float vars1[8] = {-5.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = services.shapes().addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, -5.0f},
+													  {Primitives3D::Box::POS_Y, -2.0f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 0.1f},
+													  {Primitives3D::Box::SIZE_Y, 1.0f},
+													  {Primitives3D::Box::SIZE_Z, 3.0f}},
+										.material = mirrorMaterial,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 		}
 
 		{
 			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
 			auto boxId = services.shapes().registerSDF(box);
 
-			float vars1[8] = {20.0f, -2.0f, 0.0f, 0.1f, 1.0f, 3.0f}; // Custom shape
-			Entity start = services.shapes().addShape(boxId, vars1, mirrorMaterial, CombinationType::Addition, false);
+			services.shapes().addShape({.shapeId = boxId,
+										.variables = {{Primitives3D::Box::POS_X, 20.0f},
+													  {Primitives3D::Box::POS_Y, -2.0f},
+													  {Primitives3D::Box::POS_Z, 0.0f},
+													  {Primitives3D::Box::SIZE_X, 0.1f},
+													  {Primitives3D::Box::SIZE_Y, 1.0f},
+													  {Primitives3D::Box::SIZE_Z, 3.0f}},
+										.material = mirrorMaterial,
+										.combination = CombinationType::Addition,
+										.hasCollision = false});
 		}
 
 		{

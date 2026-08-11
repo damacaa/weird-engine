@@ -29,11 +29,13 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		{
-			float vars[8] = {15.0f, -50.0f, 250.0f, 50.0f};
-			services.shapes().addShape(DefaultShapes::BOX, vars, DisplaySettings::LightGray,
-									   CombinationType::SmoothAddition);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 15.0f},
+												  {Primitives::Box::POS_Y, -50.0f},
+												  {Primitives::Box::SIZE_X, 250.0f},
+												  {Primitives::Box::SIZE_Y, 50.0f}},
+									.material = static_cast<uint16_t>(DisplaySettings::LightGray),
+									.combination = CombinationType::SmoothAddition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 		m_lastResolutionHash = Display::width + Display::height;

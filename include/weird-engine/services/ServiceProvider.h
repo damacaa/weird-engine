@@ -3,13 +3,16 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "weird-engine/Assert.h"
 #include "weird-engine/Background.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
@@ -154,6 +157,104 @@ namespace WeirdEngine
 		}
 	};
 
+	struct ShapeParamValue
+	{
+		size_t index = 0;
+		float value = 0.0f;
+	};
+
+	struct ShapeVariables
+	{
+		float data[8]{};
+
+		constexpr ShapeVariables() = default;
+
+		constexpr ShapeVariables(std::initializer_list<float> list)
+		{
+			size_t i = 0;
+			for (float v : list)
+			{
+				if (i >= 8)
+					break;
+				data[i++] = v;
+			}
+		}
+
+		constexpr ShapeVariables(std::initializer_list<ShapeParamValue> indexedList)
+		{
+			for (const auto& pv : indexedList)
+			{
+				if (pv.index < 8)
+				{
+					data[pv.index] = pv.value;
+				}
+			}
+		}
+
+		template <size_t N> constexpr ShapeVariables(const float (&arr)[N])
+		{
+			const size_t count = std::min<size_t>(N, 8);
+			for (size_t i = 0; i < count; ++i)
+				data[i] = arr[i];
+		}
+
+		constexpr ShapeVariables(std::span<const float> s)
+		{
+			const size_t count = std::min<size_t>(s.size(), 8);
+			for (size_t i = 0; i < count; ++i)
+				data[i] = s[i];
+		}
+
+		constexpr ShapeVariables(const float* ptr, size_t n = 8)
+		{
+			const size_t count = std::min<size_t>(n, 8);
+			for (size_t i = 0; i < count; ++i)
+				data[i] = ptr[i];
+		}
+	};
+
+	struct ShapeMaterial
+	{
+		uint16_t id = 0;
+
+		constexpr ShapeMaterial() = default;
+		constexpr ShapeMaterial(uint16_t matId)
+			: id(matId)
+		{
+		}
+		constexpr ShapeMaterial(int matId)
+			: id(static_cast<uint16_t>(matId))
+		{
+		}
+		ShapeMaterial(const Material3D& mat)
+			: id(mat.id)
+		{
+		}
+		constexpr operator uint16_t() const
+		{
+			return id;
+		}
+	};
+
+	struct ShapeConfig
+	{
+		ShapeId shapeId = 0;
+		ShapeVariables variables{};
+		ShapeMaterial material = 0;
+		CombinationType combination = CombinationType::Addition;
+		bool hasCollision = true;
+		int group = 0;
+	};
+
+	struct UIShapeConfig
+	{
+		ShapeId shapeId = 0;
+		ShapeVariables variables{};
+		ShapeMaterial material = 0;
+		CombinationType combination = CombinationType::Addition;
+		int group = 0;
+	};
+
 	struct ShapeService
 	{
 		Registry& registry;
@@ -175,59 +276,33 @@ namespace WeirdEngine
 			return sdfs;
 		}
 
-		Entity addShape(ShapeId shapeId, float* variables, uint16_t material,
-						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
-						int group = 0)
+		Entity addShape(const ShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
 			CustomShape& shape = registry.addComponent<CustomShape>(entity);
-			shape.distanceFieldId = shapeId;
-			shape.combination = combination;
-			shape.hasCollisions = hasCollision;
-			shape.groupIdx = group;
-			shape.material = material;
-			std::copy(variables, variables + 8, shape.parameters);
+			shape.distanceFieldId = config.shapeId;
+			shape.combination = config.combination;
+			shape.hasCollisions = config.hasCollision;
+			shape.groupIdx = config.group;
+			shape.material = config.material.id;
+
+			std::copy_n(config.variables.data, 8, shape.parameters);
 
 			return entity;
 		}
 
-		Entity addShape(ShapeId shapeId, float* variables, const Material3D& material,
-						CombinationType combination = CombinationType::Addition, bool hasCollision = true,
-						int group = 0)
-		{
-			return addShape(shapeId, variables, material.id, combination, hasCollision, group);
-		}
-
-		Entity addUIShape(ShapeId shapeId, float* variables, uint16_t material,
-						  CombinationType combination = CombinationType::Addition, int group = 0)
+		Entity addUIShape(const UIShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
 			UIShape& shape = registry.addComponent<UIShape>(entity);
-			shape.distanceFieldId = shapeId;
-			shape.combination = combination;
-			shape.groupIdx = group;
-			shape.material = material;
-			std::copy(variables, variables + 8, shape.parameters);
+			shape.distanceFieldId = config.shapeId;
+			shape.combination = config.combination;
+			shape.groupIdx = config.group;
+			shape.material = config.material.id;
+
+			std::copy_n(config.variables.data, 8, shape.parameters);
 
 			return entity;
-		}
-
-		Entity addUIShape(ShapeId shapeId, float* variables, const Material3D& material,
-						  CombinationType combination = CombinationType::Addition, int group = 0)
-		{
-			return addUIShape(shapeId, variables, material.id, combination, group);
-		}
-
-		UIShape& addUIShape(ShapeId shapeId, float* variables, Entity& entity, int group = 0)
-		{
-			entity = registry.createEntity();
-			UIShape& component = registry.addComponent<UIShape>(entity);
-			component.distanceFieldId = shapeId;
-			component.groupIdx = group;
-			component.smoothFactor = 100.0f;
-			std::copy(variables, variables + 8, component.parameters);
-
-			return component;
 		}
 	};
 

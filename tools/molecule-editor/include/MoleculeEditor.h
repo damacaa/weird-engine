@@ -148,13 +148,15 @@ private:
 		buildTagEditorUI();
 
 		{
-			float boundsVars[8]{0.0f, 0.0f, 3000.0f};
-			Entity outside =
-				m_tempSvc->shapes().addShape(DefaultShapes::CIRCLE, boundsVars, 17, CombinationType::Addition);
+			Entity outside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+														   .variables = {0.0f, 0.0f, 3000.0f},
+														   .material = 17,
+														   .combination = CombinationType::Addition});
 
-			float boundsVars2[8]{0.0f, 0.0f, 20.0f, 20.0f};
-			Entity inside = m_tempSvc->shapes().addShape(DefaultShapes::BOX, boundsVars2, DisplaySettings::Black,
-														 CombinationType::Subtraction);
+			Entity inside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::BOX,
+														  .variables = {0.0f, 0.0f, 20.0f, 20.0f},
+														  .material = static_cast<uint16_t>(DisplaySettings::Black),
+														  .combination = CombinationType::Subtraction});
 
 			m_tempSvc->serialization().blacklistEntity(outside);
 			m_tempSvc->serialization().blacklistEntity(inside);
@@ -314,9 +316,8 @@ private:
 		{
 			float px = START_X + i * MAT_SPACING;
 			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
-			Entity e;
-			UIShape& sh = m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p, e);
-			sh.material = static_cast<uint16_t>(i);
+			Entity e = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::CIRCLE, .variables = p, .material = static_cast<uint16_t>(i)});
 
 			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
 			tog.clickPadding = BTN_SIZE + 3.0f;
@@ -374,7 +375,7 @@ private:
 		{
 			float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
 			float p[8]{TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF};
-			Entity e = m_tempSvc->shapes().addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+			Entity e = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::BOX, .variables = p, .material = 2});
 			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
 			tog.clickPadding = TOOL_BTN_HALF + 8.0f;
 			tog.parameterModifierMask.set(2);
@@ -395,8 +396,10 @@ private:
 		}
 		m_tempRegistry->getComponent<ShapeToggle>(m_toolToggles[0]).active = true;
 
-		float starP[8]{Display::width - GRAV_Y, Display::height - GRAV_Y, GRAV_Y * 0.5f, 5.0f, 10.0f, 0.0f};
-		m_gravityToggleEntity = m_tempSvc->shapes().addUIShape(DefaultShapes::STAR, starP, static_cast<uint16_t>(2));
+		m_gravityToggleEntity = m_tempSvc->shapes().addUIShape(
+			{.shapeId = DefaultShapes::STAR,
+			 .variables = {Display::width - GRAV_Y, Display::height - GRAV_Y, GRAV_Y * 0.5f, 5.0f, 10.0f, 0.0f},
+			 .material = 2});
 		auto& gravTog = m_tempRegistry->addComponent<ShapeToggle>(m_gravityToggleEntity);
 		gravTog.clickPadding = 18.0f;
 		// gravTog.parameterModifierMask.set(2);
@@ -404,8 +407,10 @@ private:
 		gravTog.modifierAmount = 10.0f;
 		m_tempSvc->serialization().blacklistEntity(m_gravityToggleEntity);
 
-		float gridP[8]{Display::width - GRAV_Y, Display::height - GRID_Y, 12.0f, 12.0f};
-		m_gridToggleEntity = m_tempSvc->shapes().addUIShape(DefaultShapes::BOX, gridP, static_cast<uint16_t>(2));
+		m_gridToggleEntity = m_tempSvc->shapes().addUIShape(
+			{.shapeId = DefaultShapes::BOX,
+			 .variables = {Display::width - GRAV_Y, Display::height - GRID_Y, 12.0f, 12.0f},
+			 .material = 2});
 		auto& gridTog = m_tempRegistry->addComponent<ShapeToggle>(m_gridToggleEntity);
 		gridTog.clickPadding = 18.0f;
 		gridTog.parameterModifierMask.set(2);
@@ -776,7 +781,8 @@ private:
 
 		float lineVars[8]{};
 		computeScreenLineParams(pa, pb, lineVars);
-		Entity line = m_tempSvc->shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+		Entity line = m_tempSvc->shapes().addUIShape(
+			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
 
 		auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 		btn.clickPadding = 8.0f;
@@ -904,26 +910,37 @@ private:
 
 	void buildTagEditorUI()
 	{
-		// Tag label – shows "tag: <name>" or "tag: (none)"
+		// Create label text entity for the selection tag
+		m_tagLabelEntity = m_tempRegistry->createEntity();
+		auto& lt = m_tempRegistry->addComponent<Transform>(m_tagLabelEntity);
+		lt.position = vec3(Display::width * 0.5f, 115.0f, 0.0f);
+
+		auto& tx = m_tempRegistry->addComponent<UITextRenderer>(m_tagLabelEntity);
+		tx.text = "";
+		tx.material = static_cast<uint16_t>(DisplaySettings::Yellow);
+		tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+		tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+		m_tempSvc->serialization().blacklistEntity(m_tagLabelEntity);
+
+		// Label above the edit button
 		{
-			Entity lbl = m_tempRegistry->createEntity();
-			auto& lt = m_tempRegistry->addComponent<Transform>(lbl);
-			lt.position = vec3(Display::width * 0.5f, 150.0f, 0.0f);
-			auto& tx = m_tempRegistry->addComponent<UITextRenderer>(lbl);
-			tx.text = "";
-			tx.material = 1;
-			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-			tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-			m_tagLabelEntity = lbl;
-			m_tempSvc->serialization().blacklistEntity(lbl);
+			Entity btnLbl = m_tempRegistry->createEntity();
+			auto& blt = m_tempRegistry->addComponent<Transform>(btnLbl);
+			blt.position = vec3(Display::width * 0.5f, 90.0f, 0.0f);
+			auto& btx = m_tempRegistry->addComponent<UITextRenderer>(btnLbl);
+			btx.text = "edit tag";
+			btx.material = 1;
+			btx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			btx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+			m_tempSvc->serialization().blacklistEntity(btnLbl);
 		}
 
 		// "edit tag" button (a small box)
 		{
 			static constexpr float BW = 40.0f;
 			static constexpr float BH = 14.0f;
-			float p[8]{Display::width * 0.5f, 90.0f, BW, BH};
-			m_tagEditButton = m_tempSvc->shapes().addUIShape(DefaultShapes::BOX, p, static_cast<uint16_t>(2));
+			m_tagEditButton = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::BOX, .variables = {Display::width * 0.5f, 90.0f, BW, BH}, .material = 2});
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(m_tagEditButton);
 			btn.clickPadding = 6.0f;
 			btn.modifierAmount = 0.0f;
@@ -959,13 +976,19 @@ private:
 		{
 			float p[8]{};
 			m_tagCircleOuter =
-				m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-											   CombinationType::Addition, TAG_RING_GROUP);
+				m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+												.variables = p,
+												.material = static_cast<uint16_t>(DisplaySettings::Yellow),
+												.combination = CombinationType::Addition,
+												.group = TAG_RING_GROUP});
 			m_tempSvc->serialization().blacklistEntity(m_tagCircleOuter);
 
 			m_tagCircleInner =
-				m_tempSvc->shapes().addUIShape(DefaultShapes::CIRCLE, p, static_cast<uint16_t>(DisplaySettings::Yellow),
-											   CombinationType::Subtraction, TAG_RING_GROUP);
+				m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+												.variables = p,
+												.material = static_cast<uint16_t>(DisplaySettings::Yellow),
+												.combination = CombinationType::Subtraction,
+												.group = TAG_RING_GROUP});
 			m_tempSvc->serialization().blacklistEntity(m_tagCircleInner);
 		}
 
@@ -1117,7 +1140,8 @@ private:
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
-			Entity line = m_tempSvc->shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+			Entity line = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
 
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;
@@ -1151,7 +1175,8 @@ private:
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
-			Entity line = m_tempSvc->shapes().addUIShape(DefaultShapes::LINE, lineVars, lineColor);
+			Entity line = m_tempSvc->shapes().addUIShape(
+				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
 
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;

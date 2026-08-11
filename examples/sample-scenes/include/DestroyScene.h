@@ -79,10 +79,14 @@ private:
 							float y = (std::rand() % 100) - 50.0f;
 							float w = (float)(std::rand() % 4 + 1);
 							float h = (float)(std::rand() % 4 + 1);
-							float variables[8]{w, y, x, h, 0.0f, 0.0f, 0.0f, 0.0f};
 							uint16_t material = std::rand() % 16;
-							Entity shape = services.shapes().addShape(DefaultShapes::BOX, variables, material,
-																	  CombinationType::Addition);
+							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+																	   .variables = {{Primitives::Box::POS_X, w},
+																					 {Primitives::Box::POS_Y, y},
+																					 {Primitives::Box::SIZE_X, x},
+																					 {Primitives::Box::SIZE_Y, h}},
+																	   .material = material,
+																	   .combination = CombinationType::Addition});
 							m_testShapes.push_back(shape);
 						}
 						break;

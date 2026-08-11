@@ -35,8 +35,7 @@ private:
 			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
 			auto planeId = services.shapes().registerSDF(plane);
 
-			float vars1[8] = {}; // Custom shape
-			Entity start = services.shapes().addShape(planeId, vars1, whiteMat);
+			Entity start = services.shapes().addShape({.shapeId = planeId, .variables = {}, .material = whiteMat});
 		}
 
 		m_renderPlane = new RenderPlane();

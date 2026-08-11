@@ -39,21 +39,27 @@ private:
 		}
 
 		// Floor
-		{
-			float variables[8]{15.0f, 5.0f, 25.0f};
-			services.shapes().addShape(DefaultShapes::CIRCLE, variables, 3);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+									.variables = {{Primitives::Circle::POS_X, 15.0f},
+												  {Primitives::Circle::POS_Y, 5.0f},
+												  {Primitives::Circle::RADIUS, 25.0f}},
+									.material = 3});
 
-		{
-			float variables[8]{15.0f, -50.0f, 250.0f, 50.0f};
-			auto floor = services.shapes().addShape(DefaultShapes::BOX, variables, 3, CombinationType::SmoothAddition);
-			registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
-		}
+		auto floor = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+												 .variables = {{Primitives::Box::POS_X, 15.0f},
+															   {Primitives::Box::POS_Y, -50.0f},
+															   {Primitives::Box::SIZE_X, 250.0f},
+															   {Primitives::Box::SIZE_Y, 50.0f}},
+												 .material = 3,
+												 .combination = CombinationType::SmoothAddition});
+		registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 
-		{
-			float variables[8]{15.0f, 5.0f, 20.0f};
-			services.shapes().addShape(DefaultShapes::CIRCLE, variables, 3, CombinationType::Subtraction);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+									.variables = {{Primitives::Circle::POS_X, 15.0f},
+												  {Primitives::Circle::POS_Y, 5.0f},
+												  {Primitives::Circle::RADIUS, 20.0f}},
+									.material = 3,
+									.combination = CombinationType::Subtraction});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}

@@ -26,10 +26,14 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Floor shape
-		{
-			float vars0[8] = {0.5f, 2.5f, 1.0f};
-			services.shapes().addShape(DefaultShapes::SINE, vars0, 2, CombinationType::Addition, true, 0);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+									.variables = {{Primitives::SineWave::AMPLITUDE, 0.5f},
+												  {Primitives::SineWave::PERIOD, 2.5f},
+												  {Primitives::SineWave::SPEED, 1.0f}},
+									.material = 2,
+									.combination = CombinationType::Addition,
+									.hasCollision = true,
+									.group = 0});
 
 		std::random_device rd;
 		std::mt19937 gen(rd());
@@ -45,35 +49,53 @@ private:
 				float x = distrib(gen) + 15.0f;
 				float y = -2.0f + distribY(gen);
 
-				float vars2[8] = {x, y, 3.0f, 5.0f, 1.0f, 0.0f}; // Custom shape
-				services.shapes().addShape(DefaultShapes::BOX, vars2, 4 + i, CombinationType::Addition, true, 1);
+				services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+											.variables = {{Primitives::Box::POS_X, x},
+														  {Primitives::Box::POS_Y, y},
+														  {Primitives::Box::SIZE_X, 3.0f},
+														  {Primitives::Box::SIZE_Y, 5.0f}},
+											.material = static_cast<uint16_t>(4 + i),
+											.combination = CombinationType::Addition,
+											.hasCollision = true,
+											.group = 1});
 			}
 		}
 
 		// Circle
-		{
-			float vars[8] = {15.0f, 7.5f, 5.0f};
-			services.shapes().addShape(DefaultShapes::CIRCLE, vars, 7, CombinationType::Addition, true, 2);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+									.variables = {{Primitives::Circle::POS_X, 15.0f},
+												  {Primitives::Circle::POS_Y, 7.5f},
+												  {Primitives::Circle::RADIUS, 5.0f}},
+									.material = 7,
+									.combination = CombinationType::Addition,
+									.hasCollision = true,
+									.group = 2});
 
 		// Subtract star
-		{
-			float vars[8] = {-2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f};
-			services.shapes().addShape(DefaultShapes::STAR, vars, 0, CombinationType::SmoothSubtraction, true, 2);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+									.variables = {-2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f},
+									.material = 0,
+									.combination = CombinationType::SmoothSubtraction,
+									.hasCollision = true,
+									.group = 2});
 
 		// Cursor circle
-		{
-			float vars2[8] = {250.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // Custom shape
-			m_circle = services.shapes().addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Subtraction, true,
-												  CustomShape::GLOBAL_GROUP);
-		}
+		m_circle = services.shapes().addShape(
+			{.shapeId = DefaultShapes::CIRCLE,
+			 .variables = {{Primitives::Circle::POS_X, 250.0f}, {Primitives::Circle::POS_Y, 10.0f}},
+			 .material = 0,
+			 .combination = CombinationType::Subtraction,
+			 .hasCollision = true,
+			 .group = CustomShape::GLOBAL_GROUP});
 
-		{
-			float vars2[8] = {15.0f, 0.0f, 30.0f, 0.0f, 0.0f, 0.0f}; // Custom shape
-			services.shapes().addShape(DefaultShapes::CIRCLE, vars2, 0, CombinationType::Intersection, true,
-									   CustomShape::GLOBAL_GROUP);
-		}
+		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+									.variables = {{Primitives::Circle::POS_X, 15.0f},
+												  {Primitives::Circle::POS_Y, 0.0f},
+												  {Primitives::Circle::RADIUS, 30.0f}},
+									.material = 0,
+									.combination = CombinationType::Intersection,
+									.hasCollision = true,
+									.group = CustomShape::GLOBAL_GROUP});
 
 		for (int i = 0; i < 10; ++i)
 		{

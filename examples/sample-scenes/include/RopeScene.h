@@ -111,14 +111,22 @@ private:
 		}
 
 		// Add base shapes (walls, ground, custom)
-		float vars0[8] = {1.0f, 0.5f, 1.0f}; // Floor shape
-		services.shapes().addShape(DefaultShapes::SINE, vars0, 3);
+		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+									.variables = {{Primitives::SineWave::AMPLITUDE, 1.0f},
+												  {Primitives::SineWave::PERIOD, 0.5f},
+												  {Primitives::SineWave::SPEED, 1.0f}},
+									.material = 3});
 
-		float vars1[8] = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}; // Custom shape
-		m_star = services.shapes().addShape(DefaultShapes::STAR, vars1, 3);
+		m_star = services.shapes().addShape(
+			{.shapeId = DefaultShapes::STAR, .variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}, .material = 3});
 
-		float vars3[8] = {15.0f, -98.0f, 15.0f, 100.0f};
-		services.shapes().addShape(DefaultShapes::BOX, vars3, 3, CombinationType::Addition);
+		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+									.variables = {{Primitives::Box::POS_X, 15.0f},
+												  {Primitives::Box::POS_Y, -98.0f},
+												  {Primitives::Box::SIZE_X, 15.0f},
+												  {Primitives::Box::SIZE_Y, 100.0f}},
+									.material = 3,
+									.combination = CombinationType::Addition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
@@ -152,6 +160,7 @@ private:
 
 	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
+
 		float delta = services.time().deltaTime();
 		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
@@ -215,14 +224,28 @@ private:
 			float y = (boxStart.y + boxEnd.y) / 2.0f;
 			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
 			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
-			float vars[8] = {x, y, w, h, 1.2f};
 
 			if (createBoxInUI)
-				services.shapes().addUIShape(DefaultShapes::BOX, vars, 7, CombinationType::SmoothAddition);
+				services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
+											  .variables = {{Primitives::Box::POS_X, x},
+															{Primitives::Box::POS_Y, y},
+															{Primitives::Box::SIZE_X, w},
+															{Primitives::Box::SIZE_Y, h},
+															{4, 1.2f}},
+											  .material = 7,
+											  .combination = CombinationType::SmoothAddition});
 			else
 				services.shapes().addShape(
-					DefaultShapes::BOX, vars, 4 + registry.getComponentArray<CustomShape>()->getSize() % 12,
-					CombinationType::SmoothAddition, true, registry.getComponentArray<CustomShape>()->getSize());
+					{.shapeId = DefaultShapes::BOX,
+					 .variables = {{Primitives::Box::POS_X, x},
+								   {Primitives::Box::POS_Y, y},
+								   {Primitives::Box::SIZE_X, w},
+								   {Primitives::Box::SIZE_Y, h},
+								   {4, 1.2f}},
+					 .material = static_cast<uint16_t>(4 + registry.getComponentArray<CustomShape>()->getSize() % 12),
+					 .combination = CombinationType::SmoothAddition,
+					 .hasCollision = true,
+					 .group = static_cast<int>(registry.getComponentArray<CustomShape>()->getSize())});
 		}
 
 		if (services.input().getKeyDown(Input::N))
@@ -231,8 +254,8 @@ private:
 			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			float vars[8] = {world.x, world.y, 5.0f, 7.5f, 1.0f};
-			services.shapes().addShape(DefaultShapes::STAR, vars, 3);
+			services.shapes().addShape(
+				{.shapeId = DefaultShapes::STAR, .variables = {world.x, world.y, 5.0f, 7.5f, 1.0f}, .material = 3});
 		}
 
 		if (services.input().getKey(Input::R) || services.input().getGamepadButton(Input::GamepadButton::South))

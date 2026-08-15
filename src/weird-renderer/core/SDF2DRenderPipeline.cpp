@@ -346,7 +346,10 @@ namespace WeirdEngine
 			// Execute all pipeline stages
 			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
 
-			applyJumpFloodCorrection(time); // To generate a corrected distance texture
+			if (m_config.enableShadows)
+			{
+				applyJumpFloodCorrection(time); // To generate a corrected distance texture
+			}
 
 			upscaleDistance();
 			renderMaterialColors(camera, time, delta);
@@ -891,8 +894,11 @@ namespace WeirdEngine
 			}
 
 			// Corrected distance for shadows
-			m_lightingShader.setUniform("t_distanceCorrectedTexture", 3);
-			m_distanceTextureCorrected.bind(3);
+			if (m_config.enableShadows)
+			{
+				m_lightingShader.setUniform("t_distanceCorrectedTexture", 3);
+				m_distanceTextureCorrected.bind(3);
+			}
 
 			m_renderPlane.draw(m_lightingShader);
 			Profiler::get().gpuSync();

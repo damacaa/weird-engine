@@ -235,7 +235,9 @@ void main()
 #endif
 
 	// Define the distance over which the ambient occlusion fades out
-	float aoBlendFactor = smoothstep(0.0, u_ambienOcclusionRadius / u_resolution.y, correctedDistance);
+	float screenDistance = correctedDistance * overscanScale * aspectRatio;
+	float maxAoDistance = u_ambienOcclusionRadius * 0.001;
+	float aoBlendFactor = (maxAoDistance > 1e-6) ? smoothstep(0.0, maxAoDistance, screenDistance) : 1.0;
 	float fadeToFull = smoothstep(u_ambienOcclusionStrength, 1.0, t);
 	float ao = mix(aoBlendFactor, 1.0, fadeToFull);
 	// Apply ao

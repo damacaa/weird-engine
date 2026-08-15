@@ -64,7 +64,7 @@ namespace WeirdEngine
 			worldConfig.motionBlurBlendSpeed = 10.0f;
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
-			worldConfig.ambienOcclusionRadius = 5.0f;
+			worldConfig.ambienOcclusionRadius = 10.0f;
 			worldConfig.ambienOcclusionStrength = 0.2f;
 			worldConfig.ballK = settings.worldSmoothFactor;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
@@ -90,7 +90,7 @@ namespace WeirdEngine
 			uiConfig.debugMaterialColors = false;
 			uiConfig.ballK = settings.uiSmoothFactor;
 			uiConfig.ambienOcclusionRadius = 7.0f;
-			uiConfig.ambienOcclusionStrength = 0.15f;
+			uiConfig.ambienOcclusionStrength = 0.5f;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize 3D SDF pipeline
@@ -276,7 +276,6 @@ namespace WeirdEngine
 
 						if (ImGui::BeginTabItem("Console"))
 						{
-							ImGui::Checkbox("Print to std::cout", &Logger::s_enableConsoleOutput);
 							Logger::drawImGuiConsole();
 							ImGui::EndTabItem();
 						}

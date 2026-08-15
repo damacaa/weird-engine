@@ -65,7 +65,7 @@ namespace WeirdEngine
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
 			worldConfig.ambienOcclusionRadius = 10.0f;
-			worldConfig.ambienOcclusionStrength = 0.2f;
+			worldConfig.ambienOcclusionStrength = settings.worldAmbientOcclusionStrength;
 			worldConfig.ballK = settings.worldSmoothFactor;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
 
@@ -90,7 +90,7 @@ namespace WeirdEngine
 			uiConfig.debugMaterialColors = false;
 			uiConfig.ballK = settings.uiSmoothFactor;
 			uiConfig.ambienOcclusionRadius = 7.0f;
-			uiConfig.ambienOcclusionStrength = 0.5f;
+			uiConfig.ambienOcclusionStrength = settings.uiAmbientOcclusionStrength;
 			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
 
 			// Initialize 3D SDF pipeline

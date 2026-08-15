@@ -38,6 +38,8 @@ namespace WeirdEngine
 			vec3 shadowTint = vec3(0.4f, 0.6f, 0.8f);
 			float worldSmoothFactor = 0.5f;
 			float uiSmoothFactor = 3.0f;
+			float worldAmbientOcclusionStrength = 0.2f;
+			float uiAmbientOcclusionStrength = 0.5f;
 			bool enable2DLigthing = true;
 			float raymarching3DContrast = 1.2f;
 			bool enable3DPathTracer = true;

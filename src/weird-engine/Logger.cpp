@@ -40,13 +40,60 @@ namespace WeirdEngine
 			std::cerr << "[ERROR] " << message << std::endl;
 	}
 
-	void Logger::drawImGuiConsole()
+	void Logger::clear()
+	{
+		std::lock_guard<std::mutex> lock(s_mutex);
+		s_messages.clear();
+	}
+
+	void Logger::copyToClipboard()
 	{
 #ifndef WEIRD_DISABLE_IMGUI
 		std::lock_guard<std::mutex> lock(s_mutex);
+		std::string allText;
+		for (const auto& msg : s_messages)
+		{
+			switch (msg.level)
+			{
+				case LogLevel::Info:
+					allText += "[INFO] ";
+					break;
+				case LogLevel::Warning:
+					allText += "[WARN] ";
+					break;
+				case LogLevel::Error:
+					allText += "[ERROR] ";
+					break;
+			}
+			allText += msg.message;
+			allText += "\n";
+		}
+		ImGui::SetClipboardText(allText.c_str());
+#endif
+	}
 
-		ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+	void Logger::drawImGuiConsole()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::Button("Copy to Clipboard"))
+		{
+			copyToClipboard();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Clear"))
+		{
+			clear();
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Print to std::cout", &s_enableConsoleOutput);
 
+		ImGui::Separator();
+
+		std::lock_guard<std::mutex> lock(s_mutex);
+
+		ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), false, 0);
+
+		ImGui::PushTextWrapPos(0.0f);
 		for (const auto& msg : s_messages)
 		{
 			ImVec4 color;
@@ -66,6 +113,7 @@ namespace WeirdEngine
 			ImGui::TextUnformatted(msg.message.c_str());
 			ImGui::PopStyleColor();
 		}
+		ImGui::PopTextWrapPos();
 
 		// Auto-scroll to bottom
 		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())

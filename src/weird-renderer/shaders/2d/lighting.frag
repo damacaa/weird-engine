@@ -178,7 +178,9 @@ void main()
 	float overscanScale = 1.0 + u_overscan;
 
 	// Corrected distance, used for out shadows and AO
+#ifdef SHADOWS_ENABLED
 	float correctedDistance = mapOutside(screenUV);
+#endif
 
 	// Calculate normal
 	vec2 p = screenUV;
@@ -235,7 +237,11 @@ void main()
 #endif
 
 	// Define the distance over which the ambient occlusion fades out
+#ifdef SHADOWS_ENABLED
 	float screenDistance = correctedDistance * overscanScale * aspectRatio;
+#else
+	float screenDistance = max(0.0, distance) * 2.0 * aspectRatio;
+#endif
 	float maxAoDistance = u_ambienOcclusionRadius * 0.001;
 	float aoBlendFactor = (maxAoDistance > 1e-6) ? smoothstep(0.0, maxAoDistance, screenDistance) : 1.0;
 	float fadeToFull = smoothstep(u_ambienOcclusionStrength, 1.0, t);

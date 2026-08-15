@@ -25,6 +25,8 @@ namespace WeirdEngine
 		static void log(const std::string& message);
 		static void warning(const std::string& message);
 		static void error(const std::string& message);
+		static void clear();
+		static void copyToClipboard();
 
 		static bool s_enableConsoleOutput;
 		static void drawImGuiConsole();

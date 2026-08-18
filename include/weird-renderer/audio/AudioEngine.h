@@ -73,12 +73,17 @@ namespace WeirdEngine
 
 			AudioData getAudioData();
 
+			// Procedural control
+			void setFrictionLevel(float level); // 0..1, continuous
+			void playSineSound(float freq, float amp, float decaySec = 0.3f);
+
 		private:
 			AudioEngine();
 			ma_engine m_engine;
 			ma_sound m_sound; // background music
 
 			bool m_mute;
+			bool m_enableAmbient = true;
 
 			// Procedural state
 			ma_noise m_noise;
@@ -99,10 +104,6 @@ namespace WeirdEngine
 			// Visualizer
 			std::mutex m_visualMutex;
 			AudioData m_visualSnapshot;
-
-			// Procedural control
-			void setFrictionLevel(float level); // 0..1, continuous
-			void playSineSound(float freq, float amp, float decaySec = 0.3f);
 		};
 
 	} // namespace WeirdRenderer

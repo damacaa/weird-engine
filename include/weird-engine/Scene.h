@@ -189,6 +189,10 @@ namespace WeirdEngine
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 		float getFrictionSound();
+		void setFrictionSound(float level)
+		{
+			m_frictionSoundLevelRead.store(level, std::memory_order_release);
+		}
 
 		BackgroundParams& getBackground()
 		{

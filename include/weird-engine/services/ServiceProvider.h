@@ -428,7 +428,7 @@ namespace WeirdEngine
 	struct AudioService
 	{
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
-		const std::atomic<float>& frictionSoundLevel;
+		std::atomic<float>& frictionSoundLevel;
 
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio)
 		{
@@ -438,6 +438,11 @@ namespace WeirdEngine
 		float getFrictionSound() const
 		{
 			return frictionSoundLevel.load(std::memory_order_acquire);
+		}
+
+		void setFrictionSound(float level)
+		{
+			frictionSoundLevel.store(level, std::memory_order_release);
 		}
 
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()

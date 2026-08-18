@@ -40,6 +40,7 @@ namespace WeirdEngine
 		bool AudioEngine::init(const AudioSettings& settings)
 		{
 			m_mute = settings.mute;
+			m_enableAmbient = settings.enableAmbient;
 			ma_result result;
 			ma_engine_config engineConfig = ma_engine_config_init();
 			engineConfig.noDevice = MA_TRUE;
@@ -220,7 +221,7 @@ namespace WeirdEngine
 			}
 			previousFrameTime = time;
 
-			if (audioQueue.empty())
+			if (m_enableAmbient && audioQueue.empty())
 			{
 				// Fade fill music in
 				currentAmbientVolume =
@@ -438,13 +439,13 @@ namespace WeirdEngine
 			ma_engine_read_pcm_frames(&audio->m_engine, mix.data(), framesToWrite, NULL);
 
 			// --- 2. Friction noise ---
-			audio->m_smoothedFriction += (audio->m_frictionLevel - audio->m_smoothedFriction) * 0.05f;
+			audio->m_smoothedFriction += (audio->m_frictionLevel - audio->m_smoothedFriction) * 0.10f;
 			if (audio->m_smoothedFriction > 0.0001f)
 			{
 				ma_noise_read_pcm_frames(&audio->m_noise, temp.data(), framesToWrite, NULL);
 				for (ma_uint32 i = 0; i < framesToWrite * CHANNELS; ++i)
 				{
-					mix[i] += temp[i] * audio->m_smoothedFriction * 0.4f;
+					mix[i] += temp[i] * audio->m_smoothedFriction * 0.45f;
 				}
 			}
 

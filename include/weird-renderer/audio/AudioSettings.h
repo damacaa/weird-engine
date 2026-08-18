@@ -6,6 +6,7 @@ namespace WeirdEngine
 		struct AudioSettings
 		{
 			bool mute = false;
+			bool enableAmbient = true;
 		};
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

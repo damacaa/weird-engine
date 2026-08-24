@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+// #define LOG_SDF_SHADER_GENERATION
+
 namespace WeirdEngine::SDFShaderGenerationSystem
 {
 	template <typename ShapeClass, typename RenderContext>
@@ -29,7 +31,9 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			return;
 		}
 
+#if !defined(NDEBUG) && defined(LOG_SDF_SHADER_GENERATION)
 		std::cout << "Updating shader code for: " << std::string(typeid(ShapeClass).name()) << "\n";
+#endif
 
 		ctx.shapesNeedUpdate = false;
 
@@ -200,25 +204,25 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 		std::string replacement = oss.str();
 		std::string helperFunctionsTotal = functionsOss.str();
-		if (!helperFunctionsTotal.empty())
-			WeirdEngine::Logger::log("HELPER FUNCTIONS TOTAL:\n" + helperFunctionsTotal);
 
 		shader.setFragmentIncludeCode(0, helperFunctionsTotal, false);
 		shader.setFragmentIncludeCode(1, replacement, true);
 
-#ifndef NDEBUG
-		if (true)
+#if !defined(NDEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+		if (!helperFunctionsTotal.empty())
 		{
-			WeirdEngine::Logger::log(replacement);
+			WeirdEngine::Logger::log("HELPER FUNCTIONS TOTAL:\n" + helperFunctionsTotal);
+		}
 
-			static int shaderDumpId = 0;
-			std::ofstream outFile("generated_shader_" + std::string(typeid(ShapeClass).name()) + "_" +
-								  std::to_string(shaderDumpId++) + ".frag");
-			if (outFile.is_open())
-			{
-				outFile << shader.getFragmentCode();
-				outFile.close();
-			}
+		WeirdEngine::Logger::log(replacement);
+
+		static int shaderDumpId = 0;
+		std::ofstream outFile("generated_shader_" + std::string(typeid(ShapeClass).name()) + "_" +
+							  std::to_string(shaderDumpId++) + ".frag");
+		if (outFile.is_open())
+		{
+			outFile << shader.getFragmentCode();
+			outFile.close();
 		}
 #endif
 	}

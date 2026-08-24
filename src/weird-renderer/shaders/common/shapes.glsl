@@ -80,41 +80,7 @@ float sdBox(in vec2 p, in vec2 b)
 	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
-const int N = 4;
-float sdPolygon(in vec2[N] v, in vec2 p)
-{
-	float d = dot(p - v[0], p - v[0]);
-	float s = 1.0;
-	for (int i = 0, j = N - 1; i < N; j = i, i++)
-	{
-		vec2 e = v[j] - v[i];
-		vec2 w = p - v[i];
-		vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
-		d = min(d, dot(b, b));
-		bvec3 c = bvec3(p.y >= v[i].y, p.y<v[j].y, e.x * w.y> e.y * w.x);
-		if (all(c) || all(not(c)))
-			s *= -1.0;
-	}
-	return s * sqrt(d);
-}
 
-const int SEGMENTS = 9;
-float sdPolygon(in vec2[SEGMENTS] v, in vec2 p)
-{
-	float d = dot(p - v[0], p - v[0]);
-	float s = 1.0;
-	for (int i = 0, j = SEGMENTS - 1; i < SEGMENTS; j = i, i++)
-	{
-		vec2 e = v[j] - v[i];
-		vec2 w = p - v[i];
-		vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
-		d = min(d, dot(b, b));
-		bvec3 c = bvec3(p.y >= v[i].y, p.y<v[j].y, e.x * w.y> e.y * w.x);
-		if (all(c) || all(not(c)))
-			s *= -1.0;
-	}
-	return s * sqrt(d);
-}
 
 // y = sin(5x + t) / 5
 // 0 = sin(5x + t) / 5 - y
@@ -154,35 +120,7 @@ vec3 draw_line(float d, vec2 resolution)
 	return draw_line(d, 0.0025, resolution);
 }
 
-float sdParallelogramHorizontal(in vec2 p, float wi, float he, float sk)
-{
-	vec2 e = vec2(sk, he);
-	p = (p.y < 0.0) ? -p : p;
-	vec2 w = p - e;
-	w.x -= clamp(w.x, -wi, wi);
-	vec2 d = vec2(dot(w, w), -w.y);
-	float s = p.x * e.y - p.y * e.x;
-	p = (s < 0.0) ? -p : p;
-	vec2 v = p - vec2(wi, 0);
-	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
-	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
-	return sqrt(d.x) * sign(-d.y);
-}
 
-float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
-{
-	vec2 e = vec2(wi, sk);
-	p = (p.x < 0.0) ? -p : p;
-	vec2 w = p - e;
-	w.y -= clamp(w.y, -he, he);
-	vec2 d = vec2(dot(w, w), -w.x);
-	float s = p.y * e.x - p.x * e.y;
-	p = (s < 0.0) ? -p : p;
-	vec2 v = p - vec2(0, he);
-	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
-	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
-	return sqrt(d.x) * sign(-d.y);
-}
 
 float dot2(vec3 v)
 {

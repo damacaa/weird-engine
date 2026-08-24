@@ -102,10 +102,13 @@ namespace WeirdEngine
 			return code;
 		}
 
-		void Shader::setFragmentIncludeCode(int i, std::string& code)
+		void Shader::setFragmentIncludeCode(int i, const std::string& code, bool shouldRecompile)
 		{
 			m_includedFragmentContents[i] = code;
-			recompile();
+			if (shouldRecompile)
+			{
+				recompile();
+			}
 		}
 
 		void Shader::addDefine(const std::string& name)
@@ -408,6 +411,7 @@ namespace WeirdEngine
 			glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 			// Compile the Fragment Shader into machine code
 			glCompileShader(fragmentShader);
+
 			// Checks if Shader compiled succesfully
 			compileErrors(fragmentShader, "FRAGMENT");
 

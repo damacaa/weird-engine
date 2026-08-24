@@ -11,6 +11,7 @@
 #include "CompiledMathExpressions.h"
 #include "MathExpressions.h"
 #include "Primitives.h"
+#include "SDF.h"
 #include "StarShape.h"
 
 #include "weird-engine/Scene.h"
@@ -19,41 +20,39 @@ namespace WeirdEngine
 {
 	namespace DefaultShapes
 	{
+		using namespace SDF;
+
 		inline auto var(uint8_t index)
 		{
 			return std::make_shared<FloatVariable>(index);
 		}
 
-		inline const uint16_t CIRCLE = Scene::registerDefaultSDF(std::make_shared<Primitives::Circle>(
-			var(Primitives::Circle::POS_X), var(Primitives::Circle::POS_Y), var(Primitives::Circle::RADIUS)));
+		inline const uint16_t CIRCLE = Scene::registerDefaultSDF(
+			sdCircle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2))).node);
 
-		inline const uint16_t CIRCLE_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
-			std::make_shared<Primitives::Circle>(var(Primitives::Circle::POS_X), var(Primitives::Circle::POS_Y),
-												 var(Primitives::Circle::RADIUS)),
-			var(Primitives::Circle::RADIUS + 1)));
+		inline const uint16_t CIRCLE_LINE = Scene::registerDefaultSDF(
+			sdfOnion(sdCircle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2))), Expr(var(3))).node);
 
 		inline const uint16_t BOX = Scene::registerDefaultSDF(
-			std::make_shared<Primitives::Box>(var(Primitives::Box::POS_X), var(Primitives::Box::POS_Y),
-											  var(Primitives::Box::SIZE_X), var(Primitives::Box::SIZE_Y)));
+			sdBox(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), {Expr(var(2)), Expr(var(3))}).node);
 
-		inline const uint16_t BOX_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
-			std::make_shared<Primitives::Box>(var(Primitives::Box::POS_X), var(Primitives::Box::POS_Y),
-											  var(Primitives::Box::SIZE_X), var(Primitives::Box::SIZE_Y)),
-			var(Primitives::Box::SIZE_Y + 1)));
+		inline const uint16_t BOX_LINE = Scene::registerDefaultSDF(
+			sdfOnion(sdBox(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), {Expr(var(2)), Expr(var(3))}),
+					 Expr(var(4)))
+				.node);
 
-		inline const uint16_t TRIANGLE = Scene::registerDefaultSDF(std::make_shared<Primitives::Triangle>(
-			var(Primitives::Triangle::POS_X), var(Primitives::Triangle::POS_Y), var(Primitives::Triangle::SIZE_X),
-			var(Primitives::Triangle::SIZE_Y), var(Primitives::Triangle::ROTATION)));
+		inline const uint16_t TRIANGLE = Scene::registerDefaultSDF(
+			sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2)), Expr(var(3)), Expr(var(4)))
+				.node);
 
-		inline const uint16_t TRIANGLE_LINE = Scene::registerDefaultSDF(std::make_shared<SDFOnion>(
-			std::make_shared<Primitives::Triangle>(var(Primitives::Triangle::POS_X), var(Primitives::Triangle::POS_Y),
-												   var(Primitives::Triangle::SIZE_X), var(Primitives::Triangle::SIZE_Y),
-												   var(Primitives::Triangle::ROTATION)),
-			var(Primitives::Triangle::ROTATION + 1)));
+		inline const uint16_t TRIANGLE_LINE =
+			Scene::registerDefaultSDF(sdfOnion(sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}),
+														  Expr(var(2)), Expr(var(3)), Expr(var(4))),
+											   Expr(var(5)))
+										  .node);
 
-		inline const uint16_t LINE = Scene::registerDefaultSDF(std::make_shared<Primitives::Line>(
-			var(Primitives::Line::POS_A_X), var(Primitives::Line::POS_A_Y), var(Primitives::Line::POS_B_X),
-			var(Primitives::Line::POS_B_Y), var(Primitives::Line::WIDTH)));
+		inline const uint16_t LINE = Scene::registerDefaultSDF(
+			sdLine(worldPoint(), {Expr(var(0)), Expr(var(1))}, {Expr(var(2)), Expr(var(3))}, Expr(var(4))).node);
 
 		inline const uint16_t RAMP = Scene::registerDefaultSDF(std::make_shared<Primitives::Ramp>(
 			var(Primitives::Ramp::POS_X), var(Primitives::Ramp::POS_Y), var(Primitives::Ramp::WIDTH),

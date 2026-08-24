@@ -35,7 +35,7 @@ namespace WeirdEngine
 
 			std::string getVertexCode();
 			std::string getFragmentCode();
-			void setFragmentIncludeCode(int i, std::string& code);
+			void setFragmentIncludeCode(int i, const std::string& code, bool shouldRecompile = true);
 			void addDefine(const std::string& name);
 			void removeDefine(const std::string& name);
 			void toggleDefine(const std::string& name);

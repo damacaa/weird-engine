@@ -224,6 +224,30 @@ namespace WeirdEngine::Primitives
 		}
 
 		[[nodiscard]]
+		std::string getHelperFunctions() const override
+		{
+			return R"(
+#ifndef WEIRD_SD_PARALLELOGRAM
+#define WEIRD_SD_PARALLELOGRAM
+float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
+{
+	vec2 e = vec2(wi, sk);
+	p = (p.x < 0.0) ? -p : p;
+	vec2 w = p - e;
+	w.y -= clamp(w.y, -he, he);
+	vec2 d = vec2(dot(w, w), -w.x);
+	float s = p.y * e.x - p.x * e.y;
+	p = (s < 0.0) ? -p : p;
+	vec2 v = p - vec2(0.0, he);
+	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
+	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
+	return sqrt(d.x) * sign(-d.y);
+}
+#endif
+)";
+		}
+
+		[[nodiscard]]
 		std::string print() const override
 		{
 			return "sdParallelogramVertical(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " +

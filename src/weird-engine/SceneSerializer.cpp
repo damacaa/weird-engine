@@ -320,7 +320,8 @@ namespace WeirdEngine
 					if (sj.contains("parameters"))
 					{
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
-							s.parameters[pi] = sj["parameters"][pi].get<float>();
+							s.parameters[pi] =
+								(sj["parameters"][pi].is_number() ? sj["parameters"][pi].get<float>() : 0.0f);
 					}
 					scene.m_registry.getComponentArray<CustomShape>()->setEntityDirty(entity, true);
 					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
@@ -338,7 +339,8 @@ namespace WeirdEngine
 					if (sj.contains("parameters"))
 					{
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
-							s.parameters[pi] = sj["parameters"][pi].get<float>();
+							s.parameters[pi] =
+								(sj["parameters"][pi].is_number() ? sj["parameters"][pi].get<float>() : 0.0f);
 					}
 					scene.m_UIRenderContext.shapesNeedUpdate = true;
 				}

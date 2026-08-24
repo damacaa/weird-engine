@@ -4,7 +4,116 @@ precision highp int;
 precision highp sampler2D;
 precision highp isampler2D;
 
-#include "../common/shapes.glsl"
+
+// SDF Operations
+float fOpUnionSoft(float a, float b, float r)
+{
+	float h = max(r - abs(a - b), 0.0);
+	return min(a, b) - h * h * 0.25 / r;
+}
+
+vec2 fOpUnionSoft_blend(float a, float b, float r)
+{
+	float h = max(r - abs(a - b), 0.0);
+	float blend = h / r;
+	return vec2(min(a, b) - h * h * 0.25 / r, blend);
+}
+
+float fOpSubSoft(float a, float b, float r)
+{
+	return -fOpUnionSoft(b, -a, r);
+}
+
+float sdSegment(in vec2 p, in vec2 a, in vec2 b)
+{
+	vec2 pa = p - a, ba = b - a;
+	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+	return length(pa - ba * h);
+}
+
+float sdTriangle(in vec2 p, float w, float h, float angle)
+{
+	float c = cos(angle);
+	float s = sin(angle);
+	vec2 q = vec2(c * p.x - s * p.y, s * p.x + c * p.y);
+
+	vec2 a = vec2(-w * 0.5, -h / 3.0);
+	vec2 b = vec2(w * 0.5, -h / 3.0);
+	vec2 c2 = vec2(0.0, 2.0 * h / 3.0);
+
+	float d = min(min(sdSegment(q, a, b), sdSegment(q, b, c2)), sdSegment(q, c2, a));
+
+	float cross0 = (b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x);
+	float cross1 = (c2.x - b.x) * (q.y - b.y) - (c2.y - b.y) * (q.x - b.x);
+	float cross2 = (a.x - c2.x) * (q.y - c2.y) - (a.y - c2.y) * (q.x - c2.x);
+	bool inside =
+		(cross0 >= 0.0 && cross1 >= 0.0 && cross2 >= 0.0) || (cross0 <= 0.0 && cross1 <= 0.0 && cross2 <= 0.0);
+
+	return inside ? -d : d;
+}
+
+float sdBox(in vec2 p, in vec2 b)
+{
+	vec2 d = abs(p) - b;
+	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+float shape_sine(vec2 p, float time)
+{
+	return p.y - sin(p.x * 5.0 + time) * 0.2;
+}
+
+float shape_box2d(vec2 p, vec2 b)
+{
+	vec2 d = abs(p) - b;
+	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+float shape_line(vec2 p, vec2 a, vec2 b)
+{
+	vec2 dir = b - a;
+	return abs(dot(normalize(vec2(dir.y, -dir.x)), a - p));
+}
+
+float shape_segment(vec2 p, vec2 a, vec2 b)
+{
+	float d = shape_line(p, a, b);
+	float d0 = dot(p - b, b - a);
+	float d1 = dot(p - a, b - a);
+	return d1 < 0.0 ? length(a - p) : d0 > 0.0 ? length(b - p) : d;
+}
+
+float dot2(vec3 v)
+{
+	return dot(v, v);
+}
+
+float udTriangle(vec3 p, vec3 a, vec3 b, vec3 c)
+{
+	vec3 ba = b - a;
+	vec3 pa = p - a;
+	vec3 cb = c - b;
+	vec3 pb = p - b;
+	vec3 ac = a - c;
+	vec3 pc = p - c;
+	vec3 nor = cross(ba, ac);
+
+	return sqrt((sign(dot(cross(ba, nor), pa)) + sign(dot(cross(cb, nor), pb)) + sign(dot(cross(ac, nor), pc)) < 2.0)
+					? min(min(dot2(ba * clamp(dot(ba, pa) / dot2(ba), 0.0, 1.0) - pa),
+							  dot2(cb * clamp(dot(cb, pb) / dot2(cb), 0.0, 1.0) - pb)),
+						  dot2(ac * clamp(dot(ac, pc) / dot2(ac), 0.0, 1.0) - pc))
+					: dot(nor, pa) * dot(nor, pa) / dot2(nor));
+}
+
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r)
+{
+	vec3 pa = p - a, ba = b - a;
+	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+	return length(pa - ba * h) - r;
+}
+
+
+#include "helper_functions"
 
 // #define PATH_TRACING
 // #define FISH_EYE

@@ -81,9 +81,9 @@ private:
 							float h = (float)(std::rand() % 4 + 1);
 							uint16_t material = std::rand() % 16;
 							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-																	   .variables = {{Primitives::Box::POS_X, w},
+																	   .variables = {{Primitives::Box::POS_X, x},
 																					 {Primitives::Box::POS_Y, y},
-																					 {Primitives::Box::SIZE_X, x},
+																					 {Primitives::Box::SIZE_X, w},
 																					 {Primitives::Box::SIZE_Y, h}},
 																	   .material = material,
 																	   .combination = CombinationType::Addition});
@@ -114,7 +114,7 @@ private:
 									spring.entityA = m_testBalls[idx1];
 									spring.entityB = m_testBalls[idx2];
 									spring.restDistance = 3.0f + (std::rand() % 5);
-									spring.stiffness = 5.0f;
+									spring.stiffness = 0.5f;
 								}
 								m_testConstraints.push_back(constraintEnt);
 							}
@@ -199,6 +199,7 @@ private:
 			{
 				auto& spring = registry.getComponent<WeirdEngine::Spring>(constraint);
 				spring.restDistance = 1.0f + (std::rand() % 10);
+				registry.setComponentDirty(spring);
 			}
 		}
 

@@ -42,28 +42,51 @@ namespace WeirdEngine
 				.node);
 
 		inline const uint16_t TRIANGLE = Scene::registerDefaultSDF(
-			sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))), Expr(var(2)),
-					   Expr(var(3)))
-				.node);
+			sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2)), Expr(var(3))).node);
 
 		inline const uint16_t TRIANGLE_LINE = Scene::registerDefaultSDF(
-			sdfOnion(sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))),
-								Expr(var(2)), Expr(var(3))),
-					 Expr(var(5)))
+			sdfOnion(sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2)), Expr(var(3))),
+					 Expr(var(4)))
 				.node);
 
 		inline const uint16_t LINE = Scene::registerDefaultSDF(
 			sdLine(worldPoint(), {Expr(var(0)), Expr(var(1))}, {Expr(var(2)), Expr(var(3))}, Expr(var(4))).node);
 
-		inline const uint16_t RAMP = Scene::registerDefaultSDF(std::make_shared<Primitives::Ramp>(
-			var(Primitives::Ramp::POS_X), var(Primitives::Ramp::POS_Y), var(Primitives::Ramp::WIDTH),
-			var(Primitives::Ramp::HEIGHT), var(Primitives::Ramp::SKEW)));
+		inline const uint16_t RAMP = Scene::registerDefaultSDF(
+			sdRamp(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2)), Expr(var(3)), Expr(var(4)))
+				.node);
 
-		inline const uint16_t SINE = Scene::registerDefaultSDF(std::make_shared<Primitives::SineWave>(
-			var(Primitives::SineWave::AMPLITUDE), var(Primitives::SineWave::PERIOD), var(Primitives::SineWave::SPEED),
-			var(Primitives::SineWave::OFFSET)));
+		inline const uint16_t SINE = Scene::registerDefaultSDF(
+			sdSineWave(worldPoint(), Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3))).node);
 
 		inline const uint16_t STAR = Scene::registerDefaultSDF(getStarShape());
+
+		inline const uint16_t BOX_ROTATED =
+			Scene::registerDefaultSDF(sdBox(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))),
+											{Expr(var(2)), Expr(var(3))})
+										  .node);
+
+		inline const uint16_t BOX_LINE_ROTATED = Scene::registerDefaultSDF(
+			sdfOnion(sdBox(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))),
+						   {Expr(var(2)), Expr(var(3))}),
+					 Expr(var(5)))
+				.node);
+
+		inline const uint16_t TRIANGLE_ROTATED = Scene::registerDefaultSDF(
+			sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))), Expr(var(2)),
+					   Expr(var(3)))
+				.node);
+
+		inline const uint16_t TRIANGLE_LINE_ROTATED = Scene::registerDefaultSDF(
+			sdfOnion(sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))),
+								Expr(var(2)), Expr(var(3))),
+					 Expr(var(5)))
+				.node);
+
+		inline const uint16_t RAMP_ROTATED = Scene::registerDefaultSDF(
+			sdRamp(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(5))), Expr(var(2)),
+				   Expr(var(3)), Expr(var(4)))
+				.node);
 
 	} // namespace DefaultShapes
 } // namespace WeirdEngine

@@ -212,12 +212,12 @@ namespace WeirdEngine
 			return d + radius;
 		}
 
-		inline Expr smoothUnion(const Expr& a, const Expr& b, const Expr& radius)
+		inline Expr sdfSmoothUnion(const Expr& a, const Expr& b, const Expr& radius)
 		{
 			return Expr(std::make_shared<SDFSmoothAddition>(a.node, b.node, radius.node));
 		}
 
-		inline Expr smoothSubtract(const Expr& a, const Expr& b, const Expr& radius)
+		inline Expr sdfSmoothSubtract(const Expr& a, const Expr& b, const Expr& radius)
 		{
 			return Expr(std::make_shared<SDFSmoothSubtraction>(a.node, b.node, radius.node));
 		}
@@ -228,6 +228,12 @@ namespace WeirdEngine
 			Expr dist = length(p) - radius;
 			Expr angle = points * atan2(p.y, p.x) - speed * time();
 			return dist + displacement * sin(angle);
+		}
+
+		inline Expr sdSineWave(const Vec2Expr& p, const Expr& amplitude, const Expr& frequency, const Expr& speed,
+							   const Expr& offset = 0.0f)
+		{
+			return (p.y - offset) - amplitude * sin(frequency * p.x + speed * time());
 		}
 
 		struct Polygon : IMathExpression
@@ -310,6 +316,11 @@ namespace WeirdEngine
 					   m_point.y.node->print() + "))";
 			}
 		};
+
+		inline Expr sdPolygon(const Vec2Expr& p, std::vector<glm::vec2> vertices)
+		{
+			return Expr(std::make_shared<Polygon>(p, std::move(vertices)));
+		}
 
 		inline Expr sdTerrain(const Vec2Expr& p, const std::vector<glm::vec2>& surfacePoints, float valleyRadius,
 							  float baseY = -2000.0f)
@@ -443,6 +454,86 @@ float sdTriangle_impl(in vec2 p, float w, float h)
 		inline Expr sdTriangle(const Vec2Expr& p, const Expr& w, const Expr& h)
 		{
 			return Expr(std::make_shared<Triangle>(p, w, h));
+		}
+
+		struct Ramp : IMathExpression
+		{
+		private:
+			Vec2Expr m_p;
+			Expr m_w;
+			Expr m_h;
+			Expr m_skew;
+
+		public:
+			Ramp(Vec2Expr p, Expr w, Expr h, Expr skew)
+				: m_p(std::move(p))
+				, m_w(std::move(w))
+				, m_h(std::move(h))
+				, m_skew(std::move(skew))
+			{
+			}
+
+			[[nodiscard]]
+			float getValue(const float* parameters) const override
+			{
+				glm::vec2 p(m_p.x.node->getValue(parameters), m_p.y.node->getValue(parameters));
+				float wi = m_w.node->getValue(parameters);
+				float he = m_h.node->getValue(parameters);
+				float sk = m_skew.node->getValue(parameters);
+
+				glm::vec2 e(wi, sk);
+				if (p.x < 0.0f)
+					p = -p;
+				glm::vec2 w = p - e;
+				w.y -= std::clamp(w.y, -he, he);
+				glm::vec2 d(glm::dot(w, w), -w.x);
+				float s = p.y * e.x - p.x * e.y;
+				if (s < 0.0f)
+					p = -p;
+				glm::vec2 v = p - glm::vec2(0.0f, he);
+				v -= e * std::clamp(glm::dot(v, e) / glm::dot(e, e), -1.0f, 1.0f);
+				d = glm::min(d, glm::vec2(glm::dot(v, v), wi * he - std::abs(s)));
+				return std::sqrt(d.x) * std::copysign(1.0f, -d.y);
+			}
+
+			[[nodiscard]]
+			std::string getHelperFunctions() const override
+			{
+				std::string base = m_p.x.node->getHelperFunctions() + m_p.y.node->getHelperFunctions() +
+								   m_w.node->getHelperFunctions() + m_h.node->getHelperFunctions() +
+								   m_skew.node->getHelperFunctions();
+				return base + R"(
+#ifndef WEIRD_SD_PARALLELOGRAM
+#define WEIRD_SD_PARALLELOGRAM
+float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
+{
+	vec2 e = vec2(wi, sk);
+	p = (p.x < 0.0) ? -p : p;
+	vec2 w = p - e;
+	w.y -= clamp(w.y, -he, he);
+	vec2 d = vec2(dot(w, w), -w.x);
+	float s = p.y * e.x - p.x * e.y;
+	p = (s < 0.0) ? -p : p;
+	vec2 v = p - vec2(0.0, he);
+	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
+	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
+	return sqrt(d.x) * sign(-d.y);
+}
+#endif
+)";
+			}
+
+			[[nodiscard]]
+			std::string print() const override
+			{
+				return "sdParallelogramVertical(vec2(" + m_p.x.node->print() + ", " + m_p.y.node->print() + "), " +
+					   m_w.node->print() + ", " + m_h.node->print() + ", " + m_skew.node->print() + ")";
+			}
+		};
+
+		inline Expr sdRamp(const Vec2Expr& p, const Expr& width, const Expr& height, const Expr& skew)
+		{
+			return Expr(std::make_shared<Ramp>(p, width, height, skew));
 		}
 	} // namespace SDF
 } // namespace WeirdEngine

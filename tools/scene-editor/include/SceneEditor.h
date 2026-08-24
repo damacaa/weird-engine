@@ -201,7 +201,6 @@ private:
 			p[1] = cy;
 			p[2] = 2.0f * s;
 			p[3] = 2.0f * s;
-			p[4] = 0.0f;
 		}
 		else if (t == DefaultShapes::LINE)
 		{
@@ -683,6 +682,8 @@ private:
 	{
 		if (t == DefaultShapes::CIRCLE)
 			return "Circle";
+		if (t == DefaultShapes::CIRCLE_LINE)
+			return "CircleLine";
 		if (t == DefaultShapes::BOX)
 			return "Box";
 		if (t == DefaultShapes::BOX_LINE)
@@ -699,6 +700,16 @@ private:
 			return "Sine";
 		if (t == DefaultShapes::STAR)
 			return "Star";
+		if (t == DefaultShapes::BOX_ROTATED)
+			return "BoxRotated";
+		if (t == DefaultShapes::BOX_LINE_ROTATED)
+			return "BoxLineRotated";
+		if (t == DefaultShapes::TRIANGLE_ROTATED)
+			return "TriangleRotated";
+		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+			return "TriangleLineRotated";
+		if (t == DefaultShapes::RAMP_ROTATED)
+			return "RampRotated";
 		return "Shape";
 	}
 
@@ -706,14 +717,16 @@ private:
 	{
 		if (t == DefaultShapes::CIRCLE)
 			return 3;
+		if (t == DefaultShapes::CIRCLE_LINE)
+			return 4;
 		if (t == DefaultShapes::BOX)
 			return 4;
 		if (t == DefaultShapes::BOX_LINE)
 			return 5;
 		if (t == DefaultShapes::TRIANGLE)
-			return 5;
+			return 4;
 		if (t == DefaultShapes::TRIANGLE_LINE)
-			return 6;
+			return 5;
 		if (t == DefaultShapes::LINE)
 			return 5;
 		if (t == DefaultShapes::RAMP)
@@ -722,22 +735,40 @@ private:
 			return 4;
 		if (t == DefaultShapes::STAR)
 			return 6;
+		if (t == DefaultShapes::BOX_ROTATED)
+			return 5;
+		if (t == DefaultShapes::BOX_LINE_ROTATED)
+			return 6;
+		if (t == DefaultShapes::TRIANGLE_ROTATED)
+			return 5;
+		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+			return 6;
+		if (t == DefaultShapes::RAMP_ROTATED)
+			return 6;
 		return 3;
 	}
 
 	static const char* paramName(uint16_t t, int i)
 	{
 		static const char* C[] = {"posX", "posY", "rad"};
+		static const char* CL[] = {"posX", "posY", "rad", "thick"};
 		static const char* B[] = {"posX", "posY", "hW", "hH"};
 		static const char* BL[] = {"posX", "posY", "hW", "hH", "thick"};
-		static const char* T[] = {"posX", "posY", "w", "h", "angle"};
-		static const char* TL[] = {"posX", "posY", "w", "h", "angle", "thick"};
+		static const char* T[] = {"posX", "posY", "w", "h"};
+		static const char* TL[] = {"posX", "posY", "w", "h", "thick"};
 		static const char* L[] = {"Ax", "Ay", "Bx", "By", "w"};
 		static const char* R[] = {"posX", "posY", "w", "h", "skew"};
-		static const char* SI[] = {"amp", "per", "spd", "yOff"};
+		static const char* SI[] = {"amp", "freq", "spd", "yOff"};
 		static const char* ST[] = {"posX", "posY", "rad", "disp", "pts", "spin"};
+		static const char* BR[] = {"posX", "posY", "hW", "hH", "angle"};
+		static const char* BLR[] = {"posX", "posY", "hW", "hH", "angle", "thick"};
+		static const char* TR[] = {"posX", "posY", "w", "h", "angle"};
+		static const char* TLR[] = {"posX", "posY", "w", "h", "angle", "thick"};
+		static const char* RR[] = {"posX", "posY", "w", "h", "skew", "angle"};
 		if (t == DefaultShapes::CIRCLE)
 			return C[i];
+		if (t == DefaultShapes::CIRCLE_LINE)
+			return CL[i];
 		if (t == DefaultShapes::BOX)
 			return B[i];
 		if (t == DefaultShapes::BOX_LINE)
@@ -754,6 +785,16 @@ private:
 			return SI[i];
 		if (t == DefaultShapes::STAR)
 			return ST[i];
+		if (t == DefaultShapes::BOX_ROTATED)
+			return BR[i];
+		if (t == DefaultShapes::BOX_LINE_ROTATED)
+			return BLR[i];
+		if (t == DefaultShapes::TRIANGLE_ROTATED)
+			return TR[i];
+		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+			return TLR[i];
+		if (t == DefaultShapes::RAMP_ROTATED)
+			return RR[i];
 		return "?";
 	}
 

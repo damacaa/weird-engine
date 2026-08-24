@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mutex>
 #include <vector>
 
 #include <miniaudio/miniaudio.h>
@@ -48,8 +47,16 @@ namespace WeirdEngine
 			bool init(const AudioSettings& settings);
 			void close();
 			void loadSound(const char* filePath);
-			static void data_callback(void* pUserData, SDL_AudioStream* stream, int additional_amount,
-									  int total_amount);
+
+			void setAudioStream(SDL_AudioStream* stream)
+			{
+				m_audioStream = stream;
+			}
+
+			SDL_AudioStream* getAudioStream() const
+			{
+				return m_audioStream;
+			}
 
 			ma_uint32 getSampleRate() const;
 			ma_uint8 getChannels() const;
@@ -82,8 +89,10 @@ namespace WeirdEngine
 			ma_engine m_engine;
 			ma_sound m_sound; // background music
 
-			bool m_mute;
+			bool m_mute = false;
 			bool m_enableAmbient = true;
+
+			SDL_AudioStream* m_audioStream = nullptr;
 
 			// Procedural state
 			ma_noise m_noise;
@@ -99,10 +108,8 @@ namespace WeirdEngine
 
 			// Vector of voices
 			std::vector<CollisionVoice> m_activeVoices;
-			std::mutex m_voiceMutex; // Essential for thread safety
 
 			// Visualizer
-			std::mutex m_visualMutex;
 			AudioData m_visualSnapshot;
 		};
 

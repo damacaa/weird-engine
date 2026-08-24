@@ -364,7 +364,7 @@ static char **exts_i = NULL;
 
 static int get_exts(void) {
 #ifdef _GLAD_IS_SOME_NEW_VERSION
-    if(max_loaded_major < 3) {
+    if(max_loaded_major < 3 || glGetStringi == NULL) {
 #endif
         exts = (const char *)glGetString(GL_EXTENSIONS);
 #ifdef _GLAD_IS_SOME_NEW_VERSION
@@ -378,11 +378,16 @@ static int get_exts(void) {
         }
 
         if (exts_i == NULL) {
-            return 0;
+            exts = (const char *)glGetString(GL_EXTENSIONS);
+            return 1;
         }
 
         for(index = 0; index < num_exts_i; index++) {
             const char *gl_str_tmp = (const char*)glGetStringi(GL_EXTENSIONS, index);
+            if (gl_str_tmp == NULL) {
+                exts_i[index] = NULL;
+                continue;
+            }
             size_t len = strlen(gl_str_tmp);
 
             char *local_str = (char*)malloc((len+1) * sizeof(char));
@@ -400,7 +405,9 @@ static void free_exts(void) {
     if (exts_i != NULL) {
         int index;
         for(index = 0; index < num_exts_i; index++) {
-            free((char *)exts_i[index]);
+            if (exts_i[index] != NULL) {
+                free((char *)exts_i[index]);
+            }
         }
         free((void *)exts_i);
         exts_i = NULL;
@@ -409,7 +416,7 @@ static void free_exts(void) {
 
 static int has_ext(const char *ext) {
 #ifdef _GLAD_IS_SOME_NEW_VERSION
-    if(max_loaded_major < 3) {
+    if(max_loaded_major < 3 || exts_i == NULL) {
 #endif
         const char *extensions;
         const char *loc;
@@ -1771,9 +1778,13 @@ static void load_GL_ES_VERSION_3_0(GLADloadproc load) {
 	glad_glMapBufferRange = (PFNGLMAPBUFFERRANGEPROC)load("glMapBufferRange");
 	glad_glFlushMappedBufferRange = (PFNGLFLUSHMAPPEDBUFFERRANGEPROC)load("glFlushMappedBufferRange");
 	glad_glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)load("glBindVertexArray");
+	if(glad_glBindVertexArray == NULL) glad_glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)load("glBindVertexArrayOES");
 	glad_glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)load("glDeleteVertexArrays");
+	if(glad_glDeleteVertexArrays == NULL) glad_glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)load("glDeleteVertexArraysOES");
 	glad_glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)load("glGenVertexArrays");
+	if(glad_glGenVertexArrays == NULL) glad_glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)load("glGenVertexArraysOES");
 	glad_glIsVertexArray = (PFNGLISVERTEXARRAYPROC)load("glIsVertexArray");
+	if(glad_glIsVertexArray == NULL) glad_glIsVertexArray = (PFNGLISVERTEXARRAYPROC)load("glIsVertexArrayOES");
 	glad_glGetIntegeri_v = (PFNGLGETINTEGERI_VPROC)load("glGetIntegeri_v");
 	glad_glBeginTransformFeedback = (PFNGLBEGINTRANSFORMFEEDBACKPROC)load("glBeginTransformFeedback");
 	glad_glEndTransformFeedback = (PFNGLENDTRANSFORMFEEDBACKPROC)load("glEndTransformFeedback");
@@ -3188,38 +3199,41 @@ static int find_extensionsGLES2(void) {
 }
 
 static void find_coreGLES2(void) {
-
-    /* Thank you @elmindreda
-     * https://github.com/elmindreda/greg/blob/master/templates/greg.c.in#L176
-     * https://github.com/glfw/glfw/blob/master/src/context.c#L36
-     */
-    int i, major, minor;
+    int i, major = 0, minor = 0;
 
     const char* version;
     const char* prefixes[] = {
         "OpenGL ES-CM ",
         "OpenGL ES-CL ",
         "OpenGL ES ",
+        "WebGL ",
         NULL
     };
 
     version = (const char*) glGetString(GL_VERSION);
     if (!version) return;
 
-    for (i = 0;  prefixes[i];  i++) {
-        const size_t length = strlen(prefixes[i]);
-        if (strncmp(version, prefixes[i], length) == 0) {
-            version += length;
-            break;
+    if (strstr(version, "OpenGL ES 3.") != NULL || strstr(version, "WebGL 2.") != NULL) {
+        major = 3;
+        minor = 0;
+    } else if (strstr(version, "OpenGL ES 2.") != NULL || strstr(version, "WebGL 1.") != NULL) {
+        major = 2;
+        minor = 0;
+    } else {
+        for (i = 0;  prefixes[i];  i++) {
+            const size_t length = strlen(prefixes[i]);
+            if (strncmp(version, prefixes[i], length) == 0) {
+                version += length;
+                break;
+            }
         }
-    }
 
-/* PR #18 */
 #ifdef _MSC_VER
-    sscanf_s(version, "%d.%d", &major, &minor);
+        sscanf_s(version, "%d.%d", &major, &minor);
 #else
-    sscanf(version, "%d.%d", &major, &minor);
+        sscanf(version, "%d.%d", &major, &minor);
 #endif
+    }
 
     GLVersion.major = major; GLVersion.minor = minor;
     max_loaded_major = major; max_loaded_minor = minor;

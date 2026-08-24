@@ -13,6 +13,16 @@ cmake --build build
 
 There are no tests. CI runs `ctest` but no test targets are defined.
 
+## AI Agent Guidelines (Token Efficiency & Build Verification)
+
+- **Quiet Builds**: When checking compilation, avoid dumping verbose build progress logs into the context window. Target specific binaries and suppress standard output or filter for errors:
+  ```bash
+  # Check compilation cleanly without token bloat
+  cmake --build build --target <TargetName> > /dev/null
+  ```
+- **Avoid running heavy tests/simulations unnecessarily**: Do not run long test suites, game simulations, or inference loops after minor UI/shape edits. Verify compilation first; run tests only when explicitly requested or verifying core engine math/logic.
+- **Run builds synchronously**: Give build commands enough wait timeout (e.g. 5-10s) so they complete in a single turn without generating redundant background polling messages.
+
 ## CMake options
 
 | Option | Default | Purpose |

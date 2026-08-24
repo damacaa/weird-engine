@@ -45,7 +45,6 @@ namespace WeirdEngine
 							switch (buttonComponent.state)
 							{
 								case ButtonState::Off:
-								case ButtonState::Up:
 									buttonComponent.state = ButtonState::Down;
 
 									for (int j = 0; j < 8; ++j)
@@ -55,6 +54,9 @@ namespace WeirdEngine
 											shape.parameters[j] += buttonComponent.modifierAmount;
 										}
 									}
+									break;
+								case ButtonState::Up:
+									buttonComponent.state = ButtonState::Down;
 									break;
 								case ButtonState::Down:
 								case ButtonState::Hold:
@@ -126,7 +128,6 @@ namespace WeirdEngine
 						switch (toggleComponent.state)
 						{
 							case ButtonState::Off:
-							case ButtonState::Up:
 							{
 								toggleComponent.state = ButtonState::Down;
 
@@ -139,6 +140,9 @@ namespace WeirdEngine
 								}
 								break;
 							}
+							case ButtonState::Up:
+								toggleComponent.state = ButtonState::Down;
+								break;
 							case ButtonState::Down:
 								toggleComponent.state = ButtonState::Hold;
 								break;

@@ -263,7 +263,6 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		std::shared_ptr<IMathExpression> m_py;
 		std::shared_ptr<IMathExpression> m_w;
 		std::shared_ptr<IMathExpression> m_h;
-		std::shared_ptr<IMathExpression> m_rotation;
 		std::shared_ptr<IMathExpression> m_worldX;
 		std::shared_ptr<IMathExpression> m_worldY;
 
@@ -272,19 +271,16 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t SIZE_X = 2;
 		static constexpr uint8_t SIZE_Y = 3;
-		static constexpr uint8_t ROTATION = 4;
 
 		static constexpr uint8_t WORLD_X = 9;
 		static constexpr uint8_t WORLD_Y = 10;
 
 		Triangle(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
-				 std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h,
-				 std::shared_ptr<IMathExpression> rotation)
+				 std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h)
 			: m_px(std::move(px))
 			, m_py(std::move(py))
 			, m_w(std::move(w))
 			, m_h(std::move(h))
-			, m_rotation(std::move(rotation))
 		{
 			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
 			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
@@ -322,18 +318,13 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		{
 			vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters),
 						  m_worldY->getValue(parameters) - m_py->getValue(parameters));
-			float angle = m_rotation->getValue(parameters);
-			float c = cosf(angle);
-			float s = sinf(angle);
-
-			auto rotate = [&](const vec2& v) { return vec2(c * v.x - s * v.y, s * v.x + c * v.y); };
 
 			float halfWidth = m_w->getValue(parameters) * 0.5f;
 			float height = m_h->getValue(parameters);
 
-			vec2 a = rotate(vec2(-halfWidth, -height / 3.0f));
-			vec2 b = rotate(vec2(halfWidth, -height / 3.0f));
-			vec2 c2 = rotate(vec2(0.0f, 2.0f * height / 3.0f));
+			vec2 a(-halfWidth, -height / 3.0f);
+			vec2 b(halfWidth, -height / 3.0f);
+			vec2 c2(0.0f, 2.0f * height / 3.0f);
 
 			return signedDistanceToTriangle(p, a, b, c2);
 		}
@@ -342,7 +333,7 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		std::string print() const override
 		{
 			return "sdTriangle(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
-				   m_py->print() + "), " + m_w->print() + ", " + m_h->print() + ", " + m_rotation->print() + ")";
+				   m_py->print() + "), " + m_w->print() + ", " + m_h->print() + ")";
 		}
 	};
 

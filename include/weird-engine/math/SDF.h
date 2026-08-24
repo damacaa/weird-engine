@@ -154,7 +154,7 @@ namespace WeirdEngine
 		{
 			Expr c = cos(angle);
 			Expr s = sin(angle);
-			return {c * p.x + s * p.y, -s * p.x + c * p.y};
+			return {c * p.x - s * p.y, s * p.x + c * p.y};
 		}
 
 		inline Vec2Expr mirrorX(const Vec2Expr& p)
@@ -345,14 +345,12 @@ namespace WeirdEngine
 			Vec2Expr m_p;
 			Expr m_w;
 			Expr m_h;
-			Expr m_rotation;
 
 		public:
-			Triangle(Vec2Expr p, Expr w, Expr h, Expr rotation)
+			Triangle(Vec2Expr p, Expr w, Expr h)
 				: m_p(std::move(p))
 				, m_w(std::move(w))
 				, m_h(std::move(h))
-				, m_rotation(std::move(rotation))
 			{
 			}
 
@@ -385,58 +383,47 @@ namespace WeirdEngine
 			float getValue(const float* parameters) const override
 			{
 				glm::vec2 p(m_p.x.node->getValue(parameters), m_p.y.node->getValue(parameters));
-				float angle = m_rotation.node->getValue(parameters);
-				float c = cosf(angle);
-				float s = sinf(angle);
-
-				auto rotate = [&](const glm::vec2& v) { return glm::vec2(c * v.x - s * v.y, s * v.x + c * v.y); };
-
 				float halfWidth = m_w.node->getValue(parameters) * 0.5f;
 				float height = m_h.node->getValue(parameters);
 
-				glm::vec2 a = rotate(glm::vec2(-halfWidth, -height / 3.0f));
-				glm::vec2 b = rotate(glm::vec2(halfWidth, -height / 3.0f));
-				glm::vec2 c2 = rotate(glm::vec2(0.0f, 2.0f * height / 3.0f));
+				glm::vec2 a(-halfWidth, -height / 3.0f);
+				glm::vec2 b(halfWidth, -height / 3.0f);
+				glm::vec2 c(0.0f, 2.0f * height / 3.0f);
 
-				return signedDistanceToTriangle(p, a, b, c2);
+				return signedDistanceToTriangle(p, a, b, c);
 			}
 
 			[[nodiscard]]
 			std::string getHelperFunctions() const override
 			{
 				std::string base = m_p.x.node->getHelperFunctions() + m_p.y.node->getHelperFunctions() +
-								   m_w.node->getHelperFunctions() + m_h.node->getHelperFunctions() +
-								   m_rotation.node->getHelperFunctions();
+								   m_w.node->getHelperFunctions() + m_h.node->getHelperFunctions();
 				return base + R"(
 #ifndef WEIRD_SD_TRIANGLE
 #define WEIRD_SD_TRIANGLE
-float sdTriangle_impl(in vec2 p, float w, float h, float angle)
+float sdTriangle_impl(in vec2 p, float w, float h)
 {
-	float c = cos(angle);
-	float s = sin(angle);
-	vec2 q = vec2(c * p.x - s * p.y, s * p.x + c * p.y);
-
 	vec2 a = vec2(-w * 0.5, -h / 3.0);
 	vec2 b = vec2(w * 0.5, -h / 3.0);
 	vec2 c2 = vec2(0.0, 2.0 * h / 3.0);
 
-	vec2 pa = q - a, ba = b - a;
+	vec2 pa = p - a, ba = b - a;
 	float h0 = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
 	float d0 = length(pa - ba * h0);
 
-	vec2 pb = q - b, cb = c2 - b;
+	vec2 pb = p - b, cb = c2 - b;
 	float h1 = clamp(dot(pb, cb) / dot(cb, cb), 0.0, 1.0);
 	float d1 = length(pb - cb * h1);
 
-	vec2 pc2 = q - c2, ac2 = a - c2;
+	vec2 pc2 = p - c2, ac2 = a - c2;
 	float h2 = clamp(dot(pc2, ac2) / dot(ac2, ac2), 0.0, 1.0);
 	float d2 = length(pc2 - ac2 * h2);
 
 	float d = min(min(d0, d1), d2);
 
-	float cross0 = (b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x);
-	float cross1 = (c2.x - b.x) * (q.y - b.y) - (c2.y - b.y) * (q.x - b.x);
-	float cross2 = (a.x - c2.x) * (q.y - c2.y) - (a.y - c2.y) * (q.x - c2.x);
+	float cross0 = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+	float cross1 = (c2.x - b.x) * (p.y - b.y) - (c2.y - b.y) * (p.x - b.x);
+	float cross2 = (a.x - c2.x) * (p.y - c2.y) - (a.y - c2.y) * (p.x - c2.x);
 	bool inside = (cross0 >= 0.0 && cross1 >= 0.0 && cross2 >= 0.0) || (cross0 <= 0.0 && cross1 <= 0.0 && cross2 <= 0.0);
 
 	return inside ? -d : d;
@@ -449,13 +436,13 @@ float sdTriangle_impl(in vec2 p, float w, float h, float angle)
 			std::string print() const override
 			{
 				return "sdTriangle_impl(vec2(" + m_p.x.node->print() + ", " + m_p.y.node->print() + "), " +
-					   m_w.node->print() + ", " + m_h.node->print() + ", " + m_rotation.node->print() + ")";
+					   m_w.node->print() + ", " + m_h.node->print() + ")";
 			}
 		};
 
-		inline Expr sdTriangle(const Vec2Expr& p, const Expr& w, const Expr& h, const Expr& rotation)
+		inline Expr sdTriangle(const Vec2Expr& p, const Expr& w, const Expr& h)
 		{
-			return Expr(std::make_shared<Triangle>(p, w, h, rotation));
+			return Expr(std::make_shared<Triangle>(p, w, h));
 		}
 	} // namespace SDF
 } // namespace WeirdEngine

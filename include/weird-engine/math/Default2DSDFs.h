@@ -42,14 +42,15 @@ namespace WeirdEngine
 				.node);
 
 		inline const uint16_t TRIANGLE = Scene::registerDefaultSDF(
-			sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(2)), Expr(var(3)), Expr(var(4)))
+			sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))), Expr(var(2)),
+					   Expr(var(3)))
 				.node);
 
-		inline const uint16_t TRIANGLE_LINE =
-			Scene::registerDefaultSDF(sdfOnion(sdTriangle(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}),
-														  Expr(var(2)), Expr(var(3)), Expr(var(4))),
-											   Expr(var(5)))
-										  .node);
+		inline const uint16_t TRIANGLE_LINE = Scene::registerDefaultSDF(
+			sdfOnion(sdTriangle(rotate(translate(worldPoint(), {Expr(var(0)), Expr(var(1))}), Expr(var(4))),
+								Expr(var(2)), Expr(var(3))),
+					 Expr(var(5)))
+				.node);
 
 		inline const uint16_t LINE = Scene::registerDefaultSDF(
 			sdLine(worldPoint(), {Expr(var(0)), Expr(var(1))}, {Expr(var(2)), Expr(var(3))}, Expr(var(4))).node);

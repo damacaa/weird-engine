@@ -102,12 +102,19 @@ set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
 if(EMSCRIPTEN)
     set(SDL_DEPS_SHARED OFF CACHE BOOL "Load dependencies dynamically" FORCE)
     set(SDL_KMSDRM_SHARED OFF CACHE BOOL "Dynamically load KMS DRM support" FORCE)
+    set(HAVE_PTHREADS 1 CACHE BOOL "" FORCE)
+    set(HAVE_RECURSIVE_MUTEXES 1 CACHE BOOL "" FORCE)
+    set(SDL_THREAD_PTHREAD_RECURSIVE_MUTEX 1 CACHE BOOL "" FORCE)
 else()
     set(SDL_DEPS_SHARED ON CACHE BOOL "Load dependencies dynamically" FORCE)
     set(SDL_KMSDRM_SHARED ON CACHE BOOL "Dynamically load KMS DRM support" FORCE)
 endif()
 # Add dependencies
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third-party/SDL)
+
+if(TARGET SDL3-static)
+    target_compile_definitions(SDL3-static PRIVATE SDL_THREAD_PTHREAD_RECURSIVE_MUTEX=1)
+endif()
 
 # Force SDL3 to dynamically load KMSDRM libraries via dlopen instead of hard-linking.
 # This is necessary because cmake_dependent_option overrides our FORCE cache entries.
@@ -213,7 +220,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 # target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
 )
 
 function(assign_source_groups TARGET)

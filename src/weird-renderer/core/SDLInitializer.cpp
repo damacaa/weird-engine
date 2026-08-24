@@ -159,9 +159,9 @@ namespace WeirdEngine
 			ImGui_ImplOpenGL3_Init("#version 300 es"); // matches your GL ES 3.0 context
 #endif
 
-#ifndef NDEBUG
+#if !defined(__EMSCRIPTEN__) && !defined(NDEBUG)
 			// Enable debug output via KHR_debug extension if supported
-			if (GLAD_GL_KHR_debug)
+			if (GLAD_GL_KHR_debug && glDebugMessageCallback && glDebugMessageControl)
 			{
 				glEnable(GL_DEBUG_OUTPUT);
 
@@ -189,8 +189,8 @@ namespace WeirdEngine
 			desiredSpec.format = SDL_AUDIO_F32;
 			desiredSpec.channels = audioEngine.getChannels();
 
-			m_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec,
-													  AudioEngine::data_callback, &audioEngine);
+			m_audioStream =
+				SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec, nullptr, nullptr);
 			if (!m_audioStream)
 			{
 				// Audio is not critical: log and keep running silent.
@@ -199,6 +199,7 @@ namespace WeirdEngine
 			}
 			else
 			{
+				audioEngine.setAudioStream(m_audioStream);
 				SDL_AudioDeviceID deviceID = SDL_GetAudioStreamDevice(m_audioStream);
 				SDL_ResumeAudioDevice(deviceID);
 			}
@@ -212,9 +213,11 @@ namespace WeirdEngine
 			ImGui::DestroyContext();
 #endif
 
+			AudioEngine::getInstance().setAudioStream(nullptr);
 			if (m_audioStream)
 			{
 				SDL_DestroyAudioStream(m_audioStream);
+				m_audioStream = nullptr;
 			}
 
 			if (m_useFBDevEGL)

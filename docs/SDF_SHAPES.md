@@ -28,15 +28,10 @@ Weird Engine includes default shape primitives in `WeirdEngine::DefaultShapes` (
 
 ### Available Default Shapes
 
-- `DefaultShapes::CIRCLE`
-- `DefaultShapes::BOX`
-- `DefaultShapes::TRIANGLE`
-- `DefaultShapes::LINE`
-- `DefaultShapes::RAMP`
-- `DefaultShapes::SINE`
-- `DefaultShapes::STAR`
-- `DefaultShapes::CIRCLE_LINE`
-- `DefaultShapes::BOX_LINE`
+- **Standard Shapes**: `DefaultShapes::CIRCLE`, `DefaultShapes::BOX`, `DefaultShapes::TRIANGLE`, `DefaultShapes::LINE`, `DefaultShapes::RAMP`, `DefaultShapes::SINE`, `DefaultShapes::STAR`
+- **Border / Line Shapes**: `DefaultShapes::CIRCLE_LINE`, `DefaultShapes::BOX_LINE`, `DefaultShapes::TRIANGLE_LINE`
+- **Rotated Shapes**: `DefaultShapes::BOX_ROTATED`, `DefaultShapes::TRIANGLE_ROTATED`, `DefaultShapes::RAMP_ROTATED`
+- **Rotated Border Shapes**: `DefaultShapes::BOX_LINE_ROTATED`, `DefaultShapes::TRIANGLE_LINE_ROTATED`
 
 ### Adding a Default Shape to a Scene
 

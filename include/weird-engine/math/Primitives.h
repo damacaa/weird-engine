@@ -32,6 +32,7 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t POS_X = 0;
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t RADIUS = 2;
+		static constexpr uint8_t THICKNESS = 3;
 
 		// Common
 		static constexpr uint8_t TIME = 8;
@@ -81,6 +82,7 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t SIZE_X = 2;
 		static constexpr uint8_t SIZE_Y = 3;
+		static constexpr uint8_t THICKNESS = 4;
 
 		static constexpr uint8_t WORLD_X = 9;
 		static constexpr uint8_t WORLD_Y = 10;
@@ -271,6 +273,7 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t SIZE_X = 2;
 		static constexpr uint8_t SIZE_Y = 3;
+		static constexpr uint8_t THICKNESS = 4;
 
 		static constexpr uint8_t WORLD_X = 9;
 		static constexpr uint8_t WORLD_Y = 10;
@@ -335,6 +338,46 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 			return "sdTriangle(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
 				   m_py->print() + "), " + m_w->print() + ", " + m_h->print() + ")";
 		}
+	};
+
+	struct BoxRotated
+	{
+		static constexpr uint8_t POS_X = 0;
+		static constexpr uint8_t POS_Y = 1;
+		static constexpr uint8_t SIZE_X = 2;
+		static constexpr uint8_t SIZE_Y = 3;
+		static constexpr uint8_t ANGLE = 4;
+		static constexpr uint8_t THICKNESS = 5;
+	};
+
+	struct TriangleRotated
+	{
+		static constexpr uint8_t POS_X = 0;
+		static constexpr uint8_t POS_Y = 1;
+		static constexpr uint8_t SIZE_X = 2;
+		static constexpr uint8_t SIZE_Y = 3;
+		static constexpr uint8_t ANGLE = 4;
+		static constexpr uint8_t THICKNESS = 5;
+	};
+
+	struct RampRotated
+	{
+		static constexpr uint8_t POS_X = 0;
+		static constexpr uint8_t POS_Y = 1;
+		static constexpr uint8_t WIDTH = 2;
+		static constexpr uint8_t HEIGHT = 3;
+		static constexpr uint8_t SKEW = 4;
+		static constexpr uint8_t ANGLE = 5;
+	};
+
+	struct Star
+	{
+		static constexpr uint8_t POS_X = 0;
+		static constexpr uint8_t POS_Y = 1;
+		static constexpr uint8_t RADIUS = 2;
+		static constexpr uint8_t DISPLACEMENT = 3;
+		static constexpr uint8_t POINTS = 4;
+		static constexpr uint8_t SPEED = 5;
 	};
 
 	struct Line : IMathExpression

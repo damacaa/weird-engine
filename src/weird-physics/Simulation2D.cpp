@@ -519,7 +519,11 @@ namespace WeirdEngine
 				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
 				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
 
-				collisionEvent.normal = normalize(vec2(d1, d2));
+				vec2 grad(d1, d2);
+				float gradLenSq = glm::length2(grad);
+				collisionEvent.normal = gradLenSq > 0.0f ? grad / std::sqrt(gradLenSq) : vec2(0.0f, 1.0f);
+				WEIRD_ASSERT(!std::isnan(collisionEvent.normal.x) && !std::isnan(collisionEvent.normal.y),
+							 "NaN normal in shape collision calculation");
 
 				float distanceAtSurface = map(p - ((m_radious)*collisionEvent.normal));
 				if (distanceAtSurface <=
@@ -578,7 +582,12 @@ namespace WeirdEngine
 		for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it)
 		{
 			Collision col = *it;
-			vec2 penetration = 0.5f * ((m_radious + m_radious) - length(col.AB)) * normalize(col.AB);
+			float lenSq = glm::length2(col.AB);
+			vec2 normal = lenSq > 0.0f ? col.AB / std::sqrt(lenSq) : vec2(1.0f, 0.0f);
+			float len = std::sqrt(lenSq);
+			vec2 penetration = 0.5f * ((m_radious + m_radious) - len) * normal;
+			WEIRD_ASSERT(!std::isnan(penetration.x) && !std::isnan(penetration.y),
+						 "NaN penetration in solveCollisionsPositionBased");
 
 			m_positions[col.A] -= penetration;
 			m_positions[col.B] += penetration;
@@ -606,6 +615,9 @@ namespace WeirdEngine
 
 	float Simulation2D::map(vec2 p, int& closestShape)
 	{
+		WEIRD_ASSERT(!std::isnan(p.x) && !std::isnan(p.y), "map() called with NaN position coordinates");
+		WEIRD_ASSERT(!std::isinf(p.x) && !std::isinf(p.y), "map() called with infinite position coordinates");
+
 		closestShape = 0;
 
 		float d = 1000.0f;
@@ -632,18 +644,21 @@ namespace WeirdEngine
 				continue;
 			}
 
-			if (obj.distanceFieldId >= m_sdfs->size())
+			if (!m_sdfs || obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
 			}
 
-			obj.parameters[8] = static_cast<float>(m_simulationTime);
-			obj.parameters[9] = p.x;
-			obj.parameters[10] = p.y;
+			float params[11];
+			std::copy_n(obj.parameters, 8, params);
+			params[8] = static_cast<float>(m_simulationTime);
+			params[9] = p.x;
+			params[10] = p.y;
 
 			// Distance
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(obj.parameters);
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(params);
+			WEIRD_ASSERT(!std::isnan(dist), "NAN in group shape");
 
 			float currentMinDistance = d;
 			GroupState* groupState = nullptr;
@@ -716,18 +731,21 @@ namespace WeirdEngine
 		{
 			DistanceFieldObject2D& obj = m_objects[shapeIdx];
 
-			if (obj.distanceFieldId >= m_sdfs->size())
+			if (!m_sdfs || obj.distanceFieldId >= m_sdfs->size())
 			{
 				continue;
 			}
 
-			obj.parameters[8] = static_cast<float>(m_simulationTime);
-			obj.parameters[9] = p.x;
-			obj.parameters[10] = p.y;
+			float params[11];
+			std::copy_n(obj.parameters, 8, params);
+			params[8] = static_cast<float>(m_simulationTime);
+			params[9] = p.x;
+			params[10] = p.y;
 
 			// Distance
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(obj.parameters);
+			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(params);
+			WEIRD_ASSERT(!std::isnan(dist), "NAN in global shape");
 
 			float currentMinDistance = d;
 
@@ -803,8 +821,9 @@ namespace WeirdEngine
 			Collision col = *it;
 
 			float lengthSquared = glm::length2(col.AB);
-			vec2 normal = lengthSquared > 0.0f ? normalize(col.AB) : vec2(1.0f);
-			float penetration = (m_radious + m_radious) - length(col.AB);
+			vec2 normal = lengthSquared > 0.0f ? col.AB / std::sqrt(lengthSquared) : vec2(1.0f, 0.0f);
+			WEIRD_ASSERT(!std::isnan(normal.x) && !std::isnan(normal.y), "NaN normal in sphere-sphere collision");
+			float penetration = (m_radious + m_radious) - std::sqrt(lengthSquared);
 
 			// Position
 			/*vec2 translation = 0.5f * penetration * normal;
@@ -945,7 +964,7 @@ namespace WeirdEngine
 			// Calculate correction proportional to mass
 			vec2 correctionVector = n * (error / wSum);
 
-			float stiffness = constraint.K; // 1.0f -> 100% correction per iteration
+			float stiffness = std::clamp(constraint.K, 0.0f, 1.0f); // 1.0f -> 100% correction per iteration
 
 			m_positions[constraint.A] += wA * correctionVector * stiffness;
 			m_positions[constraint.B] -= wB * correctionVector * stiffness;
@@ -981,6 +1000,11 @@ namespace WeirdEngine
 			// Predict new position (p = p + v*dt)
 			m_positions[i] += m_velocities[i] * timeStep;
 
+			WEIRD_ASSERT(!std::isnan(m_positions[i].x) && !std::isnan(m_positions[i].y),
+						 "integratePredict resulted in NaN position");
+			WEIRD_ASSERT(!std::isnan(m_velocities[i].x) && !std::isnan(m_velocities[i].y),
+						 "integratePredict resulted in NaN velocity");
+
 			// Clear forces for next frame
 			m_forces[i] = vec2(0.0f);
 		}
@@ -996,6 +1020,9 @@ namespace WeirdEngine
 
 			// Apply damping and store
 			m_velocities[i] = newVelocity * (1.0f - m_damping);
+
+			WEIRD_ASSERT(!std::isnan(m_velocities[i].x) && !std::isnan(m_velocities[i].y),
+						 "integrateVelocity resulted in NaN velocity");
 		}
 
 		// Restore your original rendering buffer logic
@@ -1161,6 +1188,9 @@ namespace WeirdEngine
 
 	void Simulation2D::addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent)
 	{
+		WEIRD_ASSERT(id < m_allocated, "addImpulseForce called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(impulse.x) && !std::isnan(impulse.y), "addImpulseForce called with NaN impulse");
+
 		vec2 finalImpulse = impulse * m_simulationFrequency;
 		if (massIndependent)
 			finalImpulse *= m_mass[id];
@@ -1178,6 +1208,9 @@ namespace WeirdEngine
 
 	void Simulation2D::setContinuousForce(SimulationID id, const vec2& force, bool massIndependent)
 	{
+		WEIRD_ASSERT(id < m_allocated, "setContinuousForce called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(force.x) && !std::isnan(force.y), "setContinuousForce called with NaN force");
+
 		// No lock needed, game thread writes directly to the write buffer
 		if (massIndependent)
 			m_continuousForcesWrite[id] = force * m_mass[id];
@@ -1205,17 +1238,27 @@ namespace WeirdEngine
 		if (a == b)
 			return;
 
+		WEIRD_ASSERT(a < m_allocated && b < m_allocated, "addSpring called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(distance) && distance >= 0.0f, "addSpring called with negative or NaN distance");
+		WEIRD_ASSERT(!std::isnan(stiffness) && stiffness >= 0.0f, "addSpring called with negative or NaN stiffness");
+
+		float clampedStiffness = std::clamp(stiffness, 0.0f, 1.0f);
+		float k = m_relaxationSteps > 0
+					  ? 1.0f - std::pow(1.0f - clampedStiffness, 1.0f / static_cast<float>(m_relaxationSteps))
+					  : clampedStiffness;
+
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
-		m_distanceConstraints.emplace_back(
-			a, b, distance,
-			static_cast<float>(
-				std::pow(stiffness, std::sqrt(m_relaxationSteps)))); // Square to make stiffness more intuitive
+		m_distanceConstraints.emplace_back(a, b, distance, k);
 	}
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
 	{
 		if (a == b)
 			return;
+
+		WEIRD_ASSERT(a < m_allocated && b < m_allocated, "addPositionConstraint called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(distance) && distance >= 0.0f,
+					 "addPositionConstraint called with negative or NaN distance");
 
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		m_distanceConstraints.emplace_back(a, b, distance, 1.0f);
@@ -1315,6 +1358,9 @@ namespace WeirdEngine
 
 	void Simulation2D::setPosition(SimulationID id, vec2 pos)
 	{
+		WEIRD_ASSERT(id < m_allocated, "setPosition called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(pos.x) && !std::isnan(pos.y), "setPosition called with NaN coordinates");
+
 		if (std::this_thread::get_id() == m_physicsThreadId)
 		{
 			m_internalCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
@@ -1340,6 +1386,9 @@ namespace WeirdEngine
 
 	void Simulation2D::setVelocity(SimulationID id, vec2 vel)
 	{
+		WEIRD_ASSERT(id < m_allocated, "setVelocity called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(vel.x) && !std::isnan(vel.y), "setVelocity called with NaN velocity");
+
 		if (std::this_thread::get_id() == m_physicsThreadId)
 		{
 			m_internalCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
@@ -1403,6 +1452,9 @@ namespace WeirdEngine
 
 	void Simulation2D::setMass(SimulationID id, float mass)
 	{
+		WEIRD_ASSERT(id < m_allocated, "setMass called with invalid simulation id");
+		WEIRD_ASSERT(!std::isnan(mass) && mass > 0.0f, "setMass called with non-positive or NaN mass");
+
 		PhysicsCommand cmd = {PhysicsCommandType::SetMass, id};
 		cmd.floatData = mass;
 
@@ -1419,13 +1471,20 @@ namespace WeirdEngine
 
 	void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
+		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
 	}
 
 	void Simulation2D::internalUpdateShape(Entity owner, CustomShape& shape)
 	{
 		if (!shape.hasCollisions)
+		{
+			internalRemoveShape(owner, shape);
 			return;
+		}
+
+		WEIRD_ASSERT(!m_sdfs || shape.distanceFieldId < m_sdfs->size(),
+					 "CustomShape registered with unregistered distanceFieldId");
 
 		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters);
 
@@ -1449,7 +1508,7 @@ namespace WeirdEngine
 
 	void Simulation2D::internalRemoveShape(Entity owner, CustomShape& shape)
 	{
-		if (m_objects.size() == 0)
+		if (m_objects.empty())
 		{
 			return;
 		}
@@ -1463,17 +1522,20 @@ namespace WeirdEngine
 		// Get delete idx
 		auto idx = it->second;
 
-		// Replace the element at idx with the last element
-		m_objects[idx] = m_objects.back();
+		if (idx < m_objects.size() - 1)
+		{
+			// Replace the element at idx with the last element
+			m_objects[idx] = m_objects.back();
 
-		// Point last objects entity to the new vector position
-		m_entityToObjectsIdx[m_objects[idx].owner] = idx;
+			// Point last objects entity to the new vector position
+			m_entityToObjectsIdx[m_objects[idx].owner] = idx;
+		}
 
 		// Remove the last element
 		m_objects.pop_back();
 
 		// Remove from map
-		m_entityToObjectsIdx.erase(owner);
+		m_entityToObjectsIdx.erase(it);
 	}
 
 	void Simulation2D::updateShape(Entity owner, CustomShape& shape)

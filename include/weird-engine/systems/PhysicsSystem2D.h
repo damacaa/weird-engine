@@ -92,7 +92,10 @@ namespace WeirdEngine
 							{
 								auto simIdA = registry.getComponent<RigidBody2D>(spring.entityA).simulationId;
 								auto simIdB = registry.getComponent<RigidBody2D>(spring.entityB).simulationId;
-								simulation.addSpring(simIdA, simIdB, spring.stiffness, spring.restDistance);
+								if (!simulation.setDistanceConstraintDistance(simIdA, simIdB, spring.restDistance))
+								{
+									simulation.addSpring(simIdA, simIdB, spring.stiffness, spring.restDistance);
+								}
 								registry.setComponentDirty(spring, false);
 							}
 						}
@@ -109,7 +112,10 @@ namespace WeirdEngine
 							{
 								auto simIdA = registry.getComponent<RigidBody2D>(constraint.entityA).simulationId;
 								auto simIdB = registry.getComponent<RigidBody2D>(constraint.entityB).simulationId;
-								simulation.addPositionConstraint(simIdA, simIdB, constraint.distance);
+								if (!simulation.setDistanceConstraintDistance(simIdA, simIdB, constraint.distance))
+								{
+									simulation.addPositionConstraint(simIdA, simIdB, constraint.distance);
+								}
 								registry.setComponentDirty(constraint, false);
 							}
 						}

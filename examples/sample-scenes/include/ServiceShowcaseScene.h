@@ -477,6 +477,7 @@ public:
 
 		addDestroySystem(ServiceShowcase::onDestroySystem);
 
+#ifndef WEIRD_DISABLE_IMGUI
 		addImGuiRenderSystem(
 			[](Registry& registry, ServiceProvider& services)
 			{
@@ -494,6 +495,7 @@ public:
 				ImGui::Text("Up/Down: gravity | Left/Right: damping");
 				ImGui::Text("Ctrl+S: save scene | Ctrl+L: load scene | Q: next scene");
 			});
+#endif
 	}
 
 private:

@@ -64,7 +64,7 @@ namespace WeirdEngine
 			worldConfig.motionBlurBlendSpeed = 10.0f;
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
-			worldConfig.ambienOcclusionRadius = 10.0f;
+			worldConfig.ambienOcclusionRadius = 4.0f;
 			worldConfig.ambienOcclusionStrength = settings.worldAmbientOcclusionStrength;
 			worldConfig.ballK = settings.worldSmoothFactor;
 			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);

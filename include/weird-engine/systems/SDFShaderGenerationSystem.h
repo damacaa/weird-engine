@@ -41,6 +41,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		};
 
 		std::ostringstream oss;
+		std::ostringstream functionsOss;
 
 		oss << "///////////////////////////////////////////\n";
 		oss << "int dataOffset = u_loadedObjects - (2 * u_customShapeCount);\n";
@@ -137,58 +138,8 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
-			std::string arrayPreamble;
-			{
-				const std::string arrayPattern = "vec2[](";
-				size_t arrayPos = fragmentCode.find(arrayPattern);
-				if (arrayPos != std::string::npos)
-				{
-					size_t parenStart = arrayPos + arrayPattern.length() - 1;
-					int depth = 0;
-					size_t end = parenStart;
-					for (; end < fragmentCode.size(); end++)
-					{
-						if (fragmentCode[end] == '(')
-							depth++;
-						else if (fragmentCode[end] == ')')
-						{
-							depth--;
-							if (depth == 0)
-							{
-								end++;
-								break;
-							}
-						}
-					}
-
-					std::vector<std::string> elements;
-					size_t elemStart = parenStart + 1;
-					int elemDepth = 0;
-					for (size_t k = elemStart; k < end - 1; k++)
-					{
-						if (fragmentCode[k] == '(')
-							elemDepth++;
-						else if (fragmentCode[k] == ')')
-							elemDepth--;
-						else if (fragmentCode[k] == ',' && elemDepth == 0)
-						{
-							elements.push_back(fragmentCode.substr(elemStart, k - elemStart));
-							elemStart = k + 1;
-						}
-					}
-					elements.push_back(fragmentCode.substr(elemStart, end - 1 - elemStart));
-
-					fragmentCode.replace(arrayPos, end - arrayPos, "_sdfPoly");
-
-					arrayPreamble = "highp vec2 _sdfPoly[" + std::to_string(elements.size()) + "];\n";
-					for (size_t k = 0; k < elements.size(); k++)
-					{
-						arrayPreamble += "_sdfPoly[" + std::to_string(k) + "] = " + elements[k] + ";\n";
-					}
-				}
-			}
-
-			oss << arrayPreamble;
+			std::string helperFunctions = sdfs[shape.distanceFieldId]->getHelperFunctions();
+			functionsOss << helperFunctions;
 			oss << "float dist = " << fragmentCode << ";\n";
 
 			// 3D shader uses this to apply dithering to the distance of shapes with transparent materials, this creates
@@ -248,14 +199,21 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		}
 
 		std::string replacement = oss.str();
-		shader.setFragmentIncludeCode(1, replacement);
+		std::string helperFunctionsTotal = functionsOss.str();
+		if (!helperFunctionsTotal.empty())
+			WeirdEngine::Logger::log("HELPER FUNCTIONS TOTAL:\n" + helperFunctionsTotal);
+
+		shader.setFragmentIncludeCode(0, helperFunctionsTotal, false);
+		shader.setFragmentIncludeCode(1, replacement, true);
 
 #ifndef NDEBUG
-		if (Input::GetKey(Input::LeftCtrl) && Input::GetKey(Input::LeftShift) && Input::GetKey(Input::R))
+		if (true)
 		{
 			WeirdEngine::Logger::log(replacement);
 
-			std::ofstream outFile("generated_shader.frag");
+			static int shaderDumpId = 0;
+			std::ofstream outFile("generated_shader_" + std::string(typeid(ShapeClass).name()) + "_" +
+								  std::to_string(shaderDumpId++) + ".frag");
 			if (outFile.is_open())
 			{
 				outFile << shader.getFragmentCode();

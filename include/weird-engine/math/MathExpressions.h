@@ -15,6 +15,11 @@ namespace WeirdEngine
 		virtual float getValue(const float* parameters) const = 0;
 		[[nodiscard]]
 		virtual std::string print() const = 0;
+		[[nodiscard]]
+		virtual std::string getHelperFunctions() const
+		{
+			return "";
+		}
 		virtual ~IMathExpression() = default;
 	};
 
@@ -107,6 +112,10 @@ namespace WeirdEngine
 		float getValue(const float* parameters) const override = 0;
 
 		[[nodiscard]]
+		virtual std::string getHelperFunctions() const override
+		{
+			return valueA ? valueA->getHelperFunctions() : "";
+		}
 		std::string print() const override = 0;
 	};
 
@@ -143,6 +152,60 @@ namespace WeirdEngine
 		std::string print() const override
 		{
 			return "abs(" + valueA->print() + ")";
+		}
+	};
+
+	// Cosine
+	struct Cosine : OneFloatOperation
+	{
+		using OneFloatOperation::OneFloatOperation;
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			return cosf(valueA->getValue(parameters));
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "cos(" + valueA->print() + ")";
+		}
+	};
+
+	// Negation
+	struct Negation : OneFloatOperation
+	{
+		using OneFloatOperation::OneFloatOperation;
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			return -valueA->getValue(parameters);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "-(" + valueA->print() + ")";
+		}
+	};
+
+	// Sqrt
+	struct Sqrt : OneFloatOperation
+	{
+		using OneFloatOperation::OneFloatOperation;
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			return std::sqrt(valueA->getValue(parameters));
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "sqrt(" + valueA->print() + ")";
 		}
 	};
 
@@ -193,8 +256,15 @@ namespace WeirdEngine
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
+		[[nodiscard]] [[nodiscard]]
+
 		[[nodiscard]]
-		virtual std::string print() const override = 0;
+		virtual std::string getHelperFunctions() const override
+		{
+			return (valueA ? valueA->getHelperFunctions() : "") + (valueB ? valueB->getHelperFunctions() : "");
+		}
+
+		std::string print() const override = 0;
 	};
 
 	// Add
@@ -261,7 +331,10 @@ namespace WeirdEngine
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
-			return valueA->getValue(parameters) / valueB->getValue(parameters);
+			float denominator = valueB->getValue(parameters);
+			if (denominator == 0.0f)
+				return 0.0f;
+			return valueA->getValue(parameters) / denominator;
 		}
 
 		[[nodiscard]]
@@ -472,8 +545,38 @@ namespace WeirdEngine
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
+		[[nodiscard]] [[nodiscard]]
+
 		[[nodiscard]]
-		virtual std::string print() const override = 0;
+		virtual std::string getHelperFunctions() const override
+		{
+			return (valueA ? valueA->getHelperFunctions() : "") + (valueB ? valueB->getHelperFunctions() : "") +
+				   (valueC ? valueC->getHelperFunctions() : "");
+		}
+
+		std::string print() const override = 0;
+	};
+
+	// Clamp
+	struct Clamp : ThreeFloatOperation
+	{
+		using ThreeFloatOperation::ThreeFloatOperation;
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			float a = valueA->getValue(parameters);
+			float lo = valueB->getValue(parameters);
+			float hi = valueC->getValue(parameters);
+
+			return std::clamp(a, lo, hi);
+		}
+
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return "clamp(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+		}
 	};
 
 	// TODO: reuse the same ones from physics engine

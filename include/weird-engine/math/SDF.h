@@ -8,6 +8,19 @@
 
 namespace WeirdEngine
 {
+	inline bool getConstantVal(const std::shared_ptr<IMathExpression>& node, float& val)
+	{
+		if (node)
+		{
+			if (auto fc = dynamic_cast<FloatConstant*>(node.get()))
+			{
+				val = fc->getValue(nullptr);
+				return true;
+			}
+		}
+		return false;
+	}
+
 	struct Expr
 	{
 		std::shared_ptr<IMathExpression> node;
@@ -27,22 +40,91 @@ namespace WeirdEngine
 
 		friend Expr operator+(const Expr& a, const Expr& b)
 		{
+			float va, vb;
+			bool aConst = getConstantVal(a.node, va);
+			bool bConst = getConstantVal(b.node, vb);
+			if (aConst && bConst)
+			{
+				return Expr(va + vb);
+			}
+			if (aConst && va == 0.0f)
+			{
+				return b;
+			}
+			if (bConst && vb == 0.0f)
+			{
+				return a;
+			}
 			return Expr(std::make_shared<Addition>(a.node, b.node));
 		}
 		friend Expr operator-(const Expr& a, const Expr& b)
 		{
+			float va, vb;
+			bool aConst = getConstantVal(a.node, va);
+			bool bConst = getConstantVal(b.node, vb);
+			if (aConst && bConst)
+			{
+				return Expr(va - vb);
+			}
+			if (bConst && vb == 0.0f)
+			{
+				return a;
+			}
+			if (aConst && va == 0.0f)
+			{
+				return -b;
+			}
 			return Expr(std::make_shared<Subtraction>(a.node, b.node));
 		}
 		friend Expr operator*(const Expr& a, const Expr& b)
 		{
+			float va, vb;
+			bool aConst = getConstantVal(a.node, va);
+			bool bConst = getConstantVal(b.node, vb);
+			if (aConst && bConst)
+			{
+				return Expr(va * vb);
+			}
+			if ((aConst && va == 0.0f) || (bConst && vb == 0.0f))
+			{
+				return Expr(0.0f);
+			}
+			if (aConst && va == 1.0f)
+			{
+				return b;
+			}
+			if (bConst && vb == 1.0f)
+			{
+				return a;
+			}
 			return Expr(std::make_shared<Multiplication>(a.node, b.node));
 		}
 		friend Expr operator/(const Expr& a, const Expr& b)
 		{
+			float va, vb;
+			bool aConst = getConstantVal(a.node, va);
+			bool bConst = getConstantVal(b.node, vb);
+			if (aConst && bConst && vb != 0.0f)
+			{
+				return Expr(va / vb);
+			}
+			if (aConst && va == 0.0f)
+			{
+				return Expr(0.0f);
+			}
+			if (bConst && vb == 1.0f)
+			{
+				return a;
+			}
 			return Expr(std::make_shared<Division>(a.node, b.node));
 		}
 		friend Expr operator-(const Expr& a)
 		{
+			float va;
+			if (getConstantVal(a.node, va))
+			{
+				return Expr(-va);
+			}
 			return Expr(std::make_shared<Negation>(a.node));
 		}
 	};
@@ -104,34 +186,74 @@ namespace WeirdEngine
 
 	inline Expr sin(const Expr& a)
 	{
+		float va;
+		if (getConstantVal(a.node, va))
+		{
+			return Expr(std::sin(va));
+		}
 		return Expr(std::make_shared<Sine>(a.node));
 	}
 	inline Expr cos(const Expr& a)
 	{
+		float va;
+		if (getConstantVal(a.node, va))
+		{
+			return Expr(std::cos(va));
+		}
 		return Expr(std::make_shared<Cosine>(a.node));
 	}
 	inline Expr abs(const Expr& a)
 	{
+		float va;
+		if (getConstantVal(a.node, va))
+		{
+			return Expr(std::abs(va));
+		}
 		return Expr(std::make_shared<Abs>(a.node));
 	}
 	inline Expr sqrt(const Expr& a)
 	{
+		float va;
+		if (getConstantVal(a.node, va) && va >= 0.0f)
+		{
+			return Expr(std::sqrt(va));
+		}
 		return Expr(std::make_shared<Sqrt>(a.node));
 	}
 	inline Expr min(const Expr& a, const Expr& b)
 	{
+		float va, vb;
+		if (getConstantVal(a.node, va) && getConstantVal(b.node, vb))
+		{
+			return Expr(std::min(va, vb));
+		}
 		return Expr(std::make_shared<Min>(a.node, b.node));
 	}
 	inline Expr max(const Expr& a, const Expr& b)
 	{
+		float va, vb;
+		if (getConstantVal(a.node, va) && getConstantVal(b.node, vb))
+		{
+			return Expr(std::max(va, vb));
+		}
 		return Expr(std::make_shared<Max>(a.node, b.node));
 	}
 	inline Expr clamp(const Expr& v, const Expr& lo, const Expr& hi)
 	{
+		float vv, vlo, vhi;
+		if (getConstantVal(v.node, vv) && getConstantVal(lo.node, vlo) && getConstantVal(hi.node, vhi))
+		{
+			return Expr(std::clamp(vv, vlo, vhi));
+		}
 		return Expr(std::make_shared<Clamp>(v.node, lo.node, hi.node));
 	}
 	inline Expr atan2(const Expr& y, const Expr& x)
 	{
+		float vy, vx;
+		if (getConstantVal(y.node, vy) && getConstantVal(x.node, vx))
+		{
+			return Expr(std::atan2(vy, vx));
+		}
 		return Expr(std::make_shared<Atan2>(y.node, x.node));
 	}
 	inline Expr length(const Vec2Expr& p)
@@ -279,11 +401,14 @@ namespace WeirdEngine
 				return s * std::sqrt(d);
 			}
 
-			[[nodiscard]]
-			std::string getHelperFunctions() const override
+			void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 			{
-				std::string res = m_point.x.node->getHelperFunctions() + m_point.y.node->getHelperFunctions();
-				res += "\nfloat sdPolygonCustom_" + std::to_string(m_polyId) + "(in vec2 p) {\n";
+				if (m_point.x.node)
+					m_point.x.node->collectHelperFunctions(helpers);
+				if (m_point.y.node)
+					m_point.y.node->collectHelperFunctions(helpers);
+
+				std::string res = "float sdPolygonCustom_" + std::to_string(m_polyId) + "(in vec2 p) {\n";
 				res += "\tfloat d = dot(p - vec2(" + std::to_string(m_vertices[0].x) + ", " +
 					   std::to_string(m_vertices[0].y) + "), p - vec2(" + std::to_string(m_vertices[0].x) + ", " +
 					   std::to_string(m_vertices[0].y) + "));\n";
@@ -306,7 +431,7 @@ namespace WeirdEngine
 				}
 				res += "\treturn s * sqrt(d);\n";
 				res += "}\n";
-				return res;
+				helpers.insert(res);
 			}
 
 			[[nodiscard]]
@@ -404,43 +529,40 @@ namespace WeirdEngine
 				return signedDistanceToTriangle(p, a, b, c);
 			}
 
-			[[nodiscard]]
-			std::string getHelperFunctions() const override
+			void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 			{
-				std::string base = m_p.x.node->getHelperFunctions() + m_p.y.node->getHelperFunctions() +
-								   m_w.node->getHelperFunctions() + m_h.node->getHelperFunctions();
-				return base + R"(
-#ifndef WEIRD_SD_TRIANGLE
+				if (m_p.x.node)
+					m_p.x.node->collectHelperFunctions(helpers);
+				if (m_p.y.node)
+					m_p.y.node->collectHelperFunctions(helpers);
+				if (m_w.node)
+					m_w.node->collectHelperFunctions(helpers);
+				if (m_h.node)
+					m_h.node->collectHelperFunctions(helpers);
+
+				helpers.insert(R"(#ifndef WEIRD_SD_TRIANGLE
 #define WEIRD_SD_TRIANGLE
 float sdTriangle_impl(in vec2 p, float w, float h)
 {
-	vec2 a = vec2(-w * 0.5, -h / 3.0);
-	vec2 b = vec2(w * 0.5, -h / 3.0);
-	vec2 c2 = vec2(0.0, 2.0 * h / 3.0);
+	vec2 p0 = vec2(-w * 0.5, -h / 3.0);
+	vec2 p1 = vec2(w * 0.5, -h / 3.0);
+	vec2 p2 = vec2(0.0, 2.0 * h / 3.0);
 
-	vec2 pa = p - a, ba = b - a;
-	float h0 = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-	float d0 = length(pa - ba * h0);
+	vec2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
+	vec2 v0 = p - p0, v1 = p - p1, v2 = p - p2;
 
-	vec2 pb = p - b, cb = c2 - b;
-	float h1 = clamp(dot(pb, cb) / dot(cb, cb), 0.0, 1.0);
-	float d1 = length(pb - cb * h1);
+	vec2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+	vec2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+	vec2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
 
-	vec2 pc2 = p - c2, ac2 = a - c2;
-	float h2 = clamp(dot(pc2, ac2) / dot(ac2, ac2), 0.0, 1.0);
-	float d2 = length(pc2 - ac2 * h2);
+	float s = sign(e0.x * e2.y - e0.y * e2.x);
+	vec2 d = min(min(vec2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),
+	                 vec2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),
+	                 vec2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));
 
-	float d = min(min(d0, d1), d2);
-
-	float cross0 = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-	float cross1 = (c2.x - b.x) * (p.y - b.y) - (c2.y - b.y) * (p.x - b.x);
-	float cross2 = (a.x - c2.x) * (p.y - c2.y) - (a.y - c2.y) * (p.x - c2.x);
-	bool inside = (cross0 >= 0.0 && cross1 >= 0.0 && cross2 >= 0.0) || (cross0 <= 0.0 && cross1 <= 0.0 && cross2 <= 0.0);
-
-	return inside ? -d : d;
+	return -sqrt(d.x) * sign(d.y);
 }
-#endif
-)";
+#endif)");
 			}
 
 			[[nodiscard]]
@@ -496,14 +618,20 @@ float sdTriangle_impl(in vec2 p, float w, float h)
 				return std::sqrt(d.x) * std::copysign(1.0f, -d.y);
 			}
 
-			[[nodiscard]]
-			std::string getHelperFunctions() const override
+			void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 			{
-				std::string base = m_p.x.node->getHelperFunctions() + m_p.y.node->getHelperFunctions() +
-								   m_w.node->getHelperFunctions() + m_h.node->getHelperFunctions() +
-								   m_skew.node->getHelperFunctions();
-				return base + R"(
-#ifndef WEIRD_SD_PARALLELOGRAM
+				if (m_p.x.node)
+					m_p.x.node->collectHelperFunctions(helpers);
+				if (m_p.y.node)
+					m_p.y.node->collectHelperFunctions(helpers);
+				if (m_w.node)
+					m_w.node->collectHelperFunctions(helpers);
+				if (m_h.node)
+					m_h.node->collectHelperFunctions(helpers);
+				if (m_skew.node)
+					m_skew.node->collectHelperFunctions(helpers);
+
+				helpers.insert(R"(#ifndef WEIRD_SD_PARALLELOGRAM
 #define WEIRD_SD_PARALLELOGRAM
 float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 {
@@ -519,8 +647,7 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
 	return sqrt(d.x) * sign(-d.y);
 }
-#endif
-)";
+#endif)");
 			}
 
 			[[nodiscard]]

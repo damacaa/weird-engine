@@ -6,14 +6,13 @@
 #include "weird-renderer/resources/Shader.h"
 
 #include <algorithm>
-#include <cctype>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
-#include <regex>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 // #define LOG_SDF_SHADER_GENERATION
@@ -71,6 +70,33 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 							 return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx;
 						 });
 
+		// Emit unique shape functions
+		std::unordered_set<ShapeId> emittedShapes;
+		std::unordered_set<std::string> emittedHelpers;
+		for (size_t idx = 0; idx < componentArray->getSize(); idx++)
+		{
+			size_t i = orderedIndices.at(idx);
+			const ShapeClass& shape = componentArray->getDataAtIdx(i);
+			ShapeId id = shape.distanceFieldId;
+			if (id < sdfs.size() && sdfs[id] && emittedShapes.find(id) == emittedShapes.end())
+			{
+				emittedShapes.insert(id);
+
+				std::string helperFunctions = sdfs[id]->getHelperFunctions();
+				if (!helperFunctions.empty() && emittedHelpers.find(helperFunctions) == emittedHelpers.end())
+				{
+					emittedHelpers.insert(helperFunctions);
+					functionsOss << helperFunctions << "\n";
+				}
+
+				auto fragmentCode = sdfs[id]->print();
+				functionsOss << "float evaluate_sdf_" << id
+							 << "(in vec2 p, in vec4 parameters0, in vec4 parameters1)\n{\n";
+				functionsOss << "\treturn " << fragmentCode << ";\n";
+				functionsOss << "}\n\n";
+			}
+		}
+
 		for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
 		{
 			size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
@@ -108,43 +134,9 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			oss << "vec4 parameters0 = texelFetch(t_shapeBuffer, ivec2(idx % 16384, idx / 16384), 0);\n";
 			oss << "vec4 parameters1 = texelFetch(t_shapeBuffer, ivec2((idx + 1) % 16384, (idx + 1) / 16384), 0);\n";
 
-			auto fragmentCode = sdfs[shape.distanceFieldId]->print();
-
-			// Replace integer literals with floats manually to avoid std::regex ABI issues
-			std::string resultStr;
-			resultStr.reserve(fragmentCode.size() * 2);
-			for (size_t k = 0; k < fragmentCode.size();)
-			{
-				bool isPrevValid = (k == 0) || (!std::isalnum(fragmentCode[k - 1]) && fragmentCode[k - 1] != '_' &&
-												fragmentCode[k - 1] != '.');
-
-				if (isPrevValid && std::isdigit(fragmentCode[k]))
-				{
-					size_t start = k;
-					while (k < fragmentCode.size() && std::isdigit(fragmentCode[k]))
-						k++;
-
-					bool isNextValid = (k == fragmentCode.size()) || (!std::isalnum(fragmentCode[k]) &&
-																	  fragmentCode[k] != '_' && fragmentCode[k] != '.');
-
-					resultStr.append(fragmentCode, start, k - start);
-
-					if (isNextValid)
-						resultStr.append(".0");
-				}
-				else
-				{
-					resultStr.push_back(fragmentCode[k]);
-					k++;
-				}
-			}
-			fragmentCode = std::move(resultStr);
-
 			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
 
-			std::string helperFunctions = sdfs[shape.distanceFieldId]->getHelperFunctions();
-			functionsOss << helperFunctions;
-			oss << "float dist = " << fragmentCode << ";\n";
+			oss << "float dist = evaluate_sdf_" << shape.distanceFieldId << "(p.xy, parameters0, parameters1);\n";
 
 			// 3D shader uses this to apply dithering to the distance of shapes with transparent materials, this creates
 			// paterns where the shape is partially rendered, which creates the illusion of transparency without needing

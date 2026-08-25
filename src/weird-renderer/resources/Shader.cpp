@@ -1,6 +1,7 @@
 #include "weird-renderer/resources/Shader.h"
 
 #include "weird-engine/Logger.h"
+#include <fstream>
 #include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -385,6 +386,27 @@ namespace WeirdEngine
 
 			// Append remaining code
 			fragmentCodeAfterIncludes.append(codeView.substr(lastPos));
+
+			m_lastCompleteFragmentCode = fragmentCodeAfterIncludes;
+
+#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
+			if (m_fragmentFile && std::string(m_fragmentFile).find("sdf_") != std::string::npos)
+			{
+				bool isUI = false;
+				for (const auto& d : m_activeDefines)
+				{
+					if (d == "UI_PIPELINE")
+						isUI = true;
+				}
+				std::string filename = isUI ? "ui_frag_dump.glsl" : "world_frag_dump.glsl";
+				std::ofstream dumpFile(filename);
+				if (dumpFile.is_open())
+				{
+					dumpFile << fragmentCodeAfterIncludes;
+					dumpFile.close();
+				}
+			}
+#endif
 
 			// Convert the shader source strings into character arrays
 			const char* vertexSource = vertexCode.c_str();

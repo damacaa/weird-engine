@@ -35,6 +35,10 @@ namespace WeirdEngine
 
 			std::string getVertexCode();
 			std::string getFragmentCode();
+			std::string getCompleteFragmentCode() const
+			{
+				return m_lastCompleteFragmentCode;
+			}
 			void setFragmentIncludeCode(int i, const std::string& code, bool shouldRecompile = true);
 			void addDefine(const std::string& name);
 			void removeDefine(const std::string& name);
@@ -119,6 +123,7 @@ namespace WeirdEngine
 
 			std::vector<std::string> m_includedFragmentContents;
 			std::vector<std::string> m_activeDefines;
+			std::string m_lastCompleteFragmentCode;
 
 			// This MUST be mutable because setUniform is const, but we need to update the cache
 			mutable std::unordered_map<std::string, GLint> m_uniformLocationCache;

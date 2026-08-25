@@ -39,7 +39,6 @@ int main(int argc, char* argv[])
 	displaySettings.width = 800;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
-	displaySettings.colorPalette[DisplaySettings::Yellow].a = 0.25f;
 	displaySettings.distanceSampleScale = 0.5f;
 
 	PhysicsSettings physicsSettings{};

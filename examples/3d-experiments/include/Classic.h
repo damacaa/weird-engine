@@ -16,15 +16,15 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& redMat = services.materials().createMaterial();
-		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
+		auto& redMat = services.materials3D().createMaterial("red");
+		redMat.color = ColorPalette::Red;
 
-		auto& orangeMat = services.materials().createMaterial();
-		orangeMat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
+		auto& orangeMat = services.materials3D().createMaterial("orange");
+		orangeMat.color = ColorPalette::Orange;
 
-		auto& floorMaterial = services.materials().createMaterial();
-		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-		floorMaterial.secondaryColor = vec4(0.4f, 0.4f, 0.6f, 1.0f);
+		auto& floorMaterial = services.materials3D().createMaterial("floor");
+		floorMaterial.color = ColorPalette::White;
+		floorMaterial.secondaryColor = ColorPalette::DarkGray;
 		floorMaterial.metallic = 0.7f;
 		floorMaterial.roughness = 0.1f;
 		floorMaterial.pattern = MaterialPattern::Checkers;
@@ -73,8 +73,8 @@ private:
 			t.position = glm::vec3(0.0f, 3.0f, 0.0f);
 			t.rotation = glm::vec3(0.35f, 0.45f, 0.5f);
 
-			LightComponent& lc = registry.addComponent<LightComponent>(entity);
-			lc.type = LightType::Directional;
+			Light3DComponent& lc = registry.addComponent<Light3DComponent>(entity);
+			lc.type = Light3DType::Directional;
 			lc.color = glm::vec4(1.0f, 0.95f, 0.9f, 2.0f);
 		}
 

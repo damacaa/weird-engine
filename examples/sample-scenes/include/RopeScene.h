@@ -30,6 +30,7 @@ private:
 	double m_lastSpawnTime = 0.0;
 
 	std::vector<Entity> m_balls;
+	std::vector<Material2DHandle> m_ballMats;
 
 	bool m_clampBalls = false;
 
@@ -37,6 +38,19 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		auto& groundMat = services.materials2D().createMaterial("ground");
+		groundMat.color = ColorPalette::LightGray;
+
+		auto& uiBoxMat = services.materials2D().createMaterial("ui_box");
+		uiBoxMat.color = ColorPalette::Yellow;
+
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& mat = services.materials2D().createMaterial("ball_" + std::to_string(i));
+			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
+			m_ballMats.push_back(mat.id);
+		}
 
 		constexpr int rowWidth = 30;
 		constexpr int numBalls = rowWidth * 2;
@@ -48,7 +62,6 @@ private:
 		{
 			float x = static_cast<float>(i % rowWidth);
 			float y = startY - static_cast<float>(i / rowWidth);
-			int material = 4 + (i % 12);
 
 			Entity entity = registry.createEntity();
 
@@ -56,7 +69,7 @@ private:
 			t.position = vec3(x + 0.5f, y + 0.5f, 0.0f);
 
 			auto& sdf = registry.addComponent<Dot>(entity);
-			sdf.materialId = material;
+			sdf.materialId = m_ballMats[i % m_ballMats.size()].id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
 			services.physics().setUserData(rb.simulationId, std::make_unique<BallData>());
@@ -131,17 +144,18 @@ private:
 									.variables = {{Primitives::SineWave::AMPLITUDE, 1.0f},
 												  {Primitives::SineWave::PERIOD, 0.5f},
 												  {Primitives::SineWave::SPEED, 1.0f}},
-									.material = 3});
+									.material = groundMat});
 
-		m_star = services.shapes().addShape(
-			{.shapeId = DefaultShapes::STAR, .variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f}, .material = 3});
+		m_star = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+											 .variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f},
+											 .material = groundMat});
 
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 									.variables = {{Primitives::Box::POS_X, 15.0f},
 												  {Primitives::Box::POS_Y, -98.0f},
 												  {Primitives::Box::SIZE_X, 15.0f},
 												  {Primitives::Box::SIZE_Y, 100.0f}},
-									.material = 3,
+									.material = groundMat,
 									.combination = CombinationType::Addition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
@@ -165,7 +179,7 @@ private:
 			t.position = vec3(2.5f, y + 0.5f, 0.0f);
 
 			auto& sdf = registry.addComponent<Dot>(entity);
-			sdf.materialId = 4 + registry.getComponentArray<Dot>()->getSize() % 12;
+			sdf.materialId = m_ballMats[registry.getComponentArray<Dot>()->getSize() % m_ballMats.size()].id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
 			auto ballData = std::make_unique<BallData>();
@@ -179,7 +193,6 @@ private:
 
 	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
-
 		float delta = services.time().deltaTime();
 		g_cameraPositon = registry.getComponent<Transform>(services.render().getCameraEntity()).position;
 
@@ -206,75 +219,15 @@ private:
 			throwBalls(registry, services);
 		}
 
-		static vec2 boxStart;
-		static bool createBoxInUI = true;
-		if (services.input().getKeyDown(Input::M))
-		{
-			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
-			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
-
-			if (createBoxInUI)
-			{
-				boxStart = vec2(screen.x, screen.y);
-			}
-			else
-			{
-				vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
-				boxStart = world;
-			}
-		}
-		else if (services.input().getKeyUp(Input::M))
-		{
-			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
-			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
-			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
-
-			vec2 boxEnd;
-			if (createBoxInUI)
-			{
-				boxEnd = vec2(screen.x, screen.y);
-			}
-			else
-			{
-				boxEnd = world;
-			}
-
-			float x = (boxStart.x + boxEnd.x) / 2.0f;
-			float y = (boxStart.y + boxEnd.y) / 2.0f;
-			float w = 0.5f * std::abs(boxStart.x - boxEnd.x);
-			float h = 0.5f * std::abs(boxStart.y - boxEnd.y);
-
-			if (createBoxInUI)
-				services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-											  .variables = {{Primitives::Box::POS_X, x},
-															{Primitives::Box::POS_Y, y},
-															{Primitives::Box::SIZE_X, w},
-															{Primitives::Box::SIZE_Y, h},
-															{4, 1.2f}},
-											  .material = 7,
-											  .combination = CombinationType::SmoothAddition});
-			else
-				services.shapes().addShape(
-					{.shapeId = DefaultShapes::BOX,
-					 .variables = {{Primitives::Box::POS_X, x},
-								   {Primitives::Box::POS_Y, y},
-								   {Primitives::Box::SIZE_X, w},
-								   {Primitives::Box::SIZE_Y, h},
-								   {4, 1.2f}},
-					 .material = static_cast<uint16_t>(4 + registry.getComponentArray<CustomShape>()->getSize() % 12),
-					 .combination = CombinationType::SmoothAddition,
-					 .hasCollision = true,
-					 .group = static_cast<int>(registry.getComponentArray<CustomShape>()->getSize())});
-		}
-
 		if (services.input().getKeyDown(Input::N))
 		{
 			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
 			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			services.shapes().addShape(
-				{.shapeId = DefaultShapes::STAR, .variables = {world.x, world.y, 5.0f, 7.5f, 1.0f}, .material = 3});
+			services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+										.variables = {world.x, world.y, 5.0f, 7.5f, 1.0f},
+										.material = services.materials2D().getHandle("ground")});
 		}
 
 		if (services.input().getKeyDown(Input::R) || services.input().getGamepadButtonDown(Input::GamepadButton::South))

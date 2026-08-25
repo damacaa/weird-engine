@@ -241,7 +241,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		/**
 		 * @brief Generates an optimized `evaluate_sdf_<id>` GLSL function from an AST root.
 		 */
-		inline std::string generateFunction(const std::shared_ptr<IMathExpression>& root, ShapeId id)
+		inline std::string generateFunction(const std::shared_ptr<IMathExpression>& root, ShapeId id, bool is3D = false)
 		{
 			Context ctx;
 			std::string rootSig = collectSubtrees(root, ctx);
@@ -285,7 +285,14 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			std::string finalExpr = emitWithCSE(rootSig, ctx, extracted, varMap, emitted, statements, varCounter);
 
 			std::ostringstream oss;
-			oss << "float evaluate_sdf_" << id << "(in vec2 p, in vec4 parameters0, in vec4 parameters1)\n{\n";
+			if (is3D)
+			{
+				oss << "float evaluate_sdf_" << id << "(in vec3 p, in vec4 parameters0, in vec4 parameters1)\n{\n";
+			}
+			else
+			{
+				oss << "float evaluate_sdf_" << id << "(in vec2 p, in vec4 parameters0, in vec4 parameters1)\n{\n";
+			}
 			for (const auto& stmt : statements)
 			{
 				oss << stmt;
@@ -311,7 +318,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	 * @param shader Target GLSL Shader program to recompile.
 	 * @param sdfs Array of registered AST mathematical expressions indexed by `distanceFieldId`.
 	 */
-	template <typename ShapeClass, typename RenderContext>
+	template <typename ShapeClass, typename RenderContext, bool is3D = false>
 	inline void update(Registry& registry, RenderContext& ctx, WeirdRenderer::Shader& shader,
 					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
@@ -386,12 +393,12 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 					functionsOss << helperFunctions << "\n";
 				}
 
-				functionsOss << CSE::generateFunction(sdfs[id], id);
+				functionsOss << CSE::generateFunction(sdfs[id], id, is3D);
 			}
 		}
 
 		// =========================================================================================
-		// 4. Emit Shape Dispatch Loop inside getDistanceMaterialMask
+		// 4. Emit Shape Dispatch Loop inside getDistanceMaterialMask / sceneSdf
 		// =========================================================================================
 		for (size_t idx = 0; idx < componentArray->getSize() + 1; idx++)
 		{
@@ -429,7 +436,14 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			oss << "{\n";
 			oss << "\tvec4 p0, p1;\n";
 			oss << "\tfetchShapeParams(dataOffset + " << 2 * i << ", p0, p1);\n";
-			oss << "\tfloat dist = evaluate_sdf_" << shape.distanceFieldId << "(p.xy, p0, p1);\n";
+			if (is3D)
+			{
+				oss << "\tfloat dist = evaluate_sdf_" << shape.distanceFieldId << "(p, p0, p1);\n";
+			}
+			else
+			{
+				oss << "\tfloat dist = evaluate_sdf_" << shape.distanceFieldId << "(p.xy, p0, p1);\n";
+			}
 			oss << "\tdist = modifyDistanceBasedOnMaterial(dist, " << shape.material << ", dataOffset + " << 2 * i
 				<< ");\n";
 

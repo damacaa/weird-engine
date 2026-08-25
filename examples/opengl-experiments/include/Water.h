@@ -90,7 +90,7 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& redMat = services.materials().createMaterial();
+		auto& redMat = services.materials3D().createMaterial();
 		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
 
 		{

@@ -20,6 +20,7 @@ private:
 	std::vector<Entity> m_testBalls;
 	std::vector<Entity> m_testConstraints;
 	std::vector<Entity> m_testShapes;
+	std::vector<Material2DHandle> m_materials;
 
 	float m_timer = 0.0f;
 
@@ -28,6 +29,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& mat = services.materials2D().createMaterial("mat_" + std::to_string(i));
+			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
+			m_materials.push_back(mat.id);
+		}
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
@@ -64,7 +72,7 @@ private:
 								t.position = vec3((std::rand() % 200) - 100.0f, (std::rand() % 100) - 50.0f, 0.0f);
 								registry.setComponentDirty(t);
 								auto& ui = registry.addComponent<Dot>(e);
-								ui.materialId = 4 + (e % 12);
+								ui.materialId = m_materials[e % m_materials.size()].id;
 								auto& rb = registry.addComponent<RigidBody2D>(e);
 								m_testBalls.push_back(e);
 							}
@@ -79,7 +87,7 @@ private:
 							float y = (std::rand() % 100) - 50.0f;
 							float w = (float)(std::rand() % 4 + 1);
 							float h = (float)(std::rand() % 4 + 1);
-							uint16_t material = std::rand() % 16;
+							auto material = m_materials[std::rand() % m_materials.size()];
 							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 																	   .variables = {{Primitives::Box::POS_X, x},
 																					 {Primitives::Box::POS_Y, y},

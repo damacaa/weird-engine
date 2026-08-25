@@ -41,7 +41,6 @@ namespace WeirdEngine
 			, m_uiCamera((vec3(0.0f, 0.0f, 0.0f)))
 			, m_targetRefreshRate(settings.refreshRate)
 		{
-			std::copy_n(settings.colorPalette, 16, m_colorPalette);
 			setWindowSize(settings.width, settings.height);
 
 			// Initialize world 2D pipeline
@@ -67,7 +66,7 @@ namespace WeirdEngine
 			worldConfig.ambienOcclusionRadius = 4.0f;
 			worldConfig.ambienOcclusionStrength = settings.worldAmbientOcclusionStrength;
 			worldConfig.ballK = settings.worldSmoothFactor;
-			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_colorPalette, m_renderPlane);
+			m_worldPipeline = new SDF2DRenderPipeline(worldConfig, m_renderPlane);
 
 			// Initialize UI 2D pipeline
 			SDF2DRenderPipeline::Config uiConfig;
@@ -91,7 +90,7 @@ namespace WeirdEngine
 			uiConfig.ballK = settings.uiSmoothFactor;
 			uiConfig.ambienOcclusionRadius = 7.0f;
 			uiConfig.ambienOcclusionStrength = settings.uiAmbientOcclusionStrength;
-			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_colorPalette, m_renderPlane);
+			m_uiPipeline = new SDF2DRenderPipeline(uiConfig, m_renderPlane);
 
 			// Initialize 3D SDF pipeline
 			SDF3DRenderPipeline::Config sdf3DConfig;
@@ -378,9 +377,11 @@ namespace WeirdEngine
 			static vec4* uiData = nullptr;
 			scene.getUIData(uiData, dataSize, shapeCount);
 
+			static const std::vector<Light2D> s_emptyLights2D;
 			double time = scene.getTime();
-			auto& m_finalResultTexture = m_uiPipeline->render(uiData, dataSize, shapeCount, m_uiCamera, time, delta,
-															  scene.getBackground(), &texture);
+			auto& m_finalResultTexture =
+				m_uiPipeline->render(uiData, dataSize, shapeCount, s_emptyLights2D, scene.getMaterials2D(), m_uiCamera,
+									 time, delta, scene.getBackground(), &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
@@ -745,7 +746,7 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE("3D Render", enable2D);
 
-				auto& lights = scene.getLights();
+				auto& lights3D = scene.getLights3D();
 
 				// --- 1. GBuffer pass: render mesh geometry first ---
 				// Depth testing and culling must be enabled for correct GBuffer writes.
@@ -760,7 +761,7 @@ namespace WeirdEngine
 
 					// outputTarget (SDF render target) is forwarded to Scene::onRender callbacks
 					m_meshPipeline->render(m_3DWorldPipeline->getRenderTarget(), scene.getDrawQueue(), sceneCamera,
-										   lights);
+										   lights3D);
 					Profiler::get().gpuSync();
 				}
 
@@ -786,8 +787,8 @@ namespace WeirdEngine
 						m_meshPipeline->getGBufferNormal(), m_meshPipeline->getGBufferMaterial(),
 						m_meshPipeline->getDepthTexture(),	m_meshPipeline->getBackDepthTexture()};
 
-					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights, sceneCamera, scene.getTime(),
-											  gbuffer, scene.getMaterials());
+					m_3DWorldPipeline->render(data3D, dataSize3D, shapeCount3D, lights3D, sceneCamera, scene.getTime(),
+											  gbuffer, scene.getMaterials3D());
 					glEnable(GL_CULL_FACE);
 					glEnable(GL_DEPTH_TEST);
 					glDepthFunc(GL_LEQUAL);
@@ -818,8 +819,9 @@ namespace WeirdEngine
 				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
-				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, sceneCamera, scene.getTime(), delta,
-														scene.getBackground(),
+				auto& lights2D = scene.getLights2D();
+				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, lights2D, scene.getMaterials2D(),
+														sceneCamera, scene.getTime(), delta, scene.getBackground(),
 														enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.

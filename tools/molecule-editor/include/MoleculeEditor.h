@@ -143,6 +143,12 @@ private:
 		settings.damping = 1.0f;
 		m_tempRegistry->setComponentDirty(settings);
 
+		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
+		{
+			auto& m = m_tempSvc->materials2D().get(static_cast<uint16_t>(i));
+			m.color = ColorPalette::Default[i];
+		}
+
 		buildMaterialPalette();
 		buildToolbar();
 		buildTagEditorUI();
@@ -150,12 +156,12 @@ private:
 		{
 			Entity outside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
 														   .variables = {0.0f, 0.0f, 3000.0f},
-														   .material = 17,
+														   .material = 0,
 														   .combination = CombinationType::Addition});
 
 			Entity inside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::BOX,
 														  .variables = {0.0f, 0.0f, 20.0f, 20.0f},
-														  .material = static_cast<uint16_t>(DisplaySettings::Black),
+														  .material = 0,
 														  .combination = CombinationType::Subtraction});
 
 			m_tempSvc->serialization().blacklistEntity(outside);
@@ -777,12 +783,12 @@ private:
 			spring.restDistance = restDistance;
 		}
 
-		auto lineColor = (type == LinkType::Distance) ? DisplaySettings::Cyan : DisplaySettings::Orange;
+		uint16_t lineColor = (type == LinkType::Distance) ? 10 : 8;
 
 		float lineVars[8]{};
 		computeScreenLineParams(pa, pb, lineVars);
 		Entity line = m_tempSvc->shapes().addUIShape(
-			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
+			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
 		auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 		btn.clickPadding = 8.0f;
@@ -917,7 +923,7 @@ private:
 
 		auto& tx = m_tempRegistry->addComponent<UITextRenderer>(m_tagLabelEntity);
 		tx.text = "";
-		tx.material = static_cast<uint16_t>(DisplaySettings::Yellow);
+		tx.material = 7;
 		tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 		tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 		m_tempSvc->serialization().blacklistEntity(m_tagLabelEntity);
@@ -975,20 +981,18 @@ private:
 		if (m_tagCircleOuter == static_cast<Entity>(-1))
 		{
 			float p[8]{};
-			m_tagCircleOuter =
-				m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
-												.variables = p,
-												.material = static_cast<uint16_t>(DisplaySettings::Yellow),
-												.combination = CombinationType::Addition,
-												.group = TAG_RING_GROUP});
+			m_tagCircleOuter = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+															   .variables = p,
+															   .material = 7,
+															   .combination = CombinationType::Addition,
+															   .group = TAG_RING_GROUP});
 			m_tempSvc->serialization().blacklistEntity(m_tagCircleOuter);
 
-			m_tagCircleInner =
-				m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
-												.variables = p,
-												.material = static_cast<uint16_t>(DisplaySettings::Yellow),
-												.combination = CombinationType::Subtraction,
-												.group = TAG_RING_GROUP});
+			m_tagCircleInner = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+															   .variables = p,
+															   .material = 7,
+															   .combination = CombinationType::Subtraction,
+															   .group = TAG_RING_GROUP});
 			m_tempSvc->serialization().blacklistEntity(m_tagCircleInner);
 		}
 
@@ -1134,14 +1138,14 @@ private:
 			if (!m_tempRegistry->hasComponent<RigidBody2D>(a) || !m_tempRegistry->hasComponent<RigidBody2D>(b))
 				continue;
 
-			auto lineColor = DisplaySettings::Orange;
+			uint16_t lineColor = 8;
 			vec2 pa(m_tempRegistry->getComponent<Transform>(a).position);
 			vec2 pb(m_tempRegistry->getComponent<Transform>(b).position);
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
 			Entity line = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
+				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;
@@ -1169,14 +1173,14 @@ private:
 			if (!m_tempRegistry->hasComponent<RigidBody2D>(a) || !m_tempRegistry->hasComponent<RigidBody2D>(b))
 				continue;
 
-			auto lineColor = DisplaySettings::Cyan;
+			uint16_t lineColor = 10;
 			vec2 pa(m_tempRegistry->getComponent<Transform>(a).position);
 			vec2 pb(m_tempRegistry->getComponent<Transform>(b).position);
 
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
 			Entity line = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = static_cast<uint16_t>(lineColor)});
+				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 			btn.clickPadding = 8.0f;

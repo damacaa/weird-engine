@@ -48,6 +48,60 @@ namespace WeirdEngine
 		, m_runSimulationInThread(SceneManager::getInstance().getPhysicsSettings().runSimulationInThread)
 		, m_services(*this)
 	{
+		// Default 2D material (slot 0)
+		m_materials2D[0].id = 0;
+		m_materials2D[0].name = "default";
+		m_materials2D[0].color = vec4(1.0f);
+		m_materials2D[0].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		m_materials2D[0].pattern = Pattern2D::None;
+		m_materials2D[0].patternScale = 1.0f;
+		m_materials2D[0].emission = 0.0f;
+		m_materials2D[0].edgeThickness = 0.0f;
+		m_materials2D[0].edgeColor = vec4(0.0f);
+		m_materials2D[0].refraction = 0.0f;
+		m_material2DNameToId["default"] = 0;
+
+		for (size_t i = 1; i < 16; ++i)
+		{
+			m_materials2D[i].id = static_cast<uint16_t>(i);
+			m_materials2D[i].name = "";
+			m_materials2D[i].color = vec4(1.0f);
+			m_materials2D[i].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+			m_materials2D[i].pattern = Pattern2D::None;
+			m_materials2D[i].patternScale = 1.0f;
+			m_materials2D[i].emission = 0.0f;
+			m_materials2D[i].edgeThickness = 0.0f;
+			m_materials2D[i].edgeColor = vec4(0.0f);
+			m_materials2D[i].refraction = 0.0f;
+		}
+
+		// Default 3D material (slot 0)
+		m_materials3D[0].id = 0;
+		m_materials3D[0].name = "default";
+		m_materials3D[0].color = vec4(1.0f);
+		m_materials3D[0].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		m_materials3D[0].metallic = 0.0f;
+		m_materials3D[0].roughness = 1.0f;
+		m_materials3D[0].pattern = MaterialPattern::None;
+		m_materials3D[0].patternScale = 1.0f;
+		m_materials3D[0].emission = 0.0f;
+		m_material3DNameToId["default"] = 0;
+
+		for (size_t i = 1; i < 16; ++i)
+		{
+			m_materials3D[i].id = static_cast<uint16_t>(i);
+			m_materials3D[i].name = "";
+			m_materials3D[i].color = vec4(1.0f);
+			m_materials3D[i].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+			m_materials3D[i].metallic = 0.0f;
+			m_materials3D[i].roughness = 1.0f;
+			m_materials3D[i].pattern = MaterialPattern::None;
+			m_materials3D[i].patternScale = 1.0f;
+			m_materials3D[i].emission = 0.0f;
+		}
+
+		m_material2DCount = 1;
+		m_material3DCount = 1;
 	}
 
 	Scene::Scene(RenderMode mode)
@@ -120,11 +174,6 @@ namespace WeirdEngine
 		// Initialize 2D world render context
 		m_2DWorldRenderContext.dotRadious = 0.5f;
 		m_2DWorldRenderContext.charSpacing = 1.0f;
-
-		auto& defaultMaterial = createMaterial();
-		defaultMaterial.color = vec4(1.0f);
-		defaultMaterial.metallic = 0.5f;
-		defaultMaterial.roughness = 0.1f;
 
 		// Create camera
 		m_mainCamera = m_registry.createEntity();
@@ -278,7 +327,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Render Queue update");
-			RenderSystem::update(m_registry, m_resourceManager, m_drawQueue, m_lights);
+			RenderSystem::update(m_registry, m_resourceManager, m_drawQueue, m_lights2D, m_lights3D);
 		}
 
 		m_registry.freeRemovedComponents();
@@ -350,17 +399,20 @@ namespace WeirdEngine
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<CustomShape>(m_registry, m_2DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, false>(
+			m_registry, m_2DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<CustomShape>(m_registry, m_3DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, true>(m_registry, m_3DWorldRenderContext,
+																					 shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
-		SDFShaderGenerationSystem::update<UIShape>(m_registry, m_UIRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<UIShape, SDFRenderSystemContext, false>(m_registry, m_UIRenderContext, shader,
+																				  m_sdfs);
 	}
 
 	void Scene::forceShaderRefresh()
@@ -375,9 +427,14 @@ namespace WeirdEngine
 		return m_drawQueue;
 	}
 
-	std::vector<WeirdRenderer::Light>& Scene::getLights()
+	std::vector<WeirdRenderer::Light2D>& Scene::getLights2D()
 	{
-		return m_lights;
+		return m_lights2D;
+	}
+
+	std::vector<WeirdRenderer::Light3D>& Scene::getLights3D()
+	{
+		return m_lights3D;
 	}
 
 	void Scene::renderExtra(WeirdRenderer::RenderTarget& renderTarget)
@@ -431,8 +488,9 @@ namespace WeirdEngine
 		, m_physics(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
 		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
 		, m_render(scene.m_registry, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
-				   scene.m_UIRenderContext, scene.m_lights, scene.m_background, scene.m_renderMode)
-		, m_materials(scene.m_materials, scene.m_materialCount)
+				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
+		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
+		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
 		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
@@ -771,20 +829,5 @@ namespace WeirdEngine
 		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
 		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
 #endif
-	}
-
-	Material3D& Scene::createMaterial()
-	{
-		if (m_materialCount >= 16)
-		{
-			// Max materials reached, return the last one
-			return m_materials[15];
-		}
-
-		Material3D& mat = m_materials[m_materialCount];
-		mat.id = m_materialCount;
-		m_materialCount++;
-
-		return mat;
 	}
 } // namespace WeirdEngine

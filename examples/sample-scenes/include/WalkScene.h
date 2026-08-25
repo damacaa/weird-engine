@@ -41,6 +41,12 @@ private:
 		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
 		background.scale = 0.2f;
 
+		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
+		{
+			auto& m = services.materials2D().get(static_cast<uint16_t>(i));
+			m.color = ColorPalette::Default[i];
+		}
+
 		auto tags = services.serialization().loadWeirdFile(services.resources().assetPath("man.weird"));
 
 		Entity firstCreated = static_cast<Entity>(registry.getEntityCount());
@@ -59,14 +65,15 @@ private:
 		Entity rightFootEntity = tags["foot_right"];
 		registry.addComponent<Foot>(rightFootEntity);
 
-		m_head = tags["head"];
+		auto& groundMat = services.materials2D().createMaterial("ground");
+		groundMat.color = ColorPalette::LightGreen;
 
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 									.variables = {{Primitives::Box::POS_X, 0.0f},
 												  {Primitives::Box::POS_Y, -24.0f},
 												  {Primitives::Box::SIZE_X, 200.0f},
 												  {Primitives::Box::SIZE_Y, 20.0f}},
-									.material = static_cast<uint16_t>(DisplaySettings::LightGreen),
+									.material = groundMat,
 									.combination = CombinationType::Addition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;

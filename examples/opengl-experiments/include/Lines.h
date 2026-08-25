@@ -28,7 +28,7 @@ private:
 	{
 
 		{
-			auto& whiteMat = services.materials().createMaterial();
+			auto& whiteMat = services.materials3D().createMaterial();
 			m_whiteMatId = whiteMat.id;
 			whiteMat.pattern = MaterialPattern::Checkers;
 
@@ -58,7 +58,7 @@ private:
 		{
 			Entity entity = registry.createEntity();
 			registry.addComponent<Transform>(entity);
-			registry.addComponent<LightComponent>(entity);
+			registry.addComponent<Light3DComponent>(entity);
 		}
 
 		{

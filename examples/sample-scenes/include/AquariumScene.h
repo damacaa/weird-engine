@@ -89,32 +89,69 @@ private:
 		settings.damping = 0.025f;
 		registry.setComponentDirty(settings);
 
-		createJellyfish(registry, services, 0.0f, 25.0f, 4 + 0, 1.3f, 0.0f);
-		createJellyfish(registry, services, 15.0f, 20.0f, 4 + 3, 1.6f, 1.5f);
-		createJellyfish(registry, services, 30.0f, 28.0f, 4 + 6, 1.1f, 3.0f);
-		createJellyfish(registry, services, 40.0f, 15.0f, 4 + 9, 1.4f, 4.5f);
+		auto& seaweedDark = services.materials2D().createMaterial("seaweed_dark");
+		seaweedDark.color = ColorPalette::Green;
 
-		createEel(registry, -10.0f, 50.0f, 20, 1.0f, 4);
-		createEel(registry, 40.0f, 40.0f, 18, 1.0f, 8);
-		createEel(registry, 10.0f, 30.0f, 22, 0.9f, 6);
+		auto& seaweedLight = services.materials2D().createMaterial("seaweed_light");
+		seaweedLight.color = ColorPalette::LightGreen;
+
+		auto& tankMat = services.materials2D().createMaterial("tank");
+		tankMat.color = vec4(ColorPalette::LightBlue, 0.5f);
+
+		auto& jellyMat0 = services.materials2D().createMaterial("jelly_red");
+		jellyMat0.color = vec4(ColorPalette::Red, 0.9f);
+		jellyMat0.emission = 0.5f;
+
+		auto& jellyMat1 = services.materials2D().createMaterial("jelly_yellow");
+		jellyMat1.color = vec4(ColorPalette::Yellow, 0.9f);
+		jellyMat1.emission = 0.5f;
+
+		auto& jellyMat2 = services.materials2D().createMaterial("jelly_cyan");
+		jellyMat2.color = vec4(ColorPalette::Cyan, 0.9f);
+		jellyMat2.emission = 0.5f;
+
+		auto& jellyMat3 = services.materials2D().createMaterial("jelly_pink");
+		jellyMat3.color = vec4(ColorPalette::Pink, 0.9f);
+		jellyMat3.emission = 0.5f;
+
+		auto& eelMat0 = services.materials2D().createMaterial("eel_red");
+		eelMat0.color = ColorPalette::Red;
+
+		auto& eelMat1 = services.materials2D().createMaterial("eel_orange");
+		eelMat1.color = ColorPalette::Orange;
+
+		auto& eelMat2 = services.materials2D().createMaterial("eel_blue");
+		eelMat2.color = ColorPalette::Blue;
+
+		auto& foodMat = services.materials2D().createMaterial("fish_food");
+		foodMat.color = ColorPalette::Orange;
+		foodMat.emission = 0.3f;
+
+		createJellyfish(registry, services, 0.0f, 25.0f, jellyMat0, 1.3f, 0.0f);
+		createJellyfish(registry, services, 15.0f, 20.0f, jellyMat1, 1.6f, 1.5f);
+		createJellyfish(registry, services, 30.0f, 28.0f, jellyMat2, 1.1f, 3.0f);
+		createJellyfish(registry, services, 40.0f, 15.0f, jellyMat3, 1.4f, 4.5f);
+
+		createEel(registry, services, -10.0f, 50.0f, 20, 1.0f, eelMat0);
+		createEel(registry, services, 40.0f, 40.0f, 18, 1.0f, eelMat1);
+		createEel(registry, services, 10.0f, 30.0f, 22, 0.9f, eelMat2);
 
 		{
 			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
 														 .variables = {{Primitives::SineWave::AMPLITUDE, 3.0f},
 																	   {Primitives::SineWave::PERIOD, 1.2f},
 																	   {Primitives::SineWave::SPEED, 2.5f}},
-														 .material = static_cast<uint16_t>(DisplaySettings::Green)});
+														 .material = seaweedDark});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 0.0f;
 		}
 
 		{
-			Entity seaweed =
-				services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-											.variables = {{Primitives::SineWave::AMPLITUDE, 2.0f},
-														  {Primitives::SineWave::PERIOD, 2.0f},
-														  {Primitives::SineWave::SPEED, 1.8f}},
-											.material = static_cast<uint16_t>(DisplaySettings::LightGreen)});
+			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
+														 .variables = {{Primitives::SineWave::AMPLITUDE, 2.0f},
+																	   {Primitives::SineWave::PERIOD, 2.0f},
+																	   {Primitives::SineWave::SPEED, 1.8f}},
+														 .material = seaweedLight});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 1.5f;
 		}
@@ -124,7 +161,7 @@ private:
 												  {Primitives::Box::POS_Y, TANK_CY},
 												  {Primitives::Box::SIZE_X, TANK_W},
 												  {Primitives::Box::SIZE_Y, TANK_H}},
-									.material = static_cast<uint16_t>(DisplaySettings::LightBlue),
+									.material = tankMat,
 									.combination = CombinationType::Intersection});
 
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX_LINE,
@@ -133,7 +170,15 @@ private:
 												  {Primitives::Box::SIZE_X, TANK_W},
 												  {Primitives::Box::SIZE_Y, TANK_H},
 												  {4, 1.0f}},
-									.material = static_cast<uint16_t>(DisplaySettings::LightBlue)});
+									.material = tankMat});
+
+		std::vector<Material2DHandle> fishMats;
+		for (int i = 0; i < 4; ++i)
+		{
+			auto& mat = services.materials2D().createMaterial("fish_" + std::to_string(i));
+			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
+			fishMats.push_back(mat.id);
+		}
 
 		for (int i = 0; i < 40; i++)
 		{
@@ -144,7 +189,7 @@ private:
 			t.position = vec3(fx, fy, 0.0f);
 
 			auto& dot = registry.addComponent<Dot>(fish);
-			dot.materialId = 4 + (i % 12);
+			dot.materialId = fishMats[i % fishMats.size()].id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(fish);
 			rb.pendingImpulseForce += vec2(static_cast<float>((std::rand() % 100) - 50) * 0.05f,
@@ -163,19 +208,19 @@ private:
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(TANK_CX, TANK_CY, 45.0f);
 	}
 
-	void createJellyfish(Registry& registry, ServiceProvider& services, float x, float y, int material, float scale,
-						 float phase)
+	void createJellyfish(Registry& registry, ServiceProvider& services, float x, float y, Material2DHandle material,
+						 float scale, float phase)
 	{
 		Entity bellEntity = registry.createEntity();
 		auto& t = registry.addComponent<Transform>(bellEntity);
 		t.position = vec3(x, y, 0.0f);
 		auto& dot = registry.addComponent<Dot>(bellEntity);
-		dot.materialId = material;
+		dot.materialId = material.id;
 		auto& rb = registry.addComponent<RigidBody2D>(bellEntity);
 
 		Entity bellShape = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
 													   .variables = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f},
-													   .material = static_cast<uint16_t>(material),
+													   .material = material,
 													   .combination = CombinationType::Addition,
 													   .hasCollision = false});
 
@@ -202,7 +247,7 @@ private:
 				auto& st = registry.addComponent<Transform>(segment);
 				st.position = vec3(x + offsetX, y - 2.5f * scale - s * 0.8f, 0.0f);
 				auto& sd = registry.addComponent<Dot>(segment);
-				sd.materialId = material;
+				sd.materialId = material.id;
 				auto& srb = registry.addComponent<RigidBody2D>(segment);
 
 				jf.tentacleSegments.push_back(segment);
@@ -227,7 +272,8 @@ private:
 		}
 	}
 
-	void createEel(Registry& registry, float x, float y, int numSegments, float spacing, int baseMaterial)
+	void createEel(Registry& registry, ServiceProvider& services, float x, float y, int numSegments, float spacing,
+				   Material2DHandle baseMaterial)
 	{
 		float angle = static_cast<float>(std::rand() % 628) * 0.01f;
 		vec2 dir(std::cos(angle), std::sin(angle));
@@ -238,7 +284,7 @@ private:
 		eel.speed = 2.0f + static_cast<float>(std::rand() % 100) * 0.02f;
 		eel.direction = dir;
 		eel.segmentSpacing = spacing;
-		eel.baseMaterial = baseMaterial;
+		eel.baseMaterial = static_cast<int>(baseMaterial.id);
 
 		for (int i = 0; i < numSegments; i++)
 		{
@@ -247,7 +293,7 @@ private:
 			t.position = vec3(x + dir.x * i * spacing, y + dir.y * i * spacing, 0.0f);
 
 			auto& dot = registry.addComponent<Dot>(seg);
-			dot.materialId = static_cast<unsigned int>(baseMaterial + (i % 4));
+			dot.materialId = baseMaterial.id;
 
 			registry.addComponent<RigidBody2D>(seg);
 
@@ -293,7 +339,7 @@ private:
 				ft.position = vec3(mouseWorld.x + ox, mouseWorld.y + oy, 0.0f);
 				registry.setComponentDirty(ft);
 				auto& fd = registry.addComponent<Dot>(food);
-				fd.materialId = 8;
+				fd.materialId = services.materials2D().getHandle("fish_food").id;
 				auto& frb = registry.addComponent<RigidBody2D>(food);
 
 				registry.addComponent<FishFood>(food);
@@ -415,8 +461,7 @@ private:
 											   lastT.position.y + tailDir.y * eel.segmentSpacing, 0.0f);
 
 							auto& nd = registry.addComponent<Dot>(newSeg);
-							nd.materialId =
-								static_cast<unsigned int>(eel.baseMaterial + static_cast<int>(eel.segments.size() % 4));
+							nd.materialId = static_cast<uint16_t>(eel.baseMaterial);
 
 							registry.addComponent<RigidBody2D>(newSeg);
 

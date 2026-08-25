@@ -16,6 +16,7 @@
 #include "weird-engine/Background.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
+#include "weird-engine/Material2D.h"
 #include "weird-engine/Material3D.h"
 #include "weird-engine/ResourceManager.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
@@ -27,6 +28,7 @@
 #include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/components/Camera.h"
 #include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/core/Display.h"
 #include "weird-renderer/scene/Light.h"
 
 namespace WeirdEngine
@@ -226,8 +228,20 @@ namespace WeirdEngine
 			: id(static_cast<uint16_t>(matId))
 		{
 		}
+		ShapeMaterial(const Material2D& mat)
+			: id(mat.id)
+		{
+		}
 		ShapeMaterial(const Material3D& mat)
 			: id(mat.id)
+		{
+		}
+		constexpr ShapeMaterial(Material2DHandle handle)
+			: id(handle.id)
+		{
+		}
+		constexpr ShapeMaterial(Material3DHandle handle)
+			: id(handle.id)
 		{
 		}
 		constexpr operator uint16_t() const
@@ -313,7 +327,8 @@ namespace WeirdEngine
 		SDFRenderSystemContext& context2D;
 		SDFRenderSystemContext& context3D;
 		SDFRenderSystemContext& contextUI;
-		std::vector<WeirdRenderer::Light>& lights;
+		std::vector<WeirdRenderer::Light2D>& lights2D;
+		std::vector<WeirdRenderer::Light3D>& lights3D;
 		BackgroundParams& background;
 		RenderMode& renderMode;
 
@@ -327,9 +342,14 @@ namespace WeirdEngine
 			return cameraEntity;
 		}
 
-		std::vector<WeirdRenderer::Light>& getLights()
+		std::vector<WeirdRenderer::Light2D>& getLights2D()
 		{
-			return lights;
+			return lights2D;
+		}
+
+		std::vector<WeirdRenderer::Light3D>& getLights3D()
+		{
+			return lights3D;
 		}
 
 		BackgroundParams& getBackground()
@@ -362,10 +382,6 @@ namespace WeirdEngine
 			return contextUI;
 		}
 
-		// Force the shader to regenerate the next frame. Materials are baked
-		// into the shader, so changing a shape's material (or any parameter
-		// that affects shader generation) requires a refresh. Use the
-		// granular variants to refresh only the affected render target.
 		void forceShaderRefresh2D()
 		{
 			context2D.shapesNeedUpdate = true;
@@ -389,29 +405,197 @@ namespace WeirdEngine
 		}
 	};
 
-	struct MaterialService
+	struct Material2DService
+	{
+		Material2D (&materials)[16];
+		uint16_t& count;
+		std::unordered_map<std::string, uint16_t>& nameToId;
+
+		Material2D& createMaterial(const std::string& name = "")
+		{
+			if (!name.empty())
+			{
+				auto it = nameToId.find(name);
+				if (it != nameToId.end())
+				{
+					return materials[it->second];
+				}
+			}
+
+			// If slots below 16 are available, use them, otherwise use the last slot
+			uint16_t slot = count < 16 ? count++ : 15;
+			Material2D& mat = materials[slot];
+			mat.id = slot;
+			mat.name = name;
+			if (!name.empty())
+			{
+				nameToId[name] = slot;
+			}
+			return mat;
+		}
+
+		Material2D& getOrCreate(const std::string& name, std::function<void(Material2D&)> init = nullptr)
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			Material2D& mat = createMaterial(name);
+			if (init)
+			{
+				init(mat);
+			}
+			return mat;
+		}
+
+		Material2D& get(const std::string& name)
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			return materials[0];
+		}
+
+		const Material2D& get(const std::string& name) const
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			return materials[0];
+		}
+
+		Material2DHandle getHandle(const std::string& name) const
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return Material2DHandle(it->second);
+			}
+			return Material2DHandle(0);
+		}
+
+		Material2D& get(uint16_t id)
+		{
+			return materials[id < 16 ? id : 15];
+		}
+
+		const Material2D& get(uint16_t id) const
+		{
+			return materials[id < 16 ? id : 15];
+		}
+
+		Material2D& getMaterial(int index)
+		{
+			return get(static_cast<uint16_t>(index));
+		}
+
+		const Material2D* getMaterials() const
+		{
+			return materials;
+		}
+
+		uint16_t getMaterialCount() const
+		{
+			return count;
+		}
+
+		bool has(const std::string& name) const
+		{
+			return nameToId.find(name) != nameToId.end();
+		}
+	};
+
+	struct Material3DService
 	{
 		Material3D (&materials)[16];
 		uint16_t& count;
+		std::unordered_map<std::string, uint16_t>& nameToId;
 
-		Material3D& createMaterial()
+		Material3D& createMaterial(const std::string& name = "")
 		{
-			if (count >= 16)
+			if (!name.empty())
 			{
-				// Max materials reached, return the last one
-				return materials[15];
+				auto it = nameToId.find(name);
+				if (it != nameToId.end())
+				{
+					return materials[it->second];
+				}
 			}
 
-			Material3D& mat = materials[count];
-			mat.id = count;
-			count++;
-
+			uint16_t slot = count < 16 ? count++ : 15;
+			Material3D& mat = materials[slot];
+			mat.id = slot;
+			mat.name = name;
+			if (!name.empty())
+			{
+				nameToId[name] = slot;
+			}
 			return mat;
+		}
+
+		Material3D& getOrCreate(const std::string& name, std::function<void(Material3D&)> init = nullptr)
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			Material3D& mat = createMaterial(name);
+			if (init)
+			{
+				init(mat);
+			}
+			return mat;
+		}
+
+		Material3D& get(const std::string& name)
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			return materials[0];
+		}
+
+		const Material3D& get(const std::string& name) const
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return materials[it->second];
+			}
+			return materials[0];
+		}
+
+		Material3DHandle getHandle(const std::string& name) const
+		{
+			auto it = nameToId.find(name);
+			if (it != nameToId.end())
+			{
+				return Material3DHandle(it->second);
+			}
+			return Material3DHandle(0);
+		}
+
+		Material3D& get(uint16_t id)
+		{
+			return materials[id < 16 ? id : 15];
+		}
+
+		const Material3D& get(uint16_t id) const
+		{
+			return materials[id < 16 ? id : 15];
 		}
 
 		Material3D& getMaterial(int index)
 		{
-			return materials[index];
+			return get(static_cast<uint16_t>(index));
 		}
 
 		const Material3D* getMaterials() const
@@ -422,6 +606,11 @@ namespace WeirdEngine
 		uint16_t getMaterialCount() const
 		{
 			return count;
+		}
+
+		bool has(const std::string& name) const
+		{
+			return nameToId.find(name) != nameToId.end();
 		}
 	};
 
@@ -757,9 +946,14 @@ namespace WeirdEngine
 			return m_render;
 		}
 
-		MaterialService& materials()
+		Material2DService& materials2D()
 		{
-			return m_materials;
+			return m_materials2D;
+		}
+
+		Material3DService& materials3D()
+		{
+			return m_materials3D;
 		}
 
 		AudioService& audio()
@@ -803,7 +997,8 @@ namespace WeirdEngine
 		PhysicsService m_physics;
 		ShapeService m_shapes;
 		RenderService m_render;
-		MaterialService m_materials;
+		Material2DService m_materials2D;
+		Material3DService m_materials3D;
 		AudioService m_audio;
 		TagService m_tags;
 		SerializationService m_serialization;

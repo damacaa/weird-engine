@@ -1,9 +1,11 @@
 #pragma once
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/ResourceManager.h"
-
+#include "weird-renderer/components/Light2DComponent.h"
+#include "weird-renderer/components/Light3DComponent.h"
 #include "weird-renderer/resources/DrawCommand.h"
 #include "weird-renderer/scene/Light.h"
+#include <glm/gtc/constants.hpp>
 #include <vector>
 
 namespace WeirdEngine
@@ -14,10 +16,11 @@ namespace WeirdEngine
 	{
 		inline void update(Registry& registry, ResourceManager& resourceManager,
 						   std::vector<WeirdRenderer::DrawCommand>& drawQueue,
-						   std::vector<WeirdRenderer::Light>& lights)
+						   std::vector<WeirdRenderer::Light2D>& lights2D, std::vector<WeirdRenderer::Light3D>& lights3D)
 		{
 			drawQueue.clear();
-			lights.clear();
+			lights2D.clear();
+			lights3D.clear();
 
 			registry.forEach<MeshRenderer, Transform>(
 				[&](Entity mOwner, MeshRenderer& mr, Transform& t)
@@ -32,16 +35,32 @@ namespace WeirdEngine
 					drawQueue.push_back(cmd);
 				});
 
-			registry.forEach<LightComponent, Transform>(
-				[&](Entity mOwner, LightComponent& lc, Transform& t)
+			registry.forEach<Light2DComponent, Transform>(
+				[&](Entity mOwner, Light2DComponent& lc, Transform& t)
 				{
-					WeirdRenderer::Light light;
+					WeirdRenderer::Light2D light;
+					light.type = static_cast<uint32_t>(lc.type);
+					light.position = glm::vec2(t.position.x, t.position.y);
+					light.direction = lc.direction;
+					light.color = lc.color;
+					light.radius = lc.radius;
+					light.coneAngle = glm::radians(lc.coneAngle);
+					light.conePenumbra = glm::radians(lc.conePenumbra);
+					light.castShadows = lc.castShadows ? 1 : 0;
+
+					lights2D.push_back(light);
+				});
+
+			registry.forEach<Light3DComponent, Transform>(
+				[&](Entity mOwner, Light3DComponent& lc, Transform& t)
+				{
+					WeirdRenderer::Light3D light;
 					light.type = static_cast<uint32_t>(lc.type);
 					light.color = lc.color;
 					light.position = t.position;
 					light.rotation = t.rotation;
 
-					lights.push_back(light);
+					lights3D.push_back(light);
 				});
 		}
 	} // namespace RenderSystem

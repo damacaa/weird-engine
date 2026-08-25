@@ -17,14 +17,21 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Create a random number generator engine
+		auto& floorMat = services.materials2D().createMaterial("floor");
+		floorMat.color = ColorPalette::LightGray;
+
+		std::vector<Material2DHandle> ballMats;
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& mat = services.materials2D().createMaterial("ball_" + std::to_string(i));
+			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
+			ballMats.push_back(mat.id);
+		}
 
 		for (size_t i = 0; i < 10; i++)
 		{
 			float y = 10.0f + static_cast<float>(i);
 			float x = 2.0f * static_cast<float>(i);
-
-			int material = 4 + (i % 12);
 
 			float z = 0;
 
@@ -33,7 +40,7 @@ private:
 			t.position = vec3(x + 0.5f, y + 0.5f, z);
 
 			Dot& dot = registry.addComponent<Dot>(entity);
-			dot.materialId = material;
+			dot.materialId = ballMats[i % ballMats.size()].id;
 
 			RigidBody2D& rb = registry.addComponent<RigidBody2D>(entity);
 		}
@@ -43,14 +50,14 @@ private:
 									.variables = {{Primitives::Circle::POS_X, 15.0f},
 												  {Primitives::Circle::POS_Y, 5.0f},
 												  {Primitives::Circle::RADIUS, 25.0f}},
-									.material = 3});
+									.material = floorMat});
 
 		auto floor = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 												 .variables = {{Primitives::Box::POS_X, 15.0f},
 															   {Primitives::Box::POS_Y, -50.0f},
 															   {Primitives::Box::SIZE_X, 250.0f},
 															   {Primitives::Box::SIZE_Y, 50.0f}},
-												 .material = 3,
+												 .material = floorMat,
 												 .combination = CombinationType::SmoothAddition});
 		registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
 
@@ -58,7 +65,7 @@ private:
 									.variables = {{Primitives::Circle::POS_X, 15.0f},
 												  {Primitives::Circle::POS_Y, 5.0f},
 												  {Primitives::Circle::RADIUS, 20.0f}},
-									.material = 3,
+									.material = floorMat,
 									.combination = CombinationType::Subtraction});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;

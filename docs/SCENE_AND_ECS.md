@@ -114,7 +114,7 @@ auto& transform = registry.addComponent<Transform>(entity);
 transform.position = vec3(10.0f, 5.0f, 0.0f);
 
 auto& dot = registry.addComponent<Dot>(entity);
-dot.materialId = DisplaySettings::LightGray;
+dot.materialId = services.materials2D().getHandle("my_mat").id;
 
 auto& rb = registry.addComponent<RigidBody2D>(entity);
 rb.velocity = vec2(0.0f, 5.0f);
@@ -243,7 +243,8 @@ The `ServiceProvider` parameter provides controlled access to engine subsystems.
 | Physics | `services.physics()` | Control gravity, damping, pause state, and raycasts |
 | Render | `services.render()` | Access camera, lights, and trigger shader updates |
 | Shapes | `services.shapes()` | Register custom SDFs and spawn shapes (see [SDF Shapes Guide](SDF_SHAPES.md)) |
-| Materials | `services.materials()` | Create and access 3D material definitions |
+| Materials 2D | `services.materials2D()` | Create, share, and query 2D material definitions |
+| Materials 3D | `services.materials3D()` | Create, share, and query 3D material definitions |
 | Audio | `services.audio()` | Queue audio requests and read friction audio levels |
 | Tags | `services.tags()` | Assign and query unique string tags on entities |
 | Serialization | `services.serialization()` | Save and load `.weird` files and blacklist entities |

@@ -71,13 +71,22 @@ private:
 			RigidBody2D& rb = registry.addComponent<RigidBody2D>(entity);
 		}
 
+		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
+		{
+			auto& m = services.materials2D().get(static_cast<uint16_t>(i));
+			m.color = ColorPalette::Default[i];
+		}
+
+		auto& wallMat = services.materials2D().createMaterial("wall");
+		wallMat.color = ColorPalette::LightGray;
+
 		// Floor
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 									.variables = {{Primitives::Box::POS_X, 15.0f},
 												  {Primitives::Box::POS_Y, -5.0f},
 												  {Primitives::Box::SIZE_X, 25.0f},
 												  {Primitives::Box::SIZE_Y, 5.0f}},
-									.material = 3});
+									.material = wallMat});
 
 		// Wall right
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
@@ -85,7 +94,7 @@ private:
 												  {Primitives::Box::POS_Y, 20.0f},
 												  {Primitives::Box::SIZE_X, 5.0f},
 												  {Primitives::Box::SIZE_Y, 30.0f}},
-									.material = 3});
+									.material = wallMat});
 
 		// Wall left
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
@@ -93,7 +102,7 @@ private:
 												  {Primitives::Box::POS_Y, 20.0f},
 												  {Primitives::Box::SIZE_X, 5.0f},
 												  {Primitives::Box::SIZE_Y, 30.0f}},
-									.material = 3});
+									.material = wallMat});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 	}
@@ -154,20 +163,20 @@ private:
 	}
 
 	// Function to find the closest color in the palette
-	inline int findClosestColorInPalette(vec4 colorPalette[16], const glm::vec3& color)
+	inline int findClosestColorInPalette(const Material2D* materials, uint16_t count, const glm::vec3& color)
 	{
 		int closestIndex = 0;
 		float minDistance = std::numeric_limits<float>::max(); // start with maximum possible distance
 
-		for (int i = 0; i < 16; ++i)
+		for (uint16_t i = 0; i < count && i < 16; ++i)
 		{
 			// Use length2 for efficiency (avoids computing square root)
-			float distance = glm::length2(color - glm::vec3(colorPalette[i]));
+			float distance = glm::length2(color - glm::vec3(materials[i].color));
 
 			if (distance < minDistance)
 			{
 				minDistance = distance;
-				closestIndex = i;
+				closestIndex = static_cast<int>(i);
 			}
 		}
 
@@ -202,9 +211,8 @@ private:
 
 				vec3 color = getColor(imagePath.c_str(), uv.x, uv.y);
 
-				DisplaySettings displaySettings;
-
-				int id = findClosestColorInPalette(displaySettings.colorPalette, color);
+				int id = findClosestColorInPalette(services.materials2D().getMaterials(),
+												   services.materials2D().getMaterialCount(), color);
 
 				result += std::to_string(id) + "-";
 			}

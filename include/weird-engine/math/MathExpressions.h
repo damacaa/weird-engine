@@ -18,6 +18,17 @@ namespace WeirdEngine
 		virtual float getValue(const float* parameters) const = 0;
 		[[nodiscard]]
 		virtual std::string print() const = 0;
+		[[nodiscard]]
+		virtual bool isTrivial() const
+		{
+			return false;
+		}
+		virtual void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const {}
+		[[nodiscard]]
+		virtual std::string printWithChildren(const std::vector<std::string>& childCode) const
+		{
+			return print();
+		}
 		virtual void collectHelperFunctions(std::unordered_set<std::string>& helpers) const {}
 		[[nodiscard]]
 		virtual std::string getHelperFunctions() const
@@ -54,6 +65,12 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
+		bool isTrivial() const override
+		{
+			return true;
+		}
+
+		[[nodiscard]]
 		std::string print() const override
 		{
 			return "var" + std::to_string(m_offset);
@@ -75,6 +92,12 @@ namespace WeirdEngine
 		float getValue(const float* parameters) const override
 		{
 			return m_value;
+		}
+
+		[[nodiscard]]
+		bool isTrivial() const override
+		{
+			return true;
 		}
 
 		[[nodiscard]]
@@ -121,6 +144,12 @@ namespace WeirdEngine
 			valueA = (std::move(a));
 		}
 
+		void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+		{
+			if (valueA)
+				out.push_back(valueA);
+		}
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override = 0;
 
@@ -129,7 +158,11 @@ namespace WeirdEngine
 			if (valueA)
 				valueA->collectHelperFunctions(helpers);
 		}
-		std::string print() const override = 0;
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return printWithChildren({valueA ? valueA->print() : ""});
+		}
 	};
 
 	// Sine
@@ -144,9 +177,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "sin(" + valueA->print() + ")";
+			return "sin(" + c[0] + ")";
 		}
 	};
 
@@ -162,9 +195,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "abs(" + valueA->print() + ")";
+			return "abs(" + c[0] + ")";
 		}
 	};
 
@@ -180,9 +213,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "cos(" + valueA->print() + ")";
+			return "cos(" + c[0] + ")";
 		}
 	};
 
@@ -198,9 +231,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "-(" + valueA->print() + ")";
+			return "-(" + c[0] + ")";
 		}
 	};
 
@@ -216,9 +249,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "sqrt(" + valueA->print() + ")";
+			return "sqrt(" + c[0] + ")";
 		}
 	};
 
@@ -266,6 +299,14 @@ namespace WeirdEngine
 			valueB = (std::move(b));
 		}
 
+		void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+		{
+			if (valueA)
+				out.push_back(valueA);
+			if (valueB)
+				out.push_back(valueB);
+		}
+
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
@@ -277,7 +318,11 @@ namespace WeirdEngine
 				valueB->collectHelperFunctions(helpers);
 		}
 
-		std::string print() const override = 0;
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return printWithChildren({valueA ? valueA->print() : "", valueB ? valueB->print() : ""});
+		}
 	};
 
 	// Add
@@ -292,9 +337,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "(" + valueA->print() + " + " + valueB->print() + ")";
+			return "(" + c[0] + " + " + c[1] + ")";
 		}
 	};
 
@@ -310,9 +355,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "(" + valueA->print() + " - " + valueB->print() + ")";
+			return "(" + c[0] + " - " + c[1] + ")";
 		}
 	};
 
@@ -331,9 +376,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "(" + valueA->print() + " * " + valueB->print() + ")";
+			return "(" + c[0] + " * " + c[1] + ")";
 		}
 	};
 
@@ -351,9 +396,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "(" + valueA->print() + " / " + valueB->print() + ")";
+			return "(" + c[0] + " / " + c[1] + ")";
 		}
 	};
 
@@ -369,9 +414,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "atan(" + valueA->print() + ", " + valueB->print() + ")";
+			return "atan(" + c[0] + ", " + c[1] + ")";
 		}
 	};
 
@@ -390,9 +435,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "length(vec2(" + valueA->print() + ", " + valueB->print() + "))";
+			return "length(vec2(" + c[0] + ", " + c[1] + "))";
 		}
 	};
 
@@ -410,9 +455,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "max(" + valueA->print() + ", " + valueB->print() + ")";
+			return "max(" + c[0] + ", " + c[1] + ")";
 		}
 	};
 
@@ -430,9 +475,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "min(" + valueA->print() + ", " + valueB->print() + ")";
+			return "min(" + c[0] + ", " + c[1] + ")";
 		}
 	};
 
@@ -450,9 +495,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "min(" + valueA->print() + ", " + valueB->print() + ")";
+			return "min(" + c[0] + ", " + c[1] + ")";
 		}
 	};
 
@@ -470,9 +515,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "max(" + valueA->print() + ", -" + valueB->print() + ")";
+			return "max(" + c[0] + ", -(" + c[1] + "))";
 		}
 	};
 
@@ -490,9 +535,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "max(" + valueA->print() + ", " + valueB->print() + ")";
+			return "max(" + c[0] + ", " + c[1] + ")";
 		}
 	};
 
@@ -510,9 +555,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "abs(" + valueA->print() + ") - " + valueB->print();
+			return "(abs(" + c[0] + ") - " + c[1] + ")";
 		}
 	};
 
@@ -555,6 +600,16 @@ namespace WeirdEngine
 			valueC = (std::move(c));
 		}
 
+		void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+		{
+			if (valueA)
+				out.push_back(valueA);
+			if (valueB)
+				out.push_back(valueB);
+			if (valueC)
+				out.push_back(valueC);
+		}
+
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
@@ -568,7 +623,12 @@ namespace WeirdEngine
 				valueC->collectHelperFunctions(helpers);
 		}
 
-		std::string print() const override = 0;
+		[[nodiscard]]
+		std::string print() const override
+		{
+			return printWithChildren(
+				{valueA ? valueA->print() : "", valueB ? valueB->print() : "", valueC ? valueC->print() : ""});
+		}
 	};
 
 	// Clamp
@@ -587,9 +647,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "clamp(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+			return "clamp(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
 		}
 	};
 
@@ -622,9 +682,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "fOpUnionSoft(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+			return "fOpUnionSoft(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
 		}
 	};
 
@@ -643,9 +703,9 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
-		std::string print() const override
+		std::string printWithChildren(const std::vector<std::string>& c) const override
 		{
-			return "fOpSubSoft(" + valueA->print() + ", " + valueB->print() + ", " + valueC->print() + ")";
+			return "fOpSubSoft(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
 		}
 	};
 

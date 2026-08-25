@@ -434,11 +434,25 @@ namespace WeirdEngine
 				helpers.insert(res);
 			}
 
+			void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+			{
+				if (m_point.x.node)
+					out.push_back(m_point.x.node);
+				if (m_point.y.node)
+					out.push_back(m_point.y.node);
+			}
+
+			[[nodiscard]]
+			std::string printWithChildren(const std::vector<std::string>& c) const override
+			{
+				return "sdPolygonCustom_" + std::to_string(m_polyId) + "(vec2(" + c[0] + ", " + c[1] + "))";
+			}
+
 			[[nodiscard]]
 			std::string print() const override
 			{
-				return "sdPolygonCustom_" + std::to_string(m_polyId) + "(vec2(" + m_point.x.node->print() + ", " +
-					   m_point.y.node->print() + "))";
+				return printWithChildren(
+					{m_point.x.node ? m_point.x.node->print() : "", m_point.y.node ? m_point.y.node->print() : ""});
 			}
 		};
 
@@ -565,11 +579,29 @@ float sdTriangle_impl(in vec2 p, float w, float h)
 #endif)");
 			}
 
+			void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+			{
+				if (m_p.x.node)
+					out.push_back(m_p.x.node);
+				if (m_p.y.node)
+					out.push_back(m_p.y.node);
+				if (m_w.node)
+					out.push_back(m_w.node);
+				if (m_h.node)
+					out.push_back(m_h.node);
+			}
+
+			[[nodiscard]]
+			std::string printWithChildren(const std::vector<std::string>& c) const override
+			{
+				return "sdTriangle_impl(vec2(" + c[0] + ", " + c[1] + "), " + c[2] + ", " + c[3] + ")";
+			}
+
 			[[nodiscard]]
 			std::string print() const override
 			{
-				return "sdTriangle_impl(vec2(" + m_p.x.node->print() + ", " + m_p.y.node->print() + "), " +
-					   m_w.node->print() + ", " + m_h.node->print() + ")";
+				return printWithChildren({m_p.x.node ? m_p.x.node->print() : "", m_p.y.node ? m_p.y.node->print() : "",
+										  m_w.node ? m_w.node->print() : "", m_h.node ? m_h.node->print() : ""});
 			}
 		};
 
@@ -650,11 +682,33 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 #endif)");
 			}
 
+			void getChildren(std::vector<std::shared_ptr<IMathExpression>>& out) const override
+			{
+				if (m_p.x.node)
+					out.push_back(m_p.x.node);
+				if (m_p.y.node)
+					out.push_back(m_p.y.node);
+				if (m_w.node)
+					out.push_back(m_w.node);
+				if (m_h.node)
+					out.push_back(m_h.node);
+				if (m_skew.node)
+					out.push_back(m_skew.node);
+			}
+
+			[[nodiscard]]
+			std::string printWithChildren(const std::vector<std::string>& c) const override
+			{
+				return "sdParallelogramVertical(vec2(" + c[0] + ", " + c[1] + "), " + c[2] + ", " + c[3] + ", " + c[4] +
+					   ")";
+			}
+
 			[[nodiscard]]
 			std::string print() const override
 			{
-				return "sdParallelogramVertical(vec2(" + m_p.x.node->print() + ", " + m_p.y.node->print() + "), " +
-					   m_w.node->print() + ", " + m_h.node->print() + ", " + m_skew.node->print() + ")";
+				return printWithChildren({m_p.x.node ? m_p.x.node->print() : "", m_p.y.node ? m_p.y.node->print() : "",
+										  m_w.node ? m_w.node->print() : "", m_h.node ? m_h.node->print() : "",
+										  m_skew.node ? m_skew.node->print() : ""});
 			}
 		};
 

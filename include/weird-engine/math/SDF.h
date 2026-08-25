@@ -247,6 +247,15 @@ namespace WeirdEngine
 		}
 		return Expr(std::make_shared<Clamp>(v.node, lo.node, hi.node));
 	}
+	inline Expr mod(const Expr& a, const Expr& b)
+	{
+		float va, vb;
+		if (getConstantVal(a.node, va) && getConstantVal(b.node, vb) && vb != 0.0f)
+		{
+			return Expr(va - vb * std::floor(va / vb));
+		}
+		return Expr(std::make_shared<Mod>(a.node, b.node));
+	}
 	inline Expr atan2(const Expr& y, const Expr& x)
 	{
 		float vy, vx;

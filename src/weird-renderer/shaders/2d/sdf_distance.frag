@@ -46,64 +46,6 @@ float shape_circle(vec2 p)
 	return shape_circle(p, 0.5);
 }
 
-float sdSegment(in vec2 p, in vec2 a, in vec2 b)
-{
-	vec2 pa = p - a, ba = b - a;
-	float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-	return length(pa - ba * h);
-}
-
-float sdTriangle(in vec2 p, float w, float h)
-{
-	vec2 a = vec2(-w * 0.5, -h / 3.0);
-	vec2 b = vec2(w * 0.5, -h / 3.0);
-	vec2 c2 = vec2(0.0, 2.0 * h / 3.0);
-
-	float d = min(min(sdSegment(p, a, b), sdSegment(p, b, c2)), sdSegment(p, c2, a));
-
-	float cross0 = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-	float cross1 = (c2.x - b.x) * (p.y - b.y) - (c2.y - b.y) * (p.x - b.x);
-	float cross2 = (a.x - c2.x) * (p.y - c2.y) - (a.y - c2.y) * (p.x - c2.x);
-	bool inside =
-		(cross0 >= 0.0 && cross1 >= 0.0 && cross2 >= 0.0) || (cross0 <= 0.0 && cross1 <= 0.0 && cross2 <= 0.0);
-
-	return inside ? -d : d;
-}
-
-float sdBox(in vec2 p, in vec2 b)
-{
-	vec2 d = abs(p) - b;
-	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-}
-
-float shape_sine(vec2 p, float time)
-{
-	return p.y - sin(p.x * 5.0 + time) * 0.2;
-}
-
-float shape_box2d(vec2 p, vec2 b)
-{
-	vec2 d = abs(p) - b;
-	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
-}
-
-float shape_line(vec2 p, vec2 a, vec2 b)
-{
-	vec2 dir = b - a;
-	return abs(dot(normalize(vec2(dir.y, -dir.x)), a - p));
-}
-
-float shape_segment(vec2 p, vec2 a, vec2 b)
-{
-	float d = shape_line(p, a, b);
-	float d0 = dot(p - b, b - a);
-	float d1 = dot(p - a, b - a);
-	return d1 < 0.0 ? length(a - p) : d0 > 0.0 ? length(b - p) : d;
-}
-
-
-#include "helper_functions"
-
 // #define BLEND_SHAPES
 // #define MOTION_BLUR
 // #define DEBUG_SHOW_GRID
@@ -175,6 +117,8 @@ const float FAR = 100.0;
 #define var5 parameters1.y
 #define var6 parameters1.z
 #define var7 parameters1.w
+
+#include "helper_functions"
 
 float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 {

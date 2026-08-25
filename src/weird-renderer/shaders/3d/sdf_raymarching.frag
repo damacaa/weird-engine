@@ -108,9 +108,6 @@ float sdCapsule(vec3 p, vec3 a, vec3 b, float r)
 	return length(pa - ba * h) - r;
 }
 
-
-#include "helper_functions"
-
 // #define PATH_TRACING
 // #define FISH_EYE
 // #define ANTIALIASING
@@ -236,6 +233,8 @@ uniform float u_contrast;
 #define var5 parameters1.y
 #define var6 parameters1.z
 #define var7 parameters1.w
+
+#include "helper_functions"
 
 // Hash
 float hash(vec2 p)

@@ -2,8 +2,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace WeirdEngine
@@ -15,10 +18,18 @@ namespace WeirdEngine
 		virtual float getValue(const float* parameters) const = 0;
 		[[nodiscard]]
 		virtual std::string print() const = 0;
+		virtual void collectHelperFunctions(std::unordered_set<std::string>& helpers) const {}
 		[[nodiscard]]
 		virtual std::string getHelperFunctions() const
 		{
-			return "";
+			std::unordered_set<std::string> helpers;
+			collectHelperFunctions(helpers);
+			std::string result;
+			for (const auto& h : helpers)
+			{
+				result += h + "\n";
+			}
+			return result;
 		}
 		virtual ~IMathExpression() = default;
 	};
@@ -69,7 +80,9 @@ namespace WeirdEngine
 		[[nodiscard]]
 		std::string print() const override
 		{
-			return std::to_string(m_value) + "f";
+			std::ostringstream ss;
+			ss << std::fixed << std::setprecision(6) << m_value;
+			return ss.str();
 		}
 	};
 
@@ -111,10 +124,10 @@ namespace WeirdEngine
 		[[nodiscard]]
 		float getValue(const float* parameters) const override = 0;
 
-		[[nodiscard]]
-		virtual std::string getHelperFunctions() const override
+		void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 		{
-			return valueA ? valueA->getHelperFunctions() : "";
+			if (valueA)
+				valueA->collectHelperFunctions(helpers);
 		}
 		std::string print() const override = 0;
 	};
@@ -256,12 +269,12 @@ namespace WeirdEngine
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
-		[[nodiscard]] [[nodiscard]]
-
-		[[nodiscard]]
-		virtual std::string getHelperFunctions() const override
+		void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 		{
-			return (valueA ? valueA->getHelperFunctions() : "") + (valueB ? valueB->getHelperFunctions() : "");
+			if (valueA)
+				valueA->collectHelperFunctions(helpers);
+			if (valueB)
+				valueB->collectHelperFunctions(helpers);
 		}
 
 		std::string print() const override = 0;
@@ -545,13 +558,14 @@ namespace WeirdEngine
 		[[nodiscard]]
 		virtual float getValue(const float* parameters) const override = 0;
 
-		[[nodiscard]] [[nodiscard]]
-
-		[[nodiscard]]
-		virtual std::string getHelperFunctions() const override
+		void collectHelperFunctions(std::unordered_set<std::string>& helpers) const override
 		{
-			return (valueA ? valueA->getHelperFunctions() : "") + (valueB ? valueB->getHelperFunctions() : "") +
-				   (valueC ? valueC->getHelperFunctions() : "");
+			if (valueA)
+				valueA->collectHelperFunctions(helpers);
+			if (valueB)
+				valueB->collectHelperFunctions(helpers);
+			if (valueC)
+				valueC->collectHelperFunctions(helpers);
 		}
 
 		std::string print() const override = 0;

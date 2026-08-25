@@ -93,6 +93,44 @@ const float EPSILON = 0.01;
 const float NEAR = 0.1;
 const float FAR = 100.0;
 
+// Hash
+float hash(vec2 p)
+{
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Interpolation
+float fade(float t)
+{
+	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+// Gradient noise
+float grad(vec2 p, vec2 ip)
+{
+	vec2 g = vec2(hash(ip), hash(ip + 1.0));
+	g = normalize(g * 2.0 - 1.0);
+	return dot(p - ip, g);
+}
+
+// Perlin Noise 2D
+float perlin(vec2 p)
+{
+	vec2 ip = floor(p);
+	vec2 fp = fract(p);
+
+	float a = grad(p, ip);
+	float b = grad(p, ip + vec2(1.0, 0.0));
+	float c = grad(p, ip + vec2(0.0, 1.0));
+	float d = grad(p, ip + vec2(1.0, 1.0));
+
+	vec2 f = vec2(fade(fp.x), fade(fp.y));
+
+	float ab = mix(a, b, f.x);
+	float cd = mix(c, d, f.x);
+	return mix(ab, cd, f.y);
+}
+
 // Custom shape variables
 #define var8 u_time
 #define var9 p.x

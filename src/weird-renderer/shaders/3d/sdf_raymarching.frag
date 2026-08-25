@@ -217,7 +217,84 @@ const float DOT_BLEND_K = 0.2;
 // === Render Style Parameters (Post-Processing) =================
 // contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
 uniform float u_contrast;
-// ===============================================================
+// Hash
+float hash(vec2 p)
+{
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Interpolation
+float fade(float t)
+{
+	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+// Gradient noise
+float grad(vec2 p, vec2 ip)
+{
+	vec2 g = vec2(hash(ip), hash(ip + 1.0));
+	g = normalize(g * 2.0 - 1.0);
+	return dot(p - ip, g);
+}
+
+// Perlin Noise 2D
+float perlin(vec2 p)
+{
+	vec2 ip = floor(p);
+	vec2 fp = fract(p);
+
+	float a = grad(p, ip);
+	float b = grad(p, ip + vec2(1.0, 0.0));
+	float c = grad(p, ip + vec2(0.0, 1.0));
+	float d = grad(p, ip + vec2(1.0, 1.0));
+
+	vec2 f = vec2(fade(fp.x), fade(fp.y));
+
+	float ab = mix(a, b, f.x);
+	float cd = mix(c, d, f.x);
+	return mix(ab, cd, f.y);
+}
+
+// Hash 3D
+vec3 hash3D(vec3 p)
+{
+	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
+	return normalize(fract(sin(p) * 43758.5453123) * 2.0 - 1.0);
+}
+
+// Gradient noise 3D
+float grad3D(vec3 p, vec3 ip)
+{
+	return dot(p - ip, hash3D(ip));
+}
+
+// Perlin Noise 3D
+float perlin3D(vec3 p)
+{
+	vec3 ip = floor(p);
+	vec3 fp = fract(p);
+
+	float a000 = grad3D(p, ip + vec3(0.0, 0.0, 0.0));
+	float a100 = grad3D(p, ip + vec3(1.0, 0.0, 0.0));
+	float a010 = grad3D(p, ip + vec3(0.0, 1.0, 0.0));
+	float a110 = grad3D(p, ip + vec3(1.0, 1.0, 0.0));
+	float a001 = grad3D(p, ip + vec3(0.0, 0.0, 1.0));
+	float a101 = grad3D(p, ip + vec3(1.0, 0.0, 1.0));
+	float a011 = grad3D(p, ip + vec3(0.0, 1.0, 1.0));
+	float a111 = grad3D(p, ip + vec3(1.0, 1.0, 1.0));
+
+	vec3 f = vec3(fade(fp.x), fade(fp.y), fade(fp.z));
+
+	float mix00 = mix(a000, a100, f.x);
+	float mix01 = mix(a010, a110, f.x);
+	float mix10 = mix(a001, a101, f.x);
+	float mix11 = mix(a011, a111, f.x);
+
+	float mix0 = mix(mix00, mix01, f.y);
+	float mix1 = mix(mix10, mix11, f.y);
+
+	return mix(mix0, mix1, f.z);
+}
 
 // Custom shape variables. In 3D these are evaluated on the XZ plane,
 // producing vertically extruded SDFs from the existing 2D math expressions.
@@ -302,85 +379,6 @@ void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout fl
 	{
 		minDist = groupDist;
 	}
-}
-
-// Hash
-float hash(vec2 p)
-{
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-// Interpolation
-float fade(float t)
-{
-	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
-}
-
-// Gradient noise
-float grad(vec2 p, vec2 ip)
-{
-	vec2 g = vec2(hash(ip), hash(ip + 1.0));
-	g = normalize(g * 2.0 - 1.0);
-	return dot(p - ip, g);
-}
-
-// Perlin Noise 2D
-float perlin(vec2 p)
-{
-	vec2 ip = floor(p);
-	vec2 fp = fract(p);
-
-	float a = grad(p, ip);
-	float b = grad(p, ip + vec2(1.0, 0.0));
-	float c = grad(p, ip + vec2(0.0, 1.0));
-	float d = grad(p, ip + vec2(1.0, 1.0));
-
-	vec2 f = vec2(fade(fp.x), fade(fp.y));
-
-	float ab = mix(a, b, f.x);
-	float cd = mix(c, d, f.x);
-	return mix(ab, cd, f.y);
-}
-
-// Hash 3D
-vec3 hash3D(vec3 p)
-{
-	p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
-	return normalize(fract(sin(p) * 43758.5453123) * 2.0 - 1.0);
-}
-
-// Gradient noise 3D
-float grad3D(vec3 p, vec3 ip)
-{
-	return dot(p - ip, hash3D(ip));
-}
-
-// Perlin Noise 3D
-float perlin3D(vec3 p)
-{
-	vec3 ip = floor(p);
-	vec3 fp = fract(p);
-
-	float a000 = grad3D(p, ip + vec3(0.0, 0.0, 0.0));
-	float a100 = grad3D(p, ip + vec3(1.0, 0.0, 0.0));
-	float a010 = grad3D(p, ip + vec3(0.0, 1.0, 0.0));
-	float a110 = grad3D(p, ip + vec3(1.0, 1.0, 0.0));
-	float a001 = grad3D(p, ip + vec3(0.0, 0.0, 1.0));
-	float a101 = grad3D(p, ip + vec3(1.0, 0.0, 1.0));
-	float a011 = grad3D(p, ip + vec3(0.0, 1.0, 1.0));
-	float a111 = grad3D(p, ip + vec3(1.0, 1.0, 1.0));
-
-	vec3 f = vec3(fade(fp.x), fade(fp.y), fade(fp.z));
-
-	float mix00 = mix(a000, a100, f.x);
-	float mix01 = mix(a010, a110, f.x);
-	float mix10 = mix(a001, a101, f.x);
-	float mix11 = mix(a011, a111, f.x);
-
-	float mix0 = mix(mix00, mix01, f.y);
-	float mix1 = mix(mix10, mix11, f.y);
-
-	return mix(mix0, mix1, f.z);
 }
 
 // ==========================================

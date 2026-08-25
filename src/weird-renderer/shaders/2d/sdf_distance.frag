@@ -118,7 +118,74 @@ const float FAR = 100.0;
 #define var6 parameters1.z
 #define var7 parameters1.w
 
+// Slot 0: Injected dynamically by SDFShaderGenerationSystem.
+// Contains deduplicated shape helpers (e.g. sdTriangle_impl) and evaluate_sdf_<id>() functions.
 #include "helper_functions"
+
+void fetchShapeParams(int idx, out vec4 p0, out vec4 p1)
+{
+	p0 = texelFetch(t_shapeBuffer, ivec2(idx % 16384, idx / 16384), 0);
+	p1 = texelFetch(t_shapeBuffer, ivec2((idx + 1) % 16384, (idx + 1) / 16384), 0);
+}
+
+void applyShapeAddition(float dist, int material, inout float currentMinDist, inout float currentBlend, inout int groupColor)
+{
+	if (dist <= currentMinDist)
+	{
+		currentBlend = 0.0;
+		groupColor = material;
+	}
+	currentMinDist = min(currentMinDist, dist);
+}
+
+void applyShapeSubtraction(float dist, inout float currentMinDist)
+{
+	currentMinDist = max(currentMinDist, -dist);
+}
+
+void applyShapeIntersection(float dist, inout float currentMinDist)
+{
+	currentMinDist = max(currentMinDist, dist);
+}
+
+void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inout float currentMinDist, inout float currentBlend, inout int groupColor)
+{
+	vec2 res = fOpUnionSoft_blend(currentMinDist, dist, smoothFactor);
+	if (res.y > 0.0)
+	{
+		currentBlend = max(currentBlend, res.y);
+	}
+	else if (dist < currentMinDist)
+	{
+		currentBlend = 0.0;
+	}
+	if (dist <= res.x)
+	{
+		groupColor = material;
+	}
+	currentMinDist = res.x;
+}
+
+void applyShapeSmoothSubtraction(float dist, float smoothFactor, inout float currentMinDist)
+{
+	currentMinDist = fOpSubSoft(currentMinDist, dist, smoothFactor);
+}
+
+void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout float minDist, inout float globalBlend, inout int finalMaterialId)
+{
+	if (groupDist <= max(minDist, 0.0))
+	{
+		finalMaterialId = groupColor;
+	}
+	if (groupDist <= minDist)
+	{
+		globalBlend = groupBlend;
+	}
+	if (minDist > groupDist)
+	{
+		minDist = groupDist;
+	}
+}
 
 float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 {
@@ -134,6 +201,8 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 	float mask = 0.0;
 	float globalBlend = 0.0;
 
+	// Slot 1: Injected dynamically by SDFShaderGenerationSystem.
+	// Contains the unrolled per-instance shape evaluation loop, CSG combinations, and group flushes.
 #include "custom_shapes"
 
 	if (minDist <= 0.0)

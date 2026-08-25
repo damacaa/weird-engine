@@ -402,6 +402,27 @@ namespace WeirdEngine
 		}
 	};
 
+	struct Mod : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			float b = valueB->getValue(parameters);
+			if (b == 0.0f)
+				return 0.0f;
+			float a = valueA->getValue(parameters);
+			return a - b * std::floor(a / b);
+		}
+
+		[[nodiscard]]
+		std::string printWithChildren(const std::vector<std::string>& c) const override
+		{
+			return "mod(" + c[0] + ", " + c[1] + ")";
+		}
+	};
+
 	// Atan2
 	struct Atan2 : TwoFloatOperation
 	{

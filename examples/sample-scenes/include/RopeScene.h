@@ -6,6 +6,19 @@
 #include "weird-physics/components/Spring.h"
 
 using namespace WeirdEngine;
+
+struct BallData : BodyUserData
+{
+	static constexpr int TYPE = 1;
+
+	BallData()
+	{
+		type = TYPE;
+	}
+
+	bool shouldClamp = false;
+};
+
 // Example scene demonstrating how to create a rope of connected circles using springs.
 class RopeScene : public Scene2D
 {
@@ -17,6 +30,8 @@ private:
 	double m_lastSpawnTime = 0.0;
 
 	std::vector<Entity> m_balls;
+
+	bool m_clampBalls = false;
 
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
@@ -44,6 +59,7 @@ private:
 			sdf.materialId = material;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
+			services.physics().setUserData(rb.simulationId, std::make_unique<BallData>());
 			m_balls.push_back(entity);
 		}
 
@@ -146,12 +162,15 @@ private:
 			Entity entity = registry.createEntity();
 
 			auto& t = registry.addComponent<Transform>(entity);
-			t.position = vec3(0.5f, y + 0.5f, 0.0f);
+			t.position = vec3(2.5f, y + 0.5f, 0.0f);
 
 			auto& sdf = registry.addComponent<Dot>(entity);
 			sdf.materialId = 4 + registry.getComponentArray<Dot>()->getSize() % 12;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
+			auto ballData = std::make_unique<BallData>();
+			ballData->shouldClamp = m_clampBalls;
+			services.physics().setUserData(rb.simulationId, std::move(ballData));
 			rb.pendingImpulseForce += vec2(20.0f, 0.0f);
 		}
 
@@ -258,18 +277,44 @@ private:
 				{.shapeId = DefaultShapes::STAR, .variables = {world.x, world.y, 5.0f, 7.5f, 1.0f}, .material = 3});
 		}
 
-		if (services.input().getKey(Input::R) || services.input().getGamepadButton(Input::GamepadButton::South))
+		if (services.input().getKeyDown(Input::R) || services.input().getGamepadButtonDown(Input::GamepadButton::South))
 		{
-			registry.forEach<RigidBody2D, Transform>(
-				[&](Entity e, RigidBody2D& rb, Transform& t)
+			m_clampBalls = !m_clampBalls;
+			services.physics().forEachUserData(
+				[&](SimulationID id, BodyUserData& data)
 				{
-					vec2 force(0, -0.001f * (t.position.y * t.position.y));
-					force.x += t.position.x < 0.0f ? -t.position.x : 0.0f;
-					force.x -= t.position.x > 30.0f ? t.position.x - 30.0f : 0.0f;
-					force.x = 10.0f / delta * glm::clamp(force.x, -1.0f, 1.0f);
-
-					rb.pendingContinuousForce = force;
+					if (data.type == BallData::TYPE)
+					{
+						auto& ballData = static_cast<BallData&>(data);
+						ballData.shouldClamp = m_clampBalls;
+					}
 				});
 		}
+	}
+
+	void onPhysicsStep(Simulation2D& simulation) override
+	{
+		float dt = static_cast<float>(simulation.getDeltaTime());
+
+		simulation.forEachUserData(
+			[&](SimulationID id, BodyUserData& data)
+			{
+				if (data.type == BallData::TYPE)
+				{
+					auto& ballData = static_cast<BallData&>(data);
+					if (ballData.shouldClamp)
+					{
+						vec2 pos = simulation.getPhysicsPosition(id);
+
+						vec2 force(0.0f, 0.0f);
+						force.x += pos.x < 2.5f ? -pos.x + 2.5f : 0.0f;
+						force.x -= pos.x > 27.5f ? pos.x - 27.5f : 0.0f;
+						force.x = (10.0f / dt) * glm::clamp(force.x, -1.0f, 1.0f);
+						force.y += pos.y < 0.0f ? -pos.y : 0.0f;
+
+						simulation.addImpulseForce(id, force * dt);
+					}
+				}
+			});
 	}
 };

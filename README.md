@@ -101,7 +101,7 @@ auto& transform = registry.addComponent<Transform>(entity);
 transform.position = vec3(0.0f, 10.0f, 0.0f);
 
 auto& dot = registry.addComponent<Dot>(entity);
-dot.materialId = DisplaySettings::LightGray;
+dot.materialId = services.materials2D().getHandle("my_mat").id;
 ```
 
 If you modify a component after creation, mark it dirty if required:
@@ -188,7 +188,8 @@ Systems access engine subsystems through the `ServiceProvider` facade:
 - `services.physics()`: Change gravity, damping, pause state, or run raycasts.
 - `services.render()`: Control camera, lights, and force shader updates.
 - `services.shapes()`: Register custom SDFs and add geometric shapes.
-- `services.materials()`: Create and query 3D materials.
+- `services.materials2D()`: Create, share, and query 2D materials.
+- `services.materials3D()`: Create, share, and query 3D materials.
 - `services.audio()`: Play sounds and check friction audio levels.
 - `services.tags()`: Assign unique string tags to entities and look up entities by tag.
 - `services.serialization()`: Save or load `.weird` scene files and blacklist entities.

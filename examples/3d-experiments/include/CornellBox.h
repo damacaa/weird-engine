@@ -20,21 +20,21 @@ private:
 	{
 		services.debug().setDebugFly(true);
 
-		auto& ballMat = services.materials().createMaterial();
-		ballMat.color = vec4(1.0f);
+		auto& ballMat = services.materials3D().createMaterial("ball");
+		ballMat.color = ColorPalette::White;
 		ballMat.metallic = 1.0f;
 		ballMat.roughness = 0.005f;
 
-		auto& redMat = services.materials().createMaterial();
-		redMat.color = vec4(.8f, 0.2f, 0.2f, 1.0f);
+		auto& redMat = services.materials3D().createMaterial("red");
+		redMat.color = ColorPalette::Red;
 
-		auto& greenMat = services.materials().createMaterial();
-		greenMat.color = vec4(0.1f, .95f, 0.1f, 1.0f);
+		auto& greenMat = services.materials3D().createMaterial("green");
+		greenMat.color = ColorPalette::Green;
 		greenMat.metallic = 0.5f;
 		greenMat.roughness = 0.1f;
 
-		auto& whiteMat = services.materials().createMaterial();
-		whiteMat.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		auto& whiteMat = services.materials3D().createMaterial("white");
+		whiteMat.color = ColorPalette::White;
 
 		{
 			Entity entity = registry.createEntity();
@@ -129,12 +129,6 @@ private:
 										.material = whiteMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
-
-			// {
-			// 	float vars1[8] = {0.0f, 2.6f, 0.0f, 2.7f, 2.7f, 2.7f}; // Custom shape
-			// 	Entity start = services.shapes().addShape(boxId, vars1, DisplaySettings::White,
-			// CombinationType::Intersection, false);
-			// }
 		}
 
 		// Sun
@@ -144,8 +138,8 @@ private:
 			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
 			t.rotation = normalize(glm::vec3(0.0f, 0.0f, 0.0f));
 
-			LightComponent& lc = registry.addComponent<LightComponent>(m_sunLight);
-			lc.type = LightType::Directional;
+			Light3DComponent& lc = registry.addComponent<Light3DComponent>(m_sunLight);
+			lc.type = Light3DType::Directional;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
 		}
 
@@ -155,8 +149,8 @@ private:
 			t.position = glm::vec3(0.0f, (2.0f * 2.6f) + 0.25f, 0.0f);
 			t.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
 
-			LightComponent& lc = registry.addComponent<LightComponent>(entity);
-			lc.type = LightType::Point;
+			Light3DComponent& lc = registry.addComponent<Light3DComponent>(entity);
+			lc.type = Light3DType::Point;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
 		}
 

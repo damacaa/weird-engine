@@ -188,6 +188,7 @@ struct MaterialData
 	int pattern;
 	float patternScale;
 	vec4 secondaryColor;
+	float emission;
 };
 uniform MaterialData u_materials[16];
 
@@ -772,17 +773,16 @@ vec3 getSkyColor(vec3 dir)
 // ─────────────────────────────────────────────────────────────────────────────
 vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
 {
-	vec3 throughput = vec3(1.0);
+	int currentMatId = clamp(materialId, 0, 15);
 
-	// Energy Conservation: Base color > 1.0 acts as light emission
-	vec3 finalColor = max(initialColor - vec3(1.0), vec3(0.0));
+	// Energy Conservation: Base color > 1.0 acts as light emission, plus explicit material emission
+	vec3 finalColor = max(initialColor - vec3(1.0), vec3(0.0)) + (u_materials[currentMatId].emission * initialColor);
 	vec3 currentAlbedo = min(initialColor, vec3(1.0)); // Albedo reflects 100% light max
 
 	vec3 currentRd = rd;
 
 	// === Render Style Parameters ===================================
 	// roughness and f0 are driven by the material palette; other params remain constant
-	int currentMatId = clamp(materialId, 0, 15);
 	float roughness = u_materials[currentMatId].roughness;
 	float f0 = u_materials[currentMatId].metallic;
 
@@ -795,9 +795,8 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	// specMultiplier: intensity/scaling of the direct specular lobe
 	// Retro just blows it out for that classic '90s CG highlight.
 	vec3 specMultiplier = vec3(5.0f);
-	// ===============================================================
-
 	// Perform bounces
+	vec3 throughput = vec3(1.0);
 
 	for (int bounce = 0; bounce <= u_rayBounces; bounce++)
 	{

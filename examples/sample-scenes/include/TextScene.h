@@ -29,12 +29,36 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
+		auto& floorMat = services.materials2D().createMaterial("floor");
+		floorMat.color = ColorPalette::LightGray;
+
+		auto& cyanMat = services.materials2D().createMaterial("text_cyan");
+		cyanMat.color = ColorPalette::Cyan;
+
+		auto& lightBlueMat = services.materials2D().createMaterial("text_blue");
+		lightBlueMat.color = ColorPalette::LightBlue;
+
+		auto& greenMat = services.materials2D().createMaterial("text_green");
+		greenMat.color = ColorPalette::LightGreen;
+
+		auto& yellowMat = services.materials2D().createMaterial("text_yellow");
+		yellowMat.color = ColorPalette::Yellow;
+
+		auto& orangeMat = services.materials2D().createMaterial("text_orange");
+		orangeMat.color = ColorPalette::Orange;
+
+		auto& magentaMat = services.materials2D().createMaterial("text_magenta");
+		magentaMat.color = ColorPalette::Magenta;
+
+		auto& redMat = services.materials2D().createMaterial("text_red");
+		redMat.color = ColorPalette::Red;
+
 		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
 									.variables = {{Primitives::Box::POS_X, 15.0f},
 												  {Primitives::Box::POS_Y, -50.0f},
 												  {Primitives::Box::SIZE_X, 250.0f},
 												  {Primitives::Box::SIZE_Y, 50.0f}},
-									.material = static_cast<uint16_t>(DisplaySettings::LightGray),
+									.material = floorMat,
 									.combination = CombinationType::SmoothAddition});
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
@@ -47,7 +71,7 @@ private:
 
 			auto& text = registry.addComponent<TextRenderer>(m_worldText);
 			text.text = "WORLD TEXT";
-			text.material = DisplaySettings::Cyan;
+			text.material = cyanMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Top;
 		}
@@ -59,7 +83,7 @@ private:
 
 			auto& text = registry.addComponent<TextRenderer>(m_worldMouseText);
 			text.text = "WORLD MOUSE";
-			text.material = DisplaySettings::LightBlue;
+			text.material = lightBlueMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Top;
 		}
@@ -71,7 +95,7 @@ private:
 
 			auto& text = registry.addComponent<UITextRenderer>(m_counterText);
 			text.text = "0";
-			text.material = DisplaySettings::LightGreen;
+			text.material = greenMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 		}
@@ -83,7 +107,7 @@ private:
 
 			auto& text = registry.addComponent<UITextRenderer>(m_centerText);
 			text.text = "CENTERED";
-			text.material = DisplaySettings::Yellow;
+			text.material = yellowMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 		}
@@ -95,7 +119,7 @@ private:
 
 			auto& text = registry.addComponent<UITextRenderer>(m_leftText);
 			text.text = "LEFT";
-			text.material = DisplaySettings::Orange;
+			text.material = orangeMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 		}
@@ -107,7 +131,7 @@ private:
 
 			auto& text = registry.addComponent<UITextRenderer>(m_rightText);
 			text.text = "RIGHT";
-			text.material = DisplaySettings::Magenta;
+			text.material = magentaMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 		}
@@ -120,7 +144,7 @@ private:
 
 			auto& text = registry.addComponent<UITextRenderer>(m_nonResponsiveText);
 			text.text = "STUCK";
-			text.material = DisplaySettings::Red;
+			text.material = redMat.id;
 			text.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
 			text.verticalAlignment = TextRenderer::VerticalAlignment::Top;
 		}

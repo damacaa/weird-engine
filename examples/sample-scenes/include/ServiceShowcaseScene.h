@@ -98,14 +98,14 @@ namespace ServiceShowcase
 		return registry.getComponentArray<State>()->getDataAtIdx(0);
 	}
 
-	inline Entity spawnBall(Registry& registry, vec2 position)
+	inline Entity spawnBall(Registry& registry, ServiceProvider& services, vec2 position)
 	{
 		Entity entity = registry.createEntity();
 		auto& t = registry.addComponent<Transform>(entity);
 		t.position = vec3(position, 0.0f);
 
 		auto& dot = registry.addComponent<Dot>(entity);
-		dot.materialId = DisplaySettings::LightGray;
+		dot.materialId = services.materials2D().getHandle("ball").id;
 
 		auto& rb = registry.addComponent<RigidBody2D>(entity);
 		rb.velocity = vec2((std::rand() % 200 - 100) / 40.0f, 0.0f);
@@ -140,12 +140,35 @@ namespace ServiceShowcase
 		services.debug().setDebugInput(true);
 
 		// Materials through the provider
-		Material3D& floorMaterial = services.materials().createMaterial();
-		floorMaterial.color = vec4(0.8f, 0.8f, 0.8f, 1.0f);
-		floorMaterial.roughness = 1.0f;
+		Material2D& floorMaterial = services.materials2D().createMaterial("floor");
+		floorMaterial.color = ColorPalette::LightGray;
 
-		Material3D& ringMaterial = services.materials().createMaterial();
-		ringMaterial.color = vec4(0.9f, 0.3f, 0.2f, 1.0f);
+		Material2D& ringMaterial = services.materials2D().createMaterial("ring");
+		ringMaterial.color = ColorPalette::Red;
+
+		Material2D& ballMat = services.materials2D().createMaterial("ball");
+		ballMat.color = ColorPalette::LightGray;
+
+		Material2D& pitMat = services.materials2D().createMaterial("pit");
+		pitMat.color = ColorPalette::Black;
+
+		Material2D& leaderMat = services.materials2D().createMaterial("leader");
+		leaderMat.color = ColorPalette::Yellow;
+
+		Material2D& charMat = services.materials2D().createMaterial("character");
+		charMat.color = ColorPalette::Blue;
+
+		Material2D& timeMat = services.materials2D().createMaterial("ui_time");
+		timeMat.color = ColorPalette::LightGreen;
+
+		Material2D& entMat = services.materials2D().createMaterial("ui_entities");
+		entMat.color = ColorPalette::Cyan;
+
+		Material2D& colMat = services.materials2D().createMaterial("ui_collisions");
+		colMat.color = ColorPalette::Magenta;
+
+		Material2D& hintsMat = services.materials2D().createMaterial("ui_hints");
+		hintsMat.color = ColorPalette::Orange;
 
 		// Register a custom SDF: a ring (outer circle minus inner circle)
 		ShapeId ringShape;
@@ -187,7 +210,7 @@ namespace ServiceShowcase
 									.variables = {{Primitives::Circle::POS_X, 30.0f},
 												  {Primitives::Circle::POS_Y, 5.0f},
 												  {Primitives::Circle::RADIUS, 4.0f}},
-									.material = 0,
+									.material = pitMat,
 									.combination = CombinationType::Subtraction,
 									.hasCollision = true,
 									.group = CustomShape::GLOBAL_GROUP});
@@ -203,7 +226,7 @@ namespace ServiceShowcase
 			t.position = vec3(15.0f, 12.0f, 0.0f);
 
 			auto& dot = registry.addComponent<Dot>(leader);
-			dot.materialId = DisplaySettings::Yellow;
+			dot.materialId = leaderMat.id;
 
 			registry.addComponent<RigidBody2D>(leader);
 			services.tags().tag(leader, "leader");
@@ -220,7 +243,7 @@ namespace ServiceShowcase
 			t.position = vec3(15.0f, 15.0f, 0.0f);
 
 			auto& dot = registry.addComponent<Dot>(character);
-			dot.materialId = DisplaySettings::Blue;
+			dot.materialId = charMat.id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(character);
 			services.tags().tag(character, "character");
@@ -242,12 +265,12 @@ namespace ServiceShowcase
 		{
 			float x = 8.0f + (i % 4) * 3.0f;
 			float y = 28.0f + (i / 4) * 4.0f;
-			spawnBall(registry, vec2(x, y));
+			spawnBall(registry, services, vec2(x, y));
 		}
 
 		// UI text (screen space; blacklisted so it is never serialized)
 		{
-			auto makeText = [&](const char* initial, vec2 screenPosition, Entity& outEntity, int material)
+			auto makeText = [&](const char* initial, vec2 screenPosition, Entity& outEntity, Material2DHandle material)
 			{
 				outEntity = registry.createEntity();
 				services.serialization().blacklistEntity(outEntity);
@@ -262,14 +285,13 @@ namespace ServiceShowcase
 				text.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
 			};
 
-			makeText("time 0.0s", vec2(10.0f, static_cast<float>(Display::height) - 10.0f), state.timeText,
-					 DisplaySettings::LightGreen);
+			makeText("time 0.0s", vec2(10.0f, static_cast<float>(Display::height) - 10.0f), state.timeText, timeMat);
 			makeText("entities 0", vec2(10.0f, static_cast<float>(Display::height) - 22.0f), state.entitiesText,
-					 DisplaySettings::Cyan);
+					 entMat);
 			makeText("collisions 0 / 0", vec2(10.0f, static_cast<float>(Display::height) - 34.0f), state.collisionsText,
-					 DisplaySettings::Magenta);
+					 colMat);
 			makeText("click: spawn | space: pause | arrows: gravity/damping | ctrl+s: save | ctrl+l: load | q: next",
-					 vec2(10.0f, 10.0f), state.hintsText, DisplaySettings::Orange);
+					 vec2(10.0f, 10.0f), state.hintsText, hintsMat);
 		}
 	}
 
@@ -284,7 +306,7 @@ namespace ServiceShowcase
 		{
 			state.spawnTimer = 0.0f;
 			float x = 3.0f + static_cast<float>(std::rand() % 240) / 10.0f;
-			spawnBall(registry, vec2(x, 35.0f));
+			spawnBall(registry, services, vec2(x, 35.0f));
 			state.ballsSpawned++;
 		}
 	}
@@ -337,7 +359,7 @@ namespace ServiceShowcase
 			auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 			vec2 mouseWorld = ECS::Camera::screenPositionToWorldPosition2D(
 				cameraTransform, vec2(services.input().getMouseX(), services.input().getMouseY()));
-			spawnBall(registry, mouseWorld);
+			spawnBall(registry, services, mouseWorld);
 			state.ballsSpawned++;
 		}
 
@@ -422,7 +444,7 @@ namespace ServiceShowcase
 			if (services.physics().getUserDataAs<CharacterData>(rb.simulationId) == nullptr)
 			{
 				auto& dot = registry.getComponent<Dot>(event.entityA);
-				dot.materialId = DisplaySettings::Orange;
+				dot.materialId = services.materials2D().getHandle("ui_hints").id;
 				registry.setComponentDirty(dot);
 			}
 		}

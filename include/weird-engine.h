@@ -14,6 +14,7 @@
 #include <imgui_impl_sdl3.h>
 #endif
 
+#include "weird-engine/ColorPalette.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/Logger.h"
 #include "weird-engine/Profiler.h"

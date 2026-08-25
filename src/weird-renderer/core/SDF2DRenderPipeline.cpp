@@ -35,10 +35,8 @@ namespace WeirdEngine
 			return ::WeirdEngine::WeirdRenderer::largestPowerOfTwoBelow(n);
 		}
 
-		SDF2DRenderPipeline::SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette,
-												 RenderPlane& renderPlane)
+		SDF2DRenderPipeline::SDF2DRenderPipeline(const Config& config, RenderPlane& renderPlane)
 			: m_config(config)
-			, m_colorPalette(colorPalette)
 			, m_renderPlane(renderPlane)
 			, m_distanceSampleWidth(0)
 			, m_distanceSampleHeight(0)
@@ -338,6 +336,7 @@ namespace WeirdEngine
 		}
 
 		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
+											 const std::vector<Light2D>& lights, const Material2D* materials,
 											 const Camera& camera, double time, double delta,
 											 const BackgroundParams& bgParams, Texture* backgroundTexture)
 		{
@@ -352,7 +351,7 @@ namespace WeirdEngine
 			}
 
 			upscaleDistance();
-			renderMaterialColors(camera, time, delta);
+			renderMaterialColors(materials, camera, time, delta);
 			blendMaterials(time);
 			if (!backgroundTexture)
 			{
@@ -380,7 +379,7 @@ namespace WeirdEngine
 
 			m_config.shadowTint = shadowTransmittance;
 
-			applyLighting(camera, time, backgroundTexture);
+			applyLighting(materials, lights, camera, time, backgroundTexture);
 
 			Profiler::get().gpuSync(); // Stalls if recording average report
 
@@ -588,7 +587,6 @@ namespace WeirdEngine
 				m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 				m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 				m_distanceShader.setUniform("u_k", m_config.ballK);
-				m_distanceShader.setUniform("u_staticColors", m_colorPalette, 16);
 
 				m_distanceShader.setUniform("t_colorTexture", 0);
 				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
@@ -711,7 +709,8 @@ namespace WeirdEngine
 			Profiler::get().gpuSync();
 		}
 
-		void SDF2DRenderPipeline::renderMaterialColors(const Camera& camera, double time, double delta)
+		void SDF2DRenderPipeline::renderMaterialColors(const Material2D* materials, const Camera& camera, double time,
+													   double delta)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderMaterialColors (UI)" : "renderMaterialColors (World)");
 
@@ -720,10 +719,21 @@ namespace WeirdEngine
 			m_materialColorShader.use();
 			m_materialColorShader.setUniform("u_camMatrix", camera.view);
 			m_materialColorShader.setUniform("u_oldCamMatrix", m_prevFrameCameraMatrix);
-			m_materialColorShader.setUniform("u_time", time);
-			m_materialColorShader.setUniform("u_deltaTime", delta);
+			m_materialColorShader.setUniform("u_time", static_cast<float>(time));
+			m_materialColorShader.setUniform("u_deltaTime", static_cast<float>(delta));
 			m_materialColorShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
-			m_materialColorShader.setUniform("u_staticColors", m_colorPalette, 16);
+			for (int i = 0; i < 16; i++)
+			{
+				std::string prefix = "u_materials[" + std::to_string(i) + "].";
+				m_materialColorShader.setUniform(prefix + "color", materials[i].color);
+				m_materialColorShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
+				m_materialColorShader.setUniform(prefix + "pattern", static_cast<int>(materials[i].pattern));
+				m_materialColorShader.setUniform(prefix + "patternScale", materials[i].patternScale);
+				m_materialColorShader.setUniform(prefix + "emission", materials[i].emission);
+				m_materialColorShader.setUniform(prefix + "edgeThickness", materials[i].edgeThickness);
+				m_materialColorShader.setUniform(prefix + "edgeColor", materials[i].edgeColor);
+				m_materialColorShader.setUniform(prefix + "refraction", materials[i].refraction);
+			}
 			m_materialColorShader.setUniform("u_materialBlendSpeed", m_config.materialBlendSpeed);
 			m_materialColorShader.setUniform("u_camPositionChange", cameraPositionChange);
 
@@ -843,7 +853,8 @@ namespace WeirdEngine
 			m_backgroundDoubleBufferIdx = writeIdx;
 		}
 
-		void SDF2DRenderPipeline::applyLighting(const Camera& camera, double time, Texture* backgroundTexture)
+		void SDF2DRenderPipeline::applyLighting(const Material2D* materials, const std::vector<Light2D>& lights,
+												const Camera& camera, double time, Texture* backgroundTexture)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "applyLighting (UI)" : "applyLighting (World)");
 
@@ -851,13 +862,41 @@ namespace WeirdEngine
 
 			m_lightingShader.use();
 			m_lightingShader.setUniform("u_camMatrix", camera.view);
-			m_lightingShader.setUniform("u_time", time);
+			m_lightingShader.setUniform("u_time", static_cast<float>(time));
 			m_lightingShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			m_lightingShader.setUniform("u_ambienOcclusionRadius", m_config.ambienOcclusionRadius);
 			m_lightingShader.setUniform("u_ambienOcclusionStrength", m_config.ambienOcclusionStrength);
 			m_lightingShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_lightingShader.setUniform("u_shadowTint", m_config.shadowTint);
 			m_lightingShader.setUniform("u_refractionIntensity", m_config.refractionIntensity);
+
+			int numLights = std::min(static_cast<int>(lights.size()), 8);
+			m_lightingShader.setUniform("u_numLights", numLights);
+			for (int i = 0; i < numLights; i++)
+			{
+				std::string prefix = "u_lights[" + std::to_string(i) + "].";
+				m_lightingShader.setUniform(prefix + "type", static_cast<int>(lights[i].type));
+				m_lightingShader.setUniform(prefix + "position", lights[i].position);
+				m_lightingShader.setUniform(prefix + "direction", lights[i].direction);
+				m_lightingShader.setUniform(prefix + "color", lights[i].color);
+				m_lightingShader.setUniform(prefix + "radius", lights[i].radius);
+				m_lightingShader.setUniform(prefix + "coneAngle", lights[i].coneAngle);
+				m_lightingShader.setUniform(prefix + "conePenumbra", lights[i].conePenumbra);
+				m_lightingShader.setUniform(prefix + "castShadows", lights[i].castShadows ? 1 : 0);
+			}
+
+			for (int i = 0; i < 16; i++)
+			{
+				std::string prefix = "u_materials[" + std::to_string(i) + "].";
+				m_lightingShader.setUniform(prefix + "color", materials[i].color);
+				m_lightingShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
+				m_lightingShader.setUniform(prefix + "pattern", static_cast<int>(materials[i].pattern));
+				m_lightingShader.setUniform(prefix + "patternScale", materials[i].patternScale);
+				m_lightingShader.setUniform(prefix + "emission", materials[i].emission);
+				m_lightingShader.setUniform(prefix + "edgeThickness", materials[i].edgeThickness);
+				m_lightingShader.setUniform(prefix + "edgeColor", materials[i].edgeColor);
+				m_lightingShader.setUniform(prefix + "refraction", materials[i].refraction);
+			}
 
 			// Color texture
 			m_lightingShader.setUniform("t_colorTexture", 0);

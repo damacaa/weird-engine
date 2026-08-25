@@ -25,12 +25,21 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
+		auto& floorMat = services.materials2D().createMaterial("floor");
+		floorMat.color = ColorPalette::Gray;
+
+		auto& circleMat = services.materials2D().createMaterial("circle");
+		circleMat.color = vec4(ColorPalette::Yellow, 0.25f);
+
+		auto& voidMat = services.materials2D().createMaterial("void");
+		voidMat.color = ColorPalette::Black;
+
 		// Floor shape
 		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
 									.variables = {{Primitives::SineWave::AMPLITUDE, 0.5f},
 												  {Primitives::SineWave::PERIOD, 2.5f},
 												  {Primitives::SineWave::SPEED, 1.0f}},
-									.material = 2,
+									.material = floorMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
 									.group = 0});
@@ -40,33 +49,12 @@ private:
 		float range = 20.0f;
 		std::uniform_real_distribution<float> distrib(-range, range);
 
-		// Boxes
-		{
-			std::uniform_real_distribution<float> distribY(0.0f, 5.0f);
-
-			for (int i = 0; i < 0; ++i)
-			{
-				float x = distrib(gen) + 15.0f;
-				float y = -2.0f + distribY(gen);
-
-				services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-											.variables = {{Primitives::Box::POS_X, x},
-														  {Primitives::Box::POS_Y, y},
-														  {Primitives::Box::SIZE_X, 3.0f},
-														  {Primitives::Box::SIZE_Y, 5.0f}},
-											.material = static_cast<uint16_t>(4 + i),
-											.combination = CombinationType::Addition,
-											.hasCollision = true,
-											.group = 1});
-			}
-		}
-
 		// Circle
 		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
 									.variables = {{Primitives::Circle::POS_X, 15.0f},
 												  {Primitives::Circle::POS_Y, 7.5f},
 												  {Primitives::Circle::RADIUS, 5.0f}},
-									.material = 7,
+									.material = circleMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
 									.group = 2});
@@ -74,7 +62,7 @@ private:
 		// Subtract star
 		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
 									.variables = {-2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f},
-									.material = 0,
+									.material = voidMat,
 									.combination = CombinationType::SmoothSubtraction,
 									.hasCollision = true,
 									.group = 2});
@@ -83,7 +71,7 @@ private:
 		m_circle = services.shapes().addShape(
 			{.shapeId = DefaultShapes::CIRCLE,
 			 .variables = {{Primitives::Circle::POS_X, 250.0f}, {Primitives::Circle::POS_Y, 10.0f}},
-			 .material = 0,
+			 .material = voidMat,
 			 .combination = CombinationType::Subtraction,
 			 .hasCollision = true,
 			 .group = CustomShape::GLOBAL_GROUP});
@@ -92,10 +80,18 @@ private:
 									.variables = {{Primitives::Circle::POS_X, 15.0f},
 												  {Primitives::Circle::POS_Y, 0.0f},
 												  {Primitives::Circle::RADIUS, 30.0f}},
-									.material = 0,
+									.material = voidMat,
 									.combination = CombinationType::Intersection,
 									.hasCollision = true,
 									.group = CustomShape::GLOBAL_GROUP});
+
+		std::vector<Material2DHandle> uiMats;
+		for (int i = 0; i < 10; ++i)
+		{
+			auto& m = services.materials2D().createMaterial("ui_" + std::to_string(i));
+			m.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
+			uiMats.push_back(m.id);
+		}
 
 		for (int i = 0; i < 10; ++i)
 		{
@@ -104,7 +100,7 @@ private:
 			t.position = vec3(15.0f, 15.0f, 10.0f);
 
 			auto& ui = registry.addComponent<UIDot>(ee);
-			ui.materialId = 4 + (i % 12);
+			ui.materialId = uiMats[i % uiMats.size()].id;
 
 			m_uiPoints.push_back(ee);
 		}

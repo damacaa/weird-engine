@@ -89,6 +89,12 @@ private:
 	// =====================================================================
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
+		for (int i = 0; i < 8; ++i)
+		{
+			auto& mat = services.materials2D().createMaterial("ball_" + std::to_string(i));
+			mat.color = ColorPalette::Default[i];
+		}
+
 		m_tempRegistry = &registry;
 		m_tempSvc = &services;
 		m_tempSvc->debug().setDebugInput(true);

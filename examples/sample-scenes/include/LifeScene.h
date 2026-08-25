@@ -38,6 +38,12 @@ private:
 		settings.damping = 0.1f;
 		registry.setComponentDirty(settings);
 
+		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
+		{
+			auto& m = services.materials2D().get(static_cast<uint16_t>(i));
+			m.color = ColorPalette::Default[i];
+		}
+
 		const std::filesystem::path organismsDir(services.resources().assetPath("Organisms"));
 		{
 			int i = 0;

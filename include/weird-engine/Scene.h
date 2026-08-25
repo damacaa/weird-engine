@@ -11,6 +11,7 @@
 #include "weird-renderer/resources/DrawCommand.h"
 
 #include "weird-engine/Background.h"
+#include "weird-engine/Material2D.h"
 #include "weird-engine/Material3D.h"
 #include "weird-engine/services/ServiceProvider.h"
 #include "weird-physics/PhysicsSettings.h"
@@ -185,7 +186,8 @@ namespace WeirdEngine
 
 		// ---- Scene state access (engine-driven)
 		WeirdRenderer::Camera& getCamera();
-		std::vector<WeirdRenderer::Light>& getLights();
+		std::vector<WeirdRenderer::Light2D>& getLights2D();
+		std::vector<WeirdRenderer::Light3D>& getLights3D();
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 		float getFrictionSound();
@@ -206,14 +208,13 @@ namespace WeirdEngine
 
 		RenderMode getRenderMode() const;
 		float getTime();
-		Material3D& createMaterial();
-		Material3D& getMaterial(int index)
+		const Material2D* getMaterials2D() const
 		{
-			return m_materials[index];
+			return m_materials2D;
 		}
-		const Material3D* getMaterials() const
+		const Material3D* getMaterials3D() const
 		{
-			return m_materials;
+			return m_materials3D;
 		}
 
 		// ---- Scene control
@@ -268,14 +269,19 @@ namespace WeirdEngine
 		float m_frictionSoundLevel{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
-		std::vector<WeirdRenderer::Light> m_lights;
+		std::vector<WeirdRenderer::Light2D> m_lights2D;
+		std::vector<WeirdRenderer::Light3D> m_lights3D;
 
 		// ---- Serialization & visuals
 		std::unordered_set<Entity> m_serializationBlacklist;
 		std::string m_sceneFilePath;
 		BackgroundParams m_background;
-		Material3D m_materials[16];
-		uint16_t m_materialCount = 0;
+		Material2D m_materials2D[16];
+		uint16_t m_material2DCount = 0;
+		std::unordered_map<std::string, uint16_t> m_material2DNameToId;
+		Material3D m_materials3D[16];
+		uint16_t m_material3DCount = 0;
+		std::unordered_map<std::string, uint16_t> m_material3DNameToId;
 		SDFRenderSystemContext m_2DWorldRenderContext;
 		SDFRenderSystemContext m_3DWorldRenderContext;
 		SDFRenderSystemContext m_UIRenderContext;

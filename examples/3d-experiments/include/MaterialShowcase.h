@@ -25,8 +25,8 @@ private:
 			Transform& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(-0.5f, -2.0f, 0);
 
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(1.0f);
+			auto& mat = services.materials3D().createMaterial("specular_ball");
+			mat.color = ColorPalette::White;
 			mat.metallic = 1.0f;
 			mat.roughness = 0.0f;
 
@@ -35,20 +35,10 @@ private:
 		}
 
 		std::vector<uint16_t> randomMats;
-		vec4 colors[] = {
-			vec4(.95f, 0.4f, 0.1f, 1.0f), // Orange
-			vec4(0.5f, 0.0f, 1.0f, 1.0f), // Purple
-			vec4(0.0f, .9f, .9f, 1.0f),	  // Cyan
-			vec4(0.5f, 1.0f, 0.5f, 1.0f), // Light Green
-			vec4(1.0f, 0.3f, .6f, 1.0f),  // Magenta
-			vec4(1.0f, 0.5f, 0.5f, 1.0f), // Pink
-			vec4(0.5f, 0.5f, 1.0f, 1.0f), // Light Blue
-			vec4(0.4f, 0.25f, 0.1f, 1.0f) // Brown
-		};
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(.95f, 0.4f, 0.1f, 1.0f);
+			auto& mat = services.materials3D().createMaterial("orange_smooth");
+			mat.color = ColorPalette::Orange;
 			mat.metallic = 0.5f;
 			mat.roughness = 0.1f;
 			mat.pattern = MaterialPattern::None;
@@ -58,8 +48,8 @@ private:
 		}
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(0.5f, 1.0f, 0.5f, 1.0f);
+			auto& mat = services.materials3D().createMaterial("green_checkers");
+			mat.color = ColorPalette::LightGreen;
 			mat.metallic = 0.05f;
 			mat.roughness = 0.99f;
 			mat.pattern = MaterialPattern::Checkers;
@@ -69,10 +59,9 @@ private:
 		}
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(1.0f, 0.3f, .6f, 1.0f);
-			mat.secondaryColor = vec4(1.0f, 0.2f, 0.05f, 1.0f);
-
+			auto& mat = services.materials3D().createMaterial("magenta_waves");
+			mat.color = ColorPalette::Magenta;
+			mat.secondaryColor = ColorPalette::Orange;
 			mat.metallic = 0.5f;
 			mat.roughness = 0.05f;
 			mat.pattern = MaterialPattern::Waves;
@@ -81,8 +70,8 @@ private:
 		}
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(0.0f, 10.9f, 10.9f, 1.0f);
+			auto& mat = services.materials3D().createMaterial("cyan_checkers");
+			mat.color = ColorPalette::Cyan;
 			mat.metallic = 0.05f;
 			mat.roughness = 0.99f;
 			mat.pattern = MaterialPattern::Checkers;
@@ -92,9 +81,9 @@ private:
 		}
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(0.5f, 0.5f, 0.8f, 1.0f);
-			mat.secondaryColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			auto& mat = services.materials3D().createMaterial("blue_noise");
+			mat.color = ColorPalette::LightBlue;
+			mat.secondaryColor = ColorPalette::White;
 			mat.metallic = 0.3f;
 			mat.roughness = 0.001f;
 			mat.pattern = MaterialPattern::PerlinNoise;
@@ -104,8 +93,8 @@ private:
 		}
 
 		{
-			auto& mat = services.materials().createMaterial();
-			mat.color = vec4(0.85f, 0.7f, 0.1f, 0.5f);
+			auto& mat = services.materials3D().createMaterial("gold");
+			mat.color = vec4(ColorPalette::Yellow, 0.5f);
 			mat.metallic = 0.5f;
 			mat.roughness = 0.0f;
 
@@ -122,8 +111,8 @@ private:
 			sdf.materialId = randomMats[i];
 		}
 
-		auto& floorMaterial = services.materials().createMaterial();
-		floorMaterial.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+		auto& floorMaterial = services.materials3D().createMaterial("floor");
+		floorMaterial.color = ColorPalette::White;
 		floorMaterial.metallic = 0.1f;
 		floorMaterial.roughness = 0.3f;
 		floorMaterial.pattern = MaterialPattern::Checkers;
@@ -135,7 +124,7 @@ private:
 									.combination = CombinationType::Addition,
 									.hasCollision = false});
 
-		auto& mirrorMaterial = services.materials().createMaterial();
+		auto& mirrorMaterial = services.materials3D().createMaterial();
 		mirrorMaterial.color = vec4(1.0f);
 		mirrorMaterial.metallic = 1.0f;
 		mirrorMaterial.roughness = 0.0f;
@@ -178,8 +167,8 @@ private:
 			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
 			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
 
-			LightComponent& lc = registry.addComponent<LightComponent>(m_sunLight);
-			lc.type = LightType::Directional;
+			Light3DComponent& lc = registry.addComponent<Light3DComponent>(m_sunLight);
+			lc.type = Light3DType::Directional;
 			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.75f);
 		}
 

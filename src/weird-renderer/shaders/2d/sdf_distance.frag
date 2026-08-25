@@ -59,13 +59,6 @@ in vec3 v_color;
 in vec2 v_texCoord;
 
 // Uniforms
-uniform sampler2D u_diffuse;
-uniform sampler2D u_specular;
-
-uniform vec4 u_lightColor;
-uniform vec3 u_lightPos;
-uniform vec3 u_camPos;
-
 uniform float u_time;
 uniform float u_k;
 uniform sampler2D t_colorTexture;
@@ -86,8 +79,6 @@ uniform float u_overscan;
 uniform mat4 u_camMatrix;
 uniform mat4 u_oldCamMatrix;
 uniform vec3 u_camPositionChange;
-uniform vec4 u_staticColors[16];
-uniform vec3 u_directionalLightDirection;
 
 uniform float u_deltaTime;
 uniform float u_motionBlurBlendSpeed;

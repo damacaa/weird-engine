@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weird-engine/Background.h"
+#include "weird-engine/Material2D.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
@@ -8,6 +9,7 @@
 #include "weird-renderer/resources/Shader.h"
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
+#include "weird-renderer/scene/Light.h"
 #include <vector>
 
 namespace WeirdEngine
@@ -45,19 +47,19 @@ namespace WeirdEngine
 				float ambienOcclusionStrength;
 			};
 
-			SDF2DRenderPipeline(const Config& config, const glm::vec4* colorPalette, RenderPlane& renderPlane);
+			SDF2DRenderPipeline(const Config& config, RenderPlane& renderPlane);
 			~SDF2DRenderPipeline();
 
 			Shader& getDistanceShader();
-			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera, double time,
-							double delta, const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
+			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light2D>& lights,
+							const Material2D* materials, const Camera& camera, double time, double delta,
+							const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 			void showDebugUI();
 
 		private:
 			Config m_config;
-			const glm::vec4* m_colorPalette;
 			RenderPlane& m_renderPlane;
 
 			unsigned int m_distanceSampleWidth;
@@ -152,10 +154,11 @@ namespace WeirdEngine
 									 double time, double delta);
 			void applyJumpFloodCorrection(double time);
 			void upscaleDistance();
-			void renderMaterialColors(const Camera& camera, double time, double delta);
+			void renderMaterialColors(const Material2D* materials, const Camera& camera, double time, double delta);
 			void blendMaterials(double time);
 			void renderBackground(const Camera& camera, double time, const BackgroundParams& bgParams);
-			void applyLighting(const Camera& camera, double time, Texture* backgroundTexture);
+			void applyLighting(const Material2D* materials, const std::vector<Light2D>& lights, const Camera& camera,
+							   double time, Texture* backgroundTexture);
 			static int largestPowerOfTwoBelow(int n);
 		};
 	} // namespace WeirdRenderer

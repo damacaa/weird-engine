@@ -71,8 +71,6 @@ namespace WeirdEngine
 			Texture m_combineResultTexture;
 			Texture m_outputTexture;
 
-			glm::vec4 m_colorPalette[16];
-
 			Camera m_uiCamera;
 
 			bool m_takeScreenshot = false;

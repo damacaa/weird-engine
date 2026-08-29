@@ -60,7 +60,8 @@ namespace WeirdEngine
 			worldConfig.enableMotionBlur = settings.enableMotionBlur;
 			worldConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			worldConfig.materialBlendSpeed = 10.0f;
-			worldConfig.motionBlurBlendSpeed = 10.0f;
+			worldConfig.motionBlurBlendSpeed = settings.motionBlurBlendSpeed;
+			worldConfig.motionBlurMethod = settings.motionBlurMethod;
 			worldConfig.debugDistanceField = false;
 			worldConfig.debugMaterialColors = false;
 			worldConfig.ambienOcclusionRadius = 4.0f;
@@ -85,6 +86,7 @@ namespace WeirdEngine
 			uiConfig.materialBlendIterations = settings.enableMaterialBlending ? 1 : 0;
 			uiConfig.materialBlendSpeed = 5.0f;
 			uiConfig.motionBlurBlendSpeed = 5.0f;
+			uiConfig.motionBlurMethod = MotionBlurMethod::AsymmetricDelta;
 			uiConfig.debugDistanceField = false;
 			uiConfig.debugMaterialColors = false;
 			uiConfig.ballK = settings.uiSmoothFactor;

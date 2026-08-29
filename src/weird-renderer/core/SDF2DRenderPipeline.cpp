@@ -60,6 +60,10 @@ namespace WeirdEngine
 			if (m_config.enableMotionBlur)
 			{
 				m_distanceShader.addDefine("MOTION_BLUR");
+				if (m_config.motionBlurMethod == MotionBlurMethod::FillOverride)
+				{
+					m_distanceShader.addDefine("MOTION_BLUR_FILL_OVERRIDE");
+				}
 			}
 
 			if (m_config.isUI)
@@ -979,9 +983,31 @@ namespace WeirdEngine
 			if (ImGui::Checkbox("Motion Blur", &m_config.enableMotionBlur))
 			{
 				if (m_config.enableMotionBlur)
+				{
 					m_distanceShader.addDefine("MOTION_BLUR");
+					if (m_config.motionBlurMethod == MotionBlurMethod::FillOverride)
+						m_distanceShader.addDefine("MOTION_BLUR_FILL_OVERRIDE");
+				}
 				else
+				{
 					m_distanceShader.removeDefine("MOTION_BLUR");
+					m_distanceShader.removeDefine("MOTION_BLUR_FILL_OVERRIDE");
+				}
+			}
+			if (m_config.enableMotionBlur)
+			{
+				ImGui::SliderFloat("Motion Blur Speed", &m_config.motionBlurBlendSpeed, 0.001f, 20.0f);
+				int methodIdx = (m_config.motionBlurMethod == MotionBlurMethod::FillOverride) ? 1 : 0;
+				const char* methods[] = {"Asymmetric Delta", "Fill Override"};
+				if (ImGui::Combo("Motion Blur Method", &methodIdx, methods, 2))
+				{
+					m_config.motionBlurMethod =
+						(methodIdx == 1) ? MotionBlurMethod::FillOverride : MotionBlurMethod::AsymmetricDelta;
+					if (m_config.motionBlurMethod == MotionBlurMethod::FillOverride)
+						m_distanceShader.addDefine("MOTION_BLUR_FILL_OVERRIDE");
+					else
+						m_distanceShader.removeDefine("MOTION_BLUR_FILL_OVERRIDE");
+				}
 			}
 			if (ImGui::Checkbox("Refraction", &m_config.enableRefraction))
 			{

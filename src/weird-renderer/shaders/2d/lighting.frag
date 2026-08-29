@@ -383,7 +383,7 @@ void main()
 	float debugDistance = 0.5 * texture(t_distanceSampledTexture, screenUV).x;
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
 	vec3 debugColor = debugDistance > 0.0 ? mix(vec3(1), vec3(0.2), value) :
-						  (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.1), value);
+						  (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.9, 0.5, 0.5), value);
 	FragColor = vec4(debugColor, 1.0);
 #endif
 }

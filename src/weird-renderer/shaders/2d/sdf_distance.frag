@@ -48,6 +48,7 @@ float shape_circle(vec2 p)
 
 // #define BLEND_SHAPES
 // #define MOTION_BLUR
+// #define MOTION_BLUR_FILL_OVERRIDE
 // #define DEBUG_SHOW_GRID
 
 out vec4 FragColor;
@@ -226,7 +227,7 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 	float minDist = 100000.0;
 	float minColorDist = minDist;
 
-	int finalMaterialId = 16;
+	int finalMaterialId = 0;
 	float mask = 0.0;
 	float globalBlend = 0.0;
 
@@ -394,11 +395,30 @@ void main()
 	float distanceChange = finalDistance - previousDistanceExact;
 	// distanceChange = clamp(distanceChange, -0.1, 0.05);
 
+	float blendDistance;
+
+#ifdef MOTION_BLUR_FILL_OVERRIDE
+	// WIP: Fill-override blending strategy.
+	// Goal: prevent thin/fast objects from losing volume in the temporal buffer.
+	//
+	// Fade the previous buffer toward 0 by a uniform additive step (avoids SDF iso-contour
+	// banding that a proportional/lerp fade produces), then keep the lowest (most-inside)
+	// distance between the faded previous and the current frame.
+	// This handles all cases branchlessly:
+	//   - finalDistance <= 0 (inside shape)  → current wins if more negative, trail wins if deeper
+	//   - finalDistance > 0, prev < 0 (trail) → faded prev wins, retreating toward 0 each frame
+	//   - both positive (empty space)          → current wins (fadedPrev grows positive, current is smaller)
+	float fadeStep = u_deltaTime * u_motionBlurBlendSpeed * 0.1;
+	blendDistance = min(previousDistance + fadeStep, finalDistance);
+#else
+	// Original asymmetric delta blending:
+	// Converges 5x faster when the distance is shrinking (object approaching / appearing).
 	// qqdistanceChange *= (distanceChange > 0.0) ? 1.0 : 1.0;
-	float blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) *
-											  (distanceChange < 0.0 ? 5.0 : 1.0));
+	blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) *
+										(distanceChange < 0.0 ? 5.0 : 1.0));
 
 	// blendDistance = mix(previousDistance, finalDistance, 0.01) + (distanceChange * u_deltaTime * 10.0);
+#endif
 
 	blendDistance = clamp(blendDistance, -0.1, 0.1);
 

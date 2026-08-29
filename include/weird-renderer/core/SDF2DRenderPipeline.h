@@ -3,6 +3,7 @@
 #include "weird-engine/Background.h"
 #include "weird-engine/Material2D.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DataBuffer.h"
@@ -38,7 +39,8 @@ namespace WeirdEngine
 
 				int materialBlendIterations;
 				float materialBlendSpeed;
-				float motionBlurBlendSpeed;
+				float motionBlurBlendSpeed = 10.0f;
+				MotionBlurMethod motionBlurMethod = MotionBlurMethod::AsymmetricDelta;
 				bool debugDistanceField;
 				bool debugMaterialColors;
 				bool debugGrid = false;

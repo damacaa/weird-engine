@@ -20,6 +20,13 @@ namespace WeirdEngine
 			Display();
 		};
 
+		enum class MotionBlurMethod
+		{
+			AsymmetricDelta,
+			FillOverride,
+			Delta = AsymmetricDelta
+		};
+
 		struct DisplaySettings
 		{
 			int width = 800, height = 800, x = 50, y = 50;
@@ -28,6 +35,8 @@ namespace WeirdEngine
 			float worldDistanceOverscan = 0.1f;
 			bool enableMaterialBlending = true;
 			bool enableMotionBlur = true;
+			float motionBlurBlendSpeed = 10.0f;
+			MotionBlurMethod motionBlurMethod = MotionBlurMethod::AsymmetricDelta;
 			bool enableDithering = true;
 			float ditheringSpread = 0.05f;
 			int ditheringColorCount = 16;
@@ -47,4 +56,6 @@ namespace WeirdEngine
 			std::string windowTitle = "Weird Engine";
 		};
 	} // namespace WeirdRenderer
+
+	using WeirdRenderer::MotionBlurMethod;
 } // namespace WeirdEngine

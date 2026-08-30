@@ -1,5 +1,6 @@
 #include "weird-renderer/audio/AudioEngine.h"
 #include "weird-engine/Logger.h"
+#include "weird-renderer/audio/AudioPresets.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -28,7 +29,7 @@ namespace WeirdEngine
 	namespace WeirdRenderer
 	{
 
-		constexpr int MAX_ACTIVE_VOICES = 16;
+		constexpr int MAX_ACTIVE_VOICES = 32;
 
 		AudioEngine::AudioEngine()
 			: m_mute(false)
@@ -41,6 +42,8 @@ namespace WeirdEngine
 		{
 			m_mute = settings.mute;
 			m_enableAmbient = settings.enableAmbient;
+			// Initialize audio presets registry
+			initAudioPresets();
 			ma_result result;
 			ma_engine_config engineConfig = ma_engine_config_init();
 			engineConfig.noDevice = MA_TRUE;
@@ -132,12 +135,7 @@ namespace WeirdEngine
 			int roundedNote = static_cast<int>(std::round(continuousNote));
 			// 3. Define a "Safe" Scale (C Major Pentatonic: C, D, E, G, A)
 			// Notes relative to C: 0, 2, 4, 7, 9
-			// This removes notes that create high tension (like F and B)
 			std::vector<int> allowedIntervals = {0, 2, 4, 7, 9};
-
-			// Find the note relative to C (MIDI % 12)
-			// We strictly want notes where (note % 12) matches our allowed intervals
-			// If the current note isn't allowed, find the closest one that is.
 
 			int closestNote = roundedNote;
 			float minDistance = 100.0f;
@@ -146,18 +144,14 @@ namespace WeirdEngine
 			for (int offset = -2; offset <= 2; ++offset)
 			{
 				int candidate = roundedNote + offset;
-				int interval = candidate % 12; // Modulo 12 gets the note name (C, C#, etc.)
-
-				// Handle negative modulo results if freq is very low
+				int interval = candidate % 12;
 				if (interval < 0)
 					interval += 12;
 
-				// Check if this interval is in our allowed list
 				for (int allowed : allowedIntervals)
 				{
 					if (interval == allowed)
 					{
-						// If this allowed note is closer to original, pick it
 						float dist = std::abs(static_cast<float>(candidate) - continuousNote);
 						if (dist < minDistance)
 						{
@@ -180,165 +174,133 @@ namespace WeirdEngine
 			float frictionValue = scene.getFrictionSound();
 			setFrictionLevel(frictionValue);
 
-			auto& audioQueue = scene.getAudioQueue();
-
-			constexpr float BASE_BEAT = 0.1f;
-
-			constexpr static float MIN_COLLISION_INTERVAL = BASE_BEAT; // Min time between collision sounds
-			constexpr static float SILENCE_TIME_THRESHOLD =
-				BASE_BEAT *
-				64; // When there are no collisions, start adding collision sounds to generate procedural music
-			constexpr static float AMBIENT_NOTE_INTERVAL = BASE_BEAT * 8; // Time between procedural music sounds
-			constexpr float MAX_AMBIENT_VOLUME = 0.2f;
-			constexpr float AMBIENT_FADE_IN_SPEED = 0.1f * MAX_AMBIENT_VOLUME;
-			constexpr float LIKELIHOOD_OF_DOUBLE_BEAT = 0.3f;
-			constexpr float LIKELIHOOD_OF_SKIP_BEAT = 0.2f;
-
-			static int mergedCollisionCount = 0;
-			static SimpleAudioRequest accumulatedSoundData{0.0f, 0.0f, true, vec3(0.0f)};
-			static float nextAllowedPlayTime = MIN_COLLISION_INTERVAL;
-			static float nextAllowedAmbientPlayTime = AMBIENT_NOTE_INTERVAL;
-			static float ambientStartTime = SILENCE_TIME_THRESHOLD;
-
-			static bool isPlayingAmbience = false;
-			static float currentAmbientVolume = 0.0f;
-			static float previousFrameTime = 0.0f;
-
-			static std::random_device randDevice;
-			static std::mt19937 generator(randDevice());
-
-			// Time
-			float time = scene.getTime();
-			float deltaTime = time - previousFrameTime;
-			if (deltaTime < 0.0f)
+			AudioModule* module = scene.getAudioModule();
+			if (module)
 			{
-				// New scene
-				deltaTime = 0.0f;
-
-				nextAllowedPlayTime = time + MIN_COLLISION_INTERVAL;
-				nextAllowedAmbientPlayTime = time + AMBIENT_NOTE_INTERVAL;
-				ambientStartTime = time + SILENCE_TIME_THRESHOLD;
+				module->setFrictionLevel(frictionValue);
 			}
-			previousFrameTime = time;
 
-			if (m_enableAmbient && audioQueue.empty())
+			auto& audioQueue = scene.getAudioQueue();
+			auto& camera = scene.getCamera();
+			auto cameraPosition = camera.position;
+
+			// Drain and process explicit playSound audio requests from scene
+			SimpleAudioRequest req;
+			while (audioQueue.pop(req))
 			{
-				// Fade fill music in
-				currentAmbientVolume =
-					(std::min)(currentAmbientVolume + (AMBIENT_FADE_IN_SPEED * deltaTime), MAX_AMBIENT_VOLUME);
+				float vol = req.volume;
+				float freq = req.frequency;
+				float leftGain = 0.7071f;
+				float rightGain = 0.7071f;
+				float filterCutoff = 20000.0f;
 
-				// Procedural ambient
-				if ((!isPlayingAmbience && time > ambientStartTime) ||
-					(isPlayingAmbience && time > nextAllowedAmbientPlayTime))
+				InstrumentType inst = InstrumentType::Sine;
+				if (req.instrument == 1)
+					inst = InstrumentType::Sawtooth;
+				else if (req.instrument == 2)
+					inst = InstrumentType::Square;
+				else if (req.instrument == 3)
+					inst = InstrumentType::Noise;
+				else if (req.instrument == 4)
+					inst = InstrumentType::Polyphonic;
+
+				// For non-noise sounds, harmonically quantize to active scale / chord
+				if (inst != InstrumentType::Noise)
 				{
-					if (!isPlayingAmbience)
+					if (module)
 					{
-						isPlayingAmbience = true;
-						currentAmbientVolume = 0.05f;
+						freq = module->quantizeToHarmonics(freq, req.intensity);
+					}
+					else if (freq <= 0.0f)
+					{
+						freq = 440.0f;
 					}
 
-					const int minFrequency = 200;
-					const int maxFrequency = 350;
-
-					std::uniform_int_distribution<int> distribution(minFrequency, maxFrequency);
-
-					int randomFrequency = distribution(generator);
-					SimpleAudioRequest aux{currentAmbientVolume, static_cast<float>(randomFrequency), false,
-										   vec3(0.0f)};
-					audioQueue.push(aux);
-				}
-			}
-			else
-			{
-				// Stop ambient
-				isPlayingAmbience = false;
-				nextAllowedAmbientPlayTime = time + AMBIENT_NOTE_INTERVAL;
-
-				SimpleAudioRequest aux{0, 0, true, vec3(0.0f)};
-				while (audioQueue.pop(aux))
-				{
-					mergedCollisionCount++;
-					accumulatedSoundData.volume += aux.volume;
-					accumulatedSoundData.frequency = (std::max)(aux.frequency, accumulatedSoundData.frequency);
-					accumulatedSoundData.position += accumulatedSoundData.position;
-					accumulatedSoundData.spatial = accumulatedSoundData.spatial || aux.spatial;
-					accumulatedSoundData.beats = (std::max)(aux.beats, accumulatedSoundData.beats);
-				}
-
-				if (time >= nextAllowedPlayTime && m_activeVoices.size() < MAX_ACTIVE_VOICES)
-				{
-					float invBufferedAmount = 1.0f / static_cast<float>(mergedCollisionCount + 1);
-					accumulatedSoundData.volume = (std::min)(accumulatedSoundData.volume, 1.0f);
-					accumulatedSoundData.position *= invBufferedAmount;
-					audioQueue.push(accumulatedSoundData);
-
-					mergedCollisionCount = 0;
-					accumulatedSoundData = SimpleAudioRequest{0.0f, 0.0f, false, vec3(0.0f), 1};
-				}
-			}
-
-			auto cameraPosition = scene.getCamera().position;
-
-			// Process queue
-			SimpleAudioRequest request{};
-			while (audioQueue.pop(request))
-			{
-				float frequency = getPleasantFrequency(request.frequency);
-				float amplitude = request.volume;
-				if (request.spatial)
-				{
-					// 1. Calculate Distances
-					float distSq = glm::distance2(request.position, cameraPosition);
-					float dist = std::sqrt(distSq);
-
-					// --- PHYSICS CONSTANTS ---
-					const float FALLOFF_GEOMETRIC = 0.001f;
-					const float FALLOFF_AIR_ABSORPTION = 0.00005f;
-
-					// 2. Geometric Spreading (Inverse Distance Model)
-					float geometricFactor = 1.0f / (1.0f + (FALLOFF_GEOMETRIC * distSq));
-
-					// 3. Atmospheric Absorption (Exponential Decay)
-					float absorptionFactor = std::exp(-FALLOFF_AIR_ABSORPTION * frequency * dist);
-
-					// Combine factors
-					amplitude = request.volume * geometricFactor * absorptionFactor;
-				}
-
-				// Optimization: Don't play sounds that are effectively silent
-				if (amplitude > 0.01f)
-				{
-					std::bernoulli_distribution durationDistribution(LIKELIHOOD_OF_DOUBLE_BEAT);
-					float duration = durationDistribution(generator) ? 2.0f : 1.0f;
-
-					float decay = MIN_COLLISION_INTERVAL * duration * static_cast<float>(request.beats);
-					nextAllowedPlayTime = time + decay;
-
-					bool skipBeat = false;
-					if (!isPlayingAmbience)
+					// Apply gentle warmth cutoff so UI clicks and input tones blend seamlessly with music
+					if (inst == InstrumentType::Sine || inst == InstrumentType::Polyphonic)
 					{
-						// Reset ambient timer
-						ambientStartTime = time + SILENCE_TIME_THRESHOLD;
+						filterCutoff = 5500.0f;
+					}
+					else if (inst == InstrumentType::Square)
+					{
+						filterCutoff = 1500.0f; // Warm lowpass on square wave (e.g. error buzz)
+					}
+				}
+				else if (freq <= 0.0f)
+				{
+					freq = 300.0f;
+				}
+
+				if (req.spatial)
+				{
+					vec3 toSource = req.position - cameraPosition;
+					float dist = glm::length(toSource);
+
+					// Distance attenuation: smooth inverse distance law preserving clarity at reference distance
+					const float DIST_REF = 12.0f;
+					float distanceFactor = DIST_REF / (DIST_REF + dist * 0.45f);
+					vol *= distanceFactor;
+
+					// High-frequency air absorption / distance damping
+					float distCutoff = 20000.0f / (1.0f + 0.015f * dist);
+
+					// Compute camera basis vectors for stereo panning
+					vec3 forward = glm::length2(camera.orientation) > 0.001f ? glm::normalize(camera.orientation)
+																			 : vec3(0.0f, 0.0f, -1.0f);
+					vec3 up = glm::length2(camera.up) > 0.001f ? glm::normalize(camera.up) : vec3(0.0f, 1.0f, 0.0f);
+					vec3 right = glm::cross(forward, up);
+					if (glm::length2(right) > 0.001f)
+						right = glm::normalize(right);
+					else
+						right = vec3(1.0f, 0.0f, 0.0f);
+
+					float rightDist = glm::dot(toSource, right);
+					float forwardDist = glm::dot(toSource, forward);
+
+					// Azimuth angle relative to camera view
+					float azimuth = std::atan2(rightDist, (std::max)(1.0f, std::abs(forwardDist)));
+					float halfFovRad = glm::radians(camera.fov > 1.0f ? camera.fov : 45.0f) * 0.5f;
+					float pan = std::clamp(azimuth / halfFovRad, -1.0f, 1.0f);
+
+					// Equal-power stereo panning
+					float panAngle = (pan + 1.0f) * (static_cast<float>(M_PI) * 0.25f);
+					leftGain = std::cos(panAngle);
+					rightGain = std::sin(panAngle);
+
+					if (inst == InstrumentType::Noise)
+					{
+						filterCutoff = (std::min)(freq, distCutoff);
 					}
 					else
 					{
-						decay = AMBIENT_NOTE_INTERVAL * duration;
-						nextAllowedAmbientPlayTime = time + decay;
-						decay *= 0.5f;
-
-						std::bernoulli_distribution skipBeatDistribution(LIKELIHOOD_OF_SKIP_BEAT);
-						skipBeat = skipBeatDistribution(generator);
+						filterCutoff = (std::min)(filterCutoff, distCutoff);
 					}
+				}
+				else
+				{
+					if (inst == InstrumentType::Noise && freq > 0.0f)
+					{
+						filterCutoff = freq;
+					}
+				}
 
-					if (!skipBeat)
-						playSineSound(frequency, amplitude, decay);
+				if (vol > 0.002f)
+				{
+					float decay = 0.12f * static_cast<float>((std::max)(1, req.beats));
+					if (req.intensity > 0.0f && inst == InstrumentType::Noise)
+					{
+						decay = 0.03f + 0.08f * std::clamp(req.intensity, 0.0f, 1.0f);
+					}
+					playVoice(freq, (std::min)(1.0f, vol), decay, inst, leftGain, rightGain, filterCutoff);
 
-					break;
+					if (module)
+					{
+						module->surge(vol * 0.35f);
+					}
 				}
 			}
 
 			// --- Generate and push audio frames to SDL stream ---
-			// Maintain ~80ms buffer (approx 3528 samples at 44.1kHz stereo)
 			constexpr int TARGET_BUFFER_BYTES = (SAMPLE_RATE * CHANNELS * sizeof(float) * 8) / 100;
 			int queuedBytes = SDL_GetAudioStreamQueued(m_audioStream);
 			if (queuedBytes < TARGET_BUFFER_BYTES)
@@ -356,25 +318,37 @@ namespace WeirdEngine
 					// 1. Miniaudio background music
 					ma_engine_read_pcm_frames(&m_engine, mix.data(), framesToWrite, NULL);
 
-					// 2. Friction noise
-					m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.10f;
+					// 2. Strong physical friction noise with fast attack on collision spikes
+					if (m_frictionLevel > m_smoothedFriction)
+					{
+						m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.70f; // Fast attack
+					}
+					else
+					{
+						m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.08f; // Natural decay
+					}
+
 					if (m_smoothedFriction > 0.0001f)
 					{
 						ma_noise_read_pcm_frames(&m_noise, temp.data(), framesToWrite, NULL);
+						float noiseGain = (std::min)(1.0f, m_smoothedFriction * 1.10f);
 						for (ma_uint32 i = 0; i < framesToWrite * CHANNELS; ++i)
 						{
-							mix[i] += temp[i] * m_smoothedFriction * 0.45f;
+							mix[i] += temp[i] * noiseGain;
 						}
 					}
 
-					// 3. Collision Tones (Polyphonic)
-					const float ATTACK_TIME = 0.01f;
+					// 3. Polyphonic Synth Voices with 1-Pole Low-Pass Filter & Stereo Panning
+					const float ATTACK_TIME = 0.008f;
 					for (auto& voice : m_activeVoices)
 					{
 						if (voice.finished)
 							continue;
 
-						const float phaseInc = 2.0f * M_PI * voice.frequency / SAMPLE_RATE;
+						const float phaseInc = 2.0f * static_cast<float>(M_PI) * voice.frequency / SAMPLE_RATE;
+						const float wc = 2.0f * static_cast<float>(M_PI) *
+										 (std::clamp)(voice.filterCutoff, 20.0f, 20000.0f) / SAMPLE_RATE;
+						const float filterAlpha = std::clamp(wc / (wc + 1.0f), 0.001f, 1.0f);
 
 						for (ma_uint32 i = 0; i < framesToWrite; ++i)
 						{
@@ -384,16 +358,41 @@ namespace WeirdEngine
 								env *= (voice.time / ATTACK_TIME);
 							}
 
-							float sample = env * sinf(voice.phase);
+							float rawSample = 0.0f;
+							switch (voice.instrument)
+							{
+								case InstrumentType::Sawtooth:
+									rawSample = 1.0f - (voice.phase / static_cast<float>(M_PI));
+									break;
+								case InstrumentType::Square:
+									rawSample = (voice.phase < static_cast<float>(M_PI)) ? 0.6f : -0.6f;
+									break;
+								case InstrumentType::Noise:
+									rawSample =
+										(static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f;
+									break;
+								case InstrumentType::Polyphonic:
+									// Rich harmonic chime / EP timbre: fundamental + subtle 2nd & 3rd overtone
+									rawSample = 0.68f * sinf(voice.phase) + 0.22f * sinf(voice.phase * 2.0f) +
+												0.10f * sinf(voice.phase * 3.0f);
+									break;
+								case InstrumentType::Sine:
+								default:
+									rawSample = sinf(voice.phase);
+									break;
+							}
+
+							// Apply 1-pole lowpass filter
+							voice.filterState += filterAlpha * (rawSample - voice.filterState);
+							float sample = env * voice.filterState;
+
 							voice.phase += phaseInc;
-							if (voice.phase >= 2.0f * M_PI)
-								voice.phase -= 2.0f * M_PI;
+							if (voice.phase >= 2.0f * static_cast<float>(M_PI))
+								voice.phase -= 2.0f * static_cast<float>(M_PI);
 							voice.time += 1.0f / SAMPLE_RATE;
 
-							for (int ch = 0; ch < CHANNELS; ++ch)
-							{
-								mix[i * CHANNELS + ch] += sample;
-							}
+							mix[i * CHANNELS + 0] += sample * voice.leftGain;
+							mix[i * CHANNELS + 1] += sample * voice.rightGain;
 						}
 
 						if (voice.time > ATTACK_TIME && voice.amplitude * expf(-voice.time / voice.decay) < 0.001f)
@@ -446,15 +445,10 @@ namespace WeirdEngine
 			constexpr float MIN_COMPENSATION = 1.0f / (1.0f - MIN_AUDIBLE);
 			const float adjustedAmplitude = (std::max)(normalizedFriction - MIN_AUDIBLE, 0.0f) * MIN_COMPENSATION;
 
-			// Use a square root curve to boost the volume of low values significantly
-			// 0.5f = Strong boost (square root)
-			// 0.75f = Medium boost
-			// 1.0f = No boost (linear)
 			constexpr float LOW_END_BOOST_EXPONENT = 0.5f;
 			constexpr float MAX_AMPLITUDE = 0.75f;
 			const float initialAmplitude = MAX_AMPLITUDE * pow(adjustedAmplitude, LOW_END_BOOST_EXPONENT);
 
-			// Compression will tame the louder signal once it crosses the threshold, preserving top-end
 			constexpr float COMPRESSION_THRESHOLD = 0.3f;
 			constexpr float COMPRESSION_RATIO = 4.0f;
 			if (initialAmplitude > COMPRESSION_THRESHOLD)
@@ -470,20 +464,53 @@ namespace WeirdEngine
 			}
 		}
 
-		void AudioEngine::playSineSound(float freq, float amp, float decaySec)
+		void AudioEngine::playVoice(float freq, float amp, float decaySec, InstrumentType instrument, float leftGain,
+									float rightGain, float filterCutoff)
 		{
-			if (m_activeVoices.size() >= MAX_ACTIVE_VOICES)
+			if (amp <= 0.001f)
 				return;
 
 			CollisionVoice newVoice;
 			newVoice.frequency = freq;
 			newVoice.amplitude = amp;
-			newVoice.decay = decaySec;
+			newVoice.decay = (std::max)(0.01f, decaySec);
 			newVoice.time = 0.0f;
 			newVoice.phase = 0.0f;
 			newVoice.finished = false;
+			newVoice.instrument = instrument;
+			newVoice.leftGain = leftGain;
+			newVoice.rightGain = rightGain;
+			newVoice.filterCutoff = filterCutoff;
+			newVoice.filterState = 0.0f;
+
+			if (m_activeVoices.size() >= MAX_ACTIVE_VOICES)
+			{
+				// Find voice with lowest remaining envelope or oldest
+				size_t victimIdx = 0;
+				float minCurrentAmp = 1000.0f;
+				for (size_t i = 0; i < m_activeVoices.size(); ++i)
+				{
+					float curAmp =
+						m_activeVoices[i].amplitude * expf(-m_activeVoices[i].time / m_activeVoices[i].decay);
+					if (curAmp < minCurrentAmp)
+					{
+						minCurrentAmp = curAmp;
+						victimIdx = i;
+					}
+				}
+				if (newVoice.amplitude > minCurrentAmp * 0.5f)
+				{
+					m_activeVoices[victimIdx] = newVoice;
+				}
+				return;
+			}
 
 			m_activeVoices.push_back(newVoice);
+		}
+
+		void AudioEngine::playSineSound(float freq, float amp, float decaySec)
+		{
+			playVoice(freq, amp, decaySec, InstrumentType::Sine, 0.7071f, 0.7071f, 20000.0f);
 		}
 
 		AudioData AudioEngine::getAudioData()

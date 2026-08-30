@@ -1,11 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include <miniaudio/miniaudio.h>
 #include <SDL3/SDL.h>
 
 #include "weird-engine/Scene.h"
+#include "weird-renderer/audio/AudioModule.h"
 #include "weird-renderer/audio/AudioSettings.h"
 
 namespace WeirdEngine
@@ -21,6 +23,11 @@ namespace WeirdEngine
 			float time = 0.0f;
 			float phase = 0.0f;
 			bool finished = false;
+			InstrumentType instrument = InstrumentType::Sine;
+			float leftGain = 0.7071f;
+			float rightGain = 0.7071f;
+			float filterCutoff = 20000.0f;
+			float filterState = 0.0f;
 		};
 
 		struct AudioData
@@ -83,6 +90,25 @@ namespace WeirdEngine
 			// Procedural control
 			void setFrictionLevel(float level); // 0..1, continuous
 			void playSineSound(float freq, float amp, float decaySec = 0.3f);
+			void playVoice(float freq, float amp, float decaySec = 0.3f,
+						   InstrumentType instrument = InstrumentType::Sine, float leftGain = 0.7071f,
+						   float rightGain = 0.7071f, float filterCutoff = 20000.0f);
+
+			// Audio Module support
+			AudioModule* createModule()
+			{
+				return createProceduralMusicGenerator();
+			}
+
+			void setModule(AudioModule* module)
+			{
+				m_audioModule = module;
+			}
+
+			AudioModule* getModule() const
+			{
+				return m_audioModule;
+			}
 
 		private:
 			AudioEngine();
@@ -94,7 +120,7 @@ namespace WeirdEngine
 
 			SDL_AudioStream* m_audioStream = nullptr;
 
-			// Procedural state
+			// Procedural state (legacy - kept for backward compatibility)
 			ma_noise m_noise;
 			float m_frictionLevel = 0.0f; // modulated each frame
 			float m_smoothedFriction = 0.0f;
@@ -111,6 +137,9 @@ namespace WeirdEngine
 
 			// Visualizer
 			AudioData m_visualSnapshot;
+
+			// Audio Module (new modular system)
+			AudioModule* m_audioModule = nullptr;
 		};
 
 	} // namespace WeirdRenderer

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <cstdlib>
 #include <weird-engine.h>
 
@@ -29,6 +30,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with destroy preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "destroy");
+		}
 
 		for (int i = 0; i < 8; ++i)
 		{

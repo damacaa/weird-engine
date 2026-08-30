@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include <cmath>
@@ -82,6 +83,13 @@ private:
 		background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
 		background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
 		background.scale = 0.15f;
+
+		// Initialize audio module with aquarium preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "aquarium");
+		}
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

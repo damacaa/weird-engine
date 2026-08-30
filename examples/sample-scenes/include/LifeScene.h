@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -31,6 +32,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with life preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "life");
+		}
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

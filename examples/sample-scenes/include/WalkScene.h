@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -34,6 +35,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with walk preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "walk");
+		}
 
 		auto& background = services.render().getBackground();
 		background.type = BackgroundType::Sky;

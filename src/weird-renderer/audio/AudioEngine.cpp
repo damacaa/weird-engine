@@ -172,6 +172,16 @@ namespace WeirdEngine
 				return;
 
 			float frictionValue = scene.getFrictionSound();
+			float frictionDiff = frictionValue - m_lastRawFriction;
+			m_lastRawFriction = frictionValue;
+
+			if (frictionDiff > 0.15f)
+			{
+				// Physical collision impact noise rumble spike
+				float spikeGain = (std::min)(0.85f, frictionDiff * 0.9f);
+				playVoice(75.0f, spikeGain, 0.08f, InstrumentType::Noise, 0.7071f, 0.7071f, 1500.0f);
+			}
+
 			setFrictionLevel(frictionValue);
 
 			AudioModule* module = scene.getAudioModule();
@@ -319,22 +329,31 @@ namespace WeirdEngine
 					ma_engine_read_pcm_frames(&m_engine, mix.data(), framesToWrite, NULL);
 
 					// 2. Strong physical friction noise with fast attack on collision spikes
+					float oldSmoothedFriction = m_smoothedFriction;
 					if (m_frictionLevel > m_smoothedFriction)
 					{
-						m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.70f; // Fast attack
+						m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.40f; // Smoothed fast attack
 					}
 					else
 					{
 						m_smoothedFriction += (m_frictionLevel - m_smoothedFriction) * 0.08f; // Natural decay
 					}
 
-					if (m_smoothedFriction > 0.0001f)
+					if (m_smoothedFriction > 0.0001f || oldSmoothedFriction > 0.0001f)
 					{
 						ma_noise_read_pcm_frames(&m_noise, temp.data(), framesToWrite, NULL);
-						float noiseGain = (std::min)(1.0f, m_smoothedFriction * 1.10f);
-						for (ma_uint32 i = 0; i < framesToWrite * CHANNELS; ++i)
+						float oldNoiseGain = (std::min)(1.0f, oldSmoothedFriction * 1.10f);
+						float newNoiseGain = (std::min)(1.0f, m_smoothedFriction * 1.10f);
+
+						for (ma_uint32 i = 0; i < framesToWrite; ++i)
 						{
-							mix[i] += temp[i] * noiseGain;
+							// Interpolate gain across chunk to avoid clicking/popping
+							float t = static_cast<float>(i) / static_cast<float>(framesToWrite);
+							float currentGain = oldNoiseGain + t * (newNoiseGain - oldNoiseGain);
+							for (ma_uint32 c = 0; c < CHANNELS; ++c)
+							{
+								mix[i * CHANNELS + c] += temp[i * CHANNELS + c] * currentGain;
+							}
 						}
 					}
 

@@ -124,6 +124,7 @@ namespace WeirdEngine
 			ma_noise m_noise;
 			float m_frictionLevel = 0.0f; // modulated each frame
 			float m_smoothedFriction = 0.0f;
+			float m_lastRawFriction = 0.0f;
 
 			// Collision tone
 			float m_collisionFreq = 0.0f;

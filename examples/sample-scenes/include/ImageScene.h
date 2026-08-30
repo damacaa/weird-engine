@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -22,6 +23,14 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with image preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "image");
+		}
+
 		imagePath = services.resources().assetPath("jimmy.jpg");
 
 		// Check if the folder exists

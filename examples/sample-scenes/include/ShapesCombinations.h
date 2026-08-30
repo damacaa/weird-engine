@@ -2,6 +2,7 @@
 
 #include <random>
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -24,6 +25,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with shapes preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "shapes");
+		}
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::Gray;

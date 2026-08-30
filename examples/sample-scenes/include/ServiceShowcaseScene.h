@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -138,6 +139,13 @@ namespace ServiceShowcase
 		// Debug flags through the provider
 		services.debug().setDebugFly(true);
 		services.debug().setDebugInput(true);
+
+		// Initialize audio module with showcase preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "showcase");
+		}
 
 		// Materials through the provider
 		Material2D& floorMaterial = services.materials2D().createMaterial("floor");

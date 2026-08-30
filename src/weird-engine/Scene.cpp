@@ -114,6 +114,13 @@ namespace WeirdEngine
 	{
 		m_simulation2D.stopSimulationThread();
 
+		// Destroy AudioModule if exists
+		if (m_audioModule)
+		{
+			destroyAudioModule(m_audioModule);
+			m_audioModule = nullptr;
+		}
+
 		// TODO: Free resources from all entities
 		m_resourceManager.freeResources(0);
 	}
@@ -124,6 +131,14 @@ namespace WeirdEngine
 		for (auto& sys : m_createSystems)
 		{
 			sys(m_registry, m_services);
+		}
+
+		// Create AudioModule for this scene
+		m_audioModule = createAudioModule();
+		if (m_audioModule)
+		{
+			onCreateAudioModule(m_registry, m_services);
+			m_audioModule->initialize(WeirdRenderer::AudioModuleConfig());
 		}
 
 		// Custom component managers
@@ -278,6 +293,26 @@ namespace WeirdEngine
 				{
 					sys(m_registry, m_services, entityEvent);
 				}
+
+				float relSpeed = glm::length(ev.relativeVelocity);
+				float impactIntensity = std::clamp(relSpeed * 0.08f + ev.impulse * 0.04f, 0.0f, 1.0f);
+				if (impactIntensity > 0.025f)
+				{
+					// Dynamic frequency cutoff: heavier impacts sound lower, lighter sound crisper
+					float cutoff = 250.0f + 800.0f * (1.0f - impactIntensity * 0.5f);
+					float vol = std::clamp(impactIntensity * 0.3f, 0.01f, 0.4f);
+
+					WeirdRenderer::SimpleAudioRequest req;
+					req.volume = vol;
+					req.frequency = cutoff;
+					req.spatial = true;
+					req.position = vec3(ev.position, 0.0f);
+					req.intensity = impactIntensity;
+					req.instrument = 3; // Filtered Noise
+					req.beats = 1;
+
+					m_audioQueue.push(req);
+				}
 			}
 
 			for (auto& ev : shapeCollisions)
@@ -289,26 +324,38 @@ namespace WeirdEngine
 					sys(m_registry, m_services, entityEvent);
 				}
 
-				const float m_soundFalloff = 0.1f;
-				bool spatialAudio = false;
-				auto camPosition = getCamera().position;
-				float speed = glm::length2(ev.velocity);
-				float distanceMultiplier =
-					1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(ev.position, 0.0f))));
-				float frictionSample = ev.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
-
+				float speed = glm::length(ev.velocity);
+				float frictionSample = ev.friction * 0.08f * speed;
 				m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
 
 				if (ev.state == CollisionState::START)
 				{
+					float normalSpeed = std::abs(glm::dot(ev.normal, ev.velocity));
 					float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
-					float volume = penetrationFactor;
+					float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
 
-					float freqFactor = std::abs(glm::dot(ev.normal, (ev.velocity)));
-					freqFactor *= 0.01f;
-					float frequency = 200.0f + (freqFactor * 300.0f);
+					if (impactIntensity > 0.02f)
+					{
+						// Dynamic frequency cutoff: heavier impacts have deeper bass, lighter have crisper click
+						float cutoff = 180.0f + 1100.0f * (1.0f - impactIntensity * 0.5f);
+						float vol = std::clamp(impactIntensity * 0.35f, 0.01f, 0.5f);
 
-					playSound(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(ev.position, 0.0f)});
+						WeirdRenderer::SimpleAudioRequest req;
+						req.volume = vol;
+						req.frequency = cutoff;
+						req.spatial = true;
+						req.position = vec3(ev.position, 0.0f);
+						req.intensity = impactIntensity;
+						req.instrument = 3; // Filtered Noise
+						req.beats = 1;
+
+						m_audioQueue.push(req);
+
+						if (m_audioModule && impactIntensity > 0.05f)
+						{
+							m_audioModule->surge(impactIntensity * 0.4f);
+						}
+					}
 				}
 			}
 
@@ -323,6 +370,12 @@ namespace WeirdEngine
 			{
 				sys(m_registry, m_services);
 			}
+		}
+
+		// Update AudioModule if exists
+		if (m_audioModule)
+		{
+			m_audioModule->update(time, delta);
 		}
 
 		{
@@ -491,7 +544,7 @@ namespace WeirdEngine
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
 		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
 		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
-		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead)
+		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead, scene.m_audioModule)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)

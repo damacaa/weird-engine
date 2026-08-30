@@ -834,6 +834,7 @@ namespace WeirdEngine
 			float restitution = 0.5f;
 			vec2 vRel = m_velocities[col.B] - m_velocities[col.A];
 			float velocityAlongNormal = glm::dot(normal, vRel);
+			float impulseMagnitude = 0.0f;
 
 			// Only apply impulse if objects are moving towards each other
 			if (velocityAlongNormal < 0.0f)
@@ -841,7 +842,7 @@ namespace WeirdEngine
 				float invMassSum = m_invMass[col.A] + m_invMass[col.B];
 				if (invMassSum > 0.0f)
 				{
-					float impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
+					impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
 					vec2 impulse = impulseMagnitude * normal;
 
 					m_velocities[col.A] -= m_invMass[col.A] * impulse;
@@ -857,7 +858,8 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				PhysicsCollisionEvent event{col.A, col.B};
+				vec2 contactPos = 0.5f * (m_positions[col.A] + m_positions[col.B]);
+				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, std::abs(impulseMagnitude)};
 				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
 			}
 		}

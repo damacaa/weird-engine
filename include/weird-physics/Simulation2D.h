@@ -61,6 +61,10 @@ namespace WeirdEngine
 		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
+		vec2 position = vec2(0.0f);
+		vec2 normal = vec2(0.0f);
+		vec2 relativeVelocity = vec2(0.0f);
+		float impulse = 0.0f;
 	};
 
 	struct PhysicsShapeCollisionEvent

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-renderer/audio/AudioPresets.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -38,6 +39,13 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio module with rope preset
+		auto& audioModule = services.audio().getAudioModule();
+		if (audioModule)
+		{
+			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "rope");
+		}
 
 		auto& groundMat = services.materials2D().createMaterial("ground");
 		groundMat.color = ColorPalette::LightGray;
@@ -167,6 +175,8 @@ private:
 		{
 			return;
 		}
+
+		services.audio().playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(0.0f), 1});
 
 		constexpr int amount = 10;
 		for (int i = 0; i < amount; ++i)

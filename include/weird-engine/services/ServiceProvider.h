@@ -24,6 +24,8 @@
 #include "weird-engine/vec.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
+#include "weird-renderer/audio/AudioModule.h"
+#include "weird-renderer/audio/AudioPresets.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/components/Camera.h"
@@ -35,7 +37,7 @@ namespace WeirdEngine
 {
 	class Scene;
 
-	constexpr int SOUND_QUEUE_SIZE = 16;
+	constexpr int SOUND_QUEUE_SIZE = 64;
 
 	/// Map from tag name (std::string) to the entity that owns it.
 	using TagMap = std::unordered_map<std::string, Entity>;
@@ -618,6 +620,7 @@ namespace WeirdEngine
 	{
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
 		std::atomic<float>& frictionSoundLevel;
+		WeirdRenderer::AudioModule*& audioModule;
 
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio)
 		{
@@ -637,6 +640,27 @@ namespace WeirdEngine
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()
 		{
 			return queue;
+		}
+
+		WeirdRenderer::AudioModule*& getAudioModule()
+		{
+			return audioModule;
+		}
+
+		void setPreset(const std::string& presetName)
+		{
+			if (audioModule)
+			{
+				WeirdRenderer::setAudioModuleFromPreset(audioModule, presetName);
+			}
+		}
+
+		void surge(float amount = 0.5f)
+		{
+			if (audioModule)
+			{
+				audioModule->surge(amount);
+			}
 		}
 	};
 

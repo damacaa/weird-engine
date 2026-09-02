@@ -31,6 +31,11 @@ namespace WeirdEngine
 		return s_globalSdfs;
 	}
 
+	ShapeId Scene::registerDefaultSDF(const Expr& sdf)
+	{
+		return registerDefaultSDF(sdf.node);
+	}
+
 	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
 	{
 		auto& sdfs = getGlobalSDFsInternal();
@@ -499,6 +504,11 @@ namespace WeirdEngine
 		, m_debug(scene.m_debugFly, scene.m_debugInput)
 		, m_input()
 	{
+	}
+
+	ShapeId ShapeService::registerDefaultSDF(const Expr& sdf)
+	{
+		return Scene::registerDefaultSDF(sdf);
 	}
 
 	ShapeId ShapeService::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)

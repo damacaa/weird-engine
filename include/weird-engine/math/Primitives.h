@@ -1,343 +1,72 @@
 #pragma once
 
-#include <algorithm>
-#include <array>
-#include <cmath>
+#include "SDF.h"
 #include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "CompiledMathExpressions.h"
-#include "MathExpressions.h"
-#include "StarShape.h"
-#include "weird-engine/vec.h"
 
 namespace WeirdEngine::Primitives
 {
-	static constexpr uint8_t WORLD_X = 9;
-	static constexpr uint8_t WORLD_Y = 10;
+	static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+	static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 
-	struct Circle : IMathExpression
+	struct Circle
 	{
-	protected:
-		std::shared_ptr<IMathExpression> m_px;
-		std::shared_ptr<IMathExpression> m_py;
-		std::shared_ptr<IMathExpression> m_r;
-		std::shared_ptr<IMathExpression> m_time;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
 		static constexpr uint8_t POS_X = 0;
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t RADIUS = 2;
 		static constexpr uint8_t THICKNESS = 3;
 
-		// Common
-		static constexpr uint8_t TIME = 8;
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
-
-		Circle(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
-			   std::shared_ptr<IMathExpression> r)
-			: m_px(std::move(px))
-			, m_py(std::move(py))
-			, m_r(std::move(r))
-		{
-			// Can I reuse these?
-			m_time = std::make_shared<FloatVariable>(TIME);
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters),
-						  m_worldY->getValue(parameters) - m_py->getValue(parameters));
-			return length(p) - m_r->getValue(parameters);
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "(length(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
-				   m_py->print() + ")) - " + m_r->print() + ")";
-		}
+		static constexpr uint8_t TIME = SystemParams::TIME;
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 	};
 
-	struct Box : IMathExpression
+	struct Box
 	{
-	protected:
-		std::shared_ptr<IMathExpression> m_px;
-		std::shared_ptr<IMathExpression> m_py;
-		std::shared_ptr<IMathExpression> m_w;
-		std::shared_ptr<IMathExpression> m_h;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
 		static constexpr uint8_t POS_X = 0;
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t SIZE_X = 2;
 		static constexpr uint8_t SIZE_Y = 3;
 		static constexpr uint8_t THICKNESS = 4;
 
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
-
-		Box(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
-			std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h)
-			: m_px(std::move(px))
-			, m_py(std::move(py))
-			, m_w(std::move(w))
-			, m_h(std::move(h))
-		{
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters),
-						  m_worldY->getValue(parameters) - m_py->getValue(parameters));
-			vec2 b = vec2(m_w->getValue(parameters), m_h->getValue(parameters));
-			vec2 d = abs(p) - b;
-			return length(max(d, vec2(0.0))) + std::min(std::max(d.x, d.y), 0.0f);
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "sdBox(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
-				   m_py->print() + "), vec2(" + m_w->print() + ", " + m_h->print() + "))";
-		}
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 	};
 
-	struct SineWave : IMathExpression
+	struct SineWave
 	{
-	protected:
-		std::shared_ptr<IMathExpression> m_amplitude;
-		std::shared_ptr<IMathExpression> m_period;
-		std::shared_ptr<IMathExpression> m_speed;
-		std::shared_ptr<IMathExpression> m_offset;
-		std::shared_ptr<IMathExpression> m_time;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
 		static constexpr uint8_t AMPLITUDE = 0;
 		static constexpr uint8_t PERIOD = 1;
 		static constexpr uint8_t SPEED = 2;
 		static constexpr uint8_t OFFSET = 3;
 
-		static constexpr uint8_t TIME = 8;
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
-
-		SineWave(std::shared_ptr<IMathExpression> amplitude, std::shared_ptr<IMathExpression> period,
-				 std::shared_ptr<IMathExpression> speed, std::shared_ptr<IMathExpression> offset)
-			: m_amplitude(std::move(amplitude))
-			, m_period(std::move(period))
-			, m_speed(std::move(speed))
-			, m_offset(std::move(offset))
-		{
-			m_time = std::make_shared<FloatVariable>(TIME);
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			return (m_worldY->getValue(parameters) - m_offset->getValue(parameters)) -
-				   m_amplitude->getValue(parameters) *
-					   sinf(m_period->getValue(parameters) * m_worldX->getValue(parameters) +
-							m_speed->getValue(parameters) * m_time->getValue(parameters));
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "(" + m_worldY->print() + " - " + m_offset->print() + ") - " + m_amplitude->print() + " * sin(" +
-				   m_period->print() + " * " + m_worldX->print() + " + " + m_speed->print() + " * " + m_time->print() +
-				   ")";
-		}
+		static constexpr uint8_t TIME = SystemParams::TIME;
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 	};
 
-	struct Ramp : IMathExpression
+	struct Triangle
 	{
-	protected:
-		std::shared_ptr<IMathExpression> m_px;
-		std::shared_ptr<IMathExpression> m_py;
-		std::shared_ptr<IMathExpression> m_w;
-		std::shared_ptr<IMathExpression> m_h;
-		std::shared_ptr<IMathExpression> m_skew;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t WIDTH = 2;
-		static constexpr uint8_t HEIGHT = 3;
-		static constexpr uint8_t SKEW = 4;
-
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
-
-		Ramp(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
-			 std::shared_ptr<IMathExpression> width, std::shared_ptr<IMathExpression> height,
-			 std::shared_ptr<IMathExpression> skew)
-			: m_px(std::move(px))
-			, m_py(std::move(py))
-			, m_w(std::move(width))
-			, m_h(std::move(height))
-			, m_skew(std::move(skew))
-		{
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters),
-						  m_worldY->getValue(parameters) - m_py->getValue(parameters));
-			float wi = m_w->getValue(parameters);
-			float he = m_h->getValue(parameters);
-			float sk = m_skew->getValue(parameters);
-
-			glm::vec2 e(wi, sk);
-			if (p.x < 0.0f)
-				p = -p;
-			glm::vec2 w = p - e;
-			w.y -= std::clamp(w.y, -he, he);
-			glm::vec2 d(glm::dot(w, w), -w.x);
-			float s = p.y * e.x - p.x * e.y;
-			if (s < 0.0f)
-				p = -p;
-			glm::vec2 v = p - glm::vec2(0.0f, he);
-			v -= e * std::clamp(glm::dot(v, e) / glm::dot(e, e), -1.0f, 1.0f);
-			d = glm::min(d, glm::vec2(glm::dot(v, v), wi * he - std::abs(s)));
-			return std::sqrt(d.x) * std::copysign(1.0f, -d.y);
-		}
-
-		[[nodiscard]]
-		std::string getHelperFunctions() const override
-		{
-			return R"(
-#ifndef WEIRD_SD_PARALLELOGRAM
-#define WEIRD_SD_PARALLELOGRAM
-float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
-{
-	vec2 e = vec2(wi, sk);
-	p = (p.x < 0.0) ? -p : p;
-	vec2 w = p - e;
-	w.y -= clamp(w.y, -he, he);
-	vec2 d = vec2(dot(w, w), -w.x);
-	float s = p.y * e.x - p.x * e.y;
-	p = (s < 0.0) ? -p : p;
-	vec2 v = p - vec2(0.0, he);
-	v -= e * clamp(dot(v, e) / dot(e, e), -1.0, 1.0);
-	d = min(d, vec2(dot(v, v), wi * he - abs(s)));
-	return sqrt(d.x) * sign(-d.y);
-}
-#endif
-)";
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "sdParallelogramVertical(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " +
-				   m_worldY->print() + " - " + m_py->print() + "), " + m_w->print() + ", " + m_h->print() + ", " +
-				   m_skew->print() + ")";
-		}
-	};
-
-	struct Triangle : IMathExpression
-	{
-	protected:
-		std::shared_ptr<IMathExpression> m_px;
-		std::shared_ptr<IMathExpression> m_py;
-		std::shared_ptr<IMathExpression> m_w;
-		std::shared_ptr<IMathExpression> m_h;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
 		static constexpr uint8_t POS_X = 0;
 		static constexpr uint8_t POS_Y = 1;
 		static constexpr uint8_t SIZE_X = 2;
 		static constexpr uint8_t SIZE_Y = 3;
 		static constexpr uint8_t THICKNESS = 4;
 
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
+		static constexpr uint8_t TIME = SystemParams::TIME;
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+	};
 
-		Triangle(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
-				 std::shared_ptr<IMathExpression> w, std::shared_ptr<IMathExpression> h)
-			: m_px(std::move(px))
-			, m_py(std::move(py))
-			, m_w(std::move(w))
-			, m_h(std::move(h))
-		{
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
+	struct Ramp
+	{
+		static constexpr uint8_t POS_X = 0;
+		static constexpr uint8_t POS_Y = 1;
+		static constexpr uint8_t SIZE_X = 2;
+		static constexpr uint8_t SIZE_Y = 3;
+		static constexpr uint8_t SKEW = 4;
 
-		static float cross(const vec2& a, const vec2& b)
-		{
-			return a.x * b.y - a.y * b.x;
-		}
-
-		static float distanceToSegment(const vec2& p, const vec2& a, const vec2& b)
-		{
-			vec2 pa = p - a;
-			vec2 ba = b - a;
-			float h = glm::clamp(glm::dot(pa, ba) / glm::dot(ba, ba), 0.0f, 1.0f);
-			return length(pa - ba * h);
-		}
-
-		static float signedDistanceToTriangle(const vec2& p, const vec2& a, const vec2& b, const vec2& c)
-		{
-			float d =
-				std::min(std::min(distanceToSegment(p, a, b), distanceToSegment(p, b, c)), distanceToSegment(p, c, a));
-
-			float c0 = cross(b - a, p - a);
-			float c1 = cross(c - b, p - b);
-			float c2 = cross(a - c, p - c);
-
-			bool inside = (c0 >= 0.0f && c1 >= 0.0f && c2 >= 0.0f) || (c0 <= 0.0f && c1 <= 0.0f && c2 <= 0.0f);
-
-			return inside ? -d : d;
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			vec2 p = vec2(m_worldX->getValue(parameters) - m_px->getValue(parameters),
-						  m_worldY->getValue(parameters) - m_py->getValue(parameters));
-
-			float halfWidth = m_w->getValue(parameters) * 0.5f;
-			float height = m_h->getValue(parameters);
-
-			vec2 a(-halfWidth, -height / 3.0f);
-			vec2 b(halfWidth, -height / 3.0f);
-			vec2 c2(0.0f, 2.0f * height / 3.0f);
-
-			return signedDistanceToTriangle(p, a, b, c2);
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "sdTriangle(vec2(" + m_worldX->print() + " - " + m_px->print() + ", " + m_worldY->print() + " - " +
-				   m_py->print() + "), " + m_w->print() + ", " + m_h->print() + ")";
-		}
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 	};
 
 	struct BoxRotated
@@ -380,61 +109,15 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 		static constexpr uint8_t SPEED = 5;
 	};
 
-	struct Line : IMathExpression
+	struct Line
 	{
-	protected:
-		std::shared_ptr<IMathExpression> m_ax;
-		std::shared_ptr<IMathExpression> m_ay;
-		std::shared_ptr<IMathExpression> m_bx;
-		std::shared_ptr<IMathExpression> m_by;
-		std::shared_ptr<IMathExpression> m_width;
-		std::shared_ptr<IMathExpression> m_worldX;
-		std::shared_ptr<IMathExpression> m_worldY;
-
-	public:
 		static constexpr uint8_t POS_A_X = 0;
 		static constexpr uint8_t POS_A_Y = 1;
 		static constexpr uint8_t POS_B_X = 2;
 		static constexpr uint8_t POS_B_Y = 3;
 		static constexpr uint8_t WIDTH = 4;
 
-		static constexpr uint8_t WORLD_X = 9;
-		static constexpr uint8_t WORLD_Y = 10;
-
-		Line(std::shared_ptr<IMathExpression> ax, std::shared_ptr<IMathExpression> ay,
-			 std::shared_ptr<IMathExpression> bx, std::shared_ptr<IMathExpression> by,
-			 std::shared_ptr<IMathExpression> width)
-			: m_ax(std::move(ax))
-			, m_ay(std::move(ay))
-			, m_bx(std::move(bx))
-			, m_by(std::move(by))
-			, m_width(std::move(width))
-		{
-			m_worldX = std::make_shared<FloatVariable>(WORLD_X);
-			m_worldY = std::make_shared<FloatVariable>(WORLD_Y);
-		}
-
-		[[nodiscard]]
-		float getValue(const float* parameters) const override
-		{
-			vec2 p = vec2(m_worldX->getValue(parameters), m_worldY->getValue(parameters));
-
-			vec2 a = vec2(m_ax->getValue(parameters), m_ay->getValue(parameters));
-			vec2 b = vec2(m_bx->getValue(parameters), m_by->getValue(parameters));
-
-			float width = m_width->getValue(parameters);
-
-			vec2 pa = p - a, ba = b - a;
-			float h = glm::clamp(glm::dot(pa, ba) / glm::dot(ba, ba), 0.0f, 1.0f);
-			return length(pa - ba * h) - width;
-		}
-
-		[[nodiscard]]
-		std::string print() const override
-		{
-			return "sdSegment(vec2(" + m_worldX->print() + ", " + m_worldY->print() + "), vec2(" + m_ax->print() +
-				   ", " + m_ay->print() + "), vec2(" + m_bx->print() + ", " + m_by->print() + ")) - " +
-				   m_width->print();
-		}
+		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
+		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
 	};
 } // namespace WeirdEngine::Primitives

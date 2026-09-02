@@ -18,6 +18,7 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/Material2D.h"
 #include "weird-engine/Material3D.h"
+#include "weird-engine/math/SDF.h"
 #include "weird-engine/ResourceManager.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
 #include "weird-engine/Utils.h"
@@ -275,7 +276,13 @@ namespace WeirdEngine
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
 
+		static ShapeId registerDefaultSDF(const Expr& sdf);
 		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
+
+		ShapeId registerSDF(const Expr& expr)
+		{
+			return registerSDF(expr.node);
+		}
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf)
 		{

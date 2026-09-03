@@ -173,7 +173,8 @@ void main()
 	float distance = data.x;
 	int materialId = int(data.y);
 
-	Material2D mat = (materialId < 16) ? u_materials[materialId] : u_materials[0];
+	int matIdx = (materialId >= 0 && materialId < 16) ? materialId : 0;
+	Material2D mat = u_materials[matIdx];
 
 	float zoom = -u_camMatrix[3].z;
 	float aspectRatio = u_resolution.x / u_resolution.y;

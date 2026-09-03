@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "weird-engine/math/CompiledMathExpressions.h"
 #include "weird-engine/math/MathExpressions.h"
 
 namespace WeirdEngine::Primitives3D

@@ -90,6 +90,7 @@ namespace WeirdEngine
 		virtual ~Scene();
 
 		// ---- Global SDF registry (engine-level, shared across scenes)
+		static ShapeId registerDefaultSDF(const Expr& sdf);
 		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
 		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
 

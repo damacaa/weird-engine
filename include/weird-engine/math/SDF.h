@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-renderer/core/Display.h"
 #include <atomic>
 #include <glm/glm.hpp>
 #include <memory>
@@ -183,6 +184,27 @@ namespace WeirdEngine
 	{
 		return {var(11), var(12)};
 	}
+	inline Vec2Expr localPoint(const glm::vec2& origin = {0.0f, 0.0f})
+	{
+		return {var(9) - origin.x, var(10) - origin.y};
+	}
+	inline Vec2Expr localPoint(float ox, float oy)
+	{
+		return localPoint(glm::vec2(ox, oy));
+	}
+	inline Vec2Expr songPoint()
+	{
+		float h = WeirdRenderer::Display::height > 0 ? static_cast<float>(WeirdRenderer::Display::height) : 800.0f;
+		return localPoint(glm::vec2(70.0f, h - 70.0f));
+	}
+	inline Vec2Expr songPoint(const glm::vec2& center)
+	{
+		return localPoint(center);
+	}
+	inline Vec2Expr songPoint(float cx, float cy)
+	{
+		return localPoint(cx, cy);
+	}
 
 	inline Expr sin(const Expr& a)
 	{
@@ -276,6 +298,11 @@ namespace WeirdEngine
 
 	namespace SDF
 	{
+		using WeirdEngine::localPoint;
+		using WeirdEngine::songPoint;
+		using WeirdEngine::uiPoint;
+		using WeirdEngine::worldPoint;
+
 		inline Vec2Expr translate(const Vec2Expr& p, const Vec2Expr& offset)
 		{
 			return p - offset;
@@ -341,6 +368,14 @@ namespace WeirdEngine
 		inline Expr sdfErode(const Expr& d, const Expr& radius)
 		{
 			return d + radius;
+		}
+		inline Expr sdfScale(const Expr& a, const Expr& b)
+		{
+			return Expr(std::make_shared<Scale>(a.node, b.node));
+		}
+		inline Expr scale(const Expr& a, const Expr& b)
+		{
+			return sdfScale(a, b);
 		}
 
 		inline Expr sdfSmoothUnion(const Expr& a, const Expr& b, const Expr& radius)
@@ -449,6 +484,14 @@ namespace WeirdEngine
 					out.push_back(m_point.x.node);
 				if (m_point.y.node)
 					out.push_back(m_point.y.node);
+			}
+
+			[[nodiscard]]
+			std::shared_ptr<IMathExpression> clone(
+				const std::vector<std::shared_ptr<IMathExpression>>& c) const override
+			{
+				Vec2Expr pt = (c.size() >= 2) ? Vec2Expr{Expr(c[0]), Expr(c[1])} : m_point;
+				return std::make_shared<Polygon>(std::move(pt), m_vertices);
 			}
 
 			[[nodiscard]]
@@ -601,6 +644,16 @@ float sdTriangle_impl(in vec2 p, float w, float h)
 			}
 
 			[[nodiscard]]
+			std::shared_ptr<IMathExpression> clone(
+				const std::vector<std::shared_ptr<IMathExpression>>& c) const override
+			{
+				Vec2Expr pt = (c.size() >= 2) ? Vec2Expr{Expr(c[0]), Expr(c[1])} : m_p;
+				Expr w = (c.size() >= 3) ? Expr(c[2]) : m_w;
+				Expr h = (c.size() >= 4) ? Expr(c[3]) : m_h;
+				return std::make_shared<Triangle>(std::move(pt), std::move(w), std::move(h));
+			}
+
+			[[nodiscard]]
 			std::string printWithChildren(const std::vector<std::string>& c) const override
 			{
 				return "sdTriangle_impl(vec2(" + c[0] + ", " + c[1] + "), " + c[2] + ", " + c[3] + ")";
@@ -703,6 +756,17 @@ float sdParallelogramVertical(in vec2 p, float wi, float he, float sk)
 					out.push_back(m_h.node);
 				if (m_skew.node)
 					out.push_back(m_skew.node);
+			}
+
+			[[nodiscard]]
+			std::shared_ptr<IMathExpression> clone(
+				const std::vector<std::shared_ptr<IMathExpression>>& c) const override
+			{
+				Vec2Expr pt = (c.size() >= 2) ? Vec2Expr{Expr(c[0]), Expr(c[1])} : m_p;
+				Expr w = (c.size() >= 3) ? Expr(c[2]) : m_w;
+				Expr h = (c.size() >= 4) ? Expr(c[3]) : m_h;
+				Expr skew = (c.size() >= 5) ? Expr(c[4]) : m_skew;
+				return std::make_shared<Ramp>(std::move(pt), std::move(w), std::move(h), std::move(skew));
 			}
 
 			[[nodiscard]]

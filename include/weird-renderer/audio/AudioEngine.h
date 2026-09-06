@@ -1,35 +1,19 @@
 #pragma once
 
 #include <memory>
-#include <vector>
-
 #include <miniaudio/miniaudio.h>
 #include <SDL3/SDL.h>
+#include <vector>
 
 #include "weird-engine/Scene.h"
-#include "weird-renderer/audio/AudioModule.h"
 #include "weird-renderer/audio/AudioSettings.h"
+#include "weird-renderer/audio/PhysicsAudioEngine.h"
+#include "weird-renderer/audio/SdfMusicEngine.h"
 
 namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
-
-		struct CollisionVoice
-		{
-			float frequency;
-			float amplitude;
-			float decay;
-			float time = 0.0f;
-			float phase = 0.0f;
-			bool finished = false;
-			InstrumentType instrument = InstrumentType::Sine;
-			float leftGain = 0.7071f;
-			float rightGain = 0.7071f;
-			float filterCutoff = 20000.0f;
-			float filterState = 0.0f;
-		};
-
 		struct AudioData
 		{
 			float currentVolume = 0.0f;	  // For pulsing size
@@ -68,79 +52,101 @@ namespace WeirdEngine
 			ma_uint32 getSampleRate() const;
 			ma_uint8 getChannels() const;
 
+			// Per-frame scene audio update and PCM generation
 			void listen(Scene& scene);
 
+			// Volume & Mute controls
 			void mute()
 			{
-				m_mute = true;
+				m_settings.mute = true;
 			}
 
 			void unmute()
 			{
-				m_mute = false;
+				m_settings.mute = false;
 			}
 
 			bool isMuted() const
 			{
-				return m_mute;
+				return m_settings.mute;
 			}
 
+			void setMasterVolume(float vol)
+			{
+				m_settings.masterVolume = vol;
+			}
+
+			float getMasterVolume() const
+			{
+				return m_settings.masterVolume;
+			}
+
+			// Subsystem access
+			PhysicsAudioEngine& getPhysicsEngine()
+			{
+				return m_physicsEngine;
+			}
+
+			const PhysicsAudioEngine& getPhysicsEngine() const
+			{
+				return m_physicsEngine;
+			}
+
+			SdfMusicEngine& getMusicEngine()
+			{
+				return m_musicEngine;
+			}
+
+			const SdfMusicEngine& getMusicEngine() const
+			{
+				return m_musicEngine;
+			}
+
+			// Spatial Audio Setting
+			void setSpatialAudioEnabled(bool enabled)
+			{
+				m_settings.enableSpatialAudio = enabled;
+				m_physicsEngine.setSpatialAudioEnabled(enabled);
+			}
+
+			bool isSpatialAudioEnabled() const
+			{
+				return m_physicsEngine.isSpatialAudioEnabled();
+			}
+
+			// Visualizer data
 			AudioData getAudioData();
 
-			// Procedural control
-			void setFrictionLevel(float level); // 0..1, continuous
-			void playSineSound(float freq, float amp, float decaySec = 0.3f);
-			void playVoice(float freq, float amp, float decaySec = 0.3f,
-						   InstrumentType instrument = InstrumentType::Sine, float leftGain = 0.7071f,
-						   float rightGain = 0.7071f, float filterCutoff = 20000.0f);
-
-			// Audio Module support
-			AudioModule* createModule()
+			// Procedural physics controls (convenience wrappers)
+			void setFrictionLevel(float level)
 			{
-				return createProceduralMusicGenerator();
+				m_physicsEngine.setFrictionLevel(level);
 			}
 
-			void setModule(AudioModule* module)
+			void playSineSound(float freq, float amp, float decaySec = 0.3f)
 			{
-				m_audioModule = module;
+				m_physicsEngine.playVoice(freq, amp, decaySec, 0);
 			}
 
-			AudioModule* getModule() const
+			void playVoice(float freq, float amp, float decaySec = 0.3f, int instrument = 0, float leftGain = 0.7071f,
+						   float rightGain = 0.7071f, float filterCutoff = 20000.0f)
 			{
-				return m_audioModule;
+				m_physicsEngine.playVoice(freq, amp, decaySec, instrument, leftGain, rightGain, filterCutoff);
 			}
 
 		private:
 			AudioEngine();
-			ma_engine m_engine;
-			ma_sound m_sound; // background music
 
-			bool m_mute = false;
-			bool m_enableAmbient = true;
+			AudioSettings m_settings;
+			PhysicsAudioEngine m_physicsEngine;
+			SdfMusicEngine m_musicEngine;
+
+			ma_engine m_engine;
+			ma_sound m_sound; // optional miniaudio sound
+			bool m_hasSound = false;
 
 			SDL_AudioStream* m_audioStream = nullptr;
-
-			// Procedural state (legacy - kept for backward compatibility)
-			ma_noise m_noise;
-			float m_frictionLevel = 0.0f; // modulated each frame
-			float m_smoothedFriction = 0.0f;
-			float m_lastRawFriction = 0.0f;
-
-			// Collision tone
-			float m_collisionFreq = 0.0f;
-			float m_collisionAmp = 0.0f;
-			float m_collisionPhase = 0.0f;
-			float m_collisionDecay = 0.0f;
-			float m_collisionTime = 0.0f;
-
-			// Vector of voices
-			std::vector<CollisionVoice> m_activeVoices;
-
-			// Visualizer
 			AudioData m_visualSnapshot;
-
-			// Audio Module (new modular system)
-			AudioModule* m_audioModule = nullptr;
 		};
 
 	} // namespace WeirdRenderer

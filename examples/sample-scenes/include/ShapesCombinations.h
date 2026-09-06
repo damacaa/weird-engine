@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -13,6 +13,30 @@ class ShapeCombinatiosScene : public Scene2D
 {
 public:
 	ShapeCombinatiosScene() {}
+
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		// Local coordinate p automatically transformed to UI top-left corner
+		Vec2Expr p = songPoint();
+
+		// Shape parameters (scaled 10x for UI):
+		// var(0): Outer radius (default 30.0f)
+		// var(1): Spike amplitude (default 5.0f)
+		// var(2): Star points count / spokes (default 8.0f)
+		// var(3): Angular rotation speed (default 1.5f)
+		Expr star = sdStar(p, Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3)));
+
+		auto song = WeirdRenderer::SdfSong::create("star_song", star);
+
+		// Default parameter values for CPU audio evaluation and shader
+		song->setParameter(0, 30.0f); // Outer radius
+		song->setParameter(1, 5.0f);  // Spike amplitude
+		song->setParameter(2, 8.0f);  // Star points (4/4 groove)
+		song->setParameter(3, 0.5f);  // Angular rotation speed
+
+		return song;
+	}
 
 private:
 	Entity m_circle = INVALID_ENTITY;
@@ -26,12 +50,14 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize audio module with shapes preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "shapes");
-		}
+		// Initialize SDF procedural music with the shape-driven mandala song and directly create its UI visualization
+		// shape
+		auto shapesSong = createSceneSong();
+
+		auto& songMat = services.materials2D().createMaterial("song_score");
+		songMat.color = vec4(ColorPalette::White, 0.25f);
+
+		Entity soundVisualization = services.audio().setSong(shapesSong, {.material = songMat});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::Gray;
@@ -169,6 +195,8 @@ private:
 
 			registry.setComponentDirty(cs);
 		}
+
+		services.audio().setTension(m_circleRadious / 10.0f);
 
 		float volume = AudioEngine::getInstance().getAudioData().currentVolume;
 		glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y

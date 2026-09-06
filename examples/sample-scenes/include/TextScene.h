@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -12,6 +12,20 @@ class TextScene : public Scene2D
 {
 public:
 	TextScene() {};
+
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::songPoint();
+
+		// Typographic serif bar: horizontal line glyph with serifs (boxes) (scaled 10x for UI)
+		Expr hBar = sdBox(p, Vec2Expr(25.0f, 4.0f));
+		Expr leftSerif = sdBox(p + Vec2Expr(22.0f, 0.0f), Vec2Expr(3.0f, 12.0f));
+		Expr rightSerif = sdBox(p - Vec2Expr(22.0f, 0.0f), Vec2Expr(3.0f, 12.0f));
+		Expr textShape = sdfUnion(sdfUnion(hBar, leftSerif), rightSerif);
+
+		return WeirdRenderer::SdfSong::create("text", textShape);
+	}
 
 private:
 	Entity m_counterText = INVALID_ENTITY;
@@ -30,12 +44,8 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize audio module with text preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "text");
-		}
+		// Initialize audio with scene-defined text song
+		services.audio().setSong(createSceneSong());
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::LightGray;

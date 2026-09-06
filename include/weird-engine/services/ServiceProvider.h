@@ -24,8 +24,6 @@
 #include "weird-engine/vec.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/audio/AudioModule.h"
-#include "weird-renderer/audio/AudioPresets.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/components/Camera.h"
@@ -36,6 +34,14 @@
 namespace WeirdEngine
 {
 	class Scene;
+
+	namespace WeirdRenderer
+	{
+		class AudioEngine;
+		class PhysicsAudioEngine;
+		class SdfMusicEngine;
+		class SdfSong;
+	} // namespace WeirdRenderer
 
 	constexpr int SOUND_QUEUE_SIZE = 64;
 
@@ -267,6 +273,13 @@ namespace WeirdEngine
 		ShapeId shapeId = 0;
 		ShapeVariables variables{};
 		ShapeMaterial material = 0;
+		CombinationType combination = CombinationType::Addition;
+		int group = 0;
+	};
+
+	struct SongVisualizationOptions
+	{
+		ShapeMaterial material = -1;
 		CombinationType combination = CombinationType::Addition;
 		int group = 0;
 	};
@@ -620,9 +633,26 @@ namespace WeirdEngine
 	{
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
 		std::atomic<float>& frictionSoundLevel;
-		WeirdRenderer::AudioModule*& audioModule;
+		ShapeService* shapes = nullptr;
+		Registry* registry = nullptr;
+		Entity m_visualizationEntity = INVALID_ENTITY;
+		float m_lastSyncedParams[8] = {0.0f};
+
+		AudioService(AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, std::atomic<float>& fsl,
+					 ShapeService* s = nullptr, Registry* r = nullptr)
+			: queue(q)
+			, frictionSoundLevel(fsl)
+			, shapes(s)
+			, registry(r)
+		{
+		}
 
 		void playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+		{
+			queue.push(audio);
+		}
+
+		void playPhysicsSound(const WeirdRenderer::SimpleAudioRequest& audio)
 		{
 			queue.push(audio);
 		}
@@ -642,26 +672,46 @@ namespace WeirdEngine
 			return queue;
 		}
 
-		WeirdRenderer::AudioModule*& getAudioModule()
-		{
-			return audioModule;
-		}
+		// Spatial Audio
+		void setSpatialAudioEnabled(bool enabled);
+		bool isSpatialAudioEnabled() const;
 
-		void setPreset(const std::string& presetName)
-		{
-			if (audioModule)
-			{
-				WeirdRenderer::setAudioModuleFromPreset(audioModule, presetName);
-			}
-		}
+		// Subsystems
+		WeirdRenderer::SdfMusicEngine& music();
+		WeirdRenderer::PhysicsAudioEngine& physicsAudio();
 
-		void surge(float amount = 0.5f)
+		// Song Management (beat-synced)
+		void setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, bool beatSynced = true);
+		Entity setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, const SongVisualizationOptions& visualOptions,
+					   bool beatSynced = true);
+		void queueSong(std::shared_ptr<WeirdRenderer::SdfSong> song);
+
+		// Visualization Entity Inspection & Parameter Sync
+		Entity getVisualizationEntity() const
 		{
-			if (audioModule)
-			{
-				audioModule->surge(amount);
-			}
+			return m_visualizationEntity;
 		}
+		void setSongParameter(size_t index, float value);
+		void updateVisualization();
+
+		// Motion & Domain Fill Inspection
+		float getMotionLevel() const;
+		float getFillRatio() const;
+		float getTempoFromMotion() const;
+		float getVolumeFromFill() const;
+
+		// Re-sample procedural shape parameters (call after updating shape variables in real time)
+		void resampleShape();
+
+		// Real-time Dynamic Feedback
+		void triggerPositiveFeedback(float intensity = 1.0f);
+		void triggerNegativeFeedback(float intensity = 1.0f);
+		void triggerDeath();
+		void setTension(float level);
+		void setEnergy(float level);
+		void setHealth(float current, float max);
+		void surge(float amount = 0.5f);
+		void duck(float amount = 0.5f);
 	};
 
 	struct TagService

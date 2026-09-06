@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -131,6 +131,19 @@ namespace ServiceShowcase
 		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
+	inline std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::songPoint();
+
+		// Radiant multi-pointed star shape (scaled 10x for UI)
+		Expr star = sdStar(p, 25.0f, 12.0f, 6.0f, 0.0f);
+		Expr core = sdCircle(p, 14.0f);
+		Expr showcaseShape = sdfSmoothUnion(star, core, 4.0f);
+
+		return WeirdRenderer::SdfSong::create("showcase", showcaseShape);
+	}
+
 	// ----------------------------------------------------------------- onStart
 	inline void onStartSystem(Registry& registry, ServiceProvider& services)
 	{
@@ -140,12 +153,8 @@ namespace ServiceShowcase
 		services.debug().setDebugFly(true);
 		services.debug().setDebugInput(true);
 
-		// Initialize audio module with showcase preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "showcase");
-		}
+		// Initialize audio with scene-defined showcase song
+		services.audio().setSong(createSceneSong());
 
 		// Materials through the provider
 		Material2D& floorMaterial = services.materials2D().createMaterial("floor");

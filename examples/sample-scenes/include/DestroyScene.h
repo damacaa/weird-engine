@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <cstdlib>
 #include <weird-engine.h>
 
@@ -17,6 +17,20 @@ struct CollisionTracker
 
 class DestroyScene : public Scene2D
 {
+public:
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::songPoint();
+
+		// Jagged industrial destroyer star (scaled 10x for UI)
+		Expr star = sdStar(p, 25.0f, 16.0f, 5.0f, 0.0f);
+		Expr box = sdBox(p, Vec2Expr(18.0f, 18.0f));
+		Expr destroyShape = sdfUnion(star, box);
+
+		return WeirdRenderer::SdfSong::create("destroy", destroyShape);
+	}
+
 private:
 	std::vector<Entity> m_testBalls;
 	std::vector<Entity> m_testConstraints;
@@ -31,12 +45,8 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize audio module with destroy preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "destroy");
-		}
+		// Initialize audio with scene-defined destroy song
+		services.audio().setSong(createSceneSong());
 
 		for (int i = 0; i < 8; ++i)
 		{

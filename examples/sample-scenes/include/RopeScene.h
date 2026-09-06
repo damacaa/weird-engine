@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -26,6 +26,21 @@ class RopeScene : public Scene2D
 public:
 	RopeScene() {}
 
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		glm::vec2 songCenter = WeirdRenderer::SdfSong::getDefaultCenter();
+		// Local coordinate p where (0, 0) is the center of the song in UI top-left.
+		Vec2Expr p = SDF::songPoint(songCenter);
+
+		// Taut string curve: sinusoidal wave modulated by box (scaled 10x for UI)
+		Expr wave = sdSineWave(p, 20.0f, 0.05f, 0.8f, 0.0f);
+		Expr box = sdBox(p, Vec2Expr(30.0f, 8.0f));
+		Expr ropeShape = sdfSmoothUnion(wave, box, 4.0f);
+
+		return WeirdRenderer::SdfSong::create("rope", ropeShape);
+	}
+
 private:
 	Entity m_star = INVALID_ENTITY;
 	double m_lastSpawnTime = 0.0;
@@ -40,12 +55,8 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize audio module with rope preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "rope");
-		}
+		// Initialize audio with scene-defined rope song
+		services.audio().setSong(createSceneSong());
 
 		auto& groundMat = services.materials2D().createMaterial("ground");
 		groundMat.color = ColorPalette::LightGray;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -13,6 +13,19 @@ class ImageScene : public Scene2D
 public:
 	ImageScene() {};
 
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::songPoint();
+
+		// Picture frame rectangular shape blended with circular aperture (scaled 10x for UI)
+		Expr frame = sdBox(p, Vec2Expr(25.0f, 18.0f));
+		Expr aperture = sdCircle(p, 15.0f);
+		Expr imageShape = sdfSmoothUnion(frame, aperture, 4.0f);
+
+		return WeirdRenderer::SdfSong::create("image", imageShape);
+	}
+
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
@@ -24,12 +37,8 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize audio module with image preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "image");
-		}
+		// Initialize audio with scene-defined image song
+		services.audio().setSong(createSceneSong());
 
 		imagePath = services.resources().assetPath("jimmy.jpg");
 

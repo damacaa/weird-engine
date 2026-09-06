@@ -436,7 +436,11 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			oss << "{\n";
 			oss << "\tvec4 p0, p1;\n";
 			oss << "\tfetchShapeParams(dataOffset + " << 2 * i << ", p0, p1);\n";
-			if (is3D)
+			if (emittedShapes.find(shape.distanceFieldId) == emittedShapes.end())
+			{
+				oss << "\tfloat dist = 10000.0;\n";
+			}
+			else if (is3D)
 			{
 				oss << "\tfloat dist = evaluate_sdf_" << shape.distanceFieldId << "(p, p0, p1);\n";
 			}

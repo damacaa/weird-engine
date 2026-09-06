@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <functional>
+#include <glm/glm.hpp>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -28,6 +30,12 @@ namespace WeirdEngine
 		virtual std::string printWithChildren(const std::vector<std::string>& childCode) const
 		{
 			return print();
+		}
+		[[nodiscard]]
+		virtual std::shared_ptr<IMathExpression> clone(
+			const std::vector<std::shared_ptr<IMathExpression>>& /*newChildren*/) const
+		{
+			return nullptr;
 		}
 		virtual void collectHelperFunctions(std::unordered_set<std::string>& helpers) const {}
 		[[nodiscard]]
@@ -59,6 +67,12 @@ namespace WeirdEngine
 		}
 
 		[[nodiscard]]
+		std::ptrdiff_t getOffset() const
+		{
+			return m_offset;
+		}
+
+		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
 			return parameters[m_offset];
@@ -75,6 +89,13 @@ namespace WeirdEngine
 		{
 			return "var" + std::to_string(m_offset);
 		}
+
+		[[nodiscard]]
+		std::shared_ptr<IMathExpression> clone(
+			const std::vector<std::shared_ptr<IMathExpression>>& /*newChildren*/) const override
+		{
+			return std::make_shared<FloatVariable>(m_offset);
+		}
 	};
 
 	struct FloatConstant : IMathExpression
@@ -86,6 +107,12 @@ namespace WeirdEngine
 		explicit FloatConstant(float value)
 			: m_value(value)
 		{
+		}
+
+		[[nodiscard]]
+		float getConstantValue() const
+		{
+			return m_value;
 		}
 
 		[[nodiscard]]
@@ -106,6 +133,13 @@ namespace WeirdEngine
 			std::ostringstream ss;
 			ss << std::fixed << std::setprecision(6) << m_value;
 			return ss.str();
+		}
+
+		[[nodiscard]]
+		std::shared_ptr<IMathExpression> clone(
+			const std::vector<std::shared_ptr<IMathExpression>>& /*newChildren*/) const override
+		{
+			return std::make_shared<FloatConstant>(m_value);
 		}
 	};
 
@@ -165,10 +199,19 @@ namespace WeirdEngine
 		}
 	};
 
+#define WEIRD_MATH_CLONE_ONE(TypeName)                                                                                 \
+	[[nodiscard]]                                                                                                      \
+	std::shared_ptr<IMathExpression> clone(const std::vector<std::shared_ptr<IMathExpression>>& c) const override      \
+	{                                                                                                                  \
+		return std::make_shared<TypeName>(c.empty() ? nullptr : c[0]);                                                 \
+	}
+
 	// Sine
 	struct Sine : OneFloatOperation
 	{
 		using OneFloatOperation::OneFloatOperation;
+
+		WEIRD_MATH_CLONE_ONE(Sine)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -188,6 +231,8 @@ namespace WeirdEngine
 	{
 		using OneFloatOperation::OneFloatOperation;
 
+		WEIRD_MATH_CLONE_ONE(Abs)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -205,6 +250,8 @@ namespace WeirdEngine
 	struct Cosine : OneFloatOperation
 	{
 		using OneFloatOperation::OneFloatOperation;
+
+		WEIRD_MATH_CLONE_ONE(Cosine)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -224,6 +271,8 @@ namespace WeirdEngine
 	{
 		using OneFloatOperation::OneFloatOperation;
 
+		WEIRD_MATH_CLONE_ONE(Negation)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -241,6 +290,8 @@ namespace WeirdEngine
 	struct Sqrt : OneFloatOperation
 	{
 		using OneFloatOperation::OneFloatOperation;
+
+		WEIRD_MATH_CLONE_ONE(Sqrt)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -325,10 +376,19 @@ namespace WeirdEngine
 		}
 	};
 
+#define WEIRD_MATH_CLONE_TWO(TypeName)                                                                                 \
+	[[nodiscard]]                                                                                                      \
+	std::shared_ptr<IMathExpression> clone(const std::vector<std::shared_ptr<IMathExpression>>& c) const override      \
+	{                                                                                                                  \
+		return std::make_shared<TypeName>(c.size() > 0 ? c[0] : nullptr, c.size() > 1 ? c[1] : nullptr);               \
+	}
+
 	// Add
 	struct Addition : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Addition)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -347,6 +407,8 @@ namespace WeirdEngine
 	struct Subtraction : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Subtraction)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -369,6 +431,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(Multiplication)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -385,6 +449,8 @@ namespace WeirdEngine
 	struct Division : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Division)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -405,6 +471,8 @@ namespace WeirdEngine
 	struct Mod : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Mod)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -428,6 +496,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(Atan2)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -444,6 +514,8 @@ namespace WeirdEngine
 	struct Length : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Length)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -466,6 +538,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(Max)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -485,6 +559,8 @@ namespace WeirdEngine
 	struct Min : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Min)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -506,6 +582,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(SDFAddition)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -525,6 +603,8 @@ namespace WeirdEngine
 	struct SDFSubtraction : TwoFloatOperation
 	{
 		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(SDFSubtraction)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -546,6 +626,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(SDFIntersection)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -566,6 +648,8 @@ namespace WeirdEngine
 	{
 		using TwoFloatOperation::TwoFloatOperation;
 
+		WEIRD_MATH_CLONE_TWO(SDFOnion)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -581,6 +665,30 @@ namespace WeirdEngine
 			return "(abs(" + c[0] + ") - " + c[1] + ")";
 		}
 	};
+
+	struct Scale : TwoFloatOperation
+	{
+		using TwoFloatOperation::TwoFloatOperation;
+
+		WEIRD_MATH_CLONE_TWO(Scale)
+
+		[[nodiscard]]
+		float getValue(const float* parameters) const override
+		{
+			float a = valueA->getValue(parameters);
+			float b = valueB->getValue(parameters);
+
+			return a * b;
+		}
+
+		[[nodiscard]]
+		std::string printWithChildren(const std::vector<std::string>& c) const override
+		{
+			return "(" + c[0] + " * " + c[1] + ")";
+		}
+	};
+
+	using SDFScale = Scale;
 
 	// Three float operation
 	struct ThreeFloatOperation : IMathExpression
@@ -652,10 +760,20 @@ namespace WeirdEngine
 		}
 	};
 
+#define WEIRD_MATH_CLONE_THREE(TypeName)                                                                               \
+	[[nodiscard]]                                                                                                      \
+	std::shared_ptr<IMathExpression> clone(const std::vector<std::shared_ptr<IMathExpression>>& c) const override      \
+	{                                                                                                                  \
+		return std::make_shared<TypeName>(c.size() > 0 ? c[0] : nullptr, c.size() > 1 ? c[1] : nullptr,                \
+										  c.size() > 2 ? c[2] : nullptr);                                              \
+	}
+
 	// Clamp
 	struct Clamp : ThreeFloatOperation
 	{
 		using ThreeFloatOperation::ThreeFloatOperation;
+
+		WEIRD_MATH_CLONE_THREE(Clamp)
 
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
@@ -692,6 +810,8 @@ namespace WeirdEngine
 	{
 		using ThreeFloatOperation::ThreeFloatOperation;
 
+		WEIRD_MATH_CLONE_THREE(SDFSmoothAddition)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -713,6 +833,8 @@ namespace WeirdEngine
 	{
 		using ThreeFloatOperation::ThreeFloatOperation;
 
+		WEIRD_MATH_CLONE_THREE(SDFSmoothSubtraction)
+
 		[[nodiscard]]
 		float getValue(const float* parameters) const override
 		{
@@ -729,6 +851,32 @@ namespace WeirdEngine
 			return "fOpSubSoft(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
 		}
 	};
+
+	inline std::shared_ptr<IMathExpression> transformAST(
+		const std::shared_ptr<IMathExpression>& node,
+		const std::function<std::shared_ptr<IMathExpression>(const std::shared_ptr<IMathExpression>&)>& transformer)
+	{
+		if (!node)
+			return nullptr;
+
+		auto transformed = transformer(node);
+		if (transformed != node)
+			return transformed;
+
+		std::vector<std::shared_ptr<IMathExpression>> children;
+		node->getChildren(children);
+		if (children.empty())
+			return node;
+
+		std::vector<std::shared_ptr<IMathExpression>> newChildren;
+		newChildren.reserve(children.size());
+		for (const auto& child : children)
+		{
+			newChildren.push_back(transformAST(child, transformer));
+		}
+		auto cloned = node->clone(newChildren);
+		return cloned ? cloned : node;
+	}
 
 #pragma endregion TwoFloatOperations
 } // namespace WeirdEngine

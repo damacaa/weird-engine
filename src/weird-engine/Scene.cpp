@@ -1,5 +1,6 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/SceneManager.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
@@ -114,13 +115,6 @@ namespace WeirdEngine
 	{
 		m_simulation2D.stopSimulationThread();
 
-		// Destroy AudioModule if exists
-		if (m_audioModule)
-		{
-			destroyAudioModule(m_audioModule);
-			m_audioModule = nullptr;
-		}
-
 		// TODO: Free resources from all entities
 		m_resourceManager.freeResources(0);
 	}
@@ -131,14 +125,6 @@ namespace WeirdEngine
 		for (auto& sys : m_createSystems)
 		{
 			sys(m_registry, m_services);
-		}
-
-		// Create AudioModule for this scene
-		m_audioModule = createAudioModule();
-		if (m_audioModule)
-		{
-			onCreateAudioModule(m_registry, m_services);
-			m_audioModule->initialize(WeirdRenderer::AudioModuleConfig());
 		}
 
 		// Custom component managers
@@ -209,6 +195,9 @@ namespace WeirdEngine
 		{
 			sys(m_registry, m_services);
 		}
+
+		// Refresh simulation SDFs in case onStart registered custom SDFs
+		m_simulation2D.setSDFs(m_sdfs);
 
 		switch (m_renderMode)
 		{
@@ -350,11 +339,6 @@ namespace WeirdEngine
 						req.beats = 1;
 
 						m_audioQueue.push(req);
-
-						if (m_audioModule && impactIntensity > 0.05f)
-						{
-							m_audioModule->surge(impactIntensity * 0.4f);
-						}
 					}
 				}
 			}
@@ -370,12 +354,7 @@ namespace WeirdEngine
 			{
 				sys(m_registry, m_services);
 			}
-		}
-
-		// Update AudioModule if exists
-		if (m_audioModule)
-		{
-			m_audioModule->update(time, delta);
+			m_services.audio().updateVisualization();
 		}
 
 		{
@@ -446,24 +425,28 @@ namespace WeirdEngine
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
+		m_services.audio().updateVisualization();
 		customShapeCount = m_registry.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, false>(
 			m_registry, m_2DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, true>(m_registry, m_3DWorldRenderContext,
 																					 shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<UIShape, SDFRenderSystemContext, false>(m_registry, m_UIRenderContext, shader,
 																				  m_sdfs);
 	}
@@ -544,7 +527,7 @@ namespace WeirdEngine
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
 		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
 		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
-		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead, scene.m_audioModule)
+		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead, &m_shapes, &scene.m_registry)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
@@ -576,6 +559,204 @@ namespace WeirdEngine
 				scene.m_serializationBlacklist.insert(entity);
 		}
 		return loadedTags;
+	}
+
+	void AudioService::setSpatialAudioEnabled(bool enabled)
+	{
+		WeirdRenderer::AudioEngine::getInstance().setSpatialAudioEnabled(enabled);
+	}
+
+	bool AudioService::isSpatialAudioEnabled() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().isSpatialAudioEnabled();
+	}
+
+	WeirdRenderer::SdfMusicEngine& AudioService::music()
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine();
+	}
+
+	WeirdRenderer::PhysicsAudioEngine& AudioService::physicsAudio()
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getPhysicsEngine();
+	}
+
+	void AudioService::setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, bool beatSynced)
+	{
+		SongVisualizationOptions defaultVisualOptions;
+		setSong(std::move(song), defaultVisualOptions, beatSynced);
+	}
+
+	Entity AudioService::setSong(std::shared_ptr<WeirdRenderer::SdfSong> song,
+								 const SongVisualizationOptions& visualOptions, bool beatSynced)
+	{
+		auto songPtr = song;
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
+
+		if (shapes && registry && songPtr && songPtr->getShapeExpression())
+		{
+			if (m_visualizationEntity != INVALID_ENTITY)
+			{
+				registry->destroyEntity(m_visualizationEntity);
+				m_visualizationEntity = INVALID_ENTITY;
+			}
+
+			ShapeId shapeId = shapes->registerSDF(songPtr->getShapeExpression());
+			UIShapeConfig config;
+			config.shapeId = shapeId;
+			config.material = visualOptions.material;
+			config.combination = visualOptions.combination;
+			config.group = visualOptions.group;
+			std::copy_n(songPtr->getParameters(), 8, config.variables.data);
+			config.variables.data[7] = 1.0f;
+
+			m_visualizationEntity = shapes->addUIShape(config);
+
+			for (size_t i = 0; i < 8; ++i)
+			{
+				m_lastSyncedParams[i] = songPtr->getParameter(i);
+			}
+			m_lastSyncedParams[7] = 1.0f;
+
+			return m_visualizationEntity;
+		}
+
+		m_visualizationEntity = INVALID_ENTITY;
+		return INVALID_ENTITY;
+	}
+
+	void AudioService::setSongParameter(size_t index, float value)
+	{
+		if (index >= 7)
+			return;
+
+		auto curSong = WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+		if (curSong)
+		{
+			curSong->setParameter(index, value);
+		}
+
+		m_lastSyncedParams[index] = value;
+
+		if (m_visualizationEntity != INVALID_ENTITY && registry &&
+			registry->hasComponent<UIShape>(m_visualizationEntity))
+		{
+			auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
+			ui.parameters[index] = value;
+			registry->setComponentDirty(ui);
+		}
+
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resampleShape();
+	}
+
+	void AudioService::updateVisualization()
+	{
+		if (m_visualizationEntity != INVALID_ENTITY && registry &&
+			registry->hasComponent<UIShape>(m_visualizationEntity))
+		{
+			auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
+			float volume = WeirdRenderer::AudioEngine::getInstance().getAudioData().currentVolume;
+			float scale = 1.0f + volume * 0.8f;
+			if (ui.parameters[7] != scale)
+			{
+				ui.parameters[7] = scale;
+				registry->setComponentDirty(ui);
+			}
+		}
+	}
+
+	void AudioService::queueSong(std::shared_ptr<WeirdRenderer::SdfSong> song)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().queueSong(std::move(song));
+	}
+
+	void AudioService::triggerPositiveFeedback(float intensity)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerPositiveFeedback(intensity);
+	}
+
+	void AudioService::triggerNegativeFeedback(float intensity)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerNegativeFeedback(intensity);
+	}
+
+	void AudioService::triggerDeath()
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerDeath();
+	}
+
+	void AudioService::setTension(float level)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setTension(level);
+	}
+
+	void AudioService::setEnergy(float level)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setEnergy(level);
+	}
+
+	void AudioService::setHealth(float current, float max)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setHealth(current, max);
+	}
+
+	void AudioService::surge(float amount)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().surge(amount);
+	}
+
+	void AudioService::duck(float amount)
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().duck(amount);
+	}
+
+	void AudioService::resampleShape()
+	{
+		if (m_visualizationEntity != INVALID_ENTITY && registry &&
+			registry->hasComponent<UIShape>(m_visualizationEntity))
+		{
+			auto curSong = WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+			if (curSong)
+			{
+				auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
+				for (size_t i = 0; i < 7; ++i)
+				{
+					if (curSong->getParameter(i) != m_lastSyncedParams[i])
+					{
+						ui.parameters[i] = curSong->getParameter(i);
+						registry->setComponentDirty(ui);
+						m_lastSyncedParams[i] = curSong->getParameter(i);
+					}
+					else if (ui.parameters[i] != m_lastSyncedParams[i])
+					{
+						curSong->setParameter(i, ui.parameters[i]);
+						m_lastSyncedParams[i] = ui.parameters[i];
+					}
+				}
+			}
+		}
+
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resampleShape();
+	}
+
+	float AudioService::getMotionLevel() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getMotionLevel();
+	}
+
+	float AudioService::getFillRatio() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getFillRatio();
+	}
+
+	float AudioService::getTempoFromMotion() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getTempoFromMotion();
+	}
+
+	float AudioService::getVolumeFromFill() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
 	}
 
 	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,

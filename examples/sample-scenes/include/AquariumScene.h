@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/AudioPresets.h"
+#include "weird-renderer/audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <cmath>
@@ -61,6 +61,19 @@ class AquariumScene : public Scene2D
 public:
 	AquariumScene() {}
 
+	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::songPoint();
+
+		// Aquatic wave shape: sine wave blended with bubble circles (scaled 10x for UI)
+		Expr wave = sdSineWave(p, 15.0f, 0.04f, 0.6f, 0.0f);
+		Expr bubble = sdCircle(p, 18.0f);
+		Expr aquaticShape = sdfSmoothUnion(wave, bubble, 5.0f);
+
+		return WeirdRenderer::SdfSong::create("aquarium", aquaticShape);
+	}
+
 private:
 	float m_time = 0.0f;
 
@@ -84,12 +97,8 @@ private:
 		background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
 		background.scale = 0.15f;
 
-		// Initialize audio module with aquarium preset
-		auto& audioModule = services.audio().getAudioModule();
-		if (audioModule)
-		{
-			WeirdEngine::WeirdRenderer::setAudioModuleFromPreset(audioModule, "aquarium");
-		}
+		// Initialize audio with scene-defined procedural SDF music
+		services.audio().setSong(createSceneSong());
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

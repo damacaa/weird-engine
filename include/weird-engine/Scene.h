@@ -5,8 +5,6 @@
 
 #include "weird-engine/systems/SDFRenderSystem.h"
 
-#include "weird-renderer/audio/AudioModule.h"
-#include "weird-renderer/audio/AudioPresets.h"
 #include "weird-renderer/audio/AudioRingBuffer.h"
 #include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/core/RenderTarget.h"
@@ -139,17 +137,6 @@ namespace WeirdEngine
 		virtual void onRender(Registry& registry, ServiceProvider& services,
 							  WeirdRenderer::RenderTarget& renderTarget) {};
 
-		// ---- Audio Module support (new modular system)
-		virtual void onCreateAudioModule(Registry& registry, ServiceProvider& services) {}
-		virtual WeirdRenderer::AudioModule* createAudioModule()
-		{
-			return WeirdRenderer::createProceduralMusicGenerator();
-		}
-		virtual void destroyAudioModule(WeirdRenderer::AudioModule* module)
-		{
-			delete module;
-		}
-
 		// ---- Main thread collision callbacks (onEntity* family). Fire after
 		// the physics response has been applied; the events are read-only.
 		// m_registry is safe to use here (the physics thread only ever touches
@@ -221,6 +208,10 @@ namespace WeirdEngine
 
 		RenderMode getRenderMode() const;
 		float getTime();
+		float getLastDelta() const
+		{
+			return m_lastDelta;
+		}
 		const Material2D* getMaterials2D() const
 		{
 			return m_materials2D;
@@ -239,12 +230,6 @@ namespace WeirdEngine
 		{
 			return m_nextScene;
 		};
-
-		// Audio Module access
-		WeirdRenderer::AudioModule* getAudioModule()
-		{
-			return m_audioModule;
-		}
 
 		// Set the path to a .weird file to load when the scene starts
 		void setSceneFilePath(const std::string& path)
@@ -287,7 +272,6 @@ namespace WeirdEngine
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
 		float m_frictionSoundLevel{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
-		WeirdRenderer::AudioModule* m_audioModule = nullptr;
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light2D> m_lights2D;
 		std::vector<WeirdRenderer::Light3D> m_lights3D;

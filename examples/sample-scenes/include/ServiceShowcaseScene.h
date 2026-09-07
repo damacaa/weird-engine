@@ -190,15 +190,9 @@ namespace ServiceShowcase
 		// Register a custom SDF: a ring (outer circle minus inner circle)
 		ShapeId ringShape;
 		{
-			auto x = std::make_shared<FloatVariable>(0);
-			auto y = std::make_shared<FloatVariable>(1);
-			auto outerRadius = std::make_shared<FloatVariable>(2);
-			auto innerRadius = std::make_shared<FloatVariable>(3);
-
-			auto outer = std::make_shared<Primitives::Circle>(x, y, outerRadius);
-			auto inner =
-				std::make_shared<Multiplication>(-1.0f, std::make_shared<Primitives::Circle>(x, y, innerRadius));
-			auto ring = std::make_shared<Max>(outer, inner);
+			using namespace SDF;
+			auto p = translate(worldPoint(), {var(0), var(1)});
+			auto ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
 
 			ringShape = services.shapes().registerSDF(ring);
 

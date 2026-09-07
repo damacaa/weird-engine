@@ -376,7 +376,6 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		// 3. Emit Unique Shape Evaluation Functions with CSE
 		// =========================================================================================
 		std::unordered_set<ShapeId> emittedShapes;
-		std::unordered_set<std::string> emittedHelpers;
 		for (size_t idx = 0; idx < componentArray->getSize(); idx++)
 		{
 			size_t i = orderedIndices.at(idx);
@@ -385,14 +384,6 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			if (id < sdfs.size() && sdfs[id] && emittedShapes.find(id) == emittedShapes.end())
 			{
 				emittedShapes.insert(id);
-
-				std::string helperFunctions = sdfs[id]->getHelperFunctions();
-				if (!helperFunctions.empty() && emittedHelpers.find(helperFunctions) == emittedHelpers.end())
-				{
-					emittedHelpers.insert(helperFunctions);
-					functionsOss << helperFunctions << "\n";
-				}
-
 				functionsOss << CSE::generateFunction(sdfs[id], id, is3D);
 			}
 		}

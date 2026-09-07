@@ -318,9 +318,12 @@ namespace WeirdEngine
 					sys(m_registry, m_services, entityEvent);
 				}
 
-				float speed = glm::length(ev.velocity);
-				float frictionSample = ev.friction * 0.08f * speed;
-				m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
+				if (m_enableFrictionSound)
+				{
+					float speed = glm::length(ev.velocity);
+					float frictionSample = ev.friction * 0.08f * speed * m_frictionSoundMultiplier;
+					m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
+				}
 
 				if (ev.state == CollisionState::START)
 				{
@@ -348,7 +351,8 @@ namespace WeirdEngine
 				}
 			}
 
-			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
+			float finalFriction = m_overrideFrictionSound ? m_manualFrictionLevel : m_frictionSoundLevel;
+			m_frictionSoundLevelRead.store(finalFriction, std::memory_order_release);
 			m_frictionSoundLevel = 0.0f;
 		}
 
@@ -989,29 +993,254 @@ namespace WeirdEngine
 		if (ImGui::CollapsingHeader(label))
 		{
 			ImGui::PushID(label);
+			ImGui::Indent();
 
-			if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
+			// Physics Section
+			if (ImGui::CollapsingHeader("Physics", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				if (m_simulationIsPaused)
-					m_simulation2D.pause();
+				ImGui::Indent();
+				if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
+				{
+					if (m_simulationIsPaused)
+						m_simulation2D.pause();
+					else
+						m_simulation2D.resume();
+				}
+				ImGui::Unindent();
+			}
+
+			// Background Section
+			if (ImGui::CollapsingHeader("Background"))
+			{
+				ImGui::Indent();
+				const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
+				int bgTypeIdx = static_cast<int>(m_background.type);
+				if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
+				{
+					m_background.type = static_cast<BackgroundType>(bgTypeIdx);
+				}
+
+				if (m_background.type != BackgroundType::Custom)
+				{
+					ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
+					ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
+					ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
+					ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
+				}
+				ImGui::Unindent();
+			}
+
+			// Audio Section
+			if (ImGui::CollapsingHeader("Audio"))
+			{
+				ImGui::Indent();
+				auto& audioEngine = WeirdRenderer::AudioEngine::getInstance();
+				auto& musicEngine = audioEngine.getMusicEngine();
+				auto& physicsAudio = audioEngine.getPhysicsEngine();
+
+				// Master Audio Controls
+				bool muted = audioEngine.isMuted();
+				if (ImGui::Checkbox("Mute All Audio", &muted))
+				{
+					if (muted)
+						audioEngine.mute();
+					else
+						audioEngine.unmute();
+				}
+
+				float masterVol = audioEngine.getMasterVolume();
+				if (ImGui::SliderFloat("Master Volume", &masterVol, 0.0f, 1.0f, "%.2f"))
+				{
+					audioEngine.setMasterVolume(masterVol);
+				}
+
+				// Audio Waveform Visualizer
+				auto audioData = audioEngine.getAudioData();
+
+				ImGui::Text("Waveform (RMS: %.2f)", audioData.currentVolume);
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Auto-Scale", &m_waveformAutoScale))
+				{
+					if (m_waveformAutoScale)
+						m_waveformAutoScaleRange = 0.05f;
+				}
+
+				if (m_waveformAutoScale)
+				{
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Reset"))
+					{
+						m_waveformAutoScaleRange = 0.05f;
+					}
+
+					if (!audioData.waveform.empty() && audioData.currentVolume > 0.0001f)
+					{
+						float peak = 0.0f;
+						for (float s : audioData.waveform)
+						{
+							peak = (std::max)(peak, std::abs(s));
+						}
+						// Grows fast to accommodate peaks, but does not shrink
+						if (peak > m_waveformAutoScaleRange)
+						{
+							m_waveformAutoScaleRange = (std::min)(peak * 1.15f, 1.0f);
+						}
+					}
+				}
 				else
-					m_simulation2D.resume();
-			}
+				{
+					ImGui::SameLine();
+					ImGui::SetNextItemWidth(100.0f);
+					ImGui::SliderFloat("Scale", &m_waveformManualScale, 0.1f, 4.0f, "%.1fx");
+				}
 
-			ImGui::SeparatorText("Background");
-			const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
-			int bgTypeIdx = static_cast<int>(m_background.type);
-			if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
-			{
-				m_background.type = static_cast<BackgroundType>(bgTypeIdx);
-			}
+				float yRange = 1.0f;
+				if (m_waveformAutoScale)
+				{
+					yRange = std::clamp(m_waveformAutoScaleRange, 0.05f, 1.0f);
+				}
+				else
+				{
+					yRange = std::clamp(1.0f / (std::max)(m_waveformManualScale, 0.1f), 0.05f, 2.0f);
+				}
 
-			if (m_background.type != BackgroundType::Custom)
-			{
-				ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
-				ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
-				ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
-				ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
+				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.25f, 0.92f, 1.00f, 1.00f));
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.08f, 0.11f, 1.00f));
+
+				if (!audioData.waveform.empty() && audioData.currentVolume > 0.0005f)
+				{
+					ImGui::PlotLines("##AudioWaveform", audioData.waveform.data(),
+									 static_cast<int>(audioData.waveform.size()), 0, nullptr, -yRange, yRange,
+									 ImVec2(-1.0f, 85.0f));
+				}
+				else
+				{
+					static const float silence[256] = {0.0f};
+					ImGui::PlotLines("##AudioWaveform", silence, 256, 0, "No Signal", -1.0f, 1.0f,
+									 ImVec2(-1.0f, 85.0f));
+				}
+
+				ImGui::PopStyleColor(2);
+
+				// Procedural Music
+				if (ImGui::CollapsingHeader("Procedural Music", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					ImGui::Indent();
+					bool musicPlaying = musicEngine.isPlaying();
+					if (ImGui::Checkbox("Music Enabled", &musicPlaying))
+					{
+						musicEngine.setPlaying(musicPlaying);
+					}
+
+					float musicVol = musicEngine.getVolume();
+					if (ImGui::SliderFloat("Music Volume", &musicVol, 0.0f, 1.0f, "%.2f"))
+					{
+						musicEngine.setVolume(musicVol);
+					}
+
+					float tension = musicEngine.getTension();
+					if (ImGui::SliderFloat("Tension", &tension, 0.0f, 1.0f, "%.2f"))
+					{
+						musicEngine.setTension(tension);
+					}
+
+					float energy = musicEngine.getEnergy();
+					if (ImGui::SliderFloat("Energy", &energy, 0.0f, 1.0f, "%.2f"))
+					{
+						musicEngine.setEnergy(energy);
+					}
+
+					auto currentSong = musicEngine.getCurrentSong();
+					if (currentSong)
+					{
+						ImGui::Text("Active Song: %s", currentSong->getName().c_str());
+						ImGui::Text("Beat: %.1f | Motion: %.2f | Fill: %.2f", musicEngine.getPlayheadBeat(),
+									musicEngine.getMotionLevel(), musicEngine.getFillRatio());
+
+						if (ImGui::TreeNode("Shape Musical Parameters"))
+						{
+							const auto& params = musicEngine.getShapeParameters();
+							ImGui::Text("Tempo Factor:      %.2fx", params.tempoFactor);
+							ImGui::Text("Melody Density:    %.2f", params.melodyDensity);
+							ImGui::Text("Harmony Richness:  %.2f", params.harmonyRichness);
+							ImGui::Text("Bass Weight:       %.2f", params.bassWeight);
+							ImGui::Text("Percussion Energy: %.2f", params.percEnergy);
+							ImGui::Text("Brightness:        %.2f", params.brightness);
+							ImGui::Text("Syncopation:       %.2f", params.syncopation);
+							ImGui::Text("Variation:         %.2f", params.variation);
+							ImGui::TreePop();
+						}
+					}
+					else
+					{
+						ImGui::TextDisabled("No active song");
+					}
+
+					if (ImGui::Button("Resample Shape"))
+					{
+						m_services.audio().resampleShape();
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Surge"))
+					{
+						musicEngine.surge(0.6f);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Duck"))
+					{
+						musicEngine.duck(0.5f);
+					}
+
+					// Dynamic Feedback Triggers
+					if (ImGui::Button("Positive Trigger"))
+					{
+						musicEngine.triggerPositiveFeedback(1.0f);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Negative Trigger"))
+					{
+						musicEngine.triggerNegativeFeedback(1.0f);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Death Trigger"))
+					{
+						musicEngine.triggerDeath();
+					}
+					ImGui::Unindent();
+				}
+
+				// Friction & Physics Sound Parameters
+				if (ImGui::CollapsingHeader("Friction & Physics Sound", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					ImGui::Indent();
+					float physVol = physicsAudio.getVolume();
+					if (ImGui::SliderFloat("Physics Audio Volume", &physVol, 0.0f, 1.0f, "%.2f"))
+					{
+						physicsAudio.setVolume(physVol);
+					}
+
+					bool spatial = physicsAudio.isSpatialAudioEnabled();
+					if (ImGui::Checkbox("Spatial Audio Enabled", &spatial))
+					{
+						physicsAudio.setSpatialAudioEnabled(spatial);
+					}
+
+					ImGui::Checkbox("Enable Friction Sound", &m_enableFrictionSound);
+					ImGui::SliderFloat("Friction Multiplier", &m_frictionSoundMultiplier, 0.0f, 5.0f, "%.2fx");
+
+					ImGui::Checkbox("Override Friction (Test)", &m_overrideFrictionSound);
+					if (m_overrideFrictionSound)
+					{
+						ImGui::SliderFloat("Manual Friction Level", &m_manualFrictionLevel, 0.0f, 1.0f, "%.2f");
+					}
+
+					float liveFriction = m_frictionSoundLevelRead.load(std::memory_order_acquire);
+					ImGui::ProgressBar(std::clamp(liveFriction, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f));
+					ImGui::Text("Live Level: %.3f | Synthesizer Level: %.3f", liveFriction,
+								physicsAudio.getFrictionLevel());
+					ImGui::Unindent();
+				}
+				ImGui::Unindent();
 			}
 
 			ImGui::Separator();
@@ -1022,6 +1251,7 @@ namespace WeirdEngine
 				sys(m_registry, m_services);
 			}
 
+			ImGui::Unindent();
 			ImGui::PopID();
 		}
 

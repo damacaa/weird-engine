@@ -201,9 +201,28 @@ namespace WeirdEngine
 					float rms = std::sqrt(sumSquares / (mix.size() / 4));
 					m_visualSnapshot.currentVolume = rms;
 					m_visualSnapshot.currentFriction = m_physicsEngine.getFrictionLevel();
-					size_t captureSize = (std::min)(static_cast<size_t>(128), mix.size());
-					m_visualSnapshot.waveform.resize(captureSize);
-					std::copy(mix.end() - captureSize, mix.end(), m_visualSnapshot.waveform.begin());
+
+					// Extract mono waveform (continuous tail of the mix buffer)
+					constexpr size_t WAVEFORM_SAMPLES = 256;
+					m_visualSnapshot.waveform.resize(WAVEFORM_SAMPLES, 0.0f);
+
+					if (framesToWrite >= WAVEFORM_SAMPLES)
+					{
+						size_t startFrame = framesToWrite - WAVEFORM_SAMPLES;
+						for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
+						{
+							size_t frame = startFrame + i;
+							m_visualSnapshot.waveform[i] = (mix[frame * CHANNELS] + mix[frame * CHANNELS + 1]) * 0.5f;
+						}
+					}
+					else if (framesToWrite > 0)
+					{
+						for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
+						{
+							size_t frame = (i * framesToWrite) / WAVEFORM_SAMPLES;
+							m_visualSnapshot.waveform[i] = (mix[frame * CHANNELS] + mix[frame * CHANNELS + 1]) * 0.5f;
+						}
+					}
 
 					// Submit to SDL stream
 					SDL_PutAudioStreamData(m_audioStream, mix.data(),

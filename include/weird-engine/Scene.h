@@ -196,6 +196,22 @@ namespace WeirdEngine
 		{
 			m_frictionSoundLevelRead.store(level, std::memory_order_release);
 		}
+		bool isFrictionSoundEnabled() const
+		{
+			return m_enableFrictionSound;
+		}
+		void setFrictionSoundEnabled(bool enabled)
+		{
+			m_enableFrictionSound = enabled;
+		}
+		float getFrictionSoundMultiplier() const
+		{
+			return m_frictionSoundMultiplier;
+		}
+		void setFrictionSoundMultiplier(float mult)
+		{
+			m_frictionSoundMultiplier = mult;
+		}
 
 		BackgroundParams& getBackground()
 		{
@@ -273,6 +289,13 @@ namespace WeirdEngine
 		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
 		float m_frictionSoundLevel{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
+		bool m_enableFrictionSound{true};
+		float m_frictionSoundMultiplier{1.0f};
+		bool m_overrideFrictionSound{false};
+		float m_manualFrictionLevel{0.0f};
+		bool m_waveformAutoScale{true};
+		float m_waveformAutoScaleRange{0.05f};
+		float m_waveformManualScale{1.0f};
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light2D> m_lights2D;
 		std::vector<WeirdRenderer::Light3D> m_lights3D;

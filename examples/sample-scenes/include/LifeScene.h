@@ -32,10 +32,10 @@ public:
 		Vec2Expr p = SDF::songPoint();
 
 		// Organic cellular cluster (smooth-blended multi-circle organism) (scaled 10x for UI)
-		Expr c1 = sdCircle(p + Vec2Expr(8.0f, 0.0f), 12.0f);
-		Expr c2 = sdCircle(p - Vec2Expr(8.0f, 0.0f), 12.0f);
-		Expr c3 = sdCircle(p + Vec2Expr(0.0f, 8.0f), 10.0f);
-		Expr lifeShape = sdfSmoothUnion(sdfSmoothUnion(c1, c2, 6.0f), c3, 6.0f);
+		Expr c1 = sdCircle(translate(p, Vec2Expr(sin(time()) * 30.0f, 0.0f)), 12.0f);
+		Expr c2 = sdCircle(translate(p, Vec2Expr(0.0f, sin(time()) * 30.0f)), 12.0f);
+
+		Expr lifeShape = sdfSmoothUnion(c1, c2, 6.0f);
 
 		return WeirdRenderer::SdfSong::create("life", lifeShape);
 	}

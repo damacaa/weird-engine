@@ -1,19 +1,18 @@
 #pragma once
 
-#include "MathExpressions.h"
 #include "SDF.h"
 
 namespace WeirdEngine
 {
-	inline std::shared_ptr<IMathExpression> getStarShape()
+	inline Expr getStarShape()
 	{
 		using namespace SDF;
-		auto p = translate(worldPoint(), {Expr(var(0)), Expr(var(1))});
-		auto radius = Expr(var(2));
-		auto displacement = Expr(var(3));
-		auto points = Expr(var(4));
-		auto speed = Expr(var(5));
+		auto p = translate(worldPoint(), {var(0), var(1)});
+		auto radius = var(2);
+		auto displacement = var(3);
+		auto points = var(4);
+		auto speed = var(5);
 
-		return sdStar(p, radius, displacement, points, speed).node;
+		return sdStar(p, radius, displacement, points, speed);
 	}
 } // namespace WeirdEngine

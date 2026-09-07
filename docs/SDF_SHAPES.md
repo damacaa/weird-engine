@@ -13,12 +13,11 @@ A Signed Distance Field (SDF) evaluates the shortest distance from a world posit
 - **Zero**: Exactly on the boundary.
 - **Positive values**: Outside the shape.
 
-In Weird Engine, shape definitions inherit from `IMathExpression` (defined in `include/weird-engine/math/MathExpressions.h`).
+In Weird Engine, shape definitions are expressed in pure C++ through the `Expr` and `Vec2Expr` domain-specific language (defined in `include/weird-engine/math/SDF.h`).
 
-Each `IMathExpression` provides two functions:
-
-- `getValue(const float* parameters)`: Evaluates distance on the CPU for physics collisions and CPU raymarching.
-- `print()`: Returns GLSL code string to generate OpenGL raymarching shaders.
+The engine evaluates expressions in two ways:
+- On the CPU: Evaluates distance for physics collisions and CPU raymarching.
+- On the GPU: Compiles the expression graph into optimized GLSL raymarching shaders.
 
 ---
 
@@ -33,14 +32,27 @@ Weird Engine includes default shape primitives in `WeirdEngine::DefaultShapes` (
 - **Rotated Shapes**: `DefaultShapes::BOX_ROTATED`, `DefaultShapes::TRIANGLE_ROTATED`, `DefaultShapes::RAMP_ROTATED`
 - **Rotated Border Shapes**: `DefaultShapes::BOX_LINE_ROTATED`, `DefaultShapes::TRIANGLE_LINE_ROTATED`
 
+### Parameter Offset Constants
+
+Each default shape provides parameter index constants under `DefaultShapes::<ShapeName>` (or `Primitives::<ShapeName>`):
+- `DefaultShapes::Circle::POS_X`, `POS_Y`, `RADIUS`
+- `DefaultShapes::Box::POS_X`, `POS_Y`, `SIZE_X`, `SIZE_Y`
+- `DefaultShapes::Triangle::POS_X`, `POS_Y`, `WIDTH`, `HEIGHT`
+- `DefaultShapes::Line::START_X`, `START_Y`, `END_X`, `END_Y`, `WIDTH`
+- `DefaultShapes::Ramp::POS_X`, `POS_Y`, `WIDTH`, `HEIGHT`, `SKEW`
+
 ### Adding a Default Shape to a Scene
 
 Use `services.shapes().addShape(...)` with a `ShapeConfig` struct to instantiate a shape entity:
 
 ```cpp
-Entity sphere = services.shapes().addShape({
+Entity circle = services.shapes().addShape({
 	.shapeId = DefaultShapes::CIRCLE,
-	.variables = {{Primitives::Circle::POS_X, 15.0f}, {Primitives::Circle::POS_Y, 10.0f}, {Primitives::Circle::RADIUS, 5.0f}},
+	.variables = {
+		{DefaultShapes::Circle::POS_X, 15.0f},
+		{DefaultShapes::Circle::POS_Y, 10.0f},
+		{DefaultShapes::Circle::RADIUS, 5.0f}
+	},
 	.material = materialId,
 	.combination = CombinationType::Addition,
 	.hasCollision = true // Enable collisions
@@ -62,38 +74,52 @@ Entity uiBox = services.shapes().addUIShape({
 
 ---
 
-## 3. Creating Custom SDF Shapes
+## 3. Creating Custom SDF Shapes with `Expr`
 
-You can build custom geometric shapes by combining mathematical expressions.
+Build custom geometric shapes by composing mathematical expressions using `Expr` and `Vec2Expr`.
 
-### Expression Nodes
+### Building Expressions
 
-Build expression trees using shared pointers to `IMathExpression` nodes:
+Include `#include "weird-engine/math/SDF.h"`.
 
-- `FloatVariable(offset)`: Reads a float value from the parameter array at the specified index.
-- `FloatConstant(value)`: Represents a fixed float constant.
-- **Math Operations**: `Addition`, `Subtraction`, `Multiplication`, `Division`, `Sine`, `Abs`, `Min`, `Max`.
-- **CSG Operations**: `SDFAddition`, `SDFSubtraction`, `SDFIntersection`, `SDFSmoothAddition`, `SDFSmoothSubtraction`, `SDFOnion`.
-- **Primitives**: `Primitives::Circle`, `Primitives::Box`, `Primitives::Triangle`, `Primitives::Line`, `Primitives::Ramp`, `Primitives::SineWave`.
+- **Variables & Points**:
+  - `var(index)`: Accesses entity parameter float at `index` (`0` to `7`).
+  - `worldPoint()`: Returns the 2D evaluation coordinate (`worldPoint().x`, `worldPoint().y`).
+  - `time()`: Returns the current scene elapsed time.
+- **SDF Primitives**:
+  - `sdCircle(p, radius)`
+  - `sdBox(p, halfSize)`
+  - `sdSegment(p, a, b)`
+  - `sdLine(p, a, b, width)`
+  - `sdTriangle(p, width, height)`
+  - `sdRamp(p, width, height, skew)`
+  - `sdPolygon(p, vertices)`
+  - `sdTerrain(p, surfacePoints, valleyRadius)`
+  - `sdStar(p, radius, displacement, points, speed)`
+- **Transforms & CSG Combinations**:
+  - `translate(p, offset)`
+  - `rotate(p, angle)`
+  - `sdfUnion(a, b)` (or `min(a, b)`)
+  - `sdfSubtract(a, b)`
+  - `sdfIntersect(a, b)`
+  - `sdfSmoothUnion(a, b, radius)`
+  - `sdfSmoothSubtract(a, b, radius)`
+  - `sdfOnion(d, thickness)`
+  - `sdfRound(d, radius)`
+  - `sdfErode(d, radius)`
 
 ### Defining a Custom Ring SDF
 
 The following example builds a ring by subtracting an inner circle from an outer circle:
 
 ```cpp
-// Define variable index bindings
-auto x = std::make_shared<FloatVariable>(0);
-auto y = std::make_shared<FloatVariable>(1);
-auto outerRadius = std::make_shared<FloatVariable>(2);
-auto innerRadius = std::make_shared<FloatVariable>(3);
+using namespace WeirdEngine::SDF;
 
-// Construct primitive circles
-auto outer = std::make_shared<Primitives::Circle>(x, y, outerRadius);
-auto inner = std::make_shared<Primitives::Circle>(x, y, innerRadius);
+// Translate evaluation point by entity position: var(0) = X, var(1) = Y
+auto p = translate(worldPoint(), {var(0), var(1)});
 
-// Subtract inner circle from outer circle using Max(outer, -inner)
-auto negatedInner = std::make_shared<Multiplication>(-1.0f, inner);
-auto ringExpression = std::make_shared<Max>(outer, negatedInner);
+// Subtract inner circle (radius = var(3)) from outer circle (radius = var(2))
+Expr ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
 ```
 
 ---
@@ -102,13 +128,13 @@ auto ringExpression = std::make_shared<Max>(outer, negatedInner);
 
 ### Registering the SDF
 
-Register your expression tree with `services.shapes().registerSDF(...)` to obtain a `ShapeId`:
+Register your `Expr` directly with `services.shapes().registerSDF(expr)` to obtain a `ShapeId`:
 
 ```cpp
-ShapeId ringShapeId = services.shapes().registerSDF(ringExpression);
+ShapeId ringShapeId = services.shapes().registerSDF(ring);
 ```
 
-You can also register global default SDFs before scene start using `Scene::registerDefaultSDF(expression)`.
+You can also register global default SDFs before scene start using `Scene::registerDefaultSDF(ring)`.
 
 ### Adding the Custom Shape Entity
 
@@ -118,58 +144,22 @@ Pass a `ShapeConfig` struct to `addShape`. You can pass variables positionally o
 // 1. Positional syntax
 Entity ringEntity = services.shapes().addShape({
 	.shapeId = ringShapeId,
-	.variables = { 15.0f, 20.0f, 5.0f, 4.0f }, // POS_X, POS_Y, outerRadius, innerRadius
+	.variables = {15.0f, 10.0f, 5.0f, 4.0f}, // [pos_x, pos_y, outer_radius, inner_radius]
 	.material = ringMaterial,
 	.combination = CombinationType::Addition,
-	.hasCollision = true, // Enable collision
-	.group = 0            // Group index
+	.hasCollision = true,
+	.group = 0
 });
 
-// 2. Indexed offset syntax using constants (e.g. Primitives::Box or custom constants)
-static constexpr uint8_t POS_X = 0;
-static constexpr uint8_t POS_Y = 1;
-static constexpr uint8_t OUTER_R = 2;
-static constexpr uint8_t INNER_R = 3;
-
+// 2. Indexed offset syntax using constants
 Entity ringEntity2 = services.shapes().addShape({
 	.shapeId = ringShapeId,
-	.variables = {{POS_X, 15.0f}, {POS_Y, 20.0f}, {OUTER_R, 5.0f}, {INNER_R, 4.0f}},
+	.variables = {
+		{0, 30.0f}, // pos_x
+		{1, 5.0f},  // pos_y
+		{2, 6.0f},  // outer_radius
+		{3, 4.5f}   // inner_radius
+	},
 	.material = ringMaterial
 });
-
-// Adjust smooth factor on the CustomShape component
-registry.getComponent<CustomShape>(ringEntity).smoothFactor = 2.0f;
 ```
-
----
-
-## 5. Shape Combination Types
-
-When adding shapes to a scene, specify how the shape blends with existing scene geometry:
-
-- `CombinationType::Addition`: Standard CSG union (`min`).
-- `CombinationType::Subtraction`: CSG subtraction (`max(a, -b)`).
-- `CombinationType::SmoothAddition`: Smooth blending union.
-- `CombinationType::SmoothSubtraction`: Smooth blending subtraction.
-
-Example of creating a subtractive pit in the floor:
-
-```cpp
-services.shapes().addShape({
-	.shapeId = DefaultShapes::CIRCLE,
-	.variables = {{Primitives::Circle::POS_X, 30.0f}, {Primitives::Circle::POS_Y, 5.0f}, {Primitives::Circle::RADIUS, 4.0f}},
-	.material = 0, // No material required for subtraction
-	.combination = CombinationType::Subtraction,
-	.hasCollision = true,
-	.group = CustomShape::GLOBAL_GROUP
-});
-```
-
----
-
-## 6. Code Reference
-
-For full implementation examples of custom SDF registration, subtraction shapes, and parameter passing, see:
-
-`examples/sample-scenes/include/ServiceShowcaseScene.h`
-

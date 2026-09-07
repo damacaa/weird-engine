@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "weird-engine/math/CompiledMathExpressions.h"
 #include "weird-engine/math/MathExpressions.h"
 #include "weird-engine/math/Primitives3D.h"
 
@@ -20,7 +19,7 @@ namespace WeirdEngine
 	{
 		inline auto var(uint8_t index)
 		{
-			return std::make_shared<FloatVariable>(index);
+			return std::make_shared<detail::FloatVariable>(index);
 		}
 
 		inline const uint16_t PLANE =

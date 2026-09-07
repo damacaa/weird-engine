@@ -96,7 +96,7 @@ void main()
 
 	// New material color
 	vec4 c = vec4(1.0, 1.0, 1.0, 0.0);
-	if (materialId < 16)
+	if (materialId >= 0 && materialId < 16)
 	{
 		c = evaluatePattern(u_materials[materialId], worldPos, distance);
 	}

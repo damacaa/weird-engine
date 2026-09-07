@@ -18,11 +18,10 @@ public:
 		using namespace SDF;
 		Vec2Expr p = SDF::songPoint();
 
-		// Typographic serif bar: horizontal line glyph with serifs (boxes) (scaled 10x for UI)
-		Expr hBar = sdBox(p, Vec2Expr(25.0f, 4.0f));
-		Expr leftSerif = sdBox(p + Vec2Expr(22.0f, 0.0f), Vec2Expr(3.0f, 12.0f));
-		Expr rightSerif = sdBox(p - Vec2Expr(22.0f, 0.0f), Vec2Expr(3.0f, 12.0f));
-		Expr textShape = sdfUnion(sdfUnion(hBar, leftSerif), rightSerif);
+		Expr vBar = sdBox(p, Vec2Expr(4.0f, 25.0f));
+		Expr hBar = sdBox(translate(p, Vec2Expr(0.0f, 22.0f)), Vec2Expr(18.0f, 6.0f));
+
+		Expr textShape = sdfUnion(vBar, hBar);
 
 		return WeirdRenderer::SdfSong::create("text", textShape);
 	}

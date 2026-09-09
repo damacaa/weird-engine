@@ -213,6 +213,7 @@ namespace WeirdEngine
 		constexpr uint8_t TIME = 8;
 		constexpr uint8_t POINT_X = 9;
 		constexpr uint8_t POINT_Y = 10;
+		constexpr uint8_t AUDIO_VOLUME = 11;
 	} // namespace SystemParams
 
 	inline Expr var(int index)
@@ -223,6 +224,11 @@ namespace WeirdEngine
 	inline Expr time()
 	{
 		return var(SystemParams::TIME);
+	}
+
+	inline Expr audioVolume()
+	{
+		return var(SystemParams::AUDIO_VOLUME);
 	}
 
 	inline Vec2Expr point()

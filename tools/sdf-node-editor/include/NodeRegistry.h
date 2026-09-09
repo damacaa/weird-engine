@@ -245,6 +245,14 @@ namespace WeirdEngine::Editor
 							 [](const auto&, const auto&) { return NodeValue(time()); },
 							 [](const auto&, const auto&) { return "time()"; }});
 
+		registerNode(NodeDef{"audio_volume",
+							 "Audio Volume",
+							 NodeCategory::Input,
+							 {},
+							 {{"vol", PinType::Float}},
+							 [](const auto&, const auto&) { return NodeValue(audioVolume()); },
+							 [](const auto&, const auto&) { return "audioVolume()"; }});
+
 		registerNode(NodeDef{"point",
 							 "Sample Point (p)",
 							 NodeCategory::Input,

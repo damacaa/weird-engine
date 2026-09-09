@@ -2,6 +2,7 @@
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 #include <memory>
 #include <vector>
@@ -29,13 +30,14 @@ namespace WeirdEngine
 				[&](Entity buttonOwner, ShapeButton& buttonComponent, UIShape& shape)
 				{
 					{
-						float parameters[11];
+						float parameters[12];
 
 						std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 
 						parameters[8] = time;
 						parameters[9] = Input::GetMouseX();
 						parameters[10] = Input::GetMouseY();
+						parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						buttonComponent.hovered = distance < buttonComponent.clickPadding;
@@ -105,13 +107,14 @@ namespace WeirdEngine
 				[&](Entity toggleOwner, ShapeToggle& toggleComponent, UIShape& shape)
 				{
 					{
-						float parameters[11];
+						float parameters[12];
 
 						std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 
 						parameters[8] = time;
 						parameters[9] = Input::GetMouseX();
 						parameters[10] = Input::GetMouseY();
+						parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						toggleComponent.hovered = distance < toggleComponent.clickPadding;

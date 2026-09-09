@@ -198,6 +198,16 @@ namespace WeirdEngine
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
+		void setAudioVolume(float volume)
+		{
+			m_audioVolume.store(volume, std::memory_order_relaxed);
+		}
+
+		float getAudioVolume() const
+		{
+			return m_audioVolume.load(std::memory_order_relaxed);
+		}
+
 		std::shared_ptr<SpatialGridSnapshot> getSpatialGridSnapshot()
 		{
 			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
@@ -517,6 +527,8 @@ namespace WeirdEngine
 
 		mutable std::mutex m_statsMutex;
 		PerformanceStats m_stats;
+
+		std::atomic<float> m_audioVolume{0.0f};
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

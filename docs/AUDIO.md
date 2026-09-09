@@ -290,6 +290,6 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `getTempo() const / setTempo(float bpm)` | Gets or sets playback tempo (automatically calculated from shape if unspecified). |
 | `getScale() const / setScale(MusicalScale scale)` | Gets or sets musical scale (`PentatonicMajor`, `PentatonicMinor`, `Major`, `NaturalMinor`, `Dorian`, `Lydian`). |
 | `getRootMidi() const / setRootMidi(int root)` | Gets or sets root MIDI note (55–67). |
-| `getParameter(size_t i) / setParameter(size_t i, float v)` | Gets or sets dynamic shape variable (indices 0–6; index 7 is reserved internally for procedural music visualization scaling). |
+| `getParameter(size_t i) / setParameter(size_t i, float v)` | Gets or sets dynamic shape variable (indices 0–7). |
 | `getCenter() const / setCenter(vec2 center)` | Gets or sets screen anchor coordinate. |
 | `getShapeExpression() const` | Returns the bounded AST shape expression ($50\text{ px}$ domain circle applied). |

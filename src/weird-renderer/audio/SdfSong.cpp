@@ -66,8 +66,8 @@ namespace WeirdEngine
 			// Bounding domain: Always intersect the provided shape with a sphere/circle of radius 50.0 centered at song
 			// center, applying the internal scale node on parameter 7 for visualization
 			Expr scaleFactor = WeirdEngine::max(var(7), Expr(0.001f));
-			Expr scaledX = Expr(m_center.x) + (var(9) - m_center.x) / scaleFactor;
-			Expr scaledY = Expr(m_center.y) + (var(10) - m_center.y) / scaleFactor;
+			Expr localX = (var(9) - m_center.x) / scaleFactor;
+			Expr localY = (var(10) - m_center.y) / scaleFactor;
 
 			auto transformedRaw =
 				transformAST(m_rawShapeExpression,
@@ -77,16 +77,16 @@ namespace WeirdEngine
 								 if (varNode)
 								 {
 									 if (varNode->getOffset() == 9)
-										 return scaledX.node;
+										 return localX.node;
 									 if (varNode->getOffset() == 10)
-										 return scaledY.node;
+										 return localY.node;
 								 }
 								 return node;
 							 });
 
 			Expr rawTransformed(transformedRaw);
 			Expr scaled = SDF::sdfScale(rawTransformed, scaleFactor);
-			Expr domain = SDF::sdCircle(localPoint(), DOMAIN_RADIUS);
+			Expr domain = SDF::sdCircle(point() - Vec2Expr(m_center), DOMAIN_RADIUS);
 			m_boundedShapeExpression = SDF::sdfIntersect(scaled, domain).node;
 		}
 
@@ -158,8 +158,8 @@ namespace WeirdEngine
 			{
 				float localP[11];
 				std::copy_n(p, 11, localP);
-				localP[9] = m_center.x + px;
-				localP[10] = m_center.y + py;
+				localP[9] = px;
+				localP[10] = py;
 				return m_rawShapeExpression->getValue(localP);
 			};
 

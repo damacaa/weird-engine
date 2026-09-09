@@ -703,6 +703,7 @@ namespace WeirdEngine
 
 		// Motion & Domain Fill Inspection
 		float getMotionLevel() const;
+		float getMotionNorm() const;
 		float getFillRatio() const;
 		float getTempoFromMotion() const;
 		float getVolumeFromFill() const;

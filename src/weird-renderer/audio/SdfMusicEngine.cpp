@@ -19,7 +19,7 @@ namespace WeirdEngine
 			{
 				if (!song)
 					return true;
-				return song->getShapeExpression() == nullptr;
+				return song->getRawShapeExpression() == nullptr;
 			}
 
 			float stepHash(int step, int salt)
@@ -89,20 +89,18 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::sampleShapeParameters()
 		{
-			if (!m_currentSong || !m_currentSong->getShapeExpression())
+			if (!m_currentSong || !m_currentSong->getRawShapeExpression())
 			{
 				m_shapeParams = ShapeMusicalParams{};
 				return;
 			}
 
-			auto shape = m_currentSong->getShapeExpression();
+			auto shape = m_currentSong->getRawShapeExpression();
 			float r = m_currentSong->getSampleRadius();
 			if (r <= 0.01f)
 			{
 				r = 20.0f;
 			}
-
-			glm::vec2 center = m_currentSong->getCenter();
 
 			float params[12]{};
 			for (size_t i = 0; i < 8; ++i)
@@ -110,12 +108,12 @@ namespace WeirdEngine
 				params[i] = m_currentSong->getParameter(i);
 			}
 			params[8] = 0.0f; // Static time for parameter sampling
-			params[11] = m_volume;
+			params[11] = 0.0f;
 
 			auto evalAt = [&](float px, float py) -> float
 			{
-				params[9] = center.x + px;
-				params[10] = center.y + py;
+				params[9] = px;
+				params[10] = py;
 				return shape->getValue(params);
 			};
 
@@ -203,11 +201,10 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::sampleDomainMotionAndFill(double sceneTime)
 		{
-			if (!m_currentSong || !m_currentSong->getShapeExpression())
+			if (!m_currentSong || !m_currentSong->getRawShapeExpression())
 				return;
 
-			auto shape = m_currentSong->getShapeExpression();
-			glm::vec2 center = m_currentSong->getCenter();
+			auto shape = m_currentSong->getRawShapeExpression();
 
 			static const auto sampleOffsets = createDomainSamples();
 
@@ -221,23 +218,20 @@ namespace WeirdEngine
 			constexpr float dtSample = 0.08f;
 			paramsT0[8] = static_cast<float>(sceneTime);
 			paramsT1[8] = static_cast<float>(sceneTime + dtSample);
-			paramsT0[11] = m_volume;
-			paramsT1[11] = m_volume;
+			paramsT0[11] = 0.0f;
+			paramsT1[11] = 0.0f;
 
 			float totalMotion = 0.0f;
 			int insideCount = 0;
 
 			for (const auto& offset : sampleOffsets)
 			{
-				float px = center.x + offset.x;
-				float py = center.y + offset.y;
-
-				paramsT0[9] = px;
-				paramsT0[10] = py;
+				paramsT0[9] = offset.x;
+				paramsT0[10] = offset.y;
 				float d0 = shape->getValue(paramsT0);
 
-				paramsT1[9] = px;
-				paramsT1[10] = py;
+				paramsT1[9] = offset.x;
+				paramsT1[10] = offset.y;
 				float d1 = shape->getValue(paramsT1);
 
 				if (d0 < 0.0f)

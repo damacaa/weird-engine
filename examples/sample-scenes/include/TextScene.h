@@ -16,7 +16,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		Expr vBar = sdBox(p, Vec2Expr(4.0f, 25.0f));
 		Expr hBar = sdBox(translate(p, Vec2Expr(0.0f, 22.0f)), Vec2Expr(18.0f, 6.0f));

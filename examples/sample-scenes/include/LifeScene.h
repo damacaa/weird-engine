@@ -29,7 +29,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		// Organic cellular cluster (smooth-blended multi-circle organism) (scaled 10x for UI)
 		Expr c1 = sdCircle(translate(p, Vec2Expr(sin(time()) * 30.0f, 0.0f)), 12.0f);

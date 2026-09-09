@@ -15,7 +15,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = point();
 
 		// Bouncy cursor circle intersecting an offset box (scaled 10x for UI)
 		Expr circle = sdCircle(p, 18.0f);

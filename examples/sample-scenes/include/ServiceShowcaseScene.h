@@ -134,7 +134,7 @@ namespace ServiceShowcase
 	inline std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = point();
 
 		// Radiant multi-pointed star shape (scaled 10x for UI)
 		Expr star = sdStar(p, 25.0f, 12.0f, 6.0f, 0.0f);
@@ -191,7 +191,7 @@ namespace ServiceShowcase
 		ShapeId ringShape;
 		{
 			using namespace SDF;
-			auto p = translate(worldPoint(), {var(0), var(1)});
+			auto p = translate(point(), {var(0), var(1)});
 			auto ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
 
 			ringShape = services.shapes().registerSDF(ring);

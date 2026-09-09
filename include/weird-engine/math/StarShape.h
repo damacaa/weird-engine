@@ -7,7 +7,7 @@ namespace WeirdEngine
 	inline Expr getStarShape()
 	{
 		using namespace SDF;
-		auto p = translate(worldPoint(), {var(0), var(1)});
+		auto p = translate(point(), {var(0), var(1)});
 		auto radius = var(2);
 		auto displacement = var(3);
 		auto points = var(4);

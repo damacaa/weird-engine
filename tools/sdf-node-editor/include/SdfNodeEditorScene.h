@@ -93,28 +93,6 @@ namespace WeirdEngine::Editor
 
 			ImNodes::CreateContext();
 			ImNodes::StyleColorsDark();
-			ImGui::StyleColorsDark();
-
-			// Neutral gray ImGui theme (pure grays without blue tint)
-			ImGuiStyle& imguiStyle = ImGui::GetStyle();
-			imguiStyle.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_PopupBg] = ImVec4(0.13f, 0.13f, 0.13f, 0.98f);
-			imguiStyle.Colors[ImGuiCol_Border] = ImVec4(0.24f, 0.24f, 0.24f, 0.70f);
-			imguiStyle.Colors[ImGuiCol_FrameBg] = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_TitleBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.16f, 0.16f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_Tab] = ImVec4(0.14f, 0.14f, 0.14f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_TabHovered] = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.26f, 0.26f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_HeaderActive] = ImVec4(0.32f, 0.32f, 0.32f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_Button] = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.28f, 0.28f, 1.0f);
-			imguiStyle.Colors[ImGuiCol_ButtonActive] = ImVec4(0.36f, 0.36f, 0.36f, 1.0f);
 
 			// Setup neutral gray node styling
 			ImNodesStyle& style = ImNodes::GetStyle();

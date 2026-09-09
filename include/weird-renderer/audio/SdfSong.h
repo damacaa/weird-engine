@@ -32,7 +32,7 @@ namespace WeirdEngine
 			static glm::vec2 getDefaultCenter();
 			static Vec2Expr point()
 			{
-				return WeirdEngine::songPoint();
+				return WeirdEngine::point();
 			}
 
 			SdfSong(std::string name, std::shared_ptr<IMathExpression> shapeExpression = nullptr,
@@ -101,11 +101,6 @@ namespace WeirdEngine
 				return m_center;
 			}
 			void setCenter(glm::vec2 center);
-
-			Vec2Expr localPoint() const
-			{
-				return SDF::localPoint(m_center);
-			}
 
 			std::shared_ptr<IMathExpression> getShapeExpression() const
 			{

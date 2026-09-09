@@ -110,6 +110,10 @@ namespace WeirdEngine
 			{
 				return m_motionLevel;
 			}
+			float getMotionNorm() const
+			{
+				return m_motionNorm;
+			}
 			float getFillRatio() const
 			{
 				return m_fillRatio;
@@ -160,6 +164,7 @@ namespace WeirdEngine
 
 			// Dynamic motion & domain fill evaluation
 			float m_motionLevel = 0.0f;
+			float m_motionNorm = 0.0f;
 			float m_fillRatio = 0.5f;
 			float m_tempoFromMotion = 1.0f;
 			float m_volumeFromFill = 0.65f;

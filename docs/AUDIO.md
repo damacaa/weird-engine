@@ -73,11 +73,10 @@ To prevent arbitrarily large shapes from distorting procedural analysis or filli
   $$\text{shape}_{\text{bounded}}(p) = \max(\text{shape}_{\text{user}}(p),\, \|p\| - 50.0)$$
 - Compass probing and symmetry analysis occur at **`SAMPLE_RADIUS = 20.0f`**.
 
-### 2.3 Universal Top-Left UI Alignment & `songPoint()`
+### 2.3 Universal Top-Left UI Alignment & `point()`
 Every song's governing shape is displayed as a UI element in the top-left corner of the screen:
-- **`songPoint()`**: A parameterless helper returning local coordinates centered at the UI top-left anchor:
-  $$\text{songPoint}() = (p_x - 70.0,\, p_y - (\text{Display::height} - 70.0))$$
-- When defining a shape with `Vec2Expr p = songPoint();`, local coordinate $(0, 0)$ in $p$ is centered in the top-left corner with 20px padding from the window borders.
+- **`point()`**: A canonical parameterless helper returning local coordinates centered at $(0, 0)$.
+- In procedural songs, `SdfSong` automatically applies domain bounding and maps screen/UI sample points so $(0, 0)$ is centered at the song's screen anchor.
 - Calling `services.audio().setSong(song)` automatically registers the shape in the UI pipeline as a `UIShape` entity.
 
 ---
@@ -183,7 +182,7 @@ When rigid bodies collide with ground surfaces or other bodies:
 
 ### 6.1 Creating a Scene Song with Automated UI Placement
 
-To create a song for a scene, define the shape using `songPoint()`. No knowledge of window dimensions or center coordinates is required:
+To create a song for a scene, define the shape using `point()`. No knowledge of window dimensions or center coordinates is required:
 
 ```cpp
 #include "weird-renderer/audio/SdfSong.h"
@@ -194,8 +193,8 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		// songPoint() automatically binds to the top-left UI screen coordinates
-		Vec2Expr p = songPoint();
+		// point() provides local coordinates centered at (0, 0)
+		Vec2Expr p = point();
 
 		// Construct any 2D SDF shape centered at (0, 0) in p:
 		Expr star = sdStar(p, 25.0f, 12.0f, 6.0f, 0.0f);
@@ -237,7 +236,7 @@ You can bind parameters `var(0)` through `var(7)` to shape expressions and tweak
 static std::shared_ptr<WeirdRenderer::SdfSong> createAnimatedSong()
 {
 	using namespace SDF;
-	Vec2Expr p = songPoint();
+	Vec2Expr p = point();
 
 	// var(0) = radius, var(1) = displacement, var(2) = points count, var(3) = rotation speed
 	Expr star = sdStar(p, Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3)));
@@ -279,6 +278,7 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `surge(float amount = 0.5f)` | Temporarily surges music energy and volume. |
 | `duck(float amount = 0.5f)` | Ducks music volume during dialogue or important sound effects. |
 | `getMotionLevel() const` | Returns current geometric motion level measured from the SDF shape. |
+| `getMotionNorm() const` | Returns normalized geometric motion level in [0.0, 1.0]. |
 | `getFillRatio() const` | Returns domain fill ratio (percentage of volume inside the shape). |
 
 ### `WeirdRenderer::SdfSong`
@@ -286,7 +286,7 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | Method | Description |
 |---|---|
 | `static create(string name, const Expr& shape, optional<vec2> center = nullopt)` | Creates a procedural song. Center defaults to top-left screen anchor `(70, H - 70)`. |
-| `static point()` | Alias for `WeirdEngine::songPoint()`. Returns anchor-transformed `Vec2Expr`. |
+| `static point()` | Alias for `WeirdEngine::point()`. Returns local `Vec2Expr`. |
 | `getTempo() const / setTempo(float bpm)` | Gets or sets playback tempo (automatically calculated from shape if unspecified). |
 | `getScale() const / setScale(MusicalScale scale)` | Gets or sets musical scale (`PentatonicMajor`, `PentatonicMinor`, `Major`, `NaturalMinor`, `Dorian`, `Lydian`). |
 | `getRootMidi() const / setRootMidi(int root)` | Gets or sets root MIDI note (55–67). |

@@ -357,12 +357,24 @@ namespace WeirdEngine
 				runtimeContext.autoQuitAt = runtimeContext.time + seconds;
 			}
 		}
+
+		if (SDL_getenv("WEIRD_RECORD_PROFILER"))
+		{
+			Profiler::get().startRecording();
+		}
 #endif
 
 		while (!runtimeContext.quit)
 		{
 			Detail::runFrame(runtimeContext);
 		}
+
+#ifdef WEIRD_TEST_HOOKS
+		if (SDL_getenv("WEIRD_RECORD_PROFILER"))
+		{
+			std::cout << Profiler::get().getReportString() << std::endl;
+		}
+#endif
 
 		WeirdEngine::Logger::log("Quitting...");
 #endif

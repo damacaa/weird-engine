@@ -78,6 +78,7 @@ namespace WeirdEngine
 			m_melodyDegree = 0;
 			m_shapeParams = ShapeMusicalParams{};
 			m_motionLevel = 0.0f;
+			m_motionNorm = 0.0f;
 			m_fillRatio = 0.5f;
 			m_tempoFromMotion = 1.0f;
 			m_volumeFromFill = 0.65f;
@@ -98,11 +99,10 @@ namespace WeirdEngine
 			float r = m_currentSong->getSampleRadius();
 			if (r <= 0.01f)
 			{
-				r = 2.0f;
+				r = 20.0f;
 			}
 
 			glm::vec2 center = m_currentSong->getCenter();
-			float k = 0.70710678f;
 
 			float params[11];
 			for (size_t i = 0; i < 8; ++i)
@@ -118,32 +118,86 @@ namespace WeirdEngine
 				return shape->getValue(params);
 			};
 
+			// 1. Center depth analysis: measures core thickness / hollowness at (0, 0)
+			// dCenter < 0 indicates solid mass (e.g. -4px for slender text, -30px for massive star)
+			// dCenter > 0 indicates hollow center
 			float dCenter = evalAt(0.0f, 0.0f);
-			float dEast = evalAt(r, 0.0f);
-			float dNorth = evalAt(0.0f, r);
-			float dSouth = evalAt(0.0f, -r);
-			float dNE = evalAt(r * k, r * k);
-			float dNW = evalAt(-r * k, r * k);
-			float dSE = evalAt(r * k, -r * k);
-			float dSW = evalAt(-r * k, -r * k);
+			float centerDepth = std::clamp((-dCenter + 4.0f) / 36.0f, 0.0f, 1.0f);
+			m_shapeParams.tempoFactor = 0.72f + 0.56f * centerDepth; // [0.72, 1.28]
 
-			float p0 = distToParam(dCenter, 1.8f);
-			float p1 = distToParam(dEast, 1.8f);
-			float p2 = distToParam(dNorth, 1.8f);
-			float p3 = distToParam(dSouth, 1.8f);
-			float p4 = distToParam(dNE, 1.8f);
-			float p5 = distToParam(dNW, 1.8f);
-			float p6 = distToParam(dSE, 1.8f);
-			float p7 = distToParam(dSW, 1.8f);
+			// 2. Multi-point directional profiling across 8 compass directions:
+			// Directions: 0=E, 1=NE, 2=N, 3=NW, 4=W, 5=SW, 6=S, 7=SE
+			// To avoid spatial Nyquist aliasing on spoke/star shapes, each direction uses a 3-point angular kernel
+			constexpr float PI = 3.14159265358979323846f;
+			constexpr float deltaAngle = 0.18f; // ~10 degrees aperture
+			float R[8];
+			float meanR = 0.0f;
 
-			m_shapeParams.tempoFactor = 0.75f + 0.50f * p0; // [0.75, 1.25]
-			m_shapeParams.melodyDensity = p1;
-			m_shapeParams.harmonyRichness = p2;
-			m_shapeParams.bassWeight = p3;
-			m_shapeParams.percEnergy = p4;
-			m_shapeParams.brightness = p5;
-			m_shapeParams.syncopation = p6;
-			m_shapeParams.variation = p7;
+			for (int i = 0; i < 8; ++i)
+			{
+				float baseAngle = static_cast<float>(i) * (PI * 0.25f);
+				float dMid = evalAt(r * std::cos(baseAngle), r * std::sin(baseAngle));
+				float dNeg = evalAt(r * std::cos(baseAngle - deltaAngle), r * std::sin(baseAngle - deltaAngle));
+				float dPos = evalAt(r * std::cos(baseAngle + deltaAngle), r * std::sin(baseAngle + deltaAngle));
+				float dAvg = 0.5f * dMid + 0.25f * (dNeg + dPos);
+
+				// Physical boundary reach estimate along this direction:
+				// If dAvg < 0 (point is inside), boundary extends past r: R = r + |d| = r - dAvg
+				// If dAvg > 0 (point is outside), boundary stops before r: R = r - dAvg
+				R[i] = std::max(0.0f, r - dAvg);
+				meanR += R[i];
+			}
+			meanR /= 8.0f;
+
+			// Variance / standard deviation across all 8 directions
+			float varSum = 0.0f;
+			for (int i = 0; i < 8; ++i)
+			{
+				float diff = R[i] - meanR;
+				varSum += diff * diff;
+			}
+			float stdDevR = std::sqrt(varSum / 8.0f);
+			float relVar = std::clamp(stdDevR / 8.0f, 0.0f, 1.0f);
+
+			// Directional asymmetries:
+			// E(0) vs W(4), N(2) vs S(6), NE(1) vs SW(5), NW(3) vs SE(7)
+			float asymHoriz = std::abs(R[0] - R[4]) / (R[0] + R[4] + 2.0f);
+			float asymVert = std::abs(R[2] - R[6]) / (R[2] + R[6] + 2.0f);
+			float asymDiag = (std::abs(R[1] - R[5]) + std::abs(R[3] - R[7])) / (R[1] + R[5] + R[3] + R[7] + 2.0f);
+			float totalAsym = std::clamp((asymHoriz + asymVert + asymDiag) * 0.75f, 0.0f, 1.0f);
+
+			// Normalized directional boundary extents (typical shapes span 3px to 32px boundary reach):
+			auto normExtent = [](float reach) -> float { return std::clamp((reach - 3.0f) / 27.0f, 0.0f, 1.0f); };
+
+			float extE = normExtent(R[0]);	// East
+			float extNE = normExtent(R[1]); // North-East
+			float extN = normExtent(R[2]);	// North
+			float extNW = normExtent(R[3]); // North-West
+			float extSW = normExtent(R[5]); // South-West
+			float extS = normExtent(R[6]);	// South
+			float extSE = normExtent(R[7]); // South-East
+
+			// 3. Map to musical parameters:
+			// Melody Density: horizontal extension along East (active lead vs sparse phrasing)
+			m_shapeParams.melodyDensity = std::clamp(0.18f + 0.68f * extE, 0.15f, 0.90f);
+
+			// Harmony Richness: vertical presence along North (sparse dyads vs 7th chords)
+			m_shapeParams.harmonyRichness = std::clamp(0.18f + 0.68f * extN, 0.15f, 0.90f);
+
+			// Bass Weight: downward grounded mass along South (deep foundation vs agile bass)
+			m_shapeParams.bassWeight = std::clamp(0.28f + 0.60f * extS, 0.28f, 0.92f);
+
+			// Percussion Energy: diagonal reach along NE combined with radial irregularity
+			m_shapeParams.percEnergy = std::clamp(0.15f + 0.52f * extNE + 0.28f * relVar, 0.15f, 0.92f);
+
+			// Brightness: spectral clarity and higher octaves along NW
+			m_shapeParams.brightness = std::clamp(0.20f + 0.65f * extNW, 0.15f, 0.88f);
+
+			// Syncopation: rhythmic offbeats driven by geometric asymmetry and SE reach
+			m_shapeParams.syncopation = std::clamp(0.16f + 0.46f * totalAsym + 0.24f * extSE, 0.12f, 0.85f);
+
+			// Variation: chord progression complexity and melodic jumps driven by variance and SW reach
+			m_shapeParams.variation = std::clamp(0.20f + 0.45f * relVar + 0.25f * extSW, 0.15f, 0.90f);
 		}
 
 		void SdfMusicEngine::sampleDomainMotionAndFill(double sceneTime)
@@ -196,14 +250,18 @@ namespace WeirdEngine
 			float currentFill = static_cast<float>(insideCount) / static_cast<float>(NUM_DOMAIN_SAMPLES);
 
 			// Smooth with exponential moving average
-			m_motionLevel += (avgMotion - m_motionLevel) * 0.25f;
+			m_motionLevel += (avgMotion - m_motionLevel) * 0.20f;
 			m_fillRatio += (currentFill - m_fillRatio) * 0.25f;
 
 			// Motion controls overall tempo:
 			// If motion == 0 (completely still): tempo drops to 0.38x (very slow!)
+			// If motion is moderate (normal movement): tempo is ~1.0x
 			// If motion is high (moving/spinning): tempo goes up to 1.60x (high tempo!)
-			float motionNorm = std::clamp(m_motionLevel / 25.0f, 0.0f, 1.0f);
-			m_tempoFromMotion = 0.38f + 1.22f * std::pow(motionNorm, 0.75f);
+			// Scaled with 100.0f denominator and gentle ease-in (pow 1.25) to prevent
+			// hypersensitivity on slight movements.
+			float motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
+			m_motionNorm = motionNorm;
+			m_tempoFromMotion = 0.38f + 1.22f * std::pow(motionNorm, 1.25f);
 
 			// Fill ratio controls volume:
 			// Bigger shape -> higher fill ratio -> louder volume
@@ -467,7 +525,7 @@ namespace WeirdEngine
 			// Motion dictates pause frequency and note sustained duration:
 			// If motion is low (still shape): notes ring out longer and pauses are frequent.
 			// If motion is high (rapid moving shape): notes are shorter, active, continuous groove.
-			float motionFactor = std::clamp(m_motionLevel / 2.0f, 0.0f, 1.0f);
+			float motionFactor = m_motionNorm;
 			float noteLengthMult = 1.6f - 0.6f * motionFactor;
 
 			// -------------------------------------------------------------
@@ -513,16 +571,17 @@ namespace WeirdEngine
 					freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
 				}
 
-				float cutoff = 350.0f + 350.0f * m_shapeParams.bassWeight;
-				float dur = beatSec * 0.95f * noteLengthMult;
-				float vel = 0.65f + 0.30f * m_shapeParams.bassWeight;
+				float cutoff = 420.0f + 380.0f * m_shapeParams.bassWeight;
+				float dur = beatSec * 1.05f * noteLengthMult;
+				float vel = 0.72f + 0.23f * m_shapeParams.bassWeight;
 
 				playNote(freq, vel, dur, 1, 0.0f, cutoff);
 
 				// Sub-bass doubling for powerful, tactile low end
-				if (m_shapeParams.bassWeight > 0.35f)
+				if (m_shapeParams.bassWeight > 0.20f)
 				{
-					playNote(freq * 0.5f, vel * 0.70f, dur * 1.1f, 0, 0.0f, 160.0f);
+					float subVel = vel * (0.55f + 0.25f * m_shapeParams.bassWeight);
+					playNote(freq * 0.5f, subVel, dur * 1.15f, 1, 0.0f, 220.0f);
 				}
 			}
 
@@ -632,8 +691,8 @@ namespace WeirdEngine
 
 			if (triggerKick)
 			{
-				float kickVel = 0.70f + 0.25f * effPercEnergy;
-				playNote(60.0f, kickVel, 0.28f, 5, 0.0f, 400.0f); // instrument 5 = Kick
+				float kickVel = 0.78f + 0.20f * effPercEnergy;
+				playNote(60.0f, kickVel, 0.34f, 5, 0.0f, 500.0f); // instrument 5 = Kick
 			}
 
 			// Snare / Clap on beats 2 & 4 (step 4 and 12)
@@ -785,11 +844,11 @@ namespace WeirdEngine
 							rawSample = 0.70f * noise + 0.30f * metallic;
 							break;
 						}
-						case 1: // Warm Bass: Rich fundamental + warm second harmonic + subtle warmth
+						case 1: // Warm Bass: Rich fundamental + warm harmonics for full-bodied low end
 						{
 							float p = voice.phase;
-							rawSample = 0.78f * sinf(p) + 0.30f * sinf(p * 2.0f) +
-										0.12f * (1.0f - p / static_cast<float>(M_PI));
+							rawSample = 0.72f * sinf(p) + 0.35f * sinf(p * 2.0f) + 0.12f * sinf(p * 3.0f) +
+										0.08f * (1.0f - p / static_cast<float>(M_PI));
 							break;
 						}
 						case 2: // Square

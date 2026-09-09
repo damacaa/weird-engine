@@ -180,14 +180,10 @@ void main()
 	float aspectRatio = u_resolution.x / u_resolution.y;
 	float overscanScale = 1.0 + u_overscan;
 
-#ifdef UI_PIPELINE
-	vec2 worldPos = screenUV * vec2(aspectRatio, 1.0) * zoom;
-#else
 	vec2 uv = (2.0 * screenUV) - 1.0;
 	uv *= overscanScale;
 	uv.x *= aspectRatio;
 	vec2 worldPos = (zoom * uv) - u_camMatrix[3].xy;
-#endif
 
 #ifdef SHADOWS_ENABLED
 	float correctedDistance = mapOutside(screenUV);

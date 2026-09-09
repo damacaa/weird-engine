@@ -135,6 +135,7 @@ namespace WeirdEngine
 		virtual void onUpdate(Registry& registry, ServiceProvider& services) {};
 		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
 		virtual void onImGuiRender(Registry& registry, ServiceProvider& services) {};
+		virtual void onCustomUI(Registry& registry, ServiceProvider& services) {};
 		virtual void onRender(Registry& registry, ServiceProvider& services,
 							  WeirdRenderer::RenderTarget& renderTarget) {};
 
@@ -183,6 +184,7 @@ namespace WeirdEngine
 		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
 		void renderImGui();
+		void renderCustomUI();
 		void renderPhysicsStatsUI();
 
 		// ---- Scene state access (engine-driven)

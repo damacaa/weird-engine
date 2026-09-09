@@ -177,6 +177,8 @@ namespace WeirdEngine
 				ImGui_ImplSDL3_NewFrame();
 				ImGui::NewFrame();
 
+				scene.renderCustomUI();
+
 				if (m_showDebugUI)
 				{
 					ImGui::Begin("Engine Settings");

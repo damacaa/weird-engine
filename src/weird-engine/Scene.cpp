@@ -186,6 +186,7 @@ namespace WeirdEngine
 		m_services.tags().tag(m_mainCamera, "mainCamera");
 		Transform& t = m_registry.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
+		t.position = vec3(0.0f, 0.0f, 35.0f);
 		ECS::Camera& c = m_registry.addComponent<ECS::Camera>(m_mainCamera);
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
@@ -758,6 +759,11 @@ namespace WeirdEngine
 		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getMotionLevel();
 	}
 
+	float AudioService::getMotionNorm() const
+	{
+		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getMotionNorm();
+	}
+
 	float AudioService::getFillRatio() const
 	{
 		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getFillRatio();
@@ -1302,6 +1308,13 @@ namespace WeirdEngine
 		ImGui::Text("  Collisions:  %.3f ms", simStats.collisionEventsMs);
 		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
 		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
+#endif
+	}
+
+	void Scene::renderCustomUI()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		onCustomUI(m_registry, m_services);
 #endif
 	}
 } // namespace WeirdEngine

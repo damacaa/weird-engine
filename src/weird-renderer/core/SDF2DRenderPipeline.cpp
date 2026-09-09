@@ -362,8 +362,14 @@ namespace WeirdEngine
 				renderBackground(camera, time, bgParams);
 			}
 
-			// Dynamically set shadow tint based on background primary color to simulate global sky ambient
-			glm::vec3 hsvAmbient = glm::hsvColor(glm::vec3(bgParams.primaryColor));
+			// Dynamically set shadow tint based on background primary color to simulate global sky ambient.
+			// glm::hsvColor() leaves hue undefined for achromatic colors, so neutral gray backgrounds can produce
+			// NaNs that poison the final lighting mix even when shadows are disabled.
+			glm::vec3 backgroundRgb = glm::vec3(bgParams.primaryColor);
+			float maxChannel = std::max(backgroundRgb.r, std::max(backgroundRgb.g, backgroundRgb.b));
+			float minChannel = std::min(backgroundRgb.r, std::min(backgroundRgb.g, backgroundRgb.b));
+			glm::vec3 hsvAmbient =
+				maxChannel - minChannel > 1e-6f ? glm::hsvColor(backgroundRgb) : glm::vec3(0.0f, 0.0f, maxChannel);
 
 			// Shift hue slightly (e.g. +15 degrees) to make shadows more interesting
 			hsvAmbient.x += 15.0f;

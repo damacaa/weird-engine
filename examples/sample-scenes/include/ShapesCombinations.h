@@ -17,8 +17,8 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		// Local coordinate p automatically transformed to UI top-left corner
-		Vec2Expr p = songPoint();
+		// Local coordinate p centered at (0, 0)
+		Vec2Expr p = point();
 
 		// Shape parameters (scaled 10x for UI):
 		// var(0): Outer radius (default 30.0f)

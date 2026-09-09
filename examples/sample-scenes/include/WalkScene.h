@@ -30,7 +30,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		// Footstep path shape: rounded box path with stepping stone circles (scaled 10x for UI)
 		Expr path = sdBox(p, Vec2Expr(30.0f, 6.0f));

@@ -115,8 +115,8 @@ It supports vector addition, subtraction, scalar multiplication, and scalar divi
 ```cpp
 inline Expr var(int index);
 inline Expr time();
-inline Vec2Expr worldPoint();
-inline Vec2Expr uiPoint();
+inline Vec2Expr point();
+inline Vec2Expr samplePoint();
 ```
 
 The parameter convention is:
@@ -125,10 +125,8 @@ The parameter convention is:
 |---|---|
 | `var0` through `var7` | Shape-specific parameters. |
 | `var8` | Time. |
-| `var9` | World X. |
-| `var10` | World Y. |
-| `var11` | UI X. |
-| `var12` | UI Y. |
+| `var9` | Sample Point X. |
+| `var10` | Sample Point Y. |
 
 ### 2D SDF Functions
 
@@ -293,7 +291,7 @@ It constructs a star SDF from:
 - `var4`: points
 - `var5`: speed
 
-The expression is built using `SDF::translate`, `SDF::worldPoint`, and `SDF::sdStar`.
+The expression is built using `SDF::translate`, `SDF::point`, and `SDF::sdStar`.
 
 ## Compiled Math Expressions
 

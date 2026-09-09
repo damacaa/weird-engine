@@ -177,6 +177,12 @@ namespace WeirdEngine
 		{
 		}
 
+		Vec2Expr(const glm::vec2& v)
+			: x(v.x)
+			, y(v.y)
+		{
+		}
+
 		friend Vec2Expr operator+(const Vec2Expr& a, const Vec2Expr& b)
 		{
 			return {a.x + b.x, a.y + b.y};
@@ -205,10 +211,8 @@ namespace WeirdEngine
 	namespace SystemParams
 	{
 		constexpr uint8_t TIME = 8;
-		constexpr uint8_t WORLD_X = 9;
-		constexpr uint8_t WORLD_Y = 10;
-		constexpr uint8_t UI_X = 11;
-		constexpr uint8_t UI_Y = 12;
+		constexpr uint8_t POINT_X = 9;
+		constexpr uint8_t POINT_Y = 10;
 	} // namespace SystemParams
 
 	inline Expr var(int index)
@@ -221,40 +225,14 @@ namespace WeirdEngine
 		return var(SystemParams::TIME);
 	}
 
-	inline Vec2Expr worldPoint()
+	inline Vec2Expr point()
 	{
-		return {var(SystemParams::WORLD_X), var(SystemParams::WORLD_Y)};
+		return {var(SystemParams::POINT_X), var(SystemParams::POINT_Y)};
 	}
 
-	inline Vec2Expr uiPoint()
+	inline Vec2Expr samplePoint()
 	{
-		return {var(SystemParams::UI_X), var(SystemParams::UI_Y)};
-	}
-
-	inline Vec2Expr localPoint(const glm::vec2& origin = {0.0f, 0.0f})
-	{
-		return {var(SystemParams::WORLD_X) - origin.x, var(SystemParams::WORLD_Y) - origin.y};
-	}
-
-	inline Vec2Expr localPoint(float ox, float oy)
-	{
-		return localPoint(glm::vec2(ox, oy));
-	}
-
-	inline Vec2Expr songPoint()
-	{
-		float h = WeirdRenderer::Display::height > 0 ? static_cast<float>(WeirdRenderer::Display::height) : 800.0f;
-		return localPoint(glm::vec2(70.0f, h - 70.0f));
-	}
-
-	inline Vec2Expr songPoint(const glm::vec2& center)
-	{
-		return localPoint(center);
-	}
-
-	inline Vec2Expr songPoint(float cx, float cy)
-	{
-		return localPoint(cx, cy);
+		return point();
 	}
 
 	// =========================================================================
@@ -408,10 +386,8 @@ namespace WeirdEngine
 
 	namespace SDF
 	{
-		using WeirdEngine::localPoint;
-		using WeirdEngine::songPoint;
-		using WeirdEngine::uiPoint;
-		using WeirdEngine::worldPoint;
+		using WeirdEngine::point;
+		using WeirdEngine::samplePoint;
 
 		// --- Transforms ---
 

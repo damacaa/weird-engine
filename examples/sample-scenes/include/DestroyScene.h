@@ -21,7 +21,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		// Jagged industrial destroyer star (scaled 10x for UI)
 		Expr star = sdStar(p, 25.0f, 16.0f, 5.0f, 0.0f);

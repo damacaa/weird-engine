@@ -64,7 +64,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		// Aquatic wave shape: sine wave blended with bubble circles (scaled 10x for UI)
 		Expr wave = sdSineWave(p, 15.0f, 0.04f, 0.6f, 0.0f);

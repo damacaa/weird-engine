@@ -16,7 +16,7 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		Vec2Expr p = SDF::songPoint();
+		Vec2Expr p = SDF::point();
 
 		// Picture frame rectangular shape blended with circular aperture (scaled 10x for UI)
 		Expr frame = sdBox(p, Vec2Expr(25.0f, 18.0f));

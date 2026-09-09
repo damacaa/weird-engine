@@ -29,9 +29,8 @@ public:
 	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
-		glm::vec2 songCenter = WeirdRenderer::SdfSong::getDefaultCenter();
-		// Local coordinate p where (0, 0) is the center of the song in UI top-left.
-		Vec2Expr p = SDF::songPoint(songCenter);
+		// Local coordinate p centered at (0, 0)
+		Vec2Expr p = SDF::point();
 
 		// Taut string curve: sinusoidal wave modulated by box (scaled 10x for UI)
 		Expr wave = sdSineWave(p, 20.0f, 0.05f, 0.8f, 0.0f);

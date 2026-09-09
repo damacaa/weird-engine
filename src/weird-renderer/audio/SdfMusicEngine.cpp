@@ -104,12 +104,13 @@ namespace WeirdEngine
 
 			glm::vec2 center = m_currentSong->getCenter();
 
-			float params[11];
+			float params[12]{};
 			for (size_t i = 0; i < 8; ++i)
 			{
 				params[i] = m_currentSong->getParameter(i);
 			}
 			params[8] = 0.0f; // Static time for parameter sampling
+			params[11] = m_volume;
 
 			auto evalAt = [&](float px, float py) -> float
 			{
@@ -210,8 +211,8 @@ namespace WeirdEngine
 
 			static const auto sampleOffsets = createDomainSamples();
 
-			float paramsT0[11];
-			float paramsT1[11];
+			float paramsT0[12]{};
+			float paramsT1[12]{};
 			for (size_t i = 0; i < 8; ++i)
 			{
 				paramsT0[i] = m_currentSong->getParameter(i);
@@ -220,6 +221,8 @@ namespace WeirdEngine
 			constexpr float dtSample = 0.08f;
 			paramsT0[8] = static_cast<float>(sceneTime);
 			paramsT1[8] = static_cast<float>(sceneTime + dtSample);
+			paramsT0[11] = m_volume;
+			paramsT1[11] = m_volume;
 
 			float totalMotion = 0.0f;
 			int insideCount = 0;

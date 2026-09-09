@@ -129,7 +129,7 @@ namespace WeirdEngine
 			float midiToFrequency(int midiNote) const;
 			int getScaleDegreeMidi(int degreeIndex, int octaveOffset = 0) const;
 
-			// Parameters for custom shapes (var0..var6; var7 is reserved internally for visualization scaling)
+			// Parameters for custom shapes (var0..var7)
 			float getParameter(size_t index) const;
 			void setParameter(size_t index, float value);
 			const float* getParameters() const

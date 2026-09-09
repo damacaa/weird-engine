@@ -116,6 +116,10 @@ namespace WeirdEngine
 
 			// Visualizer data
 			AudioData getAudioData();
+			float getAudioVolume() const
+			{
+				return m_visualSnapshot.currentVolume;
+			}
 
 			// Procedural physics controls (convenience wrappers)
 			void setFrictionLevel(float level)

@@ -64,8 +64,8 @@ namespace WeirdEngine
 			}
 
 			// Bounding domain: Always intersect the provided shape with a sphere/circle of radius 50.0 centered at song
-			// center, applying the internal scale node on parameter 7 for visualization
-			Expr scaleFactor = WeirdEngine::max(var(7), Expr(0.001f));
+			// center, applying the dynamic audio volume for visualization pulsating
+			Expr scaleFactor = WeirdEngine::max(Expr(1.0f) + audioVolume() * Expr(0.8f), Expr(0.001f));
 			Expr localX = (var(9) - m_center.x) / scaleFactor;
 			Expr localY = (var(10) - m_center.y) / scaleFactor;
 
@@ -123,8 +123,6 @@ namespace WeirdEngine
 
 		void SdfSong::setParameter(size_t index, float value)
 		{
-			WEIRD_ASSERT(index < 7, "The last parameter (index 7) is reserved for procedural song visualization "
-									"scaling and cannot be used.");
 			if (index < 8)
 			{
 				m_parameters[index] = value;
@@ -142,8 +140,8 @@ namespace WeirdEngine
 				return;
 			}
 
-			float paramsT0[11];
-			float paramsT1[11];
+			float paramsT0[12]{};
+			float paramsT1[12]{};
 			for (size_t i = 0; i < 8; ++i)
 			{
 				paramsT0[i] = m_parameters[i];
@@ -153,11 +151,13 @@ namespace WeirdEngine
 			constexpr float dt = 0.08f;
 			paramsT0[8] = 0.0f;
 			paramsT1[8] = dt;
+			paramsT0[11] = 0.0f;
+			paramsT1[11] = 0.0f;
 
 			auto evalRaw = [&](float px, float py, const float* p) -> float
 			{
-				float localP[11];
-				std::copy_n(p, 11, localP);
+				float localP[12];
+				std::copy_n(p, 12, localP);
 				localP[9] = px;
 				localP[10] = py;
 				return m_rawShapeExpression->getValue(localP);

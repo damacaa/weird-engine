@@ -8,6 +8,7 @@
 
 #include "weird-engine/Profiler.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/audio/AudioEngine.h"
 
 #include <glm/gtx/color_space.hpp>
 
@@ -592,6 +593,7 @@ namespace WeirdEngine
 				m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 
 				m_distanceShader.setUniform("u_time", time);
+				m_distanceShader.setUniform("u_audioVolume", AudioEngine::getInstance().getAudioVolume());
 				m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 				m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 				m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));

@@ -115,6 +115,7 @@ It supports vector addition, subtraction, scalar multiplication, and scalar divi
 ```cpp
 inline Expr var(int index);
 inline Expr time();
+inline Expr audioVolume();
 inline Vec2Expr point();
 inline Vec2Expr samplePoint();
 ```
@@ -127,6 +128,7 @@ The parameter convention is:
 | `var8` | Time. |
 | `var9` | Sample Point X. |
 | `var10` | Sample Point Y. |
+| `var11` | Audio Volume. |
 
 ### 2D SDF Functions
 

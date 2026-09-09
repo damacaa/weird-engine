@@ -649,11 +649,12 @@ namespace WeirdEngine
 				continue;
 			}
 
-			float params[11];
+			float params[12];
 			std::copy_n(obj.parameters, 8, params);
 			params[8] = static_cast<float>(m_simulationTime);
 			params[9] = p.x;
 			params[10] = p.y;
+			params[11] = m_audioVolume.load(std::memory_order_relaxed);
 
 			// Distance
 
@@ -736,11 +737,12 @@ namespace WeirdEngine
 				continue;
 			}
 
-			float params[11];
+			float params[12];
 			std::copy_n(obj.parameters, 8, params);
 			params[8] = static_cast<float>(m_simulationTime);
 			params[9] = p.x;
 			params[10] = p.y;
+			params[11] = m_audioVolume.load(std::memory_order_relaxed);
 
 			// Distance
 

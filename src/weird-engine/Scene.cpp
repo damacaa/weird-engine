@@ -251,6 +251,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Physics synchronization");
+			m_simulation2D.setAudioVolume(WeirdRenderer::AudioEngine::getInstance().getAudioVolume());
 			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			if (m_debugInput)
@@ -623,7 +624,6 @@ namespace WeirdEngine
 			config.combination = visualOptions.combination;
 			config.group = visualOptions.group;
 			std::copy_n(songPtr->getParameters(), 8, config.variables.data);
-			config.variables.data[7] = 1.0f;
 
 			m_visualizationEntity = shapes->addUIShape(config);
 
@@ -631,7 +631,6 @@ namespace WeirdEngine
 			{
 				m_lastSyncedParams[i] = songPtr->getParameter(i);
 			}
-			m_lastSyncedParams[7] = 1.0f;
 
 			return m_visualizationEntity;
 		}
@@ -642,7 +641,7 @@ namespace WeirdEngine
 
 	void AudioService::setSongParameter(size_t index, float value)
 	{
-		if (index >= 7)
+		if (index >= 8)
 			return;
 
 		auto curSong = WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
@@ -666,18 +665,7 @@ namespace WeirdEngine
 
 	void AudioService::updateVisualization()
 	{
-		if (m_visualizationEntity != INVALID_ENTITY && registry &&
-			registry->hasComponent<UIShape>(m_visualizationEntity))
-		{
-			auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
-			float volume = WeirdRenderer::AudioEngine::getInstance().getAudioData().currentVolume;
-			float scale = 1.0f + volume * 0.8f;
-			if (ui.parameters[7] != scale)
-			{
-				ui.parameters[7] = scale;
-				registry->setComponentDirty(ui);
-			}
-		}
+		// Pulsing is now driven directly by the global audio volume variable in the shader.
 	}
 
 	void AudioService::queueSong(std::shared_ptr<WeirdRenderer::SdfSong> song)
@@ -734,7 +722,7 @@ namespace WeirdEngine
 			if (curSong)
 			{
 				auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
-				for (size_t i = 0; i < 7; ++i)
+				for (size_t i = 0; i < 8; ++i)
 				{
 					if (curSong->getParameter(i) != m_lastSyncedParams[i])
 					{
@@ -822,11 +810,12 @@ namespace WeirdEngine
 				if (shape.distanceFieldId >= sdfs.size())
 					continue;
 
-				float parameters[11];
+				float parameters[12];
 				std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 				parameters[8] = time;
 				parameters[9] = p.x;
 				parameters[10] = p.y;
+				parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
 
 				float dist = sdfs[shape.distanceFieldId]->getValue(parameters);
 				float currentMinDistance = d;

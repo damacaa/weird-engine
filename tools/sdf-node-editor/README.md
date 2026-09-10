@@ -52,7 +52,7 @@ tools/sdf-node-editor/
     * **GLSL**: Emits mathematical shader expression strings via `IMathExpression::print()`.
     * **C++**: Emits copy-pasteable WeirdEngine C++ constructor code matching `Expr` DSL syntax.
   * **Built-in Presets**:
-    * *Mandala Star*: Harmonic star composed of rotated and modulated primitives.
+    * *Star*: Harmonic star composed of rotated and modulated primitives.
     * *Aquatic Wave*: Multi-frequency sine waves combined with CSG smoothing.
     * *CSG Ring*: Hollow shape demonstrating smooth subtraction.
     * *Basic Circle*: Minimal starter shape.

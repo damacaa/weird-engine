@@ -50,7 +50,7 @@ private:
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
-		// Initialize SDF procedural music with the shape-driven mandala song and directly create its UI visualization
+		// Initialize SDF procedural music with the shape-driven star song and directly create its UI visualization
 		// shape
 		auto shapesSong = createSceneSong();
 

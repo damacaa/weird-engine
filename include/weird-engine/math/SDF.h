@@ -414,6 +414,18 @@ namespace WeirdEngine
 			return {abs(p.x), p.y};
 		}
 
+		inline Vec2Expr repeat(const Vec2Expr& p, const Expr& spacing)
+		{
+			return {mod(p.x + spacing * 0.5f, spacing) - spacing * 0.5f,
+					mod(p.y + spacing * 0.5f, spacing) - spacing * 0.5f};
+		}
+
+		inline Vec2Expr repeat(const Vec2Expr& p, const Expr& spacingX, const Expr& spacingY)
+		{
+			return {mod(p.x + spacingX * 0.5f, spacingX) - spacingX * 0.5f,
+					mod(p.y + spacingY * 0.5f, spacingY) - spacingY * 0.5f};
+		}
+
 		// --- CSG & Domain Operations ---
 
 		inline Expr sdfUnion(const Expr& a, const Expr& b)

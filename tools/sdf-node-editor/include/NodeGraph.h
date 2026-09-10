@@ -54,6 +54,28 @@ namespace WeirdEngine::Editor
 			m_outputNodeId = -1;
 			m_nextNodeId = 1;
 			m_nextLinkId = 1;
+			m_parameters.fill(0.0f);
+		}
+
+		const std::array<float, 8>& getParameters() const
+		{
+			return m_parameters;
+		}
+
+		std::array<float, 8>& getParameters()
+		{
+			return m_parameters;
+		}
+
+		void setParameter(size_t i, float val)
+		{
+			if (i < 8)
+				m_parameters[i] = val;
+		}
+
+		void setParameters(const std::array<float, 8>& p)
+		{
+			m_parameters = p;
 		}
 
 		int addNode(const std::string& typeId, glm::vec2 pos = {200.0f, 200.0f})
@@ -309,6 +331,12 @@ namespace WeirdEngine::Editor
 				j["links"].push_back(l);
 			}
 
+			j["parameters"] = json::array();
+			for (float p : m_parameters)
+			{
+				j["parameters"].push_back(p);
+			}
+
 			return j;
 		}
 
@@ -317,6 +345,14 @@ namespace WeirdEngine::Editor
 			clear();
 			try
 			{
+				if (j.contains("parameters") && j["parameters"].is_array())
+				{
+					for (size_t i = 0; i < std::min(m_parameters.size(), static_cast<size_t>(j["parameters"].size()));
+						 ++i)
+					{
+						m_parameters[i] = j["parameters"][i].get<float>();
+					}
+				}
 				if (j.contains("nodes") && j["nodes"].is_array())
 				{
 					for (const auto& n : j["nodes"])
@@ -500,49 +536,57 @@ namespace WeirdEngine::Editor
 		void loadPresetCircle()
 		{
 			clear();
+			m_parameters[0] = 25.0f; // var0: radius
+
 			int pId = addNode("point", {100.0f, 200.0f});
-			int rId = addNode("const_float", {100.0f, 320.0f});
-			if (auto r = getNode(rId))
-				r->data.customFloat = 25.0f;
+			int v0Id = addNode("param_var", {100.0f, 320.0f});
+			if (auto v0 = getNode(v0Id))
+				v0->data.customInt = 0;
 
 			int cId = addNode("circle", {340.0f, 220.0f});
 			int outId = addNode("sdf_output", {580.0f, 220.0f});
 
 			addLink(makePinId(pId, false, 0), makePinId(cId, true, 0));
-			addLink(makePinId(rId, false, 0), makePinId(cId, true, 1));
+			addLink(makePinId(v0Id, false, 0), makePinId(cId, true, 1));
 			addLink(makePinId(cId, false, 0), makePinId(outId, true, 0));
 
 			autoLayout();
 		}
 
-		void loadPresetMandalaStar()
+		void loadPresetStar()
 		{
 			clear();
+			m_parameters[0] = 30.0f; // var0: radius
+			m_parameters[1] = 6.0f;	 // var1: displacement
+			m_parameters[2] = 6.0f;	 // var2: points
+			m_parameters[3] = 0.5f;	 // var3: speed
+
 			int pId = addNode("point", {80.0f, 150.0f});
-			int radId = addNode("const_float", {80.0f, 260.0f});
-			if (auto r = getNode(radId))
-				r->data.customFloat = 30.0f;
 
-			int dispId = addNode("const_float", {80.0f, 360.0f});
-			if (auto d = getNode(dispId))
-				d->data.customFloat = 6.0f;
+			int v0Id = addNode("param_var", {80.0f, 260.0f});
+			if (auto v0 = getNode(v0Id))
+				v0->data.customInt = 0;
 
-			int ptsId = addNode("const_float", {80.0f, 460.0f});
-			if (auto pts = getNode(ptsId))
-				pts->data.customFloat = 6.0f;
+			int v1Id = addNode("param_var", {80.0f, 360.0f});
+			if (auto v1 = getNode(v1Id))
+				v1->data.customInt = 1;
 
-			int spdId = addNode("const_float", {80.0f, 560.0f});
-			if (auto spd = getNode(spdId))
-				spd->data.customFloat = 0.5f;
+			int v2Id = addNode("param_var", {80.0f, 460.0f});
+			if (auto v2 = getNode(v2Id))
+				v2->data.customInt = 2;
+
+			int v3Id = addNode("param_var", {80.0f, 560.0f});
+			if (auto v3 = getNode(v3Id))
+				v3->data.customInt = 3;
 
 			int starId = addNode("star", {320.0f, 200.0f});
 			int outId = addNode("sdf_output", {580.0f, 200.0f});
 
 			addLink(makePinId(pId, false, 0), makePinId(starId, true, 0));
-			addLink(makePinId(radId, false, 0), makePinId(starId, true, 1));
-			addLink(makePinId(dispId, false, 0), makePinId(starId, true, 2));
-			addLink(makePinId(ptsId, false, 0), makePinId(starId, true, 3));
-			addLink(makePinId(spdId, false, 0), makePinId(starId, true, 4));
+			addLink(makePinId(v0Id, false, 0), makePinId(starId, true, 1));
+			addLink(makePinId(v1Id, false, 0), makePinId(starId, true, 2));
+			addLink(makePinId(v2Id, false, 0), makePinId(starId, true, 3));
+			addLink(makePinId(v3Id, false, 0), makePinId(starId, true, 4));
 			addLink(makePinId(starId, false, 0), makePinId(outId, true, 0));
 
 			autoLayout();
@@ -551,35 +595,57 @@ namespace WeirdEngine::Editor
 		void loadPresetAquaticWave()
 		{
 			clear();
+			m_parameters[0] = 15.0f; // var0: wave amplitude
+			m_parameters[1] = 0.04f; // var1: wave frequency
+			m_parameters[2] = 0.6f;	 // var2: wave speed
+			m_parameters[3] = 0.0f;	 // var3: wave offset
+			m_parameters[4] = 18.0f; // var4: bubble radius
+			m_parameters[5] = 6.0f;	 // var5: smooth union radius
+
 			int pId = addNode("point", {80.0f, 180.0f});
 
+			int v0Id = addNode("param_var", {80.0f, 260.0f});
+			if (auto v0 = getNode(v0Id))
+				v0->data.customInt = 0;
+
+			int v1Id = addNode("param_var", {80.0f, 340.0f});
+			if (auto v1 = getNode(v1Id))
+				v1->data.customInt = 1;
+
+			int v2Id = addNode("param_var", {80.0f, 420.0f});
+			if (auto v2 = getNode(v2Id))
+				v2->data.customInt = 2;
+
+			int v3Id = addNode("param_var", {80.0f, 500.0f});
+			if (auto v3 = getNode(v3Id))
+				v3->data.customInt = 3;
+
+			int v4Id = addNode("param_var", {80.0f, 580.0f});
+			if (auto v4 = getNode(v4Id))
+				v4->data.customInt = 4;
+
+			int v5Id = addNode("param_var", {80.0f, 660.0f});
+			if (auto v5 = getNode(v5Id))
+				v5->data.customInt = 5;
+
 			int waveId = addNode("sine_wave", {320.0f, 120.0f});
-			if (auto w = getNode(waveId))
-			{
-				w->inputFloats[1] = 15.0f; // amplitude
-				w->inputFloats[2] = 0.04f; // frequency
-				w->inputFloats[3] = 0.6f;  // speed
-				w->inputFloats[4] = 0.0f;  // offset
-			}
-
 			int bubbleId = addNode("circle", {320.0f, 320.0f});
-			if (auto b = getNode(bubbleId))
-			{
-				b->inputFloats[1] = 18.0f; // radius
-			}
-
 			int blendId = addNode("smooth_union", {560.0f, 220.0f});
-			if (auto bl = getNode(blendId))
-			{
-				bl->inputFloats[2] = 6.0f; // smooth radius
-			}
-
 			int outId = addNode("sdf_output", {780.0f, 220.0f});
 
 			addLink(makePinId(pId, false, 0), makePinId(waveId, true, 0));
+			addLink(makePinId(v0Id, false, 0), makePinId(waveId, true, 1));
+			addLink(makePinId(v1Id, false, 0), makePinId(waveId, true, 2));
+			addLink(makePinId(v2Id, false, 0), makePinId(waveId, true, 3));
+			addLink(makePinId(v3Id, false, 0), makePinId(waveId, true, 4));
+
 			addLink(makePinId(pId, false, 0), makePinId(bubbleId, true, 0));
+			addLink(makePinId(v4Id, false, 0), makePinId(bubbleId, true, 1));
+
 			addLink(makePinId(waveId, false, 0), makePinId(blendId, true, 0));
 			addLink(makePinId(bubbleId, false, 0), makePinId(blendId, true, 1));
+			addLink(makePinId(v5Id, false, 0), makePinId(blendId, true, 2));
+
 			addLink(makePinId(blendId, false, 0), makePinId(outId, true, 0));
 
 			autoLayout();
@@ -588,24 +654,69 @@ namespace WeirdEngine::Editor
 		void loadPresetCsgRing()
 		{
 			clear();
+			m_parameters[0] = 28.0f; // var0: outer radius
+			m_parameters[1] = 18.0f; // var1: inner radius
+
 			int pId = addNode("point", {80.0f, 200.0f});
 
+			int v0Id = addNode("param_var", {80.0f, 280.0f});
+			if (auto v0 = getNode(v0Id))
+				v0->data.customInt = 0;
+
+			int v1Id = addNode("param_var", {80.0f, 360.0f});
+			if (auto v1 = getNode(v1Id))
+				v1->data.customInt = 1;
+
 			int outerId = addNode("circle", {320.0f, 120.0f});
-			if (auto c = getNode(outerId))
-				c->inputFloats[1] = 28.0f; // outer radius
-
 			int innerId = addNode("circle", {320.0f, 280.0f});
-			if (auto c = getNode(innerId))
-				c->inputFloats[1] = 18.0f; // inner radius
-
 			int subId = addNode("subtract", {550.0f, 200.0f});
 			int outId = addNode("sdf_output", {760.0f, 200.0f});
 
 			addLink(makePinId(pId, false, 0), makePinId(outerId, true, 0));
+			addLink(makePinId(v0Id, false, 0), makePinId(outerId, true, 1));
+
 			addLink(makePinId(pId, false, 0), makePinId(innerId, true, 0));
+			addLink(makePinId(v1Id, false, 0), makePinId(innerId, true, 1));
+
 			addLink(makePinId(outerId, false, 0), makePinId(subId, true, 0));
 			addLink(makePinId(innerId, false, 0), makePinId(subId, true, 1));
 			addLink(makePinId(subId, false, 0), makePinId(outId, true, 0));
+
+			autoLayout();
+		}
+
+		void loadPresetInfiniteRepeat()
+		{
+			clear();
+			m_parameters[0] = 50.0f; // var0: grid cell spacing (modulo period)
+			m_parameters[1] = 12.0f; // var1: circle radius
+
+			int pId = addNode("point", {80.0f, 200.0f});
+
+			int v0Id = addNode("param_var", {80.0f, 320.0f});
+			if (auto v0 = getNode(v0Id))
+				v0->data.customInt = 0;
+
+			int v1Id = addNode("param_var", {80.0f, 440.0f});
+			if (auto v1 = getNode(v1Id))
+				v1->data.customInt = 1;
+
+			int repId = addNode("repeat", {320.0f, 200.0f});
+			int circleId = addNode("circle", {540.0f, 200.0f});
+			int outId = addNode("sdf_output", {760.0f, 200.0f});
+
+			// p -> repeat.p
+			addLink(makePinId(pId, false, 0), makePinId(repId, true, 0));
+			// var0 (spacing) -> repeat.spacing
+			addLink(makePinId(v0Id, false, 0), makePinId(repId, true, 1));
+
+			// repeat.out -> circle.p
+			addLink(makePinId(repId, false, 0), makePinId(circleId, true, 0));
+			// var1 (radius) -> circle.radius
+			addLink(makePinId(v1Id, false, 0), makePinId(circleId, true, 1));
+
+			// circle.d -> sdf_output.d
+			addLink(makePinId(circleId, false, 0), makePinId(outId, true, 0));
 
 			autoLayout();
 		}
@@ -746,5 +857,6 @@ namespace WeirdEngine::Editor
 		int m_outputNodeId = -1;
 		int m_nextNodeId = 1;
 		int m_nextLinkId = 1;
+		std::array<float, 8> m_parameters = {0.0f};
 	};
 } // namespace WeirdEngine::Editor

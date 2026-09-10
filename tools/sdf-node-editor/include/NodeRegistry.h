@@ -148,6 +148,12 @@ namespace WeirdEngine::Editor
 				if (it != m_defs.end())
 					return &it->second;
 			}
+			if (typeId == "modulo")
+			{
+				auto it = m_defs.find("mod");
+				if (it != m_defs.end())
+					return &it->second;
+			}
 			auto it = m_defs.find(typeId);
 			if (it != m_defs.end())
 				return &it->second;
@@ -363,6 +369,15 @@ namespace WeirdEngine::Editor
 							 { return NodeValue(SDF::scale(asFloat(in[0]), asFloat(in[1]))); },
 							 [](const auto& in, const auto&) { return "SDF::scale(" + in[0] + ", " + in[1] + ")"; }});
 
+		registerNode(NodeDef{"repeat",
+							 "Repeat (Modulo)",
+							 NodeCategory::Transforms,
+							 {{"p", PinType::Vec2}, {"spacing", PinType::Float, 40.0f}},
+							 {{"out", PinType::Vec2}},
+							 [](const auto& in, const auto&)
+							 { return NodeValue(SDF::repeat(asVec2(in[0]), asFloat(in[1]))); },
+							 [](const auto& in, const auto&) { return "SDF::repeat(" + in[0] + ", " + in[1] + ")"; }});
+
 		// =====================================================================
 		// 4. 2D Primitives
 		// =====================================================================
@@ -522,7 +537,7 @@ namespace WeirdEngine::Editor
 						   "min(" + in[0] + ", " + in[1] + ")");
 		REGISTER_BINARY_OP(NodeCategory::MathBinary, "max", "Max", "a", "b", 0.0f, 0.0f, WeirdEngine::max,
 						   "max(" + in[0] + ", " + in[1] + ")");
-		REGISTER_BINARY_OP(NodeCategory::MathBinary, "mod", "Mod", "a", "b", 0.0f, 1.0f, WeirdEngine::mod,
+		REGISTER_BINARY_OP(NodeCategory::MathBinary, "mod", "Modulo (mod)", "a", "b", 0.0f, 1.0f, WeirdEngine::mod,
 						   "mod(" + in[0] + ", " + in[1] + ")");
 		REGISTER_BINARY_OP(NodeCategory::MathBinary, "atan2", "Atan2", "y", "x", 0.0f, 1.0f, WeirdEngine::atan2,
 						   "atan2(" + in[0] + ", " + in[1] + ")");

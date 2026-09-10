@@ -56,6 +56,39 @@ namespace WeirdEngine::Editor
 		return std::string(noteNames[note]) + std::to_string(octave);
 	}
 
+	inline const char* getWaveTypeName(WeirdRenderer::WaveType waveType)
+	{
+		switch (waveType)
+		{
+			case WeirdRenderer::WaveType::SoftSine:
+				return "Soft Sine (Warm)";
+			case WeirdRenderer::WaveType::BandlimitedSaw:
+				return "Bandlimited Saw (Bright)";
+			case WeirdRenderer::WaveType::PulseSquare:
+				return "Pulse Square (Reedy)";
+			case WeirdRenderer::WaveType::FMPluck:
+				return "FM Pluck (Bell/Metallic)";
+			case WeirdRenderer::WaveType::Wavefolder:
+				return "Wavefolder (Buchla/Evolving)";
+			default:
+				return "Unknown";
+		}
+	}
+
+	inline const char* getDrumKitName(int kit)
+	{
+		switch (kit)
+		{
+			case 1:
+				return "Acoustic Punch";
+			case 2:
+				return "Industrial / 909";
+			case 0:
+			default:
+				return "Deep 808 Electronic";
+		}
+	}
+
 	class SdfNodeEditorScene : public Scene2D
 	{
 	public:
@@ -1108,7 +1141,7 @@ namespace WeirdEngine::Editor
 						ImNodes::EditorContextResetZoom();
 					}
 					if (ImGui::IsItemHovered())
-						ImGui::SetTooltip("Reset Zoom to 100% (Ctrl+0)");
+						ImGui::SetTooltip("Reset Zoom to 100%% (Ctrl+0)");
 
 					ImGui::SameLine();
 					if (ImGui::Button(" + "))
@@ -1265,6 +1298,36 @@ namespace WeirdEngine::Editor
 					ImGui::Spacing();
 					ImGui::ProgressBar(music.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
 					ImGui::ProgressBar(music.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
+				}
+			}
+
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("Instrument Rack (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				const auto& rack = music.getInstrumentRack();
+				ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
+				ImGui::Text("Lead Wave:   %s", getWaveTypeName(rack.lead));
+				ImGui::Text("Bass Wave:   %s", getWaveTypeName(rack.bass));
+				ImGui::Text("Pad Wave:    %s", getWaveTypeName(rack.pad));
+				ImGui::Text("Drum Kit:    %s", getDrumKitName(rack.drumKit));
+
+				ImGui::Spacing();
+				ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
+				ImGui::Text("Pulse Width: %.2f", rack.pulseWidth);
+				ImGui::Text("FM Mod Index:%.2f", rack.fmModIndex);
+				ImGui::Text("Fold Drive:  %.2f", rack.foldDrive);
+			}
+
+			ImGui::Spacing();
+			if (ImGui::CollapsingHeader("AST Topology Fingerprint", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				if (m_song)
+				{
+					const auto& fp = m_song->getFingerprint();
+					ImGui::Text("Structural Seed: 0x%08X", fp.structuralHash);
+					ImGui::Text("Total Operators: %d", fp.nodeCount);
+					ImGui::Text("Tree Depth:      %d", fp.maxDepth);
+					ImGui::Text("Branching Nodes: %d", fp.branchCount);
 				}
 			}
 

@@ -23,6 +23,14 @@ namespace WeirdEngine
 			Chromatic
 		};
 
+		struct ASTFingerprint
+		{
+			uint32_t structuralHash = 0; // Deterministic topological seed
+			int nodeCount = 0;			 // Total non-trivial operator nodes
+			int maxDepth = 0;			 // Deepest expression branch
+			int branchCount = 0;		 // Nodes with 2+ children
+		};
+
 		class SdfSong
 		{
 		public:
@@ -137,8 +145,14 @@ namespace WeirdEngine
 				return m_parameters;
 			}
 
+			const ASTFingerprint& getFingerprint() const
+			{
+				return m_fingerprint;
+			}
+
 		private:
 			void applyBoundingDomain();
+			void computeASTFingerprint();
 
 			std::string m_name;
 			float m_tempo = 80.0f;
@@ -147,6 +161,7 @@ namespace WeirdEngine
 			glm::vec2 m_center = {0.0f, 0.0f};
 
 			float m_parameters[8] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+			ASTFingerprint m_fingerprint;
 			std::shared_ptr<IMathExpression> m_rawShapeExpression;
 			std::shared_ptr<IMathExpression> m_boundedShapeExpression;
 		};

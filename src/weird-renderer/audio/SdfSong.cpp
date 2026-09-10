@@ -265,6 +265,91 @@ namespace WeirdEngine
 			{
 				m_scale = MusicalScale::Dorian;
 			}
+
+			computeASTFingerprint();
+		}
+
+		void SdfSong::computeASTFingerprint()
+		{
+			m_fingerprint = ASTFingerprint{};
+			if (!m_rawShapeExpression)
+			{
+				return;
+			}
+
+			using namespace WeirdEngine::detail;
+
+			struct TraversalNode
+			{
+				std::shared_ptr<IMathExpression> node;
+				int depth;
+				int childIndex;
+			};
+
+			std::vector<TraversalNode> stack;
+			stack.push_back({m_rawShapeExpression, 0, 0});
+
+			std::unordered_set<const IMathExpression*> visited;
+
+			int nonTrivialCount = 0;
+			int maxDepth = 0;
+			int branchCount = 0;
+
+			uint32_t hash = 2166136261u; // FNV-1a 32-bit offset basis
+
+			while (!stack.empty())
+			{
+				auto current = stack.back();
+				stack.pop_back();
+
+				if (!current.node)
+				{
+					continue;
+				}
+
+				if (current.depth > maxDepth)
+				{
+					maxDepth = current.depth;
+				}
+
+				if (current.node->isTrivial())
+				{
+					// Skip trivial leaves (FloatConstant, FloatVariable) - parameter immunity!
+					continue;
+				}
+
+				// Prevent exponential processing if subtrees are shared (DAG)
+				const IMathExpression* rawPtr = current.node.get();
+				if (visited.find(rawPtr) != visited.end())
+				{
+					continue;
+				}
+				visited.insert(rawPtr);
+
+				nonTrivialCount++;
+
+				// Pure topological hashing: depth, child index, and visit order
+				hash ^= static_cast<uint32_t>(current.depth * 37 + current.childIndex * 13 + nonTrivialCount);
+				hash *= 16777619u;
+
+				std::vector<std::shared_ptr<IMathExpression>> children;
+				current.node->getChildren(children);
+
+				if (children.size() >= 2)
+				{
+					branchCount++;
+				}
+
+				for (size_t i = 0; i < children.size(); ++i)
+				{
+					stack.push_back({children[i], current.depth + 1, static_cast<int>(i)});
+				}
+			}
+
+			m_fingerprint.structuralHash = hash;
+			m_fingerprint.nodeCount = nonTrivialCount;
+			m_fingerprint.maxDepth = maxDepth;
+			m_fingerprint.branchCount = branchCount;
 		}
 
 		float SdfSong::midiToFrequency(int midiNote) const

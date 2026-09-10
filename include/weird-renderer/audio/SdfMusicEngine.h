@@ -11,6 +11,26 @@ namespace WeirdEngine
 {
 	namespace WeirdRenderer
 	{
+		enum class WaveType : uint8_t
+		{
+			SoftSine = 0,	// 0.85 sin(p) + 0.15 sin(2p) - warm, singing
+			BandlimitedSaw, // 4-harmonic additive saw - bright, buzzy string
+			PulseSquare,	// Soft-clipped variable pulse - hollow, reedy
+			FMPluck,		// 2-op FM with decaying mod index - metallic/bell/pluck
+			Wavefolder		// Buchla-style continuous sine fold - rich, evolving
+		};
+
+		struct InstrumentRack
+		{
+			WaveType lead = WaveType::SoftSine;
+			WaveType bass = WaveType::SoftSine;
+			WaveType pad = WaveType::SoftSine;
+			int drumKit = 0; // 0 = 808-style, 1 = punchy acoustic, 2 = industrial/punch
+			float pulseWidth = 0.50f;
+			float fmModIndex = 2.0f;
+			float foldDrive = 2.2f;
+		};
+
 		struct MusicVoice
 		{
 			float frequency = 440.0f;
@@ -20,6 +40,9 @@ namespace WeirdEngine
 			float phase = 0.0f;
 			bool finished = false;
 			int instrument = 0; // 0=Warm Lead, 1=Warm Bass, 2=Square, 3=Noise, 4=Warm EP/Pad, 5=Kick, 6=Snare, 7=HiHat
+			WaveType waveType = WaveType::SoftSine;
+			float waveParam = 0.0f;
+			int drumKit = 0;
 			float leftGain = 0.7071f;
 			float rightGain = 0.7071f;
 			float filterCutoff = 10000.0f;
@@ -105,6 +128,11 @@ namespace WeirdEngine
 				return m_shapeParams;
 			}
 
+			const InstrumentRack& getInstrumentRack() const
+			{
+				return m_rack;
+			}
+
 			// Motion & Domain Fill Inspection
 			float getMotionLevel() const
 			{
@@ -188,6 +216,10 @@ namespace WeirdEngine
 			static constexpr size_t MAX_MUSIC_VOICES = 32;
 			std::vector<MusicVoice> m_activeVoices;
 
+			// AST-driven instrument rack
+			InstrumentRack m_rack;
+
+			void selectInstrumentRack(const ASTFingerprint& fp);
 			void sampleShapeParameters();
 			void sampleDomainMotionAndFill(double sceneTime);
 			void on16thStep(int step);

@@ -266,6 +266,53 @@ namespace WeirdEngine
 			m_volumeFromFill = std::clamp(0.40f + 0.60f * std::sqrt(m_fillRatio), 0.35f, 1.0f);
 		}
 
+		void SdfMusicEngine::selectInstrumentRack(const ASTFingerprint& fp)
+		{
+			m_rack = InstrumentRack{};
+
+			// Deterministic PRNG seeded by AST structural topology hash
+			auto prngHash = [](uint32_t seed, uint32_t salt) -> uint32_t
+			{
+				uint32_t h = seed ^ (salt * 0x9e3779b9u);
+				h = (h ^ (h >> 16)) * 0x85ebca6bu;
+				h = (h ^ (h >> 13)) * 0xc2b2ae35u;
+				return h ^ (h >> 16);
+			};
+
+			static constexpr WaveType allWaves[5] = {WaveType::SoftSine, WaveType::BandlimitedSaw,
+													 WaveType::PulseSquare, WaveType::FMPluck, WaveType::Wavefolder};
+
+			uint32_t hLead = prngHash(fp.structuralHash, 101);
+			uint32_t hBass = prngHash(fp.structuralHash, 203);
+			uint32_t hPad = prngHash(fp.structuralHash, 307);
+			uint32_t hKit = prngHash(fp.structuralHash, 409);
+
+			// Lead selects uniformly across all 5 waveforms
+			m_rack.lead = allWaves[hLead % 5];
+
+			// Bass selects across SoftSine, BandlimitedSaw, PulseSquare, FMPluck
+			static constexpr WaveType bassWaves[4] = {WaveType::SoftSine, WaveType::BandlimitedSaw,
+													  WaveType::PulseSquare, WaveType::FMPluck};
+			m_rack.bass = bassWaves[hBass % 4];
+
+			// Pad selects across SoftSine, Wavefolder, BandlimitedSaw, PulseSquare
+			static constexpr WaveType padWaves[4] = {WaveType::SoftSine, WaveType::Wavefolder, WaveType::BandlimitedSaw,
+													 WaveType::PulseSquare};
+			m_rack.pad = padWaves[hPad % 4];
+
+			// Drum kit distributes evenly across 0 (808), 1 (Acoustic), 2 (Industrial)
+			m_rack.drumKit = static_cast<int>(hKit % 3);
+
+			// Synthesis parameters derived from hash bits for rich timbre variation
+			float normA = static_cast<float>(hLead & 0xFF) / 255.0f;
+			float normB = static_cast<float>((hBass >> 8) & 0xFF) / 255.0f;
+			float normC = static_cast<float>((hPad >> 16) & 0xFF) / 255.0f;
+
+			m_rack.pulseWidth = 0.20f + 0.30f * normA; // [0.20, 0.50]
+			m_rack.fmModIndex = 1.2f + 2.4f * normB;   // [1.20, 3.60]
+			m_rack.foldDrive = 1.6f + 2.0f * normC;	   // [1.60, 3.60]
+		}
+
 		void SdfMusicEngine::resampleShape()
 		{
 			std::lock_guard<std::mutex> lock(m_songMutex);
@@ -290,6 +337,11 @@ namespace WeirdEngine
 				if (isSongEmpty(m_currentSong))
 				{
 					m_activeVoices.clear();
+					m_rack = InstrumentRack{};
+				}
+				else
+				{
+					selectInstrumentRack(m_currentSong->getFingerprint());
 				}
 			}
 			else
@@ -487,9 +539,11 @@ namespace WeirdEngine
 						if (isSongEmpty(m_currentSong))
 						{
 							m_activeVoices.clear();
+							m_rack = InstrumentRack{};
 						}
 						else
 						{
+							selectInstrumentRack(m_currentSong->getFingerprint());
 							int root = m_currentSong->getRootMidi();
 							playNote(m_currentSong->midiToFrequency(root), 0.45f, 1.2f, 4, 0.0f, 5500.0f);
 						}
@@ -661,14 +715,13 @@ namespace WeirdEngine
 					freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
 				}
 
-				int inst = (m_shapeParams.brightness > 0.50f) ? 4 : 0;
 				// Warm filter cutoff: 1200 Hz to 2800 Hz (soft, vocal-like)
 				float cutoff = 1200.0f + 1600.0f * m_shapeParams.brightness;
 				float dur = beatSec * (0.40f + 0.40f * stepHash(step, 523)) * noteLengthMult;
 				float pan = stepHash(step, 617) * 1.0f - 0.5f;
 				float vel = 0.35f + 0.25f * m_shapeParams.melodyDensity;
 
-				playNote(freq, vel, dur, inst, pan, cutoff);
+				playNote(freq, vel, dur, 0, pan, cutoff);
 			}
 
 			// -------------------------------------------------------------
@@ -752,6 +805,36 @@ namespace WeirdEngine
 			newVoice.rightGain = rightGain;
 			newVoice.filterCutoff = (std::min)(filterCutoff, m_concussionFilterCutoff);
 			newVoice.filterState = 0.0f;
+			newVoice.drumKit = m_rack.drumKit;
+
+			// Assign waveform & per-voice parameter based on channel role
+			if (instrument == 0) // Lead
+			{
+				newVoice.waveType = m_rack.lead;
+				if (m_rack.lead == WaveType::FMPluck)
+					newVoice.waveParam = m_rack.fmModIndex;
+				else if (m_rack.lead == WaveType::PulseSquare)
+					newVoice.waveParam = m_rack.pulseWidth;
+				else if (m_rack.lead == WaveType::Wavefolder)
+					newVoice.waveParam = m_rack.foldDrive;
+				else
+					newVoice.waveParam = 0.0f;
+			}
+			else if (instrument == 1) // Bass
+			{
+				newVoice.waveType = m_rack.bass;
+				newVoice.waveParam = (m_rack.bass == WaveType::PulseSquare) ? m_rack.pulseWidth : 0.0f;
+			}
+			else if (instrument == 4) // Pad
+			{
+				newVoice.waveType = m_rack.pad;
+				newVoice.waveParam = (m_rack.pad == WaveType::Wavefolder) ? m_rack.foldDrive : 0.0f;
+			}
+			else
+			{
+				newVoice.waveType = WaveType::SoftSine;
+				newVoice.waveParam = 0.0f;
+			}
 
 			if (m_activeVoices.size() >= MAX_MUSIC_VOICES)
 			{
@@ -784,6 +867,42 @@ namespace WeirdEngine
 
 			const float sampleRateF = static_cast<float>(m_sampleRate);
 
+			auto evaluateWaveform = [](WaveType type, float p, float param, float time, float decay) -> float
+			{
+				switch (type)
+				{
+					case WaveType::BandlimitedSaw:
+					{
+						// 4-harmonic additive saw: bright, buzzy string character
+						return 0.60f *
+							   (sinf(p) - 0.5f * sinf(p * 2.0f) + 0.333f * sinf(p * 3.0f) - 0.25f * sinf(p * 4.0f));
+					}
+					case WaveType::PulseSquare:
+					{
+						// Soft-clipped pulse with smooth transition eliminating edge-clicks
+						float pwOffset = (param - 0.5f) * 2.0f;
+						return std::clamp((sinf(p) - pwOffset) * 8.0f, -0.60f, 0.60f);
+					}
+					case WaveType::FMPluck:
+					{
+						// 2-op FM (carrier 1x, modulator 2x) with decaying mod index
+						float modEnv = param * expf(-time / (std::max)(0.05f, decay * 0.35f));
+						return sinf(p + modEnv * sinf(p * 2.0f));
+					}
+					case WaveType::Wavefolder:
+					{
+						// Continuous sine-folding (drive applied to continuous sine eliminates phase wrap
+						// discontinuities)
+						return sinf(param * sinf(p));
+					}
+					case WaveType::SoftSine:
+					default:
+					{
+						return 0.85f * sinf(p) + 0.15f * sinf(p * 2.0f);
+					}
+				}
+			};
+
 			for (auto& voice : m_activeVoices)
 			{
 				if (voice.finished)
@@ -812,59 +931,141 @@ namespace WeirdEngine
 
 					switch (voice.instrument)
 					{
-						case 5: // Kick Drum: Fast downward pitch drop (145 Hz -> 48 Hz) with punchy sub body
+						case 5: // Kick Drum (Variant influenced by drumKit)
 						{
-							float pitchDrop = 95.0f * expf(-voice.time / 0.028f);
-							currentFreq = 48.0f + pitchDrop;
-							float s = sinf(voice.phase);
-							rawSample = 1.25f * s - 0.25f * s * s * s; // warm soft saturation drive
-							if (voice.time < 0.004f)
+							if (voice.drumKit == 1) // Punchy acoustic kick
 							{
-								rawSample +=
-									0.35f * ((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								float pitchDrop = 145.0f * expf(-voice.time / 0.032f);
+								currentFreq = 55.0f + pitchDrop;
+								float s = sinf(voice.phase);
+								rawSample = 1.15f * s - 0.15f * s * s * s;
+								if (voice.time < 0.003f)
+								{
+									rawSample +=
+										0.25f *
+										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								}
+							}
+							else if (voice.drumKit == 2) // Industrial / Overdriven 909 kick
+							{
+								float pitchDrop = 120.0f * expf(-voice.time / 0.024f);
+								currentFreq = 44.0f + pitchDrop;
+								float s = sinf(voice.phase);
+								rawSample = std::clamp(1.6f * s - 0.6f * s * s * s, -1.0f, 1.0f);
+								if (voice.time < 0.006f)
+								{
+									rawSample +=
+										0.40f *
+										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								}
+							}
+							else // Kit 0: Standard 808 deep kick
+							{
+								float pitchDrop = 95.0f * expf(-voice.time / 0.028f);
+								currentFreq = 48.0f + pitchDrop;
+								float s = sinf(voice.phase);
+								rawSample = 1.25f * s - 0.25f * s * s * s;
+								if (voice.time < 0.004f)
+								{
+									rawSample +=
+										0.35f *
+										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								}
 							}
 							break;
 						}
-						case 6: // Snare Drum: Snappy noise burst + resonant 180 Hz body tone
+						case 6: // Snare Drum (Variant influenced by drumKit)
 						{
-							float bodyPitch = 120.0f + 65.0f * expf(-voice.time / 0.020f);
-							currentFreq = bodyPitch;
-							float bodyTone = sinf(voice.phase);
+							if (voice.drumKit == 1) // Resonant wood/acoustic snare
+							{
+								float bodyPitch = 140.0f + 60.0f * expf(-voice.time / 0.018f);
+								currentFreq = bodyPitch;
+								float bodyTone = sinf(voice.phase);
+								float noise =
+									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								rawSample = 0.60f * bodyTone + 0.40f * noise;
+							}
+							else if (voice.drumKit == 2) // Industrial metallic ring snare
+							{
+								float bodyPitch = 100.0f + 80.0f * expf(-voice.time / 0.025f);
+								currentFreq = bodyPitch;
+								float bodyTone = sinf(voice.phase);
+								float ring = sinf(voice.phase * 2.73f);
+								float noise =
+									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								rawSample = 0.30f * bodyTone + 0.25f * ring + 0.45f * noise;
+							}
+							else // Kit 0: Standard snappy snare
+							{
+								float bodyPitch = 120.0f + 65.0f * expf(-voice.time / 0.020f);
+								currentFreq = bodyPitch;
+								float bodyTone = sinf(voice.phase);
+								float noise =
+									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								rawSample = 0.45f * bodyTone + 0.55f * noise;
+							}
+							break;
+						}
+						case 7: // Hi-Hat (Variant influenced by drumKit)
+						{
 							float noise = ((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
-							rawSample = 0.45f * bodyTone + 0.55f * noise;
+							if (voice.drumKit == 1) // Crisp tight acoustic hat
+							{
+								float metallic = sinf(voice.phase * 1.61f);
+								rawSample = 0.75f * noise + 0.25f * metallic;
+							}
+							else if (voice.drumKit == 2) // Metallic industrial sizzle
+							{
+								float metallic = sinf(voice.phase * 1.41f) * sinf(voice.phase * 3.14f);
+								rawSample = 0.55f * noise + 0.45f * metallic;
+							}
+							else // Kit 0: Standard FM hi-hat
+							{
+								float metallic = sinf(voice.phase * 1.37f) * sinf(voice.phase * 2.81f);
+								rawSample = 0.70f * noise + 0.30f * metallic;
+							}
 							break;
 						}
-						case 7: // Hi-Hat: Crisp metallic high frequency burst
+						case 1: // Bass (Derived from voice.waveType)
 						{
-							float noise = ((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
-							float metallic = sinf(voice.phase * 1.37f) * sinf(voice.phase * 2.81f);
-							rawSample = 0.70f * noise + 0.30f * metallic;
+							if (voice.waveType == WaveType::SoftSine)
+							{
+								float p = voice.phase;
+								rawSample = 0.72f * sinf(p) + 0.35f * sinf(p * 2.0f) + 0.12f * sinf(p * 3.0f) +
+											0.08f * (1.0f - p / static_cast<float>(M_PI));
+							}
+							else
+							{
+								rawSample = evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time,
+															 voice.decay);
+							}
 							break;
 						}
-						case 1: // Warm Bass: Rich fundamental + warm harmonics for full-bodied low end
-						{
-							float p = voice.phase;
-							rawSample = 0.72f * sinf(p) + 0.35f * sinf(p * 2.0f) + 0.12f * sinf(p * 3.0f) +
-										0.08f * (1.0f - p / static_cast<float>(M_PI));
-							break;
-						}
-						case 2: // Square
+						case 2: // Square (Direct effect / death)
 							rawSample = (voice.phase < static_cast<float>(M_PI)) ? 0.55f : -0.55f;
 							break;
-						case 4: // Warm EP / Pad (soft electric piano / lush pad chords)
+						case 4: // Chord Pad (Derived from voice.waveType)
 						{
-							float p = voice.phase;
-							rawSample = 0.65f * sinf(p) + 0.25f * sinf(p * 2.0f) + 0.10f * sinf(p * 3.0f);
+							if (voice.waveType == WaveType::SoftSine)
+							{
+								float p = voice.phase;
+								rawSample = 0.65f * sinf(p) + 0.25f * sinf(p * 2.0f) + 0.10f * sinf(p * 3.0f);
+							}
+							else
+							{
+								rawSample = evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time,
+															 voice.decay);
+							}
 							break;
 						}
 						case 3: // Noise
 							rawSample = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f;
 							break;
-						case 0: // Warm Lead (singing melodic tone)
+						case 0: // Lead Melody (Derived from voice.waveType)
 						default:
 						{
-							float p = voice.phase;
-							rawSample = 0.85f * sinf(p) + 0.15f * sinf(p * 2.0f);
+							rawSample =
+								evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time, voice.decay);
 							break;
 						}
 					}

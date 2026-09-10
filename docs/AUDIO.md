@@ -293,3 +293,30 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `getParameter(size_t i) / setParameter(size_t i, float v)` | Gets or sets dynamic shape variable (indices 0–7). |
 | `getCenter() const / setCenter(vec2 center)` | Gets or sets screen anchor coordinate. |
 | `getShapeExpression() const` | Returns the bounded AST shape expression ($50\text{ px}$ domain circle applied). |
+| `getFingerprint() const` | Returns `ASTFingerprint` with topological metrics (`structuralHash`, `nodeCount`, `maxDepth`, `branchCount`). |
+
+---
+
+## 8. AST Topology & Procedural Instrument Selection
+
+To provide timbral variety across different songs while keeping sound identity stable under real-time parameter changes, the procedural engine decouples **instrument selection** from **real-time performance**:
+
+1. **AST Topology (Instrument Rack — Who Plays)**:
+   - Evaluated **once** when an `SdfSong` is instantiated by traversing `m_rawShapeExpression`.
+   - Trivial leaves (`FloatConstant` and `FloatVariable` `var0`..`var7`) are skipped, guaranteeing that slider tweaks or runtime animations **never change the instrument selection**.
+   - Traverses tree hierarchy (node count, depth, branching, parent-child links) to compute a deterministic topological seed (`structuralHash`).
+   - Pure structural topology: no complex node-type balancing or fragile ratios. Changing the tree structure (adding a node, changing a connection, deeper nesting) rolls a completely different instrument rack.
+
+2. **Instrument Rack Assignment**:
+   - `SdfMusicEngine::selectInstrumentRack()` uses `structuralHash` as a deterministic PRNG seed (salting for lead, bass, pad, and drum kit). Any change in node composition or tree graph topology selects a completely different instrument ensemble:
+     - **Lead Waveform**: Selects uniformly across `SoftSine`, `BandlimitedSaw`, `PulseSquare`, `FMPluck`, and `Wavefolder`.
+     - **Bass Waveform**: Selects across `SoftSine`, `BandlimitedSaw`, `PulseSquare`, and `FMPluck`.
+     - **Pad Waveform**: Selects across `SoftSine`, `Wavefolder`, `BandlimitedSaw`, and `PulseSquare`.
+     - **Percussion Kit**: Distributes uniformly across all 3 kits:
+       - **Kit 0**: Deep 808 Electronic (sub kick, snappy snare, FM hat)
+       - **Kit 1**: Acoustic Punch (200 Hz sweep kick, resonant wood snare, crisp hat)
+       - **Kit 2**: Industrial / 909 (saturated overdriven kick, metallic ring snare, sizzle hat)
+     - **Synthesis Parameters**: Pulse width, FM mod index, and wavefolder drive are derived from salted hash entropy, ensuring distinct sonic flavor for each shape.
+
+3. **Geometry Probes (Conductor — What They Play)**:
+   - Compass probes (`melodyDensity`, `harmonyRichness`, `brightness`, `syncopation`, `tempoFactor`) and domain motion/fill continuously modulate filter cutoff frequencies, note density, tempo, and octave registers in real time without altering the instrument rack.

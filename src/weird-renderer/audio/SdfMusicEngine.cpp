@@ -287,8 +287,9 @@ namespace WeirdEngine
 			uint32_t hPad = prngHash(fp.structuralHash, 307);
 			uint32_t hKit = prngHash(fp.structuralHash, 409);
 
-			// Lead selects uniformly across all 5 waveforms
-			m_rack.lead = allWaves[hLead % 5];
+			// Lead selects across warm, musical waveforms: SoftSine, FMPluck, Wavefolder
+			static constexpr WaveType leadWaves[3] = {WaveType::SoftSine, WaveType::FMPluck, WaveType::Wavefolder};
+			m_rack.lead = leadWaves[hLead % 3];
 
 			// Bass selects across SoftSine, BandlimitedSaw, PulseSquare, FMPluck
 			static constexpr WaveType bassWaves[4] = {WaveType::SoftSine, WaveType::BandlimitedSaw,
@@ -724,34 +725,75 @@ namespace WeirdEngine
 			// -------------------------------------------------------------
 			if (m_tracks.lead)
 			{
-				bool isEighthBeat = (stepInBar % 2 == 0);
 				bool isQuarterBeat = (stepInBar % 4 == 0);
-				float trigProb = m_shapeParams.melodyDensity * (0.35f + 0.65f * motionFactor) * 0.65f;
-				if (isEighthBeat)
-				{
-					trigProb += 0.22f * (0.4f + 0.6f * motionFactor);
-				}
+				bool isEighthBeat = (stepInBar % 2 == 0);
+
+				// Phrase-level breathing across 4 bars:
+				// Bar 0: Call / theme introduction
+				// Bar 1: Response / answering phrase (sparser)
+				// Bar 2: Climax / elaboration
+				// Bar 3: Cadence / breathing pause
+				constexpr float phraseMask[4] = {1.0f, 0.45f, 0.85f, 0.15f};
+				float phraseGate = phraseMask[bar];
+
+				float trigProb = 0.0f;
 				if (isQuarterBeat)
 				{
-					trigProb += 0.12f;
+					trigProb = 0.55f * m_shapeParams.melodyDensity * phraseGate;
 				}
+				else if (isEighthBeat)
+				{
+					trigProb = 0.25f * m_shapeParams.melodyDensity * phraseGate;
+				}
+				else if (m_shapeParams.syncopation > 0.40f)
+				{
+					trigProb = 0.08f * m_shapeParams.melodyDensity * phraseGate;
+				}
+
+				trigProb *= (0.50f + 0.50f * motionFactor);
 
 				if (stepHash(step, 233) < trigProb)
 				{
 					if (stepInBar == 0)
 					{
-						// Anchor to harmony root on downbeats
-						m_melodyDegree = bassDegree + (stepHash(step, 401) > 0.5f ? 2 : 0);
+						// Anchor to chord tones (root, third, fifth)
+						int chordTones[3] = {bassDegree, bassDegree + 2, bassDegree + 4};
+						int closest = chordTones[0];
+						int minDist = 999;
+						for (int ct : chordTones)
+						{
+							int d = std::abs(m_melodyDegree - ct);
+							if (d < minDist)
+							{
+								minDist = d;
+								closest = ct;
+							}
+						}
+						m_melodyDegree = closest;
 					}
 					else
 					{
-						float jump = (stepHash(step, 311) - 0.5f) * (2.0f + m_shapeParams.variation * 3.5f);
-						m_melodyDegree += static_cast<int>(std::round(jump));
+						// Smooth stepwise contour (conjunct motion)
+						float r = stepHash(step, 311);
+						int stepOffset = 0;
+						if (r < 0.65f)
+						{
+							stepOffset = (r < 0.325f) ? 1 : -1;
+						}
+						else if (r < 0.85f)
+						{
+							stepOffset = (r < 0.75f) ? 2 : -2;
+						}
+						else
+						{
+							stepOffset = (r < 0.925f) ? 3 : -3;
+						}
+						m_melodyDegree += stepOffset;
 					}
-					m_melodyDegree = std::clamp(m_melodyDegree, -2, 10);
+					m_melodyDegree = std::clamp(m_melodyDegree, 0, 7);
 
-					// Lead melody octave: 0 (Middle C = 261 Hz) or 1 (C5 = 523 Hz), musical and smooth!
-					int baseOctave = (m_shapeParams.brightness > 0.60f) ? 1 : 0;
+					// Keep melody comfortably in warm vocal range (Middle C)
+					int baseOctave = 0;
 					int midi = m_currentSong->getScaleDegreeMidi(m_melodyDegree, baseOctave) +
 							   static_cast<int>(m_positivePitchOffset);
 					float freq = m_currentSong->midiToFrequency(midi);
@@ -761,11 +803,16 @@ namespace WeirdEngine
 						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
 					}
 
-					// Warm filter cutoff: 1200 Hz to 2800 Hz (soft, vocal-like)
-					float cutoff = 1200.0f + 1600.0f * m_shapeParams.brightness;
-					float dur = beatSec * (0.40f + 0.40f * stepHash(step, 523)) * noteLengthMult;
-					float pan = stepHash(step, 617) * 1.0f - 0.5f;
-					float vel = 0.35f + 0.25f * m_shapeParams.melodyDensity;
+					// Warm, gentle filter cutoff (800 Hz to 1800 Hz) - never piercing
+					float cutoff = 800.0f + 1000.0f * m_shapeParams.brightness;
+					float baseDur = 0.80f + 1.20f * stepHash(step, 523);
+					if (isQuarterBeat)
+					{
+						baseDur *= 1.25f;
+					}
+					float dur = beatSec * baseDur * noteLengthMult;
+					float pan = (stepHash(step, 617) - 0.5f) * 0.50f;
+					float vel = 0.25f + 0.17f * m_shapeParams.melodyDensity;
 
 					playNote(freq, vel, dur, 0, pan, cutoff);
 				}

@@ -55,6 +55,8 @@ namespace WeirdEngine
 		void AudioEngine::close()
 		{
 			m_audioStream = nullptr;
+			m_dcBlockerX[0] = m_dcBlockerX[1] = 0.0f;
+			m_dcBlockerY[0] = m_dcBlockerY[1] = 0.0f;
 			if (m_hasSound)
 			{
 				ma_sound_uninit(&m_sound);
@@ -169,6 +171,25 @@ namespace WeirdEngine
 						for (size_t i = 0; i < mix.size(); ++i)
 						{
 							mix[i] += bgTrack[i];
+						}
+					}
+
+					// Master bus processing: DC Blocker (1-pole highpass at ~15 Hz, R = 0.995)
+					// Eliminates DC offset so waveforms center symmetrically at 0.0
+					constexpr float DC_BLOCK_R = 0.995f;
+					for (size_t frame = 0; frame < framesToWrite; ++frame)
+					{
+						for (size_t ch = 0; ch < CHANNELS; ++ch)
+						{
+							size_t idx = frame * CHANNELS + ch;
+							float in = mix[idx];
+							float out = in - m_dcBlockerX[ch] + DC_BLOCK_R * m_dcBlockerY[ch];
+							m_dcBlockerX[ch] = in;
+							// Denormal protection
+							if (std::abs(out) < 1e-15f)
+								out = 0.0f;
+							m_dcBlockerY[ch] = out;
+							mix[idx] = out;
 						}
 					}
 

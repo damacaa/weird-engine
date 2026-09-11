@@ -151,6 +151,10 @@ namespace WeirdEngine
 
 			SDL_AudioStream* m_audioStream = nullptr;
 			AudioData m_visualSnapshot;
+
+			// Master bus DC-blocking filter state (per channel)
+			float m_dcBlockerX[2] = {0.0f, 0.0f};
+			float m_dcBlockerY[2] = {0.0f, 0.0f};
 		};
 
 	} // namespace WeirdAudio

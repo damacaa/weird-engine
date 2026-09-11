@@ -127,12 +127,6 @@ namespace WeirdEngine
 				}
 
 				m_physicsEngine.playSound(req, listenerPos, listenerForward, listenerUp);
-
-				// Heavy physics impacts dynamically duck the music
-				if (req.intensity > 0.35f)
-				{
-					m_musicEngine.duck(req.intensity * 0.40f);
-				}
 			}
 
 			// 4. Check consumed impact energy to surge music activity

@@ -120,6 +120,10 @@ namespace WeirdEngine::Editor
 				{
 					ImGui::TextUnformatted(pDef.name.c_str());
 				}
+				else if (node.typeId == "sdf_output")
+				{
+					ImGui::TextDisabled("%s (unconnected)", pDef.name.c_str());
+				}
 				else
 				{
 					// Unlinked: render inline editable widget
@@ -268,18 +272,39 @@ namespace WeirdEngine::Editor
 		}
 
 		// 6. Right-click context popup on canvas for quick node spawning
-		if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right) &&
-			!ImNodes::IsNodeHovered(nullptr) && !ImNodes::IsLinkHovered(nullptr))
+		static ImVec2 s_contextMenuMousePos(0.0f, 0.0f);
+		int hoveredNode = -1;
+		int hoveredLink = -1;
+		int hoveredPin = -1;
+		bool isHoveringNode = ImNodes::IsNodeHovered(&hoveredNode);
+		bool isHoveringLink = ImNodes::IsLinkHovered(&hoveredLink);
+		bool isHoveringPin = ImNodes::IsPinHovered(&hoveredPin);
+
+		bool isCanvasHovered = ImNodes::IsEditorHovered() || ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+		if (isCanvasHovered && !isHoveringNode && !isHoveringLink && !isHoveringPin && !ImGui::IsAnyItemHovered())
 		{
-			ImGui::OpenPopup("NodeCanvasContextMenu");
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				s_contextMenuMousePos = ImGui::GetMousePos();
+				ImGui::OpenPopup("NodeCanvasContextMenu");
+			}
 		}
 
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.0f, 4.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 3.0f));
 		if (ImGui::BeginPopup("NodeCanvasContextMenu"))
 		{
-			ImVec2 mousePos = ImGui::GetMousePosOnOpeningCurrentPopup();
+			ImVec2 mousePos = s_contextMenuMousePos;
+			if (mousePos.x <= 0.0f && mousePos.y <= 0.0f)
+			{
+				mousePos = ImGui::GetMousePosOnOpeningCurrentPopup();
+			}
 			MenuBarView::renderAddNodeMenu(graph, mousePos, outDirty);
 			ImGui::EndPopup();
 		}
+		ImGui::PopStyleVar(4);
 
 		// 7. Shortcut: Ctrl+L to trigger Auto Layout
 		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_L))

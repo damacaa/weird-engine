@@ -713,6 +713,11 @@ namespace WeirdEngine
 		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().duck(amount);
 	}
 
+	void AudioService::resetDynamicEffects()
+	{
+		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resetDynamicEffects();
+	}
+
 	void AudioService::resampleShape()
 	{
 		if (m_visualizationEntity != INVALID_ENTITY && registry &&
@@ -1187,12 +1192,12 @@ namespace WeirdEngine
 					}
 
 					// Dynamic Feedback Triggers
-					if (ImGui::Button("Positive Trigger"))
+					if (ImGui::Button("Positive (Click)"))
 					{
 						musicEngine.triggerPositiveFeedback(1.0f);
 					}
 					ImGui::SameLine();
-					if (ImGui::Button("Negative Trigger"))
+					if (ImGui::Button("Negative (Error)"))
 					{
 						musicEngine.triggerNegativeFeedback(1.0f);
 					}
@@ -1200,6 +1205,11 @@ namespace WeirdEngine
 					if (ImGui::Button("Death Trigger"))
 					{
 						musicEngine.triggerDeath();
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Reset All Effects"))
+					{
+						musicEngine.resetDynamicEffects();
 					}
 					ImGui::Unindent();
 				}

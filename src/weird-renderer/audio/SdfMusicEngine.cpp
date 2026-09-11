@@ -73,15 +73,28 @@ namespace WeirdEngine
 			m_currentStep = 0;
 			m_activeVoices.clear();
 			m_concussionFilterCutoff = 20000.0f;
-			m_deathSlowdown = 1.0f;
+			m_deathStage = 0;
+			m_deathTimer = 0.0f;
+			m_deathSilenceTimer = 0.0f;
 			m_isDead = false;
 			m_melodyDegree = 0;
 			m_shapeParams = ShapeMusicalParams{};
 			m_motionLevel = 0.0f;
 			m_motionNorm = 0.0f;
-			m_fillRatio = 0.5f;
+			m_fillRatio = -1.0f;
 			m_tempoFromMotion = 1.0f;
 			m_volumeFromFill = 0.65f;
+			m_sampleIndex = 0;
+			m_prevMotionDist = 0.0f;
+			m_hasPrevMotionSample = false;
+			m_domainFillSamples.fill(0.5f);
+			m_domainMotionSamples.fill(0.0f);
+			m_surgeLevel = 0.0f;
+			m_surgeTimer = 0.0f;
+			m_duckTimer = 0.0f;
+			m_pendingSurgeImpact = false;
+			m_surgeImpactCooldown = 0.0f;
+			m_trackPlayStates.fill(TrackPlayState::Playing);
 
 			m_currentSong = nullptr;
 			m_queuedSong = nullptr;
@@ -199,7 +212,49 @@ namespace WeirdEngine
 			m_shapeParams.variation = std::clamp(0.20f + 0.45f * relVar + 0.25f * extSW, 0.15f, 0.90f);
 		}
 
-		void SdfMusicEngine::sampleDomainMotionAndFill(double sceneTime)
+		void SdfMusicEngine::initDomainSamples()
+		{
+			if (!m_currentSong || !m_currentSong->getRawShapeExpression())
+				return;
+
+			auto shape = m_currentSong->getRawShapeExpression();
+			static const auto sampleOffsets = createDomainSamples();
+
+			float params[12]{};
+			for (size_t i = 0; i < 8; ++i)
+			{
+				params[i] = m_currentSong->getParameter(i);
+			}
+			params[8] = static_cast<float>(m_sceneTime);
+			params[11] = 0.0f;
+
+			float totalFill = 0.0f;
+			for (size_t i = 0; i < NUM_DOMAIN_SAMPLES && i < sampleOffsets.size(); ++i)
+			{
+				params[9] = sampleOffsets[i].x;
+				params[10] = sampleOffsets[i].y;
+				float d = shape->getValue(params);
+				float fillVal = (d < 0.0f) ? 1.0f : 0.0f;
+				m_domainFillSamples[i] = fillVal;
+				m_domainMotionSamples[i] = 0.0f;
+				totalFill += fillVal;
+			}
+
+			if (m_fillRatio < 0.0f)
+			{
+				m_fillRatio = totalFill / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			}
+			m_volumeFromFill = std::clamp(0.40f + 0.60f * std::sqrt(std::max(0.0f, m_fillRatio)), 0.35f, 1.0f);
+
+			m_motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
+			m_tempoFromMotion = 0.38f + 1.22f * std::pow(m_motionNorm, 1.25f);
+
+			m_sampleIndex = 0;
+			m_hasPrevMotionSample = false;
+			m_prevMotionDist = 0.0f;
+		}
+
+		void SdfMusicEngine::sampleDomainMotionAndFill(double sceneTime, double deltaTime)
 		{
 			if (!m_currentSong || !m_currentSong->getRawShapeExpression())
 				return;
@@ -207,55 +262,77 @@ namespace WeirdEngine
 			auto shape = m_currentSong->getRawShapeExpression();
 
 			static const auto sampleOffsets = createDomainSamples();
+			if (sampleOffsets.empty())
+				return;
 
-			float paramsT0[12]{};
-			float paramsT1[12]{};
+			float params[12]{};
 			for (size_t i = 0; i < 8; ++i)
 			{
-				paramsT0[i] = m_currentSong->getParameter(i);
-				paramsT1[i] = paramsT0[i];
+				params[i] = m_currentSong->getParameter(i);
 			}
-			constexpr float dtSample = 0.08f;
-			paramsT0[8] = static_cast<float>(sceneTime);
-			paramsT1[8] = static_cast<float>(sceneTime + dtSample);
-			paramsT0[11] = 0.0f;
-			paramsT1[11] = 0.0f;
+			params[8] = static_cast<float>(sceneTime);
+			params[11] = 0.0f;
 
-			float totalMotion = 0.0f;
-			int insideCount = 0;
+			// Sample point for current frame
+			size_t currentIndex = m_sampleIndex % sampleOffsets.size();
+			const auto& currentPoint = sampleOffsets[currentIndex];
 
-			for (const auto& offset : sampleOffsets)
+			// 1. Motion evaluation:
+			// If we sampled currentPoint on previous update, compare distance to calculate delta
+			if (m_hasPrevMotionSample)
 			{
-				paramsT0[9] = offset.x;
-				paramsT0[10] = offset.y;
-				float d0 = shape->getValue(paramsT0);
+				params[9] = currentPoint.x;
+				params[10] = currentPoint.y;
+				float curDist = shape->getValue(params);
 
-				paramsT1[9] = offset.x;
-				paramsT1[10] = offset.y;
-				float d1 = shape->getValue(paramsT1);
+				float deltaDist = std::abs(curDist - m_prevMotionDist);
+				float effDt = std::clamp(static_cast<float>(deltaTime), 0.001f, 0.1f);
+				float motionRate = deltaDist / effDt;
 
-				if (d0 < 0.0f)
-				{
-					insideCount++;
-				}
-
-				float deltaDist = std::abs(d1 - d0);
-				totalMotion += (deltaDist / dtSample);
+				m_domainMotionSamples[currentIndex] = motionRate;
 			}
 
-			float avgMotion = totalMotion / static_cast<float>(NUM_DOMAIN_SAMPLES);
-			float currentFill = static_cast<float>(insideCount) / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			// 2. Next position sampling:
+			// Advance index to select next point and record its baseline distance for next update
+			size_t nextIndex = (m_sampleIndex + 1) % sampleOffsets.size();
+			const auto& nextPoint = sampleOffsets[nextIndex];
 
-			// Smooth with exponential moving average
-			m_motionLevel += (avgMotion - m_motionLevel) * 0.20f;
-			m_fillRatio += (currentFill - m_fillRatio) * 0.25f;
+			params[9] = nextPoint.x;
+			params[10] = nextPoint.y;
+			float nextDist = shape->getValue(params);
+
+			m_prevMotionDist = nextDist;
+			m_hasPrevMotionSample = true;
+			m_sampleIndex = nextIndex;
+
+			// 3. Domain fill evaluation:
+			// Update the sampled position's inside/outside state
+			m_domainFillSamples[nextIndex] = (nextDist < 0.0f) ? 1.0f : 0.0f;
+
+			// Running average across all domain sample points:
+			// Eliminates intra-song spatial oscillation for static shapes while adapting smoothly
+			float totalFill = 0.0f;
+			float totalMotion = 0.0f;
+			for (size_t i = 0; i < NUM_DOMAIN_SAMPLES; ++i)
+			{
+				totalFill += m_domainFillSamples[i];
+				totalMotion += m_domainMotionSamples[i];
+			}
+
+			float avgFill = totalFill / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			float avgMotion = totalMotion / static_cast<float>(NUM_DOMAIN_SAMPLES);
+
+			// Framerate-independent exponential moving average (~0.99 old / 0.01 new blend at 60 FPS)
+			float dt = std::clamp(static_cast<float>(deltaTime), 0.0001f, 0.1f);
+			float blend = 1.0f - std::exp(-dt * 0.75f);
+
+			m_fillRatio += (avgFill - m_fillRatio) * blend;
+			m_motionLevel += (avgMotion - m_motionLevel) * blend;
 
 			// Motion controls overall tempo:
-			// If motion == 0 (completely still): tempo drops to 0.38x (very slow!)
-			// If motion is moderate (normal movement): tempo is ~1.0x
-			// If motion is high (moving/spinning): tempo goes up to 1.60x (high tempo!)
-			// Scaled with 100.0f denominator and gentle ease-in (pow 1.25) to prevent
-			// hypersensitivity on slight movements.
+			// If motion == 0 (still): tempo drops to 0.38x
+			// If motion is moderate: tempo is ~1.0x
+			// If motion is high: tempo goes up to 1.60x
 			float motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
 			m_motionNorm = motionNorm;
 			m_tempoFromMotion = 0.38f + 1.22f * std::pow(motionNorm, 1.25f);
@@ -287,9 +364,11 @@ namespace WeirdEngine
 			uint32_t hPad = prngHash(fp.structuralHash, 307);
 			uint32_t hKit = prngHash(fp.structuralHash, 409);
 
-			// Lead selects across warm, musical waveforms: SoftSine, FMPluck, Wavefolder
-			static constexpr WaveType leadWaves[3] = {WaveType::SoftSine, WaveType::FMPluck, WaveType::Wavefolder};
-			m_rack.lead = leadWaves[hLead % 3];
+			// Lead selects across rich, expressive waveforms: SoftSine, FMPluck, Wavefolder, BandlimitedSaw,
+			// PulseSquare
+			static constexpr WaveType leadWaves[5] = {WaveType::SoftSine, WaveType::FMPluck, WaveType::Wavefolder,
+													  WaveType::BandlimitedSaw, WaveType::PulseSquare};
+			m_rack.lead = leadWaves[hLead % 5];
 
 			// Bass selects across SoftSine, BandlimitedSaw, PulseSquare, FMPluck
 			static constexpr WaveType bassWaves[4] = {WaveType::SoftSine, WaveType::BandlimitedSaw,
@@ -318,7 +397,7 @@ namespace WeirdEngine
 		{
 			std::lock_guard<std::mutex> lock(m_songMutex);
 			sampleShapeParameters();
-			sampleDomainMotionAndFill(m_sceneTime);
+			initDomainSamples();
 		}
 
 		void SdfMusicEngine::setSong(std::shared_ptr<SdfSong> song, bool beatSynced)
@@ -333,7 +412,7 @@ namespace WeirdEngine
 				m_currentBeat = 0.0f;
 				m_melodyDegree = 0;
 				sampleShapeParameters();
-				sampleDomainMotionAndFill(m_sceneTime);
+				initDomainSamples();
 
 				if (isSongEmpty(m_currentSong))
 				{
@@ -397,56 +476,89 @@ namespace WeirdEngine
 			return true;
 		}
 
+		TrackPlayState SdfMusicEngine::getTrackPlayState(MusicTrack track) const
+		{
+			size_t idx = static_cast<size_t>(track);
+			if (idx < m_trackPlayStates.size())
+			{
+				return m_trackPlayStates[idx];
+			}
+			return TrackPlayState::Playing;
+		}
+
 		void SdfMusicEngine::triggerPositiveFeedback(float intensity)
 		{
-			float clamped = std::clamp(intensity, 0.2f, 2.0f);
-			m_positiveTimer = 1.2f * clamped;
-			m_positivePitchOffset = 7.0f; // Modulate up a perfect fifth
-
+			float clamped = std::clamp(intensity, 0.1f, 2.0f);
 			if (m_currentSong)
 			{
-				int root = m_currentSong->getRootMidi();
-				float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
-				float beatDuration = 60.0f / (std::max)(30.0f, baseTempo);
-
-				playNote(m_currentSong->midiToFrequency(root + 12), 0.40f * clamped, beatDuration * 2.5f, 4, -0.4f,
-						 7500.0f);
-				playNote(m_currentSong->midiToFrequency(root + 16), 0.35f * clamped, beatDuration * 3.0f, 4, 0.0f,
-						 8500.0f);
-				playNote(m_currentSong->midiToFrequency(root + 19), 0.38f * clamped, beatDuration * 3.5f, 4, 0.4f,
-						 9500.0f);
-				playNote(m_currentSong->midiToFrequency(root + 24), 0.30f * clamped, beatDuration * 4.0f, 0, 0.0f,
-						 11000.0f);
+				// Tactile, satisfying mechanical click in-key with the song
+				int noteMidi = m_currentSong->getRootMidi();
+				while (noteMidi < 55)
+					noteMidi += 12;
+				while (noteMidi > 67)
+					noteMidi -= 12;
+				float freq = m_currentSong->midiToFrequency(noteMidi);
+				playNote(freq, 0.85f * clamped, 0.026f, 8, 0.0f, 16000.0f);
+			}
+			else
+			{
+				playNote(320.0f, 0.85f * clamped, 0.026f, 8, 0.0f, 16000.0f);
 			}
 		}
 
 		void SdfMusicEngine::triggerNegativeFeedback(float intensity)
 		{
-			float clamped = std::clamp(intensity, 0.2f, 2.0f);
-			m_negativeTimer = 1.0f * clamped;
-			m_concussionFilterCutoff = 280.0f; // Concussive lowpass muffle (underwater effect)
-			m_detuneAmount = 0.04f * clamped;
-
-			duck(0.5f * clamped);
-
+			float clamped = std::clamp(intensity, 0.1f, 2.0f);
 			if (m_currentSong)
 			{
-				int root = m_currentSong->getRootMidi();
-				playNote(m_currentSong->midiToFrequency(root - 24), 0.55f * clamped, 0.6f, 1, 0.0f, 350.0f);
+				// Clear negative feedback for invalid input: short, responsive descending dissonant interval
+				// Anchor pitch in mid-register (MIDI 58-70) so phone and laptop speakers reproduce it clearly
+				int baseMidi = m_currentSong->getRootMidi();
+				while (baseMidi < 58)
+					baseMidi += 12;
+				while (baseMidi > 70)
+					baseMidi -= 12;
+
+				int note1 = baseMidi;
+				int note2 = baseMidi + 1; // Minor second dissonance (produces acoustic beating buzz)
+				float freq1 = m_currentSong->midiToFrequency(note1);
+				float freq2 = m_currentSong->midiToFrequency(note2);
+
+				playNote(freq1, 0.65f * clamped, 0.15f, 9, -0.06f, 5000.0f);
+				playNote(freq2, 0.55f * clamped, 0.15f, 9, 0.06f, 5000.0f);
+			}
+			else
+			{
+				playNote(261.63f, 0.65f * clamped, 0.15f, 9, -0.06f, 5000.0f);
+				playNote(277.18f, 0.55f * clamped, 0.15f, 9, 0.06f, 5000.0f);
 			}
 		}
 
 		void SdfMusicEngine::triggerDeath()
 		{
 			m_isDead = true;
-			m_deathSlowdown = 1.0f;
-			m_concussionFilterCutoff = 350.0f;
+			m_deathStage = 1; // Stage 1: Lead stops queuing new notes; active notes fade naturally
+			m_deathTimer = 0.0f;
+			m_deathSilenceTimer = 0.0f;
+		}
 
-			if (m_currentSong)
+		bool SdfMusicEngine::isTrackDead(MusicTrack track) const
+		{
+			if (!m_isDead)
+				return false;
+
+			switch (track)
 			{
-				int root = m_currentSong->getRootMidi();
-				playNote(m_currentSong->midiToFrequency(root - 24), 0.65f, 4.0f, 2, 0.0f, 300.0f);
-				playNote(m_currentSong->midiToFrequency(root - 18), 0.45f, 3.5f, 1, 0.0f, 400.0f); // Dissonant tritone
+				case MusicTrack::Lead:
+					return m_deathStage >= 1;
+				case MusicTrack::Drums:
+					return m_deathStage >= 2;
+				case MusicTrack::Pad:
+					return m_deathStage >= 3;
+				case MusicTrack::Bass:
+					return m_deathStage >= 4;
+				default:
+					return false;
 			}
 		}
 
@@ -471,11 +583,63 @@ namespace WeirdEngine
 		void SdfMusicEngine::duck(float amount)
 		{
 			m_ducking = (std::min)(1.0f, m_ducking + amount);
+			// Peak hold: sustained danger hold (up to 8.0s)
+			m_duckTimer = (std::min)(8.0f, (std::max)(m_duckTimer, 2.5f) + amount * 3.5f);
+			m_surgeLevel = (std::max)(0.0f, m_surgeLevel - amount * 0.8f);
+			m_surgeTimer = 0.0f;
+
+			// Immediately mark Lead as Ducked
+			m_trackPlayStates[static_cast<size_t>(MusicTrack::Lead)] = TrackPlayState::Ducked;
+
+			// Truncate any ringing lead voices immediately (rapid fade-out to prevent pop)
+			for (auto& voice : m_activeVoices)
+			{
+				if (voice.instrument == 0) // Lead
+				{
+					voice.decay = (std::min)(voice.decay, 0.05f);
+				}
+			}
 		}
 
 		void SdfMusicEngine::surge(float amount)
 		{
-			m_ducking = (std::max)(0.0f, m_ducking - amount * 0.5f);
+			m_ducking = (std::max)(0.0f, m_ducking - amount * 0.8f);
+			m_duckTimer = 0.0f;
+
+			// If surge was low, schedule a beat-synced impact accent on the next beat downbeat
+			if (m_surgeLevel < 0.25f && m_surgeImpactCooldown <= 0.0f)
+			{
+				m_pendingSurgeImpact = true;
+			}
+
+			m_surgeLevel = (std::min)(1.0f, m_surgeLevel + amount);
+			// Peak hold: sustained hold on hits (up to 6.0s), before slow linear decay begins
+			m_surgeTimer = (std::min)(6.0f, (std::max)(m_surgeTimer, 1.8f) + amount * 2.5f);
+		}
+
+		void SdfMusicEngine::resetDynamicEffects()
+		{
+			m_ducking = 0.0f;
+			m_duckTimer = 0.0f;
+			m_surgeLevel = 0.0f;
+			m_surgeTimer = 0.0f;
+			m_pendingSurgeImpact = false;
+			m_surgeImpactCooldown = 0.0f;
+
+			m_tension = 0.0f;
+			m_energy = 0.5f;
+			m_healthRatio = 1.0f;
+			m_positiveTimer = 0.0f;
+			m_positivePitchOffset = 0.0f;
+			m_negativeTimer = 0.0f;
+			m_concussionFilterCutoff = 20000.0f;
+			m_detuneAmount = 0.0f;
+			m_isDead = false;
+			m_deathStage = 0;
+			m_deathTimer = 0.0f;
+			m_deathSilenceTimer = 0.0f;
+
+			m_trackPlayStates.fill(TrackPlayState::Playing);
 		}
 
 		float SdfMusicEngine::quantizeToSongScale(float rawFreq) const
@@ -510,7 +674,7 @@ namespace WeirdEngine
 			m_sceneTime = sceneTime;
 
 			// Sample domain motion & fill ratio dynamically
-			sampleDomainMotionAndFill(sceneTime);
+			sampleDomainMotionAndFill(sceneTime, deltaTime);
 
 			// 1. Recover dynamic feedback parameters smoothly
 			if (m_positiveTimer > 0.0f)
@@ -532,23 +696,58 @@ namespace WeirdEngine
 				m_detuneAmount = (std::max)(0.0f, m_detuneAmount - dt * 0.2f);
 			}
 
-			if (m_ducking > 0.0f)
+			if (m_surgeTimer > 0.0f)
 			{
-				m_ducking = (std::max)(0.0f, m_ducking - dt * 4.0f);
+				m_surgeTimer = (std::max)(0.0f, m_surgeTimer - dt);
+			}
+			else if (m_surgeLevel > 0.0f)
+			{
+				// Smooth slow decay from 1.0 to 0.0 over ~14-15 seconds (dt * 0.07f)
+				m_surgeLevel = (std::max)(0.0f, m_surgeLevel - dt * 0.07f);
+			}
+
+			if (m_duckTimer > 0.0f)
+			{
+				m_duckTimer = (std::max)(0.0f, m_duckTimer - dt);
+			}
+			else if (m_ducking > 0.0f)
+			{
+				// Smooth recovery over ~26-28 seconds
+				m_ducking = (std::max)(0.0f, m_ducking - dt * 0.038f);
+			}
+
+			if (m_surgeImpactCooldown > 0.0f)
+			{
+				m_surgeImpactCooldown = (std::max)(0.0f, m_surgeImpactCooldown - dt);
 			}
 
 			if (m_isDead)
 			{
-				m_deathSlowdown = (std::max)(0.0f, m_deathSlowdown - dt * 0.5f);
+				m_deathTimer += dt;
+				if (m_deathStage >= 4)
+				{
+					m_deathSilenceTimer += dt;
+				}
+				// Generous safety timer: advance stage every 1.5s if tempo is stopped or ultra slow
+				if (m_deathTimer >= 1.50f && m_deathStage >= 1 && m_deathStage < 4)
+				{
+					m_deathStage++;
+					m_deathTimer = 0.0f;
+				}
 			}
 			else
 			{
-				m_deathSlowdown = 1.0f;
+				m_deathStage = 0;
+				m_deathTimer = 0.0f;
+				m_deathSilenceTimer = 0.0f;
 			}
 
-			// 2. Tempo calculations based on song base tempo, motion-derived tempo, shape tempo factor, and energy
+			// 2. Tempo calculations based on song base tempo, motion-derived tempo, shape tempo factor, energy,
+			// surge, and duck
 			float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
-			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * m_deathSlowdown;
+			float surgeTempoMult = 1.0f + 0.18f * m_surgeLevel;
+			float duckTempoMult = 1.0f - 0.16f * m_ducking; // Noticeable heavy heartbeat drag (-16% max)
+			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * surgeTempoMult * duckTempoMult;
 			if (dynamicTempo < 5.0f)
 				return;
 
@@ -560,8 +759,25 @@ namespace WeirdEngine
 			{
 				m_stepAccumulator -= stepDuration;
 
+				int stepInBar = m_currentStep % 16;
+				bool isQuarterBeat = (stepInBar % 4 == 0);
+				// Half-bar boundary (every 2 beats / 8 sixteenth steps):
+				bool isHalfBar = (stepInBar == 0 || stepInBar == 8);
+
+				// Beat-synchronized track death (every 2 beats / half measure):
+				// Tracks stop queuing new notes sequentially, allowing all active notes to ring out and fade naturally
+				// Stage 1 (on triggerDeath): Lead stops queuing new notes; active lead notes fade naturally
+				// Stage 2 (2 beats later): Drums stop queuing new hits; drum tails ring out and fade naturally
+				// Stage 3 (2 beats later): Pad stops queuing new chords; existing chord voices fade naturally
+				// Stage 4 (2 beats later): Bass stops queuing new notes; bass notes resonate & fade away naturally
+				if (m_isDead && isHalfBar && m_deathTimer > 0.35f && m_deathStage >= 1 && m_deathStage < 4)
+				{
+					m_deathStage++;
+					m_deathTimer = 0.0f;
+				}
+
 				// Check for beat-synced song transition on downbeats (every 4 steps = 1 beat)
-				if ((m_currentStep % 4) == 0 && m_queuedSong)
+				if (isQuarterBeat && m_queuedSong)
 				{
 					std::lock_guard<std::mutex> lock(m_songMutex);
 					if (m_queuedSong)
@@ -570,7 +786,7 @@ namespace WeirdEngine
 						m_queuedSong = nullptr;
 						m_melodyDegree = 0;
 						sampleShapeParameters();
-						sampleDomainMotionAndFill(m_sceneTime);
+						initDomainSamples();
 
 						if (isSongEmpty(m_currentSong))
 						{
@@ -603,17 +819,129 @@ namespace WeirdEngine
 		void SdfMusicEngine::evaluateShapeDrivenAtStep(int step)
 		{
 			float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
-			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * m_deathSlowdown;
+			float surgeTempoMult = 1.0f + 0.18f * m_surgeLevel;
+			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * surgeTempoMult;
 			float beatSec = 60.0f / (std::max)(20.0f, dynamicTempo);
 
-			int stepInBar = step % 16; // 16th note step in 4/4 bar (0..15)
-			int bar = (step / 16) % 4; // Bar index in 4-bar phrase (0..3)
+			int stepInBar = step % 16;		  // 16th note step in 4/4 bar (0..15)
+			int barInSong = (step / 16) % 16; // 16-bar master loop (0..15)
+			int phraseInSong = barInSong / 4; // 4-bar phrase index (0..3)
+			int barInPhrase = barInSong % 4;  // Bar within 4-bar phrase (0..3)
+			int bar = barInPhrase;			  // For harmonic foundation (I - IV - V)
 
 			// Motion dictates pause frequency and note sustained duration:
 			// If motion is low (still shape): notes ring out longer and pauses are frequent.
 			// If motion is high (rapid moving shape): notes are shorter, active, continuous groove.
 			float motionFactor = m_motionNorm;
 			float noteLengthMult = 1.6f - 0.6f * motionFactor;
+
+			// -------------------------------------------------------------
+			// Procedural Arrangement & Track Contrasts (16-Bar Macro Form)
+			// -------------------------------------------------------------
+			uint32_t arch = m_currentSong ? (m_currentSong->getFingerprint().structuralHash % 3) : 0;
+			bool arrBass = true;
+			bool arrPad = true;
+			bool arrLead = true;
+			bool arrDrums = true;
+
+			if (arch == 0) // Groove-First: Intro -> Full Hook -> Breakdown -> Drop
+			{
+				if (phraseInSong == 0)
+				{
+					// Intro: Lead rests to establish groove
+					arrLead = false;
+				}
+				else if (phraseInSong == 2)
+				{
+					// Breakdown: Drums & Bass cut out; airy chords + singing lead
+					arrBass = false;
+					arrDrums = false;
+				}
+			}
+			else if (arch == 1) // Ambient-First: Atmosphere -> Build -> Climax -> Breather
+			{
+				if (phraseInSong == 0)
+				{
+					// Atmosphere: Chords + Lead only (no rhythm)
+					arrBass = false;
+					arrDrums = false;
+				}
+				else if (phraseInSong == 1)
+				{
+					// Build: Rhythm enters, melody takes a brief pause
+					arrLead = false;
+				}
+				else if (phraseInSong == 3)
+				{
+					// Breather: Drums drop out before looping
+					arrDrums = false;
+				}
+			}
+			else // Driving Minimalist: Bass & Drums persistent, tops alternate
+			{
+				if (phraseInSong == 0)
+				{
+					arrLead = false;
+				}
+				else if (phraseInSong == 2)
+				{
+					arrPad = false;
+				}
+			}
+
+			// Micro-arrangement: 1-beat cadence pause on last bar of phrase before drop/loop
+			if (barInPhrase == 3 && stepInBar >= 12 && (phraseInSong == 1 || phraseInSong == 3))
+			{
+				arrDrums = false;
+				arrBass = false;
+			}
+
+			// -------------------------------------------------------------
+			// Dynamic Game Feedback Overrides (Surge & Duck)
+			// -------------------------------------------------------------
+			bool isDuckingActive = (m_duckTimer > 0.0f || m_ducking > 0.01f);
+			bool isSurgeActive = (m_surgeTimer > 0.0f || m_surgeLevel > 0.08f);
+
+			auto evaluateTrack = [&](MusicTrack track, bool userToggle, bool& arrGate) -> bool
+			{
+				TrackPlayState state;
+				if (!userToggle)
+				{
+					state = TrackPlayState::Muted;
+					arrGate = false;
+				}
+				else if (m_isDead && isTrackDead(track))
+				{
+					state = TrackPlayState::Dead;
+					arrGate = false;
+				}
+				else if (track == MusicTrack::Lead && isDuckingActive)
+				{
+					state = TrackPlayState::Ducked;
+					arrGate = false; // Duck ALWAYS kills lead wave completely!
+				}
+				else if (isSurgeActive)
+				{
+					state = TrackPlayState::Surged;
+					arrGate = true; // Surge forces ANY paused track ON (immediate drop/climax!)
+				}
+				else if (!arrGate && !isDuckingActive)
+				{
+					state = TrackPlayState::Paused; // Paused by song structure
+				}
+				else
+				{
+					state = isDuckingActive ? TrackPlayState::Ducked : TrackPlayState::Playing;
+				}
+				m_trackPlayStates[static_cast<size_t>(track)] = state;
+				return (state == TrackPlayState::Playing || state == TrackPlayState::Surged ||
+						(state == TrackPlayState::Ducked && track != MusicTrack::Lead));
+			};
+
+			bool playBass = evaluateTrack(MusicTrack::Bass, m_tracks.bass, arrBass);
+			bool playPad = evaluateTrack(MusicTrack::Pad, m_tracks.pad, arrPad);
+			bool playLead = evaluateTrack(MusicTrack::Lead, m_tracks.lead, arrLead);
+			bool playDrums = evaluateTrack(MusicTrack::Drums, m_tracks.drums, arrDrums);
 
 			// -------------------------------------------------------------
 			// Harmonic Foundation: I - IV - V progression over 4 bars
@@ -633,17 +961,31 @@ namespace WeirdEngine
 			}
 
 			// -------------------------------------------------------------
+			// Beat-Quantized Surge Impact (Plays strictly on the beat grid)
+			// -------------------------------------------------------------
+			bool isQuarterBeat = (stepInBar % 4 == 0);
+			if (isQuarterBeat && m_pendingSurgeImpact)
+			{
+				m_pendingSurgeImpact = false;
+				m_surgeImpactCooldown = 2.5f;
+				if (playDrums)
+				{
+					playNote(9000.0f, 0.40f + 0.25f * m_surgeLevel, 0.35f, 7, 0.0f, 13000.0f);
+				}
+			}
+
+			// -------------------------------------------------------------
 			// LAYER 1: BASS LINE
 			// -------------------------------------------------------------
-			if (m_tracks.bass)
+			if (playBass)
 			{
-				bool isQuarterBeat = (stepInBar % 4 == 0);
 				bool isEighthBeat = (stepInBar % 2 == 0);
 
 				bool triggerBass = isQuarterBeat;
-				if (!triggerBass && isEighthBeat && m_shapeParams.syncopation > 0.35f)
+				if (!triggerBass && isEighthBeat && (m_shapeParams.syncopation > 0.35f || m_surgeLevel > 0.25f))
 				{
-					if (stepHash(step, 101) < (m_shapeParams.syncopation - 0.15f) * (0.3f + 0.7f * motionFactor))
+					if (m_surgeLevel > 0.35f ||
+						stepHash(step, 101) < (m_shapeParams.syncopation - 0.15f) * (0.3f + 0.7f * motionFactor))
 					{
 						triggerBass = true;
 					}
@@ -651,27 +993,40 @@ namespace WeirdEngine
 
 				if (triggerBass)
 				{
-					// Bass octave is -2 (deep fundamental register: MIDI 36 = C2 = 65 Hz), solid, grounded, and rich!
-					int midi =
-						m_currentSong->getScaleDegreeMidi(bassDegree, -2) + static_cast<int>(m_positivePitchOffset);
+					// Bass octave is -2 (deep fundamental register: MIDI 36 = C2 = 65 Hz)
+					// When surging high (> 0.60f), bounce an octave higher on offbeats for driving groove
+					int bassOctave = (m_surgeLevel > 0.60f && !isQuarterBeat) ? -1 : -2;
+
+					int midi = m_currentSong->getScaleDegreeMidi(bassDegree, bassOctave) +
+							   static_cast<int>(m_positivePitchOffset);
 					float freq = m_currentSong->midiToFrequency(midi);
+
+					// Ducking organic pitch tension sag (-1.8% max)
+					if (m_ducking > 0.05f)
+					{
+						freq *= (1.0f - 0.018f * m_ducking);
+					}
 
 					if (m_detuneAmount > 0.001f)
 					{
 						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
 					}
 
-					float cutoff = 420.0f + 380.0f * m_shapeParams.bassWeight;
-					float dur = beatSec * 1.05f * noteLengthMult;
-					float vel = 0.72f + 0.23f * m_shapeParams.bassWeight;
+					float cutoff = (420.0f + 380.0f * m_shapeParams.bassWeight) * (1.0f + 0.85f * m_surgeLevel) *
+								   (1.0f - 0.30f * m_ducking);
+					cutoff = (std::max)(150.0f, cutoff);
+					float dur = beatSec * 1.05f * noteLengthMult * (1.0f + 0.15f * m_ducking);
+					float vel = (0.72f + 0.23f * m_shapeParams.bassWeight) * (1.0f + 0.18f * m_surgeLevel) *
+								(1.0f + 0.12f * m_ducking);
 
 					playNote(freq, vel, dur, 1, 0.0f, cutoff);
 
-					// Sub-bass doubling for powerful, tactile low end
-					if (m_shapeParams.bassWeight > 0.20f)
+					// Sub-bass doubling for warm, low foundation
+					if (m_shapeParams.bassWeight > 0.20f || m_surgeLevel > 0.15f || m_ducking > 0.15f)
 					{
-						float subVel = vel * (0.55f + 0.25f * m_shapeParams.bassWeight);
-						playNote(freq * 0.5f, subVel, dur * 1.15f, 1, 0.0f, 220.0f);
+						float subVel = vel * (0.55f + 0.25f * m_shapeParams.bassWeight + 0.22f * m_ducking);
+						playNote(freq * 0.5f, subVel, dur * 1.18f, 1, 0.0f,
+								 (220.0f + 80.0f * m_surgeLevel) * (1.0f - 0.20f * m_ducking));
 					}
 				}
 			}
@@ -679,123 +1034,186 @@ namespace WeirdEngine
 			// -------------------------------------------------------------
 			// LAYER 2: HARMONY & CHORDS (Warm Pads / EPs)
 			// -------------------------------------------------------------
-			if (m_tracks.pad)
+			if (playPad)
 			{
 				bool triggerChord = (stepInBar % 8 == 0);
-				if (!triggerChord && (stepInBar % 4 == 0) && m_shapeParams.harmonyRichness > 0.50f)
+				if (!triggerChord && (stepInBar % 4 == 0) &&
+					(m_shapeParams.harmonyRichness > 0.50f || m_surgeLevel > 0.30f))
 				{
-					triggerChord = (stepHash(step, 179) < m_shapeParams.harmonyRichness * (0.4f + 0.6f * motionFactor));
+					triggerChord = (m_surgeLevel > 0.30f) ||
+								   (stepHash(step, 179) < m_shapeParams.harmonyRichness * (0.4f + 0.6f * motionFactor));
 				}
 
 				if (triggerChord)
 				{
 					int chordSteps[4] = {0, 4, 2, 6};
 					int noteCount = 2;
-					if (m_shapeParams.harmonyRichness >= 0.65f)
+					if (m_ducking > 0.40f)
+					{
+						// In heavy danger: grounded open fifths (root + fifth)
+						chordSteps[0] = 0;
+						chordSteps[1] = 4;
+						noteCount = 2;
+					}
+					else if (m_shapeParams.harmonyRichness >= 0.65f || m_surgeLevel > 0.50f)
 					{
 						noteCount = 4; // 7th chord
 					}
-					else if (m_shapeParams.harmonyRichness >= 0.35f)
+					else if (m_shapeParams.harmonyRichness >= 0.35f || m_surgeLevel > 0.20f)
 					{
 						noteCount = 3; // Triad
 					}
 
 					float pans[4] = {-0.30f, 0.30f, -0.10f, 0.40f};
 					float dur = beatSec * 1.8f * noteLengthMult;
-					float vel = 0.28f + 0.22f * m_shapeParams.harmonyRichness;
-					// Warm filter: 700 Hz to 2200 Hz, never harsh or piercing!
-					float cutoff = 700.0f + 1500.0f * m_shapeParams.brightness;
+					float vel = (0.28f + 0.22f * m_shapeParams.harmonyRichness) * (1.0f + 0.20f * m_surgeLevel);
+					// Filter opens up with surge (+2200Hz), warms and darkens with duck
+					float cutoff = (700.0f + 1500.0f * m_shapeParams.brightness + 2200.0f * m_surgeLevel) *
+								   (1.0f - 0.35f * m_ducking);
+					cutoff = (std::max)(210.0f, cutoff);
 
 					for (int i = 0; i < noteCount; ++i)
 					{
 						int degree = bassDegree + chordSteps[i];
-						// Chords sit comfortably at octave -1 or 0 (Middle C range, ~130 Hz - 260 Hz)
-						int octave = (m_shapeParams.brightness > 0.75f) ? 0 : -1;
+						// Chords sit at octave -1 or 0 (Middle C range)
+						int octave = (m_shapeParams.brightness > 0.75f || m_surgeLevel > 0.50f) ? 0 : -1;
 
 						int midi =
 							m_currentSong->getScaleDegreeMidi(degree, octave) + static_cast<int>(m_positivePitchOffset);
 						float freq = m_currentSong->midiToFrequency(midi);
+						if (m_ducking > 0.05f)
+						{
+							freq *= (1.0f - 0.012f * m_ducking);
+						}
 						playNote(freq, vel, dur, 4, pans[i], cutoff);
 					}
 				}
 			}
 
 			// -------------------------------------------------------------
-			// LAYER 3: MELODIC ARPEGGIO / LEAD (Warm, Singing Vocal Range)
+			// LAYER 3: MELODIC LEAD (Expressive Motifs, Breathing Breaks, Singing Warmth)
 			// -------------------------------------------------------------
-			if (m_tracks.lead)
+			if (playLead && !isDuckingActive)
 			{
 				bool isQuarterBeat = (stepInBar % 4 == 0);
 				bool isEighthBeat = (stepInBar % 2 == 0);
 
-				// Phrase-level breathing across 4 bars:
-				// Bar 0: Call / theme introduction
-				// Bar 1: Response / answering phrase (sparser)
-				// Bar 2: Climax / elaboration
-				// Bar 3: Cadence / breathing pause
-				constexpr float phraseMask[4] = {1.0f, 0.45f, 0.85f, 0.15f};
-				float phraseGate = phraseMask[bar];
+				// 1. Determine Motif Archetype for the song from fingerprint & shape
+				uint32_t seed = m_currentSong->getFingerprint().structuralHash;
+				int motifType = static_cast<int>((seed ^ (seed >> 8)) % 4);
+				if (m_shapeParams.syncopation > 0.58f)
+					motifType = 1; // Driving Funk / Syncopated
+				else if (m_shapeParams.percEnergy > 0.65f || m_surgeLevel > 0.35f)
+					motifType = 2; // Fast melodic runs / arps
+				else if (m_shapeParams.melodyDensity < 0.32f && m_surgeLevel < 0.15f)
+					motifType = 3; // Lyrical held singing melody
 
-				float trigProb = 0.0f;
-				if (isQuarterBeat)
+				// 16-step rhythmic hit masks per bar with deliberate breathing breaks:
+				// Bar 0: Hook Call (first 2 beats active, beats 3-4 rest)
+				// Bar 1: Response (first 2 beats active, beats 3-4 rest)
+				// Bar 2: Climax (first 2.5 beats active, steps 10-15 rest)
+				// Bar 3: Cadence resolution (step 0 only, steps 2-15 full 3.5 beat break)
+				uint16_t motifMask = 0;
+				if (motifType == 0) // Singable Hook Anthem
 				{
-					trigProb = 0.55f * m_shapeParams.melodyDensity * phraseGate;
+					static constexpr uint16_t masks[4] = {
+						(1 << 0) | (1 << 3) | (1 << 6),			   // Bar 0: 3 hits, steps 8..15 REST
+						(1 << 0) | (1 << 4) | (1 << 6),			   // Bar 1: 3 hits, steps 8..15 REST
+						(1 << 0) | (1 << 2) | (1 << 4) | (1 << 7), // Bar 2: Climax peak, steps 9..15 REST
+						(1 << 0)								   // Bar 3: Cadence note, steps 2..15 REST
+					};
+					motifMask = masks[bar];
 				}
-				else if (isEighthBeat)
+				else if (motifType == 1) // Funk / Syncopated Groove
 				{
-					trigProb = 0.25f * m_shapeParams.melodyDensity * phraseGate;
+					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 3) | (1 << 6),
+														  (1 << 2) | (1 << 4) | (1 << 7),
+														  (1 << 0) | (1 << 3) | (1 << 6) | (1 << 8), (1 << 0)};
+					motifMask = masks[bar];
 				}
-				else if (m_shapeParams.syncopation > 0.40f)
+				else if (motifType == 2) // Energetic Flow / Arp Runs
 				{
-					trigProb = 0.08f * m_shapeParams.melodyDensity * phraseGate;
+					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 2) | (1 << 4) | (1 << 6),
+														  (1 << 2) | (1 << 4) | (1 << 6),
+														  (1 << 0) | (1 << 2) | (1 << 4) | (1 << 7), (1 << 0)};
+					motifMask = masks[bar];
+				}
+				else // Lyrical Singing Ballad
+				{
+					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 6), (1 << 2) | (1 << 6),
+														  (1 << 0) | (1 << 4) | (1 << 8), (1 << 0)};
+					motifMask = masks[bar];
 				}
 
-				trigProb *= (0.50f + 0.50f * motionFactor);
-
-				if (stepHash(step, 233) < trigProb)
+				// Measure-level break: Lead takes a full bar rest on Bar 1 during alternate phrases or moderate density
+				bool isBarRest = (bar == 1 && (phraseInSong % 2 == 1 || m_shapeParams.melodyDensity < 0.48f) &&
+								  m_surgeLevel < 0.25f);
+				if (isBarRest)
 				{
-					if (stepInBar == 0)
+					motifMask = 0; // Entire bar rest: rhythm & bass groove solo
+				}
+
+				// Check if the current step is a defined motif hit
+				bool isMotifHit = (motifMask & (1 << stepInBar)) != 0;
+
+				// Thin out further if melody density is low
+				if (isMotifHit && m_shapeParams.melodyDensity < 0.38f && stepInBar != 0 && m_surgeLevel < 0.10f)
+				{
+					if (stepHash(step, 827) > m_shapeParams.melodyDensity * 1.8f)
 					{
-						// Anchor to chord tones (root, third, fifth)
-						int chordTones[3] = {bassDegree, bassDegree + 2, bassDegree + 4};
-						int closest = chordTones[0];
-						int minDist = 999;
-						for (int ct : chordTones)
-						{
-							int d = std::abs(m_melodyDegree - ct);
-							if (d < minDist)
-							{
-								minDist = d;
-								closest = ct;
-							}
-						}
-						m_melodyDegree = closest;
+						isMotifHit = false;
 					}
-					else
-					{
-						// Smooth stepwise contour (conjunct motion)
-						float r = stepHash(step, 311);
-						int stepOffset = 0;
-						if (r < 0.65f)
-						{
-							stepOffset = (r < 0.325f) ? 1 : -1;
-						}
-						else if (r < 0.85f)
-						{
-							stepOffset = (r < 0.75f) ? 2 : -2;
-						}
-						else
-						{
-							stepOffset = (r < 0.925f) ? 3 : -3;
-						}
-						m_melodyDegree += stepOffset;
-					}
-					m_melodyDegree = std::clamp(m_melodyDegree, 0, 7);
+				}
 
-					// Keep melody comfortably in warm vocal range (Middle C)
-					int baseOctave = 0;
-					int midi = m_currentSong->getScaleDegreeMidi(m_melodyDegree, baseOctave) +
+				if (isMotifHit)
+				{
+					// 2. Cohesive 4-Bar Melodic Arch
+					int noteDegree = 0;
+					int octaveOffset = 0; // Baseline singing register (C4-C5 range)
+
+					if (bar == 0) // Hook Call
+					{
+						static constexpr int kHookNotes[16] = {0, 0, 2, 2, 4, 4, 3, 3, 2, 2, 0, 0, 0, 0, 0, 0};
+						noteDegree = bassDegree + kHookNotes[stepInBar];
+					}
+					else if (bar == 1) // Answering Response
+					{
+						static constexpr int kRespNotes[16] = {3, 3, 2, 2, 1, 1, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0};
+						noteDegree = bassDegree + kRespNotes[stepInBar];
+					}
+					else if (bar == 2) // Climax (Expressive peak)
+					{
+						static constexpr int kClimaxNotes[16] = {4, 4, 5, 5, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 0, 0};
+						noteDegree = bassDegree + kClimaxNotes[stepInBar];
+						octaveOffset = 1; // 1 octave lift for climax peak
+					}
+					else // Bar 3: Cadence Resolution
+					{
+						noteDegree = 0; // Resolve to tonic root
+						octaveOffset = 0;
+					}
+
+					// Shape-driven variation (occasional ornamental passing neighbor tone)
+					if (m_shapeParams.variation > 0.45f && stepHash(step, 937) < (m_shapeParams.variation - 0.35f))
+					{
+						noteDegree += (stepHash(step, 941) < 0.5f) ? 1 : -1;
+					}
+
+					int midi = m_currentSong->getScaleDegreeMidi(noteDegree, octaveOffset) +
 							   static_cast<int>(m_positivePitchOffset);
+
+					// Strict pitch ceiling and floor guard: Keep lead in the expressive, singing vocal/solo range
+					// Ceiling: MIDI 81 (A5, ~880 Hz) - prevents ear-piercing shrieks and screeching
+					// Floor:   MIDI 57 (A3, ~220 Hz) - prevents muddy overlap with bass
+					while (midi > 81)
+					{
+						midi -= 12; // Octave fold down
+					}
+					while (midi < 57)
+					{
+						midi += 12; // Octave fold up
+					}
+
 					float freq = m_currentSong->midiToFrequency(midi);
 
 					if (m_detuneAmount > 0.001f)
@@ -803,16 +1221,33 @@ namespace WeirdEngine
 						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
 					}
 
-					// Warm, gentle filter cutoff (800 Hz to 1800 Hz) - never piercing
-					float cutoff = 800.0f + 1000.0f * m_shapeParams.brightness;
-					float baseDur = 0.80f + 1.20f * stepHash(step, 523);
-					if (isQuarterBeat)
+					// Note duration: strong beats and cadence notes ring long and sing;
+					// other notes leave natural space before rests
+					float noteBeats = 0.50f;
+					if (stepInBar == 0 || (bar == 3 && stepInBar == 0))
 					{
-						baseDur *= 1.25f;
+						noteBeats = 1.50f; // Long held singing note with vibrato
 					}
-					float dur = beatSec * baseDur * noteLengthMult;
-					float pan = (stepHash(step, 617) - 0.5f) * 0.50f;
-					float vel = 0.25f + 0.17f * m_shapeParams.melodyDensity;
+					else if (isQuarterBeat)
+					{
+						noteBeats = 0.85f;
+					}
+					else
+					{
+						noteBeats = 0.50f;
+					}
+
+					float dur = beatSec * noteBeats * noteLengthMult;
+
+					// Warm analog cutoff: smooth singing presence without harsh upper sizzle
+					float cutoff = (1800.0f + 1400.0f * m_shapeParams.brightness) * (1.0f + 0.35f * m_surgeLevel);
+					cutoff = std::clamp(cutoff, 1000.0f, 6500.0f);
+
+					// Dynamic velocity with headroom for saturation drive
+					float vel = (0.42f + 0.22f * m_shapeParams.melodyDensity) * (1.0f + 0.15f * m_surgeLevel);
+
+					// Subtle alternating stereo pan for spatial motion
+					float pan = (stepInBar % 2 == 0) ? -0.15f : 0.15f;
 
 					playNote(freq, vel, dur, 0, pan, cutoff);
 				}
@@ -821,14 +1256,27 @@ namespace WeirdEngine
 			// -------------------------------------------------------------
 			// LAYER 4: PERCUSSION (Punchy Kick, Snappy Snare, Crisp Hi-Hat)
 			// -------------------------------------------------------------
-			if (m_tracks.drums)
+			if (playDrums)
 			{
 				bool isEighthBeat = (stepInBar % 2 == 0);
 				float effPercEnergy = m_shapeParams.percEnergy * (0.35f + 0.65f * motionFactor);
+				if (m_surgeLevel > 0.05f)
+				{
+					effPercEnergy = std::clamp(effPercEnergy + m_surgeLevel * 0.50f, 0.0f, 1.0f);
+				}
 
-				// Kick drum on beats 1 and 3 (step 0 and 8), plus syncopation
+				// Kick drum on beats 1 and 3 (step 0 and 8), plus syncopation.
+				// Driving 4-on-the-floor kick when surge is high (> 0.45f)!
+				// In rough ducking (> 0.30f): heavy, sluggish heartbeat kick on beat 1 (step 0) only!
+				// Kick drum on beats 1 and 3 (step 0 and 8), plus syncopation.
+				// Driving 4-on-the-floor kick when surge is high (> 0.45f)!
 				bool triggerKick = (stepInBar == 0 || stepInBar == 8);
-				if (!triggerKick && (effPercEnergy > 0.45f || m_shapeParams.syncopation > 0.40f))
+				if (!triggerKick && m_surgeLevel > 0.45f && (stepInBar == 4 || stepInBar == 12))
+				{
+					triggerKick = true; // 4-on-the-floor pulse on all 4 quarter beats!
+				}
+				else if (!triggerKick &&
+						 (effPercEnergy > 0.45f || m_shapeParams.syncopation > 0.40f || m_surgeLevel > 0.25f))
 				{
 					if (stepInBar == 6 || (effPercEnergy > 0.65f && stepInBar == 14))
 					{
@@ -838,41 +1286,83 @@ namespace WeirdEngine
 
 				if (triggerKick)
 				{
-					float kickVel = 0.78f + 0.20f * effPercEnergy;
-					playNote(60.0f, kickVel, 0.34f, 5, 0.0f, 500.0f); // instrument 5 = Kick
+					float kickVel =
+						(0.78f + 0.20f * effPercEnergy) * (1.0f + 0.15f * m_surgeLevel) * (1.0f + 0.12f * m_ducking);
+					float kickCutoff = (500.0f + 250.0f * m_surgeLevel) * (1.0f - 0.20f * m_ducking);
+					float kickPitch = (m_ducking > 0.35f) ? 48.0f : 60.0f; // Deep, heavy industrial thud
+					playNote(kickPitch, kickVel, 0.34f * (1.0f + 0.20f * m_ducking), 5, 0.0f,
+							 kickCutoff); // instrument 5 = Kick
 				}
 
 				// Snare / Clap on beats 2 & 4 (step 4 and 12)
-				bool triggerSnare = (stepInBar == 4 || stepInBar == 12);
-				if (!triggerSnare && effPercEnergy > 0.60f && stepInBar == 15)
+				// In heavy ducking (>0.45f), switch to half-time snare on beat 4 only for tense space
+				bool triggerSnare = false;
+				if (m_ducking > 0.45f)
 				{
-					triggerSnare = true; // 16th-note ghost snare before downbeat
+					triggerSnare = (stepInBar == 12); // Half-time single snare hit
+				}
+				else
+				{
+					triggerSnare = (stepInBar == 4 || stepInBar == 12);
+					if (!triggerSnare && (effPercEnergy > 0.60f || m_surgeLevel > 0.35f) &&
+						(stepInBar == 14 || stepInBar == 15))
+					{
+						triggerSnare = true; // 16th-note ghost snare before downbeat
+					}
 				}
 
 				if (triggerSnare)
 				{
-					float snareVel = 0.55f + 0.25f * effPercEnergy;
-					playNote(180.0f, snareVel, 0.18f, 6, 0.0f, 4500.0f); // instrument 6 = Snare
+					float snareVel =
+						(0.55f + 0.25f * effPercEnergy) * (1.0f + 0.18f * m_surgeLevel) * (1.0f - 0.30f * m_ducking);
+					float snareCutoff = (4500.0f + 2000.0f * m_surgeLevel) * (1.0f - 0.30f * m_ducking);
+					playNote(180.0f, snareVel, 0.18f, 6, 0.0f, snareCutoff); // instrument 6 = Snare
 				}
 
-				// Hi-hat on 8th notes (steady timekeeping groove)
-				if (isEighthBeat || (effPercEnergy > 0.50f && (stepHash(step, 809) < 0.65f)))
+				// Hi-hat: in heavy ducking (>0.45f), drop to quarter notes; otherwise 8th notes
+				bool triggerHiHat = false;
+				if (m_ducking > 0.45f)
 				{
-					bool openHat = (stepInBar % 4 == 2) && (effPercEnergy > 0.45f);
+					triggerHiHat = (stepInBar % 4 == 0); // Quarter-note sparse ticking
+				}
+				else
+				{
+					triggerHiHat = isEighthBeat;
+					if (!triggerHiHat && (m_surgeLevel > 0.25f || effPercEnergy > 0.60f))
+					{
+						triggerHiHat = true; // Continuous 16th-note groove
+					}
+					else if (!triggerHiHat && effPercEnergy > 0.50f && (stepHash(step, 809) < 0.65f))
+					{
+						triggerHiHat = true;
+					}
+				}
+
+				if (triggerHiHat)
+				{
+					bool openHat = (stepInBar % 4 == 2) && (effPercEnergy > 0.45f || m_surgeLevel > 0.20f);
 					float decay = openHat ? 0.15f : 0.045f;
 					float pan = (step % 2 == 0) ? 0.18f : -0.18f;
-					float cutoff = 7000.0f + 3000.0f * m_shapeParams.brightness;
-					float vel = (openHat ? 0.32f : 0.24f) * (0.6f + 0.4f * effPercEnergy);
+					float cutoff = (7000.0f + 3000.0f * m_shapeParams.brightness + 3000.0f * m_surgeLevel) *
+								   (1.0f - 0.40f * m_ducking);
+					float vel = (openHat ? 0.32f : 0.24f) * (0.6f + 0.4f * effPercEnergy) *
+								(1.0f + 0.15f * m_surgeLevel) * (1.0f - 0.40f * m_ducking);
+
+					if (!isEighthBeat)
+					{
+						vel *= 0.65f; // Softer ghost 16th notes
+					}
 
 					playNote(8000.0f, vel, decay, 7, pan, cutoff); // instrument 7 = HiHat
 				}
 
 				// Ghost percussion blip on offbeats
-				if (m_shapeParams.variation > 0.50f && stepInBar >= 12 && motionFactor > 0.4f)
+				if (m_ducking <= 0.30f && (m_shapeParams.variation > 0.50f || m_surgeLevel > 0.30f) &&
+					stepInBar >= 12 && (motionFactor > 0.3f || m_surgeLevel > 0.2f))
 				{
-					if (stepHash(step, 911) < m_shapeParams.variation * 0.35f)
+					if (stepHash(step, 911) < (m_shapeParams.variation * 0.35f + m_surgeLevel * 0.45f))
 					{
-						playNote(2500.0f, 0.20f * effPercEnergy, 0.04f, 7, 0.25f, 5000.0f);
+						playNote(2500.0f, 0.20f * effPercEnergy * (1.0f - 0.30f * m_ducking), 0.04f, 7, 0.25f, 5000.0f);
 					}
 				}
 			}
@@ -881,8 +1371,23 @@ namespace WeirdEngine
 		void SdfMusicEngine::playNote(float freq, float amp, float durationSec, int instrument, float pan,
 									  float filterCutoff)
 		{
-			float duckMult = (std::max)(0.15f, 1.0f - m_ducking * 0.65f);
-			float masterAmp = amp * m_volume * m_volumeFromFill * duckMult;
+			// Lead is strictly killed during ducking
+			if (instrument == 0 && (m_duckTimer > 0.0f || m_ducking > 0.01f))
+				return;
+
+			// UI feedback and Death sounds (instruments >= 8) bypass music ducking and shape fill volume scaling
+			float masterAmp = 0.0f;
+			if (instrument >= 8)
+			{
+				masterAmp = amp * m_volume;
+			}
+			else
+			{
+				float duckMult = (std::max)(0.65f, 1.0f - m_ducking * 0.22f);
+				float surgeAmpBoost = 1.0f + 0.15f * m_surgeLevel;
+				masterAmp = amp * m_volume * m_volumeFromFill * duckMult * surgeAmpBoost;
+			}
+
 			if (masterAmp <= 0.001f)
 				return;
 
@@ -901,8 +1406,13 @@ namespace WeirdEngine
 			newVoice.instrument = instrument;
 			newVoice.leftGain = leftGain;
 			newVoice.rightGain = rightGain;
-			newVoice.filterCutoff = (std::min)(filterCutoff, m_concussionFilterCutoff);
-			newVoice.filterState = 0.0f;
+			newVoice.filterCutoff =
+				(instrument >= 8) ? filterCutoff : (std::min)(filterCutoff, m_concussionFilterCutoff);
+			newVoice.filterQ = (instrument == 0) ? 1.414f : 0.7071f;
+			newVoice.filterS1 = 0.0f;
+			newVoice.filterS2 = 0.0f;
+			newVoice.rngState =
+				static_cast<uint32_t>(m_currentStep * 1664525u + m_activeVoices.size() * 1013904223u + 12345u);
 			newVoice.drumKit = m_rack.drumKit;
 
 			// Assign waveform & per-voice parameter based on channel role
@@ -965,8 +1475,9 @@ namespace WeirdEngine
 
 			const float sampleRateF = static_cast<float>(m_sampleRate);
 
-			auto evaluateWaveform = [](WaveType type, float p, float param, float time, float decay) -> float
+			auto evaluateWaveform = [](WaveType type, float phaseNorm, float param, float time, float decay) -> float
 			{
+				const float p = phaseNorm * 2.0f * static_cast<float>(M_PI);
 				switch (type)
 				{
 					case WaveType::BandlimitedSaw:
@@ -1006,15 +1517,23 @@ namespace WeirdEngine
 				if (voice.finished)
 					continue;
 
-				// Instantaneous attack for drums (preserves punch & transient snap)
+				// Instantaneous attack for drums and UI validation (preserves punch & transient snap)
 				// Smooth attack for melodic notes (prevents clicks/pops)
-				const bool isPercussion =
-					(voice.instrument == 5 || voice.instrument == 6 || voice.instrument == 7 || voice.instrument == 3);
-				const float attackTime = isPercussion ? 0.0005f : 0.008f;
+				const bool isPercussion = (voice.instrument == 5 || voice.instrument == 6 || voice.instrument == 7 ||
+										   voice.instrument == 3 || voice.instrument == 8 || voice.instrument == 9);
+				const float attackTime = (voice.instrument == 8) ? 0.0003f : (isPercussion ? 0.0006f : 0.008f);
 
-				const float effCutoff = (std::min)(voice.filterCutoff, m_concussionFilterCutoff);
-				const float wc = 2.0f * static_cast<float>(M_PI) * std::clamp(effCutoff, 20.0f, 20000.0f) / sampleRateF;
-				const float filterAlpha = std::clamp(wc / (wc + 1.0f), 0.001f, 1.0f);
+				const float effCutoff = (voice.instrument >= 8)
+											? voice.filterCutoff
+											: (std::min)(voice.filterCutoff, m_concussionFilterCutoff);
+				float qVal = (voice.filterQ > 0.01f) ? voice.filterQ : 0.7071f;
+
+				// 2-pole Topology-Preserving Transform (TPT) SVF coefficients (precalculated for non-lead / baseline)
+				float clampedCutoff = std::clamp(effCutoff, 20.0f, sampleRateF * 0.45f);
+				float g = std::tan(static_cast<float>(M_PI) * clampedCutoff / sampleRateF);
+				float k = 1.0f / qVal;
+				float a1 = 1.0f / (1.0f + g * (g + k));
+				float a2 = g * a1;
 
 				for (uint32_t i = 0; i < frameCount; ++i)
 				{
@@ -1027,6 +1546,16 @@ namespace WeirdEngine
 					float rawSample = 0.0f;
 					float currentFreq = voice.frequency;
 
+					// Singing delayed vibrato on held lead notes (gives warmth, soul, and vocal expression)
+					if (voice.instrument == 0 && voice.time > 0.10f)
+					{
+						float vibOnset = std::clamp((voice.time - 0.10f) / 0.18f, 0.0f, 1.0f);
+						float vib = 0.016f * vibOnset * sinf(voice.time * 2.0f * static_cast<float>(M_PI) * 5.4f);
+						currentFreq *= (1.0f + vib);
+					}
+
+					const float p = voice.phase * 2.0f * static_cast<float>(M_PI);
+
 					switch (voice.instrument)
 					{
 						case 5: // Kick Drum (Variant influenced by drumKit)
@@ -1035,40 +1564,41 @@ namespace WeirdEngine
 							{
 								float pitchDrop = 145.0f * expf(-voice.time / 0.032f);
 								currentFreq = 55.0f + pitchDrop;
-								float s = sinf(voice.phase);
+								float s = sinf(p);
 								rawSample = 1.15f * s - 0.15f * s * s * s;
 								if (voice.time < 0.003f)
 								{
-									rawSample +=
-										0.25f *
-										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+									rawSample += 0.25f * fastNoise(voice.rngState);
 								}
 							}
 							else if (voice.drumKit == 2) // Industrial / Overdriven 909 kick
 							{
 								float pitchDrop = 120.0f * expf(-voice.time / 0.024f);
 								currentFreq = 44.0f + pitchDrop;
-								float s = sinf(voice.phase);
+								float s = sinf(p);
 								rawSample = std::clamp(1.6f * s - 0.6f * s * s * s, -1.0f, 1.0f);
 								if (voice.time < 0.006f)
 								{
-									rawSample +=
-										0.40f *
-										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+									rawSample += 0.40f * fastNoise(voice.rngState);
 								}
 							}
 							else // Kit 0: Standard 808 deep kick
 							{
 								float pitchDrop = 95.0f * expf(-voice.time / 0.028f);
 								currentFreq = 48.0f + pitchDrop;
-								float s = sinf(voice.phase);
+								float s = sinf(p);
 								rawSample = 1.25f * s - 0.25f * s * s * s;
 								if (voice.time < 0.004f)
 								{
-									rawSample +=
-										0.35f *
-										((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+									rawSample += 0.35f * fastNoise(voice.rngState);
 								}
+							}
+							if (m_ducking > 0.05f)
+							{
+								// Subtle sub-punch during ducking
+								float drive = 1.0f + 0.40f * m_ducking;
+								rawSample = std::clamp(rawSample * drive - 0.05f * rawSample * rawSample * rawSample,
+													   -0.95f, 0.95f);
 							}
 							break;
 						}
@@ -1078,48 +1608,45 @@ namespace WeirdEngine
 							{
 								float bodyPitch = 140.0f + 60.0f * expf(-voice.time / 0.018f);
 								currentFreq = bodyPitch;
-								float bodyTone = sinf(voice.phase);
-								float noise =
-									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								float bodyTone = sinf(p);
+								float noise = fastNoise(voice.rngState);
 								rawSample = 0.60f * bodyTone + 0.40f * noise;
 							}
 							else if (voice.drumKit == 2) // Industrial metallic ring snare
 							{
 								float bodyPitch = 100.0f + 80.0f * expf(-voice.time / 0.025f);
 								currentFreq = bodyPitch;
-								float bodyTone = sinf(voice.phase);
-								float ring = sinf(voice.phase * 2.73f);
-								float noise =
-									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								float bodyTone = sinf(p);
+								float ring = sinf(p * 2.73f);
+								float noise = fastNoise(voice.rngState);
 								rawSample = 0.30f * bodyTone + 0.25f * ring + 0.45f * noise;
 							}
 							else // Kit 0: Standard snappy snare
 							{
 								float bodyPitch = 120.0f + 65.0f * expf(-voice.time / 0.020f);
 								currentFreq = bodyPitch;
-								float bodyTone = sinf(voice.phase);
-								float noise =
-									((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+								float bodyTone = sinf(p);
+								float noise = fastNoise(voice.rngState);
 								rawSample = 0.45f * bodyTone + 0.55f * noise;
 							}
 							break;
 						}
 						case 7: // Hi-Hat (Variant influenced by drumKit)
 						{
-							float noise = ((static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f);
+							float noise = fastNoise(voice.rngState);
 							if (voice.drumKit == 1) // Crisp tight acoustic hat
 							{
-								float metallic = sinf(voice.phase * 1.61f);
+								float metallic = sinf(p * 1.61f);
 								rawSample = 0.75f * noise + 0.25f * metallic;
 							}
 							else if (voice.drumKit == 2) // Metallic industrial sizzle
 							{
-								float metallic = sinf(voice.phase * 1.41f) * sinf(voice.phase * 3.14f);
+								float metallic = sinf(p * 1.41f) * sinf(p * 3.14f);
 								rawSample = 0.55f * noise + 0.45f * metallic;
 							}
 							else // Kit 0: Standard FM hi-hat
 							{
-								float metallic = sinf(voice.phase * 1.37f) * sinf(voice.phase * 2.81f);
+								float metallic = sinf(p * 1.37f) * sinf(p * 2.81f);
 								rawSample = 0.70f * noise + 0.30f * metallic;
 							}
 							break;
@@ -1128,25 +1655,30 @@ namespace WeirdEngine
 						{
 							if (voice.waveType == WaveType::SoftSine)
 							{
-								float p = voice.phase;
 								rawSample = 0.72f * sinf(p) + 0.35f * sinf(p * 2.0f) + 0.12f * sinf(p * 3.0f) +
-											0.08f * (1.0f - p / static_cast<float>(M_PI));
+											0.08f * (1.0f - voice.phase * 2.0f);
 							}
 							else
 							{
 								rawSample = evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time,
 															 voice.decay);
 							}
+							if (m_ducking > 0.05f)
+							{
+								// Organic analog overdrive gives gritty bite without harsh fuzz
+								float drive = 1.0f + 1.6f * m_ducking;
+								float x = rawSample * drive;
+								rawSample = std::clamp(x - 0.14f * x * x * x, -0.85f, 0.85f);
+							}
 							break;
 						}
 						case 2: // Square (Direct effect / death)
-							rawSample = (voice.phase < static_cast<float>(M_PI)) ? 0.55f : -0.55f;
+							rawSample = (voice.phase < 0.5f) ? 0.55f : -0.55f;
 							break;
 						case 4: // Chord Pad (Derived from voice.waveType)
 						{
 							if (voice.waveType == WaveType::SoftSine)
 							{
-								float p = voice.phase;
 								rawSample = 0.65f * sinf(p) + 0.25f * sinf(p * 2.0f) + 0.10f * sinf(p * 3.0f);
 							}
 							else
@@ -1157,25 +1689,124 @@ namespace WeirdEngine
 							break;
 						}
 						case 3: // Noise
-							rawSample = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f;
+							rawSample = fastNoise(voice.rngState);
 							break;
-						case 0: // Lead Melody (Derived from voice.waveType)
+						case 8: // UI Positive Click (Satisfying tactile mechanical click / thock)
+						{
+							// Anchor body fundamental to warm, tactile acoustic cavity range (~220 - 440 Hz)
+							float baseFreq = voice.frequency;
+							while (baseFreq > 440.0f)
+								baseFreq *= 0.5f;
+							while (baseFreq < 220.0f)
+								baseFreq *= 2.0f;
+
+							// Razor-sharp exponential pitch snap: plunges from ~3700 Hz to baseFreq in under 1.5ms
+							float pitchSnap = 3400.0f * expf(-voice.time / 0.00075f);
+							currentFreq = baseFreq + pitchSnap;
+
+							// Dual-action mechanical tactile transients:
+							// 1. Initial contact strike at t = 0 (crisp high transient crack)
+							float snap1 = expf(-voice.time / 0.00055f) *
+										  (0.65f * fastNoise(voice.rngState) + 0.35f * sinf(p * 2.5f));
+
+							// 2. Secondary leaf latch snap at t ~ 1.5ms (tactile micro-plunger click)
+							float t2 = voice.time - 0.0015f;
+							float snap2 = (t2 > 0.0f) ? expf(-t2 / 0.00070f) *
+															(0.75f * fastNoise(voice.rngState) + 0.25f * cosf(p * 3.5f))
+													  : 0.0f;
+
+							// 3. Woody / mechanical cavity resonance body ("thock" pop)
+							float bodyEnv = expf(-voice.time / 0.0065f);
+							float body = bodyEnv * (sinf(p) + 0.30f * sinf(p * 2.0f));
+
+							// Non-linear saturation produces thick, tactile, premium switch feel
+							float raw = 1.9f * snap1 + 1.4f * snap2 + 1.6f * body;
+							rawSample = std::tanh(raw * 1.35f) * 0.95f;
+							break;
+						}
+						case 9: // UI Negative Error (Clear invalid input rejection)
+						{
+							// Descending pitch envelope (~22% drop over duration) gives clear downward / rejection cue
+							float dropFactor = (std::max)(0.5f, 1.0f - 0.22f * (voice.time / voice.decay));
+							currentFreq = voice.frequency * dropFactor;
+
+							float s = sinf(p);
+
+							// Asymmetric saw with rich harmonics cutting through small speakers
+							float saw = s - 0.45f * sinf(p * 2.0f) + 0.30f * sinf(p * 3.0f) - 0.18f * sinf(p * 4.0f);
+							// Clipped pulse edge for classic buzzer bite
+							float pulse = (s > 0.04f ? 0.70f : -0.70f);
+							float roughTone = 0.50f * saw + 0.50f * pulse;
+
+							// Granular grit: wave-synced noise layer for tactile crunchy error rasp
+							float noise = fastNoise(voice.rngState);
+							float grit = 0.25f * noise * fabsf(s);
+
+							rawSample = std::clamp((roughTone + grit) * 1.30f, -0.92f, 0.92f);
+							break;
+						}
+						case 0: // Lead Melody (Analog console saturation with 2nd & 3rd harmonics)
 						default:
 						{
-							rawSample =
+							float leadSample =
 								evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time, voice.decay);
+							// Warm analog overdrive: 2.2x drive into tanh with subtle 2nd-harmonic tube warmth
+							float driven = leadSample * 2.2f + 0.16f * leadSample * leadSample;
+							rawSample = std::tanh(driven) * 0.85f;
 							break;
 						}
 					}
 
-					voice.filterState += filterAlpha * (rawSample - voice.filterState);
-					float sample = env * voice.filterState;
-
-					const float phaseInc = 2.0f * static_cast<float>(M_PI) * currentFreq / sampleRateF;
-					voice.phase += phaseInc;
-					if (voice.phase >= 2.0f * static_cast<float>(M_PI))
+					// Dynamic filter envelope on lead notes (crisp pluck attack & dynamic Q bite)
+					float gLocal = g;
+					float a1Local = a1;
+					float a2Local = a2;
+					if (voice.instrument == 0)
 					{
-						voice.phase -= 2.0f * static_cast<float>(M_PI);
+						float fEnv = expf(-voice.time / (std::max)(0.035f, voice.decay * 0.35f));
+						float dynCutoff =
+							std::clamp((effCutoff * 0.70f) + (effCutoff * 0.65f * fEnv), 20.0f, sampleRateF * 0.45f);
+						float dynQ = qVal + 0.75f * fEnv; // Pluck increases resonance bite on attack
+						gLocal = std::tan(static_cast<float>(M_PI) * dynCutoff / sampleRateF);
+						float kLocal = 1.0f / dynQ;
+						a1Local = 1.0f / (1.0f + gLocal * (gLocal + kLocal));
+						a2Local = gLocal * a1Local;
+					}
+
+					// 2-pole Topology-Preserving Transform (TPT) State Variable Filter (12 dB/octave)
+					float v0 = rawSample;
+					float v1 = a1Local * voice.filterS1 + a2Local * (v0 - voice.filterS2);
+					float v2 = voice.filterS2 + gLocal * v1; // 12 dB/oct resonant low-pass output
+					voice.filterS1 = 2.0f * v1 - voice.filterS1;
+					voice.filterS2 = 2.0f * v2 - voice.filterS2;
+
+					// Denormal flush
+					if (std::abs(voice.filterS1) < 1e-15f)
+						voice.filterS1 = 0.0f;
+					if (std::abs(voice.filterS2) < 1e-15f)
+						voice.filterS2 = 0.0f;
+
+					float sample = env * v2;
+
+					if (m_ducking > 0.05f && voice.instrument < 8)
+					{
+						// Smooth tape-style warmth and saturation on output
+						float roughDrive = 1.0f + 0.45f * m_ducking;
+						sample = std::tanh(sample * roughDrive) / std::sqrt(roughDrive);
+					}
+
+					if (m_isDead && m_deathStage >= 4)
+					{
+						// Smooth master natural fade-out over ~2 seconds for any remaining tails
+						float fade = expf(-m_deathSilenceTimer / 1.5f);
+						sample *= fade;
+					}
+
+					const float phaseInc = currentFreq / sampleRateF;
+					voice.phase += phaseInc;
+					if (voice.phase >= 1.0f)
+					{
+						voice.phase -= 1.0f;
 					}
 					voice.time += 1.0f / sampleRateF;
 
@@ -1183,7 +1814,8 @@ namespace WeirdEngine
 					buffer[i * 2 + 1] += sample * voice.rightGain;
 				}
 
-				if (voice.time > attackTime && voice.amplitude * expf(-voice.time / voice.decay) < 0.0005f)
+				if (voice.time > attackTime && (voice.amplitude * expf(-voice.time / voice.decay) < 0.0005f ||
+												(m_isDead && m_deathStage >= 4 && m_deathSilenceTimer > 5.0f)))
 				{
 					voice.finished = true;
 				}

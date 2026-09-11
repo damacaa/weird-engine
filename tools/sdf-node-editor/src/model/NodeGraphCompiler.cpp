@@ -23,7 +23,7 @@ namespace WeirdEngine::Editor
 
 		if (outputId <= 0)
 		{
-			return Expr(0.0f);
+			return Expr(1.0f);
 		}
 
 		std::unordered_set<int> visited;
@@ -109,7 +109,11 @@ namespace WeirdEngine::Editor
 			else
 			{
 				// Use local default or overridden input value
-				if (def->inputs[inIdx].type == PinType::Float)
+				if (node->typeId == "sdf_output")
+				{
+					evaluatedInputs.push_back(NodeValue(Expr(1.0f)));
+				}
+				else if (def->inputs[inIdx].type == PinType::Float)
 				{
 					float v =
 						(inIdx < node->inputFloats.size()) ? node->inputFloats[inIdx] : def->inputs[inIdx].defaultFloat;
@@ -172,7 +176,11 @@ namespace WeirdEngine::Editor
 			}
 			else
 			{
-				if (def->inputs[inIdx].type == PinType::Float)
+				if (node->typeId == "sdf_output")
+				{
+					inStrs.push_back("1.0f");
+				}
+				else if (def->inputs[inIdx].type == PinType::Float)
 				{
 					float v =
 						(inIdx < node->inputFloats.size()) ? node->inputFloats[inIdx] : def->inputs[inIdx].defaultFloat;

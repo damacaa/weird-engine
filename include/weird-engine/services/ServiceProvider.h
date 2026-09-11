@@ -720,6 +720,7 @@ namespace WeirdEngine
 		void setHealth(float current, float max);
 		void surge(float amount = 0.5f);
 		void duck(float amount = 0.5f);
+		void resetDynamicEffects();
 	};
 
 	struct TagService

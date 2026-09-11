@@ -30,7 +30,13 @@ namespace WeirdEngine::Editor
 			if (ImGui::BeginTabItem("Parameters"))
 			{
 				selectedTab = InspectorTab::Parameters;
-				renderParametersTab(services, graph, previewController, audioManager);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+				if (ImGui::BeginChild("##ParametersTabContent", ImVec2(0.0f, 0.0f), false))
+				{
+					renderParametersTab(services, graph, previewController, audioManager);
+				}
+				ImGui::EndChild();
+				ImGui::PopStyleVar();
 				ImGui::EndTabItem();
 			}
 
@@ -40,7 +46,13 @@ namespace WeirdEngine::Editor
 			if (ImGui::BeginTabItem("Audio & Song"))
 			{
 				selectedTab = InspectorTab::Audio;
-				renderAudioTab(services, audioManager);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+				if (ImGui::BeginChild("##AudioTabContent", ImVec2(0.0f, 0.0f), false))
+				{
+					renderAudioTab(services, audioManager);
+				}
+				ImGui::EndChild();
+				ImGui::PopStyleVar();
 				ImGui::EndTabItem();
 			}
 
@@ -50,7 +62,13 @@ namespace WeirdEngine::Editor
 			if (ImGui::BeginTabItem("Code & Shader"))
 			{
 				selectedTab = InspectorTab::CodeShader;
-				renderCodeShaderTab(cachedGlslCode, cachedCppCode);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+				if (ImGui::BeginChild("##CodeShaderTabContent", ImVec2(0.0f, 0.0f), false))
+				{
+					renderCodeShaderTab(cachedGlslCode, cachedCppCode);
+				}
+				ImGui::EndChild();
+				ImGui::PopStyleVar();
 				ImGui::EndTabItem();
 			}
 
@@ -182,13 +200,61 @@ namespace WeirdEngine::Editor
 			const auto& rack = music.getInstrumentRack();
 			ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
 
+			auto renderTrackStatusBadge = [&](WeirdRenderer::MusicTrack track)
+			{
+				auto state = music.getTrackPlayState(track);
+				const char* label = "[Playing]";
+				ImVec4 color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+				switch (state)
+				{
+					case WeirdRenderer::TrackPlayState::Playing:
+						label = "[Playing]";
+						color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+						break;
+					case WeirdRenderer::TrackPlayState::Paused:
+						label = "[Breakdown]";
+						color = ImVec4(0.9f, 0.8f, 0.3f, 1.0f);
+						break;
+					case WeirdRenderer::TrackPlayState::Ducked:
+						label = "[Ducked]";
+						color = ImVec4(0.6f, 0.5f, 0.9f, 1.0f);
+						break;
+					case WeirdRenderer::TrackPlayState::Surged:
+						label = "[Surged]";
+						color = ImVec4(1.0f, 0.6f, 0.1f, 1.0f);
+						break;
+					case WeirdRenderer::TrackPlayState::Dead:
+						label = "[Dead]";
+						color = ImVec4(0.85f, 0.25f, 0.25f, 1.0f);
+						break;
+					case WeirdRenderer::TrackPlayState::Muted:
+					default:
+						label = "[Muted]";
+						color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+						break;
+				}
+				float badgeColWidth = ImGui::CalcTextSize("[Breakdown]").x + 8.0f;
+				float startX = ImGui::GetCursorPosX();
+				ImGui::TextColored(color, "%s", label);
+				ImGui::SameLine(startX + badgeColWidth);
+			};
+
+			float trackNameColWidth =
+				(std::max)({ImGui::CalcTextSize("Lead Wave:").x, ImGui::CalcTextSize("Bass Wave:").x,
+							ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
+				8.0f;
+
 			bool leadEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Lead);
 			if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
 			{
 				music.setTrackEnabled(WeirdRenderer::MusicTrack::Lead, leadEnabled);
 			}
 			ImGui::SameLine();
-			ImGui::Text("Lead Wave:   %s", AudioPreviewManager::getWaveTypeName(rack.lead));
+			float startXLead = ImGui::GetCursorPosX();
+			ImGui::Text("Lead Wave:");
+			ImGui::SameLine(startXLead + trackNameColWidth);
+			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Lead);
+			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.lead));
 
 			bool bassEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Bass);
 			if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
@@ -196,7 +262,11 @@ namespace WeirdEngine::Editor
 				music.setTrackEnabled(WeirdRenderer::MusicTrack::Bass, bassEnabled);
 			}
 			ImGui::SameLine();
-			ImGui::Text("Bass Wave:   %s", AudioPreviewManager::getWaveTypeName(rack.bass));
+			float startXBass = ImGui::GetCursorPosX();
+			ImGui::Text("Bass Wave:");
+			ImGui::SameLine(startXBass + trackNameColWidth);
+			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Bass);
+			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.bass));
 
 			bool padEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Pad);
 			if (ImGui::Checkbox("##pad_toggle", &padEnabled))
@@ -204,7 +274,11 @@ namespace WeirdEngine::Editor
 				music.setTrackEnabled(WeirdRenderer::MusicTrack::Pad, padEnabled);
 			}
 			ImGui::SameLine();
-			ImGui::Text("Pad Wave:    %s", AudioPreviewManager::getWaveTypeName(rack.pad));
+			float startXPad = ImGui::GetCursorPosX();
+			ImGui::Text("Pad Wave:");
+			ImGui::SameLine(startXPad + trackNameColWidth);
+			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Pad);
+			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.pad));
 
 			bool drumsEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Drums);
 			if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
@@ -212,7 +286,11 @@ namespace WeirdEngine::Editor
 				music.setTrackEnabled(WeirdRenderer::MusicTrack::Drums, drumsEnabled);
 			}
 			ImGui::SameLine();
-			ImGui::Text("Drum Kit:    %s", AudioPreviewManager::getDrumKitName(rack.drumKit));
+			float startXDrums = ImGui::GetCursorPosX();
+			ImGui::Text("Drum Kit:");
+			ImGui::SameLine(startXDrums + trackNameColWidth);
+			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Drums);
+			ImGui::Text("%s", AudioPreviewManager::getDrumKitName(rack.drumKit));
 
 			ImGui::Spacing();
 			ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
@@ -254,22 +332,37 @@ namespace WeirdEngine::Editor
 		}
 
 		ImGui::Spacing();
-		if (ImGui::CollapsingHeader("Dynamic Feedback Triggers"))
+		if (ImGui::CollapsingHeader("Dynamic Feedback Triggers", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (ImGui::Button("Surge (+Impact)", ImVec2(160.0f, 25.0f)))
-				music.surge(0.6f);
-			ImGui::SameLine();
-			if (ImGui::Button("Duck (-Volume)", ImVec2(160.0f, 25.0f)))
-				music.duck(0.5f);
+			float surgeLvl = music.getSurgeLevel();
+			ImGui::ProgressBar(surgeLvl, ImVec2(-1.0f, 0.0f), "Surge Hype (Combo)");
+			float duckLvl = music.getDuckingLevel();
+			ImGui::ProgressBar(duckLvl, ImVec2(-1.0f, 0.0f), "Duck Danger (Rough/Low)");
 
-			if (ImGui::Button("Positive Trigger", ImVec2(160.0f, 25.0f)))
+			float availWidth = ImGui::GetContentRegionAvail().x;
+			float gap = ImGui::GetStyle().ItemSpacing.x;
+			float btnWidth1 = std::floor((availWidth - gap) * 0.5f);
+			float btnWidth2 = availWidth - btnWidth1 - gap;
+			float btnHeight = 25.0f;
+
+			if (ImGui::Button("Surge (+Combo)", ImVec2(btnWidth1, btnHeight)))
+				music.surge(0.40f);
+			ImGui::SameLine();
+			if (ImGui::Button("Duck (Danger)", ImVec2(btnWidth2, btnHeight)))
+				music.duck(0.50f);
+
+			if (ImGui::Button("Positive (Click)", ImVec2(btnWidth1, btnHeight)))
 				music.triggerPositiveFeedback(1.0f);
 			ImGui::SameLine();
-			if (ImGui::Button("Negative Trigger", ImVec2(160.0f, 25.0f)))
+			if (ImGui::Button("Negative (Error)", ImVec2(btnWidth2, btnHeight)))
 				music.triggerNegativeFeedback(1.0f);
 
-			if (ImGui::Button("Death Trigger", ImVec2(-1.0f, 25.0f)))
+			if (ImGui::Button("Death Trigger", ImVec2(btnWidth1, btnHeight)))
 				music.triggerDeath();
+
+			ImGui::Spacing();
+			if (ImGui::Button("Reset All Dynamic Effects", ImVec2(availWidth, btnHeight)))
+				music.resetDynamicEffects();
 		}
 	}
 

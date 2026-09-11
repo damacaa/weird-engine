@@ -1,0 +1,246 @@
+{
+  "links": [
+    {
+      "endPinId": 401,
+      "id": 2,
+      "startPinId": 250
+    },
+    {
+      "endPinId": 500,
+      "id": 3,
+      "startPinId": 450
+    },
+    {
+      "endPinId": 501,
+      "id": 4,
+      "startPinId": 350
+    },
+    {
+      "endPinId": 600,
+      "id": 5,
+      "startPinId": 550
+    },
+    {
+      "endPinId": 700,
+      "id": 6,
+      "startPinId": 150
+    },
+    {
+      "endPinId": 400,
+      "id": 7,
+      "startPinId": 750
+    },
+    {
+      "endPinId": 900,
+      "id": 8,
+      "startPinId": 850
+    },
+    {
+      "endPinId": 701,
+      "id": 9,
+      "startPinId": 950
+    },
+    {
+      "endPinId": 901,
+      "id": 10,
+      "startPinId": 1050
+    }
+  ],
+  "nodes": [
+    {
+      "customFloat": 1.0,
+      "customInt": 2,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 10,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -360.6259460449219,
+      "posY": 186.04525756835938,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 9,
+      "inputFloats": [
+        1.0,
+        1.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": -148.36294555664063,
+      "posY": 95.80169677734375,
+      "typeId": "mul"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 8,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -259.5785827636719,
+      "posY": 51.3154296875,
+      "typeId": "time"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 7,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 139.52674865722656,
+      "posY": -47.82539367675781,
+      "typeId": "rotate"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 6,
+      "inputFloats": [
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 810.0,
+      "posY": 200.0,
+      "typeId": "sdf_output"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 5,
+      "inputFloats": [
+        0.0,
+        20.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 543.7877807617188,
+      "posY": 265.35540771484375,
+      "typeId": "circle"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 4,
+      "inputFloats": [
+        0.0,
+        40.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 340.5048522949219,
+      "posY": 119.92471313476563,
+      "typeId": "repeat"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 1,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 3,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 294.5727844238281,
+      "posY": 383.9743957519531,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 2,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 101.30867767333984,
+      "posY": 204.44862365722656,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 1,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -201.19790649414063,
+      "posY": -49.64567947387695,
+      "typeId": "point"
+    }
+  ],
+  "parameterNames": [
+    "Spacing",
+    "Radius",
+    "Speed",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "parameters": [
+    14.399999618530273,
+    4.0,
+    3.799999952316284,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

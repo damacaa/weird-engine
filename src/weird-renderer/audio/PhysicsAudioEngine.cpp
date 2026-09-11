@@ -25,7 +25,6 @@ namespace WeirdEngine
 			m_frictionLevel = 0.0f;
 			m_smoothedFriction = 0.0f;
 			m_lastRawFriction = 0.0f;
-			m_recentImpactEnergy = 0.0f;
 		}
 
 		float PhysicsAudioEngine::generateNoiseSample()
@@ -107,9 +106,6 @@ namespace WeirdEngine
 			{
 				decay = 0.03f + 0.08f * std::clamp(request.intensity, 0.0f, 1.0f);
 			}
-
-			// Track recent impact energy
-			m_recentImpactEnergy = (std::max)(m_recentImpactEnergy, request.intensity);
 
 			playVoice(request.frequency > 0.0f ? request.frequency : 180.0f, (std::min)(1.0f, vol), decay,
 					  request.instrument, leftGain, rightGain, filterCutoff);
@@ -268,14 +264,6 @@ namespace WeirdEngine
 			m_activeVoices.clear();
 			m_frictionLevel = 0.0f;
 			m_smoothedFriction = 0.0f;
-			m_recentImpactEnergy = 0.0f;
-		}
-
-		float PhysicsAudioEngine::consumeRecentImpactEnergy()
-		{
-			float val = m_recentImpactEnergy;
-			m_recentImpactEnergy = 0.0f;
-			return val;
 		}
 	} // namespace WeirdRenderer
 } // namespace WeirdEngine

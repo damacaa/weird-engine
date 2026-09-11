@@ -129,14 +129,7 @@ namespace WeirdEngine
 				m_physicsEngine.playSound(req, listenerPos, listenerForward, listenerUp);
 			}
 
-			// 4. Check consumed impact energy to surge music activity
-			float recentImpact = m_physicsEngine.consumeRecentImpactEnergy();
-			if (recentImpact > 0.05f)
-			{
-				m_musicEngine.surge(recentImpact * 0.35f);
-			}
-
-			// 5. Update procedural music timing & dynamic feedback
+			// 4. Update procedural music timing & dynamic feedback
 			m_musicEngine.update(scene.getLastDelta(), scene.getTime());
 
 			// 6. Generate and stream PCM audio to SDL

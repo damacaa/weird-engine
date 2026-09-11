@@ -29,6 +29,11 @@ namespace WeirdEngine::Editor
 					{
 						int id = graph.addNode(def->typeId, {spawnPos.x, spawnPos.y});
 						ImNodes::SetNodeScreenSpacePos(id, spawnPos);
+						ImVec2 gridPos = ImNodes::GetNodeGridSpacePos(id);
+						if (auto* n = graph.getNode(id))
+						{
+							n->position = {gridPos.x, gridPos.y};
+						}
 						outDirty = true;
 					}
 				}

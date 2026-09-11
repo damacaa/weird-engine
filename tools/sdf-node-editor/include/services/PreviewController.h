@@ -20,6 +20,10 @@ namespace WeirdEngine::Editor
 		static constexpr float kPreviewSelectorRightMargin = 8.0f;
 		static constexpr float kPreviewSelectorTopMargin = 5.0f;
 
+		static constexpr float kMinCameraDistance = 5.0f;
+		static constexpr float kDefaultCameraDistance = 200.0f;
+		static constexpr float kMaxCameraDistance = 400.0f;
+
 		PreviewController() = default;
 
 		void initMaterials(ServiceProvider& services);
@@ -47,7 +51,7 @@ namespace WeirdEngine::Editor
 		Entity m_previewEntity = INVALID_ENTITY;
 		Entity m_worldEntity = INVALID_ENTITY;
 
-		float m_cameraZoom = 35.0f;
+		float m_cameraZoom = kDefaultCameraDistance;
 		glm::vec2 m_lastPreviewTargetCenter = {0.0f, 0.0f};
 
 		unsigned int m_dotMaterialId = 0;

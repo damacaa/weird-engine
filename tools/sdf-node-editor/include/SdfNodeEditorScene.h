@@ -90,7 +90,7 @@ namespace WeirdEngine::Editor
 			m_evaluatedExpr = NodeGraphCompiler::evaluate(m_graph);
 			if (!m_evaluatedExpr.node)
 			{
-				m_evaluatedExpr = Expr(0.0f);
+				m_evaluatedExpr = Expr(1.0f);
 			}
 
 			m_previewController.syncPreviewShape(services.registry(), services, m_evaluatedExpr,
@@ -152,7 +152,8 @@ namespace WeirdEngine::Editor
 				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.22f, 0.22f, 0.22f, 1.0f));
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
 
-				ImGui::BeginChild("##InspectorChild", ImVec2(0.0f, inspectorHeight), true);
+				ImGui::BeginChild("##InspectorChild", ImVec2(0.0f, inspectorHeight), true,
+								  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 				m_inspectorView.render(services, m_graph, m_previewController, m_audioManager, m_cachedGlslCode,
 									   m_cachedCppCode);
 				ImGui::EndChild();

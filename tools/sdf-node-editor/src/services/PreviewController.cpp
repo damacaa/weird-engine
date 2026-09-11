@@ -56,7 +56,7 @@ namespace WeirdEngine::Editor
 		if (mainCam < MAX_ENTITIES && services.registry().hasComponent<Transform>(mainCam))
 		{
 			auto& t = services.registry().getComponent<Transform>(mainCam);
-			float zoom = m_cameraZoom > 0.0f ? m_cameraZoom : 35.0f;
+			float zoom = m_cameraZoom > 0.0f ? m_cameraZoom : kDefaultCameraDistance;
 			glm::vec3 desiredPos(-zoom * uvCenterX, -zoom * uvCenterY, zoom);
 
 			if (m_previewMode == PreviewMode::UIShape)
@@ -200,7 +200,7 @@ namespace WeirdEngine::Editor
 			if (wheelDelta != 0.0f)
 			{
 				float zoomFactor = (wheelDelta > 0.0f) ? 0.90f : 1.10f;
-				m_cameraZoom = std::clamp(m_cameraZoom * zoomFactor, 5.0f, 200.0f);
+				m_cameraZoom = std::clamp(m_cameraZoom * zoomFactor, kMinCameraDistance, kMaxCameraDistance);
 				glm::vec2 targetCenter(static_cast<float>(winW) - inspectorWidth * 0.5f, previewHeight * 0.5f);
 				updateCameraPosition(services, winW, winH, targetCenter);
 			}
@@ -313,6 +313,6 @@ namespace WeirdEngine::Editor
 
 	void PreviewController::setCameraZoom(float zoom)
 	{
-		m_cameraZoom = zoom;
+		m_cameraZoom = std::clamp(zoom, kMinCameraDistance, kMaxCameraDistance);
 	}
 } // namespace WeirdEngine::Editor

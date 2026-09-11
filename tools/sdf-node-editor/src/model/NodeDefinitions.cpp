@@ -490,9 +490,9 @@ namespace WeirdEngine::Editor
 		registerNode(NodeDef{"sdf_output",
 							 "SDF Result Output",
 							 NodeCategory::Output,
-							 {{"shape", PinType::Float, 0.0f}},
+							 {{"shape", PinType::Float, 1.0f}},
 							 {},
-							 [](const auto& in, const auto&) { return in.empty() ? NodeValue(Expr(0.0f)) : in[0]; },
-							 [](const auto& in, const auto&) { return in.empty() ? "Expr(0.0f)" : in[0]; }});
+							 [](const auto& in, const auto&) { return in.empty() ? NodeValue(Expr(1.0f)) : in[0]; },
+							 [](const auto& in, const auto&) { return in.empty() ? "Expr(1.0f)" : in[0]; }});
 	}
 } // namespace WeirdEngine::Editor

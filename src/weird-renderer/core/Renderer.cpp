@@ -14,9 +14,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_hints.h>
 
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/Logger.h"
 #include "weird-engine/Profiler.h"
-#include "weird-renderer/audio/AudioEngine.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
 
 #ifndef SHADERS_PATH
@@ -185,9 +185,12 @@ namespace WeirdEngine
 
 					if (ImGui::BeginTabBar("EngineTabBar"))
 					{
-						if (ImGui::BeginTabItem("Scene"))
+						scene.renderSettingsTab();
+						scene.renderHierarchyTab();
+
+						if (ImGui::BeginTabItem("Console"))
 						{
-							scene.renderImGui();
+							Logger::drawImGuiConsole();
 							ImGui::EndTabItem();
 						}
 
@@ -248,13 +251,13 @@ namespace WeirdEngine
 								updateVSyncSetting();
 							}
 
-							bool isMuted = AudioEngine::getInstance().isMuted();
+							bool isMuted = WeirdAudio::AudioEngine::getInstance().isMuted();
 							if (ImGui::Checkbox("Mute Audio", &isMuted))
 							{
 								if (isMuted)
-									AudioEngine::getInstance().mute();
+									WeirdAudio::AudioEngine::getInstance().mute();
 								else
-									AudioEngine::getInstance().unmute();
+									WeirdAudio::AudioEngine::getInstance().unmute();
 							}
 
 							if (!m_lastScreenshotPath.empty())
@@ -277,11 +280,8 @@ namespace WeirdEngine
 							ImGui::EndTabItem();
 						}
 
-						if (ImGui::BeginTabItem("Console"))
-						{
-							Logger::drawImGuiConsole();
-							ImGui::EndTabItem();
-						}
+						scene.renderPhysicsTab();
+						scene.renderAudioTab();
 
 						ImGui::EndTabBar();
 					}

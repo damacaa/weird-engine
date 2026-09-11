@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -12,7 +12,7 @@ class MouseCollisionScene : public Scene2D
 public:
 	MouseCollisionScene() {};
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = point();
@@ -22,7 +22,7 @@ public:
 		Expr box = sdBox(p + Vec2Expr(5.0f, 5.0f), Vec2Expr(15.0f, 15.0f));
 		Expr mouseShape = sdfSmoothUnion(circle, box, 5.0f);
 
-		return WeirdRenderer::SdfSong::create("mouse-collision", mouseShape);
+		return WeirdAudio::SdfSong::create("mouse-collision", mouseShape);
 	}
 
 private:

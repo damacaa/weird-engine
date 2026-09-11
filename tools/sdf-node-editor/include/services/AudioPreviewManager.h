@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 namespace WeirdEngine::Editor
@@ -12,9 +12,9 @@ namespace WeirdEngine::Editor
 	class AudioPreviewManager
 	{
 	public:
-		static const char* getScaleName(WeirdRenderer::MusicalScale scale);
+		static const char* getScaleName(WeirdAudio::MusicalScale scale);
 		static std::string midiToNoteString(int midi);
-		static const char* getWaveTypeName(WeirdRenderer::WaveType waveType);
+		static const char* getWaveTypeName(WeirdAudio::WaveType waveType);
 		static const char* getDrumKitName(int kit);
 
 		AudioPreviewManager() = default;
@@ -29,10 +29,10 @@ namespace WeirdEngine::Editor
 		float getVolume() const;
 		void setVolume(ServiceProvider& services, float volume);
 
-		std::shared_ptr<WeirdRenderer::SdfSong> getSong() const;
+		std::shared_ptr<WeirdAudio::SdfSong> getSong() const;
 
 	private:
-		std::shared_ptr<WeirdRenderer::SdfSong> m_song;
+		std::shared_ptr<WeirdAudio::SdfSong> m_song;
 		bool m_playSong = true;
 		float m_musicVolume = 0.75f;
 	};

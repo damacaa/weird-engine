@@ -1,4 +1,4 @@
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include "weird-engine/Assert.h"
 #include "weird-renderer/core/Display.h"
 #include <algorithm>
@@ -6,11 +6,11 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		glm::vec2 SdfSong::getDefaultCenter()
 		{
-			float h = Display::height > 0 ? static_cast<float>(Display::height) : 800.0f;
+			float h = WeirdRenderer::Display::height > 0 ? static_cast<float>(WeirdRenderer::Display::height) : 800.0f;
 			return glm::vec2(70.0f, h - 70.0f);
 		}
 
@@ -414,5 +414,5 @@ namespace WeirdEngine
 			return m_rootMidi + octave * 12 + intervals[degree];
 		}
 
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

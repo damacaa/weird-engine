@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "weird-renderer/audio/AudioEngine.h"
+#include "weird-audio/AudioEngine.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/MeshRenderPipeline.h"
 #include "weird-renderer/core/RenderTarget.h"

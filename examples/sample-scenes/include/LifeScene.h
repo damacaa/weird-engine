@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -26,7 +26,7 @@ class LifeScene : public Scene2D
 public:
 	LifeScene() {};
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = SDF::point();
@@ -37,7 +37,7 @@ public:
 
 		Expr lifeShape = sdfSmoothUnion(c1, c2, 6.0f);
 
-		return WeirdRenderer::SdfSong::create("life", lifeShape);
+		return WeirdAudio::SdfSong::create("life", lifeShape);
 	}
 
 private:

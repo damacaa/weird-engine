@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -11,7 +11,7 @@ class CollisionHandlingScene : public Scene2D
 public:
 	CollisionHandlingScene() {};
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = SDF::point();
@@ -21,7 +21,7 @@ public:
 		Expr tri = sdTriangle(p, 25.0f, 20.0f);
 		Expr colShape = sdfUnion(box, tri);
 
-		return WeirdRenderer::SdfSong::create("collision-handling", colShape);
+		return WeirdAudio::SdfSong::create("collision-handling", colShape);
 	}
 
 private:

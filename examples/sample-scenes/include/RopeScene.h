@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -26,7 +26,7 @@ class RopeScene : public Scene2D
 public:
 	RopeScene() {}
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		// Local coordinate p centered at (0, 0)
@@ -37,7 +37,7 @@ public:
 		Expr box = sdBox(p, Vec2Expr(30.0f, 8.0f));
 		Expr ropeShape = sdfSmoothUnion(wave, box, 4.0f);
 
-		return WeirdRenderer::SdfSong::create("rope", ropeShape);
+		return WeirdAudio::SdfSong::create("rope", ropeShape);
 	}
 
 private:

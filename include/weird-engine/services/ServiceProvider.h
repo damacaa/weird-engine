@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include "weird-audio/AudioRingBuffer.h"
+#include "weird-audio/SimpleAudioRequest.h"
 #include "weird-engine/Assert.h"
 #include "weird-engine/Background.h"
 #include "weird-engine/ecs/Registry.h"
@@ -25,8 +27,6 @@
 #include "weird-engine/vec.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/audio/AudioRingBuffer.h"
-#include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/components/Camera.h"
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/core/Display.h"
@@ -36,13 +36,13 @@ namespace WeirdEngine
 {
 	class Scene;
 
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		class AudioEngine;
 		class PhysicsAudioEngine;
 		class SdfMusicEngine;
 		class SdfSong;
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 
 	constexpr int SOUND_QUEUE_SIZE = 64;
 
@@ -638,14 +638,14 @@ namespace WeirdEngine
 
 	struct AudioService
 	{
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
+		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
 		std::atomic<float>& frictionSoundLevel;
 		ShapeService* shapes = nullptr;
 		Registry* registry = nullptr;
 		Entity m_visualizationEntity = INVALID_ENTITY;
 		float m_lastSyncedParams[8] = {0.0f};
 
-		AudioService(AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, std::atomic<float>& fsl,
+		AudioService(AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, std::atomic<float>& fsl,
 					 ShapeService* s = nullptr, Registry* r = nullptr)
 			: queue(q)
 			, frictionSoundLevel(fsl)
@@ -654,12 +654,12 @@ namespace WeirdEngine
 		{
 		}
 
-		void playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+		void playSound(const WeirdAudio::SimpleAudioRequest& audio)
 		{
 			queue.push(audio);
 		}
 
-		void playPhysicsSound(const WeirdRenderer::SimpleAudioRequest& audio)
+		void playPhysicsSound(const WeirdAudio::SimpleAudioRequest& audio)
 		{
 			queue.push(audio);
 		}
@@ -674,7 +674,7 @@ namespace WeirdEngine
 			frictionSoundLevel.store(level, std::memory_order_release);
 		}
 
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()
+		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()
 		{
 			return queue;
 		}
@@ -684,14 +684,14 @@ namespace WeirdEngine
 		bool isSpatialAudioEnabled() const;
 
 		// Subsystems
-		WeirdRenderer::SdfMusicEngine& music();
-		WeirdRenderer::PhysicsAudioEngine& physicsAudio();
+		WeirdAudio::SdfMusicEngine& music();
+		WeirdAudio::PhysicsAudioEngine& physicsAudio();
 
 		// Song Management (beat-synced)
-		void setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, bool beatSynced = true);
-		Entity setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, const SongVisualizationOptions& visualOptions,
+		void setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced = true);
+		Entity setSong(std::shared_ptr<WeirdAudio::SdfSong> song, const SongVisualizationOptions& visualOptions,
 					   bool beatSynced = true);
-		void queueSong(std::shared_ptr<WeirdRenderer::SdfSong> song);
+		void queueSong(std::shared_ptr<WeirdAudio::SdfSong> song);
 
 		// Visualization Entity Inspection & Parameter Sync
 		Entity getVisualizationEntity() const

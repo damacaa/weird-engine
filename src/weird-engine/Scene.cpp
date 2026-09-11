@@ -1,6 +1,6 @@
 #include "weird-engine/Scene.h"
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/SceneManager.h"
-#include "weird-renderer/audio/AudioEngine.h"
 
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
@@ -251,7 +251,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Physics synchronization");
-			m_simulation2D.setAudioVolume(WeirdRenderer::AudioEngine::getInstance().getAudioVolume());
+			m_simulation2D.setAudioVolume(WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			if (m_debugInput)
@@ -298,7 +298,7 @@ namespace WeirdEngine
 					float cutoff = 250.0f + 800.0f * (1.0f - impactIntensity * 0.5f);
 					float vol = std::clamp(impactIntensity * 0.3f, 0.01f, 0.4f);
 
-					WeirdRenderer::SimpleAudioRequest req;
+					WeirdAudio::SimpleAudioRequest req;
 					req.volume = vol;
 					req.frequency = cutoff;
 					req.spatial = true;
@@ -339,7 +339,7 @@ namespace WeirdEngine
 						float cutoff = 180.0f + 1100.0f * (1.0f - impactIntensity * 0.5f);
 						float vol = std::clamp(impactIntensity * 0.35f, 0.01f, 0.5f);
 
-						WeirdRenderer::SimpleAudioRequest req;
+						WeirdAudio::SimpleAudioRequest req;
 						req.volume = vol;
 						req.frequency = cutoff;
 						req.spatial = true;
@@ -496,7 +496,7 @@ namespace WeirdEngine
 
 	// AUDIO
 
-	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
+	AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
 	{
 		return m_audioQueue;
 	}
@@ -506,7 +506,7 @@ namespace WeirdEngine
 		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
 	}
 
-	void Scene::playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+	void Scene::playSound(const WeirdAudio::SimpleAudioRequest& audio)
 	{
 		m_audioQueue.push(audio);
 	}
@@ -579,35 +579,35 @@ namespace WeirdEngine
 
 	void AudioService::setSpatialAudioEnabled(bool enabled)
 	{
-		WeirdRenderer::AudioEngine::getInstance().setSpatialAudioEnabled(enabled);
+		WeirdAudio::AudioEngine::getInstance().setSpatialAudioEnabled(enabled);
 	}
 
 	bool AudioService::isSpatialAudioEnabled() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().isSpatialAudioEnabled();
+		return WeirdAudio::AudioEngine::getInstance().isSpatialAudioEnabled();
 	}
 
-	WeirdRenderer::SdfMusicEngine& AudioService::music()
+	WeirdAudio::SdfMusicEngine& AudioService::music()
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine();
 	}
 
-	WeirdRenderer::PhysicsAudioEngine& AudioService::physicsAudio()
+	WeirdAudio::PhysicsAudioEngine& AudioService::physicsAudio()
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getPhysicsEngine();
+		return WeirdAudio::AudioEngine::getInstance().getPhysicsEngine();
 	}
 
-	void AudioService::setSong(std::shared_ptr<WeirdRenderer::SdfSong> song, bool beatSynced)
+	void AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced)
 	{
 		SongVisualizationOptions defaultVisualOptions;
 		setSong(std::move(song), defaultVisualOptions, beatSynced);
 	}
 
-	Entity AudioService::setSong(std::shared_ptr<WeirdRenderer::SdfSong> song,
+	Entity AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song,
 								 const SongVisualizationOptions& visualOptions, bool beatSynced)
 	{
 		auto songPtr = song;
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
 
 		if (shapes && registry && songPtr && songPtr->getShapeExpression())
 		{
@@ -644,7 +644,7 @@ namespace WeirdEngine
 		if (index >= 8)
 			return;
 
-		auto curSong = WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+		auto curSong = WeirdAudio::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
 		if (curSong)
 		{
 			curSong->setParameter(index, value);
@@ -660,7 +660,7 @@ namespace WeirdEngine
 			registry->setComponentDirty(ui);
 		}
 
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resampleShape();
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resampleShape();
 	}
 
 	void AudioService::updateVisualization()
@@ -668,54 +668,54 @@ namespace WeirdEngine
 		// Pulsing is now driven directly by the global audio volume variable in the shader.
 	}
 
-	void AudioService::queueSong(std::shared_ptr<WeirdRenderer::SdfSong> song)
+	void AudioService::queueSong(std::shared_ptr<WeirdAudio::SdfSong> song)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().queueSong(std::move(song));
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().queueSong(std::move(song));
 	}
 
 	void AudioService::triggerPositiveFeedback(float intensity)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerPositiveFeedback(intensity);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerPositiveFeedback(intensity);
 	}
 
 	void AudioService::triggerNegativeFeedback(float intensity)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerNegativeFeedback(intensity);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerNegativeFeedback(intensity);
 	}
 
 	void AudioService::triggerDeath()
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().triggerDeath();
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerDeath();
 	}
 
 	void AudioService::setTension(float level)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setTension(level);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setTension(level);
 	}
 
 	void AudioService::setEnergy(float level)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setEnergy(level);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setEnergy(level);
 	}
 
 	void AudioService::setHealth(float current, float max)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().setHealth(current, max);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setHealth(current, max);
 	}
 
 	void AudioService::surge(float amount)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().surge(amount);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().surge(amount);
 	}
 
 	void AudioService::duck(float amount)
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().duck(amount);
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().duck(amount);
 	}
 
 	void AudioService::resetDynamicEffects()
 	{
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resetDynamicEffects();
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resetDynamicEffects();
 	}
 
 	void AudioService::resampleShape()
@@ -723,7 +723,7 @@ namespace WeirdEngine
 		if (m_visualizationEntity != INVALID_ENTITY && registry &&
 			registry->hasComponent<UIShape>(m_visualizationEntity))
 		{
-			auto curSong = WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+			auto curSong = WeirdAudio::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
 			if (curSong)
 			{
 				auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
@@ -744,32 +744,32 @@ namespace WeirdEngine
 			}
 		}
 
-		WeirdRenderer::AudioEngine::getInstance().getMusicEngine().resampleShape();
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resampleShape();
 	}
 
 	float AudioService::getMotionLevel() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getMotionLevel();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getMotionLevel();
 	}
 
 	float AudioService::getMotionNorm() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getMotionNorm();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getMotionNorm();
 	}
 
 	float AudioService::getFillRatio() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getFillRatio();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getFillRatio();
 	}
 
 	float AudioService::getTempoFromMotion() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getTempoFromMotion();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTempoFromMotion();
 	}
 
 	float AudioService::getVolumeFromFill() const
 	{
-		return WeirdRenderer::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
 	}
 
 	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
@@ -820,7 +820,7 @@ namespace WeirdEngine
 				parameters[8] = time;
 				parameters[9] = p.x;
 				parameters[10] = p.y;
-				parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
+				parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 
 				float dist = sdfs[shape.distanceFieldId]->getValue(parameters);
 				float currentMinDistance = d;
@@ -986,36 +986,18 @@ namespace WeirdEngine
 
 	// Utils
 
-	void Scene::renderImGui()
+	void Scene::renderSettingsTab()
 	{
 #ifndef WEIRD_DISABLE_IMGUI
-		const char* label = "Settings";
-		if (ImGui::CollapsingHeader(label))
+		if (ImGui::BeginTabItem("Settings"))
 		{
-			ImGui::PushID(label);
-			ImGui::Indent();
 
-			// Physics Section
-			if (ImGui::CollapsingHeader("Physics", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				ImGui::Indent();
-				if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
-				{
-					if (m_simulationIsPaused)
-						m_simulation2D.pause();
-					else
-						m_simulation2D.resume();
-				}
-				ImGui::Unindent();
-			}
-
-			// Background Section
 			if (ImGui::CollapsingHeader("Background"))
 			{
 				ImGui::Indent();
 				const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
 				int bgTypeIdx = static_cast<int>(m_background.type);
-				if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
+				if (ImGui::Combo("Background Type", &bgTypeIdx, bgTypes, 4))
 				{
 					m_background.type = static_cast<BackgroundType>(bgTypeIdx);
 				}
@@ -1027,244 +1009,265 @@ namespace WeirdEngine
 					ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
 					ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
 				}
-				ImGui::Unindent();
-			}
 
-			// Audio Section
-			if (ImGui::CollapsingHeader("Audio"))
-			{
-				ImGui::Indent();
-				auto& audioEngine = WeirdRenderer::AudioEngine::getInstance();
-				auto& musicEngine = audioEngine.getMusicEngine();
-				auto& physicsAudio = audioEngine.getPhysicsEngine();
-
-				// Master Audio Controls
-				bool muted = audioEngine.isMuted();
-				if (ImGui::Checkbox("Mute All Audio", &muted))
-				{
-					if (muted)
-						audioEngine.mute();
-					else
-						audioEngine.unmute();
-				}
-
-				float masterVol = audioEngine.getMasterVolume();
-				if (ImGui::SliderFloat("Master Volume", &masterVol, 0.0f, 1.0f, "%.2f"))
-				{
-					audioEngine.setMasterVolume(masterVol);
-				}
-
-				// Audio Waveform Visualizer
-				auto audioData = audioEngine.getAudioData();
-
-				ImGui::Text("Waveform (RMS: %.2f)", audioData.currentVolume);
-				ImGui::SameLine();
-				if (ImGui::Checkbox("Auto-Scale", &m_waveformAutoScale))
-				{
-					if (m_waveformAutoScale)
-						m_waveformAutoScaleRange = 0.05f;
-				}
-
-				if (m_waveformAutoScale)
-				{
-					ImGui::SameLine();
-					if (ImGui::SmallButton("Reset"))
-					{
-						m_waveformAutoScaleRange = 0.05f;
-					}
-
-					if (!audioData.waveform.empty() && audioData.currentVolume > 0.0001f)
-					{
-						float peak = 0.0f;
-						for (float s : audioData.waveform)
-						{
-							peak = (std::max)(peak, std::abs(s));
-						}
-						// Grows fast to accommodate peaks, but does not shrink
-						if (peak > m_waveformAutoScaleRange)
-						{
-							m_waveformAutoScaleRange = (std::min)(peak * 1.15f, 1.0f);
-						}
-					}
-				}
-				else
-				{
-					ImGui::SameLine();
-					ImGui::SetNextItemWidth(100.0f);
-					ImGui::SliderFloat("Scale", &m_waveformManualScale, 0.1f, 4.0f, "%.1fx");
-				}
-
-				float yRange = 1.0f;
-				if (m_waveformAutoScale)
-				{
-					yRange = std::clamp(m_waveformAutoScaleRange, 0.05f, 1.0f);
-				}
-				else
-				{
-					yRange = std::clamp(1.0f / (std::max)(m_waveformManualScale, 0.1f), 0.05f, 2.0f);
-				}
-
-				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.25f, 0.92f, 1.00f, 1.00f));
-				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.08f, 0.11f, 1.00f));
-
-				if (!audioData.waveform.empty() && audioData.currentVolume > 0.0005f)
-				{
-					ImGui::PlotLines("##AudioWaveform", audioData.waveform.data(),
-									 static_cast<int>(audioData.waveform.size()), 0, nullptr, -yRange, yRange,
-									 ImVec2(-1.0f, 85.0f));
-				}
-				else
-				{
-					static const float silence[256] = {0.0f};
-					ImGui::PlotLines("##AudioWaveform", silence, 256, 0, "No Signal", -1.0f, 1.0f,
-									 ImVec2(-1.0f, 85.0f));
-				}
-
-				ImGui::PopStyleColor(2);
-
-				// Procedural Music
-				if (ImGui::CollapsingHeader("Procedural Music", ImGuiTreeNodeFlags_DefaultOpen))
-				{
-					ImGui::Indent();
-					bool musicPlaying = musicEngine.isPlaying();
-					if (ImGui::Checkbox("Music Enabled", &musicPlaying))
-					{
-						musicEngine.setPlaying(musicPlaying);
-					}
-
-					float musicVol = musicEngine.getVolume();
-					if (ImGui::SliderFloat("Music Volume", &musicVol, 0.0f, 1.0f, "%.2f"))
-					{
-						musicEngine.setVolume(musicVol);
-					}
-
-					float tension = musicEngine.getTension();
-					if (ImGui::SliderFloat("Tension", &tension, 0.0f, 1.0f, "%.2f"))
-					{
-						musicEngine.setTension(tension);
-					}
-
-					float energy = musicEngine.getEnergy();
-					if (ImGui::SliderFloat("Energy", &energy, 0.0f, 1.0f, "%.2f"))
-					{
-						musicEngine.setEnergy(energy);
-					}
-
-					auto currentSong = musicEngine.getCurrentSong();
-					if (currentSong)
-					{
-						ImGui::Text("Active Song: %s", currentSong->getName().c_str());
-						ImGui::Text("Beat: %.1f | Motion: %.2f | Fill: %.2f", musicEngine.getPlayheadBeat(),
-									musicEngine.getMotionLevel(), musicEngine.getFillRatio());
-
-						if (ImGui::TreeNode("Shape Musical Parameters"))
-						{
-							const auto& params = musicEngine.getShapeParameters();
-							ImGui::Text("Tempo Factor:      %.2fx", params.tempoFactor);
-							ImGui::Text("Melody Density:    %.2f", params.melodyDensity);
-							ImGui::Text("Harmony Richness:  %.2f", params.harmonyRichness);
-							ImGui::Text("Bass Weight:       %.2f", params.bassWeight);
-							ImGui::Text("Percussion Energy: %.2f", params.percEnergy);
-							ImGui::Text("Brightness:        %.2f", params.brightness);
-							ImGui::Text("Syncopation:       %.2f", params.syncopation);
-							ImGui::Text("Variation:         %.2f", params.variation);
-							ImGui::TreePop();
-						}
-					}
-					else
-					{
-						ImGui::TextDisabled("No active song");
-					}
-
-					if (ImGui::Button("Resample Shape"))
-					{
-						m_services.audio().resampleShape();
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Surge"))
-					{
-						musicEngine.surge(0.6f);
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Duck"))
-					{
-						musicEngine.duck(0.5f);
-					}
-
-					// Dynamic Feedback Triggers
-					if (ImGui::Button("Positive (Click)"))
-					{
-						musicEngine.triggerPositiveFeedback(1.0f);
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Negative (Error)"))
-					{
-						musicEngine.triggerNegativeFeedback(1.0f);
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Death Trigger"))
-					{
-						musicEngine.triggerDeath();
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Reset All Effects"))
-					{
-						musicEngine.resetDynamicEffects();
-					}
-					ImGui::Unindent();
-				}
-
-				// Friction & Physics Sound Parameters
-				if (ImGui::CollapsingHeader("Friction & Physics Sound", ImGuiTreeNodeFlags_DefaultOpen))
-				{
-					ImGui::Indent();
-					float physVol = physicsAudio.getVolume();
-					if (ImGui::SliderFloat("Physics Audio Volume", &physVol, 0.0f, 1.0f, "%.2f"))
-					{
-						physicsAudio.setVolume(physVol);
-					}
-
-					bool spatial = physicsAudio.isSpatialAudioEnabled();
-					if (ImGui::Checkbox("Spatial Audio Enabled", &spatial))
-					{
-						physicsAudio.setSpatialAudioEnabled(spatial);
-					}
-
-					ImGui::Checkbox("Enable Friction Sound", &m_enableFrictionSound);
-					ImGui::SliderFloat("Friction Multiplier", &m_frictionSoundMultiplier, 0.0f, 5.0f, "%.2fx");
-
-					ImGui::Checkbox("Override Friction (Test)", &m_overrideFrictionSound);
-					if (m_overrideFrictionSound)
-					{
-						ImGui::SliderFloat("Manual Friction Level", &m_manualFrictionLevel, 0.0f, 1.0f, "%.2f");
-					}
-
-					float liveFriction = m_frictionSoundLevelRead.load(std::memory_order_acquire);
-					ImGui::ProgressBar(std::clamp(liveFriction, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f));
-					ImGui::Text("Live Level: %.3f | Synthesizer Level: %.3f", liveFriction,
-								physicsAudio.getFrictionLevel());
-					ImGui::Unindent();
-				}
 				ImGui::Unindent();
 			}
 
 			ImGui::Separator();
-
 			onImGuiRender(m_registry, m_services);
 			for (auto& sys : m_imguiSystems)
 			{
 				sys(m_registry, m_services);
 			}
-
-			ImGui::Unindent();
-			ImGui::PopID();
+			ImGui::EndTabItem();
 		}
+#endif
+	}
 
-		const char* label2 = "Hierarchy";
-		if (ImGui::CollapsingHeader(label2))
+	void Scene::renderPhysicsTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Physics"))
 		{
 
-			ImGui::PushID(label2);
+			if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
+			{
+				if (m_simulationIsPaused)
+					m_simulation2D.pause();
+				else
+					m_simulation2D.resume();
+			}
+			ImGui::EndTabItem();
+		}
+#endif
+	}
+
+	void Scene::renderAudioTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Audio"))
+		{
+
+			auto& audioEngine = WeirdAudio::AudioEngine::getInstance();
+			auto& musicEngine = audioEngine.getMusicEngine();
+			auto& physicsAudio = audioEngine.getPhysicsEngine();
+
+			// Master Audio Controls
+			bool muted = audioEngine.isMuted();
+			if (ImGui::Checkbox("Mute All Audio", &muted))
+			{
+				if (muted)
+					audioEngine.mute();
+				else
+					audioEngine.unmute();
+			}
+
+			float masterVol = audioEngine.getMasterVolume();
+			if (ImGui::SliderFloat("Master Volume", &masterVol, 0.0f, 1.0f, "%.2f"))
+			{
+				audioEngine.setMasterVolume(masterVol);
+			}
+
+			// Audio Waveform Visualizer
+			auto audioData = audioEngine.getAudioData();
+
+			ImGui::Text("Waveform (RMS: %.2f)", audioData.currentVolume);
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Auto-Scale", &m_waveformAutoScale))
+			{
+				if (m_waveformAutoScale)
+					m_waveformAutoScaleRange = 0.05f;
+			}
+
+			if (m_waveformAutoScale)
+			{
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Reset"))
+				{
+					m_waveformAutoScaleRange = 0.05f;
+				}
+
+				if (!audioData.waveform.empty() && audioData.currentVolume > 0.0001f)
+				{
+					float peak = 0.0f;
+					for (float s : audioData.waveform)
+					{
+						peak = (std::max)(peak, std::abs(s));
+					}
+					// Grows fast to accommodate peaks, but does not shrink
+					if (peak > m_waveformAutoScaleRange)
+					{
+						m_waveformAutoScaleRange = (std::min)(peak * 1.15f, 1.0f);
+					}
+				}
+			}
+			else
+			{
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(100.0f);
+				ImGui::SliderFloat("Scale", &m_waveformManualScale, 0.1f, 4.0f, "%.1fx");
+			}
+
+			float yRange = 1.0f;
+			if (m_waveformAutoScale)
+			{
+				yRange = std::clamp(m_waveformAutoScaleRange, 0.05f, 1.0f);
+			}
+			else
+			{
+				yRange = std::clamp(1.0f / (std::max)(m_waveformManualScale, 0.1f), 0.05f, 2.0f);
+			}
+
+			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.25f, 0.92f, 1.00f, 1.00f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.08f, 0.11f, 1.00f));
+
+			if (!audioData.waveform.empty() && audioData.currentVolume > 0.0005f)
+			{
+				ImGui::PlotLines("##AudioWaveform", audioData.waveform.data(),
+								 static_cast<int>(audioData.waveform.size()), 0, nullptr, -yRange, yRange,
+								 ImVec2(-1.0f, 85.0f));
+			}
+			else
+			{
+				static const float silence[256] = {0.0f};
+				ImGui::PlotLines("##AudioWaveform", silence, 256, 0, "No Signal", -1.0f, 1.0f, ImVec2(-1.0f, 85.0f));
+			}
+
+			ImGui::PopStyleColor(2);
+
+			// Procedural Music
+			if (ImGui::CollapsingHeader("Procedural Music", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Indent();
+				bool musicPlaying = musicEngine.isPlaying();
+				if (ImGui::Checkbox("Music Enabled", &musicPlaying))
+				{
+					musicEngine.setPlaying(musicPlaying);
+				}
+
+				float musicVol = musicEngine.getVolume();
+				if (ImGui::SliderFloat("Music Volume", &musicVol, 0.0f, 1.0f, "%.2f"))
+				{
+					musicEngine.setVolume(musicVol);
+				}
+
+				float tension = musicEngine.getTension();
+				if (ImGui::SliderFloat("Tension", &tension, 0.0f, 1.0f, "%.2f"))
+				{
+					musicEngine.setTension(tension);
+				}
+
+				float energy = musicEngine.getEnergy();
+				if (ImGui::SliderFloat("Energy", &energy, 0.0f, 1.0f, "%.2f"))
+				{
+					musicEngine.setEnergy(energy);
+				}
+
+				auto currentSong = musicEngine.getCurrentSong();
+				if (currentSong)
+				{
+					ImGui::Text("Active Song: %s", currentSong->getName().c_str());
+					ImGui::Text("Beat: %.1f | Motion: %.2f | Fill: %.2f", musicEngine.getPlayheadBeat(),
+								musicEngine.getMotionLevel(), musicEngine.getFillRatio());
+
+					if (ImGui::TreeNode("Shape Musical Parameters"))
+					{
+						const auto& params = musicEngine.getShapeParameters();
+						ImGui::Text("Tempo Factor:      %.2fx", params.tempoFactor);
+						ImGui::Text("Melody Density:    %.2f", params.melodyDensity);
+						ImGui::Text("Harmony Richness:  %.2f", params.harmonyRichness);
+						ImGui::Text("Bass Weight:       %.2f", params.bassWeight);
+						ImGui::Text("Percussion Energy: %.2f", params.percEnergy);
+						ImGui::Text("Brightness:        %.2f", params.brightness);
+						ImGui::Text("Syncopation:       %.2f", params.syncopation);
+						ImGui::Text("Variation:         %.2f", params.variation);
+						ImGui::TreePop();
+					}
+				}
+				else
+				{
+					ImGui::TextDisabled("No active song");
+				}
+
+				if (ImGui::Button("Resample Shape"))
+				{
+					m_services.audio().resampleShape();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Surge"))
+				{
+					musicEngine.surge(0.6f);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Duck"))
+				{
+					musicEngine.duck(0.5f);
+				}
+
+				// Dynamic Feedback Triggers
+				if (ImGui::Button("Positive (Click)"))
+				{
+					musicEngine.triggerPositiveFeedback(1.0f);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Negative (Error)"))
+				{
+					musicEngine.triggerNegativeFeedback(1.0f);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Death Trigger"))
+				{
+					musicEngine.triggerDeath();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Reset All Effects"))
+				{
+					musicEngine.resetDynamicEffects();
+				}
+				ImGui::Unindent();
+			}
+
+			// Friction & Physics Sound Parameters
+			if (ImGui::CollapsingHeader("Friction & Physics Sound", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Indent();
+				float physVol = physicsAudio.getVolume();
+				if (ImGui::SliderFloat("Physics Audio Volume", &physVol, 0.0f, 1.0f, "%.2f"))
+				{
+					physicsAudio.setVolume(physVol);
+				}
+
+				bool spatial = physicsAudio.isSpatialAudioEnabled();
+				if (ImGui::Checkbox("Spatial Audio Enabled", &spatial))
+				{
+					physicsAudio.setSpatialAudioEnabled(spatial);
+				}
+
+				ImGui::Checkbox("Enable Friction Sound", &m_enableFrictionSound);
+				ImGui::SliderFloat("Friction Multiplier", &m_frictionSoundMultiplier, 0.0f, 5.0f, "%.2fx");
+
+				ImGui::Checkbox("Override Friction (Test)", &m_overrideFrictionSound);
+				if (m_overrideFrictionSound)
+				{
+					ImGui::SliderFloat("Manual Friction Level", &m_manualFrictionLevel, 0.0f, 1.0f, "%.2f");
+				}
+
+				float liveFriction = m_frictionSoundLevelRead.load(std::memory_order_acquire);
+				ImGui::ProgressBar(std::clamp(liveFriction, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f));
+				ImGui::Text("Live Level: %.3f | Synthesizer Level: %.3f", liveFriction,
+							physicsAudio.getFrictionLevel());
+				ImGui::Unindent();
+			}
+			ImGui::EndTabItem();
+		}
+#endif
+	}
+
+	void Scene::renderHierarchyTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Hierarchy"))
+		{
 
 			for (Entity e = 0; e < m_registry.getEntityCount(); ++e)
 			{
@@ -1290,8 +1293,7 @@ namespace WeirdEngine
 					ImGui::TreePop();
 				}
 			}
-
-			ImGui::PopID();
+			ImGui::EndTabItem();
 		}
 #endif
 	}

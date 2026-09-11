@@ -4,23 +4,23 @@
 
 namespace WeirdEngine::Editor
 {
-	const char* AudioPreviewManager::getScaleName(WeirdRenderer::MusicalScale scale)
+	const char* AudioPreviewManager::getScaleName(WeirdAudio::MusicalScale scale)
 	{
 		switch (scale)
 		{
-			case WeirdRenderer::MusicalScale::PentatonicMajor:
+			case WeirdAudio::MusicalScale::PentatonicMajor:
 				return "Pentatonic Major";
-			case WeirdRenderer::MusicalScale::PentatonicMinor:
+			case WeirdAudio::MusicalScale::PentatonicMinor:
 				return "Pentatonic Minor";
-			case WeirdRenderer::MusicalScale::Major:
+			case WeirdAudio::MusicalScale::Major:
 				return "Major";
-			case WeirdRenderer::MusicalScale::NaturalMinor:
+			case WeirdAudio::MusicalScale::NaturalMinor:
 				return "Natural Minor";
-			case WeirdRenderer::MusicalScale::Dorian:
+			case WeirdAudio::MusicalScale::Dorian:
 				return "Dorian";
-			case WeirdRenderer::MusicalScale::Lydian:
+			case WeirdAudio::MusicalScale::Lydian:
 				return "Lydian";
-			case WeirdRenderer::MusicalScale::Chromatic:
+			case WeirdAudio::MusicalScale::Chromatic:
 				return "Chromatic";
 			default:
 				return "Unknown";
@@ -37,19 +37,19 @@ namespace WeirdEngine::Editor
 		return std::string(noteNames[note]) + std::to_string(octave);
 	}
 
-	const char* AudioPreviewManager::getWaveTypeName(WeirdRenderer::WaveType waveType)
+	const char* AudioPreviewManager::getWaveTypeName(WeirdAudio::WaveType waveType)
 	{
 		switch (waveType)
 		{
-			case WeirdRenderer::WaveType::SoftSine:
+			case WeirdAudio::WaveType::SoftSine:
 				return "Soft Sine (Warm)";
-			case WeirdRenderer::WaveType::BandlimitedSaw:
+			case WeirdAudio::WaveType::BandlimitedSaw:
 				return "Bandlimited Saw (Bright)";
-			case WeirdRenderer::WaveType::PulseSquare:
+			case WeirdAudio::WaveType::PulseSquare:
 				return "Pulse Square (Reedy)";
-			case WeirdRenderer::WaveType::FMPluck:
+			case WeirdAudio::WaveType::FMPluck:
 				return "FM Pluck (Bell/Metallic)";
-			case WeirdRenderer::WaveType::Wavefolder:
+			case WeirdAudio::WaveType::Wavefolder:
 				return "Wavefolder (Buchla/Evolving)";
 			default:
 				return "Unknown";
@@ -85,7 +85,7 @@ namespace WeirdEngine::Editor
 		}
 		else
 		{
-			m_song = WeirdRenderer::SdfSong::create("node_editor_song", expr, uiCenter);
+			m_song = WeirdAudio::SdfSong::create("node_editor_song", expr, uiCenter);
 			for (size_t i = 0; i < 8; ++i)
 			{
 				m_song->setParameter(i, params[i]);
@@ -138,7 +138,7 @@ namespace WeirdEngine::Editor
 		services.audio().music().setVolume(m_musicVolume);
 	}
 
-	std::shared_ptr<WeirdRenderer::SdfSong> AudioPreviewManager::getSong() const
+	std::shared_ptr<WeirdAudio::SdfSong> AudioPreviewManager::getSong() const
 	{
 		return m_song;
 	}

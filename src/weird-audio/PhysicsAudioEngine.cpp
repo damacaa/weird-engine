@@ -1,4 +1,4 @@
-#include "weird-renderer/audio/PhysicsAudioEngine.h"
+#include "weird-audio/PhysicsAudioEngine.h"
 #include <algorithm>
 #include <cmath>
 
@@ -8,7 +8,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		PhysicsAudioEngine::PhysicsAudioEngine()
 		{
@@ -265,5 +265,5 @@ namespace WeirdEngine
 			m_frictionLevel = 0.0f;
 			m_smoothedFriction = 0.0f;
 		}
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

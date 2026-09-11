@@ -5,14 +5,14 @@
 #include <SDL3/SDL.h>
 #include <vector>
 
+#include "weird-audio/AudioSettings.h"
+#include "weird-audio/PhysicsAudioEngine.h"
+#include "weird-audio/SdfMusicEngine.h"
 #include "weird-engine/Scene.h"
-#include "weird-renderer/audio/AudioSettings.h"
-#include "weird-renderer/audio/PhysicsAudioEngine.h"
-#include "weird-renderer/audio/SdfMusicEngine.h"
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		struct AudioData
 		{
@@ -35,7 +35,7 @@ namespace WeirdEngine
 
 			~AudioEngine();
 
-			bool init(const AudioSettings& settings);
+			bool init(const WeirdAudio::AudioSettings& settings);
 			void close();
 			void loadSound(const char* filePath);
 
@@ -141,7 +141,7 @@ namespace WeirdEngine
 		private:
 			AudioEngine();
 
-			AudioSettings m_settings;
+			WeirdAudio::AudioSettings m_settings;
 			PhysicsAudioEngine m_physicsEngine;
 			SdfMusicEngine m_musicEngine;
 
@@ -153,5 +153,5 @@ namespace WeirdEngine
 			AudioData m_visualSnapshot;
 		};
 
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

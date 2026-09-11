@@ -41,9 +41,9 @@ extern "C"
 #define SHADERS_PATH
 #endif // !SHADERS_PATH
 
+#include "weird-audio/AudioEngine.h"
+#include "weird-audio/AudioSettings.h"
 #include "weird-physics/PhysicsSettings.h"
-#include "weird-renderer/audio/AudioEngine.h"
-#include "weird-renderer/audio/AudioSettings.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -62,7 +62,7 @@ namespace WeirdEngine
 		{
 			SceneManager& sceneManager;
 			Renderer& renderer;
-			AudioEngine& audioEngine;
+			WeirdAudio::AudioEngine& audioEngine;
 
 			double time = 0.0;
 			double prevTime = 0.0;
@@ -251,7 +251,7 @@ namespace WeirdEngine
 	} // namespace Detail
 
 	inline void start(SceneManager& sceneManager, DisplaySettings displaySettings = {},
-					  PhysicsSettings physicsSettings = {}, AudioSettings audioSettings = {}, int argc = 0,
+					  PhysicsSettings physicsSettings = {}, WeirdAudio::AudioSettings audioSettings = {}, int argc = 0,
 					  char** argv = nullptr, const std::string& assetsPath = ASSETS_PATH)
 	{
 		sceneManager.setAssetsPath(assetsPath);
@@ -274,7 +274,7 @@ namespace WeirdEngine
 
 		sceneManager.setPhysicsSettings(physicsSettings);
 
-		AudioEngine& audioEngine = AudioEngine::getInstance();
+		WeirdAudio::AudioEngine& audioEngine = WeirdAudio::AudioEngine::getInstance();
 		audioEngine.init(audioSettings);
 
 #ifdef __EMSCRIPTEN__

@@ -4,7 +4,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		struct SimpleAudioRequest
 		{
@@ -16,5 +16,5 @@ namespace WeirdEngine
 			float intensity = 0.5f; // Impact energy 0.0 (light) to 1.0 (heavy)
 			int instrument = 0;		// 0 = Sine, 1 = Sawtooth, 2 = Square, 3 = Noise, 4 = Polyphonic
 		};
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

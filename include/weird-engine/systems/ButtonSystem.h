@@ -1,8 +1,8 @@
 #pragma once
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
-#include "weird-renderer/audio/AudioEngine.h"
 
 #include <memory>
 #include <vector>
@@ -37,7 +37,7 @@ namespace WeirdEngine
 						parameters[8] = time;
 						parameters[9] = Input::GetMouseX();
 						parameters[10] = Input::GetMouseY();
-						parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
+						parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						buttonComponent.hovered = distance < buttonComponent.clickPadding;
@@ -114,7 +114,7 @@ namespace WeirdEngine
 						parameters[8] = time;
 						parameters[9] = Input::GetMouseX();
 						parameters[10] = Input::GetMouseY();
-						parameters[11] = WeirdRenderer::AudioEngine::getInstance().getAudioVolume();
+						parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						toggleComponent.hovered = distance < toggleComponent.clickPadding;

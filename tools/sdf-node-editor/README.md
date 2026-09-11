@@ -61,7 +61,7 @@ tools/sdf-node-editor/
   * Inherits from `WeirdEngine::Scene2D`.
   * **Canvas**: Hosts the ImNodes graph canvas with zoom, pan, minimap, right-click context menu, and link creation/deletion.
   * **Live Viewport**: Transparent viewport cutout displaying the real-time raymarched/rasterized shape in WeirdEngine.
-  * **Audio Coupling**: Passes the compiled `Expr` to `WeirdRenderer::SdfSong` and `AudioService`. Displays live musical properties:
+  * **Audio Coupling**: Passes the compiled `Expr` to `WeirdAudio::SdfSong` and `AudioService`. Displays live musical properties:
     * Fundamental Pitch (MIDI note & Hz)
     * Detected Musical Scale (Pentatonic, Dorian, Natural Minor, etc.)
     * Shape Area, Circularity, and Harmonic Density

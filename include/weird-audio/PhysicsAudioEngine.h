@@ -1,8 +1,8 @@
 #pragma once
 
+#include "weird-audio/SimpleAudioRequest.h"
+#include "weird-audio/SpatialAudioProcessor.h"
 #include "weird-engine/vec.h"
-#include "weird-renderer/audio/SimpleAudioRequest.h"
-#include "weird-renderer/audio/SpatialAudioProcessor.h"
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -10,7 +10,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		struct PhysicsVoice
 		{
@@ -95,5 +95,5 @@ namespace WeirdEngine
 
 			float generateNoiseSample();
 		};
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

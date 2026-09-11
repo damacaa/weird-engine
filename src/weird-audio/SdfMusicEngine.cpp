@@ -1749,8 +1749,9 @@ namespace WeirdEngine
 						{
 							float leadSample =
 								evaluateWaveform(voice.waveType, voice.phase, voice.waveParam, voice.time, voice.decay);
-							// Warm analog overdrive: 2.2x drive into tanh with subtle 2nd-harmonic tube warmth
-							float driven = leadSample * 2.2f + 0.16f * leadSample * leadSample;
+							// Warm analog overdrive: 2.2x drive into tanh with odd-symmetric saturation (eliminates DC
+							// bias)
+							float driven = leadSample * 2.2f + 0.16f * leadSample * std::abs(leadSample);
 							rawSample = std::tanh(driven) * 0.85f;
 							break;
 						}

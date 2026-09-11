@@ -10,7 +10,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		enum class MusicalScale
 		{
@@ -166,5 +166,5 @@ namespace WeirdEngine
 			std::shared_ptr<IMathExpression> m_boundedShapeExpression;
 		};
 
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

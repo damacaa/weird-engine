@@ -5,8 +5,8 @@
 
 #include "weird-engine/systems/SDFRenderSystem.h"
 
-#include "weird-renderer/audio/AudioRingBuffer.h"
-#include "weird-renderer/audio/SimpleAudioRequest.h"
+#include "weird-audio/AudioRingBuffer.h"
+#include "weird-audio/SimpleAudioRequest.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
 
@@ -52,9 +52,14 @@ namespace WeirdEngine
 	using EntityCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityCollisionEvent&)>;
 	using EntityShapeCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityShapeCollisionEvent&)>;
 
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		class AudioEngine;
+	}
+
+	namespace WeirdRenderer
+	{
+
 		class Renderer;
 		class MeshRenderPipeline;
 	} // namespace WeirdRenderer
@@ -74,7 +79,7 @@ namespace WeirdEngine
 		friend class ServiceProvider;
 		friend struct SerializationService;
 
-		friend class WeirdRenderer::AudioEngine;
+		friend class WeirdAudio::AudioEngine;
 		friend class WeirdRenderer::Renderer;
 		friend void Detail::runFrame(Detail::RuntimeContext& ctx);
 
@@ -183,7 +188,10 @@ namespace WeirdEngine
 		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
 		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
-		void renderImGui();
+		void renderSettingsTab();
+		void renderHierarchyTab();
+		void renderPhysicsTab();
+		void renderAudioTab();
 		void renderCustomUI();
 		void renderPhysicsStatsUI();
 
@@ -192,7 +200,7 @@ namespace WeirdEngine
 		std::vector<WeirdRenderer::Light2D>& getLights2D();
 		std::vector<WeirdRenderer::Light3D>& getLights3D();
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
+		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 		float getFrictionSound();
 		void setFrictionSound(float level)
 		{
@@ -262,7 +270,7 @@ namespace WeirdEngine
 		static void handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData);
 		// Load scene state from a .weird JSON file
 		void loadFromWeirdFile(const std::string& path);
-		void playSound(const WeirdRenderer::SimpleAudioRequest& audio);
+		void playSound(const WeirdAudio::SimpleAudioRequest& audio);
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId,
 										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
@@ -288,7 +296,7 @@ namespace WeirdEngine
 		std::vector<PhysicsShapeCollisionEvent> m_queuedShapeCollisions;
 
 		// ---- Audio, draw queue, lights
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
+		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
 		float m_frictionSoundLevel{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
 		bool m_enableFrictionSound{true};

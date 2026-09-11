@@ -34,7 +34,8 @@ namespace WeirdEngine
 			}
 		}
 
-		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window, AudioEngine& audioEngine)
+		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window,
+									   WeirdAudio::AudioEngine& audioEngine)
 			: m_window(window)
 		{
 #ifdef WEIRD_USE_FBDEV_EGL
@@ -234,7 +235,7 @@ namespace WeirdEngine
 			ImGui::DestroyContext();
 #endif
 
-			AudioEngine::getInstance().setAudioStream(nullptr);
+			WeirdAudio::AudioEngine::getInstance().setAudioStream(nullptr);
 			if (m_audioStream)
 			{
 				SDL_DestroyAudioStream(m_audioStream);

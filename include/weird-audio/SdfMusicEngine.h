@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <array>
 #include <atomic>
 #include <memory>
@@ -10,7 +10,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		enum class WaveType : uint8_t
 		{
@@ -311,5 +311,5 @@ namespace WeirdEngine
 			void evaluateShapeDrivenAtStep(int step);
 			bool isTrackDead(MusicTrack track) const;
 		};
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

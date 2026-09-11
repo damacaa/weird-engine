@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <cstdlib>
 #include <weird-engine.h>
 
@@ -18,7 +18,7 @@ struct CollisionTracker
 class DestroyScene : public Scene2D
 {
 public:
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = SDF::point();
@@ -28,7 +28,7 @@ public:
 		Expr box = sdBox(p, Vec2Expr(18.0f, 18.0f));
 		Expr destroyShape = sdfUnion(star, box);
 
-		return WeirdRenderer::SdfSong::create("destroy", destroyShape);
+		return WeirdAudio::SdfSong::create("destroy", destroyShape);
 	}
 
 private:

@@ -8,7 +8,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		struct SpatialAudioResult
 		{
@@ -91,5 +91,5 @@ namespace WeirdEngine
 				return result;
 			}
 		};
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

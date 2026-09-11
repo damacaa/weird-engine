@@ -148,8 +148,8 @@ When rigid bodies collide with ground surfaces or other bodies:
 - Material IDs select specific timbre palettes (metal, rock, rubber, wood).
 - Impact events are pushed to the lock-free ring buffer:
   ```cpp
-  WeirdRenderer::SimpleAudioRequest req;
-  req.type = WeirdRenderer::SimpleAudioRequest::Type::SineTone;
+  WeirdAudio::SimpleAudioRequest req;
+  req.type = WeirdAudio::SimpleAudioRequest::Type::SineTone;
   req.frequency = 80.0f + intensity * 240.0f;
   req.volume = std::clamp(intensity, 0.05f, 1.0f);
   req.durationSeconds = 0.12f;
@@ -206,12 +206,12 @@ When `triggerDeath()` is called:
 To create a song for a scene, define the shape using `point()`. No knowledge of window dimensions or center coordinates is required:
 
 ```cpp
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 
 class MyScene : public Scene2D
 {
 public:
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		// point() provides local coordinates centered at (0, 0)
@@ -223,7 +223,7 @@ public:
 		Expr shape = sdfSmoothUnion(star, core, 4.0f);
 
 		// SdfSong analyzes the shape to derive tempo, musical scale, and root note
-		return WeirdRenderer::SdfSong::create("star_song", shape);
+		return WeirdAudio::SdfSong::create("star_song", shape);
 	}
 
 private:
@@ -254,7 +254,7 @@ services.audio().setSong(createSceneSong(), {
 You can bind parameters `var(0)` through `var(7)` to shape expressions and tweak them in real time:
 
 ```cpp
-static std::shared_ptr<WeirdRenderer::SdfSong> createAnimatedSong()
+static std::shared_ptr<WeirdAudio::SdfSong> createAnimatedSong()
 {
 	using namespace SDF;
 	Vec2Expr p = point();
@@ -262,7 +262,7 @@ static std::shared_ptr<WeirdRenderer::SdfSong> createAnimatedSong()
 	// var(0) = radius, var(1) = displacement, var(2) = points count, var(3) = rotation speed
 	Expr star = sdStar(p, Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3)));
 
-	auto song = WeirdRenderer::SdfSong::create("animated_song", star);
+	auto song = WeirdAudio::SdfSong::create("animated_song", star);
 	song->setParameter(0, 30.0f); // Outer radius
 	song->setParameter(1, 5.0f);  // Spike amplitude
 	song->setParameter(2, 8.0f);  // Star points
@@ -306,7 +306,7 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `getMotionNorm() const` | Returns normalized geometric motion level in [0.0, 1.0]. |
 | `getFillRatio() const` | Returns domain fill ratio (percentage of volume inside the shape). |
 
-### `WeirdRenderer::SdfSong`
+### `WeirdAudio::SdfSong`
 
 | Method | Description |
 |---|---|

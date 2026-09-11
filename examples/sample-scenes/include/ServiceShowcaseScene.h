@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -131,7 +131,7 @@ namespace ServiceShowcase
 		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
-	inline std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	inline std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = point();
@@ -141,7 +141,7 @@ namespace ServiceShowcase
 		Expr core = sdCircle(p, 14.0f);
 		Expr showcaseShape = sdfSmoothUnion(star, core, 4.0f);
 
-		return WeirdRenderer::SdfSong::create("showcase", showcaseShape);
+		return WeirdAudio::SdfSong::create("showcase", showcaseShape);
 	}
 
 	// ----------------------------------------------------------------- onStart

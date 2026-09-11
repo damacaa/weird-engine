@@ -1,6 +1,6 @@
 #include "ui/InspectorView.h"
 
-#include "weird-renderer/audio/AudioEngine.h"
+#include "weird-audio/AudioEngine.h"
 #include <cstdio>
 #include <imgui.h>
 
@@ -200,34 +200,34 @@ namespace WeirdEngine::Editor
 			const auto& rack = music.getInstrumentRack();
 			ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
 
-			auto renderTrackStatusBadge = [&](WeirdRenderer::MusicTrack track)
+			auto renderTrackStatusBadge = [&](WeirdAudio::MusicTrack track)
 			{
 				auto state = music.getTrackPlayState(track);
 				const char* label = "[Playing]";
 				ImVec4 color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
 				switch (state)
 				{
-					case WeirdRenderer::TrackPlayState::Playing:
+					case WeirdAudio::TrackPlayState::Playing:
 						label = "[Playing]";
 						color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
 						break;
-					case WeirdRenderer::TrackPlayState::Paused:
+					case WeirdAudio::TrackPlayState::Paused:
 						label = "[Breakdown]";
 						color = ImVec4(0.9f, 0.8f, 0.3f, 1.0f);
 						break;
-					case WeirdRenderer::TrackPlayState::Ducked:
+					case WeirdAudio::TrackPlayState::Ducked:
 						label = "[Ducked]";
 						color = ImVec4(0.6f, 0.5f, 0.9f, 1.0f);
 						break;
-					case WeirdRenderer::TrackPlayState::Surged:
+					case WeirdAudio::TrackPlayState::Surged:
 						label = "[Surged]";
 						color = ImVec4(1.0f, 0.6f, 0.1f, 1.0f);
 						break;
-					case WeirdRenderer::TrackPlayState::Dead:
+					case WeirdAudio::TrackPlayState::Dead:
 						label = "[Dead]";
 						color = ImVec4(0.85f, 0.25f, 0.25f, 1.0f);
 						break;
-					case WeirdRenderer::TrackPlayState::Muted:
+					case WeirdAudio::TrackPlayState::Muted:
 					default:
 						label = "[Muted]";
 						color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -244,52 +244,52 @@ namespace WeirdEngine::Editor
 							ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
 				8.0f;
 
-			bool leadEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Lead);
+			bool leadEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Lead);
 			if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
 			{
-				music.setTrackEnabled(WeirdRenderer::MusicTrack::Lead, leadEnabled);
+				music.setTrackEnabled(WeirdAudio::MusicTrack::Lead, leadEnabled);
 			}
 			ImGui::SameLine();
 			float startXLead = ImGui::GetCursorPosX();
 			ImGui::Text("Lead Wave:");
 			ImGui::SameLine(startXLead + trackNameColWidth);
-			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Lead);
+			renderTrackStatusBadge(WeirdAudio::MusicTrack::Lead);
 			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.lead));
 
-			bool bassEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Bass);
+			bool bassEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Bass);
 			if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
 			{
-				music.setTrackEnabled(WeirdRenderer::MusicTrack::Bass, bassEnabled);
+				music.setTrackEnabled(WeirdAudio::MusicTrack::Bass, bassEnabled);
 			}
 			ImGui::SameLine();
 			float startXBass = ImGui::GetCursorPosX();
 			ImGui::Text("Bass Wave:");
 			ImGui::SameLine(startXBass + trackNameColWidth);
-			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Bass);
+			renderTrackStatusBadge(WeirdAudio::MusicTrack::Bass);
 			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.bass));
 
-			bool padEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Pad);
+			bool padEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Pad);
 			if (ImGui::Checkbox("##pad_toggle", &padEnabled))
 			{
-				music.setTrackEnabled(WeirdRenderer::MusicTrack::Pad, padEnabled);
+				music.setTrackEnabled(WeirdAudio::MusicTrack::Pad, padEnabled);
 			}
 			ImGui::SameLine();
 			float startXPad = ImGui::GetCursorPosX();
 			ImGui::Text("Pad Wave:");
 			ImGui::SameLine(startXPad + trackNameColWidth);
-			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Pad);
+			renderTrackStatusBadge(WeirdAudio::MusicTrack::Pad);
 			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.pad));
 
-			bool drumsEnabled = music.isTrackEnabled(WeirdRenderer::MusicTrack::Drums);
+			bool drumsEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Drums);
 			if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
 			{
-				music.setTrackEnabled(WeirdRenderer::MusicTrack::Drums, drumsEnabled);
+				music.setTrackEnabled(WeirdAudio::MusicTrack::Drums, drumsEnabled);
 			}
 			ImGui::SameLine();
 			float startXDrums = ImGui::GetCursorPosX();
 			ImGui::Text("Drum Kit:");
 			ImGui::SameLine(startXDrums + trackNameColWidth);
-			renderTrackStatusBadge(WeirdRenderer::MusicTrack::Drums);
+			renderTrackStatusBadge(WeirdAudio::MusicTrack::Drums);
 			ImGui::Text("%s", AudioPreviewManager::getDrumKitName(rack.drumKit));
 
 			ImGui::Spacing();
@@ -315,7 +315,7 @@ namespace WeirdEngine::Editor
 		ImGui::Spacing();
 		if (ImGui::CollapsingHeader("Live Oscilloscope", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			auto audioData = WeirdRenderer::AudioEngine::getInstance().getAudioData();
+			auto audioData = WeirdAudio::AudioEngine::getInstance().getAudioData();
 			if (!audioData.waveform.empty())
 			{
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.2f, 0.9f, 0.8f, 1.0f));

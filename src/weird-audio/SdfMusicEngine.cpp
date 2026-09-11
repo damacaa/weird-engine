@@ -1,4 +1,4 @@
-#include "weird-renderer/audio/SdfMusicEngine.h"
+#include "weird-audio/SdfMusicEngine.h"
 #include <algorithm>
 #include <cmath>
 
@@ -8,7 +8,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		namespace
 		{
@@ -1825,5 +1825,5 @@ namespace WeirdEngine
 								 m_activeVoices.end());
 		}
 
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

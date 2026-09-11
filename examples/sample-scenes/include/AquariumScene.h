@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <cmath>
@@ -61,7 +61,7 @@ class AquariumScene : public Scene2D
 public:
 	AquariumScene() {}
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = SDF::point();
@@ -71,7 +71,7 @@ public:
 		Expr bubble = sdCircle(p, 18.0f);
 		Expr aquaticShape = sdfSmoothUnion(wave, bubble, 5.0f);
 
-		return WeirdRenderer::SdfSong::create("aquarium", aquaticShape);
+		return WeirdAudio::SdfSong::create("aquarium", aquaticShape);
 	}
 
 private:

@@ -2,7 +2,7 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		struct AudioSettings
 		{
@@ -15,5 +15,5 @@ namespace WeirdEngine
 			float physicsVolume = 0.8f;
 			float musicVolume = 0.65f;
 		};
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

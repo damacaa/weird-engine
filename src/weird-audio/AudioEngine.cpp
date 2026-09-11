@@ -1,4 +1,4 @@
-#include "weird-renderer/audio/AudioEngine.h"
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/Logger.h"
 #include <algorithm>
 #include <cmath>
@@ -19,13 +19,13 @@
 
 namespace WeirdEngine
 {
-	namespace WeirdRenderer
+	namespace WeirdAudio
 	{
 		AudioEngine::AudioEngine() {}
 
 		AudioEngine::~AudioEngine() {}
 
-		bool AudioEngine::init(const AudioSettings& settings)
+		bool AudioEngine::init(const WeirdAudio::AudioSettings& settings)
 		{
 			m_settings = settings;
 
@@ -218,5 +218,5 @@ namespace WeirdEngine
 			}
 		}
 
-	} // namespace WeirdRenderer
+	} // namespace WeirdAudio
 } // namespace WeirdEngine

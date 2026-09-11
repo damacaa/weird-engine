@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -14,7 +14,7 @@ class ShapeCombinatiosScene : public Scene2D
 public:
 	ShapeCombinatiosScene() {}
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		// Local coordinate p centered at (0, 0)
@@ -27,7 +27,7 @@ public:
 		// var(3): Angular rotation speed (default 1.5f)
 		Expr star = sdStar(p, Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3)));
 
-		auto song = WeirdRenderer::SdfSong::create("star_song", star);
+		auto song = WeirdAudio::SdfSong::create("star_song", star);
 
 		// Default parameter values for CPU audio evaluation and shader
 		song->setParameter(0, 30.0f); // Outer radius
@@ -198,7 +198,7 @@ private:
 
 		services.audio().setTension(m_circleRadious / 10.0f);
 
-		float volume = AudioEngine::getInstance().getAudioData().currentVolume;
+		float volume = WeirdAudio::AudioEngine::getInstance().getAudioData().currentVolume;
 		glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
 		float radius = 50.0f - (volume * 50.0f);	// Distance from center
 		float speed = 1.0f;							// How fast they rotate

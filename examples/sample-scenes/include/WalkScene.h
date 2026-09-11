@@ -1,6 +1,6 @@
 #pragma once
 
-#include "weird-renderer/audio/SdfSong.h"
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -27,7 +27,7 @@ class WalkScene : public Scene2D
 public:
 	WalkScene() {};
 
-	static std::shared_ptr<WeirdRenderer::SdfSong> createSceneSong()
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
 	{
 		using namespace SDF;
 		Vec2Expr p = SDF::point();
@@ -38,7 +38,7 @@ public:
 		Expr stone2 = sdCircle(p - Vec2Expr(15.0f, -5.0f), 7.0f);
 		Expr walkShape = sdfSmoothUnion(sdfSmoothUnion(path, stone1, 4.0f), stone2, 4.0f);
 
-		return WeirdRenderer::SdfSong::create("walk", walkShape);
+		return WeirdAudio::SdfSong::create("walk", walkShape);
 	}
 
 private:

@@ -491,18 +491,18 @@ namespace WeirdEngine
 			float clamped = std::clamp(intensity, 0.1f, 2.0f);
 			if (m_currentSong)
 			{
-				// Tactile, satisfying mechanical click in-key with the song
+				// Crisp, satisfying acoustic UI click in-key with the song (octave 5: MIDI 67-79, ~400-800 Hz)
 				int noteMidi = m_currentSong->getRootMidi();
-				while (noteMidi < 55)
+				while (noteMidi < 67)
 					noteMidi += 12;
-				while (noteMidi > 67)
+				while (noteMidi > 79)
 					noteMidi -= 12;
 				float freq = m_currentSong->midiToFrequency(noteMidi);
-				playNote(freq, 0.85f * clamped, 0.026f, 8, 0.0f, 16000.0f);
+				playNote(freq, 0.85f * clamped, 0.075f, 8, 0.0f, 16000.0f);
 			}
 			else
 			{
-				playNote(320.0f, 0.85f * clamped, 0.026f, 8, 0.0f, 16000.0f);
+				playNote(587.33f, 0.85f * clamped, 0.075f, 8, 0.0f, 16000.0f);
 			}
 		}
 
@@ -1691,37 +1691,36 @@ namespace WeirdEngine
 						case 3: // Noise
 							rawSample = fastNoise(voice.rngState);
 							break;
-						case 8: // UI Positive Click (Satisfying tactile mechanical click / thock)
+						case 8: // UI Positive Click (Crisp tactile mechanical click & resonant pop)
 						{
-							// Anchor body fundamental to warm, tactile acoustic cavity range (~220 - 440 Hz)
+							// Anchor body fundamental to crisp, pleasant UI register (~440 - 880 Hz, e.g. A4 to A5)
 							float baseFreq = voice.frequency;
-							while (baseFreq > 440.0f)
+							while (baseFreq > 880.0f)
 								baseFreq *= 0.5f;
-							while (baseFreq < 220.0f)
+							while (baseFreq < 440.0f)
 								baseFreq *= 2.0f;
 
-							// Razor-sharp exponential pitch snap: plunges from ~3700 Hz to baseFreq in under 1.5ms
-							float pitchSnap = 3400.0f * expf(-voice.time / 0.00075f);
+							// Rapid pitch drop on impact: sweeps from +1800 Hz down to baseFreq in ~3ms
+							float pitchSnap = 1800.0f * expf(-voice.time / 0.0022f);
 							currentFreq = baseFreq + pitchSnap;
 
 							// Dual-action mechanical tactile transients:
-							// 1. Initial contact strike at t = 0 (crisp high transient crack)
-							float snap1 = expf(-voice.time / 0.00055f) *
-										  (0.65f * fastNoise(voice.rngState) + 0.35f * sinf(p * 2.5f));
+							// 1. Initial contact strike at t = 0 (crisp high transient tick)
+							float snap1 = expf(-voice.time / 0.0016f) *
+										  (0.35f * fastNoise(voice.rngState) + 0.65f * sinf(p * 2.5f));
 
-							// 2. Secondary leaf latch snap at t ~ 1.5ms (tactile micro-plunger click)
-							float t2 = voice.time - 0.0015f;
-							float snap2 = (t2 > 0.0f) ? expf(-t2 / 0.00070f) *
-															(0.75f * fastNoise(voice.rngState) + 0.25f * cosf(p * 3.5f))
+							// 2. Secondary leaf latch snap at t ~ 2.2ms (mechanical micro-plunger click)
+							float t2 = voice.time - 0.0022f;
+							float snap2 = (t2 > 0.0f) ? expf(-t2 / 0.0012f) *
+															(0.40f * fastNoise(voice.rngState) + 0.60f * cosf(p * 3.5f))
 													  : 0.0f;
 
-							// 3. Woody / mechanical cavity resonance body ("thock" pop)
-							float bodyEnv = expf(-voice.time / 0.0065f);
-							float body = bodyEnv * (sinf(p) + 0.30f * sinf(p * 2.0f));
+							// 3. Resonant acoustic wooden/marimba pop (rings out smoothly with voice decay)
+							float body = sinf(p) + 0.28f * sinf(p * 2.0f) + 0.10f * sinf(p * 3.0f);
 
-							// Non-linear saturation produces thick, tactile, premium switch feel
-							float raw = 1.9f * snap1 + 1.4f * snap2 + 1.6f * body;
-							rawSample = std::tanh(raw * 1.35f) * 0.95f;
+							// Blend: sharp initial mechanical transients + rich resonant acoustic pop
+							float raw = 1.35f * snap1 + 1.10f * snap2 + 0.95f * body;
+							rawSample = std::tanh(raw * 1.25f) * 0.90f;
 							break;
 						}
 						case 9: // UI Negative Error (Clear invalid input rejection)

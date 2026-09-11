@@ -74,9 +74,6 @@ namespace WeirdEngine
 			// Clear all active sounds (e.g. on scene reset)
 			void reset();
 
-			// Reports the recent peak impact energy (0.0 to 1.0) and resets the counter
-			float consumeRecentImpactEnergy();
-
 		private:
 			uint32_t m_sampleRate = 44100;
 			uint32_t m_channels = 2;
@@ -91,9 +88,6 @@ namespace WeirdEngine
 			// Pink/White noise state (32-bit xorshift PRNG)
 			uint32_t m_noiseSeed = 0x12345678;
 			float m_pinkB0 = 0.0f, m_pinkB1 = 0.0f, m_pinkB2 = 0.0f;
-
-			// Impact energy accumulator for ducking / surge coordination
-			float m_recentImpactEnergy = 0.0f;
 
 			// Active voice pool
 			static constexpr size_t MAX_PHYSICS_VOICES = 32;

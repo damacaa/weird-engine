@@ -123,13 +123,13 @@ Channel 9: UI Negative Error      ──► [Dissonant Buzzer + Granular Grit]  
      - **Kit 1 (Acoustic Punch)**: 200 Hz sweep kick with fast transient click, 185 Hz resonant wooden snare, crisp tight acoustic hat.
      - **Kit 2 (Industrial 909)**: Overdriven kick with parabolic drive, dual metallic ring snare, sizzle noise hat.
 
-5. **Channel 8 — UI Positive Click (Mechanical Switch / Thock)**
-   - **Design**: Tactile, physical mechanical switch snap with zero tonal ringing tail (26 ms duration).
+5. **Channel 8 — UI Positive Click (Mechanical Snap & Resonant Acoustic Pop)**
+   - **Design**: Crisp tactile mechanical click paired with a warm, resonant wooden/marimba acoustic pop (~75 ms duration).
    - **Dual Micro-Transients**:
-     - *Contact Strike ($t = 0$)*: Sharp pitch plunge ($3700\text{ Hz} \to \text{base}$ in 1.5 ms) + shaped noise burst for instant transient crack.
-     - *Leaf Latch Snap ($t \approx 1.5\text{ ms}$)*: Secondary micro-impulse mimicking mechanical leaf/plunger release.
-   - **Cavity Resonance**: Warm low-mid woody cavity "thock" ($220–440\text{ Hz}$ fundamental, decaying in 8 ms) saturated via `tanh`.
-   - **UI Bypass**: Bypasses music ducking and fill attenuation so UI clicks remain crisp and tactile at all times.
+     - *Contact Strike ($t = 0$)*: Sharp pitch snap ($1800\text{ Hz} \to \text{base}$ in 2.2 ms) + shaped noise and impulse for instant tactile tick.
+     - *Leaf Latch Snap ($t \approx 2.2\text{ ms}$)*: Secondary micro-impulse mimicking mechanical switch latch release.
+   - **Acoustic Body**: Melodic wooden/marimba resonance in the sweet UI register ($440–880\text{ Hz}$, MIDI 67–79) ringing out naturally with the voice decay envelope.
+   - **UI Bypass**: Bypasses music ducking and fill attenuation so UI clicks remain crisp and audible at all times.
 
 6. **Channel 9 — UI Negative Error (Invalid Input Rejection)**
    - **Design**: Responsive descending minor-second dissonant interval (150 ms duration) anchored in the mid-register (MIDI 58–70) for laptop and mobile speaker clarity.

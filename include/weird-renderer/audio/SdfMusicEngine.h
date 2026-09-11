@@ -31,6 +31,22 @@ namespace WeirdEngine
 			float foldDrive = 2.2f;
 		};
 
+		enum class MusicTrack : uint8_t
+		{
+			Lead = 0,
+			Bass,
+			Pad,
+			Drums
+		};
+
+		struct MusicTrackToggles
+		{
+			bool lead = true;
+			bool bass = true;
+			bool pad = true;
+			bool drums = true;
+		};
+
 		struct MusicVoice
 		{
 			float frequency = 440.0f;
@@ -133,6 +149,19 @@ namespace WeirdEngine
 				return m_rack;
 			}
 
+			// Track Isolation & Muting
+			void setTrackEnabled(MusicTrack track, bool enabled);
+			bool isTrackEnabled(MusicTrack track) const;
+
+			void setTrackToggles(const MusicTrackToggles& toggles)
+			{
+				m_tracks = toggles;
+			}
+			const MusicTrackToggles& getTrackToggles() const
+			{
+				return m_tracks;
+			}
+
 			// Motion & Domain Fill Inspection
 			float getMotionLevel() const
 			{
@@ -218,6 +247,9 @@ namespace WeirdEngine
 
 			// AST-driven instrument rack
 			InstrumentRack m_rack;
+
+			// Track isolation toggles
+			MusicTrackToggles m_tracks;
 
 			void selectInstrumentRack(const ASTFingerprint& fp);
 			void sampleShapeParameters();

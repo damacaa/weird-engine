@@ -361,6 +361,41 @@ namespace WeirdEngine
 			m_queuedSong = std::move(nextSong);
 		}
 
+		void SdfMusicEngine::setTrackEnabled(MusicTrack track, bool enabled)
+		{
+			switch (track)
+			{
+				case MusicTrack::Lead:
+					m_tracks.lead = enabled;
+					break;
+				case MusicTrack::Bass:
+					m_tracks.bass = enabled;
+					break;
+				case MusicTrack::Pad:
+					m_tracks.pad = enabled;
+					break;
+				case MusicTrack::Drums:
+					m_tracks.drums = enabled;
+					break;
+			}
+		}
+
+		bool SdfMusicEngine::isTrackEnabled(MusicTrack track) const
+		{
+			switch (track)
+			{
+				case MusicTrack::Lead:
+					return m_tracks.lead;
+				case MusicTrack::Bass:
+					return m_tracks.bass;
+				case MusicTrack::Pad:
+					return m_tracks.pad;
+				case MusicTrack::Drums:
+					return m_tracks.drums;
+			}
+			return true;
+		}
+
 		void SdfMusicEngine::triggerPositiveFeedback(float intensity)
 		{
 			float clamped = std::clamp(intensity, 0.2f, 2.0f);
@@ -599,183 +634,199 @@ namespace WeirdEngine
 			// -------------------------------------------------------------
 			// LAYER 1: BASS LINE
 			// -------------------------------------------------------------
-			bool isQuarterBeat = (stepInBar % 4 == 0);
-			bool isEighthBeat = (stepInBar % 2 == 0);
-
-			bool triggerBass = isQuarterBeat;
-			if (!triggerBass && isEighthBeat && m_shapeParams.syncopation > 0.35f)
+			if (m_tracks.bass)
 			{
-				if (stepHash(step, 101) < (m_shapeParams.syncopation - 0.15f) * (0.3f + 0.7f * motionFactor))
-				{
-					triggerBass = true;
-				}
-			}
+				bool isQuarterBeat = (stepInBar % 4 == 0);
+				bool isEighthBeat = (stepInBar % 2 == 0);
 
-			if (triggerBass)
-			{
-				// Bass octave is -2 (deep fundamental register: MIDI 36 = C2 = 65 Hz), solid, grounded, and rich!
-				int midi = m_currentSong->getScaleDegreeMidi(bassDegree, -2) + static_cast<int>(m_positivePitchOffset);
-				float freq = m_currentSong->midiToFrequency(midi);
-
-				if (m_detuneAmount > 0.001f)
+				bool triggerBass = isQuarterBeat;
+				if (!triggerBass && isEighthBeat && m_shapeParams.syncopation > 0.35f)
 				{
-					freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
+					if (stepHash(step, 101) < (m_shapeParams.syncopation - 0.15f) * (0.3f + 0.7f * motionFactor))
+					{
+						triggerBass = true;
+					}
 				}
 
-				float cutoff = 420.0f + 380.0f * m_shapeParams.bassWeight;
-				float dur = beatSec * 1.05f * noteLengthMult;
-				float vel = 0.72f + 0.23f * m_shapeParams.bassWeight;
-
-				playNote(freq, vel, dur, 1, 0.0f, cutoff);
-
-				// Sub-bass doubling for powerful, tactile low end
-				if (m_shapeParams.bassWeight > 0.20f)
+				if (triggerBass)
 				{
-					float subVel = vel * (0.55f + 0.25f * m_shapeParams.bassWeight);
-					playNote(freq * 0.5f, subVel, dur * 1.15f, 1, 0.0f, 220.0f);
+					// Bass octave is -2 (deep fundamental register: MIDI 36 = C2 = 65 Hz), solid, grounded, and rich!
+					int midi =
+						m_currentSong->getScaleDegreeMidi(bassDegree, -2) + static_cast<int>(m_positivePitchOffset);
+					float freq = m_currentSong->midiToFrequency(midi);
+
+					if (m_detuneAmount > 0.001f)
+					{
+						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
+					}
+
+					float cutoff = 420.0f + 380.0f * m_shapeParams.bassWeight;
+					float dur = beatSec * 1.05f * noteLengthMult;
+					float vel = 0.72f + 0.23f * m_shapeParams.bassWeight;
+
+					playNote(freq, vel, dur, 1, 0.0f, cutoff);
+
+					// Sub-bass doubling for powerful, tactile low end
+					if (m_shapeParams.bassWeight > 0.20f)
+					{
+						float subVel = vel * (0.55f + 0.25f * m_shapeParams.bassWeight);
+						playNote(freq * 0.5f, subVel, dur * 1.15f, 1, 0.0f, 220.0f);
+					}
 				}
 			}
 
 			// -------------------------------------------------------------
 			// LAYER 2: HARMONY & CHORDS (Warm Pads / EPs)
 			// -------------------------------------------------------------
-			bool triggerChord = (stepInBar % 8 == 0);
-			if (!triggerChord && (stepInBar % 4 == 0) && m_shapeParams.harmonyRichness > 0.50f)
+			if (m_tracks.pad)
 			{
-				triggerChord = (stepHash(step, 179) < m_shapeParams.harmonyRichness * (0.4f + 0.6f * motionFactor));
-			}
-
-			if (triggerChord)
-			{
-				int chordSteps[4] = {0, 4, 2, 6};
-				int noteCount = 2;
-				if (m_shapeParams.harmonyRichness >= 0.65f)
+				bool triggerChord = (stepInBar % 8 == 0);
+				if (!triggerChord && (stepInBar % 4 == 0) && m_shapeParams.harmonyRichness > 0.50f)
 				{
-					noteCount = 4; // 7th chord
-				}
-				else if (m_shapeParams.harmonyRichness >= 0.35f)
-				{
-					noteCount = 3; // Triad
+					triggerChord = (stepHash(step, 179) < m_shapeParams.harmonyRichness * (0.4f + 0.6f * motionFactor));
 				}
 
-				float pans[4] = {-0.30f, 0.30f, -0.10f, 0.40f};
-				float dur = beatSec * 1.8f * noteLengthMult;
-				float vel = 0.28f + 0.22f * m_shapeParams.harmonyRichness;
-				// Warm filter: 700 Hz to 2200 Hz, never harsh or piercing!
-				float cutoff = 700.0f + 1500.0f * m_shapeParams.brightness;
-
-				for (int i = 0; i < noteCount; ++i)
+				if (triggerChord)
 				{
-					int degree = bassDegree + chordSteps[i];
-					// Chords sit comfortably at octave -1 or 0 (Middle C range, ~130 Hz - 260 Hz)
-					int octave = (m_shapeParams.brightness > 0.75f) ? 0 : -1;
+					int chordSteps[4] = {0, 4, 2, 6};
+					int noteCount = 2;
+					if (m_shapeParams.harmonyRichness >= 0.65f)
+					{
+						noteCount = 4; // 7th chord
+					}
+					else if (m_shapeParams.harmonyRichness >= 0.35f)
+					{
+						noteCount = 3; // Triad
+					}
 
-					int midi =
-						m_currentSong->getScaleDegreeMidi(degree, octave) + static_cast<int>(m_positivePitchOffset);
-					float freq = m_currentSong->midiToFrequency(midi);
-					playNote(freq, vel, dur, 4, pans[i], cutoff);
+					float pans[4] = {-0.30f, 0.30f, -0.10f, 0.40f};
+					float dur = beatSec * 1.8f * noteLengthMult;
+					float vel = 0.28f + 0.22f * m_shapeParams.harmonyRichness;
+					// Warm filter: 700 Hz to 2200 Hz, never harsh or piercing!
+					float cutoff = 700.0f + 1500.0f * m_shapeParams.brightness;
+
+					for (int i = 0; i < noteCount; ++i)
+					{
+						int degree = bassDegree + chordSteps[i];
+						// Chords sit comfortably at octave -1 or 0 (Middle C range, ~130 Hz - 260 Hz)
+						int octave = (m_shapeParams.brightness > 0.75f) ? 0 : -1;
+
+						int midi =
+							m_currentSong->getScaleDegreeMidi(degree, octave) + static_cast<int>(m_positivePitchOffset);
+						float freq = m_currentSong->midiToFrequency(midi);
+						playNote(freq, vel, dur, 4, pans[i], cutoff);
+					}
 				}
 			}
 
 			// -------------------------------------------------------------
 			// LAYER 3: MELODIC ARPEGGIO / LEAD (Warm, Singing Vocal Range)
 			// -------------------------------------------------------------
-			float trigProb = m_shapeParams.melodyDensity * (0.35f + 0.65f * motionFactor) * 0.65f;
-			if (isEighthBeat)
+			if (m_tracks.lead)
 			{
-				trigProb += 0.22f * (0.4f + 0.6f * motionFactor);
-			}
-			if (isQuarterBeat)
-			{
-				trigProb += 0.12f;
-			}
-
-			if (stepHash(step, 233) < trigProb)
-			{
-				if (stepInBar == 0)
+				bool isEighthBeat = (stepInBar % 2 == 0);
+				bool isQuarterBeat = (stepInBar % 4 == 0);
+				float trigProb = m_shapeParams.melodyDensity * (0.35f + 0.65f * motionFactor) * 0.65f;
+				if (isEighthBeat)
 				{
-					// Anchor to harmony root on downbeats
-					m_melodyDegree = bassDegree + (stepHash(step, 401) > 0.5f ? 2 : 0);
+					trigProb += 0.22f * (0.4f + 0.6f * motionFactor);
 				}
-				else
+				if (isQuarterBeat)
 				{
-					float jump = (stepHash(step, 311) - 0.5f) * (2.0f + m_shapeParams.variation * 3.5f);
-					m_melodyDegree += static_cast<int>(std::round(jump));
-				}
-				m_melodyDegree = std::clamp(m_melodyDegree, -2, 10);
-
-				// Lead melody octave: 0 (Middle C = 261 Hz) or 1 (C5 = 523 Hz), musical and smooth!
-				int baseOctave = (m_shapeParams.brightness > 0.60f) ? 1 : 0;
-				int midi = m_currentSong->getScaleDegreeMidi(m_melodyDegree, baseOctave) +
-						   static_cast<int>(m_positivePitchOffset);
-				float freq = m_currentSong->midiToFrequency(midi);
-
-				if (m_detuneAmount > 0.001f)
-				{
-					freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
+					trigProb += 0.12f;
 				}
 
-				// Warm filter cutoff: 1200 Hz to 2800 Hz (soft, vocal-like)
-				float cutoff = 1200.0f + 1600.0f * m_shapeParams.brightness;
-				float dur = beatSec * (0.40f + 0.40f * stepHash(step, 523)) * noteLengthMult;
-				float pan = stepHash(step, 617) * 1.0f - 0.5f;
-				float vel = 0.35f + 0.25f * m_shapeParams.melodyDensity;
+				if (stepHash(step, 233) < trigProb)
+				{
+					if (stepInBar == 0)
+					{
+						// Anchor to harmony root on downbeats
+						m_melodyDegree = bassDegree + (stepHash(step, 401) > 0.5f ? 2 : 0);
+					}
+					else
+					{
+						float jump = (stepHash(step, 311) - 0.5f) * (2.0f + m_shapeParams.variation * 3.5f);
+						m_melodyDegree += static_cast<int>(std::round(jump));
+					}
+					m_melodyDegree = std::clamp(m_melodyDegree, -2, 10);
 
-				playNote(freq, vel, dur, 0, pan, cutoff);
+					// Lead melody octave: 0 (Middle C = 261 Hz) or 1 (C5 = 523 Hz), musical and smooth!
+					int baseOctave = (m_shapeParams.brightness > 0.60f) ? 1 : 0;
+					int midi = m_currentSong->getScaleDegreeMidi(m_melodyDegree, baseOctave) +
+							   static_cast<int>(m_positivePitchOffset);
+					float freq = m_currentSong->midiToFrequency(midi);
+
+					if (m_detuneAmount > 0.001f)
+					{
+						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
+					}
+
+					// Warm filter cutoff: 1200 Hz to 2800 Hz (soft, vocal-like)
+					float cutoff = 1200.0f + 1600.0f * m_shapeParams.brightness;
+					float dur = beatSec * (0.40f + 0.40f * stepHash(step, 523)) * noteLengthMult;
+					float pan = stepHash(step, 617) * 1.0f - 0.5f;
+					float vel = 0.35f + 0.25f * m_shapeParams.melodyDensity;
+
+					playNote(freq, vel, dur, 0, pan, cutoff);
+				}
 			}
 
 			// -------------------------------------------------------------
 			// LAYER 4: PERCUSSION (Punchy Kick, Snappy Snare, Crisp Hi-Hat)
 			// -------------------------------------------------------------
-			float effPercEnergy = m_shapeParams.percEnergy * (0.35f + 0.65f * motionFactor);
-
-			// Kick drum on beats 1 and 3 (step 0 and 8), plus syncopation
-			bool triggerKick = (stepInBar == 0 || stepInBar == 8);
-			if (!triggerKick && (effPercEnergy > 0.45f || m_shapeParams.syncopation > 0.40f))
+			if (m_tracks.drums)
 			{
-				if (stepInBar == 6 || (effPercEnergy > 0.65f && stepInBar == 14))
+				bool isEighthBeat = (stepInBar % 2 == 0);
+				float effPercEnergy = m_shapeParams.percEnergy * (0.35f + 0.65f * motionFactor);
+
+				// Kick drum on beats 1 and 3 (step 0 and 8), plus syncopation
+				bool triggerKick = (stepInBar == 0 || stepInBar == 8);
+				if (!triggerKick && (effPercEnergy > 0.45f || m_shapeParams.syncopation > 0.40f))
 				{
-					triggerKick = true;
+					if (stepInBar == 6 || (effPercEnergy > 0.65f && stepInBar == 14))
+					{
+						triggerKick = true;
+					}
 				}
-			}
 
-			if (triggerKick)
-			{
-				float kickVel = 0.78f + 0.20f * effPercEnergy;
-				playNote(60.0f, kickVel, 0.34f, 5, 0.0f, 500.0f); // instrument 5 = Kick
-			}
-
-			// Snare / Clap on beats 2 & 4 (step 4 and 12)
-			bool triggerSnare = (stepInBar == 4 || stepInBar == 12);
-			if (!triggerSnare && effPercEnergy > 0.60f && stepInBar == 15)
-			{
-				triggerSnare = true; // 16th-note ghost snare before downbeat
-			}
-
-			if (triggerSnare)
-			{
-				float snareVel = 0.55f + 0.25f * effPercEnergy;
-				playNote(180.0f, snareVel, 0.18f, 6, 0.0f, 4500.0f); // instrument 6 = Snare
-			}
-
-			// Hi-hat on 8th notes (steady timekeeping groove)
-			if (isEighthBeat || (effPercEnergy > 0.50f && (stepHash(step, 809) < 0.65f)))
-			{
-				bool openHat = (stepInBar % 4 == 2) && (effPercEnergy > 0.45f);
-				float decay = openHat ? 0.15f : 0.045f;
-				float pan = (step % 2 == 0) ? 0.18f : -0.18f;
-				float cutoff = 7000.0f + 3000.0f * m_shapeParams.brightness;
-				float vel = (openHat ? 0.32f : 0.24f) * (0.6f + 0.4f * effPercEnergy);
-
-				playNote(8000.0f, vel, decay, 7, pan, cutoff); // instrument 7 = HiHat
-			}
-
-			// Ghost percussion blip on offbeats
-			if (m_shapeParams.variation > 0.50f && stepInBar >= 12 && motionFactor > 0.4f)
-			{
-				if (stepHash(step, 911) < m_shapeParams.variation * 0.35f)
+				if (triggerKick)
 				{
-					playNote(2500.0f, 0.20f * effPercEnergy, 0.04f, 7, 0.25f, 5000.0f);
+					float kickVel = 0.78f + 0.20f * effPercEnergy;
+					playNote(60.0f, kickVel, 0.34f, 5, 0.0f, 500.0f); // instrument 5 = Kick
+				}
+
+				// Snare / Clap on beats 2 & 4 (step 4 and 12)
+				bool triggerSnare = (stepInBar == 4 || stepInBar == 12);
+				if (!triggerSnare && effPercEnergy > 0.60f && stepInBar == 15)
+				{
+					triggerSnare = true; // 16th-note ghost snare before downbeat
+				}
+
+				if (triggerSnare)
+				{
+					float snareVel = 0.55f + 0.25f * effPercEnergy;
+					playNote(180.0f, snareVel, 0.18f, 6, 0.0f, 4500.0f); // instrument 6 = Snare
+				}
+
+				// Hi-hat on 8th notes (steady timekeeping groove)
+				if (isEighthBeat || (effPercEnergy > 0.50f && (stepHash(step, 809) < 0.65f)))
+				{
+					bool openHat = (stepInBar % 4 == 2) && (effPercEnergy > 0.45f);
+					float decay = openHat ? 0.15f : 0.045f;
+					float pan = (step % 2 == 0) ? 0.18f : -0.18f;
+					float cutoff = 7000.0f + 3000.0f * m_shapeParams.brightness;
+					float vel = (openHat ? 0.32f : 0.24f) * (0.6f + 0.4f * effPercEnergy);
+
+					playNote(8000.0f, vel, decay, 7, pan, cutoff); // instrument 7 = HiHat
+				}
+
+				// Ghost percussion blip on offbeats
+				if (m_shapeParams.variation > 0.50f && stepInBar >= 12 && motionFactor > 0.4f)
+				{
+					if (stepHash(step, 911) < m_shapeParams.variation * 0.35f)
+					{
+						playNote(2500.0f, 0.20f * effPercEnergy, 0.04f, 7, 0.25f, 5000.0f);
+					}
 				}
 			}
 		}

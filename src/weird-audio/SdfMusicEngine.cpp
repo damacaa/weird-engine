@@ -32,6 +32,13 @@ namespace WeirdEngine
 			constexpr float SURGE_ATTACK_TIME = 0.06f;
 			constexpr float LEAD_DUCK_FADE_RATE = 8.0f; // Full lead fade-out in ~125 ms
 
+			// Motion EMA rate (1/s): how fast m_motionLevel chases the sampled average.
+			// Slow on purpose: imperfections in the domain sampling make instant motion
+			// jitter (e.g. a spinning star measures differently each rotation step), and a
+			// slow average lets those readings cancel out so the level stabilizes.
+			// Time constant ~5.5s to reach ~63% of a new sustained motion level.
+			constexpr float MOTION_EMA_RATE = 0.18f;
+
 			bool isSongEmpty(const std::shared_ptr<SdfSong>& song)
 			{
 				if (!song)
@@ -95,6 +102,7 @@ namespace WeirdEngine
 			m_deathSilenceTimer = 0.0f;
 			m_isDead = false;
 			m_melodyDegree = 0;
+			m_melodyLastInterval = 0;
 			m_shapeParams = ShapeMusicalParams{};
 			m_motionLevel = 0.0f;
 			m_motionNorm = 0.0f;
@@ -347,7 +355,7 @@ namespace WeirdEngine
 			m_tensionFromComplexity = std::pow(m_complexityNorm, COMPLEXITY_TENSION_CURVE);
 
 			m_motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
-			m_tempoFromMotion = 0.38f + 1.22f * std::pow(m_motionNorm, 1.25f);
+			m_tempoFromMotion = 0.45f + 0.75f * std::pow(m_motionNorm, 1.3f);
 
 			m_sampleIndex = 0;
 			m_hasPrevMotionSample = false;
@@ -441,7 +449,9 @@ namespace WeirdEngine
 			float blend = 1.0f - std::exp(-dt * 0.75f);
 
 			m_fillRatio += (avgFill - m_fillRatio) * blend;
-			m_motionLevel += (avgMotion - m_motionLevel) * blend;
+			// Motion uses a much slower EMA than the other averages (see MOTION_EMA_RATE)
+			float motionBlend = 1.0f - std::exp(-dt * MOTION_EMA_RATE);
+			m_motionLevel += (avgMotion - m_motionLevel) * motionBlend;
 
 			// Surface complexity: spread of mean curvature normalized by the characteristic shape size.
 			// A perfect circle has constant curvature, so its standard deviation (and complexity) is 0.
@@ -452,12 +462,15 @@ namespace WeirdEngine
 			m_tensionFromComplexity = std::pow(m_complexityNorm, COMPLEXITY_TENSION_CURVE);
 
 			// Motion controls overall tempo:
-			// If motion == 0 (still): tempo drops to 0.38x
+			// If motion == 0 (still): tempo drops to 0.45x
 			// If motion is moderate: tempo is ~1.0x
-			// If motion is high: tempo goes up to 1.60x
+			// If motion is high: tempo caps at ~1.2x.
+			// NOTE: The cap is deliberate! Uniformly speeding every track up past ~1.2x
+			// sounds like a time-stretched recording instead of energetic music. Above that,
+			// energy is expressed through the lead's generative note density instead of raw BPM.
 			float motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
 			m_motionNorm = motionNorm;
-			m_tempoFromMotion = 0.38f + 1.22f * std::pow(motionNorm, 1.25f);
+			m_tempoFromMotion = 0.45f + 0.75f * std::pow(motionNorm, 1.3f);
 
 			// Fill ratio controls volume:
 			// Bigger shape -> higher fill ratio -> louder volume
@@ -533,6 +546,7 @@ namespace WeirdEngine
 				m_stepAccumulator = 0.0f;
 				m_currentBeat = 0.0f;
 				m_melodyDegree = 0;
+				m_melodyLastInterval = 0;
 				sampleShapeParameters();
 				initDomainSamples();
 
@@ -905,6 +919,7 @@ namespace WeirdEngine
 						m_currentSong = std::move(m_queuedSong);
 						m_queuedSong = nullptr;
 						m_melodyDegree = 0;
+						m_melodyLastInterval = 0;
 						sampleShapeParameters();
 						initDomainSamples();
 
@@ -1231,180 +1246,209 @@ namespace WeirdEngine
 			}
 
 			// -------------------------------------------------------------
-			// LAYER 3: MELODIC LEAD (Expressive Motifs, Breathing Breaks, Singing Warmth)
+			// LAYER 3: MELODIC LEAD (Pentatonic SDF Tracing, Groove Pocket, Gap-Fill)
 			// -------------------------------------------------------------
 			if (playLead && !isDuckingActive)
 			{
-				bool isQuarterBeat = (stepInBar % 4 == 0);
-				bool isEighthBeat = (stepInBar % 2 == 0);
+				// 1. Generative Rhythm: Create a solid, groovy pocket with PLENTY OF AIR.
+				//    Prevent "machine gun" overlapping 16th notes by strictly managing thresholds.
+				int stepInPhrase = barInPhrase * 16 + stepInBar; // 0..63 across the 4-bar phrase
+				float phraseNorm = static_cast<float>(stepInPhrase) / 64.0f;
 
-				// 1. Determine Motif Archetype for the song from fingerprint & shape
-				uint32_t seed = m_currentSong->getFingerprint().structuralHash;
-				int motifType = static_cast<int>((seed ^ (seed >> 8)) % 4);
-				if (m_shapeParams.syncopation > 0.58f)
-					motifType = 1; // Driving Funk / Syncopated
-				else if (m_shapeParams.percEnergy > 0.65f || m_surgeLevel > 0.35f)
-					motifType = 2; // Fast melodic runs / arps
-				else if (m_shapeParams.melodyDensity < 0.32f && m_surgeLevel < 0.15f)
-					motifType = 3; // Lyrical held singing melody
+				bool isDownbeat = (stepInBar % 4 == 0);
+				bool isEighth = (stepInBar % 2 == 0);
+				bool isSyncopatedPickup = (stepInBar % 4 == 3); // the "a" of 1-e-&-a
+				bool isCadenceStep = (barInPhrase == 3 && stepInBar == 0);
 
-				// 16-step rhythmic hit masks per bar with deliberate breathing breaks:
-				// Bar 0: Hook Call (first 2 beats active, beats 3-4 rest)
-				// Bar 1: Response (first 2 beats active, beats 3-4 rest)
-				// Bar 2: Climax (first 2.5 beats active, steps 10-15 rest)
-				// Bar 3: Cadence resolution (step 0 only, steps 2-15 full 3.5 beat break)
-				uint16_t motifMask = 0;
-				if (motifType == 0) // Singable Hook Anthem
+				float triggerChance = 0.0f;
+				if (isCadenceStep)
 				{
-					static constexpr uint16_t masks[4] = {
-						(1 << 0) | (1 << 3) | (1 << 6),			   // Bar 0: 3 hits, steps 8..15 REST
-						(1 << 0) | (1 << 4) | (1 << 6),			   // Bar 1: 3 hits, steps 8..15 REST
-						(1 << 0) | (1 << 2) | (1 << 4) | (1 << 7), // Bar 2: Climax peak, steps 9..15 REST
-						(1 << 0)								   // Bar 3: Cadence note, steps 2..15 REST
-					};
-					motifMask = masks[bar];
+					triggerChance = 1.0f; // Always play the phrase resolution
 				}
-				else if (motifType == 1) // Funk / Syncopated Groove
+				else if (isDownbeat)
 				{
-					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 3) | (1 << 6),
-														  (1 << 2) | (1 << 4) | (1 << 7),
-														  (1 << 0) | (1 << 3) | (1 << 6) | (1 << 8), (1 << 0)};
-					motifMask = masks[bar];
+					// Lowered downbeat base chance to add more air and restraint
+					triggerChance = 0.50f + 0.35f * m_shapeParams.melodyDensity;
 				}
-				else if (motifType == 2) // Energetic Flow / Arp Runs
+				else if (isEighth)
 				{
-					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 2) | (1 << 4) | (1 << 6),
-														  (1 << 2) | (1 << 4) | (1 << 6),
-														  (1 << 0) | (1 << 2) | (1 << 4) | (1 << 7), (1 << 0)};
-					motifMask = masks[bar];
+					triggerChance = 0.15f + 0.50f * m_shapeParams.melodyDensity;
 				}
-				else // Lyrical Singing Ballad
+				else if (isSyncopatedPickup)
 				{
-					static constexpr uint16_t masks[4] = {(1 << 0) | (1 << 6), (1 << 2) | (1 << 6),
-														  (1 << 0) | (1 << 4) | (1 << 8), (1 << 0)};
-					motifMask = masks[bar];
+					triggerChance = 0.05f + 0.40f * m_shapeParams.syncopation + 0.20f * m_shapeParams.melodyDensity;
+				}
+				else
+				{
+					// The "e" beats (1, 5, 9, 13) - severely limit these to prevent rapid-fire synth mud
+					triggerChance = 0.05f * m_shapeParams.melodyDensity * m_surgeLevel;
 				}
 
-				// Measure-level break: Lead takes a full bar rest on Bar 1 during alternate phrases or moderate density
-				bool isBarRest = (bar == 1 && (phraseInSong % 2 == 1 || m_shapeParams.melodyDensity < 0.48f) &&
-								  m_surgeLevel < 0.25f);
-				if (isBarRest)
+				// Breathing rests: create phrasing by naturally pausing at the end of bars 1 and 3.
+				// Extended to start earlier (step 6 instead of 8) for a wider, more breathable gap.
+				if ((barInPhrase == 1 || barInPhrase == 3) && stepInBar >= 6)
 				{
-					motifMask = 0; // Entire bar rest: rhythm & bass groove solo
+					triggerChance *= 0.05f; // Deeply reduce probability to guarantee space
 				}
 
-				// Check if the current step is a defined motif hit
-				bool isMotifHit = (motifMask & (1 << stepInBar)) != 0;
+				bool triggerLead = (stepHash(step, 421) < triggerChance);
 
-				// Thin out further if melody density is low
-				if (isMotifHit && m_shapeParams.melodyDensity < 0.38f && stepInBar != 0 && m_surgeLevel < 0.10f)
+				if (triggerLead)
 				{
-					if (stepHash(step, 827) > m_shapeParams.melodyDensity * 1.8f)
+					// 2. Polar SDF trace: sweep theta from 0 to 2*pi across the 4-bar phrase.
+					// The shape's physical contour literally becomes the melodic contour.
+					constexpr float PI = 3.14159265358979323846f;
+					float theta = phraseNorm * 2.0f * PI;
+
+					float sampleR = m_currentSong->getSampleRadius();
+					if (sampleR <= 0.01f)
 					{
-						isMotifHit = false;
-					}
-				}
-
-				if (isMotifHit)
-				{
-					// 2. Cohesive 4-Bar Melodic Arch
-					int noteDegree = 0;
-					int octaveOffset = 0; // Baseline singing register (C4-C5 range)
-
-					if (bar == 0) // Hook Call
-					{
-						static constexpr int kHookNotes[16] = {0, 0, 2, 2, 4, 4, 3, 3, 2, 2, 0, 0, 0, 0, 0, 0};
-						noteDegree = bassDegree + kHookNotes[stepInBar];
-					}
-					else if (bar == 1) // Answering Response
-					{
-						static constexpr int kRespNotes[16] = {3, 3, 2, 2, 1, 1, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0};
-						noteDegree = bassDegree + kRespNotes[stepInBar];
-					}
-					else if (bar == 2) // Climax (Expressive peak)
-					{
-						static constexpr int kClimaxNotes[16] = {4, 4, 5, 5, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 0, 0};
-						noteDegree = bassDegree + kClimaxNotes[stepInBar];
-						octaveOffset = 1; // 1 octave lift for climax peak
-					}
-					else // Bar 3: Cadence Resolution
-					{
-						// Complexity tension denies resolution: suspend on the subdominant instead of the tonic
-						bool denyCadence = (tension > 0.60f && stepHash(step, 556) < (tension - 0.30f));
-						noteDegree = denyCadence ? 3 : 0;
-						octaveOffset = 0;
+						sampleR = 20.0f;
 					}
 
-					// Complexity tension: probabilistic high-register lift (agitated wails)
-					if (stepHash(step, 555) < 0.35f * tension)
+					float params[12]{};
+					for (size_t i = 0; i < 8; ++i)
+					{
+						params[i] = m_currentSong->getParameter(i);
+					}
+					params[8] = static_cast<float>(m_sceneTime);
+					params[9] = sampleR * std::cos(theta);
+					params[10] = sampleR * std::sin(theta);
+					params[11] = 0.0f;
+
+					float dist = m_currentSong->getRawShapeExpression()->getValue(params);
+
+					// Physical reach normalized to 0..1 range
+					float reach = (std::max)(0.0f, sampleR - dist);
+					float normReach = std::clamp((reach - 2.0f) / 25.0f, 0.0f, 1.0f);
+
+					// 3. Pentatonic Contour Mapping & Gap-Fill
+					// Map the physical contour directly to a pentatonic scale.
+					// Pentatonic scales (1, 2, 3, 5, 6) guarantee incredibly musical leaps without harsh dissonances.
+					static constexpr int pentatonicMap[8] = {0, 1, 2, 4, 5, 7, 8, 9};
+					int altitudeIdx = std::clamp(static_cast<int>(normReach * 7.99f), 0, 7);
+
+					int targetDegree = bassDegree + pentatonicMap[altitudeIdx];
+
+					if (isCadenceStep)
+					{
+						targetDegree = 0; // definitive tonic resolution
+					}
+					else if (barInPhrase == 1 && stepInBar >= 8 && targetDegree == 0)
+					{
+						// Half-cadence: avoid the tonic (0) to keep the phrase "open"
+						targetDegree = (stepHash(step, 733) < 0.5f) ? 1 : 4;
+					}
+					else
+					{
+						// Musical variation: occasionally deviate from the strict shape contour
+						if (stepHash(step, 811) < (0.15f + 0.35f * m_shapeParams.variation))
+						{
+							targetDegree += (stepHash(step, 823) < 0.5f) ? 1 : -1;
+						}
+
+						// Narmour Gap-Fill: If the shape just forced a massive leap (> 4 degrees),
+						// soften the landing by pulling the note back towards the center.
+						int interval = targetDegree - m_melodyDegree;
+						if (std::abs(interval) > 4)
+						{
+							targetDegree -= (interval / 2);
+						}
+					}
+
+					targetDegree = std::clamp(targetDegree, 0, 14);
+					m_melodyLastInterval = targetDegree - m_melodyDegree;
+					m_melodyDegree = targetDegree;
+
+					int noteDegree = targetDegree;
+
+					// 4. Metric Harmonization
+					// Downbeats should feel strongly anchored to the underlying chord (root, 3rd, or 5th)
+					if (isDownbeat && m_shapeParams.harmonyRichness < 0.85f)
+					{
+						int bestDist = 999;
+						int snappedDegree = noteDegree;
+						// Check across multiple octaves relative to the bass root
+						for (int oct = -1; oct <= 2; ++oct)
+						{
+							int root = bassDegree + oct * 7;
+							int third = root + 2;
+							int fifth = root + 4;
+
+							for (int chordTone : {root, third, fifth})
+							{
+								int d = std::abs(noteDegree - chordTone);
+								if (d < bestDist)
+								{
+									bestDist = d;
+									snappedDegree = chordTone;
+								}
+							}
+						}
+						noteDegree = snappedDegree;
+					}
+
+					// 5. Chromatic Tension Injection
+					// If the shape is complex (high tension), inject blue notes on offbeats
+					bool injectTensionNote =
+						(tension > 0.45f && !isDownbeat && stepHash(step, 877) < (tension - 0.35f));
+
+					// 6. Register Placement
+					int octaveOffset = (m_shapeParams.brightness > 0.65f) ? 1 : 0;
+					if (barInPhrase == 2 && stepInBar >= 4 && stepInBar <= 11)
 					{
 						octaveOffset += 1;
 					}
 
-					// Shape-driven variation (occasional ornamental passing neighbor tone),
-					// widened by complexity tension with larger jumps at extreme values
-					if ((m_shapeParams.variation > 0.45f && stepHash(step, 937) < (m_shapeParams.variation - 0.35f)) ||
-						(tension > 0.55f && stepHash(step, 937) < (tension - 0.35f)))
-					{
-						int jump = (tension > 0.75f && stepHash(step, 941) < 0.30f) ? 2 : 1;
-						bool up = (jump == 2) ? (stepHash(step, 943) < 0.5f) : (stepHash(step, 941) < 0.5f);
-						noteDegree += up ? jump : -jump;
-					}
+					// Guard against negative scale degrees (valid range starts at the tonic)
+					noteDegree = (std::max)(noteDegree, 0);
 
 					int midi = m_currentSong->getScaleDegreeMidi(noteDegree, octaveOffset) +
 							   static_cast<int>(m_positivePitchOffset);
+					if (injectTensionNote)
+					{
+						midi += 1; // chromatic rub
+					}
 
-					// Strict pitch ceiling and floor guard: Keep lead in the expressive, singing vocal/solo range
-					// Ceiling: MIDI 81 (A5, ~880 Hz) - prevents ear-piercing shrieks and screeching
-					// Floor:   MIDI 57 (A3, ~220 Hz) - prevents muddy overlap with bass
-					while (midi > 81)
-					{
-						midi -= 12; // Octave fold down
-					}
+					// Vocal Range Guard: Keep lead in a pleasing, expressive singing range (A3 to C6)
+					while (midi > 84)
+						midi -= 12;
 					while (midi < 57)
-					{
-						midi += 12; // Octave fold up
-					}
+						midi += 12;
 
 					float freq = m_currentSong->midiToFrequency(midi);
 
-					// Complexity tension: out-of-tune wobble (alternating detune up to ~1% / 17 cents)
+					// Out-of-tune wobble for high-complexity/tense shapes
 					float wobble = (std::max)(m_detuneAmount, 0.010f * tension);
 					if (wobble > 0.001f)
 					{
 						freq *= (1.0f - wobble * (step % 2 == 0 ? 1.0f : -1.0f));
 					}
 
-					// Note duration: strong beats and cadence notes ring long and sing;
-					// other notes leave natural space before rests
-					float noteBeats = 0.50f;
-					if (stepInBar == 0 || (bar == 3 && stepInBar == 0))
+					// 7. Envelopes & Tone (SHORTER DURATIONS = MORE AIR)
+					// Shorter note holds explicitly create literal space/silence between hits
+					float noteBeats = isDownbeat ? 0.75f : (isEighth ? 0.35f : 0.15f);
+					if (isCadenceStep)
 					{
-						noteBeats = 1.50f; // Long held singing note with vibrato
-					}
-					else if (isQuarterBeat)
-					{
-						noteBeats = 0.85f;
-					}
-					else
-					{
-						noteBeats = 0.50f;
+						noteBeats = 1.40f; // Long held note on phrase end
 					}
 
-					// Complexity tension clips notes into ominous staccato plucks at slow tempos
-					float dur = beatSec * noteBeats * noteLengthMult * (1.0f - 0.45f * tension);
+					float dur = beatSec * noteBeats * noteLengthMult * (1.0f - 0.35f * tension);
 
-					// Warm analog cutoff: smooth singing presence without harsh upper sizzle.
-					// Complexity tension opens the filter into a strained, biting presence.
-					float cutoff = (1800.0f + 1400.0f * m_shapeParams.brightness) * (1.0f + 0.35f * m_surgeLevel) *
+					// Filter bite: lowered base frequencies for a warmer, subtler tone that sits better in the mix
+					float cutoff = (1200.0f + 1600.0f * m_shapeParams.brightness) * (1.0f + 0.30f * m_surgeLevel) *
 								   (1.0f + 1.2f * tension);
-					cutoff = std::clamp(cutoff, 1000.0f, 9000.0f);
+					cutoff = std::clamp(cutoff, 800.0f, 7500.0f);
 
-					// Dynamic velocity with headroom for saturation drive
-					float vel = (0.42f + 0.22f * m_shapeParams.melodyDensity) * (1.0f + 0.15f * m_surgeLevel);
+					// Velocity ghosting: lowered base volume, and severely pushing offbeats backward
+					float vel = (0.35f + 0.20f * m_shapeParams.melodyDensity) * (1.0f + 0.12f * m_surgeLevel);
+					if (!isDownbeat)
+					{
+						vel *= 0.70f; // 30% reduction on offbeats (was 18%)
+					}
 
-					// Subtle alternating stereo pan for spatial motion
-					float pan = (stepInBar % 2 == 0) ? -0.15f : 0.15f;
+					// Spatial sweep: auto-pan follows the polar trace angle!
+					float pan = 0.22f * std::sin(theta);
 
 					playNote(freq, vel, dur, 0, pan, cutoff);
 				}

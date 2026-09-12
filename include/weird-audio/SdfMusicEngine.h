@@ -277,6 +277,7 @@ namespace WeirdEngine
 			// Shape-driven parameter extraction & procedural state
 			ShapeMusicalParams m_shapeParams;
 			int m_melodyDegree = 0;
+			int m_melodyLastInterval = 0; // Last scale-degree interval (Narmour gap-fill memory)
 
 			// Dynamic motion & domain fill evaluation
 			static constexpr size_t NUM_DOMAIN_SAMPLES = 32;

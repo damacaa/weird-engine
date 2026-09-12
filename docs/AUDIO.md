@@ -66,6 +66,7 @@ The procedural music engine treats mathematical shapes defined by `IMathExpressi
 | **Radial Alternation** | Alternation between cardinal and diagonal axes | **Harmonic Palette**: High spoke alternation (e.g. stars) selects Minor or Blues tonalities. |
 | **Center Field Depth** | Signed distance $d(0, 0)$ at local origin | **Root Key (Base Note)**: Deep negative centers lower the tonic key; shallow boundaries map to higher roots (MIDI 55 [G3] to 67 [G4]). |
 | **Compass Probes** | $d$ sampled at $E, W, N, S, NE, NW, SE, SW$ | **Real-Time Synth Modulations**: Evaluated through sigmoid curves to control melody note density, pad richness, syncopation, and chord intervals. |
+| **Surface Complexity** | Scale-normalized curvature spread $\sigma(\kappa) \cdot R_{char}$ of surface-projected samples | **Calm vs Tense**: Smooth shapes sound calm; intricate/noisy surfaces add harmonic dissonance, brightness, staccato articulation and an uneasy pulse. Does not affect tempo (motion owns speed). |
 
 ### 2.2 Universal Bounding Domain
 To prevent arbitrarily large shapes from distorting procedural analysis or filling the entire screen:
@@ -78,6 +79,36 @@ Every song's governing shape is displayed as a UI element in the top-left corner
 - **`point()`**: A canonical parameterless helper returning local coordinates centered at $(0, 0)$.
 - In procedural songs, `SdfSong` automatically applies domain bounding and maps screen/UI sample points so $(0, 0)$ is centered at the song's screen anchor.
 - Calling `services.audio().setSong(song)` automatically registers the shape in the UI pipeline as a `UIShape` entity.
+
+### 2.4 Surface Complexity Metric
+
+`SdfMusicEngine` maintains a real-time statistic describing how smooth or intricate the SDF surface is. A perfect circle reads exactly **0**, while a noisy or highly structured shape saturates toward **100%**.
+
+For each of the 32 golden-spiral domain points (round-robin, one point per frame):
+1. The gradient normal $n = \nabla d / \|\nabla d\|$ is computed with central differences (stencil $H = 1.0$).
+2. The point is iteratively projected onto the surface with clamped Newton steps ($p \leftarrow p - d(p) \cdot n$, 3 iterations) for robustness on non-unit gradients.
+3. The mean curvature of the field is estimated at the projected point: $\kappa = \Delta d / \|\nabla d\|$ using a 5-point Laplacian. For an exact circle of radius $R$ this equals $1/R$ everywhere, so its spread is zero.
+
+Aggregated curvature dispersion is made dimensionless with the characteristic shape radius $R_{char} = \text{DOMAIN\_RADIUS} \cdot \sqrt{\text{fillRatio}}$:
+
+$$\text{raw} = \sigma(\kappa) \cdot R_{char}, \qquad \text{complexity} = \frac{\text{raw}}{\text{raw} + S}$$
+
+`S` is the saturation constant (default **20.0**); higher values make the meter cooler and give complex shapes more headroom. It can be adjusted at runtime with `setComplexitySaturation()`. Both `raw` and the normalized value are smoothed with the same framerate-independent EMA used for motion and fill ($\text{blend} = 1 - e^{-\Delta t \cdot 0.75}$). The metric is scale-, translation-, and rotation-invariant.
+
+### 2.5 Complexity → Calm vs Tense
+
+Motion controls **speed** (tempo, note length, groove), while surface complexity controls **tension** without touching tempo. This decouples the two axes: a still, smooth shape is slow *and* calm, while a still, noisy shape is slow but tense.
+
+$$T = \text{complexity}^{0.8}$$
+
+| Layer | Calm ($T \to 0$) | Tense ($T \to 1$) |
+|---|---|---|
+| **Harmony (pad)** | Consonant triads, dark filter | Semitone shadow voice at `freq × 1.05946` creates slow beating (anxiety drone); forced 4-note clusters at extreme tension; filter `×(1 + 1.2·T)` |
+| **Melody (lead)** | Long singing notes, tonic cadences | Staccato `×(1 − 0.45·T)`; probabilistic octave lift (`0.35·T`); suspended cadences; detune wobble up to ~17 cents; filter `×(1 + 1.2·T)` |
+| **Timbre** | Dark, flat response | Filter Q `+ 0.9·T` on lead/pad; FM index `×(1 + 0.8·T)`, narrower pulse widths, fold drive `×(1 + 0.6·T)`; nervous vibrato (rate `×(1 + 1.6·T)`, shallower depth) |
+| **Percussion** | Sparse and soft | At low motion: heartbeat "lub-dub" kick; quiet off-grid ghost hats at $T > 0.5$ |
+
+Pad-specific effects (shadow voice gain/cutoff, chord cutoff, Q, fold drive) are scaled by `PAD_TENSION_SCALE` (0.45) because sustained chords make dissonance and beating much more prominent than on the lead.
 
 ---
 
@@ -299,6 +330,9 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `getMotionLevel() const` | Returns current geometric motion level measured from the SDF shape. |
 | `getMotionNorm() const` | Returns normalized geometric motion level in [0.0, 1.0]. |
 | `getFillRatio() const` | Returns domain fill ratio (percentage of volume inside the shape). |
+| `getComplexityLevel() const` | Returns raw surface complexity `stddev(curvature) * characteristicRadius` of the SDF shape. |
+| `getComplexityNorm() const` | Returns normalized surface complexity in [0.0, 1.0]; 0 for a perfect circle, approaching 1 for noisy surfaces. |
+| `getTension() const` | Returns the tension value derived from surface complexity ($T = \text{complexity}^{0.8}$); drives dissonance, brightness and articulation without affecting tempo. |
 | `getTempo() const` | Returns current dynamic playback tempo in BPM. |
 | `getTimeBetweenBeats() const` | Returns duration of one quarter-note beat in seconds ($60.0 / \text{BPM}$). |
 

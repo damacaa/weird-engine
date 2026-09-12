@@ -191,6 +191,7 @@ namespace WeirdEngine::Editor
 				ImGui::Spacing();
 				ImGui::ProgressBar(music.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
 				ImGui::ProgressBar(music.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
+				ImGui::ProgressBar(music.getComplexityNorm(), ImVec2(-1.0f, 0.0f), "Surface Complexity");
 			}
 		}
 

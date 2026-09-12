@@ -15,6 +15,18 @@ namespace WeirdEngine
 			constexpr int NUM_DOMAIN_SAMPLES = 32;
 			constexpr float DOMAIN_RADIUS = 50.0f;
 
+			// Surface complexity estimation: finite-difference stencil and convergence guards
+			constexpr float CURVATURE_STENCIL = 1.0f;
+			constexpr int CURVATURE_NEWTON_STEPS = 3;
+			constexpr float MIN_GRADIENT = 1e-4f;
+
+			// Complexity -> tension curve exponent: keeps the low/mid range responsive.
+			// Tension intentionally follows the cooler complexity scale, so effects are milder too.
+			constexpr float COMPLEXITY_TENSION_CURVE = 0.8f;
+
+			// Pad voices react more gently to complexity tension than lead/bass (dissonance reads louder on pads)
+			constexpr float PAD_TENSION_SCALE = 0.45f;
+
 			bool isSongEmpty(const std::shared_ptr<SdfSong>& song)
 			{
 				if (!song)
@@ -84,11 +96,15 @@ namespace WeirdEngine
 			m_fillRatio = -1.0f;
 			m_tempoFromMotion = 1.0f;
 			m_volumeFromFill = 0.65f;
+			m_complexityLevel = 0.0f;
+			m_complexityNorm = 0.0f;
+			m_tensionFromComplexity = 0.0f;
 			m_sampleIndex = 0;
 			m_prevMotionDist = 0.0f;
 			m_hasPrevMotionSample = false;
 			m_domainFillSamples.fill(0.5f);
 			m_domainMotionSamples.fill(0.0f);
+			m_domainCurvatureSamples.fill(0.0f);
 			m_surgeLevel = 0.0f;
 			m_surgeTimer = 0.0f;
 			m_duckTimer = 0.0f;
@@ -212,6 +228,64 @@ namespace WeirdEngine
 			m_shapeParams.variation = std::clamp(0.20f + 0.45f * relVar + 0.25f * extSW, 0.15f, 0.90f);
 		}
 
+		float SdfMusicEngine::estimateSurfaceCurvature(const std::shared_ptr<IMathExpression>& shape, float* params,
+													   glm::vec2 samplePoint, float sampleDist)
+		{
+			constexpr float H = CURVATURE_STENCIL;
+
+			auto evalAt = [&](float px, float py) -> float
+			{
+				params[9] = px;
+				params[10] = py;
+				return shape->getValue(params);
+			};
+
+			auto gradientAt = [&](float px, float py, float& outX, float& outY)
+			{
+				outX = (evalAt(px + H, py) - evalAt(px - H, py)) / (2.0f * H);
+				outY = (evalAt(px, py + H) - evalAt(px, py - H)) / (2.0f * H);
+			};
+
+			// Iterative Newton projection onto the surface. A single step is exact for an
+			// ideal SDF, but repeated steps keep far samples accurate for non-unit gradients.
+			float px = samplePoint.x;
+			float py = samplePoint.y;
+			float dist = sampleDist;
+			for (int i = 0; i < CURVATURE_NEWTON_STEPS; ++i)
+			{
+				float gx = 0.0f;
+				float gy = 0.0f;
+				gradientAt(px, py, gx, gy);
+
+				float gradMag = std::sqrt(gx * gx + gy * gy);
+				if (!std::isfinite(gradMag) || gradMag < MIN_GRADIENT)
+					return 0.0f;
+
+				float step = std::clamp(dist, -DOMAIN_RADIUS * 0.5f, DOMAIN_RADIUS * 0.5f);
+				px -= (gx / gradMag) * step;
+				py -= (gy / gradMag) * step;
+				dist = evalAt(px, py);
+			}
+
+			// Mean curvature of the field: kappa = laplacian(f) / |grad f|
+			// (equals 1/R everywhere on a circle of radius R, hence complexity 0)
+			float fCenter = evalAt(px, py);
+			float fLeft = evalAt(px - H, py);
+			float fRight = evalAt(px + H, py);
+			float fDown = evalAt(px, py - H);
+			float fUp = evalAt(px, py + H);
+
+			float laplacian = (fLeft + fRight + fDown + fUp - 4.0f * fCenter) / (H * H);
+			float sgx = (fRight - fLeft) / (2.0f * H);
+			float sgy = (fUp - fDown) / (2.0f * H);
+			float surfaceGradMag = std::sqrt(sgx * sgx + sgy * sgy);
+			if (!std::isfinite(laplacian) || !std::isfinite(surfaceGradMag) || surfaceGradMag < MIN_GRADIENT)
+				return 0.0f;
+
+			float kappa = laplacian / surfaceGradMag;
+			return std::isfinite(kappa) ? kappa : 0.0f;
+		}
+
 		void SdfMusicEngine::initDomainSamples()
 		{
 			if (!m_currentSong || !m_currentSong->getRawShapeExpression())
@@ -229,6 +303,8 @@ namespace WeirdEngine
 			params[11] = 0.0f;
 
 			float totalFill = 0.0f;
+			float totalCurvature = 0.0f;
+			float totalCurvatureSq = 0.0f;
 			for (size_t i = 0; i < NUM_DOMAIN_SAMPLES && i < sampleOffsets.size(); ++i)
 			{
 				params[9] = sampleOffsets[i].x;
@@ -237,6 +313,12 @@ namespace WeirdEngine
 				float fillVal = (d < 0.0f) ? 1.0f : 0.0f;
 				m_domainFillSamples[i] = fillVal;
 				m_domainMotionSamples[i] = 0.0f;
+
+				float kappa = estimateSurfaceCurvature(shape, params, sampleOffsets[i], d);
+				m_domainCurvatureSamples[i] = kappa;
+				totalCurvature += kappa;
+				totalCurvatureSq += kappa * kappa;
+
 				totalFill += fillVal;
 			}
 
@@ -245,6 +327,16 @@ namespace WeirdEngine
 				m_fillRatio = totalFill / static_cast<float>(NUM_DOMAIN_SAMPLES);
 			}
 			m_volumeFromFill = std::clamp(0.40f + 0.60f * std::sqrt(std::max(0.0f, m_fillRatio)), 0.35f, 1.0f);
+
+			// Surface complexity: scale-normalized standard deviation of the sampled mean curvature.
+			// Constant curvature (circle/line) yields exactly 0 regardless of size.
+			float avgCurvature = totalCurvature / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			float variance =
+				std::max(0.0f, totalCurvatureSq / static_cast<float>(NUM_DOMAIN_SAMPLES) - avgCurvature * avgCurvature);
+			float characteristicRadius = DOMAIN_RADIUS * std::sqrt(std::max(m_fillRatio, 1e-3f));
+			m_complexityLevel = std::sqrt(variance) * characteristicRadius;
+			m_complexityNorm = m_complexityLevel / (m_complexityLevel + m_complexitySaturation);
+			m_tensionFromComplexity = std::pow(m_complexityNorm, COMPLEXITY_TENSION_CURVE);
 
 			m_motionNorm = std::clamp(m_motionLevel / 100.0f, 0.0f, 1.0f);
 			m_tempoFromMotion = 0.38f + 1.22f * std::pow(m_motionNorm, 1.25f);
@@ -309,18 +401,32 @@ namespace WeirdEngine
 			// Update the sampled position's inside/outside state
 			m_domainFillSamples[nextIndex] = (nextDist < 0.0f) ? 1.0f : 0.0f;
 
+			// 4. Surface complexity evaluation:
+			// Project the sampled point onto the surface and measure its mean curvature
+			m_domainCurvatureSamples[nextIndex] = estimateSurfaceCurvature(shape, params, nextPoint, nextDist);
+
 			// Running average across all domain sample points:
 			// Eliminates intra-song spatial oscillation for static shapes while adapting smoothly
 			float totalFill = 0.0f;
 			float totalMotion = 0.0f;
+			float totalCurvature = 0.0f;
+			float totalCurvatureSq = 0.0f;
 			for (size_t i = 0; i < NUM_DOMAIN_SAMPLES; ++i)
 			{
 				totalFill += m_domainFillSamples[i];
 				totalMotion += m_domainMotionSamples[i];
+
+				float kappa = m_domainCurvatureSamples[i];
+				totalCurvature += kappa;
+				totalCurvatureSq += kappa * kappa;
 			}
 
 			float avgFill = totalFill / static_cast<float>(NUM_DOMAIN_SAMPLES);
 			float avgMotion = totalMotion / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			float avgCurvature = totalCurvature / static_cast<float>(NUM_DOMAIN_SAMPLES);
+			float curvatureVariance =
+				std::max(0.0f, totalCurvatureSq / static_cast<float>(NUM_DOMAIN_SAMPLES) - avgCurvature * avgCurvature);
+			float curvatureStdDev = std::sqrt(curvatureVariance);
 
 			// Framerate-independent exponential moving average (~0.99 old / 0.01 new blend at 60 FPS)
 			float dt = std::clamp(static_cast<float>(deltaTime), 0.0001f, 0.1f);
@@ -328,6 +434,14 @@ namespace WeirdEngine
 
 			m_fillRatio += (avgFill - m_fillRatio) * blend;
 			m_motionLevel += (avgMotion - m_motionLevel) * blend;
+
+			// Surface complexity: spread of mean curvature normalized by the characteristic shape size.
+			// A perfect circle has constant curvature, so its standard deviation (and complexity) is 0.
+			float characteristicRadius = DOMAIN_RADIUS * std::sqrt(std::max(m_fillRatio, 1e-3f));
+			float rawComplexity = curvatureStdDev * characteristicRadius;
+			m_complexityLevel += (rawComplexity - m_complexityLevel) * blend;
+			m_complexityNorm = m_complexityLevel / (m_complexityLevel + m_complexitySaturation);
+			m_tensionFromComplexity = std::pow(m_complexityNorm, COMPLEXITY_TENSION_CURVE);
 
 			// Motion controls overall tempo:
 			// If motion == 0 (still): tempo drops to 0.38x
@@ -814,6 +928,10 @@ namespace WeirdEngine
 			float motionFactor = m_motionNorm;
 			float noteLengthMult = 1.6f - 0.6f * motionFactor;
 
+			// Surface complexity drives harmonic/timbral tension independently of tempo:
+			// identical motion can sound calm (smooth shape) or tense (intricate/noisy shape).
+			float tension = m_tensionFromComplexity;
+
 			// -------------------------------------------------------------
 			// Procedural Arrangement & Track Contrasts (16-Bar Macro Form)
 			// -------------------------------------------------------------
@@ -992,7 +1110,7 @@ namespace WeirdEngine
 					}
 
 					float cutoff = (420.0f + 380.0f * m_shapeParams.bassWeight) * (1.0f + 0.85f * m_surgeLevel) *
-								   (1.0f - 0.30f * m_ducking);
+								   (1.0f + 0.5f * tension) * (1.0f - 0.30f * m_ducking);
 					cutoff = (std::max)(150.0f, cutoff);
 					float dur = beatSec * 1.05f * noteLengthMult * (1.0f + 0.15f * m_ducking);
 					float vel = (0.72f + 0.23f * m_shapeParams.bassWeight) * (1.0f + 0.18f * m_surgeLevel) *
@@ -1025,6 +1143,9 @@ namespace WeirdEngine
 
 				if (triggerChord)
 				{
+					// Pads scale tension down: dissonance/beating is much more prominent on sustained voices
+					const float padTension = PAD_TENSION_SCALE * tension;
+
 					int chordSteps[4] = {0, 4, 2, 6};
 					int noteCount = 2;
 					if (m_ducking > 0.40f)
@@ -1034,9 +1155,9 @@ namespace WeirdEngine
 						chordSteps[1] = 4;
 						noteCount = 2;
 					}
-					else if (m_shapeParams.harmonyRichness >= 0.65f || m_surgeLevel > 0.50f)
+					else if (m_shapeParams.harmonyRichness >= 0.65f || m_surgeLevel > 0.50f || tension > 0.80f)
 					{
-						noteCount = 4; // 7th chord
+						noteCount = 4; // 7th chord (or forced dense cluster at extreme tension)
 					}
 					else if (m_shapeParams.harmonyRichness >= 0.35f || m_surgeLevel > 0.20f)
 					{
@@ -1046,9 +1167,9 @@ namespace WeirdEngine
 					float pans[4] = {-0.30f, 0.30f, -0.10f, 0.40f};
 					float dur = beatSec * 1.8f * noteLengthMult;
 					float vel = (0.28f + 0.22f * m_shapeParams.harmonyRichness) * (1.0f + 0.20f * m_surgeLevel);
-					// Filter opens up with surge (+2200Hz), warms and darkens with duck
+					// Filter opens up with surge (+2200Hz) and complexity tension; warms and darkens with duck
 					float cutoff = (700.0f + 1500.0f * m_shapeParams.brightness + 2200.0f * m_surgeLevel) *
-								   (1.0f - 0.35f * m_ducking);
+								   (1.0f + 1.2f * padTension) * (1.0f - 0.35f * m_ducking);
 					cutoff = (std::max)(210.0f, cutoff);
 
 					for (int i = 0; i < noteCount; ++i)
@@ -1065,6 +1186,19 @@ namespace WeirdEngine
 							freq *= (1.0f - 0.012f * m_ducking);
 						}
 						playNote(freq, vel, dur, 4, pans[i], cutoff);
+					}
+
+					// Complexity tension: semitone shadow voice creates slow beating against the chord
+					// (anxiety drone). It intentionally ignores the scale to guarantee dissonance.
+					if (tension > 0.15f)
+					{
+						int shadowDegree = bassDegree + chordSteps[noteCount - 1];
+						int shadowOctave = (m_shapeParams.brightness > 0.75f || m_surgeLevel > 0.50f) ? 0 : -1;
+						int shadowMidi = m_currentSong->getScaleDegreeMidi(shadowDegree, shadowOctave) +
+										 static_cast<int>(m_positivePitchOffset);
+						float shadowFreq = m_currentSong->midiToFrequency(shadowMidi) * 1.0594631f;
+						float shadowVel = vel * (0.10f + 0.50f * padTension);
+						playNote(shadowFreq, shadowVel, dur * 1.25f, 4, 0.35f, cutoff * (1.0f + 0.5f * padTension));
 					}
 				}
 			}
@@ -1168,14 +1302,26 @@ namespace WeirdEngine
 					}
 					else // Bar 3: Cadence Resolution
 					{
-						noteDegree = 0; // Resolve to tonic root
+						// Complexity tension denies resolution: suspend on the subdominant instead of the tonic
+						bool denyCadence = (tension > 0.60f && stepHash(step, 556) < (tension - 0.30f));
+						noteDegree = denyCadence ? 3 : 0;
 						octaveOffset = 0;
 					}
 
-					// Shape-driven variation (occasional ornamental passing neighbor tone)
-					if (m_shapeParams.variation > 0.45f && stepHash(step, 937) < (m_shapeParams.variation - 0.35f))
+					// Complexity tension: probabilistic high-register lift (agitated wails)
+					if (stepHash(step, 555) < 0.35f * tension)
 					{
-						noteDegree += (stepHash(step, 941) < 0.5f) ? 1 : -1;
+						octaveOffset += 1;
+					}
+
+					// Shape-driven variation (occasional ornamental passing neighbor tone),
+					// widened by complexity tension with larger jumps at extreme values
+					if ((m_shapeParams.variation > 0.45f && stepHash(step, 937) < (m_shapeParams.variation - 0.35f)) ||
+						(tension > 0.55f && stepHash(step, 937) < (tension - 0.35f)))
+					{
+						int jump = (tension > 0.75f && stepHash(step, 941) < 0.30f) ? 2 : 1;
+						bool up = (jump == 2) ? (stepHash(step, 943) < 0.5f) : (stepHash(step, 941) < 0.5f);
+						noteDegree += up ? jump : -jump;
 					}
 
 					int midi = m_currentSong->getScaleDegreeMidi(noteDegree, octaveOffset) +
@@ -1195,9 +1341,11 @@ namespace WeirdEngine
 
 					float freq = m_currentSong->midiToFrequency(midi);
 
-					if (m_detuneAmount > 0.001f)
+					// Complexity tension: out-of-tune wobble (alternating detune up to ~1% / 17 cents)
+					float wobble = (std::max)(m_detuneAmount, 0.010f * tension);
+					if (wobble > 0.001f)
 					{
-						freq *= (1.0f - m_detuneAmount * (step % 2 == 0 ? 1.0f : -1.0f));
+						freq *= (1.0f - wobble * (step % 2 == 0 ? 1.0f : -1.0f));
 					}
 
 					// Note duration: strong beats and cadence notes ring long and sing;
@@ -1216,11 +1364,14 @@ namespace WeirdEngine
 						noteBeats = 0.50f;
 					}
 
-					float dur = beatSec * noteBeats * noteLengthMult;
+					// Complexity tension clips notes into ominous staccato plucks at slow tempos
+					float dur = beatSec * noteBeats * noteLengthMult * (1.0f - 0.45f * tension);
 
-					// Warm analog cutoff: smooth singing presence without harsh upper sizzle
-					float cutoff = (1800.0f + 1400.0f * m_shapeParams.brightness) * (1.0f + 0.35f * m_surgeLevel);
-					cutoff = std::clamp(cutoff, 1000.0f, 6500.0f);
+					// Warm analog cutoff: smooth singing presence without harsh upper sizzle.
+					// Complexity tension opens the filter into a strained, biting presence.
+					float cutoff = (1800.0f + 1400.0f * m_shapeParams.brightness) * (1.0f + 0.35f * m_surgeLevel) *
+								   (1.0f + 1.2f * tension);
+					cutoff = std::clamp(cutoff, 1000.0f, 9000.0f);
 
 					// Dynamic velocity with headroom for saturation drive
 					float vel = (0.42f + 0.22f * m_shapeParams.melodyDensity) * (1.0f + 0.15f * m_surgeLevel);
@@ -1271,6 +1422,12 @@ namespace WeirdEngine
 					float kickPitch = (m_ducking > 0.35f) ? 48.0f : 60.0f; // Deep, heavy industrial thud
 					playNote(kickPitch, kickVel, 0.34f * (1.0f + 0.20f * m_ducking), 5, 0.0f,
 							 kickCutoff); // instrument 5 = Kick
+				}
+
+				// Complexity tension at low motion: slow "lub-dub" heartbeat pulse beneath the calm tempo
+				if (m_motionNorm < 0.35f && tension > 0.40f && stepInBar == 2)
+				{
+					playNote(48.0f, (0.42f + 0.30f * tension) * (1.0f + 0.12f * m_ducking), 0.30f, 5, 0.0f, 380.0f);
 				}
 
 				// Snare / Clap on beats 2 & 4 (step 4 and 12)
@@ -1334,6 +1491,13 @@ namespace WeirdEngine
 
 					playNote(8000.0f, vel, decay, 7, pan, cutoff); // instrument 7 = HiHat
 				}
+				else if (tension > 0.50f && (stepInBar % 2 == 1) && stepHash(step, 1301) < 1.2f * (tension - 0.50f))
+				{
+					// Complexity tension: quiet off-grid ghost hats rub against the slow grid
+					float vel = 0.12f * tension * (1.0f - 0.40f * m_ducking);
+					float pan = (step % 2 == 0) ? 0.22f : -0.22f;
+					playNote(8000.0f, vel, 0.035f, 7, pan, 9000.0f);
+				}
 
 				// Ghost percussion blip on offbeats
 				if (m_ducking <= 0.30f && (m_shapeParams.variation > 0.50f || m_surgeLevel > 0.30f) &&
@@ -1387,7 +1551,19 @@ namespace WeirdEngine
 			newVoice.rightGain = rightGain;
 			newVoice.filterCutoff =
 				(instrument >= 8) ? filterCutoff : (std::min)(filterCutoff, m_concussionFilterCutoff);
+
+			// Complexity tension adds strained resonance to sustaining voices (lead/pad, pads gentler)
+			const float tension = m_tensionFromComplexity;
+			const float padTension = PAD_TENSION_SCALE * tension;
 			newVoice.filterQ = (instrument == 0) ? 1.414f : 0.7071f;
+			if (instrument == 0)
+			{
+				newVoice.filterQ += 0.9f * tension;
+			}
+			else if (instrument == 4)
+			{
+				newVoice.filterQ += 0.9f * padTension;
+			}
 			newVoice.filterS1 = 0.0f;
 			newVoice.filterS2 = 0.0f;
 			newVoice.rngState =
@@ -1399,23 +1575,26 @@ namespace WeirdEngine
 			{
 				newVoice.waveType = m_rack.lead;
 				if (m_rack.lead == WaveType::FMPluck)
-					newVoice.waveParam = m_rack.fmModIndex;
+					newVoice.waveParam = m_rack.fmModIndex * (1.0f + 0.8f * tension);
 				else if (m_rack.lead == WaveType::PulseSquare)
-					newVoice.waveParam = m_rack.pulseWidth;
+					newVoice.waveParam = std::clamp(m_rack.pulseWidth - 0.15f * tension, 0.05f, 0.50f);
 				else if (m_rack.lead == WaveType::Wavefolder)
-					newVoice.waveParam = m_rack.foldDrive;
+					newVoice.waveParam = m_rack.foldDrive * (1.0f + 0.6f * tension);
 				else
 					newVoice.waveParam = 0.0f;
 			}
 			else if (instrument == 1) // Bass
 			{
 				newVoice.waveType = m_rack.bass;
-				newVoice.waveParam = (m_rack.bass == WaveType::PulseSquare) ? m_rack.pulseWidth : 0.0f;
+				newVoice.waveParam = (m_rack.bass == WaveType::PulseSquare)
+										 ? std::clamp(m_rack.pulseWidth - 0.15f * tension, 0.05f, 0.50f)
+										 : 0.0f;
 			}
 			else if (instrument == 4) // Pad
 			{
 				newVoice.waveType = m_rack.pad;
-				newVoice.waveParam = (m_rack.pad == WaveType::Wavefolder) ? m_rack.foldDrive : 0.0f;
+				newVoice.waveParam =
+					(m_rack.pad == WaveType::Wavefolder) ? m_rack.foldDrive * (1.0f + 0.6f * padTension) : 0.0f;
 			}
 			else
 			{
@@ -1525,11 +1704,14 @@ namespace WeirdEngine
 					float rawSample = 0.0f;
 					float currentFreq = voice.frequency;
 
-					// Singing delayed vibrato on held lead notes (gives warmth, soul, and vocal expression)
+					// Singing delayed vibrato on held lead notes (gives warmth, soul, and vocal expression).
+					// Complexity tension turns it into a faster, shallower nervous tremble.
 					if (voice.instrument == 0 && voice.time > 0.10f)
 					{
 						float vibOnset = std::clamp((voice.time - 0.10f) / 0.18f, 0.0f, 1.0f);
-						float vib = 0.016f * vibOnset * sinf(voice.time * 2.0f * static_cast<float>(M_PI) * 5.4f);
+						float vibRate = 5.4f * (1.0f + 1.6f * m_tensionFromComplexity);
+						float vibDepth = 0.016f * (1.0f - 0.4f * m_tensionFromComplexity);
+						float vib = vibDepth * vibOnset * sinf(voice.time * 2.0f * static_cast<float>(M_PI) * vibRate);
 						currentFreq *= (1.0f + vib);
 					}
 

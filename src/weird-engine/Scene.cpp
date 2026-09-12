@@ -757,6 +757,21 @@ namespace WeirdEngine
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
 	}
 
+	float AudioService::getComplexityLevel() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getComplexityLevel();
+	}
+
+	float AudioService::getComplexityNorm() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getComplexityNorm();
+	}
+
+	float AudioService::getTension() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTension();
+	}
+
 	float AudioService::getTempo() const
 	{
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTempo();
@@ -1175,6 +1190,7 @@ namespace WeirdEngine
 						ImGui::Spacing();
 						ImGui::ProgressBar(musicEngine.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
 						ImGui::ProgressBar(musicEngine.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
+						ImGui::ProgressBar(musicEngine.getComplexityNorm(), ImVec2(-1.0f, 0.0f), "Surface Complexity");
 						ImGui::TreePop();
 					}
 

@@ -707,6 +707,9 @@ namespace WeirdEngine
 		float getFillRatio() const;
 		float getTempoFromMotion() const;
 		float getVolumeFromFill() const;
+		float getComplexityLevel() const;
+		float getComplexityNorm() const;
+		float getTension() const;
 		float getTempo() const;
 		float getTimeBetweenBeats() const;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weird-audio/SdfSong.h"
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <memory>
@@ -210,6 +211,32 @@ namespace WeirdEngine
 				return m_volumeFromFill;
 			}
 
+			// Surface Complexity Inspection (scale-normalized curvature spread of the SDF surface)
+			float getComplexityLevel() const
+			{
+				return m_complexityLevel;
+			}
+			float getComplexityNorm() const
+			{
+				return m_complexityNorm;
+			}
+			float getComplexitySaturation() const
+			{
+				return m_complexitySaturation;
+			}
+			// Higher values make the normalized stat cooler (more headroom for complex shapes)
+			void setComplexitySaturation(float saturation)
+			{
+				m_complexitySaturation = std::max(0.1f, saturation);
+			}
+
+			// Tension derived from surface complexity: drives dissonance, brightness and
+			// articulation independently of motion (tempo). 0 = calm, 1 = tense.
+			float getTension() const
+			{
+				return m_tensionFromComplexity;
+			}
+
 			// Tempo & Beat Inspection
 			float getTempo() const;
 			float getTimeBetweenBeats() const;
@@ -256,11 +283,16 @@ namespace WeirdEngine
 			float m_fillRatio = 0.5f;
 			float m_tempoFromMotion = 1.0f;
 			float m_volumeFromFill = 0.65f;
+			float m_complexityLevel = 0.0f;
+			float m_complexityNorm = 0.0f;
+			float m_complexitySaturation = 20.0f;
+			float m_tensionFromComplexity = 0.0f;
 			size_t m_sampleIndex = 0;
 			float m_prevMotionDist = 0.0f;
 			bool m_hasPrevMotionSample = false;
 			std::array<float, NUM_DOMAIN_SAMPLES> m_domainFillSamples{};
 			std::array<float, NUM_DOMAIN_SAMPLES> m_domainMotionSamples{};
+			std::array<float, NUM_DOMAIN_SAMPLES> m_domainCurvatureSamples{};
 
 			// Dynamic Game Feedback State
 			float m_positiveTimer = 0.0f;
@@ -297,6 +329,8 @@ namespace WeirdEngine
 			void sampleShapeParameters();
 			void initDomainSamples();
 			void sampleDomainMotionAndFill(double sceneTime, double deltaTime = 0.016);
+			float estimateSurfaceCurvature(const std::shared_ptr<IMathExpression>& shape, float* params,
+										   glm::vec2 samplePoint, float sampleDist);
 			void on16thStep(int step);
 			void evaluateShapeDrivenAtStep(int step);
 			bool isTrackDead(MusicTrack track) const;

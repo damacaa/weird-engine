@@ -175,13 +175,10 @@ When rigid bodies collide with ground surfaces or other bodies:
 
 | Method | Effect on Procedural Audio |
 |---|---|
-| `setTension(float level)` | Increases synth filter cutoffs, adds syncopation, and sharpens melodic intervals (level: 0.0 to 1.0). |
-| `setEnergy(float level)` | Modulates tempo multiplier, increases drum velocity, and introduces chord inversions. |
-| `setHealth(float cur, float max)` | At low health ($<25\%$), muffles chord filters and introduces an audible sub-bass heartbeat ducking effect. |
 | `triggerPositiveFeedback(float intensity)` | Triggers a crisp, responsive mechanical click / thock tuned to the song scale for valid UI actions. |
 | `triggerNegativeFeedback(float intensity)` | Triggers a short, clear dissonant rejection buzzer tuned to the song scale for invalid UI actions. |
 | `triggerDeath()` | Sequentially shuts down tracks over 6–8 beats with natural note ring-out and zero abrupt voice cutting, fading into organic silence. |
-| `resetDynamicEffects()` | Instantly clears death, surge, ducking, and tension state, restoring normal playback. |
+| `resetDynamicEffects()` | Instantly clears death, surge, and ducking state, restoring normal playback. |
 | `surge(float amount)` | Temporarily boosts beat energy and drum prominence for dramatic moments. |
 | `duck(float amount)` | Ducks music volume during important dialogue or high-impact sound effects. |
 
@@ -293,18 +290,17 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `getVisualizationEntity()` | Returns the `Entity` ID of the active UI shape. |
 | `setSpatialAudioEnabled(bool enabled)` | Enables/disables listener-relative 3D spatial panning and distance attenuation. |
 | `playSound(const SimpleAudioRequest& audio)` | Pushes a one-shot sound request to the lock-free audio ring buffer. |
-| `setTension(float level)` | Sets gameplay tension (0.0 to 1.0) affecting arrangement density and filter cutoffs. |
-| `setEnergy(float level)` | Sets gameplay energy (0.0 to 1.0) affecting tempo and percussion intensity. |
-| `setHealth(float current, float max)` | Modulates low-pass filters and heartbeat effects based on player health. |
 | `surge(float amount = 0.5f)` | Temporarily surges music energy and volume. |
 | `duck(float amount = 0.5f)` | Ducks music volume during dialogue or important sound effects. |
 | `triggerPositiveFeedback(float intensity)` | Triggers a crisp, responsive mechanical click / thock for valid UI actions. |
 | `triggerNegativeFeedback(float intensity)` | Triggers a dissonant rejection buzzer for invalid UI actions. |
 | `triggerDeath()` | Triggers sequential track shutdown (Lead $\to$ Drums $\to$ Pad $\to$ Bass) fading into natural silence. |
-| `resetDynamicEffects()` | Clears death, surge, ducking, and tension state, restoring normal playback. |
+| `resetDynamicEffects()` | Clears death, surge, and ducking state, restoring normal playback. |
 | `getMotionLevel() const` | Returns current geometric motion level measured from the SDF shape. |
 | `getMotionNorm() const` | Returns normalized geometric motion level in [0.0, 1.0]. |
 | `getFillRatio() const` | Returns domain fill ratio (percentage of volume inside the shape). |
+| `getTempo() const` | Returns current dynamic playback tempo in BPM. |
+| `getTimeBetweenBeats() const` | Returns duration of one quarter-note beat in seconds ($60.0 / \text{BPM}$). |
 
 ### `WeirdAudio::SdfSong`
 

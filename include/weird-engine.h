@@ -53,6 +53,7 @@ namespace WeirdEngine
 {
 
 	using namespace WeirdRenderer;
+	using namespace WeirdAudio;
 
 	namespace Detail
 	{

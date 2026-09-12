@@ -707,6 +707,8 @@ namespace WeirdEngine
 		float getFillRatio() const;
 		float getTempoFromMotion() const;
 		float getVolumeFromFill() const;
+		float getTempo() const;
+		float getTimeBetweenBeats() const;
 
 		// Re-sample procedural shape parameters (call after updating shape variables in real time)
 		void resampleShape();
@@ -715,9 +717,6 @@ namespace WeirdEngine
 		void triggerPositiveFeedback(float intensity = 1.0f);
 		void triggerNegativeFeedback(float intensity = 1.0f);
 		void triggerDeath();
-		void setTension(float level);
-		void setEnergy(float level);
-		void setHealth(float current, float max);
 		void surge(float amount = 0.5f);
 		void duck(float amount = 0.5f);
 		void resetDynamicEffects();

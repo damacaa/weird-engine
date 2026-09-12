@@ -135,20 +135,6 @@ namespace WeirdEngine
 			void triggerNegativeFeedback(float intensity = 1.0f);
 			void triggerDeath();
 
-			void setTension(float level);
-			float getTension() const
-			{
-				return m_tension;
-			}
-
-			void setEnergy(float level);
-			float getEnergy() const
-			{
-				return m_energy;
-			}
-
-			void setHealth(float current, float max);
-
 			// Physics interaction: Ducking & Surge
 			void duck(float amount);
 			void surge(float amount = 0.5f);
@@ -175,6 +161,9 @@ namespace WeirdEngine
 			{
 				return m_rack;
 			}
+
+			static const char* getWaveTypeName(WaveType waveType);
+			static const char* getDrumKitName(int kit);
 
 			// Track Isolation & Muting
 			void setTrackEnabled(MusicTrack track, bool enabled);
@@ -220,6 +209,10 @@ namespace WeirdEngine
 			{
 				return m_volumeFromFill;
 			}
+
+			// Tempo & Beat Inspection
+			float getTempo() const;
+			float getTimeBetweenBeats() const;
 
 			// Current playhead position in beats
 			float getPlayheadBeat() const
@@ -270,9 +263,6 @@ namespace WeirdEngine
 			std::array<float, NUM_DOMAIN_SAMPLES> m_domainMotionSamples{};
 
 			// Dynamic Game Feedback State
-			float m_tension = 0.0f;
-			float m_energy = 0.5f;
-			float m_healthRatio = 1.0f;
 			float m_positiveTimer = 0.0f;
 			float m_positivePitchOffset = 0.0f;
 			float m_negativeTimer = 0.0f;

@@ -414,5 +414,38 @@ namespace WeirdEngine
 			return m_rootMidi + octave * 12 + intervals[degree];
 		}
 
+		const char* SdfSong::getScaleName(MusicalScale scale)
+		{
+			switch (scale)
+			{
+				case MusicalScale::PentatonicMajor:
+					return "Pentatonic Major";
+				case MusicalScale::PentatonicMinor:
+					return "Pentatonic Minor";
+				case MusicalScale::Major:
+					return "Major";
+				case MusicalScale::NaturalMinor:
+					return "Natural Minor";
+				case MusicalScale::Dorian:
+					return "Dorian";
+				case MusicalScale::Lydian:
+					return "Lydian";
+				case MusicalScale::Chromatic:
+					return "Chromatic";
+				default:
+					return "Unknown";
+			}
+		}
+
+		std::string SdfSong::midiToNoteString(int midi)
+		{
+			if (midi < 0 || midi > 127)
+				return "N/A";
+			const char* noteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+			int note = midi % 12;
+			int octave = (midi / 12) - 1;
+			return std::string(noteNames[note]) + std::to_string(octave);
+		}
+
 	} // namespace WeirdAudio
 } // namespace WeirdEngine

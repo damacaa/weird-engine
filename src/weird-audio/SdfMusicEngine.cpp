@@ -562,24 +562,6 @@ namespace WeirdEngine
 			}
 		}
 
-		void SdfMusicEngine::setTension(float level)
-		{
-			m_tension = std::clamp(level, 0.0f, 1.0f);
-		}
-
-		void SdfMusicEngine::setEnergy(float level)
-		{
-			m_energy = std::clamp(level, 0.0f, 1.0f);
-		}
-
-		void SdfMusicEngine::setHealth(float current, float max)
-		{
-			if (max > 0.001f)
-			{
-				m_healthRatio = std::clamp(current / max, 0.0f, 1.0f);
-			}
-		}
-
 		void SdfMusicEngine::duck(float amount)
 		{
 			m_ducking = (std::min)(1.0f, m_ducking + amount);
@@ -626,9 +608,6 @@ namespace WeirdEngine
 			m_pendingSurgeImpact = false;
 			m_surgeImpactCooldown = 0.0f;
 
-			m_tension = 0.0f;
-			m_energy = 0.5f;
-			m_healthRatio = 1.0f;
 			m_positiveTimer = 0.0f;
 			m_positivePitchOffset = 0.0f;
 			m_negativeTimer = 0.0f;
@@ -742,12 +721,12 @@ namespace WeirdEngine
 				m_deathSilenceTimer = 0.0f;
 			}
 
-			// 2. Tempo calculations based on song base tempo, motion-derived tempo, shape tempo factor, energy,
+			// 2. Tempo calculations based on song base tempo, motion-derived tempo, shape tempo factor,
 			// surge, and duck
 			float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
 			float surgeTempoMult = 1.0f + 0.18f * m_surgeLevel;
 			float duckTempoMult = 1.0f - 0.16f * m_ducking; // Noticeable heavy heartbeat drag (-16% max)
-			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * surgeTempoMult * duckTempoMult;
+			float dynamicTempo = baseTempo * surgeTempoMult * duckTempoMult;
 			if (dynamicTempo < 5.0f)
 				return;
 
@@ -820,7 +799,7 @@ namespace WeirdEngine
 		{
 			float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
 			float surgeTempoMult = 1.0f + 0.18f * m_surgeLevel;
-			float dynamicTempo = baseTempo * (0.85f + 0.30f * m_energy) * surgeTempoMult;
+			float dynamicTempo = baseTempo * surgeTempoMult;
 			float beatSec = 60.0f / (std::max)(20.0f, dynamicTempo);
 
 			int stepInBar = step % 16;		  // 16th note step in 4/4 bar (0..15)
@@ -1824,6 +1803,56 @@ namespace WeirdEngine
 			m_activeVoices.erase(std::remove_if(m_activeVoices.begin(), m_activeVoices.end(),
 												[](const MusicVoice& v) { return v.finished; }),
 								 m_activeVoices.end());
+		}
+
+		const char* SdfMusicEngine::getWaveTypeName(WaveType waveType)
+		{
+			switch (waveType)
+			{
+				case WaveType::SoftSine:
+					return "Soft Sine (Warm)";
+				case WaveType::BandlimitedSaw:
+					return "Bandlimited Saw (Bright)";
+				case WaveType::PulseSquare:
+					return "Pulse Square (Reedy)";
+				case WaveType::FMPluck:
+					return "FM Pluck (Bell/Metallic)";
+				case WaveType::Wavefolder:
+					return "Wavefolder (Buchla/Evolving)";
+				default:
+					return "Unknown";
+			}
+		}
+
+		const char* SdfMusicEngine::getDrumKitName(int kit)
+		{
+			switch (kit)
+			{
+				case 1:
+					return "Acoustic Punch";
+				case 2:
+					return "Industrial / 909";
+				case 0:
+				default:
+					return "Deep 808 Electronic";
+			}
+		}
+
+		float SdfMusicEngine::getTempo() const
+		{
+			if (!m_currentSong)
+				return 120.0f;
+
+			float baseTempo = m_currentSong->getTempo() * m_shapeParams.tempoFactor * m_tempoFromMotion;
+			float surgeTempoMult = 1.0f + 0.18f * m_surgeLevel;
+			float duckTempoMult = 1.0f - 0.16f * m_ducking;
+			float dynamicTempo = baseTempo * surgeTempoMult * duckTempoMult;
+			return (std::max)(5.0f, dynamicTempo);
+		}
+
+		float SdfMusicEngine::getTimeBetweenBeats() const
+		{
+			return 60.0f / getTempo();
 		}
 
 	} // namespace WeirdAudio

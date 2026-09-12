@@ -322,6 +322,25 @@ namespace WeirdEngine
 		return Expr(std::make_shared<Clamp>(v.node, lo.node, hi.node));
 	}
 
+	inline Expr ternary(const Expr& cond, const Expr& a, const Expr& b)
+	{
+		float vc, va, vb;
+		if (getConstantVal(cond.node, vc))
+		{
+			int icond = static_cast<int>(vc);
+			if (icond >= 1)
+			{
+				return a;
+			}
+			else
+			{
+				return b;
+			}
+		}
+
+		return Expr(std::make_shared<Ternary>(cond.node, a.node, b.node));
+	}
+
 	inline Expr mod(const Expr& a, const Expr& b)
 	{
 		float va, vb;

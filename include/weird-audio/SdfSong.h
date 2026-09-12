@@ -134,6 +134,8 @@ namespace WeirdEngine
 			}
 
 			// Scale & pitch helpers
+			static const char* getScaleName(MusicalScale scale);
+			static std::string midiToNoteString(int midi);
 			float midiToFrequency(int midiNote) const;
 			int getScaleDegreeMidi(int degreeIndex, int octaveOffset = 0) const;
 

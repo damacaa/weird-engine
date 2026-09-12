@@ -213,7 +213,10 @@ namespace WeirdEngine::Editor
 		if (isLeftDown && isHoveredInGap)
 		{
 			static float lastSpawnTime = 0.0f;
-			if (services.time().time() - lastSpawnTime > 0.05f)
+			float spawnInterval = services.audio().getTimeBetweenBeats() / 4.0f; // 16th-note subdivision
+			spawnInterval = std::clamp(spawnInterval, 0.03f, 0.5f);
+
+			if (services.time().time() - lastSpawnTime >= spawnInterval)
 			{
 				lastSpawnTime = services.time().time();
 

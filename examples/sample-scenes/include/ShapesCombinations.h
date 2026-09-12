@@ -196,8 +196,6 @@ private:
 			registry.setComponentDirty(cs);
 		}
 
-		services.audio().setTension(m_circleRadious / 10.0f);
-
 		float volume = WeirdAudio::AudioEngine::getInstance().getAudioData().currentVolume;
 		glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
 		float radius = 50.0f - (volume * 50.0f);	// Distance from center

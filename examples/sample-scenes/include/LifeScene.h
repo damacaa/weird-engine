@@ -48,7 +48,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined life song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

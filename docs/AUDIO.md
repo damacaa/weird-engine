@@ -4,7 +4,7 @@ Weird Engine features a fully synthesized procedural audio and music architectur
 
 Rather than relying on static, pre-recorded audio files (such as WAV or MP3 clips), audio in Weird Engine is procedurally generated in real time from **physical simulation dynamics** (collisions, sliding friction, velocity) and **mathematical Signed Distance Field (SDF) geometry**.
 
-Additionally, procedural music is tied to the engine's visual identity: every song's governing SDF shape is rendered in real time as a UI shape anchored in the **top-left corner of the screen**.
+Additionally, procedural music is tied to the engine's visual identity: a song's governing SDF shape can optionally be rendered in real time as a UI shape anchored in the **top-left corner of the screen**.
 
 ---
 
@@ -35,7 +35,7 @@ flowchart TD
 
     Scene -->|setSong / setSongParameter / playSound| AudioService
     AudioService -->|Push requests| RingBuffer
-    AudioService -->|Spawn visualization| Registry
+    AudioService -->|Spawn visualization (UI mode)| Registry
     AudioService -->|Update musical params| MusicEngine
     RingBuffer -->|Drain requests| PhysicsAudio
     MusicEngine -->|8 Synth Channels| Mixer
@@ -75,10 +75,10 @@ To prevent arbitrarily large shapes from distorting procedural analysis or filli
 - Compass probing and symmetry analysis occur at **`SAMPLE_RADIUS = 20.0f`**.
 
 ### 2.3 Universal Top-Left UI Alignment & `point()`
-Every song's governing shape is displayed as a UI element in the top-left corner of the screen:
+A song's governing shape can optionally be displayed as a UI element in the top-left corner of the screen:
 - **`point()`**: A canonical parameterless helper returning local coordinates centered at $(0, 0)$.
 - In procedural songs, `SdfSong` automatically applies domain bounding and maps screen/UI sample points so $(0, 0)$ is centered at the song's screen anchor.
-- Calling `services.audio().setSong(song)` automatically registers the shape in the UI pipeline as a `UIShape` entity.
+- `services.audio().setSong(song)` is **audio-only** by default. To display the shape, pass `SongVisualizationOptions{.mode = SongVisualizationMode::UI}`, which registers the shape in the UI pipeline as a `UIShape` entity. `SongVisualizationMode::World` is reserved for world-space songs (shape positioned in the SDF expression itself, listener-relative attenuation).
 
 ### 2.4 Surface Complexity Metric
 
@@ -258,7 +258,7 @@ private:
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		// 1. Start playback and spawn top-left UI visualization
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 	}
 };
 ```
@@ -272,6 +272,7 @@ songMat.color = glm::vec4(0.2f, 0.8f, 1.0f, 0.95f); // Glowing cyan
 
 // Pass options to setSong
 services.audio().setSong(createSceneSong(), {
+	.mode = SongVisualizationMode::UI,
 	.material = songMat.id,
 	.combination = CombinationType::Addition,
 	.group = 1
@@ -315,8 +316,8 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 
 | Method | Description |
 |---|---|
-| `setSong(std::shared_ptr<SdfSong> song, bool beatSynced = true)` | Starts playing a song and creates its top-left UI visualization. |
-| `setSong(std::shared_ptr<SdfSong> song, const SongVisualizationOptions& options, bool beatSynced = true)` | Starts playing with custom UI material and combination group. |
+| `setSong(std::shared_ptr<SdfSong> song, bool beatSynced = true)` | Starts playing a song (audio-only; no visualization is spawned). |
+| `setSong(std::shared_ptr<SdfSong> song, const SongVisualizationOptions& options, bool beatSynced = true)` | Starts playing with explicit visualization options. Returns the spawned `Entity`, or `INVALID_ENTITY` for `mode = None`. |
 | `setSongParameter(size_t index, float value)` | Updates a song parameter (0–7), syncing audio sampling and shader uniform buffers. |
 | `getVisualizationEntity()` | Returns the `Entity` ID of the active UI shape. |
 | `setSpatialAudioEnabled(bool enabled)` | Enables/disables listener-relative 3D spatial panning and distance attenuation. |

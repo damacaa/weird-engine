@@ -42,7 +42,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined mouse collision song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& baseMat = services.materials2D().createMaterial("dot_base");
 		baseMat.color = ColorPalette::Black;

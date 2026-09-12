@@ -93,6 +93,7 @@ namespace WeirdEngine::Editor
 		}
 
 		SongVisualizationOptions visualOptions;
+		visualOptions.mode = SongVisualizationMode::UI;
 		visualOptions.material = 0;
 		visualOptions.combination = CombinationType::Addition;
 		visualOptions.group = 0;

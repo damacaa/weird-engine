@@ -55,7 +55,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined rope song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& groundMat = services.materials2D().createMaterial("ground");
 		groundMat.color = ColorPalette::LightGray;

@@ -98,7 +98,7 @@ private:
 		background.scale = 0.15f;
 
 		// Initialize audio with scene-defined procedural SDF music
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

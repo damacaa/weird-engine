@@ -609,34 +609,61 @@ namespace WeirdEngine
 		auto songPtr = song;
 		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
 
-		if (shapes && registry && songPtr && songPtr->getShapeExpression())
+		if (m_visualizationEntity != INVALID_ENTITY && registry)
 		{
-			if (m_visualizationEntity != INVALID_ENTITY)
-			{
-				registry->destroyEntity(m_visualizationEntity);
-				m_visualizationEntity = INVALID_ENTITY;
-			}
-
-			ShapeId shapeId = shapes->registerSDF(songPtr->getShapeExpression());
-			UIShapeConfig config;
-			config.shapeId = shapeId;
-			config.material = visualOptions.material;
-			config.combination = visualOptions.combination;
-			config.group = visualOptions.group;
-			std::copy_n(songPtr->getParameters(), 8, config.variables.data);
-
-			m_visualizationEntity = shapes->addUIShape(config);
-
-			for (size_t i = 0; i < 8; ++i)
-			{
-				m_lastSyncedParams[i] = songPtr->getParameter(i);
-			}
-
-			return m_visualizationEntity;
+			registry->destroyEntity(m_visualizationEntity);
+			m_visualizationEntity = INVALID_ENTITY;
 		}
 
-		m_visualizationEntity = INVALID_ENTITY;
+		switch (visualOptions.mode)
+		{
+			case SongVisualizationMode::None:
+				break;
+			case SongVisualizationMode::UI:
+				if (shapes && registry && songPtr && songPtr->getShapeExpression())
+				{
+					return createUIVisualization(songPtr, visualOptions);
+				}
+				break;
+			case SongVisualizationMode::World:
+				// TODO(world songs): play a song anchored to a world-space SDF shape.
+				// No Transform is involved: the shape's position is baked into the registered SDF
+				// expression (world coordinates), exactly like UI mode bakes the screen anchor.
+				// The listener is the cameraEntity. Per frame:
+				//   1. Register the song shape as a world CustomShape (ShapeService::addShape) so it
+				//      renders through the 2D/3D world pipelines instead of the UI pipeline.
+				//   2. Sample that SDF at the cameraEntity position to obtain the distance: XY
+				//      distance with z = 0 in 2D scenes, full 3D distance in 3D scenes.
+				//   3. Map the distance to a gain that fades out as the listener moves away
+				//      (falloff radius/curve fields would extend SongVisualizationOptions).
+				//   4. Push the gain as a scalar into SdfMusicEngine, which stays ECS-agnostic.
+				// AudioService will need the camera entity wired in (similar to how RenderService
+				// exposes cameraEntity) to evaluate the listener position each frame.
+				break;
+		}
+
 		return INVALID_ENTITY;
+	}
+
+	Entity AudioService::createUIVisualization(const std::shared_ptr<WeirdAudio::SdfSong>& song,
+											   const SongVisualizationOptions& visualOptions)
+	{
+		ShapeId shapeId = shapes->registerSDF(song->getShapeExpression());
+		UIShapeConfig config;
+		config.shapeId = shapeId;
+		config.material = visualOptions.material;
+		config.combination = visualOptions.combination;
+		config.group = visualOptions.group;
+		std::copy_n(song->getParameters(), 8, config.variables.data);
+
+		m_visualizationEntity = shapes->addUIShape(config);
+
+		for (size_t i = 0; i < 8; ++i)
+		{
+			m_lastSyncedParams[i] = song->getParameter(i);
+		}
+
+		return m_visualizationEntity;
 	}
 
 	void AudioService::setSongParameter(size_t index, float value)

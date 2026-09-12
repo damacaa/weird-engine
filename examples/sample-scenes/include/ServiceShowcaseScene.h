@@ -154,7 +154,7 @@ namespace ServiceShowcase
 		services.debug().setDebugInput(true);
 
 		// Initialize audio with scene-defined showcase song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		// Materials through the provider
 		Material2D& floorMaterial = services.materials2D().createMaterial("floor");

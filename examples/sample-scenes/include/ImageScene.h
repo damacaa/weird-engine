@@ -38,7 +38,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined image song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		imagePath = services.resources().assetPath("jimmy.jpg");
 

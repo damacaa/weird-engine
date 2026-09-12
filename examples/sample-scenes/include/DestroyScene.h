@@ -46,7 +46,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined destroy song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		for (int i = 0; i < 8; ++i)
 		{

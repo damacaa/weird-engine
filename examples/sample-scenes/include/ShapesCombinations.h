@@ -57,7 +57,8 @@ private:
 		auto& songMat = services.materials2D().createMaterial("song_score");
 		songMat.color = vec4(ColorPalette::White, 0.25f);
 
-		Entity soundVisualization = services.audio().setSong(shapesSong, {.material = songMat});
+		Entity soundVisualization =
+			services.audio().setSong(shapesSong, {.mode = SongVisualizationMode::UI, .material = songMat});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::Gray;

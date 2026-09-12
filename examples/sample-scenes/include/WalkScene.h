@@ -51,7 +51,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined walk song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& background = services.render().getBackground();
 		background.type = BackgroundType::Sky;

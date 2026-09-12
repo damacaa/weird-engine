@@ -32,7 +32,7 @@ private:
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined collision handling song
-		services.audio().setSong(createSceneSong());
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::LightGray;

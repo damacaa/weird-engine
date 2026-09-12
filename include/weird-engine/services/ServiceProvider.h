@@ -278,8 +278,16 @@ namespace WeirdEngine
 		int group = 0;
 	};
 
+	enum class SongVisualizationMode
+	{
+		None,
+		UI,
+		World,
+	};
+
 	struct SongVisualizationOptions
 	{
+		SongVisualizationMode mode = SongVisualizationMode::None;
 		ShapeMaterial material = -1;
 		CombinationType combination = CombinationType::Addition;
 		int group = 0;
@@ -723,6 +731,10 @@ namespace WeirdEngine
 		void surge(float amount = 0.5f);
 		void duck(float amount = 0.5f);
 		void resetDynamicEffects();
+
+	private:
+		Entity createUIVisualization(const std::shared_ptr<WeirdAudio::SdfSong>& song,
+									 const SongVisualizationOptions& visualOptions);
 	};
 
 	struct TagService

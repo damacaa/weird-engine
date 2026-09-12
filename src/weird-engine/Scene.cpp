@@ -688,21 +688,6 @@ namespace WeirdEngine
 		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerDeath();
 	}
 
-	void AudioService::setTension(float level)
-	{
-		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setTension(level);
-	}
-
-	void AudioService::setEnergy(float level)
-	{
-		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setEnergy(level);
-	}
-
-	void AudioService::setHealth(float current, float max)
-	{
-		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setHealth(current, max);
-	}
-
 	void AudioService::surge(float amount)
 	{
 		WeirdAudio::AudioEngine::getInstance().getMusicEngine().surge(amount);
@@ -770,6 +755,16 @@ namespace WeirdEngine
 	float AudioService::getVolumeFromFill() const
 	{
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
+	}
+
+	float AudioService::getTempo() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTempo();
+	}
+
+	float AudioService::getTimeBetweenBeats() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTimeBetweenBeats();
 	}
 
 	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
@@ -1151,78 +1146,158 @@ namespace WeirdEngine
 					musicEngine.setVolume(musicVol);
 				}
 
-				float tension = musicEngine.getTension();
-				if (ImGui::SliderFloat("Tension", &tension, 0.0f, 1.0f, "%.2f"))
-				{
-					musicEngine.setTension(tension);
-				}
-
-				float energy = musicEngine.getEnergy();
-				if (ImGui::SliderFloat("Energy", &energy, 0.0f, 1.0f, "%.2f"))
-				{
-					musicEngine.setEnergy(energy);
-				}
-
 				auto currentSong = musicEngine.getCurrentSong();
 				if (currentSong)
 				{
 					ImGui::Text("Active Song: %s", currentSong->getName().c_str());
-					ImGui::Text("Beat: %.1f | Motion: %.2f | Fill: %.2f", musicEngine.getPlayheadBeat(),
-								musicEngine.getMotionLevel(), musicEngine.getFillRatio());
-
-					if (ImGui::TreeNode("Shape Musical Parameters"))
+					if (ImGui::Button("Resample Shape"))
 					{
-						const auto& params = musicEngine.getShapeParameters();
-						ImGui::Text("Tempo Factor:      %.2fx", params.tempoFactor);
-						ImGui::Text("Melody Density:    %.2f", params.melodyDensity);
-						ImGui::Text("Harmony Richness:  %.2f", params.harmonyRichness);
-						ImGui::Text("Bass Weight:       %.2f", params.bassWeight);
-						ImGui::Text("Percussion Energy: %.2f", params.percEnergy);
-						ImGui::Text("Brightness:        %.2f", params.brightness);
-						ImGui::Text("Syncopation:       %.2f", params.syncopation);
-						ImGui::Text("Variation:         %.2f", params.variation);
+						m_services.audio().resampleShape();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("Musical Properties", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						ImGui::Text("Scale:  %s", WeirdAudio::SdfSong::getScaleName(currentSong->getScale()));
+						ImGui::Text("Tempo:  %.1f BPM", currentSong->getTempo());
+						ImGui::Text("Root:   %s (MIDI %d)",
+									WeirdAudio::SdfSong::midiToNoteString(currentSong->getRootMidi()).c_str(),
+									currentSong->getRootMidi());
+
+						const auto& p = musicEngine.getShapeParameters();
+						ImGui::Spacing();
+						ImGui::Text("Melody Density:  %.2f", p.melodyDensity);
+						ImGui::Text("Harmony Richness:%.2f", p.harmonyRichness);
+						ImGui::Text("Bass Weight:     %.2f", p.bassWeight);
+						ImGui::Text("Brightness:      %.2f", p.brightness);
+						ImGui::Text("Syncopation:     %.2f", p.syncopation);
+
+						ImGui::Spacing();
+						ImGui::ProgressBar(musicEngine.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
+						ImGui::ProgressBar(musicEngine.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("Instrument Rack (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						const auto& rack = musicEngine.getInstrumentRack();
+						ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
+
+						auto renderTrackStatusBadge = [&](WeirdAudio::MusicTrack track)
+						{
+							auto state = musicEngine.getTrackPlayState(track);
+							const char* label = "[Playing]";
+							ImVec4 color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+							switch (state)
+							{
+								case WeirdAudio::TrackPlayState::Playing:
+									label = "[Playing]";
+									color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Paused:
+									label = "[Breakdown]";
+									color = ImVec4(0.9f, 0.8f, 0.3f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Ducked:
+									label = "[Ducked]";
+									color = ImVec4(0.6f, 0.5f, 0.9f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Surged:
+									label = "[Surged]";
+									color = ImVec4(1.0f, 0.6f, 0.1f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Dead:
+									label = "[Dead]";
+									color = ImVec4(0.85f, 0.25f, 0.25f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Muted:
+								default:
+									label = "[Muted]";
+									color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+									break;
+							}
+							float badgeColWidth = ImGui::CalcTextSize("[Breakdown]").x + 8.0f;
+							float startX = ImGui::GetCursorPosX();
+							ImGui::TextColored(color, "%s", label);
+							ImGui::SameLine(startX + badgeColWidth);
+						};
+
+						float trackNameColWidth =
+							(std::max)({ImGui::CalcTextSize("Lead Wave:").x, ImGui::CalcTextSize("Bass Wave:").x,
+										ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
+							8.0f;
+
+						bool leadEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Lead);
+						if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Lead, leadEnabled);
+						}
+						ImGui::SameLine();
+						float startXLead = ImGui::GetCursorPosX();
+						ImGui::Text("Lead Wave:");
+						ImGui::SameLine(startXLead + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Lead);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.lead));
+
+						bool bassEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Bass);
+						if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Bass, bassEnabled);
+						}
+						ImGui::SameLine();
+						float startXBass = ImGui::GetCursorPosX();
+						ImGui::Text("Bass Wave:");
+						ImGui::SameLine(startXBass + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Bass);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.bass));
+
+						bool padEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Pad);
+						if (ImGui::Checkbox("##pad_toggle", &padEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Pad, padEnabled);
+						}
+						ImGui::SameLine();
+						float startXPad = ImGui::GetCursorPosX();
+						ImGui::Text("Pad Wave:");
+						ImGui::SameLine(startXPad + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Pad);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.pad));
+
+						bool drumsEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Drums);
+						if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Drums, drumsEnabled);
+						}
+						ImGui::SameLine();
+						float startXDrums = ImGui::GetCursorPosX();
+						ImGui::Text("Drum Kit:");
+						ImGui::SameLine(startXDrums + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Drums);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getDrumKitName(rack.drumKit));
+
+						ImGui::Spacing();
+						ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
+						ImGui::Text("Pulse Width: %.2f", rack.pulseWidth);
+						ImGui::Text("FM Mod Index:%.2f", rack.fmModIndex);
+						ImGui::Text("Fold Drive:  %.2f", rack.foldDrive);
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("AST Topology Fingerprint", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						const auto& fp = currentSong->getFingerprint();
+						ImGui::Text("Structural Seed: 0x%08X", fp.structuralHash);
+						ImGui::Text("Total Operators: %d", fp.nodeCount);
+						ImGui::Text("Tree Depth:      %d", fp.maxDepth);
+						ImGui::Text("Branching Nodes: %d", fp.branchCount);
 						ImGui::TreePop();
 					}
 				}
 				else
 				{
 					ImGui::TextDisabled("No active song");
-				}
-
-				if (ImGui::Button("Resample Shape"))
-				{
-					m_services.audio().resampleShape();
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Surge"))
-				{
-					musicEngine.surge(0.6f);
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Duck"))
-				{
-					musicEngine.duck(0.5f);
-				}
-
-				// Dynamic Feedback Triggers
-				if (ImGui::Button("Positive (Click)"))
-				{
-					musicEngine.triggerPositiveFeedback(1.0f);
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Negative (Error)"))
-				{
-					musicEngine.triggerNegativeFeedback(1.0f);
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Death Trigger"))
-				{
-					musicEngine.triggerDeath();
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Reset All Effects"))
-				{
-					musicEngine.resetDynamicEffects();
 				}
 				ImGui::Unindent();
 			}

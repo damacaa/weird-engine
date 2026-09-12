@@ -366,6 +366,16 @@ namespace WeirdEngine::Editor
 		REGISTER_TERNARY_OP(NodeCategory::MathTernary, "clamp", "Clamp", "v", "min", "max", 0.0f, 0.0f, 1.0f,
 							WeirdEngine::clamp, "clamp(" + in[0] + ", " + in[1] + ", " + in[2] + ")");
 
+		registerNode(NodeDef{
+			"ternary",
+			"Ternary (cond ? A : B)",
+			NodeCategory::MathTernary,
+			{{"cond", PinType::Float, 0.0f}, {"a", PinType::Float, 0.0f}, {"b", PinType::Float, 0.0f}},
+			{{"out", PinType::Float}},
+			[](const auto& in, const auto&)
+			{ return NodeValue(WeirdEngine::ternary(asFloat(in[0]), asFloat(in[1]), asFloat(in[2]))); },
+			[](const auto& in, const auto&) { return "ternary(" + in[0] + ", " + in[1] + ", " + in[2] + ")"; }});
+
 		// =====================================================================
 		// 9. 3D Primitives
 		// =====================================================================

@@ -39,7 +39,7 @@ tools/sdf-node-editor/
     * **CSG & Modifiers**: `union`, `subtraction`, `intersection`, `smooth_union`, `smooth_subtraction`, `smooth_intersection`.
     * **Math (Unary)**: `abs`, `negate`, `sin`, `cos`, `sqrt`, `floor`, `fract`.
     * **Math (Binary)**: `add`, `subtract`, `multiply`, `divide`, `min`, `max`, `pow`.
-    * **Math (Ternary)**: `clamp`, `mix` (linear interpolation), `smoothstep`.
+    * **Math (Ternary)**: `clamp`, `ternary` (condition >= 1 ? A : B), `mix` (linear interpolation), `smoothstep`.
     * **Output**: `sdf_output` (root sink for evaluated shape).
   * Each node definition registers an `evaluate` callback mapping pin values to engine `Expr` / `Vec2Expr` nodes.
 

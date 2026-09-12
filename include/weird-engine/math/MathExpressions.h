@@ -681,6 +681,30 @@ namespace WeirdEngine
 			}
 		};
 
+		// Ternary Operator: condition >= 1 (int cast) ? a : b
+		// valueA: condition (cast to int, true if >= 1)
+		// valueB: true value (a)
+		// valueC: false value (b)
+		struct Ternary : ThreeFloatOperation
+		{
+			using ThreeFloatOperation::ThreeFloatOperation;
+
+			WEIRD_MATH_CLONE_THREE(Ternary)
+
+			[[nodiscard]]
+			float getValue(const float* parameters) const override
+			{
+				int cond = static_cast<int>(valueA->getValue(parameters));
+				return (cond >= 1) ? valueB->getValue(parameters) : valueC->getValue(parameters);
+			}
+
+			[[nodiscard]]
+			std::string printWithChildren(const std::vector<std::string>& c) const override
+			{
+				return "((" + c[0] + " >= 1.0) ? " + c[1] + " : " + c[2] + ")";
+			}
+		};
+
 		inline constexpr float fOpUnionSoft(float a, float b, float r)
 		{
 			float h = std::max(r - std::abs(a - b), 0.0f);
@@ -743,6 +767,7 @@ namespace WeirdEngine
 	using detail::FloatVariable;
 	using detail::fOpSubSoft;
 	using detail::fOpUnionSoft;
+	using detail::Ternary;
 
 	using Scale = detail::Multiplication;
 	using SDFScale = Scale;

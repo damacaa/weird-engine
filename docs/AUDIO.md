@@ -210,8 +210,8 @@ When rigid bodies collide with ground surfaces or other bodies:
 | `triggerNegativeFeedback(float intensity)` | Triggers a short, clear dissonant rejection buzzer tuned to the song scale for invalid UI actions. |
 | `triggerDeath()` | Sequentially shuts down tracks over 6–8 beats with natural note ring-out and zero abrupt voice cutting, fading into organic silence. |
 | `resetDynamicEffects()` | Instantly clears death, surge, and ducking state, restoring normal playback. |
-| `surge(float amount)` | Temporarily boosts beat energy and drum prominence for dramatic moments. |
-| `duck(float amount)` | Ducks music volume during important dialogue or high-impact sound effects. |
+| `surge(float amount)` | Temporarily boosts beat energy and drum prominence for dramatic moments. Level fades in rapidly (~60 ms) with a beat-synced impact accent. |
+| `duck(float amount)` | Ducks music volume during important dialogue or high-impact sound effects. Level fades in rapidly (~100 ms) while ringing lead voices fade out linearly over ~125 ms (click-free). |
 
 ### Sequential Death Sequence (Organic Decay & Natural Silence)
 When `triggerDeath()` is called:

@@ -27,6 +27,11 @@ namespace WeirdEngine
 			// Pad voices react more gently to complexity tension than lead/bass (dissonance reads louder on pads)
 			constexpr float PAD_TENSION_SCALE = 0.45f;
 
+			// Dynamic effect attack: fast but smooth fade-in (seconds to ~63% of target)
+			constexpr float DUCK_ATTACK_TIME = 0.10f;
+			constexpr float SURGE_ATTACK_TIME = 0.06f;
+			constexpr float LEAD_DUCK_FADE_RATE = 8.0f; // Full lead fade-out in ~125 ms
+
 			bool isSongEmpty(const std::shared_ptr<SdfSong>& song)
 			{
 				if (!song)
@@ -106,7 +111,10 @@ namespace WeirdEngine
 			m_domainMotionSamples.fill(0.0f);
 			m_domainCurvatureSamples.fill(0.0f);
 			m_surgeLevel = 0.0f;
+			m_surgeTarget = 0.0f;
 			m_surgeTimer = 0.0f;
+			m_ducking = 0.0f;
+			m_duckTarget = 0.0f;
 			m_duckTimer = 0.0f;
 			m_pendingSurgeImpact = false;
 			m_surgeImpactCooldown = 0.0f;
@@ -678,37 +686,38 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::duck(float amount)
 		{
-			m_ducking = (std::min)(1.0f, m_ducking + amount);
+			m_duckTarget = (std::min)(1.0f, m_duckTarget + amount);
 			// Peak hold: sustained danger hold (up to 8.0s)
 			m_duckTimer = (std::min)(8.0f, (std::max)(m_duckTimer, 2.5f) + amount * 3.5f);
-			m_surgeLevel = (std::max)(0.0f, m_surgeLevel - amount * 0.8f);
+			m_surgeTarget = (std::max)(0.0f, m_surgeTarget - amount * 0.8f);
 			m_surgeTimer = 0.0f;
 
 			// Immediately mark Lead as Ducked
 			m_trackPlayStates[static_cast<size_t>(MusicTrack::Lead)] = TrackPlayState::Ducked;
 
-			// Truncate any ringing lead voices immediately (rapid fade-out to prevent pop)
+			// Fade out any ringing lead voices smoothly over ~125 ms instead of truncating
+			// their decay envelope (which caused audible pops on big ducks)
 			for (auto& voice : m_activeVoices)
 			{
 				if (voice.instrument == 0) // Lead
 				{
-					voice.decay = (std::min)(voice.decay, 0.05f);
+					voice.fadeRate = (std::max)(voice.fadeRate, LEAD_DUCK_FADE_RATE);
 				}
 			}
 		}
 
 		void SdfMusicEngine::surge(float amount)
 		{
-			m_ducking = (std::max)(0.0f, m_ducking - amount * 0.8f);
+			m_duckTarget = (std::max)(0.0f, m_duckTarget - amount * 0.8f);
 			m_duckTimer = 0.0f;
 
 			// If surge was low, schedule a beat-synced impact accent on the next beat downbeat
-			if (m_surgeLevel < 0.25f && m_surgeImpactCooldown <= 0.0f)
+			if (m_surgeTarget < 0.25f && m_surgeImpactCooldown <= 0.0f)
 			{
 				m_pendingSurgeImpact = true;
 			}
 
-			m_surgeLevel = (std::min)(1.0f, m_surgeLevel + amount);
+			m_surgeTarget = (std::min)(1.0f, m_surgeTarget + amount);
 			// Peak hold: sustained hold on hits (up to 6.0s), before slow linear decay begins
 			m_surgeTimer = (std::min)(6.0f, (std::max)(m_surgeTimer, 1.8f) + amount * 2.5f);
 		}
@@ -716,8 +725,10 @@ namespace WeirdEngine
 		void SdfMusicEngine::resetDynamicEffects()
 		{
 			m_ducking = 0.0f;
+			m_duckTarget = 0.0f;
 			m_duckTimer = 0.0f;
 			m_surgeLevel = 0.0f;
+			m_surgeTarget = 0.0f;
 			m_surgeTimer = 0.0f;
 			m_pendingSurgeImpact = false;
 			m_surgeImpactCooldown = 0.0f;
@@ -793,20 +804,36 @@ namespace WeirdEngine
 			{
 				m_surgeTimer = (std::max)(0.0f, m_surgeTimer - dt);
 			}
-			else if (m_surgeLevel > 0.0f)
+			else if (m_surgeTarget > 0.0f)
 			{
 				// Smooth slow decay from 1.0 to 0.0 over ~14-15 seconds (dt * 0.07f)
-				m_surgeLevel = (std::max)(0.0f, m_surgeLevel - dt * 0.07f);
+				m_surgeTarget = (std::max)(0.0f, m_surgeTarget - dt * 0.07f);
 			}
 
 			if (m_duckTimer > 0.0f)
 			{
 				m_duckTimer = (std::max)(0.0f, m_duckTimer - dt);
 			}
-			else if (m_ducking > 0.0f)
+			else if (m_duckTarget > 0.0f)
 			{
 				// Smooth recovery over ~26-28 seconds
-				m_ducking = (std::max)(0.0f, m_ducking - dt * 0.038f);
+				m_duckTarget = (std::max)(0.0f, m_duckTarget - dt * 0.038f);
+			}
+
+			// Rapid-but-smooth attack: the audible levels chase their targets instead of
+			// jumping, so duck/surge fade in without clicks or abrupt timbre changes
+			float attackDt = std::clamp(dt, 0.0f, 0.1f);
+			float duckAttack = 1.0f - std::exp(-attackDt / DUCK_ATTACK_TIME);
+			float surgeAttack = 1.0f - std::exp(-attackDt / SURGE_ATTACK_TIME);
+			m_ducking += (m_duckTarget - m_ducking) * duckAttack;
+			m_surgeLevel += (m_surgeTarget - m_surgeLevel) * surgeAttack;
+			if (m_ducking < 1e-4f)
+			{
+				m_ducking = 0.0f;
+			}
+			if (m_surgeLevel < 1e-4f)
+			{
+				m_surgeLevel = 0.0f;
 			}
 
 			if (m_surgeImpactCooldown > 0.0f)
@@ -1693,13 +1720,28 @@ namespace WeirdEngine
 				float a1 = 1.0f / (1.0f + g * (g + k));
 				float a2 = g * a1;
 
+				const float fadeStep = voice.fadeRate / sampleRateF;
+
 				for (uint32_t i = 0; i < frameCount; ++i)
 				{
+					// Forced fade-out (ducking): linear gain ramp to avoid envelope discontinuities
+					if (voice.fadeRate > 0.0f)
+					{
+						voice.fadeGain -= fadeStep;
+						if (voice.fadeGain <= 0.0f)
+						{
+							voice.fadeGain = 0.0f;
+							voice.finished = true;
+							break;
+						}
+					}
+
 					float env = voice.amplitude * expf(-voice.time / voice.decay);
 					if (voice.time < attackTime)
 					{
 						env *= (voice.time / attackTime);
 					}
+					env *= voice.fadeGain;
 
 					float rawSample = 0.0f;
 					float currentFreq = voice.frequency;

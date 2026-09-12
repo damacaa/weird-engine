@@ -89,6 +89,8 @@ namespace WeirdEngine
 			float filterQ = 0.7071f;		// Resonance Q (0.7071 = Butterworth flat, >1.0 = resonant peak)
 			float filterS1 = 0.0f;			// 2-pole SVF state 1
 			float filterS2 = 0.0f;			// 2-pole SVF state 2
+			float fadeGain = 1.0f;			// Forced fade-out gain (ducking), linear
+			float fadeRate = 0.0f;			// Per-second fadeGain decrease; 0 = no forced fade
 			uint32_t rngState = 123456789u; // Per-voice fast lock-free XorShift32 RNG
 		};
 
@@ -307,7 +309,9 @@ namespace WeirdEngine
 
 			// Ducking & Surge
 			float m_ducking = 0.0f;
+			float m_duckTarget = 0.0f;
 			float m_surgeLevel = 0.0f;
+			float m_surgeTarget = 0.0f;
 			float m_surgeTimer = 0.0f;
 			float m_duckTimer = 0.0f;
 			bool m_pendingSurgeImpact = false;

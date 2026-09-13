@@ -460,7 +460,7 @@ namespace ServiceShowcase
 			}
 		}
 
-		services.audio().playSound({0.05f, 300.0f, false, vec3(0.0f), 1});
+		services.audio().playSound({0.05f, 300.0f, true, vec3(event.raw.position, 0.0f), 1});
 	}
 
 	// --------------------------------------------------- onEntityShapeCollision
@@ -472,7 +472,7 @@ namespace ServiceShowcase
 		State& state = getState(registry, services);
 		state.shapeCollisions++;
 
-		if (event.entity != INVALID_ENTITY)
+		if (event.entity != INVALID_ENTITY && event.raw.state != CollisionState::END)
 		{
 			float frequency = 200.0f + static_cast<float>(state.shapeCollisions % 40) * 5.0f;
 			services.audio().playSound({0.04f, frequency, true, vec3(event.raw.position, 0.0f), 1});

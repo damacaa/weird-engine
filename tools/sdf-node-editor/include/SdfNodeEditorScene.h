@@ -214,8 +214,8 @@ namespace WeirdEngine::Editor
 					}
 					if (uiSelected)
 						ImGui::PopStyleColor();
-					ImGui::End();
 				}
+				ImGui::End();
 
 				ImGui::PopStyleVar(3);
 				ImGui::PopStyleColor(2);

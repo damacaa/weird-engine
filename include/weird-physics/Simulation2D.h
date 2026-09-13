@@ -69,15 +69,15 @@ namespace WeirdEngine
 
 	struct PhysicsShapeCollisionEvent
 	{
-		CollisionState state;
-		SimulationID body;
-		ShapeId shape;
-		float penetration;
-		float friction;
-		float absortion;
-		vec2 position;
-		vec2 velocity;
-		vec2 normal;
+		CollisionState state = CollisionState::END;
+		SimulationID body = 0;
+		ShapeId shape = 0;
+		float penetration = 0.0f;
+		float friction = 0.0f;
+		float absortion = 0.0f;
+		vec2 position = vec2(0.0f);
+		vec2 velocity = vec2(0.0f);
+		vec2 normal = vec2(0.0f);
 	};
 
 	// Define the function pointer type and include a user data pointer
@@ -225,9 +225,17 @@ namespace WeirdEngine
 		{
 			m_gravity = gravity;
 		}
+		float getGravity() const
+		{
+			return m_gravity;
+		}
 		void setDamping(float damping)
 		{
 			m_damping = damping;
+		}
+		float getDamping() const
+		{
+			return m_damping;
 		}
 
 		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps

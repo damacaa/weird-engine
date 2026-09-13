@@ -1,6 +1,7 @@
 #pragma once
 
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-renderer/core/Display.h"
 #include <cmath>
 #include <glm/glm.hpp>
 #include <memory>
@@ -176,6 +177,12 @@ namespace WeirdEngine
 		{
 		}
 
+		Vec2Expr(const glm::vec2& v)
+			: x(v.x)
+			, y(v.y)
+		{
+		}
+
 		friend Vec2Expr operator+(const Vec2Expr& a, const Vec2Expr& b)
 		{
 			return {a.x + b.x, a.y + b.y};
@@ -204,10 +211,9 @@ namespace WeirdEngine
 	namespace SystemParams
 	{
 		constexpr uint8_t TIME = 8;
-		constexpr uint8_t WORLD_X = 9;
-		constexpr uint8_t WORLD_Y = 10;
-		constexpr uint8_t UI_X = 11;
-		constexpr uint8_t UI_Y = 12;
+		constexpr uint8_t POINT_X = 9;
+		constexpr uint8_t POINT_Y = 10;
+		constexpr uint8_t AUDIO_VOLUME = 11;
 	} // namespace SystemParams
 
 	inline Expr var(int index)
@@ -220,14 +226,19 @@ namespace WeirdEngine
 		return var(SystemParams::TIME);
 	}
 
-	inline Vec2Expr worldPoint()
+	inline Expr audioVolume()
 	{
-		return {var(SystemParams::WORLD_X), var(SystemParams::WORLD_Y)};
+		return var(SystemParams::AUDIO_VOLUME);
 	}
 
-	inline Vec2Expr uiPoint()
+	inline Vec2Expr point()
 	{
-		return {var(SystemParams::UI_X), var(SystemParams::UI_Y)};
+		return {var(SystemParams::POINT_X), var(SystemParams::POINT_Y)};
+	}
+
+	inline Vec2Expr samplePoint()
+	{
+		return point();
 	}
 
 	// =========================================================================
@@ -311,6 +322,25 @@ namespace WeirdEngine
 		return Expr(std::make_shared<Clamp>(v.node, lo.node, hi.node));
 	}
 
+	inline Expr ternary(const Expr& cond, const Expr& a, const Expr& b)
+	{
+		float vc, va, vb;
+		if (getConstantVal(cond.node, vc))
+		{
+			int icond = static_cast<int>(vc);
+			if (icond >= 1)
+			{
+				return a;
+			}
+			else
+			{
+				return b;
+			}
+		}
+
+		return Expr(std::make_shared<Ternary>(cond.node, a.node, b.node));
+	}
+
 	inline Expr mod(const Expr& a, const Expr& b)
 	{
 		float va, vb;
@@ -381,6 +411,9 @@ namespace WeirdEngine
 
 	namespace SDF
 	{
+		using WeirdEngine::point;
+		using WeirdEngine::samplePoint;
+
 		// --- Transforms ---
 
 		inline Vec2Expr translate(const Vec2Expr& p, const Vec2Expr& offset)
@@ -398,6 +431,18 @@ namespace WeirdEngine
 		inline Vec2Expr mirrorX(const Vec2Expr& p)
 		{
 			return {abs(p.x), p.y};
+		}
+
+		inline Vec2Expr repeat(const Vec2Expr& p, const Expr& spacing)
+		{
+			return {mod(p.x + spacing * 0.5f, spacing) - spacing * 0.5f,
+					mod(p.y + spacing * 0.5f, spacing) - spacing * 0.5f};
+		}
+
+		inline Vec2Expr repeat(const Vec2Expr& p, const Expr& spacingX, const Expr& spacingY)
+		{
+			return {mod(p.x + spacingX * 0.5f, spacingX) - spacingX * 0.5f,
+					mod(p.y + spacingY * 0.5f, spacingY) - spacingY * 0.5f};
 		}
 
 		// --- CSG & Domain Operations ---
@@ -430,6 +475,16 @@ namespace WeirdEngine
 		inline Expr sdfErode(const Expr& d, const Expr& radius)
 		{
 			return d + radius;
+		}
+
+		inline Expr sdfScale(const Expr& a, const Expr& b)
+		{
+			return a * b;
+		}
+
+		inline Expr scale(const Expr& a, const Expr& b)
+		{
+			return sdfScale(a, b);
 		}
 
 		inline Expr sdfSmoothUnion(const Expr& a, const Expr& b, const Expr& radius)

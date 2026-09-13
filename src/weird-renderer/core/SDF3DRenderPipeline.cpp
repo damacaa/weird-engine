@@ -5,6 +5,7 @@
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
 #endif
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/Profiler.h"
 
 #ifndef SHADERS_PATH
@@ -82,6 +83,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_viewProjection", camera.cameraMatrix);
 			m_sdfShader.setUniform("u_fov", shaderFov);
 			m_sdfShader.setUniform("u_time", (float)time);
+			m_sdfShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 			m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
 			for (int i = 0; i < 16; i++)
 			{

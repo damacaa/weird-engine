@@ -89,7 +89,7 @@ void main()
 	float mask = color.z;
 
 	float aspectRatio = u_resolution.x / u_resolution.y;
-	float zoom = -u_camMatrix[3].z;
+	float zoom = max(-u_camMatrix[3].z, 0.001);
 	vec2 uv = (2.0 * screenUV) - 1.0;
 	uv.x *= aspectRatio;
 	vec2 worldPos = (zoom * uv) - u_camMatrix[3].xy;
@@ -104,7 +104,7 @@ void main()
 
 #ifdef MATERIAL_BLENDING
 	// Get current material color
-	float oldZoom = -u_oldCamMatrix[3].z;
+	float oldZoom = max(-u_oldCamMatrix[3].z, 0.001);
 	float zoomRatio = zoom / oldZoom;
 	vec2 prevTexCoord;
 	prevTexCoord.x = zoomRatio * (screenUV.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);

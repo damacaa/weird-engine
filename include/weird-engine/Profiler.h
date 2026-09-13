@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace WeirdEngine
@@ -196,6 +197,7 @@ namespace WeirdEngine
 				m_lastFrameStats.clear();
 				m_currentIndex = 0;
 				m_currentDepth = 0;
+				m_stickyOthersParents.clear();
 				m_pendingReportRecordingEnable = false;
 				WeirdEngine::Logger::log("Profiler started report recording...");
 			}
@@ -208,6 +210,7 @@ namespace WeirdEngine
 				m_lastFrameStats.clear();
 				m_currentIndex = 0;
 				m_currentDepth = 0;
+				m_stickyOthersParents.clear();
 				m_pendingRealtimeEnable = false;
 			}
 			else if (m_pendingRealtimeDisable)
@@ -230,6 +233,7 @@ namespace WeirdEngine
 				m_stats.clear(); // clear any partial accumulations
 				m_currentIndex = 0;
 				m_currentDepth = 0;
+				m_stickyOthersParents.clear();
 				m_pendingResume = false;
 			}
 
@@ -371,9 +375,12 @@ namespace WeirdEngine
 					double unaccountedMs = stat.totalTimeMs - childrenTotalMs;
 					double unaccountedPctOfScope =
 						stat.totalTimeMs > 0.0 ? (unaccountedMs / stat.totalTimeMs) * 100.0 : 0.0;
-					if (unaccountedPctOfScope > m_unaccountedThresholdPct)
+					bool sticky = m_stickyOthersParents.contains((int)i);
+					if (unaccountedPctOfScope > m_unaccountedThresholdPct || sticky)
 					{
-						outStats.push_back({"Others", stat.depth + 1, unaccountedMs, stat.count, stat.parentIndex});
+						m_stickyOthersParents.insert((int)i);
+						outStats.push_back(
+							{"Others", stat.depth + 1, std::max(0.0, unaccountedMs), stat.count, stat.parentIndex});
 					}
 				}
 
@@ -407,6 +414,7 @@ namespace WeirdEngine
 		int m_currentIndex = 0;
 		int m_currentDepth = 0;
 		double m_unaccountedThresholdPct = 5.0;
+		std::unordered_set<int> m_stickyOthersParents;
 	};
 
 	class ProfilerScope

@@ -2,6 +2,7 @@
 
 #include <random>
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -12,6 +13,30 @@ class ShapeCombinatiosScene : public Scene2D
 {
 public:
 	ShapeCombinatiosScene() {}
+
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		// Local coordinate p centered at (0, 0)
+		Vec2Expr p = point();
+
+		// Shape parameters (scaled 10x for UI):
+		// var(0): Outer radius (default 30.0f)
+		// var(1): Spike amplitude (default 5.0f)
+		// var(2): Star points count / spokes (default 8.0f)
+		// var(3): Angular rotation speed (default 1.5f)
+		Expr star = sdStar(p, Expr(var(0)), Expr(var(1)), Expr(var(2)), Expr(var(3)));
+
+		auto song = WeirdAudio::SdfSong::create("star_song", star);
+
+		// Default parameter values for CPU audio evaluation and shader
+		song->setParameter(0, 30.0f); // Outer radius
+		song->setParameter(1, 5.0f);  // Spike amplitude
+		song->setParameter(2, 8.0f);  // Star points (4/4 groove)
+		song->setParameter(3, 0.5f);  // Angular rotation speed
+
+		return song;
+	}
 
 private:
 	Entity m_circle = INVALID_ENTITY;
@@ -24,6 +49,16 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize SDF procedural music with the shape-driven star song and directly create its UI visualization
+		// shape
+		auto shapesSong = createSceneSong();
+
+		auto& songMat = services.materials2D().createMaterial("song_score");
+		songMat.color = vec4(ColorPalette::White, 0.25f);
+
+		Entity soundVisualization =
+			services.audio().setSong(shapesSong, {.mode = SongVisualizationMode::UI, .material = songMat});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::Gray;
@@ -162,7 +197,7 @@ private:
 			registry.setComponentDirty(cs);
 		}
 
-		float volume = AudioEngine::getInstance().getAudioData().currentVolume;
+		float volume = WeirdAudio::AudioEngine::getInstance().getAudioData().currentVolume;
 		glm::vec2 center = glm::vec2(75.0f, 75.0f); // Screen center X, Y
 		float radius = 50.0f - (volume * 50.0f);	// Distance from center
 		float speed = 1.0f;							// How fast they rotate

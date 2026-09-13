@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -25,12 +26,29 @@ class LifeScene : public Scene2D
 public:
 	LifeScene() {};
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		// Organic cellular cluster (smooth-blended multi-circle organism) (scaled 10x for UI)
+		Expr c1 = sdCircle(translate(p, Vec2Expr(sin(time()) * 30.0f, 0.0f)), 12.0f);
+		Expr c2 = sdCircle(translate(p, Vec2Expr(0.0f, sin(time()) * 30.0f)), 12.0f);
+
+		Expr lifeShape = sdfSmoothUnion(c1, c2, 6.0f);
+
+		return WeirdAudio::SdfSong::create("life", lifeShape);
+	}
+
 private:
 	// Inherited via Scene
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined life song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

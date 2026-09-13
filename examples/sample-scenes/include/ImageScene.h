@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -12,6 +13,19 @@ class ImageScene : public Scene2D
 public:
 	ImageScene() {};
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		// Picture frame rectangular shape blended with circular aperture (scaled 10x for UI)
+		Expr frame = sdBox(p, Vec2Expr(25.0f, 18.0f));
+		Expr aperture = sdCircle(p, 15.0f);
+		Expr imageShape = sdfSmoothUnion(frame, aperture, 4.0f);
+
+		return WeirdAudio::SdfSong::create("image", imageShape);
+	}
+
 private:
 	std::string binaryString;
 	std::string filePath = "cache/image.txt";
@@ -22,6 +36,10 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined image song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
+
 		imagePath = services.resources().assetPath("jimmy.jpg");
 
 		// Check if the folder exists

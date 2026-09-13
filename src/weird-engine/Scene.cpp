@@ -1,5 +1,10 @@
 #include "weird-engine/Scene.h"
+#include "weird-audio/AudioEngine.h"
 #include "weird-engine/SceneManager.h"
+
+#include <array>
+#include <cmath>
+#include <cstdio>
 
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
@@ -185,6 +190,7 @@ namespace WeirdEngine
 		m_services.tags().tag(m_mainCamera, "mainCamera");
 		Transform& t = m_registry.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
+		t.position = vec3(0.0f, 0.0f, 35.0f);
 		ECS::Camera& c = m_registry.addComponent<ECS::Camera>(m_mainCamera);
 
 		// If a .weird file path was provided (via setSceneFilePath / registerScene),
@@ -199,6 +205,9 @@ namespace WeirdEngine
 		{
 			sys(m_registry, m_services);
 		}
+
+		// Refresh simulation SDFs in case onStart registered custom SDFs
+		m_simulation2D.setSDFs(m_sdfs);
 
 		switch (m_renderMode)
 		{
@@ -246,6 +255,7 @@ namespace WeirdEngine
 
 		{
 			PROFILE_SCOPE("Physics synchronization");
+			m_simulation2D.setAudioVolume(WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			if (m_debugInput)
@@ -274,6 +284,78 @@ namespace WeirdEngine
 
 			auto rigidBodies = m_registry.getComponentArray<RigidBody2D>();
 
+			// Start a new friction aggregation frame: bump the stamp and reset the
+			// touched list (accumulators are validated by stamp, never cleared).
+			++m_frictionFrameStamp;
+			if (m_frictionFrameStamp == 0)
+			{
+				for (auto& acc : m_frictionAccumulators)
+				{
+					acc.stamp = 0;
+				}
+				m_frictionFrameStamp = 1;
+			}
+			m_touchedFrictionBodies.clear();
+
+			// Candidate impact collection for the frame: debounce resting jitter per body,
+			// and keep only the loudest impacts per frame so bursts of thousands of contacts
+			// don't thrash the voice pool or cause audio crackling.
+			constexpr size_t MAX_IMPACTS_PER_FRAME = 8;
+			constexpr float IMPACT_DEBOUNCE_SECONDS = 0.040f;
+			const float simTime = static_cast<float>(m_simulation2D.getSimulationTime());
+
+			struct CandidateImpact
+			{
+				WeirdAudio::SimpleAudioRequest request;
+				float intensity = 0.0f;
+			};
+			std::array<CandidateImpact, MAX_IMPACTS_PER_FRAME> candidateImpacts;
+			size_t candidateImpactCount = 0;
+
+			auto addCandidateImpact = [&](const WeirdAudio::SimpleAudioRequest& req, float intensity)
+			{
+				if (candidateImpactCount < MAX_IMPACTS_PER_FRAME)
+				{
+					size_t i = candidateImpactCount++;
+					while (i > 0 && candidateImpacts[i - 1].intensity < intensity)
+					{
+						candidateImpacts[i] = candidateImpacts[i - 1];
+						--i;
+					}
+					candidateImpacts[i] = {req, intensity};
+				}
+				else if (intensity > candidateImpacts[candidateImpactCount - 1].intensity)
+				{
+					size_t i = candidateImpactCount - 1;
+					while (i > 0 && candidateImpacts[i - 1].intensity < intensity)
+					{
+						candidateImpacts[i] = candidateImpacts[i - 1];
+						--i;
+					}
+					candidateImpacts[i] = {req, intensity};
+				}
+			};
+
+			auto canTriggerImpact = [&](SimulationID body) -> bool
+			{
+				size_t idx = static_cast<size_t>(body);
+				if (idx >= m_bodyLastImpactTime.size())
+				{
+					m_bodyLastImpactTime.resize(idx + 1, -1.0f);
+				}
+				return (simTime - m_bodyLastImpactTime[idx]) >= IMPACT_DEBOUNCE_SECONDS;
+			};
+
+			auto markImpactTriggered = [&](SimulationID body)
+			{
+				size_t idx = static_cast<size_t>(body);
+				if (idx >= m_bodyLastImpactTime.size())
+				{
+					m_bodyLastImpactTime.resize(idx + 1, -1.0f);
+				}
+				m_bodyLastImpactTime[idx] = simTime;
+			};
+
 			for (auto& ev : collisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
@@ -282,6 +364,23 @@ namespace WeirdEngine
 				for (auto& sys : m_entityCollisionSystems)
 				{
 					sys(m_registry, m_services, entityEvent);
+				}
+
+				float relSpeed = glm::length(ev.relativeVelocity);
+				float impactIntensity = std::clamp(relSpeed * 0.08f + ev.impulse * 0.04f, 0.0f, 1.0f);
+				if (impactIntensity > 0.025f)
+				{
+					if (canTriggerImpact(ev.bodyA) || canTriggerImpact(ev.bodyB))
+					{
+						markImpactTriggered(ev.bodyA);
+						markImpactTriggered(ev.bodyB);
+
+						WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
+							vec3(ev.position, 0.0f), impactIntensity,
+							WeirdAudio::SimpleAudioRequest::ImpactType::BodyBody, m_collisionSoundVolume);
+
+						addCandidateImpact(req, impactIntensity);
+					}
 				}
 			}
 
@@ -294,31 +393,100 @@ namespace WeirdEngine
 					sys(m_registry, m_services, entityEvent);
 				}
 
-				const float m_soundFalloff = 0.1f;
-				bool spatialAudio = false;
-				auto camPosition = getCamera().position;
-				float speed = glm::length2(ev.velocity);
-				float distanceMultiplier =
-					1.0f / (1.0f + (m_soundFalloff * glm::distance2(camPosition, vec3(ev.position, 0.0f))));
-				float frictionSample = ev.friction * 0.01f * speed * (spatialAudio ? distanceMultiplier : 1.0f);
+				if (m_enableFrictionSound && ev.state != CollisionState::END)
+				{
+					// Aggregate per body so each sliding rigidbody becomes one
+					// continuous friction source with a stable id, instead of a
+					// single global source that jumps around.
+					float coef = ev.friction * 0.08f * m_frictionSoundMultiplier;
+					if (coef > 0.0f)
+					{
+						size_t bodyIndex = static_cast<size_t>(ev.body);
+						if (bodyIndex >= m_frictionAccumulators.size())
+						{
+							m_frictionAccumulators.resize(bodyIndex + 1);
+						}
 
-				m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
+						FrictionBodyAccumulator& acc = m_frictionAccumulators[bodyIndex];
+						if (acc.stamp != m_frictionFrameStamp)
+						{
+							acc = FrictionBodyAccumulator{};
+							acc.stamp = m_frictionFrameStamp;
+							m_touchedFrictionBodies.push_back(ev.body);
+						}
+
+						// Level is coef * speed; keep everything squared until the
+						// per-body finalize so no square roots are needed per contact.
+						acc.maxCoef = std::max(acc.maxCoef, coef);
+						acc.speedSq = std::max(acc.speedSq, glm::length2(ev.velocity));
+						acc.weightedPosition += vec3(ev.position, 0.0f) * coef;
+						acc.weightSum += coef;
+					}
+				}
 
 				if (ev.state == CollisionState::START)
 				{
+					float normalSpeed = std::abs(glm::dot(ev.normal, ev.velocity));
 					float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
-					float volume = penetrationFactor;
+					float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
 
-					float freqFactor = std::abs(glm::dot(ev.normal, (ev.velocity)));
-					freqFactor *= 0.01f;
-					float frequency = 200.0f + (freqFactor * 300.0f);
+					if (impactIntensity > 0.02f && canTriggerImpact(ev.body))
+					{
+						markImpactTriggered(ev.body);
 
-					playSound(WeirdRenderer::SimpleAudioRequest{volume, frequency, false, vec3(ev.position, 0.0f)});
+						WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
+							vec3(ev.position, 0.0f), impactIntensity, WeirdAudio::SimpleAudioRequest::ImpactType::Shape,
+							m_collisionSoundVolume);
+
+						addCandidateImpact(req, impactIntensity);
+					}
 				}
 			}
 
-			m_frictionSoundLevelRead.store(m_frictionSoundLevel, std::memory_order_release);
-			m_frictionSoundLevel = 0.0f;
+			// Push the loudest debounced impacts into the audio queue for this frame
+			for (size_t i = 0; i < candidateImpactCount; ++i)
+			{
+				m_audioQueue.push(candidateImpacts[i].request);
+			}
+
+			// Finalize per-body sources: one sqrt per contacted body (not per
+			// contact), plus a single sqrt for the UI level.
+			m_frictionSources.clear();
+			float frameMaxLevelSq = 0.0f;
+			for (SimulationID body : m_touchedFrictionBodies)
+			{
+				const FrictionBodyAccumulator& acc = m_frictionAccumulators[static_cast<size_t>(body)];
+				if (acc.weightSum <= 0.0f)
+					continue;
+
+				const float levelSq = acc.maxCoef * acc.maxCoef * acc.speedSq;
+				if (levelSq <= 0.0001f)
+					continue;
+				frameMaxLevelSq = std::max(frameMaxLevelSq, levelSq);
+
+				WeirdAudio::FrictionSource source;
+				source.id = body;
+				source.position = acc.weightedPosition / acc.weightSum;
+				source.level = std::sqrt(levelSq);
+				m_frictionSources.push_back(source);
+			}
+
+			// The physics thread steps at a fixed rate and the render loop can run
+			// faster, so some frames drain no collision events at all. Hold the last
+			// level with a short time-based decay so the debug UI sees a continuous
+			// signal instead of 0/value flicker.
+			constexpr float FRICTION_HOLD_TAU = 0.08f;
+			float holdDecay = std::exp(-static_cast<float>(delta) / FRICTION_HOLD_TAU);
+			float frameMaxLevel = frameMaxLevelSq > 0.0f ? std::sqrt(frameMaxLevelSq) : 0.0f;
+			m_frictionSoundLevelHold = std::max(frameMaxLevel, m_frictionSoundLevelHold * holdDecay);
+
+			float finalFriction = m_enableFrictionSound
+									  ? (m_overrideFrictionSound ? m_manualFrictionLevel : m_frictionSoundLevelHold)
+									  : 0.0f;
+			m_frictionSoundLevelRead.store(finalFriction, std::memory_order_release);
+
+			m_frictionLevelHistory[m_frictionHistoryHead] = std::clamp(finalFriction, 0.0f, 1.0f);
+			m_frictionHistoryHead = (m_frictionHistoryHead + 1) % FRICTION_LEVEL_HISTORY_SIZE;
 		}
 
 		{
@@ -404,18 +572,21 @@ namespace WeirdEngine
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, false>(
 			m_registry, m_2DWorldRenderContext, shader, m_sdfs);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, true>(m_registry, m_3DWorldRenderContext,
 																					 shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
+		m_simulation2D.setSDFs(m_sdfs);
 		SDFShaderGenerationSystem::update<UIShape, SDFRenderSystemContext, false>(m_registry, m_UIRenderContext, shader,
 																				  m_sdfs);
 	}
@@ -454,7 +625,7 @@ namespace WeirdEngine
 
 	// AUDIO
 
-	AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
+	AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& Scene::getAudioQueue()
 	{
 		return m_audioQueue;
 	}
@@ -462,11 +633,6 @@ namespace WeirdEngine
 	float Scene::getFrictionSound()
 	{
 		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
-	}
-
-	void Scene::playSound(const WeirdRenderer::SimpleAudioRequest& audio)
-	{
-		m_audioQueue.push(audio);
 	}
 
 	// Serialization
@@ -496,7 +662,7 @@ namespace WeirdEngine
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
 		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
 		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
-		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead)
+		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
@@ -533,6 +699,228 @@ namespace WeirdEngine
 				scene.m_serializationBlacklist.insert(entity);
 		}
 		return loadedTags;
+	}
+
+	void AudioService::setSpatialAudioEnabled(bool enabled)
+	{
+		WeirdAudio::AudioEngine::getInstance().setSpatialAudioEnabled(enabled);
+	}
+
+	bool AudioService::isSpatialAudioEnabled() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().isSpatialAudioEnabled();
+	}
+
+	WeirdAudio::SdfMusicEngine& AudioService::music()
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine();
+	}
+
+	void AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced)
+	{
+		SongVisualizationOptions defaultVisualOptions;
+		setSong(std::move(song), defaultVisualOptions, beatSynced);
+	}
+
+	Entity AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song,
+								 const SongVisualizationOptions& visualOptions, bool beatSynced)
+	{
+		auto songPtr = song;
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
+
+		if (m_visualizationEntity != INVALID_ENTITY && registry)
+		{
+			registry->destroyEntity(m_visualizationEntity);
+			m_visualizationEntity = INVALID_ENTITY;
+		}
+
+		switch (visualOptions.mode)
+		{
+			case SongVisualizationMode::None:
+				break;
+			case SongVisualizationMode::UI:
+				if (shapes && registry && songPtr && songPtr->getShapeExpression())
+				{
+					return createUIVisualization(songPtr, visualOptions);
+				}
+				break;
+			case SongVisualizationMode::World:
+				// TODO(world songs): play a song anchored to a world-space SDF shape.
+				// No Transform is involved: the shape's position is baked into the registered SDF
+				// expression (world coordinates), exactly like UI mode bakes the screen anchor.
+				// The listener is the cameraEntity. Per frame:
+				//   1. Register the song shape as a world CustomShape (ShapeService::addShape) so it
+				//      renders through the 2D/3D world pipelines instead of the UI pipeline.
+				//   2. Sample that SDF at the cameraEntity position to obtain the distance: XY
+				//      distance with z = 0 in 2D scenes, full 3D distance in 3D scenes.
+				//   3. Map the distance to a gain that fades out as the listener moves away
+				//      (falloff radius/curve fields would extend SongVisualizationOptions).
+				//   4. Push the gain as a scalar into SdfMusicEngine, which stays ECS-agnostic.
+				// AudioService will need the camera entity wired in (similar to how RenderService
+				// exposes cameraEntity) to evaluate the listener position each frame.
+				break;
+		}
+
+		return INVALID_ENTITY;
+	}
+
+	Entity AudioService::createUIVisualization(const std::shared_ptr<WeirdAudio::SdfSong>& song,
+											   const SongVisualizationOptions& visualOptions)
+	{
+		ShapeId shapeId = shapes->registerSDF(song->getShapeExpression());
+		UIShapeConfig config;
+		config.shapeId = shapeId;
+		config.material = visualOptions.material;
+		config.combination = visualOptions.combination;
+		config.group = visualOptions.group;
+		std::copy_n(song->getParameters(), 8, config.variables.data);
+
+		m_visualizationEntity = shapes->addUIShape(config);
+
+		for (size_t i = 0; i < 8; ++i)
+		{
+			m_lastSyncedParams[i] = song->getParameter(i);
+		}
+
+		return m_visualizationEntity;
+	}
+
+	void AudioService::setSongParameter(size_t index, float value)
+	{
+		if (index >= 8)
+			return;
+
+		auto curSong = WeirdAudio::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+		if (curSong)
+		{
+			curSong->setParameter(index, value);
+		}
+
+		m_lastSyncedParams[index] = value;
+
+		if (m_visualizationEntity != INVALID_ENTITY && registry &&
+			registry->hasComponent<UIShape>(m_visualizationEntity))
+		{
+			auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
+			ui.parameters[index] = value;
+			registry->setComponentDirty(ui);
+		}
+
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resampleShape();
+	}
+
+	void AudioService::queueSong(std::shared_ptr<WeirdAudio::SdfSong> song)
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().queueSong(std::move(song));
+	}
+
+	void AudioService::triggerPositiveFeedback(float intensity)
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerPositiveFeedback(intensity);
+	}
+
+	void AudioService::triggerNegativeFeedback(float intensity)
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerNegativeFeedback(intensity);
+	}
+
+	void AudioService::triggerDeath()
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().triggerDeath();
+	}
+
+	void AudioService::surge(float amount)
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().surge(amount);
+	}
+
+	void AudioService::duck(float amount)
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().duck(amount);
+	}
+
+	void AudioService::resetDynamicEffects()
+	{
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resetDynamicEffects();
+	}
+
+	void AudioService::resampleShape()
+	{
+		if (m_visualizationEntity != INVALID_ENTITY && registry &&
+			registry->hasComponent<UIShape>(m_visualizationEntity))
+		{
+			auto curSong = WeirdAudio::AudioEngine::getInstance().getMusicEngine().getCurrentSong();
+			if (curSong)
+			{
+				auto& ui = registry->getComponent<UIShape>(m_visualizationEntity);
+				for (size_t i = 0; i < 8; ++i)
+				{
+					if (curSong->getParameter(i) != m_lastSyncedParams[i])
+					{
+						ui.parameters[i] = curSong->getParameter(i);
+						registry->setComponentDirty(ui);
+						m_lastSyncedParams[i] = curSong->getParameter(i);
+					}
+					else if (ui.parameters[i] != m_lastSyncedParams[i])
+					{
+						curSong->setParameter(i, ui.parameters[i]);
+						m_lastSyncedParams[i] = ui.parameters[i];
+					}
+				}
+			}
+		}
+
+		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resampleShape();
+	}
+
+	float AudioService::getMotionLevel() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getMotionLevel();
+	}
+
+	float AudioService::getMotionNorm() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getMotionNorm();
+	}
+
+	float AudioService::getFillRatio() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getFillRatio();
+	}
+
+	float AudioService::getTempoFromMotion() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTempoFromMotion();
+	}
+
+	float AudioService::getVolumeFromFill() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getVolumeFromFill();
+	}
+
+	float AudioService::getComplexityLevel() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getComplexityLevel();
+	}
+
+	float AudioService::getComplexityNorm() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getComplexityNorm();
+	}
+
+	float AudioService::getTension() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTension();
+	}
+
+	float AudioService::getTempo() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTempo();
+	}
+
+	float AudioService::getTimeBetweenBeats() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTimeBetweenBeats();
 	}
 
 	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
@@ -578,11 +966,12 @@ namespace WeirdEngine
 				if (shape.distanceFieldId >= sdfs.size())
 					continue;
 
-				float parameters[11];
+				float parameters[12];
 				std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
 				parameters[8] = time;
 				parameters[9] = p.x;
 				parameters[10] = p.y;
+				parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 
 				float dist = sdfs[shape.distanceFieldId]->getValue(parameters);
 				float currentMinDistance = d;
@@ -748,13 +1137,49 @@ namespace WeirdEngine
 
 	// Utils
 
-	void Scene::renderImGui()
+	void Scene::renderSettingsTab()
 	{
 #ifndef WEIRD_DISABLE_IMGUI
-		const char* label = "Settings";
-		if (ImGui::CollapsingHeader(label))
+		if (ImGui::BeginTabItem("Settings"))
 		{
-			ImGui::PushID(label);
+
+			if (ImGui::CollapsingHeader("Background"))
+			{
+				ImGui::Indent();
+				const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
+				int bgTypeIdx = static_cast<int>(m_background.type);
+				if (ImGui::Combo("Background Type", &bgTypeIdx, bgTypes, 4))
+				{
+					m_background.type = static_cast<BackgroundType>(bgTypeIdx);
+				}
+
+				if (m_background.type != BackgroundType::Custom)
+				{
+					ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
+					ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
+					ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
+					ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
+				}
+
+				ImGui::Unindent();
+			}
+
+			ImGui::Separator();
+			onImGuiRender(m_registry, m_services);
+			for (auto& sys : m_imguiSystems)
+			{
+				sys(m_registry, m_services);
+			}
+			ImGui::EndTabItem();
+		}
+#endif
+	}
+
+	void Scene::renderPhysicsTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Physics"))
+		{
 
 			if (ImGui::Checkbox("Pause simulation", &m_simulationIsPaused))
 			{
@@ -764,38 +1189,366 @@ namespace WeirdEngine
 					m_simulation2D.resume();
 			}
 
-			ImGui::SeparatorText("Background");
-			const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
-			int bgTypeIdx = static_cast<int>(m_background.type);
-			if (ImGui::Combo("Type", &bgTypeIdx, bgTypes, 4))
-			{
-				m_background.type = static_cast<BackgroundType>(bgTypeIdx);
-			}
-
-			if (m_background.type != BackgroundType::Custom)
-			{
-				ImGui::ColorEdit4("Primary Color", &m_background.primaryColor[0]);
-				ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
-				ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
-				ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
-			}
-
 			ImGui::Separator();
 
-			onImGuiRender(m_registry, m_services);
-			for (auto& sys : m_imguiSystems)
+			float gravity = m_simulation2D.getGravity();
+			if (ImGui::DragFloat("Gravity", &gravity, 0.1f, -100.0f, 100.0f, "%.2f"))
 			{
-				sys(m_registry, m_services);
+				m_simulation2D.setGravity(gravity);
 			}
 
-			ImGui::PopID();
-		}
+			float damping = m_simulation2D.getDamping();
+			if (ImGui::DragFloat("Damping", &damping, 0.001f, 0.0f, 1.0f, "%.3f"))
+			{
+				m_simulation2D.setDamping(damping);
+			}
 
-		const char* label2 = "Hierarchy";
-		if (ImGui::CollapsingHeader(label2))
+			ImGui::EndTabItem();
+		}
+#endif
+	}
+
+	void Scene::renderAudioTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Audio"))
 		{
 
-			ImGui::PushID(label2);
+			auto& audioEngine = WeirdAudio::AudioEngine::getInstance();
+			auto& musicEngine = audioEngine.getMusicEngine();
+			auto& physicsAudio = audioEngine.getPhysicsEngine();
+
+			// Master Audio Controls
+			bool muted = audioEngine.isMuted();
+			if (ImGui::Checkbox("Mute All Audio", &muted))
+			{
+				if (muted)
+					audioEngine.mute();
+				else
+					audioEngine.unmute();
+			}
+
+			float masterVol = audioEngine.getMasterVolume();
+			if (ImGui::SliderFloat("Master Volume", &masterVol, 0.0f, 1.0f, "%.2f"))
+			{
+				audioEngine.setMasterVolume(masterVol);
+			}
+
+			// Audio Waveform Visualizer
+			const auto& audioData = audioEngine.getAudioData();
+
+			ImGui::Text("Waveform (RMS: %.2f)", audioData.currentVolume);
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Auto-Scale", &m_waveformAutoScale))
+			{
+				if (m_waveformAutoScale)
+					m_waveformAutoScaleRange = 0.05f;
+			}
+
+			if (m_waveformAutoScale)
+			{
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Reset"))
+				{
+					m_waveformAutoScaleRange = 0.05f;
+				}
+
+				if (!audioData.waveform.empty() && audioData.currentVolume > 0.0001f)
+				{
+					float peak = 0.0f;
+					for (float s : audioData.waveform)
+					{
+						peak = (std::max)(peak, std::abs(s));
+					}
+					// Grows fast to accommodate peaks, but does not shrink
+					if (peak > m_waveformAutoScaleRange)
+					{
+						m_waveformAutoScaleRange = (std::min)(peak * 1.15f, 1.0f);
+					}
+				}
+			}
+			else
+			{
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(100.0f);
+				ImGui::SliderFloat("Scale", &m_waveformManualScale, 0.1f, 4.0f, "%.1fx");
+			}
+
+			float yRange = 1.0f;
+			if (m_waveformAutoScale)
+			{
+				yRange = std::clamp(m_waveformAutoScaleRange, 0.05f, 1.0f);
+			}
+			else
+			{
+				yRange = std::clamp(1.0f / (std::max)(m_waveformManualScale, 0.1f), 0.05f, 2.0f);
+			}
+
+			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.25f, 0.92f, 1.00f, 1.00f));
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.08f, 0.11f, 1.00f));
+
+			if (!audioData.waveform.empty() && audioData.currentVolume > 0.0005f)
+			{
+				ImGui::PlotLines("##AudioWaveform", audioData.waveform.data(),
+								 static_cast<int>(audioData.waveform.size()), 0, nullptr, -yRange, yRange,
+								 ImVec2(-1.0f, 85.0f));
+			}
+			else
+			{
+				static const float silence[256] = {0.0f};
+				ImGui::PlotLines("##AudioWaveform", silence, 256, 0, "No Signal", -1.0f, 1.0f, ImVec2(-1.0f, 85.0f));
+			}
+
+			ImGui::PopStyleColor(2);
+
+			// Procedural Music
+			if (ImGui::CollapsingHeader("Procedural Music", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Indent();
+				bool musicPlaying = musicEngine.isPlaying();
+				if (ImGui::Checkbox("Music Enabled", &musicPlaying))
+				{
+					musicEngine.setPlaying(musicPlaying);
+				}
+
+				float musicVol = musicEngine.getVolume();
+				if (ImGui::SliderFloat("Music Volume", &musicVol, 0.0f, 1.0f, "%.2f"))
+				{
+					musicEngine.setVolume(musicVol);
+				}
+
+				auto currentSong = musicEngine.getCurrentSong();
+				if (currentSong)
+				{
+					ImGui::Text("Active Song: %s", currentSong->getName().c_str());
+					if (ImGui::Button("Resample Shape"))
+					{
+						m_services.audio().resampleShape();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("Musical Properties", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						ImGui::Text("Scale:  %s", WeirdAudio::SdfSong::getScaleName(currentSong->getScale()));
+						ImGui::Text("Tempo:  %.1f BPM", currentSong->getTempo());
+						ImGui::Text("Root:   %s (MIDI %d)",
+									WeirdAudio::SdfSong::midiToNoteString(currentSong->getRootMidi()).c_str(),
+									currentSong->getRootMidi());
+
+						const auto& p = musicEngine.getShapeParameters();
+						ImGui::Spacing();
+						ImGui::Text("Melody Density:  %.2f", p.melodyDensity);
+						ImGui::Text("Harmony Richness:%.2f", p.harmonyRichness);
+						ImGui::Text("Bass Weight:     %.2f", p.bassWeight);
+						ImGui::Text("Brightness:      %.2f", p.brightness);
+						ImGui::Text("Syncopation:     %.2f", p.syncopation);
+
+						ImGui::Spacing();
+						ImGui::ProgressBar(musicEngine.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
+						ImGui::ProgressBar(musicEngine.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
+						ImGui::ProgressBar(musicEngine.getComplexityNorm(), ImVec2(-1.0f, 0.0f), "Surface Complexity");
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("Instrument Rack (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						const auto& rack = musicEngine.getInstrumentRack();
+						ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
+
+						auto renderTrackStatusBadge = [&](WeirdAudio::MusicTrack track)
+						{
+							auto state = musicEngine.getTrackPlayState(track);
+							const char* label = "[Playing]";
+							ImVec4 color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+							switch (state)
+							{
+								case WeirdAudio::TrackPlayState::Playing:
+									label = "[Playing]";
+									color = ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Paused:
+									label = "[Breakdown]";
+									color = ImVec4(0.9f, 0.8f, 0.3f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Ducked:
+									label = "[Ducked]";
+									color = ImVec4(0.6f, 0.5f, 0.9f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Surged:
+									label = "[Surged]";
+									color = ImVec4(1.0f, 0.6f, 0.1f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Dead:
+									label = "[Dead]";
+									color = ImVec4(0.85f, 0.25f, 0.25f, 1.0f);
+									break;
+								case WeirdAudio::TrackPlayState::Muted:
+								default:
+									label = "[Muted]";
+									color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+									break;
+							}
+							float badgeColWidth = ImGui::CalcTextSize("[Breakdown]").x + 8.0f;
+							float startX = ImGui::GetCursorPosX();
+							ImGui::TextColored(color, "%s", label);
+							ImGui::SameLine(startX + badgeColWidth);
+						};
+
+						float trackNameColWidth =
+							(std::max)({ImGui::CalcTextSize("Lead Wave:").x, ImGui::CalcTextSize("Bass Wave:").x,
+										ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
+							8.0f;
+
+						bool leadEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Lead);
+						if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Lead, leadEnabled);
+						}
+						ImGui::SameLine();
+						float startXLead = ImGui::GetCursorPosX();
+						ImGui::Text("Lead Wave:");
+						ImGui::SameLine(startXLead + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Lead);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.lead));
+
+						bool bassEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Bass);
+						if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Bass, bassEnabled);
+						}
+						ImGui::SameLine();
+						float startXBass = ImGui::GetCursorPosX();
+						ImGui::Text("Bass Wave:");
+						ImGui::SameLine(startXBass + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Bass);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.bass));
+
+						bool padEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Pad);
+						if (ImGui::Checkbox("##pad_toggle", &padEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Pad, padEnabled);
+						}
+						ImGui::SameLine();
+						float startXPad = ImGui::GetCursorPosX();
+						ImGui::Text("Pad Wave:");
+						ImGui::SameLine(startXPad + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Pad);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.pad));
+
+						bool drumsEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Drums);
+						if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
+						{
+							musicEngine.setTrackEnabled(WeirdAudio::MusicTrack::Drums, drumsEnabled);
+						}
+						ImGui::SameLine();
+						float startXDrums = ImGui::GetCursorPosX();
+						ImGui::Text("Drum Kit:");
+						ImGui::SameLine(startXDrums + trackNameColWidth);
+						renderTrackStatusBadge(WeirdAudio::MusicTrack::Drums);
+						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getDrumKitName(rack.drumKit));
+
+						ImGui::Spacing();
+						ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
+						ImGui::Text("Pulse Width: %.2f", rack.pulseWidth);
+						ImGui::Text("FM Mod Index:%.2f", rack.fmModIndex);
+						ImGui::Text("Fold Drive:  %.2f", rack.foldDrive);
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNodeEx("AST Topology Fingerprint", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						const auto& fp = currentSong->getFingerprint();
+						ImGui::Text("Structural Seed: 0x%08X", fp.structuralHash);
+						ImGui::Text("Total Operators: %d", fp.nodeCount);
+						ImGui::Text("Tree Depth:      %d", fp.maxDepth);
+						ImGui::Text("Branching Nodes: %d", fp.branchCount);
+						ImGui::TreePop();
+					}
+				}
+				else
+				{
+					ImGui::TextDisabled("No active song");
+				}
+				ImGui::Unindent();
+			}
+
+			// Friction & Physics Sound Parameters
+			if (ImGui::CollapsingHeader("Friction & Physics Sound", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				ImGui::Indent();
+				float physVol = physicsAudio.getVolume();
+				if (ImGui::SliderFloat("Physics Audio Volume", &physVol, 0.0f, 1.0f, "%.2f"))
+				{
+					physicsAudio.setVolume(physVol);
+				}
+
+				bool spatial = physicsAudio.isSpatialAudioEnabled();
+				if (ImGui::Checkbox("Spatial Audio Enabled", &spatial))
+				{
+					physicsAudio.setSpatialAudioEnabled(spatial);
+				}
+
+				bool voicesEnabled = physicsAudio.isVoicesEnabled();
+				if (ImGui::Checkbox("Enable Collision Sounds", &voicesEnabled))
+				{
+					physicsAudio.setVoicesEnabled(voicesEnabled);
+				}
+
+				float collisionVolumePercent = m_collisionSoundVolume * 100.0f;
+				if (ImGui::SliderFloat("Collision Sound Volume", &collisionVolumePercent, 0.0f, 500.0f, "%.0f%%"))
+				{
+					m_collisionSoundVolume = collisionVolumePercent / 100.0f;
+				}
+
+				ImGui::Checkbox("Enable Friction Sound", &m_enableFrictionSound);
+				ImGui::SliderFloat("Friction Multiplier", &m_frictionSoundMultiplier, 0.0f, 5.0f, "%.2fx");
+
+				int maxFrictionVoices = static_cast<int>(physicsAudio.getMaxFrictionVoices());
+				if (ImGui::SliderInt("Max Friction Voices", &maxFrictionVoices, 1,
+									 static_cast<int>(WeirdAudio::PhysicsAudioEngine::MAX_FRICTION_VOICES)))
+				{
+					physicsAudio.setMaxFrictionVoices(static_cast<size_t>(maxFrictionVoices));
+				}
+
+				float frictionCellSize = physicsAudio.getFrictionCellSize();
+				if (ImGui::SliderFloat("Friction Cell Size", &frictionCellSize,
+									   WeirdAudio::PhysicsAudioEngine::MIN_FRICTION_CELL_SIZE,
+									   WeirdAudio::PhysicsAudioEngine::MAX_FRICTION_CELL_SIZE, "%.1f u"))
+				{
+					physicsAudio.setFrictionCellSize(frictionCellSize);
+				}
+
+				ImGui::Checkbox("Override Friction (Test)", &m_overrideFrictionSound);
+				if (m_overrideFrictionSound)
+				{
+					ImGui::SliderFloat("Manual Friction Level", &m_manualFrictionLevel, 0.0f, 1.0f, "%.2f");
+				}
+
+				float liveFriction = m_frictionSoundLevelRead.load(std::memory_order_acquire);
+				char frictionOverlay[96];
+				std::snprintf(frictionOverlay, sizeof(frictionOverlay), "Live: %.3f | Synthesizer: %.3f", liveFriction,
+							  physicsAudio.getFrictionLevel());
+				ImGui::PlotLines("##friction_level_history", m_frictionLevelHistory,
+								 static_cast<int>(FRICTION_LEVEL_HISTORY_SIZE), static_cast<int>(m_frictionHistoryHead),
+								 frictionOverlay, 0.0f, 1.0f, ImVec2(-1.0f, 70.0f));
+				ImGui::Text("Active Collision Voices: %zu | Friction: %zu active / %zu releasing | Cells: %zu",
+							physicsAudio.getActiveVoiceCount(), physicsAudio.getActiveFrictionVoiceCount(),
+							physicsAudio.getReleasingFrictionVoiceCount(), physicsAudio.getOccupiedFrictionCellCount());
+				ImGui::Text("Hard Steals (last frame): %zu", physicsAudio.getLastFrictionStealCount());
+				ImGui::Unindent();
+			}
+			ImGui::EndTabItem();
+		}
+#endif
+	}
+
+	void Scene::renderHierarchyTab()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (ImGui::BeginTabItem("Hierarchy"))
+		{
 
 			for (Entity e = 0; e < m_registry.getEntityCount(); ++e)
 			{
@@ -821,8 +1574,7 @@ namespace WeirdEngine
 					ImGui::TreePop();
 				}
 			}
-
-			ImGui::PopID();
+			ImGui::EndTabItem();
 		}
 #endif
 	}
@@ -838,6 +1590,13 @@ namespace WeirdEngine
 		ImGui::Text("  Collisions:  %.3f ms", simStats.collisionEventsMs);
 		ImGui::Text("  Integration: %.3f ms", simStats.integrationMs);
 		ImGui::Text("Sim/Real Time: %.2fx", simStats.simulationRatio);
+#endif
+	}
+
+	void Scene::renderCustomUI()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		onCustomUI(m_registry, m_services);
 #endif
 	}
 } // namespace WeirdEngine

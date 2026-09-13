@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "weird-renderer/audio/AudioEngine.h"
+#include "weird-audio/AudioEngine.h"
 
 namespace WeirdEngine
 {
@@ -11,7 +11,7 @@ namespace WeirdEngine
 		class SDLInitializer
 		{
 		public:
-			SDLInitializer(DisplaySettings& settings, SDL_Window*& m_window, AudioEngine& audioEngine);
+			SDLInitializer(DisplaySettings& settings, SDL_Window*& m_window, WeirdAudio::AudioEngine& audioEngine);
 			~SDLInitializer();
 
 		private:

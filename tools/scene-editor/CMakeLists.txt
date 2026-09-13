@@ -141,15 +141,19 @@ if(DEPLOY_STANDALONE)
     )
 
     if(BUILD_WEB)
-        # For web builds, copy index.html if it exists
-        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/index.html")
-            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${CMAKE_CURRENT_SOURCE_DIR}/src/index.html"
-                    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/index.html"
-                COMMENT "Copying index.html for web build"
-            )
-        endif()
+        # For web builds, generate the HTML shell from the shared template
+        set(WEIRD_WEB_TITLE "SceneEditor")
+        configure_file(
+            "${WEIRD_ENGINE_REAL_SOURCE}/cmake/web/index.html"
+            "${CMAKE_CURRENT_BINARY_DIR}/web/index.html"
+            @ONLY
+        )
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_BINARY_DIR}/web/index.html"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/index.html"
+            COMMENT "Copying index.html for web build"
+        )
     endif()
 endif()
 

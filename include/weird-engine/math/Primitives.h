@@ -5,8 +5,8 @@
 
 namespace WeirdEngine::Primitives
 {
-	static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-	static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+	static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+	static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 
 	struct Circle
 	{
@@ -16,8 +16,8 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t THICKNESS = 3;
 
 		static constexpr uint8_t TIME = SystemParams::TIME;
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 
 	struct Box
@@ -28,8 +28,8 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t SIZE_Y = 3;
 		static constexpr uint8_t THICKNESS = 4;
 
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 
 	struct SineWave
@@ -40,8 +40,8 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t OFFSET = 3;
 
 		static constexpr uint8_t TIME = SystemParams::TIME;
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 
 	struct Triangle
@@ -53,8 +53,8 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t THICKNESS = 4;
 
 		static constexpr uint8_t TIME = SystemParams::TIME;
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 
 	struct Ramp
@@ -65,8 +65,8 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t SIZE_Y = 3;
 		static constexpr uint8_t SKEW = 4;
 
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 
 	struct BoxRotated
@@ -117,7 +117,7 @@ namespace WeirdEngine::Primitives
 		static constexpr uint8_t POS_B_Y = 3;
 		static constexpr uint8_t WIDTH = 4;
 
-		static constexpr uint8_t WORLD_X = SystemParams::WORLD_X;
-		static constexpr uint8_t WORLD_Y = SystemParams::WORLD_Y;
+		static constexpr uint8_t POINT_X = SystemParams::POINT_X;
+		static constexpr uint8_t POINT_Y = SystemParams::POINT_Y;
 	};
 } // namespace WeirdEngine::Primitives

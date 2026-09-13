@@ -61,19 +61,23 @@ namespace WeirdEngine
 		// CollisionState state;
 		SimulationID bodyA;
 		SimulationID bodyB;
+		vec2 position = vec2(0.0f);
+		vec2 normal = vec2(0.0f);
+		vec2 relativeVelocity = vec2(0.0f);
+		float impulse = 0.0f;
 	};
 
 	struct PhysicsShapeCollisionEvent
 	{
-		CollisionState state;
-		SimulationID body;
-		ShapeId shape;
-		float penetration;
-		float friction;
-		float absortion;
-		vec2 position;
-		vec2 velocity;
-		vec2 normal;
+		CollisionState state = CollisionState::END;
+		SimulationID body = 0;
+		ShapeId shape = 0;
+		float penetration = 0.0f;
+		float friction = 0.0f;
+		float absortion = 0.0f;
+		vec2 position = vec2(0.0f);
+		vec2 velocity = vec2(0.0f);
+		vec2 normal = vec2(0.0f);
 	};
 
 	// Define the function pointer type and include a user data pointer
@@ -194,6 +198,16 @@ namespace WeirdEngine
 
 		void setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs);
 
+		void setAudioVolume(float volume)
+		{
+			m_audioVolume.store(volume, std::memory_order_relaxed);
+		}
+
+		float getAudioVolume() const
+		{
+			return m_audioVolume.load(std::memory_order_relaxed);
+		}
+
 		std::shared_ptr<SpatialGridSnapshot> getSpatialGridSnapshot()
 		{
 			std::lock_guard<std::mutex> lock(m_spatialGridSnapshotMutex);
@@ -211,9 +225,17 @@ namespace WeirdEngine
 		{
 			m_gravity = gravity;
 		}
+		float getGravity() const
+		{
+			return m_gravity;
+		}
 		void setDamping(float damping)
 		{
 			m_damping = damping;
+		}
+		float getDamping() const
+		{
+			return m_damping;
 		}
 
 		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps
@@ -513,6 +535,8 @@ namespace WeirdEngine
 
 		mutable std::mutex m_statsMutex;
 		PerformanceStats m_stats;
+
+		std::atomic<float> m_audioVolume{0.0f};
 
 	private:
 		StepCallbackFn m_stepCallback = nullptr;

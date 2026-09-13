@@ -41,7 +41,7 @@ void main()
 	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	uv.x *= (u_resolution.x / u_resolution.y);
 
-	float zoom = -2.0 * u_camMatrix[3].z;
+	float zoom = max(-2.0 * u_camMatrix[3].z, 0.001);
 	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
 	vec3 background = getBackground(uv, pos);

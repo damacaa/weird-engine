@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -11,6 +12,19 @@ class TextScene : public Scene2D
 {
 public:
 	TextScene() {};
+
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		Expr vBar = sdBox(p, Vec2Expr(4.0f, 25.0f));
+		Expr hBar = sdBox(translate(p, Vec2Expr(0.0f, 22.0f)), Vec2Expr(18.0f, 6.0f));
+
+		Expr textShape = sdfUnion(vBar, hBar);
+
+		return WeirdAudio::SdfSong::create("text", textShape);
+	}
 
 private:
 	Entity m_counterText = INVALID_ENTITY;
@@ -28,6 +42,9 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined text song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::LightGray;

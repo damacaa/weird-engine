@@ -858,6 +858,7 @@ namespace WeirdEngine
 			m_defaultBackgroundShader.setUniform("u_bgSecondaryColor", bgParams.secondaryColor);
 			m_defaultBackgroundShader.setUniform("u_bgScale", bgParams.scale);
 			m_defaultBackgroundShader.setUniform("u_bgIntensity", bgParams.intensity);
+			m_defaultBackgroundShader.setUniform("u_bgParallax", glm::clamp(bgParams.parallax, 0.0f, 1.0f));
 			m_defaultBackgroundShader.setUniform("u_enableBlend", time <= 1.0);
 
 			m_renderPlane.draw(m_defaultBackgroundShader);

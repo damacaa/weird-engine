@@ -22,6 +22,7 @@ uniform vec4 u_bgPrimaryColor;
 uniform vec4 u_bgSecondaryColor;
 uniform float u_bgScale;
 uniform float u_bgIntensity;
+uniform float u_bgParallax;
 
 uniform sampler2D t_prevBackground;
 uniform bool u_enableBlend;
@@ -42,7 +43,7 @@ void main()
 	uv.x *= (u_resolution.x / u_resolution.y);
 
 	float zoom = max(-2.0 * u_camMatrix[3].z, 0.001);
-	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
+	vec2 pos = (zoom * uv) - (u_bgParallax * u_camMatrix[3].xy);
 
 	vec3 background = getBackground(uv, pos);
 

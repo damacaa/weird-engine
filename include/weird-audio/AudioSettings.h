@@ -7,7 +7,6 @@ namespace WeirdEngine
 		struct AudioSettings
 		{
 			bool mute = false;
-			bool enableAmbient = true;
 			bool enableMusic = true;
 			bool enablePhysicsAudio = true;
 			bool enableSpatialAudio = true; // Setting to toggle spatial sound on/off

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -647,16 +646,16 @@ namespace WeirdEngine
 	struct AudioService
 	{
 		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
-		std::atomic<float>& frictionSoundLevel;
+		float& collisionSoundVolume; // 1.0 = 100%, shared with Scene's real impacts
 		ShapeService* shapes = nullptr;
 		Registry* registry = nullptr;
 		Entity m_visualizationEntity = INVALID_ENTITY;
 		float m_lastSyncedParams[8] = {0.0f};
 
-		AudioService(AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, std::atomic<float>& fsl,
+		AudioService(AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, float& csv,
 					 ShapeService* s = nullptr, Registry* r = nullptr)
 			: queue(q)
-			, frictionSoundLevel(fsl)
+			, collisionSoundVolume(csv)
 			, shapes(s)
 			, registry(r)
 		{
@@ -667,24 +666,14 @@ namespace WeirdEngine
 			queue.push(audio);
 		}
 
-		void playPhysicsSound(const WeirdAudio::SimpleAudioRequest& audio)
+		// Trigger a one-shot fake collision impact at a world position. Uses the
+		// exact same synthesis and volume multiplier as real engine collisions.
+		// intensity: 0 (light click) to 1 (heavy thud).
+		void playCollisionSound(
+			const vec3& position, float intensity = 0.5f,
+			WeirdAudio::SimpleAudioRequest::ImpactType type = WeirdAudio::SimpleAudioRequest::ImpactType::Shape)
 		{
-			queue.push(audio);
-		}
-
-		float getFrictionSound() const
-		{
-			return frictionSoundLevel.load(std::memory_order_acquire);
-		}
-
-		void setFrictionSound(float level)
-		{
-			frictionSoundLevel.store(level, std::memory_order_release);
-		}
-
-		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()
-		{
-			return queue;
+			queue.push(WeirdAudio::SimpleAudioRequest::makeImpact(position, intensity, type, collisionSoundVolume));
 		}
 
 		// Spatial Audio
@@ -693,7 +682,6 @@ namespace WeirdEngine
 
 		// Subsystems
 		WeirdAudio::SdfMusicEngine& music();
-		WeirdAudio::PhysicsAudioEngine& physicsAudio();
 
 		// Song Management (beat-synced)
 		void setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced = true);
@@ -701,13 +689,8 @@ namespace WeirdEngine
 					   bool beatSynced = true);
 		void queueSong(std::shared_ptr<WeirdAudio::SdfSong> song);
 
-		// Visualization Entity Inspection & Parameter Sync
-		Entity getVisualizationEntity() const
-		{
-			return m_visualizationEntity;
-		}
+		// Visualization Parameter Sync
 		void setSongParameter(size_t index, float value);
-		void updateVisualization();
 
 		// Motion & Domain Fill Inspection
 		float getMotionLevel() const;

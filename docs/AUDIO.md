@@ -1,6 +1,6 @@
 # Procedural Audio & Music Architecture
 
-Weird Engine features a fully synthesized procedural audio and music architecture built on top of [miniaudio](https://miniaud.io/). 
+Weird Engine features a fully synthesized procedural audio and music architecture streamed to SDL3 audio in real time (no audio-file playback backend).
 
 Rather than relying on static, pre-recorded audio files (such as WAV or MP3 clips), audio in Weird Engine is procedurally generated in real time from **physical simulation dynamics** (collisions, sliding friction, velocity) and **mathematical Signed Distance Field (SDF) geometry**.
 
@@ -28,7 +28,7 @@ flowchart TD
         SpatialProcessor[SpatialAudioProcessor]
     end
 
-    subgraph MiniaudioThread["Miniaudio High-Priority Callback"]
+    subgraph SdlStream["SDL3 Audio Stream (main thread)"]
         AudioDevice[DAC Output / Speakers]
         Mixer[Stereo Interleaved Mixer]
     end
@@ -47,7 +47,7 @@ flowchart TD
 ### Thread Safety & Zero-Allocation Streaming
 The real-time audio thread must never block or allocate heap memory (`malloc`/`new`). 
 - **`AudioRingBuffer<SimpleAudioRequest, 64>`**: A lock-free single-producer single-consumer ring buffer transfers sound trigger requests from the game and physics threads to the audio thread.
-- **Atomic Friction Levels**: Atomic floats (`std::atomic<float> frictionSoundLevel`) communicate dynamic contact velocities for sliding and rolling sounds without locks.
+- **Main-Thread Streaming**: PCM is generated synchronously in `AudioEngine::listen` on the main thread and written to the SDL3 audio stream; friction sources are plain per-body structs with no cross-thread state (only the debug/override level uses an atomic float).
 - **Mutex-Protected Song State**: Fast `std::mutex` guards protect song reference swaps and parameter updates between frames.
 
 ---
@@ -173,30 +173,25 @@ Channel 9: UI Negative Error      ──► [Dissonant Buzzer + Granular Grit]  
 
 The physics audio engine converts collisions and body interactions into positional sound events.
 
-### 4.1 Collision Impacts (`SimpleAudioRequest`)
+### 4.1 Collision Impacts
 When rigid bodies collide with ground surfaces or other bodies:
-- Normal relative impact velocity determines impulse intensity.
-- Material IDs select specific timbre palettes (metal, rock, rubber, wood).
-- Impact events are pushed to the lock-free ring buffer:
-  ```cpp
-  WeirdAudio::SimpleAudioRequest req;
-  req.type = WeirdAudio::SimpleAudioRequest::Type::SineTone;
-  req.frequency = 80.0f + intensity * 240.0f;
-  req.volume = std::clamp(intensity, 0.05f, 1.0f);
-  req.durationSeconds = 0.12f;
-  req.pan = calculatedPan; // -1.0 (left) to +1.0 (right)
-  services.audio().playSound(req);
-  ```
+- Normal relative impact velocity determines impulse intensity; `SimpleAudioRequest::makeImpact` is the single source of truth for synthesis (body-body and body-shape curves).
+- Impacts are debounced per body (40 ms) and only the 8 loudest events per frame are queued, so a pile of thousands of contacts cannot thrash the voice pool.
+- Collision voices are capped (`MAX_PHYSICS_VOICES = 32`, burst headroom up to 48) and mixed with a `1 / sqrt(activeVoices)` normalization. When the pool is full the quietest playing voice is soft-evicted with a 5 ms de-click fade instead of being hard-cut.
+- Fake impacts can be triggered at any position with `services.audio().playCollisionSound(position, intensity, type)`.
 
 ### 4.2 Dynamic Friction Loop
 - Sliding and rolling friction calculate tangential velocities between contacting bodies.
-- A smoothed atomic float (`services.audio().getFrictionSound()`) feeds a continuous, pitch-modulated noise-resonance synthesizer in the audio thread.
+- Each frame the scene aggregates shape contacts **per rigidbody** into a `FrictionSource {id, position, level}` list: `level = max(frictionCoefficient) * sqrt(speedSq)` and `position` is the level-weighted average of that body's contact points. Everything stays squared until one sqrt per contacted body. `CollisionState::END` events never contribute.
+- `PhysicsAudioEngine` bins those sources into a coarse spatial grid (16 world units by default, 4-64u slider in the audio tab). A cell stores the **power sum** of its sources (`sqrt(Σlevel²)`, so many small contacts in a pile add up like incoherent noise) and their level-weighted centroid. Sources within a 25% band of a cell edge splat bilinearly into the neighboring cells, so a body crossing a boundary hands its energy over continuously instead of in one step. The table is open-addressed, frame-stamped, and reused across frames, so binning allocates nothing per frame.
+- The pool selects up to 8 cells per frame (16 slots total, so displaced voices have release headroom and fade out over ~180 ms instead of being cut). Cells that already own a voice get a ranking bonus to stop cutoff flicker. A hard reset only happens when all 16 slots are busy: the quietest voice not claimed by a candidate this frame is taken (its filter state is preserved). Each selected cell gets distance attenuation, stereo panning, and an air-absorption lowpass.
+- Voice identity is the cell key, and distance gain, pan, cutoff, and level are one-pole smoothed per voice (35 ms attack / 180 ms release, gain 120 ms, pan 50 ms, cutoff 80 ms). Voices are mixed with a `1 / sqrt(activeVoices)` normalization; the scene still exposes a held max level atomically for the debug UI only.
 
 ### 4.3 Spatial Audio Processor (`SpatialAudioProcessor`)
-- Computes relative distance attenuation (inverse-square law with a minimum distance clamp).
+- Computes relative distance attenuation (smooth inverse-distance law with a minimum distance clamp) and a smoothstep fade to exact silence at `maxDistance` (default 100 world units, fade starts at 75% of the range).
 - Constant-power stereo panning based on listener position and orientation:
   $$\text{Gain}_{\text{left}} = \cos\left(\frac{\pi}{4}(1 + \text{pan})\right), \quad \text{Gain}_{\text{right}} = \sin\left(\frac{\pi}{4}(1 + \text{pan})\right)$$
-- Doppler pitch shifting based on relative source-listener velocity vectors.
+- Sources carry an `AudioSpace` tag. `TwoDimensional` sources (all engine physics today) are projected onto the XY plane, so the 2D camera's Z component (zoom) never affects volume or panning. `ThreeDimensional` sources use the full listener state and are ready for a future 3D physics path.
 
 ---
 
@@ -319,7 +314,7 @@ void onUpdate(Registry& registry, ServiceProvider& services) override
 | `setSong(std::shared_ptr<SdfSong> song, bool beatSynced = true)` | Starts playing a song (audio-only; no visualization is spawned). |
 | `setSong(std::shared_ptr<SdfSong> song, const SongVisualizationOptions& options, bool beatSynced = true)` | Starts playing with explicit visualization options. Returns the spawned `Entity`, or `INVALID_ENTITY` for `mode = None`. |
 | `setSongParameter(size_t index, float value)` | Updates a song parameter (0–7), syncing audio sampling and shader uniform buffers. |
-| `getVisualizationEntity()` | Returns the `Entity` ID of the active UI shape. |
+| `playCollisionSound(const vec3& position, float intensity = 0.5f, ImpactType type = Shape)` | Queues a fake collision impact at a world position, using the same synthesis and volume multiplier as real impacts. |
 | `setSpatialAudioEnabled(bool enabled)` | Enables/disables listener-relative 3D spatial panning and distance attenuation. |
 | `playSound(const SimpleAudioRequest& audio)` | Pushes a one-shot sound request to the lock-free audio ring buffer. |
 | `surge(float amount = 0.5f)` | Temporarily surges music energy and volume. |

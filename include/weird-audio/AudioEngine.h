@@ -1,7 +1,6 @@
 #pragma once
 
-#include <memory>
-#include <miniaudio/miniaudio.h>
+#include <cstdint>
 #include <SDL3/SDL.h>
 #include <vector>
 
@@ -36,21 +35,14 @@ namespace WeirdEngine
 			~AudioEngine();
 
 			bool init(const WeirdAudio::AudioSettings& settings);
-			void close();
-			void loadSound(const char* filePath);
 
 			void setAudioStream(SDL_AudioStream* stream)
 			{
 				m_audioStream = stream;
 			}
 
-			SDL_AudioStream* getAudioStream() const
-			{
-				return m_audioStream;
-			}
-
-			ma_uint32 getSampleRate() const;
-			ma_uint8 getChannels() const;
+			uint32_t getSampleRate() const;
+			uint8_t getChannels() const;
 
 			// Per-frame scene audio update and PCM generation
 			void listen(Scene& scene);
@@ -115,27 +107,14 @@ namespace WeirdEngine
 			}
 
 			// Visualizer data
-			AudioData getAudioData();
+			const AudioData& getAudioData() const
+			{
+				return m_visualSnapshot;
+			}
+
 			float getAudioVolume() const
 			{
 				return m_visualSnapshot.currentVolume;
-			}
-
-			// Procedural physics controls (convenience wrappers)
-			void setFrictionLevel(float level)
-			{
-				m_physicsEngine.setFrictionLevel(level);
-			}
-
-			void playSineSound(float freq, float amp, float decaySec = 0.3f)
-			{
-				m_physicsEngine.playVoice(freq, amp, decaySec, 0);
-			}
-
-			void playVoice(float freq, float amp, float decaySec = 0.3f, int instrument = 0, float leftGain = 0.7071f,
-						   float rightGain = 0.7071f, float filterCutoff = 20000.0f)
-			{
-				m_physicsEngine.playVoice(freq, amp, decaySec, instrument, leftGain, rightGain, filterCutoff);
 			}
 
 		private:
@@ -144,10 +123,6 @@ namespace WeirdEngine
 			WeirdAudio::AudioSettings m_settings;
 			PhysicsAudioEngine m_physicsEngine;
 			SdfMusicEngine m_musicEngine;
-
-			ma_engine m_engine;
-			ma_sound m_sound; // optional miniaudio sound
-			bool m_hasSound = false;
 
 			SDL_AudioStream* m_audioStream = nullptr;
 			AudioData m_visualSnapshot;

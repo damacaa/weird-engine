@@ -379,6 +379,5 @@ namespace WeirdEngine
 
 		WeirdEngine::Logger::log("Quitting...");
 #endif
-		// audioEngine.close();
 	}
 } // namespace WeirdEngine

@@ -316,7 +316,7 @@ namespace WeirdEngine::Editor
 		ImGui::Spacing();
 		if (ImGui::CollapsingHeader("Live Oscilloscope", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			auto audioData = WeirdAudio::AudioEngine::getInstance().getAudioData();
+			const auto& audioData = WeirdAudio::AudioEngine::getInstance().getAudioData();
 			if (!audioData.waveform.empty())
 			{
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.2f, 0.9f, 0.8f, 1.0f));

@@ -2,6 +2,10 @@
 #include "weird-audio/AudioEngine.h"
 #include "weird-engine/SceneManager.h"
 
+#include <array>
+#include <cmath>
+#include <cstdio>
+
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
 #endif
@@ -280,6 +284,78 @@ namespace WeirdEngine
 
 			auto rigidBodies = m_registry.getComponentArray<RigidBody2D>();
 
+			// Start a new friction aggregation frame: bump the stamp and reset the
+			// touched list (accumulators are validated by stamp, never cleared).
+			++m_frictionFrameStamp;
+			if (m_frictionFrameStamp == 0)
+			{
+				for (auto& acc : m_frictionAccumulators)
+				{
+					acc.stamp = 0;
+				}
+				m_frictionFrameStamp = 1;
+			}
+			m_touchedFrictionBodies.clear();
+
+			// Candidate impact collection for the frame: debounce resting jitter per body,
+			// and keep only the loudest impacts per frame so bursts of thousands of contacts
+			// don't thrash the voice pool or cause audio crackling.
+			constexpr size_t MAX_IMPACTS_PER_FRAME = 8;
+			constexpr float IMPACT_DEBOUNCE_SECONDS = 0.040f;
+			const float simTime = static_cast<float>(m_simulation2D.getSimulationTime());
+
+			struct CandidateImpact
+			{
+				WeirdAudio::SimpleAudioRequest request;
+				float intensity = 0.0f;
+			};
+			std::array<CandidateImpact, MAX_IMPACTS_PER_FRAME> candidateImpacts;
+			size_t candidateImpactCount = 0;
+
+			auto addCandidateImpact = [&](const WeirdAudio::SimpleAudioRequest& req, float intensity)
+			{
+				if (candidateImpactCount < MAX_IMPACTS_PER_FRAME)
+				{
+					size_t i = candidateImpactCount++;
+					while (i > 0 && candidateImpacts[i - 1].intensity < intensity)
+					{
+						candidateImpacts[i] = candidateImpacts[i - 1];
+						--i;
+					}
+					candidateImpacts[i] = {req, intensity};
+				}
+				else if (intensity > candidateImpacts[candidateImpactCount - 1].intensity)
+				{
+					size_t i = candidateImpactCount - 1;
+					while (i > 0 && candidateImpacts[i - 1].intensity < intensity)
+					{
+						candidateImpacts[i] = candidateImpacts[i - 1];
+						--i;
+					}
+					candidateImpacts[i] = {req, intensity};
+				}
+			};
+
+			auto canTriggerImpact = [&](SimulationID body) -> bool
+			{
+				size_t idx = static_cast<size_t>(body);
+				if (idx >= m_bodyLastImpactTime.size())
+				{
+					m_bodyLastImpactTime.resize(idx + 1, -1.0f);
+				}
+				return (simTime - m_bodyLastImpactTime[idx]) >= IMPACT_DEBOUNCE_SECONDS;
+			};
+
+			auto markImpactTriggered = [&](SimulationID body)
+			{
+				size_t idx = static_cast<size_t>(body);
+				if (idx >= m_bodyLastImpactTime.size())
+				{
+					m_bodyLastImpactTime.resize(idx + 1, -1.0f);
+				}
+				m_bodyLastImpactTime[idx] = simTime;
+			};
+
 			for (auto& ev : collisions)
 			{
 				EntityCollisionEvent entityEvent{ev, getEntityForSimulationId(ev.bodyA, rigidBodies),
@@ -294,20 +370,17 @@ namespace WeirdEngine
 				float impactIntensity = std::clamp(relSpeed * 0.08f + ev.impulse * 0.04f, 0.0f, 1.0f);
 				if (impactIntensity > 0.025f)
 				{
-					// Dynamic frequency cutoff: heavier impacts sound lower, lighter sound crisper
-					float cutoff = 250.0f + 800.0f * (1.0f - impactIntensity * 0.5f);
-					float vol = std::clamp(impactIntensity * 0.3f, 0.01f, 0.4f);
+					if (canTriggerImpact(ev.bodyA) || canTriggerImpact(ev.bodyB))
+					{
+						markImpactTriggered(ev.bodyA);
+						markImpactTriggered(ev.bodyB);
 
-					WeirdAudio::SimpleAudioRequest req;
-					req.volume = vol;
-					req.frequency = cutoff;
-					req.spatial = true;
-					req.position = vec3(ev.position, 0.0f);
-					req.intensity = impactIntensity;
-					req.instrument = 3; // Filtered Noise
-					req.beats = 1;
+						WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
+							vec3(ev.position, 0.0f), impactIntensity,
+							WeirdAudio::SimpleAudioRequest::ImpactType::BodyBody, m_collisionSoundVolume);
 
-					m_audioQueue.push(req);
+						addCandidateImpact(req, impactIntensity);
+					}
 				}
 			}
 
@@ -320,11 +393,35 @@ namespace WeirdEngine
 					sys(m_registry, m_services, entityEvent);
 				}
 
-				if (m_enableFrictionSound)
+				if (m_enableFrictionSound && ev.state != CollisionState::END)
 				{
-					float speed = glm::length(ev.velocity);
-					float frictionSample = ev.friction * 0.08f * speed * m_frictionSoundMultiplier;
-					m_frictionSoundLevel = std::max(frictionSample, m_frictionSoundLevel);
+					// Aggregate per body so each sliding rigidbody becomes one
+					// continuous friction source with a stable id, instead of a
+					// single global source that jumps around.
+					float coef = ev.friction * 0.08f * m_frictionSoundMultiplier;
+					if (coef > 0.0f)
+					{
+						size_t bodyIndex = static_cast<size_t>(ev.body);
+						if (bodyIndex >= m_frictionAccumulators.size())
+						{
+							m_frictionAccumulators.resize(bodyIndex + 1);
+						}
+
+						FrictionBodyAccumulator& acc = m_frictionAccumulators[bodyIndex];
+						if (acc.stamp != m_frictionFrameStamp)
+						{
+							acc = FrictionBodyAccumulator{};
+							acc.stamp = m_frictionFrameStamp;
+							m_touchedFrictionBodies.push_back(ev.body);
+						}
+
+						// Level is coef * speed; keep everything squared until the
+						// per-body finalize so no square roots are needed per contact.
+						acc.maxCoef = std::max(acc.maxCoef, coef);
+						acc.speedSq = std::max(acc.speedSq, glm::length2(ev.velocity));
+						acc.weightedPosition += vec3(ev.position, 0.0f) * coef;
+						acc.weightSum += coef;
+					}
 				}
 
 				if (ev.state == CollisionState::START)
@@ -333,29 +430,63 @@ namespace WeirdEngine
 					float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
 					float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
 
-					if (impactIntensity > 0.02f)
+					if (impactIntensity > 0.02f && canTriggerImpact(ev.body))
 					{
-						// Dynamic frequency cutoff: heavier impacts have deeper bass, lighter have crisper click
-						float cutoff = 180.0f + 1100.0f * (1.0f - impactIntensity * 0.5f);
-						float vol = std::clamp(impactIntensity * 0.35f, 0.01f, 0.5f);
+						markImpactTriggered(ev.body);
 
-						WeirdAudio::SimpleAudioRequest req;
-						req.volume = vol;
-						req.frequency = cutoff;
-						req.spatial = true;
-						req.position = vec3(ev.position, 0.0f);
-						req.intensity = impactIntensity;
-						req.instrument = 3; // Filtered Noise
-						req.beats = 1;
+						WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
+							vec3(ev.position, 0.0f), impactIntensity, WeirdAudio::SimpleAudioRequest::ImpactType::Shape,
+							m_collisionSoundVolume);
 
-						m_audioQueue.push(req);
+						addCandidateImpact(req, impactIntensity);
 					}
 				}
 			}
 
-			float finalFriction = m_overrideFrictionSound ? m_manualFrictionLevel : m_frictionSoundLevel;
+			// Push the loudest debounced impacts into the audio queue for this frame
+			for (size_t i = 0; i < candidateImpactCount; ++i)
+			{
+				m_audioQueue.push(candidateImpacts[i].request);
+			}
+
+			// Finalize per-body sources: one sqrt per contacted body (not per
+			// contact), plus a single sqrt for the UI level.
+			m_frictionSources.clear();
+			float frameMaxLevelSq = 0.0f;
+			for (SimulationID body : m_touchedFrictionBodies)
+			{
+				const FrictionBodyAccumulator& acc = m_frictionAccumulators[static_cast<size_t>(body)];
+				if (acc.weightSum <= 0.0f)
+					continue;
+
+				const float levelSq = acc.maxCoef * acc.maxCoef * acc.speedSq;
+				if (levelSq <= 0.0001f)
+					continue;
+				frameMaxLevelSq = std::max(frameMaxLevelSq, levelSq);
+
+				WeirdAudio::FrictionSource source;
+				source.id = body;
+				source.position = acc.weightedPosition / acc.weightSum;
+				source.level = std::sqrt(levelSq);
+				m_frictionSources.push_back(source);
+			}
+
+			// The physics thread steps at a fixed rate and the render loop can run
+			// faster, so some frames drain no collision events at all. Hold the last
+			// level with a short time-based decay so the debug UI sees a continuous
+			// signal instead of 0/value flicker.
+			constexpr float FRICTION_HOLD_TAU = 0.08f;
+			float holdDecay = std::exp(-static_cast<float>(delta) / FRICTION_HOLD_TAU);
+			float frameMaxLevel = frameMaxLevelSq > 0.0f ? std::sqrt(frameMaxLevelSq) : 0.0f;
+			m_frictionSoundLevelHold = std::max(frameMaxLevel, m_frictionSoundLevelHold * holdDecay);
+
+			float finalFriction = m_enableFrictionSound
+									  ? (m_overrideFrictionSound ? m_manualFrictionLevel : m_frictionSoundLevelHold)
+									  : 0.0f;
 			m_frictionSoundLevelRead.store(finalFriction, std::memory_order_release);
-			m_frictionSoundLevel = 0.0f;
+
+			m_frictionLevelHistory[m_frictionHistoryHead] = std::clamp(finalFriction, 0.0f, 1.0f);
+			m_frictionHistoryHead = (m_frictionHistoryHead + 1) % FRICTION_LEVEL_HISTORY_SIZE;
 		}
 
 		{
@@ -365,7 +496,6 @@ namespace WeirdEngine
 			{
 				sys(m_registry, m_services);
 			}
-			m_services.audio().updateVisualization();
 		}
 
 		{
@@ -436,7 +566,6 @@ namespace WeirdEngine
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
-		m_services.audio().updateVisualization();
 		customShapeCount = m_registry.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
 	}
@@ -506,11 +635,6 @@ namespace WeirdEngine
 		return m_frictionSoundLevelRead.load(std::memory_order_acquire);
 	}
 
-	void Scene::playSound(const WeirdAudio::SimpleAudioRequest& audio)
-	{
-		m_audioQueue.push(audio);
-	}
-
 	// Serialization
 
 	Entity Scene::getEntityForSimulationId(SimulationID simulationId,
@@ -538,7 +662,7 @@ namespace WeirdEngine
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
 		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
 		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
-		, m_audio(scene.m_audioQueue, scene.m_frictionSoundLevelRead, &m_shapes, &scene.m_registry)
+		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
@@ -590,11 +714,6 @@ namespace WeirdEngine
 	WeirdAudio::SdfMusicEngine& AudioService::music()
 	{
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine();
-	}
-
-	WeirdAudio::PhysicsAudioEngine& AudioService::physicsAudio()
-	{
-		return WeirdAudio::AudioEngine::getInstance().getPhysicsEngine();
 	}
 
 	void AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced)
@@ -688,11 +807,6 @@ namespace WeirdEngine
 		}
 
 		WeirdAudio::AudioEngine::getInstance().getMusicEngine().resampleShape();
-	}
-
-	void AudioService::updateVisualization()
-	{
-		// Pulsing is now driven directly by the global audio volume variable in the shader.
 	}
 
 	void AudioService::queueSong(std::shared_ptr<WeirdAudio::SdfSong> song)
@@ -1121,7 +1235,7 @@ namespace WeirdEngine
 			}
 
 			// Audio Waveform Visualizer
-			auto audioData = audioEngine.getAudioData();
+			const auto& audioData = audioEngine.getAudioData();
 
 			ImGui::Text("Waveform (RMS: %.2f)", audioData.currentVolume);
 			ImGui::SameLine();
@@ -1376,8 +1490,35 @@ namespace WeirdEngine
 					physicsAudio.setSpatialAudioEnabled(spatial);
 				}
 
+				bool voicesEnabled = physicsAudio.isVoicesEnabled();
+				if (ImGui::Checkbox("Enable Collision Sounds", &voicesEnabled))
+				{
+					physicsAudio.setVoicesEnabled(voicesEnabled);
+				}
+
+				float collisionVolumePercent = m_collisionSoundVolume * 100.0f;
+				if (ImGui::SliderFloat("Collision Sound Volume", &collisionVolumePercent, 0.0f, 500.0f, "%.0f%%"))
+				{
+					m_collisionSoundVolume = collisionVolumePercent / 100.0f;
+				}
+
 				ImGui::Checkbox("Enable Friction Sound", &m_enableFrictionSound);
 				ImGui::SliderFloat("Friction Multiplier", &m_frictionSoundMultiplier, 0.0f, 5.0f, "%.2fx");
+
+				int maxFrictionVoices = static_cast<int>(physicsAudio.getMaxFrictionVoices());
+				if (ImGui::SliderInt("Max Friction Voices", &maxFrictionVoices, 1,
+									 static_cast<int>(WeirdAudio::PhysicsAudioEngine::MAX_FRICTION_VOICES)))
+				{
+					physicsAudio.setMaxFrictionVoices(static_cast<size_t>(maxFrictionVoices));
+				}
+
+				float frictionCellSize = physicsAudio.getFrictionCellSize();
+				if (ImGui::SliderFloat("Friction Cell Size", &frictionCellSize,
+									   WeirdAudio::PhysicsAudioEngine::MIN_FRICTION_CELL_SIZE,
+									   WeirdAudio::PhysicsAudioEngine::MAX_FRICTION_CELL_SIZE, "%.1f u"))
+				{
+					physicsAudio.setFrictionCellSize(frictionCellSize);
+				}
 
 				ImGui::Checkbox("Override Friction (Test)", &m_overrideFrictionSound);
 				if (m_overrideFrictionSound)
@@ -1386,9 +1527,16 @@ namespace WeirdEngine
 				}
 
 				float liveFriction = m_frictionSoundLevelRead.load(std::memory_order_acquire);
-				ImGui::ProgressBar(std::clamp(liveFriction, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f));
-				ImGui::Text("Live Level: %.3f | Synthesizer Level: %.3f", liveFriction,
-							physicsAudio.getFrictionLevel());
+				char frictionOverlay[96];
+				std::snprintf(frictionOverlay, sizeof(frictionOverlay), "Live: %.3f | Synthesizer: %.3f", liveFriction,
+							  physicsAudio.getFrictionLevel());
+				ImGui::PlotLines("##friction_level_history", m_frictionLevelHistory,
+								 static_cast<int>(FRICTION_LEVEL_HISTORY_SIZE), static_cast<int>(m_frictionHistoryHead),
+								 frictionOverlay, 0.0f, 1.0f, ImVec2(-1.0f, 70.0f));
+				ImGui::Text("Active Collision Voices: %zu | Friction: %zu active / %zu releasing | Cells: %zu",
+							physicsAudio.getActiveVoiceCount(), physicsAudio.getActiveFrictionVoiceCount(),
+							physicsAudio.getReleasingFrictionVoiceCount(), physicsAudio.getOccupiedFrictionCellCount());
+				ImGui::Text("Hard Steals (last frame): %zu", physicsAudio.getLastFrictionStealCount());
 				ImGui::Unindent();
 			}
 			ImGui::EndTabItem();

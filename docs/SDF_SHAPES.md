@@ -84,7 +84,7 @@ Include `#include "weird-engine/math/SDF.h"`.
 
 - **Variables & Points**:
   - `var(index)`: Accesses entity parameter float at `index` (`0` to `7`).
-  - `worldPoint()`: Returns the 2D evaluation coordinate (`worldPoint().x`, `worldPoint().y`).
+  - `point()`: Returns the 2D evaluation coordinate (`point().x`, `point().y`).
   - `time()`: Returns the current scene elapsed time.
 - **SDF Primitives**:
   - `sdCircle(p, radius)`
@@ -116,7 +116,7 @@ The following example builds a ring by subtracting an inner circle from an outer
 using namespace WeirdEngine::SDF;
 
 // Translate evaluation point by entity position: var(0) = X, var(1) = Y
-auto p = translate(worldPoint(), {var(0), var(1)});
+auto p = translate(point(), {var(0), var(1)});
 
 // Subtract inner circle (radius = var(3)) from outer circle (radius = var(2))
 Expr ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));

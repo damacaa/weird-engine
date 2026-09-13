@@ -204,6 +204,7 @@ uniform int u_numLights;
 uniform Light u_lights[MAX_LIGHTS];
 
 uniform float u_time;
+uniform float u_audioVolume;
 
 const int MAX_STEPS = 256;
 const float RAYMARCH_EPSILON = 0.001;
@@ -301,7 +302,8 @@ float perlin3D(vec3 p)
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
-#define var11 p.z
+#define var11 u_audioVolume
+#define var12 p.z
 
 #define var0 parameters0.x
 #define var1 parameters0.y

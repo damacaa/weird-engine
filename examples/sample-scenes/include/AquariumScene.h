@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <cmath>
@@ -60,6 +61,19 @@ class AquariumScene : public Scene2D
 public:
 	AquariumScene() {}
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		// Aquatic wave shape: sine wave blended with bubble circles (scaled 10x for UI)
+		Expr wave = sdSineWave(p, 15.0f, 0.04f, 0.6f, 0.0f);
+		Expr bubble = sdCircle(p, 18.0f);
+		Expr aquaticShape = sdfSmoothUnion(wave, bubble, 5.0f);
+
+		return WeirdAudio::SdfSong::create("aquarium", aquaticShape);
+	}
+
 private:
 	float m_time = 0.0f;
 
@@ -82,6 +96,9 @@ private:
 		background.primaryColor = vec4(98, 129, 240, 255) / 255.0f;
 		background.secondaryColor = vec4(86, 208, 197, 255) / 255.0f;
 		background.scale = 0.15f;
+
+		// Initialize audio with scene-defined procedural SDF music
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		Entity globalSettingsEnt = registry.createEntity();
 		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

@@ -61,6 +61,7 @@ in vec2 v_texCoord;
 
 // Uniforms
 uniform float u_time;
+uniform float u_audioVolume;
 uniform float u_k;
 uniform sampler2D t_colorTexture;
 
@@ -136,8 +137,7 @@ float perlin(vec2 p)
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
-#define var11 u_uiScale* uv.x
-#define var12 u_uiScale* uv.y
+#define var11 u_audioVolume
 
 #define var0 parameters0.x
 #define var1 parameters0.y

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <filesystem>
@@ -26,6 +27,20 @@ class WalkScene : public Scene2D
 public:
 	WalkScene() {};
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		// Footstep path shape: rounded box path with stepping stone circles (scaled 10x for UI)
+		Expr path = sdBox(p, Vec2Expr(30.0f, 6.0f));
+		Expr stone1 = sdCircle(p + Vec2Expr(15.0f, 5.0f), 7.0f);
+		Expr stone2 = sdCircle(p - Vec2Expr(15.0f, -5.0f), 7.0f);
+		Expr walkShape = sdfSmoothUnion(sdfSmoothUnion(path, stone1, 4.0f), stone2, 4.0f);
+
+		return WeirdAudio::SdfSong::create("walk", walkShape);
+	}
+
 private:
 	Entity m_head;
 
@@ -34,6 +49,9 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined walk song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& background = services.render().getBackground();
 		background.type = BackgroundType::Sky;

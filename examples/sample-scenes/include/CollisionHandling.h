@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -10,12 +11,28 @@ class CollisionHandlingScene : public Scene2D
 public:
 	CollisionHandlingScene() {};
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = SDF::point();
+
+		// Sharp angular collision geometry: box combined with triangle (scaled 10x for UI)
+		Expr box = sdBox(p, Vec2Expr(20.0f, 12.0f));
+		Expr tri = sdTriangle(p, 25.0f, 20.0f);
+		Expr colShape = sdfUnion(box, tri);
+
+		return WeirdAudio::SdfSong::create("collision-handling", colShape);
+	}
+
 private:
 	// Inherited via Scene
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined collision handling song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& floorMat = services.materials2D().createMaterial("floor");
 		floorMat.color = ColorPalette::LightGray;

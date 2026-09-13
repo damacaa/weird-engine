@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -12,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "weird-audio/AudioRingBuffer.h"
+#include "weird-audio/SimpleAudioRequest.h"
 #include "weird-engine/Assert.h"
 #include "weird-engine/Background.h"
 #include "weird-engine/ecs/Registry.h"
@@ -25,8 +26,6 @@
 #include "weird-engine/vec.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/audio/AudioRingBuffer.h"
-#include "weird-renderer/audio/SimpleAudioRequest.h"
 #include "weird-renderer/components/Camera.h"
 #include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/core/Display.h"
@@ -36,7 +35,15 @@ namespace WeirdEngine
 {
 	class Scene;
 
-	constexpr int SOUND_QUEUE_SIZE = 16;
+	namespace WeirdAudio
+	{
+		class AudioEngine;
+		class PhysicsAudioEngine;
+		class SdfMusicEngine;
+		class SdfSong;
+	} // namespace WeirdAudio
+
+	constexpr int SOUND_QUEUE_SIZE = 64;
 
 	/// Map from tag name (std::string) to the entity that owns it.
 	using TagMap = std::unordered_map<std::string, Entity>;
@@ -266,6 +273,21 @@ namespace WeirdEngine
 		ShapeId shapeId = 0;
 		ShapeVariables variables{};
 		ShapeMaterial material = 0;
+		CombinationType combination = CombinationType::Addition;
+		int group = 0;
+	};
+
+	enum class SongVisualizationMode
+	{
+		None,
+		UI,
+		World,
+	};
+
+	struct SongVisualizationOptions
+	{
+		SongVisualizationMode mode = SongVisualizationMode::None;
+		ShapeMaterial material = -1;
 		CombinationType combination = CombinationType::Addition;
 		int group = 0;
 	};
@@ -623,28 +645,79 @@ namespace WeirdEngine
 
 	struct AudioService
 	{
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
-		std::atomic<float>& frictionSoundLevel;
+		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& queue;
+		float& collisionSoundVolume; // 1.0 = 100%, shared with Scene's real impacts
+		ShapeService* shapes = nullptr;
+		Registry* registry = nullptr;
+		Entity m_visualizationEntity = INVALID_ENTITY;
+		float m_lastSyncedParams[8] = {0.0f};
 
-		void playSound(const WeirdRenderer::SimpleAudioRequest& audio)
+		AudioService(AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, float& csv,
+					 ShapeService* s = nullptr, Registry* r = nullptr)
+			: queue(q)
+			, collisionSoundVolume(csv)
+			, shapes(s)
+			, registry(r)
+		{
+		}
+
+		void playSound(const WeirdAudio::SimpleAudioRequest& audio)
 		{
 			queue.push(audio);
 		}
 
-		float getFrictionSound() const
+		// Trigger a one-shot fake collision impact at a world position. Uses the
+		// exact same synthesis and volume multiplier as real engine collisions.
+		// intensity: 0 (light click) to 1 (heavy thud).
+		void playCollisionSound(
+			const vec3& position, float intensity = 0.5f,
+			WeirdAudio::SimpleAudioRequest::ImpactType type = WeirdAudio::SimpleAudioRequest::ImpactType::Shape)
 		{
-			return frictionSoundLevel.load(std::memory_order_acquire);
+			queue.push(WeirdAudio::SimpleAudioRequest::makeImpact(position, intensity, type, collisionSoundVolume));
 		}
 
-		void setFrictionSound(float level)
-		{
-			frictionSoundLevel.store(level, std::memory_order_release);
-		}
+		// Spatial Audio
+		void setSpatialAudioEnabled(bool enabled);
+		bool isSpatialAudioEnabled() const;
 
-		AudioRingBuffer<WeirdRenderer::SimpleAudioRequest, SOUND_QUEUE_SIZE>& audioQueue()
-		{
-			return queue;
-		}
+		// Subsystems
+		WeirdAudio::SdfMusicEngine& music();
+
+		// Song Management (beat-synced)
+		void setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced = true);
+		Entity setSong(std::shared_ptr<WeirdAudio::SdfSong> song, const SongVisualizationOptions& visualOptions,
+					   bool beatSynced = true);
+		void queueSong(std::shared_ptr<WeirdAudio::SdfSong> song);
+
+		// Visualization Parameter Sync
+		void setSongParameter(size_t index, float value);
+
+		// Motion & Domain Fill Inspection
+		float getMotionLevel() const;
+		float getMotionNorm() const;
+		float getFillRatio() const;
+		float getTempoFromMotion() const;
+		float getVolumeFromFill() const;
+		float getComplexityLevel() const;
+		float getComplexityNorm() const;
+		float getTension() const;
+		float getTempo() const;
+		float getTimeBetweenBeats() const;
+
+		// Re-sample procedural shape parameters (call after updating shape variables in real time)
+		void resampleShape();
+
+		// Real-time Dynamic Feedback
+		void triggerPositiveFeedback(float intensity = 1.0f);
+		void triggerNegativeFeedback(float intensity = 1.0f);
+		void triggerDeath();
+		void surge(float amount = 0.5f);
+		void duck(float amount = 0.5f);
+		void resetDynamicEffects();
+
+	private:
+		Entity createUIVisualization(const std::shared_ptr<WeirdAudio::SdfSong>& song,
+									 const SongVisualizationOptions& visualOptions);
 	};
 
 	struct TagService

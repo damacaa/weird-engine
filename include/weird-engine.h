@@ -41,9 +41,9 @@ extern "C"
 #define SHADERS_PATH
 #endif // !SHADERS_PATH
 
+#include "weird-audio/AudioEngine.h"
+#include "weird-audio/AudioSettings.h"
 #include "weird-physics/PhysicsSettings.h"
-#include "weird-renderer/audio/AudioEngine.h"
-#include "weird-renderer/audio/AudioSettings.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -53,6 +53,7 @@ namespace WeirdEngine
 {
 
 	using namespace WeirdRenderer;
+	using namespace WeirdAudio;
 
 	namespace Detail
 	{
@@ -62,7 +63,7 @@ namespace WeirdEngine
 		{
 			SceneManager& sceneManager;
 			Renderer& renderer;
-			AudioEngine& audioEngine;
+			WeirdAudio::AudioEngine& audioEngine;
 
 			double time = 0.0;
 			double prevTime = 0.0;
@@ -251,7 +252,7 @@ namespace WeirdEngine
 	} // namespace Detail
 
 	inline void start(SceneManager& sceneManager, DisplaySettings displaySettings = {},
-					  PhysicsSettings physicsSettings = {}, AudioSettings audioSettings = {}, int argc = 0,
+					  PhysicsSettings physicsSettings = {}, WeirdAudio::AudioSettings audioSettings = {}, int argc = 0,
 					  char** argv = nullptr, const std::string& assetsPath = ASSETS_PATH)
 	{
 		sceneManager.setAssetsPath(assetsPath);
@@ -274,7 +275,7 @@ namespace WeirdEngine
 
 		sceneManager.setPhysicsSettings(physicsSettings);
 
-		AudioEngine& audioEngine = AudioEngine::getInstance();
+		WeirdAudio::AudioEngine& audioEngine = WeirdAudio::AudioEngine::getInstance();
 		audioEngine.init(audioSettings);
 
 #ifdef __EMSCRIPTEN__
@@ -357,6 +358,11 @@ namespace WeirdEngine
 				runtimeContext.autoQuitAt = runtimeContext.time + seconds;
 			}
 		}
+
+		if (SDL_getenv("WEIRD_RECORD_PROFILER"))
+		{
+			Profiler::get().startRecording();
+		}
 #endif
 
 		while (!runtimeContext.quit)
@@ -364,8 +370,14 @@ namespace WeirdEngine
 			Detail::runFrame(runtimeContext);
 		}
 
+#ifdef WEIRD_TEST_HOOKS
+		if (SDL_getenv("WEIRD_RECORD_PROFILER"))
+		{
+			std::cout << Profiler::get().getReportString() << std::endl;
+		}
+#endif
+
 		WeirdEngine::Logger::log("Quitting...");
 #endif
-		// audioEngine.close();
 	}
 } // namespace WeirdEngine

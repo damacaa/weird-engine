@@ -46,6 +46,7 @@ cmake --build build
 For detailed guides, refer to:
 - [Scene and ECS Architecture Guide](docs/SCENE_AND_ECS.md)
 - [Defining Shapes with SDFs Guide](docs/SDF_SHAPES.md)
+- [Procedural Audio & Music Guide](docs/AUDIO.md)
 
 ### Creating a Scene
 

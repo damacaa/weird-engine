@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -10,6 +11,19 @@ class MouseCollisionScene : public Scene2D
 {
 public:
 	MouseCollisionScene() {};
+
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = point();
+
+		// Bouncy cursor circle intersecting an offset box (scaled 10x for UI)
+		Expr circle = sdCircle(p, 18.0f);
+		Expr box = sdBox(p + Vec2Expr(5.0f, 5.0f), Vec2Expr(15.0f, 15.0f));
+		Expr mouseShape = sdfSmoothUnion(circle, box, 5.0f);
+
+		return WeirdAudio::SdfSong::create("mouse-collision", mouseShape);
+	}
 
 private:
 	struct CollisionCounter
@@ -26,6 +40,9 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined mouse collision song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& baseMat = services.materials2D().createMaterial("dot_base");
 		baseMat.color = ColorPalette::Black;

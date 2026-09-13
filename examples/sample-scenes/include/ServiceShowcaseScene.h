@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -130,6 +131,19 @@ namespace ServiceShowcase
 		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
+	inline std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		Vec2Expr p = point();
+
+		// Radiant multi-pointed star shape (scaled 10x for UI)
+		Expr star = sdStar(p, 25.0f, 12.0f, 6.0f, 0.0f);
+		Expr core = sdCircle(p, 14.0f);
+		Expr showcaseShape = sdfSmoothUnion(star, core, 4.0f);
+
+		return WeirdAudio::SdfSong::create("showcase", showcaseShape);
+	}
+
 	// ----------------------------------------------------------------- onStart
 	inline void onStartSystem(Registry& registry, ServiceProvider& services)
 	{
@@ -138,6 +152,9 @@ namespace ServiceShowcase
 		// Debug flags through the provider
 		services.debug().setDebugFly(true);
 		services.debug().setDebugInput(true);
+
+		// Initialize audio with scene-defined showcase song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		// Materials through the provider
 		Material2D& floorMaterial = services.materials2D().createMaterial("floor");
@@ -174,7 +191,7 @@ namespace ServiceShowcase
 		ShapeId ringShape;
 		{
 			using namespace SDF;
-			auto p = translate(worldPoint(), {var(0), var(1)});
+			auto p = translate(point(), {var(0), var(1)});
 			auto ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
 
 			ringShape = services.shapes().registerSDF(ring);
@@ -443,7 +460,7 @@ namespace ServiceShowcase
 			}
 		}
 
-		services.audio().playSound({0.05f, 300.0f, false, vec3(0.0f), 1});
+		services.audio().playSound({0.05f, 300.0f, true, vec3(event.raw.position, 0.0f), 1});
 	}
 
 	// --------------------------------------------------- onEntityShapeCollision
@@ -455,7 +472,7 @@ namespace ServiceShowcase
 		State& state = getState(registry, services);
 		state.shapeCollisions++;
 
-		if (event.entity != INVALID_ENTITY)
+		if (event.entity != INVALID_ENTITY && event.raw.state != CollisionState::END)
 		{
 			float frequency = 200.0f + static_cast<float>(state.shapeCollisions % 40) * 5.0f;
 			services.audio().playSound({0.04f, frequency, true, vec3(event.raw.position, 0.0f), 1});

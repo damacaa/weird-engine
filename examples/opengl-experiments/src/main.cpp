@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 
 	PhysicsSettings physicsSettings{};
 
-	AudioSettings audioSettings{};
+	WeirdAudio::AudioSettings audioSettings{};
 	audioSettings.mute = true;
 
 	start(sceneManager, displaySettings, physicsSettings, audioSettings, argc, argv);

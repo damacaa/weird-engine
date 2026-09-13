@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
@@ -25,6 +26,20 @@ class RopeScene : public Scene2D
 public:
 	RopeScene() {}
 
+	static std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
+	{
+		using namespace SDF;
+		// Local coordinate p centered at (0, 0)
+		Vec2Expr p = SDF::point();
+
+		// Taut string curve: sinusoidal wave modulated by box (scaled 10x for UI)
+		Expr wave = sdSineWave(p, 20.0f, 0.05f, 0.8f, 0.0f);
+		Expr box = sdBox(p, Vec2Expr(30.0f, 8.0f));
+		Expr ropeShape = sdfSmoothUnion(wave, box, 4.0f);
+
+		return WeirdAudio::SdfSong::create("rope", ropeShape);
+	}
+
 private:
 	Entity m_star = INVALID_ENTITY;
 	double m_lastSpawnTime = 0.0;
@@ -38,6 +53,9 @@ private:
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		// Initialize audio with scene-defined rope song
+		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
 		auto& groundMat = services.materials2D().createMaterial("ground");
 		groundMat.color = ColorPalette::LightGray;
@@ -167,6 +185,8 @@ private:
 		{
 			return;
 		}
+
+		services.audio().playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(0.0f), 1});
 
 		constexpr int amount = 10;
 		for (int i = 0; i < amount; ++i)

@@ -31,9 +31,18 @@ namespace WeirdEngine::Editor
 		static void SDLCALL onOpenFileCallback(void* userdata, const char* const* filelist, int filter);
 		static void SDLCALL onSaveFileCallback(void* userdata, const char* const* filelist, int filter);
 
+#ifdef __EMSCRIPTEN__
+		void requestWebFileLoad();
+		void saveGraphToWeb(const NodeGraph& graph);
+#endif
+
 		std::mutex m_fileActionMutex;
 		std::string m_pendingLoadPath;
 		std::string m_pendingSavePath;
 		std::deque<std::string> m_recentFiles;
+#ifdef __EMSCRIPTEN__
+		bool m_webLoadRequested = false;
+		bool m_webSaveRequested = false;
+#endif
 	};
 } // namespace WeirdEngine::Editor

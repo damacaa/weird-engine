@@ -67,7 +67,7 @@ tools/sdf-node-editor/
     * Shape Area, Circularity, and Harmonic Density
     * Fill Ratio & Dynamic Motion Levels
   * **Inspector Panel**: Shows generated GLSL / C++ code with one-click clipboard copying.
-  * **File Dialogs**: Asynchronous native file pickers using `SDL_ShowOpenFileDialog` and `SDL_ShowSaveFileDialog`.
+  * **File Dialogs**: Asynchronous native file pickers using `SDL_ShowOpenFileDialog` and `SDL_ShowSaveFileDialog`. In the web build these are replaced by an HTML file input (open) and a browser download (save).
 
 * **`src/main.cpp`**:
   * Configures `EngineSettings` (1280×800 window, VSync, dark styling).

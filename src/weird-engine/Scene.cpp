@@ -1074,6 +1074,21 @@ namespace WeirdEngine
 				else
 					m_simulation2D.resume();
 			}
+
+			ImGui::Separator();
+
+			float gravity = m_simulation2D.getGravity();
+			if (ImGui::DragFloat("Gravity", &gravity, 0.1f, -100.0f, 100.0f, "%.2f"))
+			{
+				m_simulation2D.setGravity(gravity);
+			}
+
+			float damping = m_simulation2D.getDamping();
+			if (ImGui::DragFloat("Damping", &damping, 0.001f, 0.0f, 1.0f, "%.3f"))
+			{
+				m_simulation2D.setDamping(damping);
+			}
+
 			ImGui::EndTabItem();
 		}
 #endif

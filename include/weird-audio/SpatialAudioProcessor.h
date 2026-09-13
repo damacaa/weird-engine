@@ -1,5 +1,6 @@
 #pragma once
 
+#include "weird-audio/SimpleAudioRequest.h"
 #include "weird-engine/vec.h"
 #include <algorithm>
 #include <cmath>
@@ -21,10 +22,25 @@ namespace WeirdEngine
 		class SpatialAudioProcessor
 		{
 		public:
+			static constexpr float DEFAULT_REF_DISTANCE = 10.0f;
+			static constexpr float DEFAULT_ROLLOFF = 0.45f;
+			static constexpr float DEFAULT_MAX_DISTANCE = 100.0f;
+
+			// Sqrt-free monotone proxy of the inverse-distance law. Used to rank
+			// many candidate sources per frame without computing square roots;
+			// the exact gain is only evaluated for the few selected voices.
+			static float distanceProxy(float distSq, float refDistance = DEFAULT_REF_DISTANCE,
+									   float rolloff = DEFAULT_ROLLOFF)
+			{
+				float k = rolloff / refDistance;
+				return 1.0f / (1.0f + k * k * distSq);
+			}
+
 			static SpatialAudioResult process(const vec3& sourcePos, const vec3& listenerPos,
 											  const vec3& listenerForward, const vec3& listenerUp,
-											  bool spatialEnabled = true, float refDistance = 10.0f,
-											  float rolloff = 0.45f, float maxDistance = 250.0f)
+											  AudioSpace space = AudioSpace::TwoDimensional, bool spatialEnabled = true,
+											  float refDistance = DEFAULT_REF_DISTANCE, float rolloff = DEFAULT_ROLLOFF,
+											  float maxDistance = DEFAULT_MAX_DISTANCE)
 			{
 				SpatialAudioResult result;
 
@@ -38,7 +54,16 @@ namespace WeirdEngine
 					return result;
 				}
 
-				vec3 toSource = sourcePos - listenerPos;
+				// Planar sources ignore the listener Z (camera zoom in 2D scenes)
+				vec3 src = sourcePos;
+				vec3 lis = listenerPos;
+				if (space == AudioSpace::TwoDimensional)
+				{
+					src.z = 0.0f;
+					lis.z = 0.0f;
+				}
+
+				vec3 toSource = src - lis;
 				float distSq = glm::length2(toSource);
 
 				// Early out if beyond max audible distance
@@ -63,6 +88,16 @@ namespace WeirdEngine
 
 				// 1. Distance attenuation: Smooth inverse distance law
 				result.distanceGain = refDistance / (refDistance + rolloff * dist);
+
+				// 1b. Smoothstep fade to exact silence at maxDistance
+				constexpr float FADE_START_RATIO = 0.75f;
+				float fadeStart = FADE_START_RATIO * maxDistance;
+				if (dist > fadeStart)
+				{
+					float fadeRange = maxDistance - fadeStart;
+					float t = fadeRange > 0.0f ? std::clamp((dist - fadeStart) / fadeRange, 0.0f, 1.0f) : 1.0f;
+					result.distanceGain *= 1.0f - (t * t * (3.0f - 2.0f * t));
+				}
 
 				// 2. High-frequency acoustic air absorption
 				result.filterCutoff = 20000.0f / (1.0f + 0.012f * dist);

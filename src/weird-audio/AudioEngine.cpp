@@ -1,16 +1,7 @@
 #include "weird-audio/AudioEngine.h"
-#include "weird-engine/Logger.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <vector>
-
-#define MA_NO_DEVICE_IO
-#define MINIAUDIO_IMPLEMENTATION
-#ifdef APIENTRY
-#undef APIENTRY
-#endif
-#include <miniaudio/miniaudio.h>
 
 #include "weird-engine/Input.h"
 
@@ -36,69 +27,17 @@ namespace WeirdEngine
 			m_musicEngine.init(SAMPLE_RATE, CHANNELS);
 			m_musicEngine.setVolume(settings.musicVolume);
 
-			ma_result result;
-			ma_engine_config engineConfig = ma_engine_config_init();
-			engineConfig.noDevice = MA_TRUE;
-			engineConfig.channels = CHANNELS;
-			engineConfig.sampleRate = SAMPLE_RATE;
-
-			result = ma_engine_init(&engineConfig, &m_engine);
-			if (result != MA_SUCCESS)
-			{
-				WeirdEngine::Logger::error("Failed to initialize audio engine");
-				return false;
-			}
-
 			return true;
 		}
 
-		void AudioEngine::close()
-		{
-			m_audioStream = nullptr;
-			m_dcBlockerX[0] = m_dcBlockerX[1] = 0.0f;
-			m_dcBlockerY[0] = m_dcBlockerY[1] = 0.0f;
-			if (m_hasSound)
-			{
-				ma_sound_uninit(&m_sound);
-				m_hasSound = false;
-			}
-			ma_engine_uninit(&m_engine);
-		}
-
-		void AudioEngine::loadSound(const char* filePath)
-		{
-			if (m_hasSound)
-			{
-				ma_sound_uninit(&m_sound);
-				m_hasSound = false;
-			}
-
-			ma_result result = ma_sound_init_from_file(&m_engine, filePath, 0, NULL, NULL, &m_sound);
-			if (result != MA_SUCCESS)
-			{
-				WeirdEngine::Logger::error("Failed to initialize sound from file: " + std::string(filePath));
-				return;
-			}
-
-			ma_sound_set_looping(&m_sound, MA_TRUE);
-			ma_sound_set_volume(&m_sound, 0.5f);
-			ma_sound_start(&m_sound);
-			m_hasSound = true;
-		}
-
-		ma_uint32 AudioEngine::getSampleRate() const
+		uint32_t AudioEngine::getSampleRate() const
 		{
 			return SAMPLE_RATE;
 		}
 
-		ma_uint8 AudioEngine::getChannels() const
+		uint8_t AudioEngine::getChannels() const
 		{
 			return CHANNELS;
-		}
-
-		AudioData AudioEngine::getAudioData()
-		{
-			return m_visualSnapshot;
 		}
 
 		void AudioEngine::listen(Scene& scene)
@@ -113,9 +52,17 @@ namespace WeirdEngine
 																			 : vec3(0.0f, 0.0f, -1.0f);
 			vec3 listenerUp = glm::length2(camera.up) > 0.001f ? glm::normalize(camera.up) : vec3(0.0f, 1.0f, 0.0f);
 
-			// 2. Physics continuous friction
-			float frictionValue = scene.getFrictionSound();
-			m_physicsEngine.setFrictionLevel(frictionValue);
+			// 2. Physics continuous friction (one voice per selected source)
+			if (scene.isFrictionSoundOverridden())
+			{
+				m_physicsEngine.setFrictionLevel(scene.getFrictionSound(), listenerPos, listenerPos, listenerForward,
+												 listenerUp);
+			}
+			else
+			{
+				m_physicsEngine.setFrictionSources(scene.getFrictionSources(), listenerPos, listenerForward,
+												   listenerUp);
+			}
 
 			// 3. Drain and process physics requests from Scene
 			auto& audioQueue = scene.getAudioQueue();
@@ -135,16 +82,16 @@ namespace WeirdEngine
 			m_musicEngine.update(scene.getLastDelta(), scene.getTime());
 
 			// 6. Generate and stream PCM audio to SDL
-			constexpr int TARGET_BUFFER_BYTES = (SAMPLE_RATE * CHANNELS * sizeof(float) * 8) / 100;
+			constexpr int TARGET_BUFFER_BYTES = (SAMPLE_RATE * CHANNELS * sizeof(float) * 14) / 100;
 			int queuedBytes = SDL_GetAudioStreamQueued(m_audioStream);
 
 			if (queuedBytes < TARGET_BUFFER_BYTES)
 			{
 				int bytesToGenerate = TARGET_BUFFER_BYTES - queuedBytes;
-				ma_uint32 framesToWrite = static_cast<ma_uint32>(bytesToGenerate / (CHANNELS * sizeof(float)));
-				if (framesToWrite > 4096)
+				uint32_t framesToWrite = static_cast<uint32_t>(bytesToGenerate / (CHANNELS * sizeof(float)));
+				if (framesToWrite > 8192)
 				{
-					framesToWrite = 4096;
+					framesToWrite = 8192;
 				}
 
 				if (framesToWrite > 0)
@@ -161,17 +108,6 @@ namespace WeirdEngine
 					if (m_settings.enableMusic)
 					{
 						m_musicEngine.render(mix.data(), framesToWrite, CHANNELS);
-					}
-
-					// Layer 3: Optional background music track from file
-					if (m_hasSound)
-					{
-						std::vector<float> bgTrack(framesToWrite * CHANNELS, 0.0f);
-						ma_engine_read_pcm_frames(&m_engine, bgTrack.data(), framesToWrite, NULL);
-						for (size_t i = 0; i < mix.size(); ++i)
-						{
-							mix[i] += bgTrack[i];
-						}
 					}
 
 					// Master bus processing: DC Blocker (1-pole highpass at ~15 Hz, R = 0.995)

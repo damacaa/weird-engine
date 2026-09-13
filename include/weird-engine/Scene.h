@@ -6,6 +6,7 @@
 #include "weird-engine/systems/SDFRenderSystem.h"
 
 #include "weird-audio/AudioRingBuffer.h"
+#include "weird-audio/FrictionSource.h"
 #include "weird-audio/SimpleAudioRequest.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
@@ -202,25 +203,13 @@ namespace WeirdEngine
 		const std::vector<WeirdRenderer::DrawCommand>& getDrawQueue() const;
 		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& getAudioQueue();
 		float getFrictionSound();
-		void setFrictionSound(float level)
+		const std::vector<WeirdAudio::FrictionSource>& getFrictionSources() const
 		{
-			m_frictionSoundLevelRead.store(level, std::memory_order_release);
+			return m_frictionSources;
 		}
-		bool isFrictionSoundEnabled() const
+		bool isFrictionSoundOverridden() const
 		{
-			return m_enableFrictionSound;
-		}
-		void setFrictionSoundEnabled(bool enabled)
-		{
-			m_enableFrictionSound = enabled;
-		}
-		float getFrictionSoundMultiplier() const
-		{
-			return m_frictionSoundMultiplier;
-		}
-		void setFrictionSoundMultiplier(float mult)
-		{
-			m_frictionSoundMultiplier = mult;
+			return m_overrideFrictionSound;
 		}
 
 		BackgroundParams& getBackground()
@@ -270,7 +259,6 @@ namespace WeirdEngine
 		static void handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData);
 		// Load scene state from a .weird JSON file
 		void loadFromWeirdFile(const std::string& path);
-		void playSound(const WeirdAudio::SimpleAudioRequest& audio);
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId,
 										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
@@ -297,10 +285,39 @@ namespace WeirdEngine
 
 		// ---- Audio, draw queue, lights
 		AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE> m_audioQueue;
-		float m_frictionSoundLevel{0.0f};
+		float m_frictionSoundLevelHold{0.0f};
 		std::atomic<float> m_frictionSoundLevelRead{0.0f};
+
+		// Live friction level history for the debug graph. Ring buffer: the head
+		// is the next write index, which is also the oldest sample.
+		static constexpr size_t FRICTION_LEVEL_HISTORY_SIZE = 256;
+		float m_frictionLevelHistory[FRICTION_LEVEL_HISTORY_SIZE] = {0.0f};
+		size_t m_frictionHistoryHead = 0;
+
+		// Per-body friction aggregation for the current frame. Accumulators are
+		// indexed by SimulationID and validated with a frame stamp so nothing
+		// needs to be cleared per frame, even with thousands of rigidbodies.
+		struct FrictionBodyAccumulator
+		{
+			float maxCoef = 0.0f; // max per-event friction coefficient (pre-speed)
+			float speedSq = 0.0f; // body speed squared at the loudest contact
+			vec3 weightedPosition{0.0f};
+			float weightSum = 0.0f;
+			uint32_t stamp = 0;
+		};
+		std::vector<FrictionBodyAccumulator> m_frictionAccumulators;
+		std::vector<SimulationID> m_touchedFrictionBodies;
+		std::vector<WeirdAudio::FrictionSource> m_frictionSources;
+		uint32_t m_frictionFrameStamp{0};
+
+		// Per-body impact cooldown tracking to debounce micro-jitter in resting piles.
+		std::vector<float> m_bodyLastImpactTime;
+
 		bool m_enableFrictionSound{true};
-		float m_frictionSoundMultiplier{1.0f};
+		float m_frictionSoundMultiplier{0.25f};
+		// 1.0 = 100% = 1.5x the historical collision mix; used by
+		// SimpleAudioRequest::makeImpact for both real and fake impacts.
+		float m_collisionSoundVolume{1.0f};
 		bool m_overrideFrictionSound{false};
 		float m_manualFrictionLevel{0.0f};
 		bool m_waveformAutoScale{true};

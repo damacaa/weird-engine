@@ -40,7 +40,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 - **Engine is a static library** (`libWeirdEngine.a`) built from `src/` + `include/`.
 - Three engine modules (all under one target):
   - `weird-engine/` — core: ECS, scenes, input, logging, serialization
-  - `weird-renderer/` — OpenGL ES SDF ray-marching renderer, audio (miniaudio), shaders, fonts
+  - `weird-renderer/` — OpenGL ES SDF ray-marching renderer, audio (SDL3 stream), shaders, fonts
   - `weird-physics/` — Position-Based Dynamics with SDF collision
 - **Examples are separate executables** that `add_subdirectory` the engine root and link `WeirdEngine`. Each has its own `src/`, `include/`, `assets/`.
   - `sample-scenes` → `WeirdSamples` (main demo)
@@ -52,7 +52,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 ## Dependencies
 
 - **Git submodules**: SDL3, imgui (init with `git submodule update --init --recursive`; CMake also runs this automatically).
-- **Vendored in `third-party/`**: glad, glm, stb, miniaudio, nlohmann/json, KHR.
+- **Vendored in `third-party/`**: glad, glm, stb, nlohmann/json, KHR.
 
 ## Style
 

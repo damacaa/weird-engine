@@ -1159,6 +1159,7 @@ namespace WeirdEngine
 					ImGui::ColorEdit4("Secondary Color", &m_background.secondaryColor[0]);
 					ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
 					ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
+					ImGui::SliderFloat("Parallax", &m_background.parallax, 0.0f, 1.0f);
 				}
 
 				ImGui::Unindent();

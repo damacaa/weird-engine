@@ -6,6 +6,7 @@
 
 #include "weird-renderer/core/Display.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace WeirdEngine::Editor
 {
@@ -164,7 +165,6 @@ namespace WeirdEngine::Editor
 		float gapMaxX = static_cast<float>(winW);
 		float gapMinY = menuH + inspectorHeight;
 		float gapMaxY = static_cast<float>(winH);
-		float selectorMinX = gapMaxX - kPreviewSelectorWidth - kPreviewSelectorRightMargin;
 
 		Entity mainCam = services.tags().getEntityByTag("mainCamera");
 		if (mainCam == INVALID_ENTITY || !registry.hasComponent<Transform>(mainCam))
@@ -179,8 +179,19 @@ namespace WeirdEngine::Editor
 
 		bool isInPreviewGap = (mouseScreenX >= gapMinX && mouseScreenX <= gapMaxX && mouseTopLeftY >= gapMinY &&
 							   mouseTopLeftY <= gapMaxY);
-		bool isInPreviewSelector = (mouseScreenX >= selectorMinX && mouseScreenX <= gapMaxX &&
-									mouseTopLeftY >= gapMinY && mouseTopLeftY <= gapMaxY);
+
+		// Only exclude the selector window's actual rectangle. The root window has a hit-test hole
+		// over the whole gap, so ImGui does not report the gap as hovered; but clicks on the
+		// selector itself must not spawn shapes.
+		bool isInPreviewSelector = false;
+		if (const ImGuiWindow* selectorWindow = ImGui::FindWindowByName("##PreviewModeSelector"))
+		{
+			const ImVec2 selectorMin = selectorWindow->Pos;
+			const ImVec2 selectorMax(selectorWindow->Pos.x + selectorWindow->Size.x,
+									 selectorWindow->Pos.y + selectorWindow->Size.y);
+			isInPreviewSelector = mouseScreenX >= selectorMin.x && mouseScreenX <= selectorMax.x &&
+								  mouseTopLeftY >= selectorMin.y && mouseTopLeftY <= selectorMax.y;
+		}
 		bool isHoveredInGap = isInPreviewGap && !isInPreviewSelector;
 
 		if (isHoveredInGap)
@@ -213,29 +224,35 @@ namespace WeirdEngine::Editor
 		if (isLeftDown && isHoveredInGap)
 		{
 			static float lastSpawnTime = 0.0f;
-			float spawnInterval = services.audio().getTimeBetweenBeats() / 4.0f; // 16th-note subdivision
+			float spawnInterval = 0.05f;
 			spawnInterval = std::clamp(spawnInterval, 0.03f, 0.5f);
 
 			if (services.time().time() - lastSpawnTime >= spawnInterval)
 			{
 				lastSpawnTime = services.time().time();
 
-				glm::vec2 mousePosForCam(mouseScreenX, mouseCameraY);
+				glm::vec2 mousePosForCam(mouseScreenX + std::sinf(services.time().time()) * 10.0f,
+										 static_cast<float>(winH) - gapMinY);
 				glm::vec2 worldPos = ECS::Camera::screenPositionToWorldPosition2D(camTransform, mousePosForCam);
 
-				if (m_spawnedDots.size() < 3000)
+				int numDotsToSpawn = 10;
+				for (size_t i = 0; i < numDotsToSpawn; i++)
 				{
+					if (m_spawnedDots.size() >= 3000)
+					{
+						break;
+					}
+
 					Entity dotEntity = registry.createEntity();
 					auto& t = registry.addComponent<Transform>(dotEntity);
 
-					float offsetX = ((std::rand() % 200) - 100.0f) * 0.01f * 0.5f;
-					float offsetY = ((std::rand() % 200) - 100.0f) * 0.01f * 0.5f;
-					t.position = glm::vec3(worldPos.x + offsetX, worldPos.y + offsetY, 0.0f);
+					t.position = glm::vec3(worldPos.x + i - (0.5f * numDotsToSpawn), worldPos.y, 0.0f);
 
 					auto& dot = registry.addComponent<Dot>(dotEntity);
 					dot.materialId = m_dotMaterialId;
 
-					registry.addComponent<RigidBody2D>(dotEntity);
+					auto& rb = registry.addComponent<RigidBody2D>(dotEntity);
+					rb.velocity = glm::vec2(0.0f, -30.0f);
 
 					m_spawnedDots.push_back(dotEntity);
 				}

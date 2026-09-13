@@ -16,6 +16,7 @@ int main(int argc, char* argv[])
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.windowTitle = "Weird Engine - SDF Node Editor";
+	displaySettings.worldSmoothFactor = 4.0f;
 
 	PhysicsSettings physicsSettings{};
 

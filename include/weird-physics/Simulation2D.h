@@ -3,7 +3,10 @@
 #include <atomic>
 #include <bitset>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -38,7 +41,8 @@ namespace WeirdEngine
 		UnFix,
 		SetMass,
 		ActivatePending,
-		AddImpulse
+		AddImpulse,
+		Action
 	};
 
 	struct PhysicsCommand
@@ -46,7 +50,8 @@ namespace WeirdEngine
 		PhysicsCommandType type;
 		SimulationID id;
 		vec2 vectorData;
-		float floatData;
+		float floatData = 0.0f;
+		std::function<void()> action;
 	};
 
 	enum class CollisionState
@@ -119,6 +124,9 @@ namespace WeirdEngine
 		}
 
 		// void setSize(unsigned int size);
+		// Main-thread lifecycle: creation reserves an ID and queues initialization.
+		// Activation publishes the completed batch. Removal waits for a physics
+		// boundary so the caller can immediately apply the last-slot ID remapping.
 		SimulationID generateSimulationID();
 		void activatePendingBodies();
 		void removeObject(SimulationID id);
@@ -244,7 +252,9 @@ namespace WeirdEngine
 		// destroyed. Do not retain the pointer after the call; read or modify
 		// it through getUserData()/getUserDataAs<T>() instead. setUserData() is
 		// main-thread only; getUserData()/getUserDataAs<T>()/forEachUserData()
-		// are safe from the physics callbacks without locks.
+		// may be called from physics callbacks. forEachUserData holds the data
+		// lock throughout its callback. Raw pointers must not be retained across
+		// replacement/removal; use forEachUserData for concurrent main-thread edits.
 		void setUserData(SimulationID id, std::unique_ptr<BodyUserData> data);
 		BodyUserData* getUserData(SimulationID id);
 
@@ -259,24 +269,15 @@ namespace WeirdEngine
 		}
 
 		// Calls fn(SimulationID, BodyUserData&) for every active body that has
-		// user data attached. Lock-free from physics callbacks (the step
-		// already holds the structural mutex); serialized on the main thread.
+		// user data attached. Protected by m_userDataMutex. Main-thread callbacks
+		// must not call synchronous physics operations (removal, constraint queries
+		// or edits returning bool): those wait for the worker, which needs this lock.
 		template <typename Fn> void forEachUserData(Fn&& fn)
 		{
-			if (isPhysicsExecutionContext())
-			{
-				for (SimulationID id = 0; id < m_size; ++id)
-				{
-					if (m_userData[id])
-						fn(id, *m_userData[id]);
-				}
-				return;
-			}
-
-			std::lock_guard<std::mutex> lock(m_structuralMutex);
+			std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
 			for (SimulationID id = 0; id < m_size; ++id)
 			{
-				if (m_userData[id])
+				if (m_bodyActive[id] && m_userData[id])
 					fn(id, *m_userData[id]);
 			}
 		}
@@ -330,17 +331,23 @@ namespace WeirdEngine
 		};
 
 		// Serialization support: read constraint data
-		const std::vector<DistanceConstraint>& getDistanceConstraints() const
+		std::vector<DistanceConstraint> getDistanceConstraints() const
 		{
-			return m_distanceConstraints;
+			std::vector<DistanceConstraint> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_distanceConstraints; });
+			return result;
 		}
-		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const
+		std::vector<GravitationalConstraint> getGravitationalConstraints() const
 		{
-			return m_gravitationalConstraints;
+			std::vector<GravitationalConstraint> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_gravitationalConstraints; });
+			return result;
 		}
-		const std::vector<SimulationID>& getFixedObjects() const
+		std::vector<SimulationID> getFixedObjects() const
 		{
-			return m_fixedObjects;
+			std::vector<SimulationID> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_fixedObjects; });
+			return result;
 		}
 
 		// Serialization support: load raw constraint (bypasses stiffness conversion)
@@ -348,11 +355,16 @@ namespace WeirdEngine
 		{
 			if (a == b)
 				return;
-			m_distanceConstraints.emplace_back(a, b, distance, k);
+			enqueueAction([=, this] { m_distanceConstraints.emplace_back(a, b, distance, k); });
 		}
 
 	private:
 		void process();
+		void processCommands();
+		void removeBodyAtBoundary(SimulationID id);
+		void enqueueCommand(PhysicsCommand command);
+		void enqueueAction(std::function<void()> action);
+		void executeSynchronous(std::function<void()> action);
 		void checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs);
 		void solveCollisionsPositionBased();
 		void applyForces();
@@ -460,8 +472,11 @@ namespace WeirdEngine
 		vec2* m_continuousForcesWrite;
 
 		size_t m_maxSize;
+		// Physics owns initialized slots; the game thread reserves IDs.
 		size_t m_size;
-		size_t m_allocated;
+		std::atomic<size_t> m_allocated;
+		std::atomic<size_t> m_activeSize{0};
+		std::vector<uint8_t> m_bodyActive;
 
 		float* m_mass;
 		float* m_invMass;
@@ -521,8 +536,10 @@ namespace WeirdEngine
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
 		std::mutex m_structuralMutex;
+		mutable std::recursive_mutex m_userDataMutex;
 		std::mutex m_readMutex;
 		std::mutex m_commandMutex;
+		std::condition_variable m_commandReady;
 		std::vector<PhysicsCommand> m_pendingCommands;
 		std::vector<PhysicsCommand> m_internalCommands;
 

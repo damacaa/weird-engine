@@ -1,6 +1,7 @@
 #include "weird-physics/Simulation2D.h"
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "glm/gtx/norm.hpp"
 #include "weird-engine/Assert.h"
@@ -75,6 +76,7 @@ namespace WeirdEngine
 		, m_diameter(1.0f)
 		, m_diameterSquared(m_diameter * m_diameter)
 		, m_radious(m_diameter / 2.0f)
+		, m_bodyActive(size, 0)
 		, m_collisionMap(size)
 		, m_head(8191, -1)
 	{
@@ -101,6 +103,7 @@ namespace WeirdEngine
 
 	Simulation2D::~Simulation2D()
 	{
+		stopSimulationThread();
 		// Free any user data still attached to live bodies (the simulation
 		// owns these pointers; removed bodies free theirs in removeObject).
 		for (size_t i = 0; i < m_allocated; ++i)
@@ -144,8 +147,18 @@ namespace WeirdEngine
 
 	void Simulation2D::update(double delta)
 	{
+		// Cap single-frame delta to prevent physics death spiral after stalls
+		constexpr double MAX_FRAME_DELTA = 0.1; // at most 100ms per frame
+		double clampedDelta = (std::min)(delta, MAX_FRAME_DELTA);
+
+		const double maximum = static_cast<double>(MAX_STEPS) * m_fixedDeltaTime;
+		double current = m_simulationDelay.load();
+		while (!m_simulationDelay.compare_exchange_weak(current, (std::min)(current + clampedDelta, maximum)))
 		{
-			m_simulationDelay += delta;
+		}
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_commandReady.notify_one();
 		}
 
 		if (m_simulating)
@@ -154,28 +167,63 @@ namespace WeirdEngine
 		process();
 	}
 
-	void Simulation2D::process()
+	void Simulation2D::enqueueCommand(PhysicsCommand command)
+	{
+		if (isPhysicsExecutionContext())
+		{
+			m_internalCommands.push_back(std::move(command));
+			return;
+		}
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_pendingCommands.push_back(std::move(command));
+		}
+		m_commandReady.notify_one();
+	}
+
+	void Simulation2D::enqueueAction(std::function<void()> action)
+	{
+		enqueueCommand({PhysicsCommandType::Action, 0, vec2(0.0f), 0.0f, std::move(action)});
+	}
+
+	void Simulation2D::executeSynchronous(std::function<void()> action)
+	{
+		if (isPhysicsExecutionContext())
+		{
+			action();
+			return;
+		}
+		auto task = std::make_shared<std::packaged_task<void()>>(std::move(action));
+		auto completed = task->get_future();
+		enqueueAction([task] { (*task)(); });
+		if (!m_simulating)
+			processCommands();
+		completed.get();
+	}
+
+	void Simulation2D::processCommands()
 	{
 		PhysicsExecutionScope physicsExecution;
-
-		int steps = 0;
-
-		while (m_simulationDelay >= m_fixedDeltaTime && steps < MAX_STEPS)
+		std::vector<PhysicsCommand> commandsToExecute;
+		commandsToExecute.swap(m_internalCommands);
+		std::vector<PhysicsCommand> pending;
 		{
-			std::lock_guard<std::mutex> structLock(m_structuralMutex);
+			std::lock_guard<std::mutex> cmdLock(m_commandMutex);
+			pending.swap(m_pendingCommands);
+		}
+		// Callback commands refer to the pre-removal IDs, so apply them before
+		// game-thread removal fences and their subsequent ID remapping.
+		commandsToExecute.insert(commandsToExecute.end(), std::make_move_iterator(pending.begin()),
+								 std::make_move_iterator(pending.end()));
 
-			std::vector<PhysicsCommand> commandsToExecute;
-			{
-				std::lock_guard<std::mutex> cmdLock(m_commandMutex);
-				commandsToExecute = std::move(m_pendingCommands);
-			}
-			commandsToExecute.insert(commandsToExecute.end(), m_internalCommands.begin(), m_internalCommands.end());
-			m_internalCommands.clear();
-
+		{
 			for (const auto& cmd : commandsToExecute)
 			{
 				switch (cmd.type)
 				{
+					case PhysicsCommandType::Action:
+						cmd.action();
+						break;
 					case PhysicsCommandType::SetVelocity:
 						m_velocities[cmd.id] = cmd.vectorData;
 						break;
@@ -215,20 +263,42 @@ namespace WeirdEngine
 					}
 					case PhysicsCommandType::ActivatePending:
 					{
-						m_size = m_allocated;
+						std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
+						for (size_t id = 0; id < cmd.id; ++id)
+						{
+							if (!m_bodyActive[id])
+							{
+								m_bodyActive[id] = 1;
+								++m_activeSize;
+							}
+						}
 						break;
 					}
 					case PhysicsCommandType::AddImpulse:
 					{
 						std::lock_guard<std::mutex> lock(m_externalForcesMutex);
 						m_impulsesSinceLastUpdate = true;
-						m_impulses[cmd.id] += cmd.vectorData;
+						m_impulses[cmd.id] += cmd.vectorData * (cmd.floatData != 0.0f ? m_mass[cmd.id] : 1.0f);
 						break;
 					}
 					default:
 						break;
 				}
 			}
+		}
+	}
+
+	void Simulation2D::process()
+	{
+		PhysicsExecutionScope physicsExecution;
+
+		int steps = 0;
+
+		while (steps < MAX_STEPS)
+		{
+			processCommands();
+			if (m_simulationDelay < m_fixedDeltaTime)
+				break;
 
 			auto start = std::chrono::high_resolution_clock::now();
 
@@ -265,10 +335,12 @@ namespace WeirdEngine
 				integratePredict((float)m_fixedDeltaTime);
 
 				// 2. Iteratively solve constraints (Push/Pull particles to their exact distances)
-
-				for (int iter = 0; iter < m_relaxationSteps; iter++)
 				{
-					solveConstraints();
+					std::lock_guard<std::mutex> structLock(m_structuralMutex);
+					for (int iter = 0; iter < m_relaxationSteps; iter++)
+					{
+						solveConstraints();
+					}
 				}
 
 				// 3. Derive the exact velocity based on how much the constraints moved the particles
@@ -287,7 +359,6 @@ namespace WeirdEngine
 					m_stats.integrationMs = m_stats.integrationMs * 0.9 + timerIntegration * 0.1;
 				}
 
-				++steps;
 				{
 					// m_simulationTime += m_fixedDeltaTime;
 					// m_simulationTime.fetch_add(m_fixedDeltaTime);
@@ -302,11 +373,13 @@ namespace WeirdEngine
 					// Notify collision callback
 					if (m_stepCallback)
 					{
+						std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
 						m_stepCallback(m_callbackUserData);
 					}
 				}
 			}
 
+			++steps;
 			{
 				// std::lock_guard<std::mutex> lock(g_simulationTimeMutex); // Lock the mutex
 				m_simulationDelay -= m_fixedDeltaTime;
@@ -333,7 +406,7 @@ namespace WeirdEngine
 	{
 		WEIRD_ASSERT(!isPhysicsExecutionContext(), "setUserData() may not be called from physics execution context");
 
-		std::lock_guard<std::mutex> lock(m_structuralMutex);
+		std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
 
 		// Bounds-check against m_allocated, not m_size: bodies can carry user
 		// data before they are activated (ActivatePending) later in the frame.
@@ -346,20 +419,10 @@ namespace WeirdEngine
 
 	BodyUserData* Simulation2D::getUserData(SimulationID id)
 	{
-		// Inside a physics step the structural mutex is already held, so the
-		// read is lock-free; on the main thread it is serialized against
-		// structural changes (removeObject renumbering).
-		if (isPhysicsExecutionContext())
-		{
-			if (id >= m_allocated)
-				return nullptr;
-			return m_userData[id];
-		}
-
-		std::lock_guard<std::mutex> lock(m_structuralMutex);
-
 		if (id >= m_allocated)
 			return nullptr;
+
+		std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
 		return m_userData[id];
 	}
 
@@ -378,7 +441,11 @@ namespace WeirdEngine
 		if (!m_simulating)
 			return;
 
-		m_simulating = false;
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_simulating = false;
+		}
+		m_commandReady.notify_one();
 		m_simulationThread.join();
 	}
 
@@ -419,6 +486,8 @@ namespace WeirdEngine
 		// Insert all particles into the spatial grid
 		for (int i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			// Calculate which grid cell the particle is in
 			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
 			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
@@ -460,6 +529,8 @@ namespace WeirdEngine
 		// Check for collisions using the grid
 		for (int i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
 			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
 
@@ -499,6 +570,8 @@ namespace WeirdEngine
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			vec2& p = m_positions[i];
 
 			// Check
@@ -632,11 +705,11 @@ namespace WeirdEngine
 			float minDistance;
 		};
 
-		// We typically have very few groups; linear lookup avoids hash overhead.
-		std::vector<GroupState> groups;
-		groups.reserve(16);
-
-		std::vector<int> globalShapes;
+		// Retain capacity across samples without limiting scene geometry.
+		thread_local std::vector<GroupState> groups;
+		thread_local std::vector<int> globalShapes;
+		groups.clear();
+		globalShapes.clear();
 
 		for (int i = 0; i < m_objects.size(); i++)
 		{
@@ -667,11 +740,11 @@ namespace WeirdEngine
 			float currentMinDistance = d;
 			GroupState* groupState = nullptr;
 
-			for (auto& group : groups)
+			for (size_t g = 0; g < groups.size(); ++g)
 			{
-				if (group.id == obj.groupId)
+				if (groups[g].id == obj.groupId)
 				{
-					groupState = &group;
+					groupState = &groups[g];
 					break;
 				}
 			}
@@ -725,14 +798,15 @@ namespace WeirdEngine
 			groupState->minDistance = currentMinDistance;
 		}
 
-		for (const auto& group : groups)
+		for (size_t g = 0; g < groups.size(); ++g)
 		{
-			d = std::min(d, group.minDistance);
+			d = std::min(d, groups[g].minDistance);
 		}
 
 		// Apply global shapes as well, but without grouping (they affect everything)
-		for (int shapeIdx : globalShapes)
+		for (size_t g = 0; g < globalShapes.size(); ++g)
 		{
+			int shapeIdx = globalShapes[g];
 			DistanceFieldObject2D& obj = m_objects[shapeIdx];
 
 			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size())
@@ -806,6 +880,8 @@ namespace WeirdEngine
 
 			for (size_t i = 0; i < m_size; i++)
 			{
+				if (!m_bodyActive[i])
+					continue;
 				m_forces[i] += m_continuousForcesRead[i];
 			}
 
@@ -814,6 +890,8 @@ namespace WeirdEngine
 				m_impulsesSinceLastUpdate = false;
 				for (size_t i = 0; i < m_size; i++)
 				{
+					if (!m_bodyActive[i])
+						continue;
 					m_forces[i] += m_impulses[i];
 					m_impulses[i] = vec2(0);
 				}
@@ -865,6 +943,7 @@ namespace WeirdEngine
 			{
 				vec2 contactPos = m_positions[col.A] + 0.5f * col.AB;
 				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, impulseMagnitude};
+				std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
 				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
 			}
 		}
@@ -875,6 +954,7 @@ namespace WeirdEngine
 			// Send event
 			if (m_shapeCollisionCallback)
 			{
+				std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
 				m_shapeCollisionCallback(collisionEvent, m_callbackUserData); // Scene can modify values
 			}
 
@@ -937,6 +1017,8 @@ namespace WeirdEngine
 		// Apply extra forces
 		for (size_t i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			vec2& p = m_positions[i];
 			// vec2& force = m_forces[i];
 
@@ -953,6 +1035,8 @@ namespace WeirdEngine
 		for (auto it = m_distanceConstraints.begin(); it != m_distanceConstraints.end(); ++it)
 		{
 			DistanceConstraint constraint = *it;
+			if (!m_bodyActive[constraint.A] || !m_bodyActive[constraint.B])
+				continue;
 
 			vec2 v = m_positions[constraint.B] - m_positions[constraint.A];
 			float distance = length(v);
@@ -1001,6 +1085,8 @@ namespace WeirdEngine
 	{
 		for (size_t i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			// Store current position
 			m_previousPositions[i] = m_positions[i];
 
@@ -1026,6 +1112,8 @@ namespace WeirdEngine
 		float invTimeStep = 1.0f / timeStep;
 		for (size_t i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			// How much did the particle actually move after constraints pushed it around?
 			vec2 newVelocity = (m_positions[i] - m_previousPositions[i]) * invTimeStep;
 
@@ -1036,7 +1124,7 @@ namespace WeirdEngine
 						 "integrateVelocity resulted in NaN velocity");
 		}
 
-		// Restore your original rendering buffer logic
+		// Publish pending slots too: their initialized transforms must survive buffer swaps.
 		for (size_t i = 0; i < m_size; i++)
 		{
 			m_positionsAux[i] = m_positions[i];
@@ -1060,53 +1148,67 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::generateSimulationID()
 	{
-		std::lock_guard<std::mutex> lock(m_structuralMutex);
-		std::lock_guard<std::mutex> readLock(m_readMutex);
-
-		SimulationID id = static_cast<SimulationID>(m_allocated);
-
-		// Initialize particle with safe defaults so the physics
-		// thread never processes stale/garbage data.
-		m_positions[id] = vec2(0.0f);
-		m_positionsRead[id] = vec2(0.0f);
-		m_positionsAux[id] = vec2(0.0f);
-		m_previousPositions[id] = vec2(0.0f);
-		m_velocities[id] = vec2(0.0f);
-		m_velocitiesRead[id] = vec2(0.0f);
-		m_velocitiesAux[id] = vec2(0.0f);
-		m_forces[id] = vec2(0.0f);
-		m_impulses[id] = vec2(0.0f);
-		m_continuousForcesRead[id] = vec2(0.0f);
-		m_continuousForcesWrite[id] = vec2(0.0f);
-		m_mass[id] = 1.0f;
-		m_invMass[id] = 1.0f;
-		m_collisionMap[id] = false;
-		m_userData[id] = nullptr;
-
-		m_allocated++;
+		WEIRD_ASSERT(!isPhysicsExecutionContext(), "Body creation is main-thread only");
+		const auto id = static_cast<SimulationID>(m_allocated.load());
+		if (id >= m_maxSize)
+			throw std::length_error("Simulation2D body capacity exceeded");
+		{
+			std::lock_guard<std::mutex> lock(m_readMutex);
+			m_positionsRead[id] = vec2(0.0f);
+			m_positionsAux[id] = vec2(0.0f);
+			m_velocitiesRead[id] = vec2(0.0f);
+			m_velocitiesAux[id] = vec2(0.0f);
+		}
+		++m_allocated;
+		enqueueAction(
+			[this, id]
+			{
+				m_positions[id] = vec2(0.0f);
+				m_previousPositions[id] = vec2(0.0f);
+				m_velocities[id] = vec2(0.0f);
+				m_forces[id] = vec2(0.0f);
+				m_impulses[id] = vec2(0.0f);
+				m_continuousForcesRead[id] = vec2(0.0f);
+				m_continuousForcesWrite[id] = vec2(0.0f);
+				m_mass[id] = 1.0f;
+				m_invMass[id] = 1.0f;
+				m_collisionMap[id] = false;
+				m_positionsAux[id] = vec2(0.0f);
+				m_velocitiesAux[id] = vec2(0.0f);
+				std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
+				m_bodyActive[id] = 0;
+				m_size = id + 1;
+			});
 		return id;
 	}
 
 	void Simulation2D::activatePendingBodies()
 	{
-		if (m_allocated == m_size)
-			return;
-
-		std::lock_guard<std::mutex> lock(m_commandMutex);
-		m_pendingCommands.push_back({PhysicsCommandType::ActivatePending});
+		// Capture the completed batch, never a live allocation counter on the worker.
+		enqueueCommand({PhysicsCommandType::ActivatePending, static_cast<SimulationID>(m_allocated.load())});
 	}
 
 	void Simulation2D::removeObject(SimulationID id)
 	{
-		std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex, m_readMutex);
+		WEIRD_ASSERT(!isPhysicsExecutionContext(), "Body removal is main-thread only");
+		executeSynchronous([this, id] { removeBodyAtBoundary(id); });
+	}
+
+	void Simulation2D::removeBodyAtBoundary(SimulationID id)
+	{
+		std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex, m_readMutex, m_userDataMutex);
 
 		if (m_size == 0 || id >= m_size)
 		{
 			return;
 		}
 
+		if (m_bodyActive[id])
+			--m_activeSize;
 		auto toId = id;
 		auto fromId = m_size - 1;
+		m_bodyActive[toId] = m_bodyActive[fromId];
+		m_bodyActive[fromId] = 0;
 
 		if (toId != fromId)
 		{
@@ -1194,7 +1296,7 @@ namespace WeirdEngine
 
 	size_t Simulation2D::getSize()
 	{
-		return m_size;
+		return m_activeSize.load();
 	}
 
 	void Simulation2D::addImpulseForce(SimulationID id, const vec2& impulse, bool massIndependent)
@@ -1202,50 +1304,35 @@ namespace WeirdEngine
 		WEIRD_ASSERT(id < m_allocated, "addImpulseForce called with invalid simulation id");
 		WEIRD_ASSERT(!std::isnan(impulse.x) && !std::isnan(impulse.y), "addImpulseForce called with NaN impulse");
 
-		vec2 finalImpulse = impulse * m_simulationFrequency;
-		if (massIndependent)
-			finalImpulse *= m_mass[id];
-
-		if (std::this_thread::get_id() == m_physicsThreadId)
-		{
-			m_internalCommands.push_back({PhysicsCommandType::AddImpulse, id, finalImpulse});
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back({PhysicsCommandType::AddImpulse, id, finalImpulse});
-		}
+		enqueueCommand(
+			{PhysicsCommandType::AddImpulse, id, impulse * m_simulationFrequency, massIndependent ? 1.0f : 0.0f});
 	}
 
 	void Simulation2D::setContinuousForce(SimulationID id, const vec2& force, bool massIndependent)
 	{
 		WEIRD_ASSERT(id < m_allocated, "setContinuousForce called with invalid simulation id");
 		WEIRD_ASSERT(!std::isnan(force.x) && !std::isnan(force.y), "setContinuousForce called with NaN force");
-
-		// No lock needed, game thread writes directly to the write buffer
-		if (massIndependent)
-			m_continuousForcesWrite[id] = force * m_mass[id];
-		else
-			m_continuousForcesWrite[id] = force;
+		enqueueAction([=, this] { m_continuousForcesWrite[id] = force * (massIndependent ? m_mass[id] : 1.0f); });
 	}
 
 	void Simulation2D::swapContinuousForces()
 	{
-		std::lock_guard<std::mutex> lock(m_externalForcesMutex);
-
-		vec2* temp = m_continuousForcesRead;
-		m_continuousForcesRead = m_continuousForcesWrite;
-		m_continuousForcesWrite = temp;
-
-		// Clear the new write buffer so it's ready for the next frame
-		for (size_t i = 0; i < m_allocated; i++)
-		{
-			m_continuousForcesWrite[i] = vec2(0.0f);
-		}
+		enqueueAction(
+			[this]
+			{
+				std::swap(m_continuousForcesRead, m_continuousForcesWrite);
+				std::fill_n(m_continuousForcesWrite, m_size, vec2(0.0f));
+			});
 	}
 
 	void Simulation2D::addSpring(SimulationID a, SimulationID b, float stiffness, float distance)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			enqueueAction([=, this] { addSpring(a, b, stiffness, distance); });
+			return;
+		}
+
 		if (a == b)
 			return;
 
@@ -1264,6 +1351,12 @@ namespace WeirdEngine
 
 	void Simulation2D::addPositionConstraint(SimulationID a, SimulationID b, float distance)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			enqueueAction([=, this] { addPositionConstraint(a, b, distance); });
+			return;
+		}
+
 		if (a == b)
 			return;
 
@@ -1277,6 +1370,12 @@ namespace WeirdEngine
 
 	void Simulation2D::addGravitationalConstraint(SimulationID a, SimulationID b, float gravity)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			enqueueAction([=, this] { addGravitationalConstraint(a, b, gravity); });
+			return;
+		}
+
 		if (a == b)
 			return;
 
@@ -1286,6 +1385,13 @@ namespace WeirdEngine
 
 	bool Simulation2D::setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			bool result = false;
+			executeSynchronous([&] { result = setDistanceConstraintDistance(a, b, distance); });
+			return result;
+		}
+
 		if (a == b)
 			return false;
 
@@ -1306,6 +1412,13 @@ namespace WeirdEngine
 
 	bool Simulation2D::removeDistanceConstraint(SimulationID a, SimulationID b)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			bool result = false;
+			executeSynchronous([&] { result = removeDistanceConstraint(a, b); });
+			return result;
+		}
+
 		if (a == b)
 			return false;
 
@@ -1328,32 +1441,23 @@ namespace WeirdEngine
 
 	void Simulation2D::fix(SimulationID id)
 	{
-		if (std::this_thread::get_id() == m_physicsThreadId)
-		{
-			m_internalCommands.push_back({PhysicsCommandType::Fix, id});
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back({PhysicsCommandType::Fix, id});
-		}
+		enqueueCommand({PhysicsCommandType::Fix, id});
 	}
 
 	void Simulation2D::unFix(SimulationID id)
 	{
-		if (std::this_thread::get_id() == m_physicsThreadId)
-		{
-			m_internalCommands.push_back({PhysicsCommandType::UnFix, id});
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back({PhysicsCommandType::UnFix, id});
-		}
+		enqueueCommand({PhysicsCommandType::UnFix, id});
 	}
 
 	bool Simulation2D::isFixed(SimulationID id)
 	{
+		if (!isPhysicsExecutionContext())
+		{
+			bool result = false;
+			executeSynchronous([&] { result = isFixed(id); });
+			return result;
+		}
+
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		return std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) != m_fixedObjects.end();
 	}
@@ -1372,15 +1476,9 @@ namespace WeirdEngine
 		WEIRD_ASSERT(id < m_allocated, "setPosition called with invalid simulation id");
 		WEIRD_ASSERT(!std::isnan(pos.x) && !std::isnan(pos.y), "setPosition called with NaN coordinates");
 
-		if (std::this_thread::get_id() == m_physicsThreadId)
+		enqueueCommand({PhysicsCommandType::SetPosition, id, pos});
+		if (!isPhysicsExecutionContext())
 		{
-			m_internalCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back({PhysicsCommandType::SetPosition, id, pos});
-
 			std::lock_guard<std::mutex> readLock(m_readMutex);
 			m_positionsRead[id] = pos;
 		}
@@ -1400,15 +1498,9 @@ namespace WeirdEngine
 		WEIRD_ASSERT(id < m_allocated, "setVelocity called with invalid simulation id");
 		WEIRD_ASSERT(!std::isnan(vel.x) && !std::isnan(vel.y), "setVelocity called with NaN velocity");
 
-		if (std::this_thread::get_id() == m_physicsThreadId)
+		enqueueCommand({PhysicsCommandType::SetVelocity, id, vel});
+		if (!isPhysicsExecutionContext())
 		{
-			m_internalCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back({PhysicsCommandType::SetVelocity, id, vel});
-
 			std::lock_guard<std::mutex> readLock(m_readMutex);
 			m_velocitiesRead[id] = vel;
 		}
@@ -1425,9 +1517,8 @@ namespace WeirdEngine
 		std::lock_guard<std::mutex> lock(m_readMutex);
 
 		// Copy every allocated slot, not just the active bodies: bodies
-		// created this frame have ids in [m_size, m_allocated) until their
-		// ActivatePending command is processed, and the readback must be able
-		// to look up those ids.
+		// created this frame may still be pending activation, and readback
+		// must be able to look up their reserved IDs.
 		size_t count = m_allocated;
 		if (snapshot.positions.size() < count)
 			snapshot.positions.resize(count);
@@ -1469,15 +1560,7 @@ namespace WeirdEngine
 		PhysicsCommand cmd = {PhysicsCommandType::SetMass, id};
 		cmd.floatData = mass;
 
-		if (std::this_thread::get_id() == m_physicsThreadId)
-		{
-			m_internalCommands.push_back(cmd);
-		}
-		else
-		{
-			std::lock_guard<std::mutex> lock(m_commandMutex);
-			m_pendingCommands.push_back(cmd);
-		}
+		enqueueCommand(std::move(cmd));
 	}
 
 	void Simulation2D::setSDFs(std::vector<std::shared_ptr<IMathExpression>>& sdfs)
@@ -1564,9 +1647,13 @@ namespace WeirdEngine
 
 	SimulationID Simulation2D::raycast(vec2 pos)
 	{
+		std::scoped_lock lock(m_readMutex, m_userDataMutex);
+		const vec2* positions = isPhysicsExecutionContext() ? m_positions : m_positionsRead;
 		for (size_t i = 0; i < m_size; i++)
 		{
-			vec2 ij = pos - m_positions[i];
+			if (!m_bodyActive[i])
+				continue;
+			vec2 ij = pos - positions[i];
 
 			float distanceSquared = (ij.x * ij.x) + (ij.y * ij.y);
 
@@ -1615,15 +1702,14 @@ namespace WeirdEngine
 	{
 		while (m_simulating)
 		{
-			if (m_simulationDelay >= m_fixedDeltaTime)
-			{
-				process();
-			}
-			else
-			{
-				int delay = static_cast<int>(std::ceil((m_fixedDeltaTime - m_simulationDelay) * 1000)); // ms
-				std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-			}
+			process();
+			std::unique_lock<std::mutex> lock(m_commandMutex);
+			m_commandReady.wait(lock,
+								[this]
+								{
+									return !m_simulating || !m_pendingCommands.empty() || !m_internalCommands.empty() ||
+										   m_simulationDelay >= m_fixedDeltaTime;
+								});
 		}
 	}
 

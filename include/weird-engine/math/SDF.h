@@ -324,7 +324,7 @@ namespace WeirdEngine
 
 	inline Expr ternary(const Expr& cond, const Expr& a, const Expr& b)
 	{
-		float vc, va, vb;
+		float vc; //, va, vb;
 		if (getConstantVal(cond.node, vc))
 		{
 			int icond = static_cast<int>(vc);

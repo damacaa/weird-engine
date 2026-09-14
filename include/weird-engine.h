@@ -26,8 +26,8 @@
 #define EXPORT __declspec(dllexport)
 extern "C"
 {
-	EXPORT unsigned long NvOptimusEnablement = 0x00000001;
-	EXPORT int AmdPowerXpressRequestHighPerformance = 1;
+	__declspec(selectany) EXPORT unsigned long NvOptimusEnablement = 0x00000001;
+	__declspec(selectany) EXPORT int AmdPowerXpressRequestHighPerformance = 1;
 }
 #else
 #define EXPORT

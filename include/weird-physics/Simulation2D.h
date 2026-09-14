@@ -58,9 +58,8 @@ namespace WeirdEngine
 
 	struct PhysicsCollisionEvent
 	{
-		// CollisionState state;
-		SimulationID bodyA;
-		SimulationID bodyB;
+		SimulationID bodyA = 0;
+		SimulationID bodyB = 0;
 		vec2 position = vec2(0.0f);
 		vec2 normal = vec2(0.0f);
 		vec2 relativeVelocity = vec2(0.0f);
@@ -415,14 +414,16 @@ namespace WeirdEngine
 			uint16_t distanceFieldId;
 			CombinationType combinationId;
 			uint16_t groupId;
-			float parameters[11];
+			float parameters[12] = {0.0f};
+			float smoothRadius = 1.0f;
 
 			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
-								  float* params)
+								  float* params, float smoothRadius = 1.0f)
 				: distanceFieldId(id)
 				, combinationId(combinationId)
 				, groupId(groupId)
 				, owner(owner)
+				, smoothRadius(smoothRadius)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
 			}
@@ -481,6 +482,7 @@ namespace WeirdEngine
 		// Shapes
 		std::unordered_map<Entity, uint16_t> m_entityToObjectsIdx;
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
+		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfsSnapshot; // sim-thread-only copy
 		std::vector<DistanceFieldObject2D> m_objects;
 
 		std::vector<uint8_t> m_collisionMap;

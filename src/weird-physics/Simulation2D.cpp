@@ -248,6 +248,7 @@ namespace WeirdEngine
 						}
 					}
 					m_pendingShapeUpdates.clear();
+					m_sdfsSnapshot = m_sdfs;
 				}
 
 				double timerBroad = 0, timerNarrow = 0, timerShape = 0;
@@ -502,7 +503,7 @@ namespace WeirdEngine
 
 			// Check
 			bool currentCollision = false;
-			PhysicsShapeCollisionEvent collisionEvent;
+			PhysicsShapeCollisionEvent collisionEvent{};
 			collisionEvent.body = static_cast<SimulationID>(i);
 
 			// Static shapes
@@ -512,38 +513,40 @@ namespace WeirdEngine
 
 			if (d < m_radious)
 			{
-				// Collision normal calculation
-				float d1 = map(p + vec2(EPSILON, 0.0)) - map(p - vec2(EPSILON, 0.0));
-				float d2 = map(p + vec2(0.0, EPSILON)) - map(p - vec2(0.0, EPSILON));
-
-				// float d1 = d - map(vec2(p.x - EPSILON, p.y));
-				// float d2 = d - map(vec2(p.x, p.y - EPSILON));
-
+				float d1 = map(p + vec2(EPSILON, 0.0f)) - map(p - vec2(EPSILON, 0.0f));
+				float d2 = map(p + vec2(0.0f, EPSILON)) - map(p - vec2(0.0f, EPSILON));
 				vec2 grad(d1, d2);
-				float gradLenSq = glm::length2(grad);
-				collisionEvent.normal = gradLenSq > 0.0f ? grad / std::sqrt(gradLenSq) : vec2(0.0f, 1.0f);
+				float gradLen = glm::length(grad);
+				collisionEvent.normal = gradLen > 0.0f ? grad / gradLen : vec2(0.0f, 1.0f);
 				WEIRD_ASSERT(!std::isnan(collisionEvent.normal.x) && !std::isnan(collisionEvent.normal.y),
 							 "NaN normal in shape collision calculation");
 
-				float distanceAtSurface = map(p - ((m_radious)*collisionEvent.normal));
-				if (distanceAtSurface <=
-					0.0f) // Bad solution? Check if the distance at approximate contact point is small enough
+				float distanceAtSurface = map(p - m_radious * collisionEvent.normal);
+				if (distanceAtSurface <= 0.0f)
 				{
-					float penetration = (std::min)(-distanceAtSurface, m_radious - d);
-					currentCollision = true;
+					float penetration;
+					if (d >= 0.0f && distanceAtSurface < 0.0f)
+					{
+						// The signs confirm a crossing on this segment. Interpolate its position
+						// using both samples; this is exact when the field varies linearly here.
+						float surfaceDistance = m_radious * d / (d - distanceAtSurface);
+						penetration = m_radious - surfaceDistance;
+					}
+					else
+					{
+						// Preserve the existing response when the center is already inside.
+						// Gradient scaling is a local approximation, not an exact distance.
+						float gradMag = gradLen / (2.0f * EPSILON);
+						float distanceScale = gradMag > 0.05f && gradMag < 1.0f ? gradMag : 1.0f;
+						penetration = (std::min)(-distanceAtSurface / distanceScale, m_radious - d / distanceScale);
+					}
 
-					collisionEvent.penetration = penetration;
+					currentCollision = true;
+					collisionEvent.penetration = std::max(0.0f, penetration);
 					collisionEvent.position = p - (0.5f * collisionEvent.normal);
 					collisionEvent.velocity = m_velocities[i];
-
-					// TODO: Pre-calculate target plane for relaxation
-					// collisionEvent.targetPos = p + (penetration * collisionEvent.normal);
-
-					constexpr float DYNAMIC_FRICTION = 0.05f;
-					collisionEvent.friction = DYNAMIC_FRICTION;
-
-					constexpr float ABSORTION = 10.0f;
-					collisionEvent.absortion = ABSORTION;
+					collisionEvent.friction = 0.05f;
+					collisionEvent.absortion = 10.0f;
 				}
 			}
 
@@ -644,7 +647,7 @@ namespace WeirdEngine
 				continue;
 			}
 
-			if (!m_sdfs || obj.distanceFieldId >= m_sdfs->size())
+			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size())
 			{
 				continue;
 			}
@@ -658,7 +661,7 @@ namespace WeirdEngine
 
 			// Distance
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(params);
+			float dist = (*m_sdfsSnapshot)[obj.distanceFieldId]->getValue(params);
 			WEIRD_ASSERT(!std::isnan(dist), "NAN in group shape");
 
 			float currentMinDistance = d;
@@ -701,12 +704,12 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition:
 				{
-					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, obj.smoothRadius);
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
 				{
-					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, obj.smoothRadius);
 					break;
 				}
 				default:
@@ -732,7 +735,7 @@ namespace WeirdEngine
 		{
 			DistanceFieldObject2D& obj = m_objects[shapeIdx];
 
-			if (!m_sdfs || obj.distanceFieldId >= m_sdfs->size())
+			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size())
 			{
 				continue;
 			}
@@ -746,7 +749,7 @@ namespace WeirdEngine
 
 			// Distance
 
-			float dist = (*m_sdfs)[obj.distanceFieldId]->getValue(params);
+			float dist = (*m_sdfsSnapshot)[obj.distanceFieldId]->getValue(params);
 			WEIRD_ASSERT(!std::isnan(dist), "NAN in global shape");
 
 			float currentMinDistance = d;
@@ -771,12 +774,12 @@ namespace WeirdEngine
 				}
 				case CombinationType::SmoothAddition:
 				{
-					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, 1.0f);
+					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, obj.smoothRadius);
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
 				{
-					currentMinDistance = fOpSubSoft(currentMinDistance, dist, 1.0f);
+					currentMinDistance = fOpSubSoft(currentMinDistance, dist, obj.smoothRadius);
 					break;
 				}
 				default:
@@ -860,8 +863,8 @@ namespace WeirdEngine
 			// Notify collision callback
 			if (m_collisionCallback)
 			{
-				vec2 contactPos = 0.5f * (m_positions[col.A] + m_positions[col.B]);
-				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, std::abs(impulseMagnitude)};
+				vec2 contactPos = m_positions[col.A] + 0.5f * col.AB;
+				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, impulseMagnitude};
 				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
 			}
 		}
@@ -885,12 +888,17 @@ namespace WeirdEngine
 			vec2 vel_t = vel - (v_n * collisionEvent.normal);
 			float speed_t = length(vel_t);
 
+			// Penalty normal acceleration
+			float penSq = collisionEvent.penetration * collisionEvent.penetration;
+			float normalAcceleration = m_push * penSq;
+
+			// Safety clamp to prevent explosive catapult forces from SDF corner / union distortion
+			constexpr float MAX_PENALTY_ACCELERATION = 500.0f;
+			normalAcceleration = std::min(normalAcceleration, MAX_PENALTY_ACCELERATION);
+
 			// Apply Tangential Friction
 			if (speed_t > EPSILON)
 			{
-				// Normal acceleration from the penalty method (calculated below: push * penetration^2)
-				float normalAcceleration = m_push * collisionEvent.penetration * collisionEvent.penetration;
-
 				// Coulomb friction (constant sliding resistance based on normal force)
 				float coulombDrop = collisionEvent.friction * normalAcceleration * m_fixedDeltaTimeF;
 
@@ -919,8 +927,7 @@ namespace WeirdEngine
 			m_velocities[collisionEvent.body] -= dampingDrop * collisionEvent.normal;
 
 			// Penalty
-			vec2 v = collisionEvent.penetration * collisionEvent.penetration * collisionEvent.normal;
-			vec2 force = m_mass[collisionEvent.body] * m_push * v;
+			vec2 force = m_mass[collisionEvent.body] * normalAcceleration * collisionEvent.normal;
 
 			m_forces[collisionEvent.body] += force;
 		}
@@ -1490,7 +1497,8 @@ namespace WeirdEngine
 		WEIRD_ASSERT(!m_sdfs || shape.distanceFieldId < m_sdfs->size(),
 					 "CustomShape registered with unregistered distanceFieldId");
 
-		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters);
+		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters,
+								  shape.smoothFactor);
 
 		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(owner);

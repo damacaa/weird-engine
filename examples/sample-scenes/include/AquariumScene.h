@@ -1,6 +1,5 @@
 #pragma once
 
-#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <cmath>
@@ -9,8 +8,6 @@
 #include <vector>
 
 #include "globals.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
-#include "weird-physics/components/Spring.h"
 
 using namespace WeirdEngine;
 

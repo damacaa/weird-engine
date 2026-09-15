@@ -3,15 +3,17 @@
 #include <weird-engine.h>
 
 #include <algorithm>
-#include <array>
-#include <atomic>
 #include <cmath>
-#include <iostream>
+#include <cstdio>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+
+#include <SDL3/SDL_dialog.h>
 
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-physics/components/DistanceConstraint.h"
@@ -32,21 +34,29 @@ public:
 	ServiceProvider* m_tempSvc = nullptr;
 
 private:
-	enum class RightMouseMode
+	enum class DragMode
 	{
 		None,
-		Drag,
-		Constraint
+		Ball,
+		Camera
 	};
 
 	enum class ToolMode
 	{
-		Drag,
+		Add,
 		Spring,
 		Distance,
+		Modify,
 		Remove,
 		TagEditor,
 		Material
+	};
+
+	enum class GridMode
+	{
+		Off,
+		Square,
+		Hex
 	};
 
 	enum class LinkType
@@ -75,62 +85,63 @@ private:
 
 	std::vector<BallInfo> m_balls;
 	std::vector<DistanceLink> m_links;
-	std::array<Entity, 16> m_materialToggles{};
 
 	Entity m_draggedBall = static_cast<Entity>(-1);
 	int m_draggedSimulationId = -1;
 	Entity m_constraintStartBall = static_cast<Entity>(-1);
-	DistanceLink* m_draggedLink = nullptr;
+	Entity m_draggedLinkConstraint = static_cast<Entity>(-1);
 	float m_linkDragStartX = 0.0f;
 	float m_linkDragStartDist = 0.0f;
-	std::atomic<float> m_pendingLinkDistance{0.0f};
-	std::atomic<int> m_dragLinkSimIdA{-1};
-	std::atomic<int> m_dragLinkSimIdB{-1};
 	bool m_keepFixedAfterDrag = false;
 	bool m_rightWasDown = false;
+	bool m_middleWasDown = false;
 	bool m_gravityEnabled = false;
-	bool m_gridMode = false;
-	RightMouseMode m_rightMouseMode = RightMouseMode::None;
+	GridMode m_grid = GridMode::Off;
+	DragMode m_dragMode = DragMode::None;
 	int m_selectedMaterial = 1;
 
-	ToolMode m_toolMode = ToolMode::Drag;
-	std::array<Entity, 6> m_toolToggles{};
-	Entity m_gravityToggleEntity = static_cast<Entity>(-1);
-	Entity m_gridToggleEntity = static_cast<Entity>(-1);
+	ToolMode m_toolMode = ToolMode::Add;
+
+	// ImGui editor UI state
+	char m_fileNameBuf[128] = "molecule";
+	char m_tagBuf[128] = {};
+	Entity m_tagBufferEntity = static_cast<Entity>(-1);
+	float m_menuBarHeight = 0.0f;
+	bool m_cameraCentered = false;
+	bool m_showControls = false;
+
+	// Scene file state
+	std::string m_currentFilePath;
+	std::mutex m_fileMutex;
+	std::string m_pendingLoadPath;
+	std::string m_pendingSavePath;
+	bool m_pendingNewMolecule = false;
 
 	// Tag editor state
 	Entity m_tagSelectedEntity = static_cast<Entity>(-1);
 	Entity m_tagCircleOuter = static_cast<Entity>(-1);
 	Entity m_tagCircleInner = static_cast<Entity>(-1);
-	Entity m_tagLabelEntity = static_cast<Entity>(-1);
-	Entity m_tagEditButton = static_cast<Entity>(-1);
-	Entity m_tagEditButtonLabel = static_cast<Entity>(-1);
 
 	static constexpr float BALL_HIT_RADIUS = 0.9f;
 	static constexpr float LINE_WIDTH = 3.5f;
+	static constexpr float MODIFY_LINE_WIDTH = 8.0f;
+	static constexpr float LINK_PICK_PIXELS = 14.0f;
 	static constexpr float SPRING_STIFFNESS = 0.15f;
 	static constexpr float CONSTRAINT_STIFFNESS = 0.95f;
-	static constexpr float BTN_SIZE = 18.0f;
-	static constexpr float START_X = 40.0f;
-	static constexpr float MAT_Y = 50.0f;
-	static constexpr float MAT_SPACING = 47.0f;
-
-	static constexpr float TOOL_X = 30.0f;
-	static constexpr float TOOL_Y_START = 30.0f;
-	static constexpr float TOOL_SPACING = 60.0f;
-	static constexpr float TOOL_BTN_HALF = 12.0f;
-	static constexpr float GRAV_Y = 50.0f;
-	static constexpr float GRID_Y = 110.0f;
 	static constexpr float GRID_CELL = 1.0f;
+	static constexpr float HEX_ROW_HEIGHT = GRID_CELL * 0.86602540378f;
+	static constexpr float CAMERA_MIN_DISTANCE = 5.0f;
+	static constexpr float CAMERA_MAX_DISTANCE = 300.0f;
+	static constexpr float CAMERA_ZOOM_STEP = 0.12f;
 	static constexpr float TAG_OUTER_RADIUS = 30.0f;
 	static constexpr float TAG_INNER_RADIUS = 25.0f;
 	static constexpr int TAG_RING_GROUP = 8;
+	static constexpr float PANEL_WIDTH = 300.0f;
 
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 		m_tempRegistry = &registry;
 		m_tempSvc = &services;
-		m_tempSvc->debug().setDebugFly(true);
 
 		g_cameraPositon.x = 0.0f;
 		g_cameraPositon.y = 0.0f;
@@ -148,10 +159,6 @@ private:
 			auto& m = m_tempSvc->materials2D().get(static_cast<uint16_t>(i));
 			m.color = ColorPalette::Default[i];
 		}
-
-		buildMaterialPalette();
-		buildToolbar();
-		buildTagEditorUI();
 
 		{
 			Entity outside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
@@ -184,67 +191,985 @@ private:
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::S))
 		{
-			WeirdEngine::Logger::log("Save scene name: ");
+			saveMolecule();
+		}
 
-			std::string fileName;
-			if (!(std::cin >> fileName))
-			{
-				std::cin.clear();
-				std::cin.ignore(10000, '\n');
-			}
-			else
-			{
-				if (!fileName.ends_with(".weird"))
-				{
-					fileName += ".weird";
-				}
-				m_tempSvc->serialization().saveScene(m_tempSvc->resources().assetPath("Organisms/") + fileName);
-			}
+		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::O))
+		{
+			openLoadFileDialog();
 		}
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::L))
 		{
-			WeirdEngine::Logger::log("Load scene name: ");
-
-			std::string fileName;
-			if (!(std::cin >> fileName))
-			{
-				std::cin.clear();
-				std::cin.ignore(10000, '\n');
-			}
-			else
-			{
-				if (!fileName.ends_with(".weird"))
-				{
-					fileName += ".weird";
-				}
-				loadMolecule(m_tempSvc->resources().assetPath("Organisms/") + fileName);
-			}
+			openLoadFileDialog();
 		}
 
-		if (m_tempSvc->input().getMouseButtonDown(Input::LeftClick) && !m_tempSvc->input().isUIClick())
+		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::N))
 		{
-			spawnBallAtMouse();
+			m_pendingNewMolecule = true;
 		}
 
-		syncMaterialPalette();
-		syncToolbar();
-		handleRightMouseDragInput();
-		handleConstraintLineClicks();
+		pollFileActions();
+
+		if (m_pendingNewMolecule)
+		{
+			m_pendingNewMolecule = false;
+			clearMolecule();
+		}
+
+		handleCameraInput();
+		handleRightMouseInput();
+		handleLeftClickInput();
+		handleLinkInteraction();
 		updateConstraintLines();
 		updateTagEditor();
 		removeFallenBalls();
 	}
 
-	void onPhysicsStep(Simulation2D& simulation) override
+	void onCustomUI(Registry& registry, ServiceProvider& services) override
 	{
-		float dist = m_pendingLinkDistance.exchange(0.0f, std::memory_order_acq_rel);
-		if (dist >= 1.0f)
+		m_tempRegistry = &registry;
+		m_tempSvc = &services;
+
+		renderMenuBar();
+		renderSidePanel();
+		renderControlsWindow();
+		renderSceneOverlay();
+
+		if (!m_cameraCentered && m_menuBarHeight > 0.0f)
 		{
-			simulation.setDistanceConstraintDistance(
-				static_cast<SimulationID>(m_dragLinkSimIdA.load(std::memory_order_relaxed)),
-				static_cast<SimulationID>(m_dragLinkSimIdB.load(std::memory_order_relaxed)), dist);
+			m_cameraCentered = true;
+			centerCameraOnSceneView();
 		}
+	}
+
+	// -----------------------------------------------------------------------
+	// ImGui editor UI
+	// -----------------------------------------------------------------------
+
+	void renderMenuBar()
+	{
+		ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+		if (ImGui::BeginMainMenuBar())
+		{
+			m_menuBarHeight = ImGui::GetWindowSize().y;
+
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("New Molecule", "Ctrl+N"))
+				{
+					m_pendingNewMolecule = true;
+				}
+				if (ImGui::MenuItem("Open Molecule...", "Ctrl+O"))
+				{
+					openLoadFileDialog();
+				}
+
+				const bool hasFile = !m_currentFilePath.empty();
+				if (ImGui::MenuItem(hasFile ? "Save Molecule" : "Save Molecule...", "Ctrl+S"))
+				{
+					saveMolecule();
+				}
+				if (ImGui::MenuItem("Save Molecule As..."))
+				{
+					openSaveFileDialog();
+				}
+
+				ImGui::Separator();
+				if (ImGui::MenuItem("Exit Tool", "Q"))
+				{
+					m_tempSvc->sceneControl().goToNextScene();
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("View"))
+			{
+				if (ImGui::MenuItem("Reset Camera"))
+				{
+					centerCameraOnSceneView();
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Help"))
+			{
+				ImGui::MenuItem("Controls", nullptr, &m_showControls);
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMainMenuBar();
+		}
+		ImGui::PopStyleColor();
+	}
+
+	void renderToolsSection()
+	{
+		if (!ImGui::CollapsingHeader("Tools", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		const char* labels[] = {"Add", "Spring", "Distance", "Modify Link", "Remove", "Tag Editor", "Material"};
+		const ToolMode modes[] = {ToolMode::Add,	 ToolMode::Spring, ToolMode::Distance, ToolMode::Modify,
+								  ToolMode::Remove, ToolMode::TagEditor, ToolMode::Material};
+
+		const float spacing = ImGui::GetStyle().ItemSpacing.x;
+		const float buttonWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
+
+		for (int i = 0; i < 7; ++i)
+		{
+			if (i % 2 != 0)
+			{
+				ImGui::SameLine();
+			}
+
+			const bool selected = (m_toolMode == modes[i]);
+			ImGui::PushID(i);
+			if (selected)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.55f, 0.65f, 1.0f));
+			}
+			if (ImGui::Button(labels[i], ImVec2(buttonWidth, 26.0f)))
+			{
+				m_toolMode = modes[i];
+				m_constraintStartBall = static_cast<Entity>(-1);
+			}
+			if (selected)
+			{
+				ImGui::PopStyleColor();
+			}
+			ImGui::PopID();
+		}
+
+		ImGui::TextDisabled("Left click applies the active tool.");
+	}
+
+	void renderOptionsSection()
+	{
+		if (!ImGui::CollapsingHeader("Options", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		if (ImGui::Checkbox("Gravity", &m_gravityEnabled))
+		{
+			applyGravitySettings();
+		}
+
+		const char* gridItems[] = {"Off", "Square", "Hex"};
+		int gridIndex = static_cast<int>(m_grid);
+		if (ImGui::Combo("Grid Snap", &gridIndex, gridItems, IM_ARRAYSIZE(gridItems)))
+		{
+			m_grid = static_cast<GridMode>(gridIndex);
+		}
+	}
+
+	void renderMoleculesSection()
+	{
+		if (!ImGui::CollapsingHeader("Molecules", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		const float spacing = ImGui::GetStyle().ItemSpacing.x;
+		const float buttonWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
+
+		if (ImGui::Button("Center & Relax", ImVec2(buttonWidth, 26.0f)))
+		{
+			centerAndRelaxMolecules();
+		}
+
+		ImGui::SameLine();
+
+		const bool gridOn = gridEnabled();
+		if (!gridOn)
+		{
+			ImGui::BeginDisabled();
+		}
+		const bool fitToGrid = ImGui::Button("Fit to Grid", ImVec2(buttonWidth, 26.0f));
+		if (!gridOn)
+		{
+			ImGui::EndDisabled();
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				ImGui::SetTooltip("Pick a grid shape in Options first.");
+			}
+		}
+
+		if (fitToGrid)
+		{
+			fitMoleculesToGrid();
+		}
+	}
+
+	void renderSidePanel()
+	{
+		int winW = Display::width > 0 ? Display::width : 1280;
+		int winH = Display::height > 0 ? Display::height : 800;
+
+		const float panelH = (std::max)(0.0f, static_cast<float>(winH) - m_menuBarHeight);
+
+		ImGui::SetNextWindowPos(ImVec2(static_cast<float>(winW) - PANEL_WIDTH, m_menuBarHeight), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(PANEL_WIDTH, panelH), ImGuiCond_Always);
+
+		const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+									   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+									   ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavFocus;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.115f, 0.115f, 0.125f, 1.0f));
+
+		if (ImGui::Begin("##MoleculePanel", nullptr, flags))
+		{
+			renderToolsSection();
+			ImGui::Spacing();
+			renderOptionsSection();
+			ImGui::Spacing();
+			renderMoleculesSection();
+			ImGui::Spacing();
+			renderMaterialsSection();
+			ImGui::Spacing();
+			renderTagSection();
+			ImGui::Spacing();
+			renderLinksSection();
+			ImGui::Spacing();
+			renderStatsSection();
+#ifdef __EMSCRIPTEN__
+			ImGui::Spacing();
+			renderWebFileSection();
+#endif
+		}
+		ImGui::End();
+
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar(3);
+
+		// Frame the interactive scene view on the left so the layout is obvious.
+		ImGui::GetForegroundDrawList()->AddRect(
+			ImVec2(1.0f, m_menuBarHeight + 1.0f),
+			ImVec2(static_cast<float>(winW) - PANEL_WIDTH - 1.0f, static_cast<float>(winH) - 1.0f),
+			IM_COL32(60, 60, 66, 255));
+	}
+
+	void renderControlsWindow()
+	{
+		if (!m_showControls)
+		{
+			return;
+		}
+
+		ImGui::SetNextWindowSize(ImVec2(400.0f, 360.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(40.0f, m_menuBarHeight + 40.0f), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Molecule Editor - Controls", &m_showControls))
+		{
+			ImGui::TextWrapped("Left click: apply the active tool.");
+			ImGui::BulletText("Add: spawn a ball with the selected material");
+			ImGui::BulletText("Spring / Distance: click two balls to connect them");
+			ImGui::BulletText("Modify Link: links get thick; drag one sideways to change its distance");
+			ImGui::BulletText("Remove: click two connected balls, or click a link to delete it");
+			ImGui::BulletText("Tag Editor: click a ball, then edit its tag in the panel");
+			ImGui::BulletText("Material: click a ball to repaint it");
+			ImGui::Separator();
+			ImGui::TextWrapped("Right click always drags: hold it over a ball to move it (F pins it in "
+							   "place), or over empty space to pan the camera.");
+			ImGui::TextWrapped("Middle mouse drag pans the camera, mouse wheel zooms.");
+			ImGui::Separator();
+			ImGui::TextWrapped("With grid snapping on, moved atoms (drag or Fit to Grid) resize their links to "
+							   "the new distance.");
+			ImGui::Separator();
+			ImGui::BulletText("Ctrl+N: new molecule");
+			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weird scene");
+			ImGui::BulletText("Ctrl+S: save (asks for a path the first time)");
+			ImGui::BulletText("Q: exit the tool");
+		}
+		ImGui::End();
+	}
+
+	void renderSceneOverlay()
+	{
+		ImDrawList* drawList = ImGui::GetForegroundDrawList();
+		drawList->PushClipRect(ImVec2(0.0f, m_menuBarHeight),
+							   ImVec2(static_cast<float>(Display::width) - PANEL_WIDTH,
+									  static_cast<float>(Display::height)),
+							   true);
+		renderGridOverlay();
+		renderPendingConstraintOverlay();
+		drawList->PopClipRect();
+	}
+
+	void renderGridOverlay()
+	{
+		if (!gridEnabled())
+		{
+			return;
+		}
+
+		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const float winW = static_cast<float>((std::max)(1, Display::width));
+		const float winH = static_cast<float>((std::max)(1, Display::height));
+		const float worldPerPixel = cam.position.z / (winH * 0.5f);
+		if (GRID_CELL / worldPerPixel < 5.0f)
+		{
+			return; // too dense to be legible
+		}
+
+		const vec2 cornerA = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(0.0f, 0.0f));
+		const vec2 cornerB = ECS::Camera::screenPositionToWorldPosition2D(cam, vec2(winW, winH));
+		const float margin = GRID_CELL * 2.0f;
+		const float minX = (std::min)(cornerA.x, cornerB.x) - margin;
+		const float maxX = (std::max)(cornerA.x, cornerB.x) + margin;
+		const float minY = (std::min)(cornerA.y, cornerB.y) - margin;
+		const float maxY = (std::max)(cornerA.y, cornerB.y) + margin;
+
+		ImDrawList* drawList = ImGui::GetForegroundDrawList();
+		const ImU32 color = IM_COL32(115, 135, 170, 60);
+
+		auto toScreen = [&](vec2 world) -> ImVec2
+		{
+			const vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cam, world);
+			return ImVec2(screen.x, winH - screen.y);
+		};
+
+		if (m_grid == GridMode::Square)
+		{
+			for (int x = static_cast<int>(std::floor(minX / GRID_CELL));
+				 x <= static_cast<int>(std::ceil(maxX / GRID_CELL)); ++x)
+			{
+				const float wx = x * GRID_CELL;
+				drawList->AddLine(toScreen(vec2(wx, minY)), toScreen(vec2(wx, maxY)), color);
+			}
+			for (int y = static_cast<int>(std::floor(minY / GRID_CELL));
+				 y <= static_cast<int>(std::ceil(maxY / GRID_CELL)); ++y)
+			{
+				const float wy = y * GRID_CELL;
+				drawList->AddLine(toScreen(vec2(minX, wy)), toScreen(vec2(maxX, wy)), color);
+			}
+			return;
+		}
+
+		// Hex grid: the centers form a triangular lattice. Draw its three
+		// families of parallel lines so the hex arrangement is visible.
+		const float h = HEX_ROW_HEIGHT;
+		const float s3 = 0.86602540378f;
+		const float diagonal = glm::length(vec2(maxX - minX, maxY - minY));
+		const vec2 dirB(0.5f, s3);
+		const vec2 dirC(0.5f, -s3);
+		const vec2 normalB(-s3, 0.5f);
+		const vec2 normalC(s3, 0.5f);
+
+		// Family A: horizontal lines.
+		for (int k = static_cast<int>(std::floor(minY / h)); k <= static_cast<int>(std::ceil(maxY / h)); ++k)
+		{
+			const float wy = k * h;
+			drawList->AddLine(toScreen(vec2(minX, wy)), toScreen(vec2(maxX, wy)), color);
+		}
+
+		auto drawDiagonalFamily = [&](const vec2& normal, const vec2& direction)
+		{
+			const float c0 = (std::min)((std::min)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
+										(std::min)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
+			const float c1 = (std::max)((std::max)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
+										(std::max)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
+			for (int k = static_cast<int>(std::floor(c0 / h)); k <= static_cast<int>(std::ceil(c1 / h)); ++k)
+			{
+				const vec2 center = normal * (k * h);
+				drawList->AddLine(toScreen(center - direction * diagonal), toScreen(center + direction * diagonal),
+								  color);
+			}
+		};
+
+		drawDiagonalFamily(normalB, dirB);
+		drawDiagonalFamily(normalC, dirC);
+	}
+
+	void renderPendingConstraintOverlay()
+	{
+		if (m_constraintStartBall == static_cast<Entity>(-1) || !hasTransform(m_constraintStartBall))
+		{
+			return;
+		}
+
+		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const auto& t = m_tempRegistry->getComponent<Transform>(m_constraintStartBall);
+		const vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cam, vec2(t.position.x, t.position.y));
+		const ImVec2 center(screen.x, static_cast<float>(Display::height) - screen.y);
+
+		ImDrawList* drawList = ImGui::GetForegroundDrawList();
+		drawList->AddCircle(center, TAG_OUTER_RADIUS, IM_COL32(120, 220, 150, 220), 0, 2.5f);
+		drawList->AddLine(center, ImGui::GetIO().MousePos, IM_COL32(120, 220, 150, 110), 2.0f);
+	}
+
+	void renderMaterialsSection()
+	{
+		if (!ImGui::CollapsingHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		const float swatch = 26.0f;
+		const float spacing = ImGui::GetStyle().ItemSpacing.x;
+		const float available = ImGui::GetContentRegionAvail().x;
+		const int columns = (std::max)(1, static_cast<int>((available + spacing) / (swatch + spacing)));
+
+		for (int i = 0; i < 16; ++i)
+		{
+			if (i % columns != 0)
+			{
+				ImGui::SameLine();
+			}
+
+			ImGui::PushID(i);
+
+			const bool selected = (m_selectedMaterial == i);
+			const vec4 color = m_tempSvc->materials2D().get(static_cast<uint16_t>(i)).color;
+
+			if (selected)
+			{
+				ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.5f);
+				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+			}
+
+			if (ImGui::ColorButton("##swatch", ImVec4(color.x, color.y, color.z, 1.0f),
+								   ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop,
+								   ImVec2(swatch, swatch)))
+			{
+				m_selectedMaterial = i;
+			}
+
+			if (selected)
+			{
+				ImGui::PopStyleColor();
+				ImGui::PopStyleVar();
+			}
+
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Material %d%s", i, selected ? " (selected)" : "");
+			}
+
+			ImGui::PopID();
+		}
+
+		ImGui::TextDisabled("Selected: material %d", m_selectedMaterial);
+	}
+
+	void renderTagSection()
+	{
+		if (!ImGui::CollapsingHeader("Tag Editor", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		if (m_tagSelectedEntity == static_cast<Entity>(-1) || !hasTransform(m_tagSelectedEntity))
+		{
+			m_tagSelectedEntity = static_cast<Entity>(-1);
+			ImGui::TextWrapped("No molecule selected. Pick the Tag tool and right-click a ball to select it.");
+			return;
+		}
+
+		if (m_tagBufferEntity != m_tagSelectedEntity)
+		{
+			m_tagBufferEntity = m_tagSelectedEntity;
+			const std::string currentTag = m_tempSvc->tags().getEntityTag(m_tagSelectedEntity);
+			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentTag.c_str());
+		}
+
+		ImGui::Text("Ball: entity %u", static_cast<unsigned int>(m_tagSelectedEntity));
+		ImGui::SetNextItemWidth(-1.0f);
+		const bool submitted =
+			ImGui::InputTextWithHint("##tag", "tag name", m_tagBuf, sizeof(m_tagBuf),
+									 ImGuiInputTextFlags_EnterReturnsTrue);
+
+		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+		const bool apply = ImGui::Button("Apply", ImVec2(buttonWidth, 0.0f)) || submitted;
+		ImGui::SameLine();
+		const bool remove = ImGui::Button("Remove", ImVec2(buttonWidth, 0.0f));
+
+		if (apply)
+		{
+			const std::string newTag(m_tagBuf);
+			if (newTag.empty())
+			{
+				m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+			}
+			else
+			{
+				m_tempSvc->tags().tag(m_tagSelectedEntity, newTag);
+			}
+		}
+
+		if (remove)
+		{
+			m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+			m_tagBuf[0] = '\0';
+		}
+
+		if (ImGui::Button("Deselect", ImVec2(-1.0f, 0.0f)))
+		{
+			m_tagSelectedEntity = static_cast<Entity>(-1);
+			m_tagBufferEntity = static_cast<Entity>(-1);
+		}
+	}
+
+	void renderLinksSection()
+	{
+		if (!ImGui::CollapsingHeader("Links", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		ImGui::TextDisabled("%zu constraint links", m_links.size());
+		if (m_links.empty())
+		{
+			return;
+		}
+
+		int removeIndex = -1;
+
+		ImGui::BeginChild("##LinksList", ImVec2(0.0f, 150.0f), true);
+		for (int i = 0; i < static_cast<int>(m_links.size()); ++i)
+		{
+			DistanceLink& link = m_links[i];
+			ImGui::PushID(i);
+
+			const char* typeName = (link.type == LinkType::Distance) ? "Distance" : "Spring";
+			ImGui::Text("%s  #%d <-> #%d", typeName, link.simulationIdA, link.simulationIdB);
+
+			float distance = link.restDistance;
+			ImGui::SetNextItemWidth(-34.0f);
+			if (ImGui::SliderFloat("##distance", &distance, 1.0f, 10.0f, "%.1f"))
+			{
+				link.restDistance = distance;
+				applyLinkDistance(link);
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("X"))
+			{
+				removeIndex = i;
+			}
+
+			ImGui::PopID();
+		}
+		ImGui::EndChild();
+
+		if (removeIndex >= 0)
+		{
+			removeLinkAt(static_cast<size_t>(removeIndex));
+		}
+	}
+
+	void renderWebFileSection()
+	{
+		if (!ImGui::CollapsingHeader("Scene File", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			return;
+		}
+
+		ImGui::TextDisabled("Saved under assets/Organisms/");
+		ImGui::SetNextItemWidth(-1.0f);
+		ImGui::InputTextWithHint("##filename", "molecule.weird", m_fileNameBuf, sizeof(m_fileNameBuf));
+
+		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+		if (ImGui::Button("Save", ImVec2(buttonWidth, 0.0f)))
+		{
+			saveMoleculeFromName();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Load", ImVec2(buttonWidth, 0.0f)))
+		{
+			loadMoleculeFromName();
+		}
+	}
+
+	void renderStatsSection()
+	{
+		if (!ImGui::CollapsingHeader("Stats"))
+		{
+			return;
+		}
+
+		ImGui::Text("Balls: %zu   Links: %zu", m_balls.size(), m_links.size());
+		ImGui::Text("Gravity: %s", m_gravityEnabled ? "on" : "off");
+		ImGui::Text("Grid: %s", gridModeName());
+		ImGui::TextDisabled("File: %s", m_currentFilePath.empty() ? "(unsaved)" : m_currentFilePath.c_str());
+	}
+
+	const char* gridModeName() const
+	{
+		switch (m_grid)
+		{
+			case GridMode::Square:
+				return "Square";
+			case GridMode::Hex:
+				return "Hex";
+			case GridMode::Off:
+			default:
+				return "Off";
+		}
+	}
+
+	void centerCameraOnSceneView()
+	{
+		int winW = Display::width > 0 ? Display::width : 1280;
+		int winH = Display::height > 0 ? Display::height : 800;
+
+		auto& camTransform = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const float halfH = static_cast<float>(winH) * 0.5f;
+		const float viewCenterX = (static_cast<float>(winW) - PANEL_WIDTH) * 0.5f;
+		const float viewCenterY = m_menuBarHeight + (static_cast<float>(winH) - m_menuBarHeight) * 0.5f;
+		const float scale = camTransform.position.z / halfH;
+
+		camTransform.position.x = (static_cast<float>(winW) * 0.5f - viewCenterX) * scale;
+		camTransform.position.y = (halfH - viewCenterY) * scale;
+		m_tempRegistry->setComponentDirty(camTransform);
+		g_cameraPositon = camTransform.position;
+	}
+
+	void centerAndRelaxMolecules()
+	{
+		if (m_balls.empty())
+		{
+			return;
+		}
+
+		vec2 centroid(0.0f);
+		size_t ballCount = 0;
+		for (const BallInfo& ball : m_balls)
+		{
+			if (!hasTransform(ball.entity))
+			{
+				continue;
+			}
+
+			const auto& t = m_tempRegistry->getComponent<Transform>(ball.entity);
+			centroid += vec2(t.position.x, t.position.y);
+			++ballCount;
+		}
+
+		if (ballCount == 0)
+		{
+			return;
+		}
+		centroid /= static_cast<float>(ballCount);
+
+		for (const BallInfo& ball : m_balls)
+		{
+			if (!hasTransform(ball.entity))
+			{
+				continue;
+			}
+
+			auto& t = m_tempRegistry->getComponent<Transform>(ball.entity);
+			t.position.x -= centroid.x;
+			t.position.y -= centroid.y;
+			m_tempRegistry->setComponentDirty(t);
+
+			if (m_tempRegistry->hasComponent<RigidBody2D>(ball.entity))
+			{
+				auto& rb = m_tempRegistry->getComponent<RigidBody2D>(ball.entity);
+				rb.velocity = vec2(0.0f);
+				m_tempRegistry->setComponentDirty(rb);
+			}
+		}
+
+		if (gridEnabled())
+		{
+			// Keep the centered structure on the grid when snapping is enabled.
+			for (const BallInfo& ball : m_balls)
+			{
+				snapBallToGrid(ball);
+			}
+		}
+
+		// Relax every link to its current length so the molecule holds its shape.
+		for (DistanceLink& link : m_links)
+		{
+			resizeLinkToCurrentDistance(link);
+		}
+	}
+
+	void fitMoleculesToGrid()
+	{
+		if (!gridEnabled())
+		{
+			return;
+		}
+
+		for (const BallInfo& ball : m_balls)
+		{
+			snapBallToGrid(ball);
+		}
+
+		// Snap positions changed the geometry: resize every link to match it.
+		for (DistanceLink& link : m_links)
+		{
+			resizeLinkToCurrentDistance(link);
+		}
+	}
+
+	void snapBallToGrid(const BallInfo& ball)
+	{
+		if (!hasTransform(ball.entity))
+		{
+			return;
+		}
+
+		auto& t = m_tempRegistry->getComponent<Transform>(ball.entity);
+		const vec2 snapped = snapToGrid(vec2(t.position.x, t.position.y), ball.entity);
+		t.position.x = snapped.x;
+		t.position.y = snapped.y;
+		m_tempRegistry->setComponentDirty(t);
+
+		if (m_tempRegistry->hasComponent<RigidBody2D>(ball.entity))
+		{
+			auto& rb = m_tempRegistry->getComponent<RigidBody2D>(ball.entity);
+			rb.velocity = vec2(0.0f);
+			m_tempRegistry->setComponentDirty(rb);
+		}
+	}
+
+	void applyGravitySettings()
+	{
+		auto globalSettingsArray = m_tempRegistry->getComponentArray<GlobalPhysicsSettings>();
+		if (globalSettingsArray->getSize() == 0)
+		{
+			return;
+		}
+
+		auto& settings = globalSettingsArray->getDataAtIdx(0);
+		if (m_gravityEnabled)
+		{
+			settings.gravity = -10.0f;
+			settings.damping = 0.01f;
+		}
+		else
+		{
+			settings.gravity = 0.0f;
+			settings.damping = 1.0f;
+		}
+		m_tempRegistry->setComponentDirty(settings);
+	}
+
+	void applyLinkDistance(DistanceLink& link)
+	{
+		if (link.type == LinkType::Distance)
+		{
+			if (m_tempRegistry->hasComponent<DistanceConstraint>(link.constraintEntity))
+			{
+				auto& constraint = m_tempRegistry->getComponent<DistanceConstraint>(link.constraintEntity);
+				constraint.distance = link.restDistance;
+				m_tempRegistry->setComponentDirty(constraint);
+			}
+		}
+		else
+		{
+			if (m_tempRegistry->hasComponent<Spring>(link.constraintEntity))
+			{
+				auto& spring = m_tempRegistry->getComponent<Spring>(link.constraintEntity);
+				spring.restDistance = link.restDistance;
+				m_tempRegistry->setComponentDirty(spring);
+			}
+		}
+	}
+
+	void resizeLinkToCurrentDistance(DistanceLink& link)
+	{
+		if (!hasTransform(link.a) || !hasTransform(link.b))
+		{
+			return;
+		}
+
+		const auto& ta = m_tempRegistry->getComponent<Transform>(link.a);
+		const auto& tb = m_tempRegistry->getComponent<Transform>(link.b);
+		const vec2 pa(ta.position.x, ta.position.y);
+		const vec2 pb(tb.position.x, tb.position.y);
+
+		// Auto-resize has no upper bound: the link follows wherever the atom
+		// was snapped to. The line-drag UI still clamps to its slider range.
+		link.restDistance = (std::max)(glm::length(pb - pa), 1.0f);
+		applyLinkDistance(link);
+	}
+
+	void resizeLinksForBall(Entity ball)
+	{
+		for (DistanceLink& link : m_links)
+		{
+			if (link.a == ball || link.b == ball)
+			{
+				resizeLinkToCurrentDistance(link);
+			}
+		}
+	}
+
+	void removeLinkAt(size_t index)
+	{
+		if (index >= m_links.size())
+		{
+			return;
+		}
+
+		DistanceLink& link = m_links[index];
+		if (m_draggedLinkConstraint == link.constraintEntity)
+		{
+			m_draggedLinkConstraint = static_cast<Entity>(-1);
+		}
+
+		m_tempRegistry->destroyEntity(link.constraintEntity);
+		m_tempRegistry->destroyEntity(link.lineEntity);
+		m_links.erase(m_links.begin() + static_cast<std::ptrdiff_t>(index));
+	}
+
+	// -----------------------------------------------------------------------
+	// Scene files
+	// -----------------------------------------------------------------------
+
+	void clearMolecule()
+	{
+		for (DistanceLink& link : m_links)
+		{
+			m_tempRegistry->destroyEntity(link.constraintEntity);
+			m_tempRegistry->destroyEntity(link.lineEntity);
+		}
+		m_links.clear();
+
+		for (const BallInfo& ball : m_balls)
+		{
+			m_tempSvc->tags().removeTag(ball.entity);
+			m_tempRegistry->destroyEntity(ball.entity);
+		}
+		m_balls.clear();
+
+		m_draggedBall = static_cast<Entity>(-1);
+		m_draggedSimulationId = -1;
+		m_draggedLinkConstraint = static_cast<Entity>(-1);
+		m_constraintStartBall = static_cast<Entity>(-1);
+		m_keepFixedAfterDrag = false;
+		m_dragMode = DragMode::None;
+		m_rightWasDown = false;
+		m_tagSelectedEntity = static_cast<Entity>(-1);
+		m_currentFilePath.clear();
+	}
+
+	void saveMolecule()
+	{
+		if (m_currentFilePath.empty())
+		{
+			openSaveFileDialog();
+			return;
+		}
+		saveMoleculeTo(m_currentFilePath);
+	}
+
+	void saveMoleculeTo(const std::string& path)
+	{
+		std::string finalPath = path;
+		if (!finalPath.ends_with(".weird"))
+		{
+			finalPath += ".weird";
+		}
+
+		m_tempSvc->serialization().saveScene(finalPath);
+		m_currentFilePath = finalPath;
+		WeirdEngine::Logger::log("Saved molecule to " + finalPath);
+	}
+
+	void openLoadFileDialog()
+	{
+#ifdef __EMSCRIPTEN__
+		loadMoleculeFromName();
+#else
+		static SDL_DialogFileFilter filters[1] = {{"Weird Molecule (*.weird)", "weird"}};
+		SDL_ShowOpenFileDialog(onOpenFileCallback, this, nullptr, filters, 1, nullptr, false);
+#endif
+	}
+
+	void openSaveFileDialog()
+	{
+#ifdef __EMSCRIPTEN__
+		saveMoleculeFromName();
+#else
+		static SDL_DialogFileFilter filters[1] = {{"Weird Molecule (*.weird)", "weird"}};
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "molecule.weird");
+#endif
+	}
+
+	void pollFileActions()
+	{
+		std::string loadPath;
+		std::string savePath;
+		{
+			std::lock_guard<std::mutex> lock(m_fileMutex);
+			loadPath = std::exchange(m_pendingLoadPath, {});
+			savePath = std::exchange(m_pendingSavePath, {});
+		}
+
+		if (!loadPath.empty())
+		{
+			loadMolecule(loadPath);
+			m_currentFilePath = loadPath;
+		}
+
+		if (!savePath.empty())
+		{
+			saveMoleculeTo(savePath);
+		}
+	}
+
+#ifndef __EMSCRIPTEN__
+	static void SDLCALL onOpenFileCallback(void* userdata, const char* const* filelist, int filter)
+	{
+		auto* editor = static_cast<MoleculeEditor*>(userdata);
+		if (!editor || !filelist || !*filelist)
+		{
+			return;
+		}
+
+		std::lock_guard<std::mutex> lock(editor->m_fileMutex);
+		editor->m_pendingLoadPath = *filelist;
+	}
+
+	static void SDLCALL onSaveFileCallback(void* userdata, const char* const* filelist, int filter)
+	{
+		auto* editor = static_cast<MoleculeEditor*>(userdata);
+		if (!editor || !filelist || !*filelist)
+		{
+			return;
+		}
+
+		std::lock_guard<std::mutex> lock(editor->m_fileMutex);
+		editor->m_pendingSavePath = *filelist;
+	}
+#endif
+
+	std::string currentFileName() const
+	{
+		std::string fileName(m_fileNameBuf);
+		if (fileName.empty())
+		{
+			fileName = "molecule";
+		}
+		if (!fileName.ends_with(".weird"))
+		{
+			fileName += ".weird";
+		}
+		return fileName;
+	}
+
+	void saveMoleculeFromName()
+	{
+		saveMoleculeTo(m_tempSvc->resources().assetPath("Organisms/") + currentFileName());
+	}
+
+	void loadMoleculeFromName()
+	{
+		// Only used by the Emscripten file fallback; keep it referenced everywhere
+		// to avoid dead-code surprises when building for the web.
+		const std::string path = m_tempSvc->resources().assetPath("Organisms/") + currentFileName();
+		loadMolecule(path);
+		m_currentFilePath = path;
 	}
 
 	void removeFallenBalls()
@@ -284,8 +1209,8 @@ private:
 										 bool remove = shouldDelete(link.a) || shouldDelete(link.b);
 										 if (remove)
 										 {
-											 if (m_draggedLink == &link)
-												 m_draggedLink = nullptr;
+											 if (m_draggedLinkConstraint == link.constraintEntity)
+												 m_draggedLinkConstraint = static_cast<Entity>(-1);
 											 m_tempRegistry->destroyEntity(link.lineEntity);
 										 }
 										 return remove;
@@ -301,7 +1226,7 @@ private:
 			m_draggedBall = static_cast<Entity>(-1);
 			m_draggedSimulationId = -1;
 			m_keepFixedAfterDrag = false;
-			m_rightMouseMode = RightMouseMode::None;
+			m_dragMode = DragMode::None;
 			m_rightWasDown = false;
 		}
 
@@ -316,168 +1241,13 @@ private:
 		}
 	}
 
-	void buildMaterialPalette()
-	{
-		for (int i = 0; i < 16; i++)
-		{
-			float px = START_X + i * MAT_SPACING;
-			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
-			Entity e = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::CIRCLE, .variables = p, .material = static_cast<uint16_t>(i)});
-
-			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
-			tog.clickPadding = BTN_SIZE + 3.0f;
-			tog.parameterModifierMask.set(2);
-			tog.modifierAmount = 5.0f;
-
-			m_materialToggles[i] = e;
-			m_tempSvc->serialization().blacklistEntity(e);
-		}
-
-		m_tempRegistry->getComponent<ShapeToggle>(m_materialToggles[m_selectedMaterial]).active = true;
-	}
-
-	void syncMaterialPalette()
-	{
-		int activated = -1;
-		for (int i = 0; i < 16; i++)
-		{
-			auto& t = m_tempRegistry->getComponent<ShapeToggle>(m_materialToggles[i]);
-			if (t.active && t.state == ButtonState::Down)
-			{
-				activated = i;
-				break;
-			}
-		}
-
-		if (activated >= 0)
-		{
-			m_selectedMaterial = activated;
-			for (int i = 0; i < 16; i++)
-			{
-				if (i != activated)
-				{
-					m_tempRegistry->getComponent<ShapeToggle>(m_materialToggles[i]).active = false;
-				}
-			}
-		}
-		else
-		{
-			for (int i = 0; i < 16; i++)
-			{
-				if (m_tempRegistry->getComponent<ShapeToggle>(m_materialToggles[i]).active)
-				{
-					m_selectedMaterial = i;
-					break;
-				}
-			}
-		}
-	}
-
-	void buildToolbar()
-	{
-		const char* labels[] = {"drag", "spring", "distance", "remove", "tag", "material"};
-		for (int i = 0; i < 6; i++)
-		{
-			float y = (Display::height - TOOL_Y_START) - (i * TOOL_SPACING);
-			float p[8]{TOOL_X, y, TOOL_BTN_HALF, TOOL_BTN_HALF};
-			Entity e = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::BOX, .variables = p, .material = 2});
-			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
-			tog.clickPadding = TOOL_BTN_HALF + 8.0f;
-			tog.parameterModifierMask.set(2);
-			tog.parameterModifierMask.set(3);
-			tog.modifierAmount = 3.0f;
-			m_toolToggles[i] = e;
-			m_tempSvc->serialization().blacklistEntity(e);
-
-			Entity lbl = m_tempRegistry->createEntity();
-			auto& lt = m_tempRegistry->addComponent<Transform>(lbl);
-			lt.position = vec3(TOOL_X + TOOL_BTN_HALF + 20.0f, y, 0.0f);
-			auto& tx = m_tempRegistry->addComponent<UITextRenderer>(lbl);
-			tx.text = labels[i];
-			tx.material = 1;
-			tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
-			tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-			m_tempSvc->serialization().blacklistEntity(lbl);
-		}
-		m_tempRegistry->getComponent<ShapeToggle>(m_toolToggles[0]).active = true;
-
-		m_gravityToggleEntity = m_tempSvc->shapes().addUIShape(
-			{.shapeId = DefaultShapes::STAR,
-			 .variables = {Display::width - GRAV_Y, Display::height - GRAV_Y, GRAV_Y * 0.5f, 5.0f, 10.0f, 0.0f},
-			 .material = 2});
-		auto& gravTog = m_tempRegistry->addComponent<ShapeToggle>(m_gravityToggleEntity);
-		gravTog.clickPadding = 18.0f;
-		// gravTog.parameterModifierMask.set(2);
-		gravTog.parameterModifierMask.set(5);
-		gravTog.modifierAmount = 10.0f;
-		m_tempSvc->serialization().blacklistEntity(m_gravityToggleEntity);
-
-		m_gridToggleEntity = m_tempSvc->shapes().addUIShape(
-			{.shapeId = DefaultShapes::BOX,
-			 .variables = {Display::width - GRAV_Y, Display::height - GRID_Y, 12.0f, 12.0f},
-			 .material = 2});
-		auto& gridTog = m_tempRegistry->addComponent<ShapeToggle>(m_gridToggleEntity);
-		gridTog.clickPadding = 18.0f;
-		gridTog.parameterModifierMask.set(2);
-		gridTog.parameterModifierMask.set(3);
-		gridTog.modifierAmount = 3.0f;
-		m_tempSvc->serialization().blacklistEntity(m_gridToggleEntity);
-	}
-
-	void syncToolbar()
-	{
-		int activated = -1;
-		for (int i = 0; i < 6; i++)
-		{
-			auto& t = m_tempRegistry->getComponent<ShapeToggle>(m_toolToggles[i]);
-			if (t.active && t.state == ButtonState::Down)
-			{
-				activated = i;
-				break;
-			}
-		}
-		if (activated >= 0)
-		{
-			m_toolMode = static_cast<ToolMode>(activated);
-			for (int i = 0; i < 6; i++)
-			{
-				if (i != activated)
-					m_tempRegistry->getComponent<ShapeToggle>(m_toolToggles[i]).active = false;
-			}
-		}
-
-		auto& gravTog = m_tempRegistry->getComponent<ShapeToggle>(m_gravityToggleEntity);
-		bool wantsGravity = gravTog.active;
-		if (wantsGravity != m_gravityEnabled)
-		{
-			m_gravityEnabled = wantsGravity;
-			auto& starShape = m_tempRegistry->getComponent<UIShape>(m_gravityToggleEntity);
-			auto globalSettingsArray = m_tempRegistry->getComponentArray<GlobalPhysicsSettings>();
-			auto& settings = globalSettingsArray->getDataAtIdx(0);
-			if (m_gravityEnabled)
-			{
-				settings.gravity = -10.0f;
-				settings.damping = 0.01f;
-			}
-			else
-			{
-				settings.gravity = 0.0f;
-				settings.damping = 1.0f;
-			}
-			m_tempRegistry->setComponentDirty(settings);
-		}
-
-		m_gridMode = m_tempRegistry->getComponent<ShapeToggle>(m_gridToggleEntity).active;
-	}
-
 	void spawnBallAtMouse()
 	{
 		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
 		vec2 world = ECS::Camera::screenPositionToWorldPosition2D(
 			cam, vec2(m_tempSvc->input().getMouseX(), m_tempSvc->input().getMouseY()));
 
-		if (m_gridMode)
+		if (gridEnabled())
 			world = snapToGrid(world);
 
 		Entity e = m_tempRegistry->createEntity();
@@ -501,7 +1271,21 @@ private:
 			cam, vec2(m_tempSvc->input().getMouseX(), m_tempSvc->input().getMouseY()));
 	}
 
+	bool gridEnabled() const
+	{
+		return m_grid != GridMode::Off;
+	}
+
 	vec2 snapToGrid(vec2 pos, Entity exclude = static_cast<Entity>(-1))
+	{
+		if (m_grid == GridMode::Hex)
+		{
+			return snapToHexGrid(pos, exclude);
+		}
+		return snapToSquareGrid(pos, exclude);
+	}
+
+	vec2 snapToSquareGrid(vec2 pos, Entity exclude)
 	{
 		vec2 nearest(std::round(pos.x / GRID_CELL) * GRID_CELL, std::round(pos.y / GRID_CELL) * GRID_CELL);
 
@@ -544,6 +1328,86 @@ private:
 		return nearest; // fallback
 	}
 
+	// Hex grid centers use an odd-r offset layout: rows are spaced by
+	// sqrt(3)/2 cells and every other row is offset by half a cell.
+	vec2 hexCellCenter(int col, int row) const
+	{
+		const float offset = ((row & 1) != 0) ? GRID_CELL * 0.5f : 0.0f;
+		return vec2(col * GRID_CELL + offset, row * HEX_ROW_HEIGHT);
+	}
+
+	vec2 nearestHexCellCenter(vec2 pos) const
+	{
+		const int baseRow = static_cast<int>(std::round(pos.y / HEX_ROW_HEIGHT));
+		vec2 best = hexCellCenter(0, 0);
+		float bestDist = (std::numeric_limits<float>::max)();
+
+		for (int row = baseRow - 1; row <= baseRow + 1; ++row)
+		{
+			const float offset = ((row & 1) != 0) ? GRID_CELL * 0.5f : 0.0f;
+			const int col = static_cast<int>(std::round((pos.x - offset) / GRID_CELL));
+			const vec2 center = hexCellCenter(col, row);
+			const float d = glm::length2(center - pos);
+			if (d < bestDist)
+			{
+				bestDist = d;
+				best = center;
+			}
+		}
+
+		return best;
+	}
+
+	vec2 snapToHexGrid(vec2 pos, Entity exclude)
+	{
+		const vec2 nearest = nearestHexCellCenter(pos);
+		if (!isCellOccupied(nearest, exclude))
+			return nearest;
+
+		// Spiral through hex rings in axial coordinates to find the closest free cell.
+		const int centerRow = static_cast<int>(std::round(nearest.y / HEX_ROW_HEIGHT));
+		const int centerCol = static_cast<int>(std::round(nearest.x / GRID_CELL));
+		const int centerQ = centerCol - (centerRow - (centerRow & 1)) / 2;
+		const int centerR = centerRow;
+
+		for (int radius = 1; radius <= 50; ++radius)
+		{
+			float bestDist = (std::numeric_limits<float>::max)();
+			vec2 bestCell = nearest;
+			bool found = false;
+
+			for (int q = centerQ - radius; q <= centerQ + radius; ++q)
+			{
+				for (int r = centerR - radius; r <= centerR + radius; ++r)
+				{
+					const int dq = q - centerQ;
+					const int dr = r - centerR;
+					if ((std::max)({std::abs(dq), std::abs(dr), std::abs(dq + dr)}) != radius)
+						continue; // only check the outer ring
+
+					const int col = q + (r - (r & 1)) / 2;
+					const vec2 candidate = hexCellCenter(col, r);
+
+					if (isCellOccupied(candidate, exclude))
+						continue;
+
+					const float d = glm::length(candidate - pos);
+					if (d < bestDist)
+					{
+						bestDist = d;
+						bestCell = candidate;
+						found = true;
+					}
+				}
+			}
+
+			if (found)
+				return bestCell;
+		}
+
+		return nearest; // fallback
+	}
+
 	bool isCellOccupied(vec2 cell, Entity exclude)
 	{
 		const float threshold = GRID_CELL * 0.25f;
@@ -561,88 +1425,123 @@ private:
 		return false;
 	}
 
-	void handleRightMouseDragInput()
+	void handleCameraInput()
 	{
-		bool rightDown = m_tempSvc->input().getMouseButton(Input::RightClick);
+		float wheel = 0.0f;
+		if (m_tempSvc->input().getMouseButtonDown(Input::WheelUp))
+			wheel += 1.0f;
+		if (m_tempSvc->input().getMouseButtonDown(Input::WheelDown))
+			wheel -= 1.0f;
+		if (wheel != 0.0f)
+			zoomCamera(wheel);
+
+		const bool middleDown = m_tempSvc->input().getMouseButton(Input::MiddleClick);
+		if (middleDown && m_middleWasDown)
+		{
+			panCamera(vec2(m_tempSvc->input().getMouseDeltaXRaw(), -m_tempSvc->input().getMouseDeltaYRaw()));
+		}
+		m_middleWasDown = middleDown;
+	}
+
+	void zoomCamera(float steps)
+	{
+		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+
+		const float oldDistance = cam.position.z;
+		const float newDistance = (std::clamp)(oldDistance * std::pow(1.0f - CAMERA_ZOOM_STEP, steps),
+											   CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+		if (std::abs(newDistance - oldDistance) < 0.0001f)
+			return;
+
+		const vec2 mouse(m_tempSvc->input().getMouseX(), m_tempSvc->input().getMouseY());
+		const vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, mouse);
+		const float halfWidth = (std::max)(1.0f, static_cast<float>(Display::width) * 0.5f);
+		const float halfHeight = (std::max)(1.0f, static_cast<float>(Display::height) * 0.5f);
+		const float scale = newDistance / halfHeight;
+
+		cam.position.z = newDistance;
+		cam.position.x = world.x - (mouse.x - halfWidth) * scale;
+		cam.position.y = world.y - (mouse.y - halfHeight) * scale;
+		m_tempRegistry->setComponentDirty(cam);
+		g_cameraPositon = cam.position;
+	}
+
+	void panCamera(vec2 screenDelta)
+	{
+		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const float halfHeight = (std::max)(1.0f, static_cast<float>(Display::height) * 0.5f);
+		const float scale = cam.position.z / halfHeight;
+
+		cam.position.x -= screenDelta.x * scale;
+		cam.position.y -= screenDelta.y * scale;
+		m_tempRegistry->setComponentDirty(cam);
+		g_cameraPositon = cam.position;
+	}
+
+	void handleRightMouseInput()
+	{
+		const bool rightDown = m_tempSvc->input().getMouseButton(Input::RightClick);
 
 		if (rightDown && !m_rightWasDown)
 		{
-			if (m_toolMode == ToolMode::Spring || m_toolMode == ToolMode::Distance || m_toolMode == ToolMode::Remove)
-				onConstraintStart();
-			else if (m_toolMode == ToolMode::TagEditor)
-				onTagEditorRightClick();
-			else if (m_toolMode == ToolMode::Material)
-				onMaterialRightClick();
-			else
-				onRightDragStart();
+			startRightDrag();
 		}
 		else if (rightDown && m_rightWasDown)
 		{
-			if (m_rightMouseMode == RightMouseMode::Drag)
-			{
-				onRightDragUpdate();
-			}
+			updateRightDrag();
 		}
 		else if (!rightDown && m_rightWasDown)
 		{
-			if (m_rightMouseMode == RightMouseMode::Drag)
-			{
-				onRightDragEnd();
-			}
-			else if (m_rightMouseMode == RightMouseMode::Constraint)
-			{
-				onConstraintEnd();
-			}
-
-			m_rightMouseMode = RightMouseMode::None;
+			endRightDrag();
 		}
 
 		m_rightWasDown = rightDown;
 	}
 
-	void onRightDragStart()
+	void startRightDrag()
 	{
-		m_rightMouseMode = RightMouseMode::Drag;
+		const Entity hit = pickBallAtMouse();
+		const int simulationId = (hit == static_cast<Entity>(-1)) ? -1 : getSimulationId(hit);
 
-		Entity hit = pickBallAtMouse();
-		if (hit == static_cast<Entity>(-1))
+		if (hit == static_cast<Entity>(-1) || simulationId < 0)
 		{
-			m_draggedBall = static_cast<Entity>(-1);
-			m_draggedSimulationId = -1;
-			m_keepFixedAfterDrag = false;
-			m_rightMouseMode = RightMouseMode::None;
+			// Nothing under the cursor: the right button always drags the view.
+			m_dragMode = DragMode::Camera;
 			return;
 		}
 
-		int id = getSimulationId(hit);
-		if (id < 0)
-		{
-			m_draggedBall = static_cast<Entity>(-1);
-			m_draggedSimulationId = -1;
-			m_keepFixedAfterDrag = false;
-			m_rightMouseMode = RightMouseMode::None;
-			return;
-		}
-
+		m_dragMode = DragMode::Ball;
 		m_draggedBall = hit;
-		m_draggedSimulationId = id;
+		m_draggedSimulationId = simulationId;
 		m_keepFixedAfterDrag = false;
 
 		auto& rb = m_tempRegistry->getComponent<RigidBody2D>(m_draggedBall);
 		rb.isFixed = true;
 		m_tempRegistry->setComponentDirty(rb);
+
 		vec2 startPos = getMouseWorldPosition();
-		if (m_gridMode)
+		if (gridEnabled())
 			startPos = snapToGrid(startPos, m_draggedBall);
 
 		auto& t = m_tempRegistry->getComponent<Transform>(m_draggedBall);
 		t.position = vec3(startPos.x, startPos.y, 0.0f);
 		m_tempRegistry->setComponentDirty(t);
+
+		if (gridEnabled())
+		{
+			resizeLinksForBall(m_draggedBall);
+		}
 	}
 
-	void onRightDragUpdate()
+	void updateRightDrag()
 	{
-		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
+		if (m_dragMode == DragMode::Camera)
+		{
+			panCamera(vec2(m_tempSvc->input().getMouseDeltaXRaw(), -m_tempSvc->input().getMouseDeltaYRaw()));
+			return;
+		}
+
+		if (m_dragMode != DragMode::Ball || m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
 			return;
 
 		if (m_tempSvc->input().getKeyDown(Input::F))
@@ -651,46 +1550,82 @@ private:
 		}
 
 		vec2 dragPos = getMouseWorldPosition();
-		if (m_gridMode)
+		if (gridEnabled())
 			dragPos = snapToGrid(dragPos, m_draggedBall);
+
 		auto& t = m_tempRegistry->getComponent<Transform>(m_draggedBall);
+		const vec2 previousPosition(t.position.x, t.position.y);
 		t.position = vec3(dragPos.x, dragPos.y, 0.0f);
 		m_tempRegistry->setComponentDirty(t);
-	}
 
-	void onRightDragEnd()
-	{
-		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
-			return;
-
-		if (!m_keepFixedAfterDrag)
+		if (gridEnabled() && glm::length2(dragPos - previousPosition) > 0.0f)
 		{
-			auto& rb = m_tempRegistry->getComponent<RigidBody2D>(m_draggedBall);
-			rb.isFixed = false;
-			m_tempRegistry->setComponentDirty(rb);
-		}
-
-		m_draggedBall = static_cast<Entity>(-1);
-		m_draggedSimulationId = -1;
-		m_keepFixedAfterDrag = false;
-	}
-
-	void onConstraintStart()
-	{
-		m_rightMouseMode = RightMouseMode::Constraint;
-		m_constraintStartBall = pickBallAtMouse();
-		if (m_constraintStartBall == static_cast<Entity>(-1))
-		{
-			m_rightMouseMode = RightMouseMode::None;
+			// Snapping to a new cell changes the geometry: let the links follow.
+			resizeLinksForBall(m_draggedBall);
 		}
 	}
 
-	void onConstraintEnd()
+	void endRightDrag()
 	{
-		if (m_constraintStartBall == static_cast<Entity>(-1))
-			return;
+		if (m_dragMode == DragMode::Ball && m_draggedBall != static_cast<Entity>(-1) && m_draggedSimulationId >= 0)
+		{
+			if (!m_keepFixedAfterDrag)
+			{
+				auto& rb = m_tempRegistry->getComponent<RigidBody2D>(m_draggedBall);
+				rb.isFixed = false;
+				m_tempRegistry->setComponentDirty(rb);
+			}
 
-		Entity hit = pickBallAtMouse();
+			m_draggedBall = static_cast<Entity>(-1);
+			m_draggedSimulationId = -1;
+			m_keepFixedAfterDrag = false;
+		}
+
+		m_dragMode = DragMode::None;
+	}
+
+	void handleLeftClickInput()
+	{
+		if (!m_tempSvc->input().getMouseButtonDown(Input::LeftClick) || m_tempSvc->input().isUIClick())
+		{
+			return;
+		}
+
+		switch (m_toolMode)
+		{
+			case ToolMode::Add:
+				spawnBallAtMouse();
+				break;
+			case ToolMode::Spring:
+			case ToolMode::Distance:
+			case ToolMode::Remove:
+				handleConstraintClick();
+				break;
+			case ToolMode::Modify:
+				// Link distance dragging is handled by handleLinkInteraction().
+				break;
+			case ToolMode::TagEditor:
+				selectTagEntity();
+				break;
+			case ToolMode::Material:
+				paintBallAtMouse();
+				break;
+		}
+	}
+
+	void handleConstraintClick()
+	{
+		const Entity hit = pickBallAtMouse();
+
+		if (m_constraintStartBall == static_cast<Entity>(-1))
+		{
+			if (hit != static_cast<Entity>(-1))
+			{
+				m_constraintStartBall = hit;
+			}
+			return;
+		}
+
 		if (hit != static_cast<Entity>(-1) && hit != m_constraintStartBall)
 		{
 			if (m_toolMode == ToolMode::Remove)
@@ -699,7 +1634,7 @@ private:
 			}
 			else
 			{
-				LinkType type = (m_toolMode == ToolMode::Distance) ? LinkType::Distance : LinkType::Spring;
+				const LinkType type = (m_toolMode == ToolMode::Distance) ? LinkType::Distance : LinkType::Spring;
 				addConstraintLink(m_constraintStartBall, hit, type);
 			}
 		}
@@ -790,10 +1725,6 @@ private:
 		Entity line = m_tempSvc->shapes().addUIShape(
 			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
-		auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
-		btn.clickPadding = 8.0f;
-		btn.modifierAmount = 0.0f;
-
 		m_tempSvc->serialization().blacklistEntity(line);
 
 		m_links.push_back({a, b, idA, idB, restDistance, line, type, constraintEnt});
@@ -812,58 +1743,141 @@ private:
 				continue;
 			}
 
+			if (m_draggedLinkConstraint == link.constraintEntity)
+			{
+				m_draggedLinkConstraint = static_cast<Entity>(-1);
+			}
+
 			m_tempRegistry->destroyEntity(link.constraintEntity);
-
-			if (m_draggedLink == &link)
-				m_draggedLink = nullptr;
-
 			m_tempRegistry->destroyEntity(link.lineEntity);
 			m_links.erase(m_links.begin() + i);
 		}
 	}
 
-	void handleConstraintLineClicks()
+	void handleLinkInteraction()
 	{
-		// Detect click-down via ShapeButton state.
-		// ButtonSystem already calls m_tempSvc->input().flagUIClick() when a line is clicked,
-		// so ball spawning is suppressed automatically.
-		for (auto& link : m_links)
+		// A fresh press on a link starts a distance drag in Modify mode, and
+		// removes the link in Remove mode (ball clicks take priority there).
+		const bool freshClick =
+			m_tempSvc->input().getMouseButtonDown(Input::LeftClick) && !m_tempSvc->input().isUIClick();
+
+		if (freshClick)
 		{
-			if (!hasShapeButton(link.lineEntity))
-				continue;
-			auto& btn = m_tempRegistry->getComponent<ShapeButton>(link.lineEntity);
-			if (btn.state == ButtonState::Down)
+			if (m_toolMode == ToolMode::Modify)
 			{
-				m_draggedLink = &link;
-				m_linkDragStartX = m_tempSvc->input().getMouseX();
-				m_linkDragStartDist = link.restDistance;
-				m_dragLinkSimIdA.store(link.simulationIdA, std::memory_order_relaxed);
-				m_dragLinkSimIdB.store(link.simulationIdB, std::memory_order_relaxed);
-				break;
+				const int index = pickLinkAtMouse();
+				if (index >= 0)
+				{
+					m_draggedLinkConstraint = m_links[static_cast<size_t>(index)].constraintEntity;
+					m_linkDragStartX = m_tempSvc->input().getMouseX();
+					m_linkDragStartDist = m_links[static_cast<size_t>(index)].restDistance;
+				}
+			}
+			else if (m_toolMode == ToolMode::Remove && pickBallAtMouse() == static_cast<Entity>(-1))
+			{
+				const int index = pickLinkAtMouse();
+				if (index >= 0)
+				{
+					removeLinkAt(static_cast<size_t>(index));
+					return;
+				}
 			}
 		}
 
 		if (!m_tempSvc->input().getMouseButton(Input::LeftClick))
 		{
-			m_draggedLink = nullptr;
+			m_draggedLinkConstraint = static_cast<Entity>(-1);
 			return;
 		}
 
-		if (m_draggedLink == nullptr)
+		DistanceLink* dragged = findLinkByConstraint(m_draggedLinkConstraint);
+		if (dragged == nullptr)
+		{
+			m_draggedLinkConstraint = static_cast<Entity>(-1);
 			return;
+		}
 
-		float dx = (m_tempSvc->input().getMouseX() - m_linkDragStartX) * 0.3f;
+		const float dx = (m_tempSvc->input().getMouseX() - m_linkDragStartX) * 0.3f;
 		float newDist = std::round((m_linkDragStartDist + dx) * 10.0f) / 10.0f;
 		newDist = (std::clamp)(newDist, 1.0f, 10.0f);
-		m_draggedLink->restDistance = newDist;
+		dragged->restDistance = newDist;
 
-		// Release store: physics thread's acquire-exchange will see the sim ID writes above.
-		m_pendingLinkDistance.store(newDist, std::memory_order_release);
+		// Route the change through the ECS component: PhysicsSystem2D forwards
+		// it to the simulation from the main thread. Calling into the
+		// simulation from onPhysicsStep would self-deadlock on its structural
+		// mutex.
+		applyLinkDistance(*dragged);
+	}
+
+	DistanceLink* findLinkByConstraint(Entity constraintEntity)
+	{
+		if (constraintEntity == static_cast<Entity>(-1))
+		{
+			return nullptr;
+		}
+
+		for (DistanceLink& link : m_links)
+		{
+			if (link.constraintEntity == constraintEntity)
+			{
+				return &link;
+			}
+		}
+		return nullptr;
+	}
+
+	int pickLinkAtMouse()
+	{
+		const vec2 mouse = getMouseWorldPosition();
+		float best = linkPickRadiusWorld();
+		int bestIndex = -1;
+
+		for (size_t i = 0; i < m_links.size(); ++i)
+		{
+			const DistanceLink& link = m_links[i];
+			if (!hasTransform(link.a) || !hasTransform(link.b))
+			{
+				continue;
+			}
+
+			const auto& ta = m_tempRegistry->getComponent<Transform>(link.a);
+			const auto& tb = m_tempRegistry->getComponent<Transform>(link.b);
+			const float d = distancePointToSegment(mouse, vec2(ta.position.x, ta.position.y),
+												   vec2(tb.position.x, tb.position.y));
+			if (d < best)
+			{
+				best = d;
+				bestIndex = static_cast<int>(i);
+			}
+		}
+
+		return bestIndex;
+	}
+
+	float linkPickRadiusWorld()
+	{
+		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const float halfHeight = (std::max)(1.0f, static_cast<float>(Display::height) * 0.5f);
+		return LINK_PICK_PIXELS * (cam.position.z / halfHeight);
+	}
+
+	static float distancePointToSegment(vec2 p, vec2 a, vec2 b)
+	{
+		const vec2 ab = b - a;
+		const float lengthSq = glm::length2(ab);
+		if (lengthSq <= 0.0001f)
+		{
+			return glm::length(p - a);
+		}
+
+		const float t = (std::clamp)(glm::dot(p - a, ab) / lengthSq, 0.0f, 1.0f);
+		return glm::length(p - (a + ab * t));
 	}
 
 	void updateConstraintLines()
 	{
 		auto& cam = m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity());
+		const float lineWidth = (m_toolMode == ToolMode::Modify) ? MODIFY_LINE_WIDTH : LINE_WIDTH;
 
 		for (auto& link : m_links)
 		{
@@ -883,7 +1897,7 @@ private:
 			ui.parameters[1] = aScreen.y;
 			ui.parameters[2] = bScreen.x;
 			ui.parameters[3] = bScreen.y;
-			ui.parameters[4] = LINE_WIDTH;
+			ui.parameters[4] = lineWidth;
 		}
 	}
 
@@ -914,46 +1928,6 @@ private:
 	// Tag editor UI
 	// -----------------------------------------------------------------------
 
-	void buildTagEditorUI()
-	{
-		// Create label text entity for the selection tag
-		m_tagLabelEntity = m_tempRegistry->createEntity();
-		auto& lt = m_tempRegistry->addComponent<Transform>(m_tagLabelEntity);
-		lt.position = vec3(Display::width * 0.5f, 115.0f, 0.0f);
-
-		auto& tx = m_tempRegistry->addComponent<UITextRenderer>(m_tagLabelEntity);
-		tx.text = "";
-		tx.material = 7;
-		tx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-		tx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-		m_tempSvc->serialization().blacklistEntity(m_tagLabelEntity);
-
-		// Label above the edit button
-		{
-			Entity btnLbl = m_tempRegistry->createEntity();
-			auto& blt = m_tempRegistry->addComponent<Transform>(btnLbl);
-			blt.position = vec3(Display::width * 0.5f, 90.0f, 0.0f);
-			auto& btx = m_tempRegistry->addComponent<UITextRenderer>(btnLbl);
-			btx.text = "edit tag";
-			btx.material = 1;
-			btx.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
-			btx.verticalAlignment = TextRenderer::VerticalAlignment::Center;
-			m_tempSvc->serialization().blacklistEntity(btnLbl);
-		}
-
-		// "edit tag" button (a small box)
-		{
-			static constexpr float BW = 40.0f;
-			static constexpr float BH = 14.0f;
-			m_tagEditButton = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::BOX, .variables = {Display::width * 0.5f, 90.0f, BW, BH}, .material = 2});
-			auto& btn = m_tempRegistry->addComponent<ShapeButton>(m_tagEditButton);
-			btn.clickPadding = 6.0f;
-			btn.modifierAmount = 0.0f;
-			m_tempSvc->serialization().blacklistEntity(m_tagEditButton);
-		}
-	}
-
 	void updateTagEditor()
 	{
 		// Hide ring if no entity selected
@@ -963,10 +1937,6 @@ private:
 			{
 				m_tempRegistry->getComponent<UIShape>(m_tagCircleOuter).parameters[2] = 0.0f;
 				m_tempRegistry->getComponent<UIShape>(m_tagCircleInner).parameters[2] = 0.0f;
-			}
-			if (m_tagLabelEntity != static_cast<Entity>(-1))
-			{
-				m_tempRegistry->getComponent<UITextRenderer>(m_tagLabelEntity).text = "";
 			}
 			return;
 		}
@@ -1010,49 +1980,14 @@ private:
 		inner.parameters[0] = screen.x;
 		inner.parameters[1] = screen.y;
 		inner.parameters[2] = TAG_INNER_RADIUS;
-
-		// Update the tag label text
-		if (m_tagLabelEntity != static_cast<Entity>(-1))
-		{
-			std::string currentTag = m_tempSvc->tags().getEntityTag(m_tagSelectedEntity);
-			auto& tx = m_tempRegistry->getComponent<UITextRenderer>(m_tagLabelEntity);
-			std::string newText = currentTag.empty() ? "tag: (none)" : ("tag: " + currentTag);
-			if (tx.text != newText)
-			{
-				tx.text = newText;
-				m_tempRegistry->setComponentDirty(tx);
-			}
-		}
-
-		// Handle "edit tag" button click
-		// NOTE: std::cin is intentionally used here for console-based tag input
-		// as required by the design of this editor scene.
-		if (m_tagEditButton != static_cast<Entity>(-1))
-		{
-			auto& btn = m_tempRegistry->getComponent<ShapeButton>(m_tagEditButton);
-			if (btn.state == ButtonState::Down)
-			{
-				WeirdEngine::Logger::log("Enter new tag (empty to remove): ");
-				std::string newTag;
-				std::getline(std::cin, newTag);
-				if (newTag.empty())
-				{
-					m_tempSvc->tags().removeTag(m_tagSelectedEntity);
-				}
-				else
-				{
-					m_tempSvc->tags().tag(m_tagSelectedEntity, newTag);
-				}
-			}
-		}
 	}
 
-	void onTagEditorRightClick()
+	void selectTagEntity()
 	{
 		m_tagSelectedEntity = pickBallAtMouse();
 	}
 
-	void onMaterialRightClick()
+	void paintBallAtMouse()
 	{
 		Entity hit = pickBallAtMouse();
 		if (hit == static_cast<Entity>(-1))
@@ -1071,12 +2006,6 @@ private:
 	bool hasUIShape(Entity e)
 	{
 		auto arr = m_tempRegistry->getComponentArray<UIShape>();
-		return arr->hasData(e);
-	}
-
-	bool hasShapeButton(Entity e)
-	{
-		auto arr = m_tempRegistry->getComponentArray<ShapeButton>();
 		return arr->hasData(e);
 	}
 
@@ -1147,9 +2076,6 @@ private:
 			Entity line = m_tempSvc->shapes().addUIShape(
 				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
-			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
-			btn.clickPadding = 8.0f;
-			btn.modifierAmount = 0.0f;
 			m_tempSvc->serialization().blacklistEntity(line);
 
 			int idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;
@@ -1182,9 +2108,6 @@ private:
 			Entity line = m_tempSvc->shapes().addUIShape(
 				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
 
-			auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
-			btn.clickPadding = 8.0f;
-			btn.modifierAmount = 0.0f;
 			m_tempSvc->serialization().blacklistEntity(line);
 
 			int idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;

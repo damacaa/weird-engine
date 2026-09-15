@@ -124,6 +124,7 @@ namespace WeirdEngine
 				ej["rigidBody2D"] = {{"simulationId", rb.simulationId},
 									 {"physicsPosition", {simPos.x, simPos.y}},
 									 {"velocity", {rb.velocity.x, rb.velocity.y}},
+									 {"mass", rb.mass},
 									 {"isFixed", rb.isFixed}};
 			}
 
@@ -383,12 +384,13 @@ namespace WeirdEngine
 					{
 						rb.velocity = vec2(rbj["velocity"][0].get<float>(), rbj["velocity"][1].get<float>());
 					}
+					rb.mass = rbj.value("mass", 1.0f);
 					if (rbj.contains("isFixed"))
 					{
 						rb.isFixed = rbj.value("isFixed", false);
 					}
 					scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(
-						entity, true); // Sync velocity and fixed state to simulation
+						entity, true); // Sync velocity, mass, and fixed state to simulation
 
 					if (rbj.contains("physicsPosition"))
 					{

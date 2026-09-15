@@ -14,10 +14,13 @@ namespace WeirdEngine
 	{
 		RigidBody2D()
 			: simulationId(-1)
+			, mass(1.0f)
 			, velocity(0.0f, 0.0f)
 			, pendingImpulseForce(0.0f, 0.0f)
+			, pendingContinuousForce(0.0f, 0.0f)
 			, isFixed(false) {};
 		unsigned int simulationId;
+		float mass;
 		glm::vec2 velocity;
 		glm::vec2 pendingImpulseForce;
 		glm::vec2 pendingContinuousForce;

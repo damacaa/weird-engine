@@ -117,6 +117,7 @@ auto& dot = registry.addComponent<Dot>(entity);
 dot.materialId = services.materials2D().getHandle("my_mat").id;
 
 auto& rb = registry.addComponent<RigidBody2D>(entity);
+rb.mass = 1.0f;
 rb.velocity = vec2(0.0f, 5.0f);
 ```
 

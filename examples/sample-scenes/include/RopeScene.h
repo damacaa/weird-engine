@@ -1,10 +1,7 @@
 #pragma once
 
-#include "weird-audio/SdfSong.h"
-#include <weird-engine.h>
-
 #include "globals.h"
-#include "weird-physics/components/Spring.h"
+#include <weird-engine.h>
 
 using namespace WeirdEngine;
 

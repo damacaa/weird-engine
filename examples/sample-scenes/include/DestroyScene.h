@@ -1,12 +1,9 @@
 #pragma once
 
-#include "weird-audio/SdfSong.h"
 #include <cstdlib>
 #include <weird-engine.h>
 
 #include "globals.h"
-#include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/Spring.h"
 
 using namespace WeirdEngine;
 

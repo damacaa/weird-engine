@@ -5,11 +5,9 @@
 #include <cstdio>
 #include <iostream>
 
-#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
-#include "weird-engine/math/Default2DSDFs.h"
 #include "weird-renderer/core/Display.h"
 
 using namespace WeirdEngine;

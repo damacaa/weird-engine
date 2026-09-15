@@ -13,10 +13,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "weird-engine/math/Default2DSDFs.h"
-#include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
-#include "weird-physics/components/Spring.h"
 #include <glm/gtx/norm.hpp>
 
 extern WeirdEngine::vec3 g_cameraPositon;

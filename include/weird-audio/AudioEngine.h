@@ -1,6 +1,8 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <SDL3/SDL.h>
 #include <vector>
 
@@ -18,6 +20,11 @@ namespace WeirdEngine
 			float currentVolume = 0.0f;	  // For pulsing size
 			float currentFriction = 0.0f; // For static/jitter
 			std::vector<float> waveform;  // For oscilloscope effects (snapshot of last 256 samples)
+
+			AudioData()
+				: waveform(256, 0.0f)
+			{
+			}
 		};
 
 		class AudioEngine
@@ -38,23 +45,33 @@ namespace WeirdEngine
 
 			void setAudioStream(SDL_AudioStream* stream)
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				m_audioStream = stream;
 			}
 
 			uint32_t getSampleRate() const;
 			uint8_t getChannels() const;
 
-			// Per-frame scene audio update and PCM generation
+			// SDL3 Audio stream callback invoked on the dedicated audio thread
+			static void SDLCALL audioStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
+												   int total_amount);
+
+			// Generates PCM audio data directly on the audio thread
+			void renderAudio(SDL_AudioStream* stream, int additional_amount);
+
+			// Per-frame scene audio synchronization from main thread
 			void listen(Scene& scene);
 
 			// Volume & Mute controls
 			void mute()
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				m_settings.mute = true;
 			}
 
 			void unmute()
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				m_settings.mute = false;
 			}
 
@@ -65,6 +82,7 @@ namespace WeirdEngine
 
 			void setMasterVolume(float vol)
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				m_settings.masterVolume = vol;
 			}
 
@@ -97,6 +115,7 @@ namespace WeirdEngine
 			// Spatial Audio Setting
 			void setSpatialAudioEnabled(bool enabled)
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				m_settings.enableSpatialAudio = enabled;
 				m_physicsEngine.setSpatialAudioEnabled(enabled);
 			}
@@ -124,8 +143,11 @@ namespace WeirdEngine
 			PhysicsAudioEngine m_physicsEngine;
 			SdfMusicEngine m_musicEngine;
 
+			mutable std::mutex m_audioMutex;
 			SDL_AudioStream* m_audioStream = nullptr;
 			AudioData m_visualSnapshot;
+			std::vector<float> m_mixBuffer;
+			double m_audioTime = 0.0;
 
 			// Master bus DC-blocking filter state (per channel)
 			float m_dcBlockerX[2] = {0.0f, 0.0f};

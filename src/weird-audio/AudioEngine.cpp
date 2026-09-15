@@ -18,6 +18,7 @@ namespace WeirdEngine
 
 		bool AudioEngine::init(const WeirdAudio::AudioSettings& settings)
 		{
+			std::lock_guard<std::mutex> lock(m_audioMutex);
 			m_settings = settings;
 
 			m_physicsEngine.init(SAMPLE_RATE, CHANNELS);
@@ -26,6 +27,10 @@ namespace WeirdEngine
 
 			m_musicEngine.init(SAMPLE_RATE, CHANNELS);
 			m_musicEngine.setVolume(settings.musicVolume);
+
+			m_mixBuffer.resize(8192 * CHANNELS, 0.0f);
+			m_visualSnapshot.waveform.assign(256, 0.0f);
+			m_audioTime = 0.0;
 
 			return true;
 		}
@@ -43,7 +48,12 @@ namespace WeirdEngine
 		void AudioEngine::listen(Scene& scene)
 		{
 			if (m_settings.mute || !m_audioStream)
+			{
+				auto& audioQueue = scene.getAudioQueue();
+				SimpleAudioRequest req;
+				while (audioQueue.pop(req)) {}
 				return;
+			}
 
 			// 1. Camera & Listener orientation
 			auto& camera = scene.getCamera();
@@ -51,6 +61,8 @@ namespace WeirdEngine
 			vec3 listenerForward = glm::length2(camera.orientation) > 0.001f ? glm::normalize(camera.orientation)
 																			 : vec3(0.0f, 0.0f, -1.0f);
 			vec3 listenerUp = glm::length2(camera.up) > 0.001f ? glm::normalize(camera.up) : vec3(0.0f, 1.0f, 0.0f);
+
+			std::lock_guard<std::mutex> lock(m_audioMutex);
 
 			// 2. Physics continuous friction (one voice per selected source)
 			if (scene.isFrictionSoundOverridden())
@@ -77,102 +89,134 @@ namespace WeirdEngine
 
 				m_physicsEngine.playSound(req, listenerPos, listenerForward, listenerUp);
 			}
+		}
 
-			// 4. Update procedural music timing & dynamic feedback
-			m_musicEngine.update(scene.getLastDelta(), scene.getTime());
+		void SDLCALL AudioEngine::audioStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
+													   int /*total_amount*/)
+		{
+			auto* self = static_cast<AudioEngine*>(userdata);
+			if (!self)
+				return;
 
-			// 6. Generate and stream PCM audio to SDL
-			constexpr int TARGET_BUFFER_BYTES = (SAMPLE_RATE * CHANNELS * sizeof(float) * 14) / 100;
-			int queuedBytes = SDL_GetAudioStreamQueued(m_audioStream);
+			self->renderAudio(stream, additional_amount);
+		}
 
-			if (queuedBytes < TARGET_BUFFER_BYTES)
+		void AudioEngine::renderAudio(SDL_AudioStream* stream, int additional_amount)
+		{
+			if (!stream)
+				return;
+
+			constexpr int bytesPerFrame = CHANNELS * sizeof(float);
+			int bytesNeeded = additional_amount;
+			if (bytesNeeded <= 0)
 			{
-				int bytesToGenerate = TARGET_BUFFER_BYTES - queuedBytes;
-				uint32_t framesToWrite = static_cast<uint32_t>(bytesToGenerate / (CHANNELS * sizeof(float)));
-				if (framesToWrite > 8192)
+				return;
+			}
+
+			constexpr int MAX_CHUNK_FRAMES = 4096;
+			int maxBytes = MAX_CHUNK_FRAMES * bytesPerFrame;
+			if (bytesNeeded > maxBytes)
+			{
+				bytesNeeded = maxBytes;
+			}
+
+			uint32_t framesToWrite = static_cast<uint32_t>((bytesNeeded + bytesPerFrame - 1) / bytesPerFrame);
+			if (framesToWrite == 0)
+				return;
+
+			std::lock_guard<std::mutex> lock(m_audioMutex);
+
+			// Advance procedural music sample-accurately based on rendered audio frames
+			double chunkDt = static_cast<double>(framesToWrite) / static_cast<double>(SAMPLE_RATE);
+			m_audioTime += chunkDt;
+			m_musicEngine.update(chunkDt, m_audioTime);
+
+			size_t totalSamples = framesToWrite * CHANNELS;
+			if (m_mixBuffer.size() < totalSamples)
+			{
+				m_mixBuffer.resize(totalSamples, 0.0f);
+			}
+			std::fill(m_mixBuffer.begin(), m_mixBuffer.begin() + totalSamples, 0.0f);
+
+			if (!m_settings.mute)
+			{
+				// Layer 1: Physics realistic sounds & spatial audio
+				if (m_settings.enablePhysicsAudio)
 				{
-					framesToWrite = 8192;
+					m_physicsEngine.render(m_mixBuffer.data(), framesToWrite, CHANNELS);
 				}
 
-				if (framesToWrite > 0)
+				// Layer 2: SDF Procedural Music
+				if (m_settings.enableMusic)
 				{
-					std::vector<float> mix(framesToWrite * CHANNELS, 0.0f);
+					m_musicEngine.render(m_mixBuffer.data(), framesToWrite, CHANNELS);
+				}
 
-					// Layer 1: Physics realistic sounds & spatial audio
-					if (m_settings.enablePhysicsAudio)
+				// Master bus processing: DC Blocker (1-pole highpass at ~15 Hz, R = 0.995)
+				constexpr float DC_BLOCK_R = 0.995f;
+				for (size_t frame = 0; frame < framesToWrite; ++frame)
+				{
+					for (size_t ch = 0; ch < CHANNELS; ++ch)
 					{
-						m_physicsEngine.render(mix.data(), framesToWrite, CHANNELS);
+						size_t idx = frame * CHANNELS + ch;
+						float in = m_mixBuffer[idx];
+						float out = in - m_dcBlockerX[ch] + DC_BLOCK_R * m_dcBlockerY[ch];
+						m_dcBlockerX[ch] = in;
+						if (std::abs(out) < 1e-15f)
+							out = 0.0f;
+						m_dcBlockerY[ch] = out;
+						m_mixBuffer[idx] = out;
 					}
+				}
 
-					// Layer 2: SDF Procedural Music
-					if (m_settings.enableMusic)
-					{
-						m_musicEngine.render(mix.data(), framesToWrite, CHANNELS);
-					}
-
-					// Master bus processing: DC Blocker (1-pole highpass at ~15 Hz, R = 0.995)
-					// Eliminates DC offset so waveforms center symmetrically at 0.0
-					constexpr float DC_BLOCK_R = 0.995f;
-					for (size_t frame = 0; frame < framesToWrite; ++frame)
-					{
-						for (size_t ch = 0; ch < CHANNELS; ++ch)
-						{
-							size_t idx = frame * CHANNELS + ch;
-							float in = mix[idx];
-							float out = in - m_dcBlockerX[ch] + DC_BLOCK_R * m_dcBlockerY[ch];
-							m_dcBlockerX[ch] = in;
-							// Denormal protection
-							if (std::abs(out) < 1e-15f)
-								out = 0.0f;
-							m_dcBlockerY[ch] = out;
-							mix[idx] = out;
-						}
-					}
-
-					// Master bus processing: Volume & Soft-Clipping (tanh)
-					float masterVol = m_settings.masterVolume;
-					for (size_t i = 0; i < mix.size(); ++i)
-					{
-						mix[i] = std::tanh(mix[i] * masterVol);
-					}
-
-					// Visual snapshot (RMS volume + waveform capture)
-					float sumSquares = 0.0f;
-					for (size_t i = 0; i < mix.size(); i += 4)
-					{
-						sumSquares += mix[i] * mix[i];
-					}
-					float rms = std::sqrt(sumSquares / (mix.size() / 4));
-					m_visualSnapshot.currentVolume = rms;
-					m_visualSnapshot.currentFriction = m_physicsEngine.getFrictionLevel();
-
-					// Extract mono waveform (continuous tail of the mix buffer)
-					constexpr size_t WAVEFORM_SAMPLES = 256;
-					m_visualSnapshot.waveform.resize(WAVEFORM_SAMPLES, 0.0f);
-
-					if (framesToWrite >= WAVEFORM_SAMPLES)
-					{
-						size_t startFrame = framesToWrite - WAVEFORM_SAMPLES;
-						for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
-						{
-							size_t frame = startFrame + i;
-							m_visualSnapshot.waveform[i] = (mix[frame * CHANNELS] + mix[frame * CHANNELS + 1]) * 0.5f;
-						}
-					}
-					else if (framesToWrite > 0)
-					{
-						for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
-						{
-							size_t frame = (i * framesToWrite) / WAVEFORM_SAMPLES;
-							m_visualSnapshot.waveform[i] = (mix[frame * CHANNELS] + mix[frame * CHANNELS + 1]) * 0.5f;
-						}
-					}
-
-					// Submit to SDL stream
-					SDL_PutAudioStreamData(m_audioStream, mix.data(),
-										   static_cast<int>(framesToWrite * CHANNELS * sizeof(float)));
+				// Master bus processing: Volume & Soft-Clipping (tanh)
+				float masterVol = m_settings.masterVolume;
+				for (size_t i = 0; i < totalSamples; ++i)
+				{
+					m_mixBuffer[i] = std::tanh(m_mixBuffer[i] * masterVol);
 				}
 			}
+
+			// Visual snapshot (RMS volume + waveform capture)
+			float sumSquares = 0.0f;
+			for (size_t i = 0; i < totalSamples; i += 4)
+			{
+				sumSquares += m_mixBuffer[i] * m_mixBuffer[i];
+			}
+			float rms = std::sqrt(sumSquares / (totalSamples / 4 + 1));
+			m_visualSnapshot.currentVolume = rms;
+			m_visualSnapshot.currentFriction = m_physicsEngine.getFrictionLevel();
+
+			// Extract mono waveform
+			constexpr size_t WAVEFORM_SAMPLES = 256;
+			if (m_visualSnapshot.waveform.size() != WAVEFORM_SAMPLES)
+			{
+				m_visualSnapshot.waveform.resize(WAVEFORM_SAMPLES, 0.0f);
+			}
+
+			if (framesToWrite >= WAVEFORM_SAMPLES)
+			{
+				size_t startFrame = framesToWrite - WAVEFORM_SAMPLES;
+				for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
+				{
+					size_t frame = startFrame + i;
+					m_visualSnapshot.waveform[i] =
+						(m_mixBuffer[frame * CHANNELS] + m_mixBuffer[frame * CHANNELS + 1]) * 0.5f;
+				}
+			}
+			else if (framesToWrite > 0)
+			{
+				for (size_t i = 0; i < WAVEFORM_SAMPLES; ++i)
+				{
+					size_t frame = (i * framesToWrite) / WAVEFORM_SAMPLES;
+					m_visualSnapshot.waveform[i] =
+						(m_mixBuffer[frame * CHANNELS] + m_mixBuffer[frame * CHANNELS + 1]) * 0.5f;
+				}
+			}
+
+			// Submit to SDL stream
+			SDL_PutAudioStreamData(stream, m_mixBuffer.data(),
+								   static_cast<int>(totalSamples * sizeof(float)));
 		}
 
 	} // namespace WeirdAudio

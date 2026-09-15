@@ -2,8 +2,6 @@
 
 #include <weird-engine.h>
 
-#include <weird-engine/math/Default3DSDFs.h>
-
 using namespace WeirdEngine;
 class LinesScene : public Scene3D
 {

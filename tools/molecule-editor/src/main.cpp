@@ -11,9 +11,10 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<MoleculeEditor>("molecule-editor");
 
 	DisplaySettings displaySettings{};
-	displaySettings.width = 640;
-	displaySettings.height = 480;
+	displaySettings.width = 1280;
+	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
+	displaySettings.windowTitle = "Weird Engine - Molecule Editor";
 
 	PhysicsSettings physicsSettings{};
 

@@ -122,6 +122,16 @@ private:
 	Entity m_tagCircleOuter = static_cast<Entity>(-1);
 	Entity m_tagCircleInner = static_cast<Entity>(-1);
 
+	// Relaxation state
+	bool m_isRelaxing = false;
+	bool m_relaxationStable = false;
+	int m_relaxationStableFrames = 0;
+	int m_relaxationStepCount = 0;
+	float m_relaxationMaxDrift = 0.0f;
+	float m_repulsionStrength = 6.0f;
+	float m_relaxationSpeed = 1.0f;
+	std::unordered_map<Entity, vec2> m_relaxationVelocities;
+
 	static constexpr float BALL_HIT_RADIUS = 0.9f;
 	static constexpr float LINE_WIDTH = 3.5f;
 	static constexpr float MODIFY_LINE_WIDTH = 8.0f;
@@ -221,6 +231,10 @@ private:
 		handleRightMouseInput();
 		handleLeftClickInput();
 		handleLinkInteraction();
+		if (m_isRelaxing)
+		{
+			stepRelaxation(m_tempSvc->time().deltaTime());
+		}
 		updateConstraintLines();
 		updateTagEditor();
 		removeFallenBalls();
@@ -311,7 +325,7 @@ private:
 		}
 
 		const char* labels[] = {"Add", "Spring", "Distance", "Modify Link", "Remove", "Tag Editor", "Material"};
-		const ToolMode modes[] = {ToolMode::Add,	 ToolMode::Spring, ToolMode::Distance, ToolMode::Modify,
+		const ToolMode modes[] = {ToolMode::Add,	ToolMode::Spring,	 ToolMode::Distance, ToolMode::Modify,
 								  ToolMode::Remove, ToolMode::TagEditor, ToolMode::Material};
 
 		const float spacing = ImGui::GetStyle().ItemSpacing.x;
@@ -375,9 +389,22 @@ private:
 		const float spacing = ImGui::GetStyle().ItemSpacing.x;
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - spacing) * 0.5f;
 
-		if (ImGui::Button("Center & Relax", ImVec2(buttonWidth, 26.0f)))
+		if (m_isRelaxing)
 		{
-			centerAndRelaxMolecules();
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.25f, 0.25f, 1.0f));
+			if (ImGui::Button("Stop Relaxing", ImVec2(buttonWidth, 26.0f)))
+			{
+				m_isRelaxing = false;
+				m_relaxationVelocities.clear();
+			}
+			ImGui::PopStyleColor();
+		}
+		else
+		{
+			if (ImGui::Button("Center & Relax", ImVec2(buttonWidth, 26.0f)))
+			{
+				startRelaxation();
+			}
 		}
 
 		ImGui::SameLine();
@@ -400,6 +427,32 @@ private:
 		if (fitToGrid)
 		{
 			fitMoleculesToGrid();
+		}
+
+		if (ImGui::Button("Center Only", ImVec2(-1.0f, 22.0f)))
+		{
+			centerMolecules();
+		}
+
+		if (m_isRelaxing)
+		{
+			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "Relaxing... (drift: %.4f, step %d)",
+							   m_relaxationMaxDrift, m_relaxationStepCount);
+		}
+		else if (m_relaxationStable)
+		{
+			ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.45f, 1.0f), "Status: Stable");
+		}
+		else
+		{
+			ImGui::TextDisabled("Status: Idle");
+		}
+
+		if (ImGui::TreeNode("Relaxation Settings"))
+		{
+			ImGui::SliderFloat("Repulsion", &m_repulsionStrength, 1.0f, 20.0f, "%.1f");
+			ImGui::SliderFloat("Speed", &m_relaxationSpeed, 0.2f, 3.0f, "%.1f");
+			ImGui::TreePop();
 		}
 	}
 
@@ -491,10 +544,9 @@ private:
 	void renderSceneOverlay()
 	{
 		ImDrawList* drawList = ImGui::GetForegroundDrawList();
-		drawList->PushClipRect(ImVec2(0.0f, m_menuBarHeight),
-							   ImVec2(static_cast<float>(Display::width) - PANEL_WIDTH,
-									  static_cast<float>(Display::height)),
-							   true);
+		drawList->PushClipRect(
+			ImVec2(0.0f, m_menuBarHeight),
+			ImVec2(static_cast<float>(Display::width) - PANEL_WIDTH, static_cast<float>(Display::height)), true);
 		renderGridOverlay();
 		renderPendingConstraintOverlay();
 		drawList->PopClipRect();
@@ -569,10 +621,12 @@ private:
 
 		auto drawDiagonalFamily = [&](const vec2& normal, const vec2& direction)
 		{
-			const float c0 = (std::min)((std::min)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
-										(std::min)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
-			const float c1 = (std::max)((std::max)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
-										(std::max)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
+			const float c0 =
+				(std::min)((std::min)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
+						   (std::min)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
+			const float c1 =
+				(std::max)((std::max)(normal.x * minX + normal.y * minY, normal.x * maxX + normal.y * minY),
+						   (std::max)(normal.x * minX + normal.y * maxY, normal.x * maxX + normal.y * maxY));
 			for (int k = static_cast<int>(std::floor(c0 / h)); k <= static_cast<int>(std::ceil(c1 / h)); ++k)
 			{
 				const vec2 center = normal * (k * h);
@@ -679,9 +733,8 @@ private:
 
 		ImGui::Text("Ball: entity %u", static_cast<unsigned int>(m_tagSelectedEntity));
 		ImGui::SetNextItemWidth(-1.0f);
-		const bool submitted =
-			ImGui::InputTextWithHint("##tag", "tag name", m_tagBuf, sizeof(m_tagBuf),
-									 ImGuiInputTextFlags_EnterReturnsTrue);
+		const bool submitted = ImGui::InputTextWithHint("##tag", "tag name", m_tagBuf, sizeof(m_tagBuf),
+														ImGuiInputTextFlags_EnterReturnsTrue);
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 		const bool apply = ImGui::Button("Apply", ImVec2(buttonWidth, 0.0f)) || submitted;
@@ -828,11 +881,21 @@ private:
 		g_cameraPositon = camTransform.position;
 	}
 
-	void centerAndRelaxMolecules()
+	void centerMolecules()
 	{
 		if (m_balls.empty())
 		{
 			return;
+		}
+
+		// Don't shift if any ball is fixed
+		for (const BallInfo& ball : m_balls)
+		{
+			if (m_tempRegistry->hasComponent<RigidBody2D>(ball.entity) &&
+				m_tempRegistry->getComponent<RigidBody2D>(ball.entity).isFixed)
+			{
+				return;
+			}
 		}
 
 		vec2 centroid(0.0f);
@@ -874,20 +937,321 @@ private:
 				m_tempRegistry->setComponentDirty(rb);
 			}
 		}
+	}
 
-		if (gridEnabled())
+	void startRelaxation()
+	{
+		if (m_balls.empty())
 		{
-			// Keep the centered structure on the grid when snapping is enabled.
-			for (const BallInfo& ball : m_balls)
+			return;
+		}
+
+		centerMolecules();
+		m_isRelaxing = true;
+		m_relaxationStable = false;
+		m_relaxationStableFrames = 0;
+		m_relaxationStepCount = 0;
+		m_relaxationMaxDrift = 0.0f;
+		m_relaxationVelocities.clear();
+	}
+
+	void centerAndRelaxMolecules()
+	{
+		startRelaxation();
+	}
+
+	void stepRelaxation(float deltaTime)
+	{
+		if (m_balls.empty())
+		{
+			m_isRelaxing = false;
+			return;
+		}
+
+		const size_t n = m_balls.size();
+		std::vector<vec2> positions(n);
+		std::vector<bool> isFixed(n, false);
+		std::unordered_map<Entity, size_t> entityToIndex;
+
+		for (size_t i = 0; i < n; ++i)
+		{
+			entityToIndex[m_balls[i].entity] = i;
+			if (hasTransform(m_balls[i].entity))
 			{
-				snapBallToGrid(ball);
+				const auto& t = m_tempRegistry->getComponent<Transform>(m_balls[i].entity);
+				positions[i] = vec2(t.position.x, t.position.y);
+			}
+			if (m_tempRegistry->hasComponent<RigidBody2D>(m_balls[i].entity))
+			{
+				isFixed[i] = m_tempRegistry->getComponent<RigidBody2D>(m_balls[i].entity).isFixed;
 			}
 		}
 
-		// Relax every link to its current length so the molecule holds its shape.
-		for (DistanceLink& link : m_links)
+		std::vector<vec2> forces(n, vec2(0.0f));
+
+		// 1. Pairwise repulsion between rigid bodies
+		for (size_t i = 0; i < n; ++i)
 		{
-			resizeLinkToCurrentDistance(link);
+			for (size_t j = i + 1; j < n; ++j)
+			{
+				const bool linked = linkExists(m_balls[i].entity, m_balls[j].entity);
+				vec2 diff = positions[i] - positions[j];
+				float dist = glm::length(diff);
+				vec2 dir;
+				if (dist < 0.0001f)
+				{
+					float angle = static_cast<float>(i * 2.3999632f + j);
+					dir = vec2(std::cos(angle), std::sin(angle));
+					dist = 0.0001f;
+				}
+				else
+				{
+					dir = diff / dist;
+				}
+
+				if (!linked)
+				{
+					float repForce = 0.0f;
+					// Overlap spring force if balls penetrate
+					if (dist < 1.0f)
+					{
+						repForce += 15.0f * (1.0f - dist);
+					}
+					// Non-bonded Coulomb-like repulsion
+					constexpr float maxRepDist = 15.0f;
+					if (dist < maxRepDist)
+					{
+						repForce += m_repulsionStrength / (dist * dist + 0.1f);
+					}
+
+					if (!isFixed[i])
+					{
+						forces[i] += dir * repForce;
+					}
+					if (!isFixed[j])
+					{
+						forces[j] -= dir * repForce;
+					}
+				}
+				else
+				{
+					// For linked balls, prevent severe core penetration
+					if (dist < 0.8f)
+					{
+						float overlapForce = 15.0f * (0.8f - dist);
+						if (!isFixed[i])
+						{
+							forces[i] += dir * overlapForce;
+						}
+						if (!isFixed[j])
+						{
+							forces[j] -= dir * overlapForce;
+						}
+					}
+				}
+			}
+		}
+
+		// 2. Link restorative forces
+		for (const auto& link : m_links)
+		{
+			auto itA = entityToIndex.find(link.a);
+			auto itB = entityToIndex.find(link.b);
+			if (itA == entityToIndex.end() || itB == entityToIndex.end())
+			{
+				continue;
+			}
+			size_t ia = itA->second;
+			size_t ib = itB->second;
+
+			vec2 diff = positions[ia] - positions[ib];
+			float dist = glm::length(diff);
+			vec2 dir;
+			if (dist < 0.0001f)
+			{
+				dir = vec2(1.0f, 0.0f);
+				dist = 0.0001f;
+			}
+			else
+			{
+				dir = diff / dist;
+			}
+
+			float deltaDist = dist - link.restDistance;
+
+			if (link.type == LinkType::Spring)
+			{
+				float springK = SPRING_STIFFNESS * 20.0f;
+				float f = -springK * deltaDist;
+				if (!isFixed[ia])
+				{
+					forces[ia] += dir * f;
+				}
+				if (!isFixed[ib])
+				{
+					forces[ib] -= dir * f;
+				}
+			}
+			else
+			{
+				float distK = CONSTRAINT_STIFFNESS * 40.0f;
+				float f = -distK * deltaDist;
+				if (!isFixed[ia])
+				{
+					forces[ia] += dir * f;
+				}
+				if (!isFixed[ib])
+				{
+					forces[ib] -= dir * f;
+				}
+			}
+		}
+
+		// 3. Overdamped integration
+		const float dt = (std::clamp)(deltaTime, 0.001f, 0.033f) * m_relaxationSpeed;
+		constexpr float maxStep = 0.08f;
+		float maxDrift = 0.0f;
+
+		for (size_t i = 0; i < n; ++i)
+		{
+			if (isFixed[i])
+			{
+				continue;
+			}
+
+			Entity ent = m_balls[i].entity;
+			vec2 vel = m_relaxationVelocities[ent];
+			vel += forces[i] * dt;
+			vel *= (std::max)(0.0f, 1.0f - 8.0f * dt);
+
+			vec2 disp = vel * dt;
+			float stepLen = glm::length(disp);
+			if (stepLen > maxStep)
+			{
+				disp = (disp / stepLen) * maxStep;
+				vel = disp / dt;
+			}
+
+			positions[i] += disp;
+			m_relaxationVelocities[ent] = vel;
+			maxDrift = (std::max)(maxDrift, stepLen);
+		}
+
+		// 4. DistanceConstraint position-based correction pass
+		for (const auto& link : m_links)
+		{
+			if (link.type != LinkType::Distance)
+			{
+				continue;
+			}
+			auto itA = entityToIndex.find(link.a);
+			auto itB = entityToIndex.find(link.b);
+			if (itA == entityToIndex.end() || itB == entityToIndex.end())
+			{
+				continue;
+			}
+			size_t ia = itA->second;
+			size_t ib = itB->second;
+
+			vec2 diff = positions[ia] - positions[ib];
+			float dist = glm::length(diff);
+			if (dist < 0.0001f)
+			{
+				continue;
+			}
+			vec2 dir = diff / dist;
+			float error = dist - link.restDistance;
+			constexpr float correctionRate = 0.5f;
+
+			if (!isFixed[ia] && !isFixed[ib])
+			{
+				positions[ia] -= dir * (0.5f * error * correctionRate);
+				positions[ib] += dir * (0.5f * error * correctionRate);
+			}
+			else if (!isFixed[ia])
+			{
+				positions[ia] -= dir * (error * correctionRate);
+			}
+			else if (!isFixed[ib])
+			{
+				positions[ib] += dir * (error * correctionRate);
+			}
+		}
+
+		// 5. Keep centroid at origin if no fixed balls
+		bool anyFixed = false;
+		for (size_t i = 0; i < n; ++i)
+		{
+			if (isFixed[i])
+			{
+				anyFixed = true;
+				break;
+			}
+		}
+
+		if (!anyFixed)
+		{
+			vec2 centroid(0.0f);
+			for (size_t i = 0; i < n; ++i)
+			{
+				centroid += positions[i];
+			}
+			centroid /= static_cast<float>(n);
+
+			for (size_t i = 0; i < n; ++i)
+			{
+				positions[i] -= centroid;
+			}
+		}
+
+		// 6. Write back positions to ECS
+		for (size_t i = 0; i < n; ++i)
+		{
+			Entity ent = m_balls[i].entity;
+			if (hasTransform(ent))
+			{
+				auto& t = m_tempRegistry->getComponent<Transform>(ent);
+				t.position.x = positions[i].x;
+				t.position.y = positions[i].y;
+				m_tempRegistry->setComponentDirty(t);
+			}
+			if (m_tempRegistry->hasComponent<RigidBody2D>(ent))
+			{
+				auto& rb = m_tempRegistry->getComponent<RigidBody2D>(ent);
+				rb.velocity = vec2(0.0f);
+				m_tempRegistry->setComponentDirty(rb);
+			}
+		}
+
+		// 7. Convergence check
+		m_relaxationMaxDrift = maxDrift;
+		m_relaxationStepCount++;
+
+		constexpr float STABILITY_DRIFT_THRESHOLD = 0.0015f;
+		if (maxDrift < STABILITY_DRIFT_THRESHOLD)
+		{
+			m_relaxationStableFrames++;
+			if (m_relaxationStableFrames >= 25)
+			{
+				m_isRelaxing = false;
+				m_relaxationStable = true;
+				m_relaxationVelocities.clear();
+				WeirdEngine::Logger::log("[MoleculeEditor] Molecule reached stable relaxed position in " +
+										 std::to_string(m_relaxationStepCount) + " steps.");
+			}
+		}
+		else
+		{
+			m_relaxationStableFrames = 0;
+			m_relaxationStable = false;
+		}
+
+		if (m_relaxationStepCount >= 600)
+		{
+			m_isRelaxing = false;
+			m_relaxationStable = true;
+			m_relaxationVelocities.clear();
+			WeirdEngine::Logger::log("[MoleculeEditor] Molecule relaxation finished (max steps reached).");
 		}
 	}
 
@@ -1022,6 +1386,57 @@ private:
 		m_links.erase(m_links.begin() + static_cast<std::ptrdiff_t>(index));
 	}
 
+	void removeBall(Entity e)
+	{
+		if (e == static_cast<Entity>(-1))
+		{
+			return;
+		}
+
+		// 1. Remove all links connected to this ball
+		for (size_t i = 0; i < m_links.size();)
+		{
+			if (m_links[i].a == e || m_links[i].b == e)
+			{
+				removeLinkAt(i);
+			}
+			else
+			{
+				++i;
+			}
+		}
+
+		// 2. Remove tag
+		m_tempSvc->tags().removeTag(e);
+
+		// 3. Remove from m_balls
+		m_balls.erase(std::remove_if(m_balls.begin(), m_balls.end(), [e](const BallInfo& b) { return b.entity == e; }),
+					  m_balls.end());
+
+		// 4. Clean up state references
+		if (m_draggedBall == e)
+		{
+			m_draggedBall = static_cast<Entity>(-1);
+			m_draggedSimulationId = -1;
+			m_keepFixedAfterDrag = false;
+			m_dragMode = DragMode::None;
+		}
+		if (m_constraintStartBall == e)
+		{
+			m_constraintStartBall = static_cast<Entity>(-1);
+		}
+		if (m_tagSelectedEntity == e)
+		{
+			m_tagSelectedEntity = static_cast<Entity>(-1);
+			m_tagBufferEntity = static_cast<Entity>(-1);
+			m_tagBuf[0] = '\0';
+		}
+		m_relaxationVelocities.erase(e);
+
+		// 5. Destroy in registry
+		m_tempRegistry->destroyEntity(e);
+	}
+
 	// -----------------------------------------------------------------------
 	// Scene files
 	// -----------------------------------------------------------------------
@@ -1051,6 +1466,9 @@ private:
 		m_rightWasDown = false;
 		m_tagSelectedEntity = static_cast<Entity>(-1);
 		m_currentFilePath.clear();
+		m_isRelaxing = false;
+		m_relaxationStable = false;
+		m_relaxationVelocities.clear();
 	}
 
 	void saveMolecule()
@@ -1514,6 +1932,11 @@ private:
 		m_draggedBall = hit;
 		m_draggedSimulationId = simulationId;
 		m_keepFixedAfterDrag = false;
+		if (m_isRelaxing)
+		{
+			m_isRelaxing = false;
+			m_relaxationVelocities.clear();
+		}
 
 		auto& rb = m_tempRegistry->getComponent<RigidBody2D>(m_draggedBall);
 		rb.isFixed = true;
@@ -1842,8 +2265,8 @@ private:
 
 			const auto& ta = m_tempRegistry->getComponent<Transform>(link.a);
 			const auto& tb = m_tempRegistry->getComponent<Transform>(link.b);
-			const float d = distancePointToSegment(mouse, vec2(ta.position.x, ta.position.y),
-												   vec2(tb.position.x, tb.position.y));
+			const float d =
+				distancePointToSegment(mouse, vec2(ta.position.x, ta.position.y), vec2(tb.position.x, tb.position.y));
 			if (d < best)
 			{
 				best = d;
@@ -2011,6 +2434,10 @@ private:
 
 	void loadMolecule(const std::string& path)
 	{
+		m_isRelaxing = false;
+		m_relaxationStable = false;
+		m_relaxationVelocities.clear();
+
 		// Remember constraint count before loading so we can find new ones
 		size_t prevSpringCount = m_tempRegistry->getComponentArray<Spring>()->getSize();
 		size_t prevDistCount = m_tempRegistry->getComponentArray<DistanceConstraint>()->getSize();

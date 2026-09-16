@@ -54,7 +54,7 @@ namespace WeirdEngine
 
 			// SDL3 Audio stream callback invoked on the dedicated audio thread
 			static void SDLCALL audioStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-												   int total_amount);
+													int total_amount);
 
 			// Generates PCM audio data directly on the audio thread
 			void renderAudio(SDL_AudioStream* stream, int additional_amount);
@@ -126,13 +126,15 @@ namespace WeirdEngine
 			}
 
 			// Visualizer data
-			const AudioData& getAudioData() const
+			AudioData getAudioData() const
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				return m_visualSnapshot;
 			}
 
 			float getAudioVolume() const
 			{
+				std::lock_guard<std::mutex> lock(m_audioMutex);
 				return m_visualSnapshot.currentVolume;
 			}
 

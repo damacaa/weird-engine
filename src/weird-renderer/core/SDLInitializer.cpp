@@ -212,9 +212,8 @@ namespace WeirdEngine
 			desiredSpec.format = SDL_AUDIO_F32;
 			desiredSpec.channels = audioEngine.getChannels();
 
-			m_audioStream =
-				SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec,
-										  WeirdAudio::AudioEngine::audioStreamCallback, &audioEngine);
+			m_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec,
+													  WeirdAudio::AudioEngine::audioStreamCallback, &audioEngine);
 			if (!m_audioStream)
 			{
 				// Audio is not critical: log and keep running silent.

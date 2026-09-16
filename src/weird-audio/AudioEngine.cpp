@@ -51,7 +51,9 @@ namespace WeirdEngine
 			{
 				auto& audioQueue = scene.getAudioQueue();
 				SimpleAudioRequest req;
-				while (audioQueue.pop(req)) {}
+				while (audioQueue.pop(req))
+				{
+				}
 				return;
 			}
 
@@ -92,7 +94,7 @@ namespace WeirdEngine
 		}
 
 		void SDLCALL AudioEngine::audioStreamCallback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-													   int /*total_amount*/)
+													  int /*total_amount*/)
 		{
 			auto* self = static_cast<AudioEngine*>(userdata);
 			if (!self)
@@ -215,8 +217,7 @@ namespace WeirdEngine
 			}
 
 			// Submit to SDL stream
-			SDL_PutAudioStreamData(stream, m_mixBuffer.data(),
-								   static_cast<int>(totalSamples * sizeof(float)));
+			SDL_PutAudioStreamData(stream, m_mixBuffer.data(), static_cast<int>(totalSamples * sizeof(float)));
 		}
 
 	} // namespace WeirdAudio

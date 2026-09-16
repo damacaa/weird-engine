@@ -231,7 +231,7 @@ namespace WeirdEngine::Editor
 			{
 				lastSpawnTime = services.time().time();
 
-				glm::vec2 mousePosForCam(mouseScreenX + std::sinf(services.time().time()) * 10.0f,
+				glm::vec2 mousePosForCam(mouseScreenX + std::sin(services.time().time()) * 10.0f,
 										 static_cast<float>(winH) - gapMinY);
 				glm::vec2 worldPos = ECS::Camera::screenPositionToWorldPosition2D(camTransform, mousePosForCam);
 

@@ -530,14 +530,14 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::resampleShape()
 		{
-			std::lock_guard<std::mutex> lock(m_songMutex);
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			sampleShapeParameters();
 			initDomainSamples();
 		}
 
 		void SdfMusicEngine::setSong(std::shared_ptr<SdfSong> song, bool beatSynced)
 		{
-			std::lock_guard<std::mutex> lock(m_songMutex);
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			if (!m_currentSong || !beatSynced)
 			{
 				m_currentSong = std::move(song);
@@ -552,7 +552,13 @@ namespace WeirdEngine
 
 				if (isSongEmpty(m_currentSong))
 				{
-					m_activeVoices.clear();
+					for (auto& voice : m_activeVoices)
+					{
+						if (!voice.finished && voice.fadeRate <= 0.0f)
+						{
+							voice.fadeRate = (std::max)(voice.fadeGain, 0.01f) / 0.005f;
+						}
+					}
 					m_rack = InstrumentRack{};
 				}
 				else
@@ -568,17 +574,19 @@ namespace WeirdEngine
 
 		std::shared_ptr<SdfSong> SdfMusicEngine::getCurrentSong() const
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			return m_currentSong;
 		}
 
 		void SdfMusicEngine::queueSong(std::shared_ptr<SdfSong> nextSong)
 		{
-			std::lock_guard<std::mutex> lock(m_songMutex);
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			m_queuedSong = std::move(nextSong);
 		}
 
 		void SdfMusicEngine::setTrackEnabled(MusicTrack track, bool enabled)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			switch (track)
 			{
 				case MusicTrack::Lead:
@@ -598,6 +606,7 @@ namespace WeirdEngine
 
 		bool SdfMusicEngine::isTrackEnabled(MusicTrack track) const
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			switch (track)
 			{
 				case MusicTrack::Lead:
@@ -614,6 +623,7 @@ namespace WeirdEngine
 
 		TrackPlayState SdfMusicEngine::getTrackPlayState(MusicTrack track) const
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			size_t idx = static_cast<size_t>(track);
 			if (idx < m_trackPlayStates.size())
 			{
@@ -624,6 +634,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::triggerPositiveFeedback(float intensity)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			float clamped = std::clamp(intensity, 0.1f, 2.0f);
 			if (m_currentSong)
 			{
@@ -644,6 +655,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::triggerNegativeFeedback(float intensity)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			float clamped = std::clamp(intensity, 0.1f, 2.0f);
 			if (m_currentSong)
 			{
@@ -672,6 +684,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::triggerDeath()
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			m_isDead = true;
 			m_deathStage = 1; // Stage 1: Lead stops queuing new notes; active notes fade naturally
 			m_deathTimer = 0.0f;
@@ -680,6 +693,7 @@ namespace WeirdEngine
 
 		bool SdfMusicEngine::isTrackDead(MusicTrack track) const
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			if (!m_isDead)
 				return false;
 
@@ -700,6 +714,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::duck(float amount)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			m_duckTarget = (std::min)(1.0f, m_duckTarget + amount);
 			// Peak hold: sustained danger hold (up to 8.0s)
 			m_duckTimer = (std::min)(8.0f, (std::max)(m_duckTimer, 2.5f) + amount * 3.5f);
@@ -722,6 +737,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::surge(float amount)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			m_duckTarget = (std::max)(0.0f, m_duckTarget - amount * 0.8f);
 			m_duckTimer = 0.0f;
 
@@ -738,6 +754,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::resetDynamicEffects()
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			m_ducking = 0.0f;
 			m_duckTarget = 0.0f;
 			m_duckTimer = 0.0f;
@@ -762,6 +779,7 @@ namespace WeirdEngine
 
 		float SdfMusicEngine::quantizeToSongScale(float rawFreq) const
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			if (!m_currentSong || rawFreq <= 20.0f)
 				return rawFreq > 20.0f ? rawFreq : 440.0f;
 
@@ -785,6 +803,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::update(double deltaTime, double sceneTime)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			if (!m_playing || !m_currentSong)
 				return;
 
@@ -913,7 +932,7 @@ namespace WeirdEngine
 				// Check for beat-synced song transition on downbeats (every 4 steps = 1 beat)
 				if (isQuarterBeat && m_queuedSong)
 				{
-					std::lock_guard<std::mutex> lock(m_songMutex);
+					std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 					if (m_queuedSong)
 					{
 						m_currentSong = std::move(m_queuedSong);
@@ -925,7 +944,13 @@ namespace WeirdEngine
 
 						if (isSongEmpty(m_currentSong))
 						{
-							m_activeVoices.clear();
+							for (auto& voice : m_activeVoices)
+							{
+								if (!voice.finished && voice.fadeRate <= 0.0f)
+								{
+									voice.fadeRate = (std::max)(voice.fadeGain, 0.01f) / 0.005f;
+								}
+							}
 							m_rack = InstrumentRack{};
 						}
 						else
@@ -1585,6 +1610,7 @@ namespace WeirdEngine
 		void SdfMusicEngine::playNote(float freq, float amp, float durationSec, int instrument, float pan,
 									  float filterCutoff)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			// Lead is strictly killed during ducking
 			if (instrument == 0 && (m_duckTimer > 0.0f || m_ducking > 0.01f))
 				return;
@@ -1699,6 +1725,7 @@ namespace WeirdEngine
 
 		void SdfMusicEngine::render(float* buffer, uint32_t frameCount, uint32_t channels)
 		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 			if (!m_playing || frameCount == 0 || channels != 2)
 				return;
 

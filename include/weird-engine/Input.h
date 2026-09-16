@@ -141,6 +141,7 @@ namespace WeirdEngine
 			Enter = SDL_SCANCODE_RETURN,
 			Tab = SDL_SCANCODE_TAB,
 			Backspace = SDL_SCANCODE_BACKSPACE,
+			Delete = SDL_SCANCODE_DELETE,
 			Esc = SDL_SCANCODE_ESCAPE,
 			Up = SDL_SCANCODE_UP,
 			Down = SDL_SCANCODE_DOWN,

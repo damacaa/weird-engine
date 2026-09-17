@@ -17,6 +17,7 @@
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
+#include "weird-physics/SimulationID.h"
 #include <glm/gtx/norm.hpp>
 
 extern WeirdEngine::vec3 g_cameraPositon;
@@ -57,20 +58,20 @@ private:
 
 	struct BallInfo
 	{
-		Entity entity;
-		int simulationId;
+		Entity entity = INVALID_ENTITY;
+		SimulationID simulationId = INVALID_SIMULATION_ID;
 	};
 
 	struct DistanceLink
 	{
-		Entity a;
-		Entity b;
-		int simulationIdA;
-		int simulationIdB;
-		float restDistance;
-		Entity lineEntity;
-		LinkType type;
-		Entity constraintEntity;
+		Entity a = INVALID_ENTITY;
+		Entity b = INVALID_ENTITY;
+		SimulationID simulationIdA = INVALID_SIMULATION_ID;
+		SimulationID simulationIdB = INVALID_SIMULATION_ID;
+		float restDistance = 0.0f;
+		Entity lineEntity = INVALID_ENTITY;
+		LinkType type = LinkType::Spring;
+		Entity constraintEntity = INVALID_ENTITY;
 	};
 
 	std::vector<BallInfo> m_balls;
@@ -78,14 +79,14 @@ private:
 	std::array<Entity, 16> m_materialToggles{};
 
 	Entity m_draggedBall = static_cast<Entity>(-1);
-	int m_draggedSimulationId = -1;
+	SimulationID m_draggedSimulationId = INVALID_SIMULATION_ID;
 	Entity m_constraintStartBall = static_cast<Entity>(-1);
 	DistanceLink* m_draggedLink = nullptr;
 	float m_linkDragStartX = 0.0f;
 	float m_linkDragStartDist = 0.0f;
 	std::atomic<float> m_pendingLinkDistance{0.0f};
-	std::atomic<int> m_dragLinkSimIdA{-1};
-	std::atomic<int> m_dragLinkSimIdB{-1};
+	std::atomic<SimulationID> m_dragLinkSimIdA{INVALID_SIMULATION_ID};
+	std::atomic<SimulationID> m_dragLinkSimIdB{INVALID_SIMULATION_ID};
 	bool m_keepFixedAfterDrag = false;
 	bool m_rightWasDown = false;
 	bool m_gravityEnabled = false;
@@ -241,9 +242,8 @@ private:
 		float dist = m_pendingLinkDistance.exchange(0.0f, std::memory_order_acq_rel);
 		if (dist >= 1.0f)
 		{
-			simulation.setDistanceConstraintDistance(
-				static_cast<SimulationID>(m_dragLinkSimIdA.load(std::memory_order_relaxed)),
-				static_cast<SimulationID>(m_dragLinkSimIdB.load(std::memory_order_relaxed)), dist);
+			simulation.setDistanceConstraintDistance(m_dragLinkSimIdA.load(std::memory_order_relaxed),
+													 m_dragLinkSimIdB.load(std::memory_order_relaxed), dist);
 		}
 	}
 
@@ -299,7 +299,7 @@ private:
 		if (shouldDelete(m_draggedBall))
 		{
 			m_draggedBall = static_cast<Entity>(-1);
-			m_draggedSimulationId = -1;
+			m_draggedSimulationId = INVALID_SIMULATION_ID;
 			m_keepFixedAfterDrag = false;
 			m_rightMouseMode = RightMouseMode::None;
 			m_rightWasDown = false;
@@ -481,6 +481,10 @@ private:
 			world = snapToGrid(world);
 
 		Entity e = m_tempRegistry->createEntity();
+		if (e == INVALID_ENTITY)
+		{
+			return;
+		}
 
 		auto& t = m_tempRegistry->addComponent<Transform>(e);
 		t.position = vec3(world.x, world.y, 0.0f);
@@ -491,7 +495,7 @@ private:
 
 		auto& rb = m_tempRegistry->addComponent<RigidBody2D>(e);
 
-		m_balls.push_back({e, static_cast<int>(rb.simulationId)});
+		m_balls.push_back({e, rb.simulationId});
 	}
 
 	vec2 getMouseWorldPosition()
@@ -608,17 +612,17 @@ private:
 		if (hit == static_cast<Entity>(-1))
 		{
 			m_draggedBall = static_cast<Entity>(-1);
-			m_draggedSimulationId = -1;
+			m_draggedSimulationId = INVALID_SIMULATION_ID;
 			m_keepFixedAfterDrag = false;
 			m_rightMouseMode = RightMouseMode::None;
 			return;
 		}
 
-		int id = getSimulationId(hit);
-		if (id < 0)
+		SimulationID id = getSimulationId(hit);
+		if (id == INVALID_SIMULATION_ID)
 		{
 			m_draggedBall = static_cast<Entity>(-1);
-			m_draggedSimulationId = -1;
+			m_draggedSimulationId = INVALID_SIMULATION_ID;
 			m_keepFixedAfterDrag = false;
 			m_rightMouseMode = RightMouseMode::None;
 			return;
@@ -642,7 +646,7 @@ private:
 
 	void onRightDragUpdate()
 	{
-		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
+		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId == INVALID_SIMULATION_ID)
 			return;
 
 		if (m_tempSvc->input().getKeyDown(Input::F))
@@ -660,7 +664,7 @@ private:
 
 	void onRightDragEnd()
 	{
-		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId < 0)
+		if (m_draggedBall == static_cast<Entity>(-1) || m_draggedSimulationId == INVALID_SIMULATION_ID)
 			return;
 
 		if (!m_keepFixedAfterDrag)
@@ -671,7 +675,7 @@ private:
 		}
 
 		m_draggedBall = static_cast<Entity>(-1);
-		m_draggedSimulationId = -1;
+		m_draggedSimulationId = INVALID_SIMULATION_ID;
 		m_keepFixedAfterDrag = false;
 	}
 
@@ -754,9 +758,9 @@ private:
 		if (!hasTransform(a) || !hasTransform(b))
 			return;
 
-		int idA = getSimulationId(a);
-		int idB = getSimulationId(b);
-		if (idA < 0 || idB < 0)
+		SimulationID idA = getSimulationId(a);
+		SimulationID idB = getSimulationId(b);
+		if (idA == INVALID_SIMULATION_ID || idB == INVALID_SIMULATION_ID)
 			return;
 
 		auto& ta = m_tempRegistry->getComponent<Transform>(a);
@@ -767,6 +771,11 @@ private:
 		restDistance = (std::max)(restDistance, 1.0f);
 
 		Entity constraintEnt = m_tempRegistry->createEntity();
+		if (constraintEnt == INVALID_ENTITY)
+		{
+			return;
+		}
+
 		if (type == LinkType::Distance)
 		{
 			auto& constraint = m_tempRegistry->addComponent<DistanceConstraint>(constraintEnt);
@@ -789,6 +798,11 @@ private:
 		computeScreenLineParams(pa, pb, lineVars);
 		Entity line = m_tempSvc->shapes().addUIShape(
 			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
+		if (line == INVALID_ENTITY)
+		{
+			m_tempRegistry->destroyEntity(constraintEnt);
+			return;
+		}
 
 		auto& btn = m_tempRegistry->addComponent<ShapeButton>(line);
 		btn.clickPadding = 8.0f;
@@ -900,14 +914,14 @@ private:
 		outParams[4] = LINE_WIDTH;
 	}
 
-	int getSimulationId(Entity e)
+	SimulationID getSimulationId(Entity e)
 	{
 		for (const auto& b : m_balls)
 		{
 			if (b.entity == e)
 				return b.simulationId;
 		}
-		return -1;
+		return INVALID_SIMULATION_ID;
 	}
 
 	// -----------------------------------------------------------------------
@@ -1106,7 +1120,7 @@ private:
 			existingBalls.insert(b.entity);
 
 		// Map from simulationId → entity for newly loaded balls
-		std::unordered_map<int, Entity> simIdToEntity;
+		std::unordered_map<SimulationID, Entity> simIdToEntity;
 
 		for (size_t i = 0; i < rbArray->getSize(); i++)
 		{
@@ -1117,7 +1131,7 @@ private:
 				continue;
 
 			auto& rb = rbArray->getDataAtIdx(i);
-			int simId = static_cast<int>(rb.simulationId);
+			SimulationID simId = rb.simulationId;
 			m_balls.push_back({e, simId});
 			simIdToEntity[simId] = e;
 		}
@@ -1152,8 +1166,8 @@ private:
 			btn.modifierAmount = 0.0f;
 			m_tempSvc->serialization().blacklistEntity(line);
 
-			int idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;
-			int idB = m_tempRegistry->getComponent<RigidBody2D>(b).simulationId;
+			SimulationID idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;
+			SimulationID idB = m_tempRegistry->getComponent<RigidBody2D>(b).simulationId;
 			m_links.push_back({a, b, idA, idB, spring.restDistance, line, LinkType::Spring, springEnt});
 			newSprings++;
 		}
@@ -1187,8 +1201,8 @@ private:
 			btn.modifierAmount = 0.0f;
 			m_tempSvc->serialization().blacklistEntity(line);
 
-			int idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;
-			int idB = m_tempRegistry->getComponent<RigidBody2D>(b).simulationId;
+			SimulationID idA = m_tempRegistry->getComponent<RigidBody2D>(a).simulationId;
+			SimulationID idB = m_tempRegistry->getComponent<RigidBody2D>(b).simulationId;
 			m_links.push_back({a, b, idA, idB, dist.distance, line, LinkType::Distance, distEnt});
 			newDists++;
 		}

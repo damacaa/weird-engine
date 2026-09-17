@@ -256,12 +256,13 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE("Physics synchronization");
 			m_simulation2D.setAudioVolume(WeirdAudio::AudioEngine::getInstance().getAudioVolume());
-			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			if (m_debugInput)
 			{
 				PhysicsInteractionSystem::update(m_registry);
 			}
+
+			PhysicsSystem2D::update(m_registry, m_simulation2D);
 
 			m_simulation2D.update(delta);
 		}
@@ -465,7 +466,7 @@ namespace WeirdEngine
 				frameMaxLevelSq = std::max(frameMaxLevelSq, levelSq);
 
 				WeirdAudio::FrictionSource source;
-				source.id = body;
+				source.id = static_cast<uint32_t>(body);
 				source.position = acc.weightedPosition / acc.weightSum;
 				source.level = std::sqrt(levelSq);
 				m_frictionSources.push_back(source);

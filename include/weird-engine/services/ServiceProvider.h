@@ -133,6 +133,17 @@ namespace WeirdEngine
 			return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
 		}
 
+		// Hit-test active rigidbodies at a 2D world position. Returns the Entity owning
+		// the rigidbody at that position, or INVALID_ENTITY if no rigidbody was hit.
+		Entity getRigidbodyAt(vec2 pos) const
+		{
+			SimulationID simId = simulation.raycast(pos);
+			if (simId == INVALID_SIMULATION_ID)
+				return INVALID_ENTITY;
+
+			return entityForSimulationId(simId);
+		}
+
 		// Per-body user data. Set the data right after adding the RigidBody2D
 		// component (read rb.simulationId from it). Ownership is transferred to
 		// the simulation (e.g. std::make_unique<CharacterData>()): it deletes
@@ -322,6 +333,10 @@ namespace WeirdEngine
 		Entity addShape(const ShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
+			if (entity == INVALID_ENTITY)
+			{
+				return INVALID_ENTITY;
+			}
 			CustomShape& shape = registry.addComponent<CustomShape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
@@ -337,6 +352,10 @@ namespace WeirdEngine
 		Entity addUIShape(const UIShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
+			if (entity == INVALID_ENTITY)
+			{
+				return INVALID_ENTITY;
+			}
 			UIShape& shape = registry.addComponent<UIShape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;

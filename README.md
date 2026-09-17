@@ -82,8 +82,7 @@ int main(int argc, char* argv[])
 
 ### Entities and Components
 
-Entities are unique numerical identifiers.
-The `Registry` class manages entities and stores components.
+Entities and physics simulation IDs are strongly-typed 4-byte structures (`Entity` and `SimulationID`). They cannot be mistakenly cross-assigned or compared at compile-time and incur zero runtime or memory overhead. The `Registry` class manages entities and stores components.
 
 #### Creating an Entity
 
@@ -91,6 +90,11 @@ Call `registry.createEntity()` to make a new entity:
 
 ```cpp
 Entity entity = registry.createEntity();
+if (entity == INVALID_ENTITY)
+{
+	// Capacity (MAX_ENTITIES = 10,000) reached; handled gracefully with error logging
+	return;
+}
 ```
 
 #### Adding Components
@@ -113,7 +117,7 @@ registry.setComponentDirty(transform);
 
 #### Creating and Registering Custom Components
 
-Define custom components as C++ structures:
+Define custom components as plain C++ structures (**pure aggregates**) with in-class default member initializers (avoid user-declared constructors so C++20 aggregate initialization works):
 
 ```cpp
 struct Health

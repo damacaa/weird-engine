@@ -91,12 +91,25 @@ int main(int argc, char* argv[])
 
 The `Registry` class manages entity IDs and component storage.
 
+### Strong-Typed IDs: `Entity` and `SimulationID`
+
+`Entity` and `SimulationID` are distinct, strongly-typed 4-byte structs (`sizeof == 4`) rather than plain integer aliases.
+- **Type Safety**: Accidental cross-assignments (`entity = simId;`) or cross-comparisons (`if (entity == simId)`) fail at compile-time.
+- **Zero Overhead**: Trivially copyable, passed in CPU registers, and standard layout.
+- **Array Indexing**: Both provide implicit `operator size_t()` conversion, allowing direct indexing into arrays and vectors (`myVector[entity]`).
+- **Sentinel Values**: Uninitialized or invalid IDs are represented by `INVALID_ENTITY` and `INVALID_SIMULATION_ID`.
+
 ### Creating and Destroying Entities
 
 Call `registry.createEntity()` to generate an entity ID:
 
 ```cpp
 Entity entity = registry.createEntity();
+if (entity == INVALID_ENTITY)
+{
+	// Capacity exceeded
+	return;
+}
 ```
 
 Call `registry.destroyEntity(entity)` to remove an entity and all attached components:
@@ -104,6 +117,22 @@ Call `registry.destroyEntity(entity)` to remove an entity and all attached compo
 ```cpp
 registry.destroyEntity(entity);
 ```
+
+### Entity Capacity & Graceful Limit Handling
+
+The ECS supports up to `MAX_ENTITIES` (10,000) active entities:
+- If capacity is exceeded, `registry.createEntity()` gracefully returns `INVALID_ENTITY` and logs a throttled error via `Logger::error` instead of aborting or crashing.
+- Operations on `INVALID_ENTITY` (such as `addComponent` or `getComponent`) log descriptive errors and safely return fallback references without throwing uncaught exceptions.
+- You can query capacity before allocating:
+  ```cpp
+  if (registry.canCreateEntity())
+  {
+  	Entity e = registry.createEntity();
+  }
+
+  size_t remaining = registry.getAvailableEntityCount();
+  bool valid = registry.isEntityValid(entity);
+  ```
 
 ### Adding and Accessing Components
 
@@ -141,9 +170,9 @@ Mark modified components dirty when required by rendering or physics systems:
 registry.setComponentDirty(rb);
 ```
 
-### Creating Custom Component Types
+### Creating Custom Component Types (Pure Aggregates)
 
-Define custom components as plain C++ structures:
+Define custom components as plain C++ structures (**pure aggregates**) with in-class default member initializers:
 
 ```cpp
 struct Health
@@ -152,6 +181,9 @@ struct Health
 	int max = 100;
 };
 ```
+
+> [!IMPORTANT]
+> Do **not** declare default or parameterized constructors (e.g. `Health() = default;` or `Health(int m) : max(m) {}`). In C++20, any user-declared constructor suppresses aggregate initialization (`Health{.current = 50}`). With in-class initializers, constructors are unnecessary and pure aggregates ensure optimal compatibility with `ComponentArray<T>` storage.
 
 The `Registry` registers component types automatically during first access.
 You can also register component types explicitly:
@@ -319,6 +351,19 @@ void onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEven
 		event.friction *= 0.5f;
 	}
 }
+```
+
+### Hit-Testing Rigidbodies and SimulationID Mapping
+
+Rigidbodies are identified within the physics simulation by strongly-typed `SimulationID` (stored in `rb.simulationId`).
+You can query rigidbodies at world positions and map between simulation and ECS entities:
+
+```cpp
+// Hit-test active rigidbodies at a 2D world position; returns INVALID_ENTITY if none hit
+Entity hitEntity = services.physics().getRigidbodyAt(mouseWorldPos);
+
+// Translate a SimulationID back to its owning ECS Entity
+Entity ownerEntity = services.physics().entityForSimulationId(rb.simulationId);
 ```
 
 ---

@@ -11,8 +11,6 @@ using namespace WeirdEngine;
 
 struct Foot
 {
-	Foot() {};
-
 	vec2 direction = vec2(1.0f, 0.0f);
 	vec2 initialPos = vec2(0.0f, 0.0f);
 	float forceMagnitude = 1.0f;

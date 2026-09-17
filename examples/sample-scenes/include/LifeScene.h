@@ -14,8 +14,6 @@ using namespace WeirdEngine;
 
 struct Head
 {
-	Head() {};
-
 	vec2 direction = vec2(0.0f, 1.0f);
 	float forceMagnitude = 500.0f;
 	bool directionChanged = false;

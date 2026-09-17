@@ -6,13 +6,8 @@ namespace WeirdEngine
 {
 	struct DistanceConstraint
 	{
-		DistanceConstraint()
-			: entityA(INVALID_ENTITY)
-			, entityB(INVALID_ENTITY)
-			, distance(1.0f) {};
-
-		Entity entityA;
-		Entity entityB;
-		float distance;
+		Entity entityA = INVALID_ENTITY;
+		Entity entityB = INVALID_ENTITY;
+		float distance = 1.0f;
 	};
 } // namespace WeirdEngine

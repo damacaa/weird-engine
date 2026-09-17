@@ -8,17 +8,7 @@ namespace WeirdEngine
 
 	struct MeshRenderer
 	{
-	public:
-		MeshID mesh;
+		MeshID mesh = 0;
 		int materialIndex = 0;
-
-		MeshRenderer() {};
-
-		MeshRenderer(MeshID mesh)
-			: mesh(mesh) {};
-
-		MeshRenderer(MeshID mesh, int materialIndex)
-			: mesh(mesh)
-			, materialIndex(materialIndex) {};
 	};
 } // namespace WeirdEngine

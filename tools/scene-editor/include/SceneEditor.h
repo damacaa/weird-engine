@@ -31,18 +31,18 @@ private:
 	// =====================================================================
 	struct ShapeBtnInfo
 	{
-		Entity entity;
-		uint16_t shapeType;
+		Entity entity = INVALID_ENTITY;
+		uint16_t shapeType = 0;
 	};
 	struct CombBtnInfo
 	{
-		Entity toggleEntity;
-		CombinationType combType;
+		Entity toggleEntity = INVALID_ENTITY;
+		CombinationType combType = CombinationType::Addition;
 	};
 	struct ParamBtn
 	{
-		Entity shapeEntity;
-		Entity textEntity;
+		Entity shapeEntity = INVALID_ENTITY;
+		Entity textEntity = INVALID_ENTITY;
 	};
 
 	// =====================================================================

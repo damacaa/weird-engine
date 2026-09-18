@@ -7,7 +7,6 @@
 
 #include "weird-audio/AudioRingBuffer.h"
 #include "weird-audio/FrictionSource.h"
-#include "weird-audio/SdfSong.h"
 #include "weird-audio/SimpleAudioRequest.h"
 #include "weird-renderer/core/RenderTarget.h"
 #include "weird-renderer/resources/DrawCommand.h"
@@ -389,6 +388,3 @@ namespace WeirdEngine
 		}
 	};
 } // namespace WeirdEngine
-
-#include "weird-engine/math/Default2DSDFs.h"
-#include "weird-engine/math/Default3DSDFs.h"

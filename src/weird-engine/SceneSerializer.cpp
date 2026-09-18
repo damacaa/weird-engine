@@ -1,9 +1,14 @@
 #include "weird-engine/SceneSerializer.h"
 #include "weird-engine/Scene.h"
 
+#include "weird-engine/components/Transform.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/GlobalPhysicsSettings.h"
+#include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
+#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/SDFRenderer.h"
+#include "weird-renderer/components/TextRenderer.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>

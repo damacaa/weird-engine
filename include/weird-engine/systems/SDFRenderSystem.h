@@ -1,6 +1,8 @@
 #pragma once
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/components/TextRenderer.h"
 #include "weird-renderer/resources/Font.h"
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>

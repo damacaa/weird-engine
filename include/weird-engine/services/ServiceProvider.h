@@ -90,6 +90,8 @@ namespace WeirdEngine
 
 	struct PhysicsService
 	{
+		// These 3 are public but they should never be used directly by the game code. Use the wrapper functions below
+		// instead.
 		Registry& registry;
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
@@ -807,6 +809,8 @@ namespace WeirdEngine
 
 		// Save the current scene state to a .weird JSON file
 		void saveScene(const std::string& filename);
+
+		void deleteSceneFile();
 
 		// Dynamically load a .weird file and add its contents to the scene.
 		// If blacklistEntities is true, all entities created by the load will be

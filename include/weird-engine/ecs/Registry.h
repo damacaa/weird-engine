@@ -235,12 +235,15 @@ namespace WeirdEngine
 	public:
 		template <typename T> void registerComponent()
 		{
+			size_t id = internal::getComponentTypeId<T>();
+
+			if (id < m_componentManagers.size() && m_componentManagers[id])
+				return;
 
 			ComponentManager<T> manager;
 			manager.registerComponent();
 			auto pointerToManager = std::make_shared<ComponentManager<T>>(manager);
 
-			size_t id = internal::getComponentTypeId<T>();
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = pointerToManager;

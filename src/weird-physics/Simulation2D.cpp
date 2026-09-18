@@ -936,33 +936,44 @@ namespace WeirdEngine
 			float velocityAlongNormal = glm::dot(normal, vRel);
 			float impulseMagnitude = 0.0f;
 
-			// Only apply impulse if objects are moving towards each other
 			if (velocityAlongNormal < 0.0f)
 			{
 				float invMassSum = m_invMass[col.A] + m_invMass[col.B];
 				if (invMassSum > 0.0f)
 				{
 					impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
-					vec2 impulse = impulseMagnitude * normal;
-
-					m_velocities[col.A] -= m_invMass[col.A] * impulse;
-					m_velocities[col.B] += m_invMass[col.B] * impulse;
 				}
 			}
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
-			m_forces[col.A] -= m_mass[col.A] * penalty;
-			m_forces[col.B] += m_mass[col.B] * penalty;
 
-			// Notify collision callback
+			// Notify collision callback before applying the response so the
+			// scene can ignore specific pairs
 			if (m_collisionCallback)
 			{
 				vec2 contactPos = m_positions[col.A] + 0.5f * col.AB;
 				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, impulseMagnitude};
-				std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
-				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
+				{
+					std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
+					m_collisionCallback(event, m_callbackUserData);
+				}
+				if (event.ignoreCollision)
+					continue;
 			}
+
+			// Apply impulse if objects are moving towards each other
+			if (velocityAlongNormal < 0.0f && impulseMagnitude != 0.0f)
+			{
+				vec2 impulse = impulseMagnitude * normal;
+
+				m_velocities[col.A] -= m_invMass[col.A] * impulse;
+				m_velocities[col.B] += m_invMass[col.B] * impulse;
+			}
+
+			// Apply penalty
+			m_forces[col.A] -= m_mass[col.A] * penalty;
+			m_forces[col.B] += m_mass[col.B] * penalty;
 		}
 
 		// Shape collisions

@@ -245,7 +245,10 @@ namespace WeirdEngine
 		std::ifstream inFile(path);
 		if (!inFile.is_open())
 		{
-			WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
+			if (!std::filesystem::exists(path))
+				WeirdEngine::Logger::log("[SceneSerializer] No scene file at " + path + ", starting fresh");
+			else
+				WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
 			return;
 		}
 

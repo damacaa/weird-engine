@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 
 #ifndef WEIRD_DISABLE_IMGUI
 #include <imgui.h>
@@ -523,6 +524,9 @@ namespace WeirdEngine
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsRigidBodyCollision(self->m_simulation2D, event);
 
+		if (event.ignoreCollision)
+			return;
+
 		std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
 		self->m_queuedCollisions.push_back(event);
 	}
@@ -700,6 +704,22 @@ namespace WeirdEngine
 				scene.m_serializationBlacklist.insert(entity);
 		}
 		return loadedTags;
+	}
+
+	void SerializationService::deleteSceneFile()
+	{
+		if (sceneFilePath.empty())
+			return;
+
+		std::error_code ec;
+		if (std::filesystem::remove(sceneFilePath, ec))
+		{
+			Logger::log("[SceneSerializer] Deleted scene file " + sceneFilePath);
+		}
+		else if (ec)
+		{
+			Logger::error("[SceneSerializer] Failed to delete scene file " + sceneFilePath + ": " + ec.message());
+		}
 	}
 
 	void AudioService::setSpatialAudioEnabled(bool enabled)

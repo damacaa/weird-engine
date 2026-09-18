@@ -6,15 +6,9 @@ namespace WeirdEngine
 {
 	struct Spring
 	{
-		Spring()
-			: entityA(INVALID_ENTITY)
-			, entityB(INVALID_ENTITY)
-			, stiffness(1.0f)
-			, restDistance(1.0f) {};
-
-		Entity entityA;
-		Entity entityB;
-		float stiffness;
-		float restDistance;
+		Entity entityA = INVALID_ENTITY;
+		Entity entityB = INVALID_ENTITY;
+		float stiffness = 1.0f;
+		float restDistance = 1.0f;
 	};
 } // namespace WeirdEngine

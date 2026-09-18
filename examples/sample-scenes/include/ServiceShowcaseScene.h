@@ -426,8 +426,8 @@ namespace ServiceShowcase
 		registry.setComponentDirty(timeText);
 
 		auto& entitiesText = registry.getComponent<UITextRenderer>(state.entitiesText);
-		std::snprintf(buffer, sizeof(buffer), "entities %d (balls spawned: %d)", services.registry().getEntityCount(),
-					  state.ballsSpawned);
+		std::snprintf(buffer, sizeof(buffer), "entities %u (balls spawned: %d)",
+					  static_cast<unsigned int>(services.registry().getEntityCount()), state.ballsSpawned);
 		entitiesText.text = buffer;
 		registry.setComponentDirty(entitiesText);
 

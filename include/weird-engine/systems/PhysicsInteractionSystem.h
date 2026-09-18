@@ -16,9 +16,9 @@ namespace WeirdEngine
 
 		inline int m_currentMaterial = 0;
 
-		inline SimulationID m_firstIdInSpring = -1;
+		inline Entity m_firstIdInSpring = INVALID_ENTITY;
 
-		inline SimulationID m_selectedId = -1;
+		inline Entity m_selectedId = INVALID_ENTITY;
 
 		enum class InteractionMode
 		{
@@ -112,6 +112,10 @@ namespace WeirdEngine
 
 				// t.position = vec3(mousePositionInWorld.x + sin(time), mousePositionInWorld.y + cos(time), 0.0);
 				Entity entity = registry.createEntity();
+				if (entity == INVALID_ENTITY)
+				{
+					return;
+				}
 				Transform& t = registry.addComponent<Transform>(entity);
 				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
 
@@ -416,12 +420,15 @@ namespace WeirdEngine
 					if (id != INVALID_ENTITY)
 					{
 						Entity entity = registry.createEntity();
-						auto& spring = registry.addComponent<Spring>(entity);
-						spring.entityA = id;
-						spring.entityB = m_firstIdInSpring;
-						spring.stiffness = 0.1f;
-						spring.restDistance = 1.4142f;
-						registry.getComponentArray<Spring>()->setEntityDirty(entity, true);
+						if (entity != INVALID_ENTITY)
+						{
+							auto& spring = registry.addComponent<Spring>(entity);
+							spring.entityA = id;
+							spring.entityB = m_firstIdInSpring;
+							spring.stiffness = 0.1f;
+							spring.restDistance = 1.4142f;
+							registry.getComponentArray<Spring>()->setEntityDirty(entity, true);
+						}
 					}
 				}
 
@@ -454,11 +461,14 @@ namespace WeirdEngine
 					if (id != INVALID_ENTITY)
 					{
 						Entity entity = registry.createEntity();
-						auto& constraint = registry.addComponent<DistanceConstraint>(entity);
-						constraint.entityA = id;
-						constraint.entityB = m_firstIdInSpring;
-						constraint.distance = 1.0f; // Was default in simulation.addPositionConstraint
-						registry.getComponentArray<DistanceConstraint>()->setEntityDirty(entity, true);
+						if (entity != INVALID_ENTITY)
+						{
+							auto& constraint = registry.addComponent<DistanceConstraint>(entity);
+							constraint.entityA = id;
+							constraint.entityB = m_firstIdInSpring;
+							constraint.distance = 1.0f; // Was default in simulation.addPositionConstraint
+							registry.getComponentArray<DistanceConstraint>()->setEntityDirty(entity, true);
+						}
 					}
 				}
 

@@ -2,6 +2,8 @@
 
 #include "ComponentManager.h"
 #include "Entity.h"
+#include "weird-engine/Assert.h"
+#include "weird-engine/Logger.h"
 
 #include <cstddef>
 #include <iostream>
@@ -51,7 +53,33 @@ namespace WeirdEngine
 				m_freeEntities.pop();
 				return e;
 			}
+			if (m_entityCount >= MAX_ENTITIES)
+			{
+				if (m_droppedEntityCount == 0 || m_droppedEntityCount % 1000 == 0)
+				{
+					Logger::error("[Registry] Entity limit reached: maximum capacity of " +
+								  std::to_string(MAX_ENTITIES.id) + " entities reached. Cannot create new entity (" +
+								  std::to_string(m_droppedEntityCount + 1) + " dropped). Returning INVALID_ENTITY.");
+				}
+				++m_droppedEntityCount;
+				return INVALID_ENTITY;
+			}
 			return m_entityCount++;
+		}
+
+		bool isEntityValid(Entity entity) const noexcept
+		{
+			return entity < MAX_ENTITIES;
+		}
+
+		bool canCreateEntity() const noexcept
+		{
+			return !m_freeEntities.empty() || m_entityCount < MAX_ENTITIES;
+		}
+
+		size_t getAvailableEntityCount() const noexcept
+		{
+			return m_freeEntities.size() + (m_entityCount < MAX_ENTITIES ? (MAX_ENTITIES.id - m_entityCount.id) : 0);
 		}
 
 		Entity getEntityCount() const
@@ -61,6 +89,8 @@ namespace WeirdEngine
 
 		void destroyEntity(Entity entity)
 		{
+			if (entity >= MAX_ENTITIES)
+				return;
 			for (auto const& manager : m_componentManagers)
 			{
 				if (manager)
@@ -77,15 +107,28 @@ namespace WeirdEngine
 					manager->freeRemovedComponents();
 			}
 
+			bool freedAny = !m_entitiesToFree.empty();
 			while (!m_entitiesToFree.empty())
 			{
 				m_freeEntities.push(m_entitiesToFree.front());
 				m_entitiesToFree.pop();
 			}
+			if (freedAny)
+			{
+				m_droppedEntityCount = 0;
+			}
 		}
 
 		template <typename T> T& addComponent(Entity entity)
 		{
+			if (entity >= MAX_ENTITIES)
+			{
+				Logger::error("[Registry] Cannot add component: entity ID (" + std::to_string(entity.id) +
+							  ") is invalid (maximum entity capacity is " + std::to_string(MAX_ENTITIES.id) + ").");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
 			auto cm = getComponentManager<T>();
 			auto& component = cm->getNewComponent(entity);
 
@@ -94,6 +137,14 @@ namespace WeirdEngine
 
 		template <typename T> T& getComponent(Entity entity)
 		{
+			if (entity >= MAX_ENTITIES)
+			{
+				Logger::error("[Registry] Cannot get component from invalid entity (" + std::to_string(entity.id) +
+							  "): entity ID exceeds or equals MAX_ENTITIES (" + std::to_string(MAX_ENTITIES.id) + ").");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
 			return getComponentManager<T>()->getComponent(entity);
 		}
 
@@ -104,6 +155,8 @@ namespace WeirdEngine
 
 		template <typename T> bool hasComponent(Entity entity) const
 		{
+			if (entity >= MAX_ENTITIES)
+				return false;
 			size_t id = internal::getComponentTypeId<T>();
 			if (id >= m_componentManagers.size() || !m_componentManagers[id])
 				return false;
@@ -112,6 +165,8 @@ namespace WeirdEngine
 
 		template <typename T> void setEntityDirty(Entity entity, bool dirty = true)
 		{
+			if (entity >= MAX_ENTITIES)
+				return;
 			getComponentManager<T>()->getComponentArray()->setEntityDirty(entity, dirty);
 		}
 
@@ -180,12 +235,15 @@ namespace WeirdEngine
 	public:
 		template <typename T> void registerComponent()
 		{
+			size_t id = internal::getComponentTypeId<T>();
+
+			if (id < m_componentManagers.size() && m_componentManagers[id])
+				return;
 
 			ComponentManager<T> manager;
 			manager.registerComponent();
 			auto pointerToManager = std::make_shared<ComponentManager<T>>(manager);
 
-			size_t id = internal::getComponentTypeId<T>();
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = pointerToManager;
@@ -302,6 +360,7 @@ namespace WeirdEngine
 		std::queue<Entity> m_freeEntities;
 		std::queue<Entity> m_entitiesToFree;
 		Entity m_entityCount = 0;
+		size_t m_droppedEntityCount = 0;
 	};
 } // namespace WeirdEngine
 

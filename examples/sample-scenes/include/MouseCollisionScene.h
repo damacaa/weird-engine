@@ -28,7 +28,7 @@ public:
 private:
 	struct CollisionCounter
 	{
-		int count;
+		int count = 0;
 	};
 
 	Entity m_cursorShape;

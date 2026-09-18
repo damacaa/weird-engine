@@ -90,6 +90,8 @@ namespace WeirdEngine
 
 	struct PhysicsService
 	{
+		// These 3 are public but they should never be used directly by the game code. Use the wrapper functions below
+		// instead.
 		Registry& registry;
 		Simulation2D& simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& sdfs;
@@ -131,6 +133,17 @@ namespace WeirdEngine
 				return INVALID_ENTITY;
 
 			return rigidBodies->getEntityAtIdx(static_cast<size_t>(simulationId));
+		}
+
+		// Hit-test active rigidbodies at a 2D world position. Returns the Entity owning
+		// the rigidbody at that position, or INVALID_ENTITY if no rigidbody was hit.
+		Entity getRigidbodyAt(vec2 pos) const
+		{
+			SimulationID simId = simulation.raycast(pos);
+			if (simId == INVALID_SIMULATION_ID)
+				return INVALID_ENTITY;
+
+			return entityForSimulationId(simId);
 		}
 
 		// Per-body user data. Set the data right after adding the RigidBody2D
@@ -322,6 +335,10 @@ namespace WeirdEngine
 		Entity addShape(const ShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
+			if (entity == INVALID_ENTITY)
+			{
+				return INVALID_ENTITY;
+			}
 			CustomShape& shape = registry.addComponent<CustomShape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
@@ -337,6 +354,10 @@ namespace WeirdEngine
 		Entity addUIShape(const UIShapeConfig& config)
 		{
 			Entity entity = registry.createEntity();
+			if (entity == INVALID_ENTITY)
+			{
+				return INVALID_ENTITY;
+			}
 			UIShape& shape = registry.addComponent<UIShape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
@@ -788,6 +809,8 @@ namespace WeirdEngine
 
 		// Save the current scene state to a .weird JSON file
 		void saveScene(const std::string& filename);
+
+		void deleteSceneFile();
 
 		// Dynamically load a .weird file and add its contents to the scene.
 		// If blacklistEntities is true, all entities created by the load will be

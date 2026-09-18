@@ -28,7 +28,7 @@ flowchart TD
         SpatialProcessor[SpatialAudioProcessor]
     end
 
-    subgraph SdlStream["SDL3 Audio Stream (main thread)"]
+    subgraph SdlStream["SDL3 Audio Stream (audio thread)"]
         AudioDevice[DAC Output / Speakers]
         Mixer[Stereo Interleaved Mixer]
     end
@@ -47,7 +47,7 @@ flowchart TD
 ### Thread Safety & Zero-Allocation Streaming
 The real-time audio thread must never block or allocate heap memory (`malloc`/`new`). 
 - **`AudioRingBuffer<SimpleAudioRequest, 64>`**: A lock-free single-producer single-consumer ring buffer transfers sound trigger requests from the game and physics threads to the audio thread.
-- **Main-Thread Streaming**: PCM is generated synchronously in `AudioEngine::listen` on the main thread and written to the SDL3 audio stream; friction sources are plain per-body structs with no cross-thread state (only the debug/override level uses an atomic float).
+- **Decoupled Audio Thread Streaming**: PCM is generated asynchronously in `AudioEngine::renderAudio` via SDL3's `SDL_AudioStreamCallback` on a dedicated audio thread. Main-thread hitches (such as heavy shader compilation or window resizing) do not interrupt audio playback. The main thread's `AudioEngine::listen` only performs microsecond-scale state updates under a fast mutex.
 - **Mutex-Protected Song State**: Fast `std::mutex` guards protect song reference swaps and parameter updates between frames.
 
 ---

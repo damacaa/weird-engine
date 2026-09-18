@@ -155,13 +155,15 @@ namespace WeirdEngine
 
 			// Re-sample the shape at the 8 compass points (call after modifying shape parameters in real time)
 			void resampleShape();
-			const ShapeMusicalParams& getShapeParameters() const
+			ShapeMusicalParams getShapeParameters() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_shapeParams;
 			}
 
-			const InstrumentRack& getInstrumentRack() const
+			InstrumentRack getInstrumentRack() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_rack;
 			}
 
@@ -174,61 +176,74 @@ namespace WeirdEngine
 
 			void setTrackToggles(const MusicTrackToggles& toggles)
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				m_tracks = toggles;
 			}
-			const MusicTrackToggles& getTrackToggles() const
+			MusicTrackToggles getTrackToggles() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_tracks;
 			}
 
 			TrackPlayState getTrackPlayState(MusicTrack track) const;
 			float getSurgeLevel() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_surgeLevel;
 			}
 			float getDuckingLevel() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_ducking;
 			}
 
 			// Motion & Domain Fill Inspection
 			float getMotionLevel() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_motionLevel;
 			}
 			float getMotionNorm() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_motionNorm;
 			}
 			float getFillRatio() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_fillRatio;
 			}
 			float getTempoFromMotion() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_tempoFromMotion;
 			}
 			float getVolumeFromFill() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_volumeFromFill;
 			}
 
 			// Surface Complexity Inspection (scale-normalized curvature spread of the SDF surface)
 			float getComplexityLevel() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_complexityLevel;
 			}
 			float getComplexityNorm() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_complexityNorm;
 			}
 			float getComplexitySaturation() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_complexitySaturation;
 			}
 			// Higher values make the normalized stat cooler (more headroom for complex shapes)
 			void setComplexitySaturation(float saturation)
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				m_complexitySaturation = std::max(0.1f, saturation);
 			}
 
@@ -236,6 +251,7 @@ namespace WeirdEngine
 			// articulation independently of motion (tempo). 0 = calm, 1 = tense.
 			float getTension() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_tensionFromComplexity;
 			}
 
@@ -246,15 +262,18 @@ namespace WeirdEngine
 			// Current playhead position in beats
 			float getPlayheadBeat() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_currentBeat;
 			}
 
 			bool isPlaying() const
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_playing;
 			}
 			void setPlaying(bool playing)
 			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				m_playing = playing;
 			}
 
@@ -266,7 +285,7 @@ namespace WeirdEngine
 
 			std::shared_ptr<SdfSong> m_currentSong;
 			std::shared_ptr<SdfSong> m_queuedSong;
-			std::mutex m_songMutex;
+			mutable std::recursive_mutex m_songMutex;
 
 			// Sequencer time tracking
 			float m_currentBeat = 0.0f;

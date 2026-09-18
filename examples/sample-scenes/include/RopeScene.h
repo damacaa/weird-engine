@@ -1,7 +1,12 @@
 #pragma once
 
-#include "globals.h"
+#include <stack>
+
+#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
+
+#include "globals.h"
+#include "weird-physics/components/Spring.h"
 
 using namespace WeirdEngine;
 
@@ -48,7 +53,7 @@ private:
 
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-		services.debug().setDebugInput(true);
+		services.debug().setDebugInput(false);
 		services.debug().setDebugFly(true);
 
 		// Initialize audio with scene-defined rope song
@@ -183,6 +188,11 @@ private:
 			return;
 		}
 
+		if (registry.getEntityCount() >= MAX_ENTITIES - 50)
+		{
+			return;
+		}
+
 		services.audio().playSound({0.015f, 150.0f + (std::rand() % 150), true, vec3(0.0f), 1});
 
 		constexpr int amount = 10;
@@ -191,6 +201,10 @@ private:
 			float y = 60.0f + (1.2f * i);
 
 			Entity entity = registry.createEntity();
+			if (entity == INVALID_ENTITY)
+			{
+				break;
+			}
 
 			auto& t = registry.addComponent<Transform>(entity);
 			t.position = vec3(2.5f, y + 0.5f, 0.0f);
@@ -199,6 +213,7 @@ private:
 			sdf.materialId = m_ballMats[registry.getComponentArray<Dot>()->getSize() % m_ballMats.size()].id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
+			rb.isFixed = false;
 			auto ballData = std::make_unique<BallData>();
 			ballData->shouldClamp = m_clampBalls;
 			services.physics().setUserData(rb.simulationId, std::move(ballData));
@@ -207,6 +222,19 @@ private:
 
 		m_lastSpawnTime = services.time().time();
 	}
+
+	Entity m_startRopeBall = INVALID_ENTITY;
+	Entity m_lastSelectedBall = INVALID_ENTITY;
+	std::vector<Entity> m_currentRopeBalls;
+	std::vector<Entity> m_currentRopeSprings;
+	bool m_creatingRope = false;
+	vec2 m_startRopeMousePos = vec2(0.0f);
+
+	std::stack<Entity> m_toDeleteRopeBalls;
+	std::stack<Entity> m_toDeleteRopeSprings;
+	float m_deleteRopeBallsTimer = 0.0f;
+
+	Entity m_draggedBall = INVALID_ENTITY;
 
 	void onUpdate(Registry& registry, ServiceProvider& services) override
 	{
@@ -259,6 +287,211 @@ private:
 						ballData.shouldClamp = m_clampBalls;
 					}
 				});
+		}
+
+		if (services.input().getMouseButtonDown(Input::LeftClick))
+		{
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+			Entity startEntity = registry.createEntity();
+			if (startEntity != INVALID_ENTITY)
+			{
+				auto& startTransform = registry.addComponent<Transform>(startEntity);
+				startTransform.position = vec3(world.x, world.y, 0.0f);
+				auto& rb = registry.addComponent<RigidBody2D>(startEntity);
+				rb.isFixed = true;
+				auto& startSdf = registry.addComponent<Dot>(startEntity);
+				startSdf.materialId = 5;
+
+				m_creatingRope = true;
+				m_startRopeBall = startEntity;
+				m_lastSelectedBall = startEntity;
+				m_currentRopeBalls.clear();
+				m_currentRopeBalls.push_back(startEntity);
+				m_currentRopeSprings.clear();
+				m_startRopeMousePos = world;
+			}
+		}
+
+		if (m_creatingRope)
+		{
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+			const bool a = distance(m_startRopeMousePos, world) > m_currentRopeBalls.size() * 1.0f;
+			const bool b = m_currentRopeBalls.size() == 1 && world != m_startRopeMousePos;
+			if (a || b)
+			{
+				Entity newBall = registry.createEntity();
+				if (newBall != INVALID_ENTITY)
+				{
+					auto& newTransform = registry.addComponent<Transform>(newBall);
+					newTransform.position = vec3(world.x, world.y, 0.0f);
+					auto& rb = registry.addComponent<RigidBody2D>(newBall);
+					rb.isFixed = true;
+					auto& newSdf = registry.addComponent<Dot>(newBall);
+					newSdf.materialId = 5;
+
+					// Connect to last selected ball with a spring
+					Entity springEnt = registry.createEntity();
+					if (springEnt != INVALID_ENTITY)
+					{
+						auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
+						spring.entityA = m_lastSelectedBall;
+						spring.entityB = newBall;
+						spring.stiffness = 1.0f;
+						spring.restDistance = 1.0f;
+
+						// Unfix the last selected ball if it's not the start ball
+						if (m_lastSelectedBall != m_startRopeBall)
+						{
+							auto& lastRb = registry.getComponent<RigidBody2D>(m_lastSelectedBall);
+							lastRb.isFixed = false;
+							registry.setComponentDirty<RigidBody2D>(lastRb);
+						}
+
+						m_lastSelectedBall = newBall;
+						m_currentRopeBalls.push_back(newBall);
+						m_currentRopeSprings.push_back(springEnt);
+					}
+					else
+					{
+						registry.destroyEntity(newBall);
+					}
+				}
+			}
+
+			auto& currentTransform = registry.getComponent<Transform>(m_lastSelectedBall);
+			currentTransform.position = vec3(world.x, world.y, 0.0f);
+			registry.setComponentDirty<Transform>(currentTransform);
+		}
+
+		if (services.input().getMouseButtonUp(Input::LeftClick))
+		{
+			m_creatingRope = false;
+			m_startRopeBall = INVALID_ENTITY;
+			m_lastSelectedBall = INVALID_ENTITY;
+			m_currentRopeBalls.clear();
+			m_currentRopeSprings.clear();
+		}
+
+		if (services.input().getMouseButtonDown(Input::RightClick))
+		{
+			if (m_creatingRope)
+			{
+				for (auto ball : m_currentRopeBalls)
+				{
+					if (ball == m_draggedBall)
+					{
+						m_draggedBall = INVALID_ENTITY;
+					}
+					m_toDeleteRopeBalls.push(ball);
+				}
+
+				for (auto spring : m_currentRopeSprings)
+				{
+					m_toDeleteRopeSprings.push(spring);
+				}
+
+				m_creatingRope = false;
+				m_startRopeBall = INVALID_ENTITY;
+				m_lastSelectedBall = INVALID_ENTITY;
+				m_currentRopeBalls.clear();
+				m_currentRopeSprings.clear();
+			}
+			else
+			{
+				// Find rigidbody where user right clicked and start dragging it
+				auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+				vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+				vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+				Entity hitEntity = services.physics().getRigidbodyAt(world);
+				if (hitEntity != INVALID_ENTITY && registry.hasComponent<RigidBody2D>(hitEntity))
+				{
+					m_draggedBall = hitEntity;
+					auto& rb = registry.getComponent<RigidBody2D>(m_draggedBall);
+					rb.isFixed = true;
+					registry.setComponentDirty<RigidBody2D>(rb);
+				}
+			}
+		}
+
+		if (m_draggedBall != INVALID_ENTITY)
+		{
+			if (!registry.hasComponent<RigidBody2D>(m_draggedBall) || !registry.hasComponent<Transform>(m_draggedBall))
+			{
+				m_draggedBall = INVALID_ENTITY;
+			}
+			else if (services.input().getMouseButton(Input::RightClick))
+			{
+				auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+				vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+				vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+				auto& currentTransform = registry.getComponent<Transform>(m_draggedBall);
+				currentTransform.position = vec3(world.x, world.y, 0.0f);
+				registry.setComponentDirty<Transform>(currentTransform);
+
+				auto& rb = registry.getComponent<RigidBody2D>(m_draggedBall);
+				rb.velocity = vec2(0.0f);
+				registry.setComponentDirty<RigidBody2D>(rb);
+			}
+			else if (services.input().getMouseButtonUp(Input::RightClick))
+			{
+				auto& rb = registry.getComponent<RigidBody2D>(m_draggedBall);
+				rb.isFixed = false;
+				registry.setComponentDirty<RigidBody2D>(rb);
+				m_draggedBall = INVALID_ENTITY;
+			}
+		}
+
+		if ((services.time().time() - m_deleteRopeBallsTimer) >= 0.02f &&
+			(!m_toDeleteRopeBalls.empty() || !m_toDeleteRopeSprings.empty()))
+		{
+			m_deleteRopeBallsTimer = services.time().time();
+
+			if (!m_toDeleteRopeSprings.empty())
+			{
+				Entity springToDelete = m_toDeleteRopeSprings.top();
+				m_toDeleteRopeSprings.pop();
+
+				registry.destroyEntity(springToDelete);
+			}
+
+			if (!m_toDeleteRopeBalls.empty())
+			{
+				Entity ballToDelete = m_toDeleteRopeBalls.top();
+				m_toDeleteRopeBalls.pop();
+
+				if (ballToDelete == m_draggedBall)
+				{
+					m_draggedBall = INVALID_ENTITY;
+				}
+				registry.destroyEntity(ballToDelete);
+			}
+		}
+
+		// Despawn non-fixed balls that have fallen deep below the scene
+		std::vector<Entity> fallenBalls;
+		registry.forEach<RigidBody2D, Transform>(
+			[&](Entity e, RigidBody2D& rb, Transform& t)
+			{
+				if (!rb.isFixed && t.position.y < -200.0f)
+				{
+					fallenBalls.push_back(e);
+				}
+			});
+		for (Entity e : fallenBalls)
+		{
+			if (e == m_draggedBall)
+			{
+				m_draggedBall = INVALID_ENTITY;
+			}
+			registry.destroyEntity(e);
 		}
 	}
 

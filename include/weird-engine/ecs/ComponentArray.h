@@ -6,6 +6,8 @@
 #include <unordered_map>
 
 #include "Entity.h"
+#include "weird-engine/Assert.h"
+#include "weird-engine/Logger.h"
 
 namespace WeirdEngine
 {
@@ -26,6 +28,13 @@ namespace WeirdEngine
 
 		void insertData(Entity entity, T component)
 		{
+			if (entity >= MAX_ENTITIES || size >= MAX_ENTITIES)
+			{
+				Logger::error("[ComponentArray] Cannot insert component: capacity exceeded (" +
+							  std::to_string(MAX_ENTITIES.id) + ") or entity ID (" + std::to_string(entity.id) +
+							  ") is invalid.");
+				return;
+			}
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
 			values[size] = component;
@@ -35,8 +44,18 @@ namespace WeirdEngine
 
 		T& getNewComponent(Entity entity)
 		{
+			if (entity >= MAX_ENTITIES || size >= MAX_ENTITIES)
+			{
+				Logger::error("[ComponentArray] Cannot allocate component: capacity exceeded (" +
+							  std::to_string(MAX_ENTITIES.id) + ") or entity ID (" + std::to_string(entity.id) +
+							  ") is invalid.");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
+			values[size] = T{};
 			dirtyFlags[size] = true;
 
 			return values[size++];
@@ -44,7 +63,16 @@ namespace WeirdEngine
 
 		void removeData(Entity entity)
 		{
+			if (!hasData(entity) || size == 0)
+			{
+				return;
+			}
 			size_t indexOfRemovedEntity = entityToIndexMap[entity];
+			if (indexOfRemovedEntity >= size)
+			{
+				entityToIndexMap[entity] = INVALID_INDEX;
+				return;
+			}
 			size_t indexOfLastElement = size - 1;
 			values[indexOfRemovedEntity] = values[indexOfLastElement];
 			dirtyFlags[indexOfRemovedEntity] = dirtyFlags[indexOfLastElement];
@@ -54,42 +82,108 @@ namespace WeirdEngine
 			indexToEntityMap[indexOfRemovedEntity] = entityOfLastElement;
 			entityToIndexMap[entity] = INVALID_INDEX;
 
+			values[indexOfLastElement] = T{};
+			dirtyFlags[indexOfLastElement] = false;
+
 			--size;
 		}
 
 		T& getDataFromEntity(Entity entity)
 		{
+			if (entity >= MAX_ENTITIES || !hasData(entity))
+			{
+				Logger::error("[ComponentArray] Entity " + std::to_string(entity.id) +
+							  " does not have component in ComponentArray.");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
+			return values[entityToIndexMap[entity]];
+		}
+
+		const T& getDataFromEntity(Entity entity) const
+		{
+			if (entity >= MAX_ENTITIES || !hasData(entity))
+			{
+				Logger::error("[ComponentArray] Entity " + std::to_string(entity.id) +
+							  " does not have component in ComponentArray.");
+				static const T dummy{};
+				return dummy;
+			}
 			return values[entityToIndexMap[entity]];
 		}
 
 		T& getDataAtIdx(size_t idx)
 		{
+			if (idx >= size)
+			{
+				Logger::error("[ComponentArray] Index " + std::to_string(idx) + " out of range in getDataAtIdx.");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
+			return values[idx];
+		}
+
+		const T& getDataAtIdx(size_t idx) const
+		{
+			if (idx >= size)
+			{
+				Logger::error("[ComponentArray] Index " + std::to_string(idx) + " out of range in getDataAtIdx.");
+				static const T dummy{};
+				return dummy;
+			}
 			return values[idx];
 		}
 
 		Entity getEntityAtIdx(size_t idx) const
 		{
+			if (idx >= size)
+				return INVALID_ENTITY;
 			return indexToEntityMap[idx];
 		}
 
 		T& getLastData()
 		{
+			if (size == 0)
+			{
+				Logger::error("[ComponentArray] getLastData called on empty ComponentArray.");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
+			}
 			return values[size - 1];
 		}
 
-		bool hasData(Entity entity)
+		const T& getLastData() const
 		{
+			if (size == 0)
+			{
+				Logger::error("[ComponentArray] getLastData called on empty ComponentArray.");
+				static const T dummy{};
+				return dummy;
+			}
+			return values[size - 1];
+		}
+
+		bool hasData(Entity entity) const
+		{
+			if (entity >= MAX_ENTITIES)
+				return false;
 			return entityToIndexMap[entity] != INVALID_INDEX;
 		}
 
 		void setDirty(size_t idx, bool dirty)
 		{
-			dirtyFlags[idx] = dirty;
+			if (idx < size)
+				dirtyFlags[idx] = dirty;
 		}
 
 		bool isDirty(size_t idx) const
 		{
-			return dirtyFlags[idx];
+			if (idx < size)
+				return dirtyFlags[idx];
+			return false;
 		}
 
 		void setEntityDirty(Entity entity, bool dirty)
@@ -127,7 +221,7 @@ namespace WeirdEngine
 			return INVALID_ENTITY;
 		}
 
-		bool isEntityDirty(Entity entity)
+		bool isEntityDirty(Entity entity) const
 		{
 			if (!hasData(entity))
 				return false;
@@ -137,10 +231,13 @@ namespace WeirdEngine
 		// Overload [] operator for non-const objects (modifiable)
 		T& operator[](unsigned int index)
 		{
-
-			if (index < 0 || index >= size)
+			if (index >= size)
 			{
-				throw std::out_of_range("Index out of range");
+				Logger::error("[ComponentArray] operator[] index " + std::to_string(index) +
+							  " out of range (size: " + std::to_string(size) + ").");
+				static T dummy{};
+				dummy = T{};
+				return dummy;
 			}
 
 			return values[index];

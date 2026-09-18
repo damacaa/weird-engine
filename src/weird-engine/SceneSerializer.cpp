@@ -246,7 +246,10 @@ namespace WeirdEngine
 		std::ifstream inFile(path);
 		if (!inFile.is_open())
 		{
-			WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
+			if (!std::filesystem::exists(path))
+				WeirdEngine::Logger::log("[SceneSerializer] No scene file at " + path + ", starting fresh");
+			else
+				WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
 			return;
 		}
 
@@ -278,11 +281,11 @@ namespace WeirdEngine
 		}
 
 		// Map from saved simulationId → newly assigned simulationId
-		std::unordered_map<int, SimulationID> simIdMap;
+		std::unordered_map<SimulationID, SimulationID> simIdMap;
 		// Map from saved entity id → newly created Entity
 		std::unordered_map<Entity, Entity> entityIdMap;
 		// Map from saved simulation id → newly created Entity
-		std::unordered_map<int, Entity> simIdToEntityMap;
+		std::unordered_map<SimulationID, Entity> simIdToEntityMap;
 
 		// Restore entities
 		if (j.contains("entities") && j["entities"].is_array())
@@ -290,6 +293,12 @@ namespace WeirdEngine
 			for (const auto& ej : j["entities"])
 			{
 				Entity entity = scene.m_registry.createEntity();
+				if (entity == INVALID_ENTITY)
+				{
+					Logger::error("[SceneSerializer] Maximum entity capacity reached while loading scene; stopping "
+								  "entity restoration.");
+					break;
+				}
 
 				// Track saved-id → new-entity mapping for tag remapping
 				if (ej.contains("id"))
@@ -378,7 +387,7 @@ namespace WeirdEngine
 				{
 					auto& rb = scene.m_registry.addComponent<RigidBody2D>(entity);
 					const auto& rbj = ej["rigidBody2D"];
-					int savedSimId = rbj.value("simulationId", -1);
+					SimulationID savedSimId = rbj.value("simulationId", INVALID_SIMULATION_ID);
 
 					if (rbj.contains("velocity"))
 					{
@@ -398,7 +407,7 @@ namespace WeirdEngine
 						scene.m_simulation2D.setPosition(rb.simulationId, savedPos);
 					}
 
-					if (savedSimId >= 0)
+					if (savedSimId != INVALID_SIMULATION_ID)
 					{
 						simIdMap[savedSimId] = rb.simulationId;
 						simIdToEntityMap[savedSimId] = entity;
@@ -449,8 +458,8 @@ namespace WeirdEngine
 
 					if (dcj.contains("A"))
 					{ // Legacy format
-						int savedA = dcj.value("A", -1);
-						int savedB = dcj.value("B", -1);
+						SimulationID savedA = dcj.value("A", INVALID_SIMULATION_ID);
+						SimulationID savedB = dcj.value("B", INVALID_SIMULATION_ID);
 						if (simIdMap.find(savedA) != simIdMap.end() && simIdMap.find(savedB) != simIdMap.end())
 						{
 							entityA = simIdToEntityMap[savedA];
@@ -519,8 +528,8 @@ namespace WeirdEngine
 			{
 				for (const auto& gcj : phys["gravitationalConstraints"])
 				{
-					int savedA = gcj.value("A", -1);
-					int savedB = gcj.value("B", -1);
+					SimulationID savedA = gcj.value("A", INVALID_SIMULATION_ID);
+					SimulationID savedB = gcj.value("B", INVALID_SIMULATION_ID);
 					float g = gcj.value("g", 1.0f);
 
 					auto itA = simIdMap.find(savedA);
@@ -536,7 +545,7 @@ namespace WeirdEngine
 			{
 				for (const auto& fixedJ : phys["fixedObjects"])
 				{
-					int savedId = fixedJ.get<int>();
+					SimulationID savedId = fixedJ.get<SimulationID>();
 					auto it = simIdMap.find(savedId);
 					if (it != simIdMap.end())
 					{

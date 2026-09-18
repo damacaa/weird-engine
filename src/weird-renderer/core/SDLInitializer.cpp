@@ -37,6 +37,7 @@ namespace WeirdEngine
 		SDLInitializer::SDLInitializer(DisplaySettings& settings, SDL_Window*& window,
 									   WeirdAudio::AudioEngine& audioEngine)
 			: m_window(window)
+			, m_audioEngine(audioEngine)
 		{
 #ifdef WEIRD_USE_FBDEV_EGL
 			// Video backend selection: fbdev EGL by default, SDL's own windowing
@@ -211,8 +212,8 @@ namespace WeirdEngine
 			desiredSpec.format = SDL_AUDIO_F32;
 			desiredSpec.channels = audioEngine.getChannels();
 
-			m_audioStream =
-				SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec, nullptr, nullptr);
+			m_audioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec,
+													  WeirdAudio::AudioEngine::audioStreamCallback, &audioEngine);
 			if (!m_audioStream)
 			{
 				// Audio is not critical: log and keep running silent.

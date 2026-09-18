@@ -19,6 +19,7 @@ namespace WeirdEngine
 	// it back via getUserData()/getUserDataAs<T>() instead.
 	struct BodyUserData
 	{
+		virtual ~BodyUserData() = default;
 		int type = 0;
 	};
 } // namespace WeirdEngine

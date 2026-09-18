@@ -23,6 +23,8 @@ namespace WeirdEngine
 
 			inline void update(Registry& registry, Simulation2D& simulation)
 			{
+				simulation.beginCommandBatch();
+
 				// Pass 1: ECS -> physics. Writes are queued as commands and the
 				// physics thread applies them on its next step.
 				registry.forEach<RigidBody2D, Transform>(
@@ -129,6 +131,8 @@ namespace WeirdEngine
 				// initialization commands (position, velocity, mass, etc.)
 				// have been queued ahead of this in m_pendingCommands.
 				simulation.activatePendingBodies();
+
+				simulation.endCommandBatch();
 
 				// Pass 2: physics -> ECS readback. The published buffers are
 				// copied into a reusable snapshot under a short lock; the ECS

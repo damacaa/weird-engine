@@ -28,13 +28,12 @@
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
+#include "weird-physics/SimulationID.h"
 
 namespace WeirdEngine
 {
 
 	using namespace ECS;
-
-	using SimulationID = std::uint32_t;
 
 	enum class PhysicsCommandType
 	{
@@ -50,9 +49,9 @@ namespace WeirdEngine
 
 	struct PhysicsCommand
 	{
-		PhysicsCommandType type;
-		SimulationID id;
-		vec2 vectorData;
+		PhysicsCommandType type = PhysicsCommandType::SetVelocity;
+		SimulationID id = 0;
+		vec2 vectorData = vec2(0.0f);
 		float floatData = 0.0f;
 		std::function<void()> action;
 	};
@@ -72,6 +71,7 @@ namespace WeirdEngine
 		vec2 normal = vec2(0.0f);
 		vec2 relativeVelocity = vec2(0.0f);
 		float impulse = 0.0f;
+		bool ignoreCollision = false;
 	};
 
 	struct PhysicsShapeCollisionEvent
@@ -99,8 +99,8 @@ namespace WeirdEngine
 		std::vector<int> head;
 		std::vector<int> next;
 		std::vector<vec2> positions;
-		float invCellSize;
-		float radious;
+		float invCellSize = 0.0f;
+		float radious = 0.0f;
 	};
 
 	class Simulation2D
@@ -132,6 +132,8 @@ namespace WeirdEngine
 		// boundary so the caller can immediately apply the last-slot ID remapping.
 		SimulationID generateSimulationID();
 		void activatePendingBodies();
+		void beginCommandBatch();
+		void endCommandBatch();
 		void removeObject(SimulationID id);
 		size_t getSize();
 
@@ -289,48 +291,37 @@ namespace WeirdEngine
 		struct DistanceConstraint
 		{
 		public:
-			DistanceConstraint()
-			{
-				A = -1;
-				B = -1;
-				Distance = 1.0f;
-				K = 0.0f;
-			}
+			SimulationID A = INVALID_SIMULATION_ID;
+			SimulationID B = INVALID_SIMULATION_ID;
+			float Distance = 1.0f;
+			float K = 0.0f;
 
-			DistanceConstraint(int a, int b, float distance, float k = 1.0f)
-			{
-				A = a;
-				B = b;
-				Distance = distance;
-				K = k;
-			}
+			DistanceConstraint() = default;
 
-			int A;
-			int B;
-			float Distance;
-			float K;
+			DistanceConstraint(SimulationID a, SimulationID b, float distance, float k = 1.0f)
+				: A(a)
+				, B(b)
+				, Distance(distance)
+				, K(k)
+			{
+			}
 		};
 
 		struct GravitationalConstraint
 		{
 		public:
-			GravitationalConstraint()
-			{
-				A = -1;
-				B = -1;
-				g = 1.0f;
-			}
+			SimulationID A = INVALID_SIMULATION_ID;
+			SimulationID B = INVALID_SIMULATION_ID;
+			float g = 1.0f;
 
-			GravitationalConstraint(int a, int b, float gravity)
-			{
-				A = a;
-				B = b;
-				g = gravity;
-			}
+			GravitationalConstraint() = default;
 
-			int A;
-			int B;
-			float g;
+			GravitationalConstraint(SimulationID a, SimulationID b, float gravity)
+				: A(a)
+				, B(b)
+				, g(gravity)
+			{
+			}
 		};
 
 		// Serialization support: read constraint data
@@ -354,7 +345,7 @@ namespace WeirdEngine
 		}
 
 		// Serialization support: load raw constraint (bypasses stiffness conversion)
-		void addRawDistanceConstraint(int a, int b, float distance, float k)
+		void addRawDistanceConstraint(SimulationID a, SimulationID b, float distance, float k)
 		{
 			if (a == b)
 				return;
@@ -381,28 +372,23 @@ namespace WeirdEngine
 		struct Collision
 		{
 		public:
-			Collision()
-			{
-				A = -1;
-				B = -1;
-				AB = vec2();
-			}
+			SimulationID A = 0;
+			SimulationID B = 0;
+			vec2 AB = vec2(0.0f);
+
+			Collision() = default;
 
 			Collision(SimulationID a, SimulationID b, vec2 ab)
+				: A(a)
+				, B(b)
+				, AB(ab)
 			{
-				A = a;
-				B = b;
-				AB = ab;
 			}
 
 			bool operator==(const Collision& other) const
 			{
 				return (A == other.A && B == other.B) || (A == other.B && B == other.A);
 			}
-
-			SimulationID A;
-			SimulationID B;
-			vec2 AB;
 		};
 
 		struct CollisionHash
@@ -410,9 +396,9 @@ namespace WeirdEngine
 			std::size_t operator()(const Collision& s) const
 			{
 				bool flip = s.A < s.B;
-				int first = flip ? s.B : s.A;
-				int last = flip ? s.A : s.B;
-				return std::hash<int>()(first) ^ std::hash<int>()(last);
+				SimulationID first = flip ? s.B : s.A;
+				SimulationID last = flip ? s.A : s.B;
+				return std::hash<SimulationID>()(first) ^ (std::hash<SimulationID>()(last) << 1);
 			}
 		};
 
@@ -425,19 +411,21 @@ namespace WeirdEngine
 
 		struct DistanceFieldObject2D
 		{
-			Entity owner;
-			uint16_t distanceFieldId;
-			CombinationType combinationId;
-			uint16_t groupId;
+			Entity owner = INVALID_ENTITY;
+			uint16_t distanceFieldId = 0;
+			CombinationType combinationId = CombinationType::Addition;
+			uint16_t groupId = 0;
 			float parameters[12] = {0.0f};
 			float smoothRadius = 1.0f;
 
+			DistanceFieldObject2D() = default;
+
 			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
 								  float* params, float smoothRadius = 1.0f)
-				: distanceFieldId(id)
+				: owner(owner)
+				, distanceFieldId(id)
 				, combinationId(combinationId)
 				, groupId(groupId)
-				, owner(owner)
 				, smoothRadius(smoothRadius)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
@@ -543,13 +531,14 @@ namespace WeirdEngine
 		std::mutex m_readMutex;
 		std::mutex m_commandMutex;
 		std::condition_variable m_commandReady;
+		bool m_batchingCommands = false;
 		std::vector<PhysicsCommand> m_pendingCommands;
 		std::vector<PhysicsCommand> m_internalCommands;
 
 		struct ShapeUpdateCommand
 		{
-			bool isRemove;
-			Entity owner;
+			bool isRemove = false;
+			Entity owner = INVALID_ENTITY;
 			CustomShape shape;
 		};
 		std::mutex m_shapeUpdateMutex;

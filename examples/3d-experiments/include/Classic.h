@@ -1,8 +1,6 @@
 #pragma once
 
 #include <weird-engine.h>
-#include <weird-engine/math/Default2DSDFs.h>
-#include <weird-engine/math/Default3DSDFs.h>
 
 using namespace WeirdEngine;
 class ClassicScene : public Scene3D

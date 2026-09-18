@@ -11,6 +11,9 @@
 #include <imgui.h>
 #endif
 
+#include "weird-engine/components/FlyMovement.h"
+#include "weird-engine/components/FlyMovement2D.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/Profiler.h"
@@ -19,6 +22,9 @@
 #include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
 #include "weird-physics/components/SpringManager.h"
+#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/SDFRenderer.h"
+#include "weird-renderer/components/TextRenderer.h"
 
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/CameraSystem.h"

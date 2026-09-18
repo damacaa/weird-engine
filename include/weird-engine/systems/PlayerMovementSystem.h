@@ -1,6 +1,10 @@
 #pragma once
+#include "weird-engine/components/FlyMovement.h"
+#include "weird-engine/components/FlyMovement2D.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
+#include "weird-renderer/components/Camera.h"
 
 #include <algorithm>
 #include <cmath>

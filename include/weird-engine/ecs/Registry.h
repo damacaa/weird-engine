@@ -363,16 +363,3 @@ namespace WeirdEngine
 		size_t m_droppedEntityCount = 0;
 	};
 } // namespace WeirdEngine
-
-#include "weird-engine/components/FlyMovement.h"
-#include "weird-engine/components/FlyMovement2D.h"
-#include "weird-engine/components/Transform.h"
-#include "weird-physics/components/RigidBody.h"
-#include "weird-renderer/components/Button.h"
-#include "weird-renderer/components/Camera.h"
-#include "weird-renderer/components/CustomShape.h"
-#include "weird-renderer/components/InstancedMeshRenderer.h"
-#include "weird-renderer/components/LightComponent.h"
-#include "weird-renderer/components/MeshRenderer.h"
-#include "weird-renderer/components/SDFRenderer.h"
-#include "weird-renderer/components/TextRenderer.h"

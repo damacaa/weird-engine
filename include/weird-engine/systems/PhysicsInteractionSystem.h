@@ -1,6 +1,9 @@
 #pragma once
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
+#include "weird-physics/components/DistanceConstraint.h"
+#include "weird-physics/components/Spring.h"
+#include "weird-renderer/components/SDFRenderer.h"
 
 namespace WeirdEngine
 {

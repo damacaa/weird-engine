@@ -1,10 +1,8 @@
 #pragma once
 
-#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include "globals.h"
-#include "weird-engine/math/Default2DSDFs.h"
 #include <glm/gtx/norm.hpp>
 
 using namespace WeirdEngine;

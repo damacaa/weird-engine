@@ -13,12 +13,12 @@ using namespace WeirdEngine;
 
 struct Fish
 {
-	vec2 velocity;
-	float maxSpeed;
-	float separationWeight;
-	float alignmentWeight;
-	float cohesionWeight;
-	float perceptionRadius;
+	vec2 velocity = vec2(0.0f);
+	float maxSpeed = 0.0f;
+	float separationWeight = 0.0f;
+	float alignmentWeight = 0.0f;
+	float cohesionWeight = 0.0f;
+	float perceptionRadius = 0.0f;
 	float energy = 0.0f;
 	float mateCooldown = 0.0f;
 };
@@ -30,27 +30,27 @@ struct FishFood
 
 struct JellyfishComponent
 {
-	Entity bellShape;
+	Entity bellShape = INVALID_ENTITY;
 	std::vector<Entity> tentacleSegments;
-	float pulsePhase;
-	float pulseSpeed;
-	vec2 direction;
-	bool directionChanged;
+	float pulsePhase = 0.0f;
+	float pulseSpeed = 0.0f;
+	vec2 direction = vec2(0.0f);
+	bool directionChanged = false;
 };
 
 struct Seaweed
 {
-	float animationOffset;
+	float animationOffset = 0.0f;
 };
 
 struct EelComponent
 {
 	std::vector<Entity> segments;
-	float phaseOffset;
-	float speed;
-	vec2 direction;
-	float segmentSpacing;
-	int baseMaterial;
+	float phaseOffset = 0.0f;
+	float speed = 0.0f;
+	vec2 direction = vec2(0.0f);
+	float segmentSpacing = 0.0f;
+	int baseMaterial = 0;
 };
 
 class AquariumScene : public Scene2D

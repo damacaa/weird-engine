@@ -174,11 +174,16 @@ namespace WeirdEngine
 			m_internalCommands.push_back(std::move(command));
 			return;
 		}
+		bool shouldNotify = false;
 		{
 			std::lock_guard<std::mutex> lock(m_commandMutex);
+			shouldNotify = !m_batchingCommands || (command.type == PhysicsCommandType::Action);
 			m_pendingCommands.push_back(std::move(command));
 		}
-		m_commandReady.notify_one();
+		if (shouldNotify)
+		{
+			m_commandReady.notify_one();
+		}
 	}
 
 	void Simulation2D::enqueueAction(std::function<void()> action)
@@ -209,7 +214,12 @@ namespace WeirdEngine
 		std::vector<PhysicsCommand> pending;
 		{
 			std::lock_guard<std::mutex> cmdLock(m_commandMutex);
-			pending.swap(m_pendingCommands);
+			if (!m_batchingCommands ||
+				std::any_of(m_pendingCommands.begin(), m_pendingCommands.end(),
+							[](const auto& cmd) { return cmd.type == PhysicsCommandType::Action; }))
+			{
+				pending.swap(m_pendingCommands);
+			}
 		}
 		// Callback commands refer to the pre-removal IDs, so apply them before
 		// game-thread removal fences and their subsequent ID remapping.
@@ -887,14 +897,21 @@ namespace WeirdEngine
 
 			if (m_impulsesSinceLastUpdate)
 			{
-				m_impulsesSinceLastUpdate = false;
+				bool anyPendingLeft = false;
 				for (size_t i = 0; i < m_size; i++)
 				{
-					if (!m_bodyActive[i])
+					if (m_impulses[i] == vec2(0.0f))
 						continue;
+
+					if (!m_bodyActive[i])
+					{
+						anyPendingLeft = true;
+						continue;
+					}
 					m_forces[i] += m_impulses[i];
-					m_impulses[i] = vec2(0);
+					m_impulses[i] = vec2(0.0f);
 				}
+				m_impulsesSinceLastUpdate = anyPendingLeft;
 			}
 		}
 
@@ -919,33 +936,44 @@ namespace WeirdEngine
 			float velocityAlongNormal = glm::dot(normal, vRel);
 			float impulseMagnitude = 0.0f;
 
-			// Only apply impulse if objects are moving towards each other
 			if (velocityAlongNormal < 0.0f)
 			{
 				float invMassSum = m_invMass[col.A] + m_invMass[col.B];
 				if (invMassSum > 0.0f)
 				{
 					impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
-					vec2 impulse = impulseMagnitude * normal;
-
-					m_velocities[col.A] -= m_invMass[col.A] * impulse;
-					m_velocities[col.B] += m_invMass[col.B] * impulse;
 				}
 			}
 
 			// Penalty method
 			vec2 penalty = m_push * penetration * normal;
-			m_forces[col.A] -= m_mass[col.A] * penalty;
-			m_forces[col.B] += m_mass[col.B] * penalty;
 
-			// Notify collision callback
+			// Notify collision callback before applying the response so the
+			// scene can ignore specific pairs
 			if (m_collisionCallback)
 			{
 				vec2 contactPos = m_positions[col.A] + 0.5f * col.AB;
 				PhysicsCollisionEvent event{col.A, col.B, contactPos, normal, vRel, impulseMagnitude};
-				std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
-				m_collisionCallback(event, m_callbackUserData); // Why am I creating a new event and not saving it??????
+				{
+					std::lock_guard<std::recursive_mutex> dataLock(m_userDataMutex);
+					m_collisionCallback(event, m_callbackUserData);
+				}
+				if (event.ignoreCollision)
+					continue;
 			}
+
+			// Apply impulse if objects are moving towards each other
+			if (velocityAlongNormal < 0.0f && impulseMagnitude != 0.0f)
+			{
+				vec2 impulse = impulseMagnitude * normal;
+
+				m_velocities[col.A] -= m_invMass[col.A] * impulse;
+				m_velocities[col.B] += m_invMass[col.B] * impulse;
+			}
+
+			// Apply penalty
+			m_forces[col.A] -= m_mass[col.A] * penalty;
+			m_forces[col.B] += m_mass[col.B] * penalty;
 		}
 
 		// Shape collisions
@@ -1178,6 +1206,11 @@ namespace WeirdEngine
 				std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
 				m_bodyActive[id] = 0;
 				m_size = id + 1;
+				auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id);
+				if (it != m_fixedObjects.end())
+				{
+					m_fixedObjects.erase(it);
+				}
 			});
 		return id;
 	}
@@ -1186,6 +1219,21 @@ namespace WeirdEngine
 	{
 		// Capture the completed batch, never a live allocation counter on the worker.
 		enqueueCommand({PhysicsCommandType::ActivatePending, static_cast<SimulationID>(m_allocated.load())});
+	}
+
+	void Simulation2D::beginCommandBatch()
+	{
+		std::lock_guard<std::mutex> lock(m_commandMutex);
+		m_batchingCommands = true;
+	}
+
+	void Simulation2D::endCommandBatch()
+	{
+		{
+			std::lock_guard<std::mutex> lock(m_commandMutex);
+			m_batchingCommands = false;
+		}
+		m_commandReady.notify_one();
 	}
 
 	void Simulation2D::removeObject(SimulationID id)
@@ -1663,7 +1711,7 @@ namespace WeirdEngine
 			}
 		}
 
-		return -1;
+		return INVALID_SIMULATION_ID;
 	}
 
 	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
@@ -1707,7 +1755,13 @@ namespace WeirdEngine
 			m_commandReady.wait(lock,
 								[this]
 								{
-									return !m_simulating || !m_pendingCommands.empty() || !m_internalCommands.empty() ||
+									bool hasReadyPending =
+										!m_batchingCommands
+											? !m_pendingCommands.empty()
+											: std::any_of(m_pendingCommands.begin(), m_pendingCommands.end(),
+														  [](const auto& cmd)
+														  { return cmd.type == PhysicsCommandType::Action; });
+									return !m_simulating || !m_internalCommands.empty() || hasReadyPending ||
 										   m_simulationDelay >= m_fixedDeltaTime;
 								});
 		}

@@ -26,7 +26,10 @@ namespace WeirdEngine
 	void SceneManager::loadScene(const std::string& sceneName)
 	{
 		if (sceneFactories.find(sceneName) == sceneFactories.end())
+		{
+			WeirdEngine::Logger::error("loadScene failed: scene not found: " + sceneName);
 			return;
+		}
 
 		// Keep the current/target indices in sync so a later loadNextScene()
 		// cycles from the scene that is actually loaded.

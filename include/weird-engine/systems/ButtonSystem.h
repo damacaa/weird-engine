@@ -3,6 +3,8 @@
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
+#include "weird-renderer/components/Button.h"
+#include "weird-renderer/components/CustomShape.h"
 
 #include <memory>
 #include <vector>

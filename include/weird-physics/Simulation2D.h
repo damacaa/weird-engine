@@ -25,9 +25,6 @@
 
 #include "PhysicsSettings.h"
 #include "weird-physics/BodyUserData.h"
-#include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
-#include "weird-physics/components/Spring.h"
 #include "weird-physics/SimulationID.h"
 
 namespace WeirdEngine

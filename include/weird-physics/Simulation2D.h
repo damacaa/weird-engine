@@ -3,7 +3,10 @@
 #include <atomic>
 #include <bitset>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -22,13 +25,12 @@
 
 #include "PhysicsSettings.h"
 #include "weird-physics/BodyUserData.h"
+#include "weird-physics/SimulationID.h"
 
 namespace WeirdEngine
 {
 
 	using namespace ECS;
-
-	using SimulationID = std::uint32_t;
 
 	enum class PhysicsCommandType
 	{
@@ -38,15 +40,17 @@ namespace WeirdEngine
 		UnFix,
 		SetMass,
 		ActivatePending,
-		AddImpulse
+		AddImpulse,
+		Action
 	};
 
 	struct PhysicsCommand
 	{
-		PhysicsCommandType type;
-		SimulationID id;
-		vec2 vectorData;
-		float floatData;
+		PhysicsCommandType type = PhysicsCommandType::SetVelocity;
+		SimulationID id = 0;
+		vec2 vectorData = vec2(0.0f);
+		float floatData = 0.0f;
+		std::function<void()> action;
 	};
 
 	enum class CollisionState
@@ -58,13 +62,13 @@ namespace WeirdEngine
 
 	struct PhysicsCollisionEvent
 	{
-		// CollisionState state;
-		SimulationID bodyA;
-		SimulationID bodyB;
+		SimulationID bodyA = 0;
+		SimulationID bodyB = 0;
 		vec2 position = vec2(0.0f);
 		vec2 normal = vec2(0.0f);
 		vec2 relativeVelocity = vec2(0.0f);
 		float impulse = 0.0f;
+		bool ignoreCollision = false;
 	};
 
 	struct PhysicsShapeCollisionEvent
@@ -92,8 +96,8 @@ namespace WeirdEngine
 		std::vector<int> head;
 		std::vector<int> next;
 		std::vector<vec2> positions;
-		float invCellSize;
-		float radious;
+		float invCellSize = 0.0f;
+		float radious = 0.0f;
 	};
 
 	class Simulation2D
@@ -120,8 +124,13 @@ namespace WeirdEngine
 		}
 
 		// void setSize(unsigned int size);
+		// Main-thread lifecycle: creation reserves an ID and queues initialization.
+		// Activation publishes the completed batch. Removal waits for a physics
+		// boundary so the caller can immediately apply the last-slot ID remapping.
 		SimulationID generateSimulationID();
 		void activatePendingBodies();
+		void beginCommandBatch();
+		void endCommandBatch();
 		void removeObject(SimulationID id);
 		size_t getSize();
 
@@ -245,7 +254,9 @@ namespace WeirdEngine
 		// destroyed. Do not retain the pointer after the call; read or modify
 		// it through getUserData()/getUserDataAs<T>() instead. setUserData() is
 		// main-thread only; getUserData()/getUserDataAs<T>()/forEachUserData()
-		// are safe from the physics callbacks without locks.
+		// may be called from physics callbacks. forEachUserData holds the data
+		// lock throughout its callback. Raw pointers must not be retained across
+		// replacement/removal; use forEachUserData for concurrent main-thread edits.
 		void setUserData(SimulationID id, std::unique_ptr<BodyUserData> data);
 		BodyUserData* getUserData(SimulationID id);
 
@@ -260,24 +271,15 @@ namespace WeirdEngine
 		}
 
 		// Calls fn(SimulationID, BodyUserData&) for every active body that has
-		// user data attached. Lock-free from physics callbacks (the step
-		// already holds the structural mutex); serialized on the main thread.
+		// user data attached. Protected by m_userDataMutex. Main-thread callbacks
+		// must not call synchronous physics operations (removal, constraint queries
+		// or edits returning bool): those wait for the worker, which needs this lock.
 		template <typename Fn> void forEachUserData(Fn&& fn)
 		{
-			if (isPhysicsExecutionContext())
-			{
-				for (SimulationID id = 0; id < m_size; ++id)
-				{
-					if (m_userData[id])
-						fn(id, *m_userData[id]);
-				}
-				return;
-			}
-
-			std::lock_guard<std::mutex> lock(m_structuralMutex);
+			std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
 			for (SimulationID id = 0; id < m_size; ++id)
 			{
-				if (m_userData[id])
+				if (m_bodyActive[id] && m_userData[id])
 					fn(id, *m_userData[id]);
 			}
 		}
@@ -286,74 +288,74 @@ namespace WeirdEngine
 		struct DistanceConstraint
 		{
 		public:
-			DistanceConstraint()
-			{
-				A = -1;
-				B = -1;
-				Distance = 1.0f;
-				K = 0.0f;
-			}
+			SimulationID A = INVALID_SIMULATION_ID;
+			SimulationID B = INVALID_SIMULATION_ID;
+			float Distance = 1.0f;
+			float K = 0.0f;
 
-			DistanceConstraint(int a, int b, float distance, float k = 1.0f)
-			{
-				A = a;
-				B = b;
-				Distance = distance;
-				K = k;
-			}
+			DistanceConstraint() = default;
 
-			int A;
-			int B;
-			float Distance;
-			float K;
+			DistanceConstraint(SimulationID a, SimulationID b, float distance, float k = 1.0f)
+				: A(a)
+				, B(b)
+				, Distance(distance)
+				, K(k)
+			{
+			}
 		};
 
 		struct GravitationalConstraint
 		{
 		public:
-			GravitationalConstraint()
-			{
-				A = -1;
-				B = -1;
-				g = 1.0f;
-			}
+			SimulationID A = INVALID_SIMULATION_ID;
+			SimulationID B = INVALID_SIMULATION_ID;
+			float g = 1.0f;
 
-			GravitationalConstraint(int a, int b, float gravity)
-			{
-				A = a;
-				B = b;
-				g = gravity;
-			}
+			GravitationalConstraint() = default;
 
-			int A;
-			int B;
-			float g;
+			GravitationalConstraint(SimulationID a, SimulationID b, float gravity)
+				: A(a)
+				, B(b)
+				, g(gravity)
+			{
+			}
 		};
 
 		// Serialization support: read constraint data
-		const std::vector<DistanceConstraint>& getDistanceConstraints() const
+		std::vector<DistanceConstraint> getDistanceConstraints() const
 		{
-			return m_distanceConstraints;
+			std::vector<DistanceConstraint> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_distanceConstraints; });
+			return result;
 		}
-		const std::vector<GravitationalConstraint>& getGravitationalConstraints() const
+		std::vector<GravitationalConstraint> getGravitationalConstraints() const
 		{
-			return m_gravitationalConstraints;
+			std::vector<GravitationalConstraint> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_gravitationalConstraints; });
+			return result;
 		}
-		const std::vector<SimulationID>& getFixedObjects() const
+		std::vector<SimulationID> getFixedObjects() const
 		{
-			return m_fixedObjects;
+			std::vector<SimulationID> result;
+			const_cast<Simulation2D*>(this)->executeSynchronous([&] { result = m_fixedObjects; });
+			return result;
 		}
 
 		// Serialization support: load raw constraint (bypasses stiffness conversion)
-		void addRawDistanceConstraint(int a, int b, float distance, float k)
+		void addRawDistanceConstraint(SimulationID a, SimulationID b, float distance, float k)
 		{
 			if (a == b)
 				return;
-			m_distanceConstraints.emplace_back(a, b, distance, k);
+			enqueueAction([=, this] { m_distanceConstraints.emplace_back(a, b, distance, k); });
 		}
 
 	private:
 		void process();
+		void processCommands();
+		void removeBodyAtBoundary(SimulationID id);
+		void enqueueCommand(PhysicsCommand command);
+		void enqueueAction(std::function<void()> action);
+		void executeSynchronous(std::function<void()> action);
 		void checkCollisions(double& broadPhaseMs, double& narrowPhaseMs, double& shapeEvaluationMs);
 		void solveCollisionsPositionBased();
 		void applyForces();
@@ -367,28 +369,23 @@ namespace WeirdEngine
 		struct Collision
 		{
 		public:
-			Collision()
-			{
-				A = -1;
-				B = -1;
-				AB = vec2();
-			}
+			SimulationID A = 0;
+			SimulationID B = 0;
+			vec2 AB = vec2(0.0f);
+
+			Collision() = default;
 
 			Collision(SimulationID a, SimulationID b, vec2 ab)
+				: A(a)
+				, B(b)
+				, AB(ab)
 			{
-				A = a;
-				B = b;
-				AB = ab;
 			}
 
 			bool operator==(const Collision& other) const
 			{
 				return (A == other.A && B == other.B) || (A == other.B && B == other.A);
 			}
-
-			SimulationID A;
-			SimulationID B;
-			vec2 AB;
 		};
 
 		struct CollisionHash
@@ -396,9 +393,9 @@ namespace WeirdEngine
 			std::size_t operator()(const Collision& s) const
 			{
 				bool flip = s.A < s.B;
-				int first = flip ? s.B : s.A;
-				int last = flip ? s.A : s.B;
-				return std::hash<int>()(first) ^ std::hash<int>()(last);
+				SimulationID first = flip ? s.B : s.A;
+				SimulationID last = flip ? s.A : s.B;
+				return std::hash<SimulationID>()(first) ^ (std::hash<SimulationID>()(last) << 1);
 			}
 		};
 
@@ -411,18 +408,22 @@ namespace WeirdEngine
 
 		struct DistanceFieldObject2D
 		{
-			Entity owner;
-			uint16_t distanceFieldId;
-			CombinationType combinationId;
-			uint16_t groupId;
-			float parameters[11];
+			Entity owner = INVALID_ENTITY;
+			uint16_t distanceFieldId = 0;
+			CombinationType combinationId = CombinationType::Addition;
+			uint16_t groupId = 0;
+			float parameters[12] = {0.0f};
+			float smoothRadius = 1.0f;
+
+			DistanceFieldObject2D() = default;
 
 			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
-								  float* params)
-				: distanceFieldId(id)
+								  float* params, float smoothRadius = 1.0f)
+				: owner(owner)
+				, distanceFieldId(id)
 				, combinationId(combinationId)
 				, groupId(groupId)
-				, owner(owner)
+				, smoothRadius(smoothRadius)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
 			}
@@ -459,8 +460,11 @@ namespace WeirdEngine
 		vec2* m_continuousForcesWrite;
 
 		size_t m_maxSize;
+		// Physics owns initialized slots; the game thread reserves IDs.
 		size_t m_size;
-		size_t m_allocated;
+		std::atomic<size_t> m_allocated;
+		std::atomic<size_t> m_activeSize{0};
+		std::vector<uint8_t> m_bodyActive;
 
 		float* m_mass;
 		float* m_invMass;
@@ -481,6 +485,7 @@ namespace WeirdEngine
 		// Shapes
 		std::unordered_map<Entity, uint16_t> m_entityToObjectsIdx;
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
+		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfsSnapshot; // sim-thread-only copy
 		std::vector<DistanceFieldObject2D> m_objects;
 
 		std::vector<uint8_t> m_collisionMap;
@@ -519,15 +524,18 @@ namespace WeirdEngine
 		std::mutex m_fixMutex;
 		std::mutex m_externalForcesMutex;
 		std::mutex m_structuralMutex;
+		mutable std::recursive_mutex m_userDataMutex;
 		std::mutex m_readMutex;
 		std::mutex m_commandMutex;
+		std::condition_variable m_commandReady;
+		bool m_batchingCommands = false;
 		std::vector<PhysicsCommand> m_pendingCommands;
 		std::vector<PhysicsCommand> m_internalCommands;
 
 		struct ShapeUpdateCommand
 		{
-			bool isRemove;
-			Entity owner;
+			bool isRemove = false;
+			Entity owner = INVALID_ENTITY;
 			CustomShape shape;
 		};
 		std::mutex m_shapeUpdateMutex;

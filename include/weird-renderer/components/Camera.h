@@ -10,19 +10,9 @@ namespace WeirdEngine
 	{
 		struct Camera
 		{
-			WeirdRenderer::Camera camera;
+			WeirdRenderer::Camera camera{vec3(0.0f)};
 			float nearPlane = 0.1f;
 			float farPlane = 300.0f;
-
-			Camera()
-				: camera(vec3(0.0f))
-			{
-			}
-
-			Camera(vec3 v)
-				: camera(v)
-			{
-			}
 
 			static glm::vec2 screenPositionToWorldPosition2D(Transform cameraTransform, vec2 screenPosition)
 			{

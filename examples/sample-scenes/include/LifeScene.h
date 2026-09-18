@@ -1,11 +1,8 @@
 #pragma once
 
-#include "weird-audio/SdfSong.h"
 #include <weird-engine.h>
 
 #include <filesystem>
-
-#include "weird-physics/components/GlobalPhysicsSettings.h"
 #include <vector>
 
 #include "globals.h"

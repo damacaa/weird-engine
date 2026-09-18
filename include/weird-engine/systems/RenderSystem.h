@@ -1,8 +1,10 @@
 #pragma once
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/ResourceManager.h"
 #include "weird-renderer/components/Light2DComponent.h"
 #include "weird-renderer/components/Light3DComponent.h"
+#include "weird-renderer/components/MeshRenderer.h"
 #include "weird-renderer/resources/DrawCommand.h"
 #include "weird-renderer/scene/Light.h"
 #include <glm/gtc/constants.hpp>

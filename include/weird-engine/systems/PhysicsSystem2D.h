@@ -40,6 +40,7 @@ namespace WeirdEngine
 						if (registry.isComponentDirty(rb))
 						{
 							simulation.setVelocity(rb.simulationId, rb.velocity);
+							simulation.setMass(rb.simulationId, rb.mass);
 
 							if (rb.isFixed)
 								simulation.fix(rb.simulationId);

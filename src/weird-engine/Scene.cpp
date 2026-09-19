@@ -681,6 +681,7 @@ namespace WeirdEngine
 		, m_resources{scene.m_resourceManager, ""}
 		, m_debug(scene.m_debugFly, scene.m_debugInput)
 		, m_input()
+		, m_random()
 	{
 	}
 

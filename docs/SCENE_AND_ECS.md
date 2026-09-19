@@ -285,6 +285,7 @@ The `ServiceProvider` parameter provides controlled access to engine subsystems.
 | Resources | `services.resources()` | Resolve asset paths and file storage operations |
 | Scene Control | `services.sceneControl()` | Request scene transitions |
 | Debug | `services.debug()` | Toggle fly camera and input debugging options |
+| Random | `services.random()` | Deterministic and procedural random number generation |
 
 ---
 

@@ -2,7 +2,6 @@
 #pragma once
 #include "weird-engine/ecs/Registry.h"
 #include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
 #include "weird-physics/Simulation2D.h"
 
@@ -16,7 +15,6 @@ namespace WeirdEngine
 
 			inline void init(Registry& registry, Simulation2D& simulation)
 			{
-				registry.registerComponent<GlobalPhysicsSettings>();
 				registry.registerComponent<Spring>();
 				registry.registerComponent<DistanceConstraint>();
 			}
@@ -72,17 +70,6 @@ namespace WeirdEngine
 						{
 							simulation.updateShape(entity, shape);
 							registry.setComponentDirty(shape, false);
-						}
-					});
-
-				registry.forEach<GlobalPhysicsSettings>(
-					[&](Entity entity, GlobalPhysicsSettings& settings)
-					{
-						if (registry.isComponentDirty(settings))
-						{
-							simulation.setGravity(settings.gravity);
-							simulation.setDamping(settings.damping);
-							registry.setComponentDirty(settings, false);
 						}
 					});
 

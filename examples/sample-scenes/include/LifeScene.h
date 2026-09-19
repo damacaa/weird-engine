@@ -45,11 +45,8 @@ private:
 		// Initialize audio with scene-defined life song
 		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
-		Entity globalSettingsEnt = registry.createEntity();
-		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
-		settings.gravity = 0.0f;
-		settings.damping = 0.1f;
-		registry.setComponentDirty(settings);
+		services.physics().setGravity(0.0f);
+		services.physics().setDamping(0.1f);
 
 		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
 		{

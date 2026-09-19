@@ -97,11 +97,8 @@ private:
 		// Initialize audio with scene-defined procedural SDF music
 		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
 
-		Entity globalSettingsEnt = registry.createEntity();
-		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
-		settings.gravity = -10.0f;
-		settings.damping = 0.025f;
-		registry.setComponentDirty(settings);
+		services.physics().setGravity(-10.0f);
+		services.physics().setDamping(0.025f);
 
 		auto& seaweedDark = services.materials2D().createMaterial("seaweed_dark");
 		seaweedDark.color = ColorPalette::Green;

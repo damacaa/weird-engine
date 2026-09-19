@@ -17,7 +17,6 @@
 
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
 #include "weird-physics/components/Spring.h"
 #include "weird-physics/SimulationID.h"
 #include <glm/gtx/norm.hpp>
@@ -161,11 +160,8 @@ private:
 		services.render().getBackground().type = BackgroundType::Solid;
 
 		// Request neutral simulation behavior for this editor scene.
-		Entity globalSettingsEnt = m_tempRegistry->createEntity();
-		auto& settings = m_tempRegistry->addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
-		settings.gravity = 0.0f;
-		settings.damping = 1.0f;
-		m_tempRegistry->setComponentDirty(settings);
+		services.physics().setGravity(0.0f);
+		services.physics().setDamping(1.0f);
 
 		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
 		{
@@ -1300,24 +1296,21 @@ private:
 
 	void applyGravitySettings()
 	{
-		auto globalSettingsArray = m_tempRegistry->getComponentArray<GlobalPhysicsSettings>();
-		if (globalSettingsArray->getSize() == 0)
+		if (m_tempSvc == nullptr)
 		{
 			return;
 		}
 
-		auto& settings = globalSettingsArray->getDataAtIdx(0);
 		if (m_gravityEnabled)
 		{
-			settings.gravity = -10.0f;
-			settings.damping = 0.01f;
+			m_tempSvc->physics().setGravity(-10.0f);
+			m_tempSvc->physics().setDamping(0.01f);
 		}
 		else
 		{
-			settings.gravity = 0.0f;
-			settings.damping = 1.0f;
+			m_tempSvc->physics().setGravity(0.0f);
+			m_tempSvc->physics().setDamping(1.0f);
 		}
-		m_tempRegistry->setComponentDirty(settings);
 	}
 
 	void applyLinkDistance(DistanceLink& link)

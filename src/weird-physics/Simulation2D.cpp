@@ -77,6 +77,7 @@ namespace WeirdEngine
 		, m_diameterSquared(m_diameter * m_diameter)
 		, m_radious(m_diameter / 2.0f)
 		, m_bodyActive(size, 0)
+		, m_collisionEnabled(size, 1)
 		, m_collisionMap(size)
 		, m_head(8191, -1)
 	{
@@ -291,6 +292,23 @@ namespace WeirdEngine
 						m_impulses[cmd.id] += cmd.vectorData * (cmd.floatData != 0.0f ? m_mass[cmd.id] : 1.0f);
 						break;
 					}
+					case PhysicsCommandType::EnableCollision:
+					{
+						if (cmd.id < m_allocated)
+						{
+							m_collisionEnabled[cmd.id] = 1;
+						}
+						break;
+					}
+					case PhysicsCommandType::DisableCollision:
+					{
+						if (cmd.id < m_allocated)
+						{
+							m_collisionEnabled[cmd.id] = 0;
+							m_collisionMap[cmd.id] = false;
+						}
+						break;
+					}
 					default:
 						break;
 				}
@@ -496,7 +514,7 @@ namespace WeirdEngine
 		// Insert all particles into the spatial grid
 		for (int i = 0; i < m_size; i++)
 		{
-			if (!m_bodyActive[i])
+			if (!m_bodyActive[i] || !m_collisionEnabled[i])
 				continue;
 			// Calculate which grid cell the particle is in
 			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
@@ -539,7 +557,7 @@ namespace WeirdEngine
 		// Check for collisions using the grid
 		for (int i = 0; i < m_size; i++)
 		{
-			if (!m_bodyActive[i])
+			if (!m_bodyActive[i] || !m_collisionEnabled[i])
 				continue;
 			int gx = static_cast<int>(std::floor(m_positions[i].x * invCellSize));
 			int gy = static_cast<int>(std::floor(m_positions[i].y * invCellSize));
@@ -580,7 +598,7 @@ namespace WeirdEngine
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
-			if (!m_bodyActive[i])
+			if (!m_bodyActive[i] || !m_collisionEnabled[i])
 				continue;
 			vec2& p = m_positions[i];
 
@@ -919,6 +937,8 @@ namespace WeirdEngine
 		for (auto it = m_collisions.begin(); it != m_collisions.end(); ++it)
 		{
 			Collision col = *it;
+			if (!m_collisionEnabled[col.A] || !m_collisionEnabled[col.B])
+				continue;
 
 			float lengthSquared = glm::length2(col.AB);
 			vec2 normal = lengthSquared > 0.0f ? col.AB / std::sqrt(lengthSquared) : vec2(1.0f, 0.0f);
@@ -979,6 +999,9 @@ namespace WeirdEngine
 		// Shape collisions
 		for (auto& collisionEvent : m_collisionQueue)
 		{
+			if (!m_collisionEnabled[collisionEvent.body])
+				continue;
+
 			// Send event
 			if (m_shapeCollisionCallback)
 			{
@@ -1201,6 +1224,7 @@ namespace WeirdEngine
 				m_mass[id] = 1.0f;
 				m_invMass[id] = 1.0f;
 				m_collisionMap[id] = false;
+				m_collisionEnabled[id] = 1;
 				m_positionsAux[id] = vec2(0.0f);
 				m_velocitiesAux[id] = vec2(0.0f);
 				std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
@@ -1257,6 +1281,8 @@ namespace WeirdEngine
 		auto fromId = m_size - 1;
 		m_bodyActive[toId] = m_bodyActive[fromId];
 		m_bodyActive[fromId] = 0;
+		m_collisionEnabled[toId] = m_collisionEnabled[fromId];
+		m_collisionEnabled[fromId] = 1;
 
 		if (toId != fromId)
 		{
@@ -1508,6 +1534,38 @@ namespace WeirdEngine
 
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
 		return std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) != m_fixedObjects.end();
+	}
+
+	void Simulation2D::enableCollision(SimulationID id)
+	{
+		enqueueCommand({PhysicsCommandType::EnableCollision, id});
+	}
+
+	void Simulation2D::disableCollision(SimulationID id)
+	{
+		enqueueCommand({PhysicsCommandType::DisableCollision, id});
+	}
+
+	void Simulation2D::setCollisionEnabled(SimulationID id, bool enabled)
+	{
+		if (enabled)
+			enableCollision(id);
+		else
+			disableCollision(id);
+	}
+
+	bool Simulation2D::isCollisionEnabled(SimulationID id)
+	{
+		if (!isPhysicsExecutionContext())
+		{
+			bool result = false;
+			executeSynchronous([&] { result = isCollisionEnabled(id); });
+			return result;
+		}
+
+		if (id >= m_allocated)
+			return false;
+		return m_collisionEnabled[id] != 0;
 	}
 
 	// Safe from any thread (main thread, or physics callbacks while the

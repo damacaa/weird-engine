@@ -18,5 +18,6 @@ namespace WeirdEngine
 		glm::vec2 pendingImpulseForce = glm::vec2(0.0f, 0.0f);
 		glm::vec2 pendingContinuousForce = glm::vec2(0.0f, 0.0f);
 		bool isFixed = false;
+		bool enableCollision = true;
 	};
 } // namespace WeirdEngine

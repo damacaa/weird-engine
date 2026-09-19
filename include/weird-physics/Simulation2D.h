@@ -41,7 +41,9 @@ namespace WeirdEngine
 		SetMass,
 		ActivatePending,
 		AddImpulse,
-		Action
+		Action,
+		EnableCollision,
+		DisableCollision
 	};
 
 	struct PhysicsCommand
@@ -151,6 +153,11 @@ namespace WeirdEngine
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
 		bool isFixed(SimulationID id);
+
+		void enableCollision(SimulationID id);
+		void disableCollision(SimulationID id);
+		void setCollisionEnabled(SimulationID id, bool enabled);
+		bool isCollisionEnabled(SimulationID id);
 
 		// Performance Stats
 		struct PerformanceStats
@@ -465,6 +472,7 @@ namespace WeirdEngine
 		std::atomic<size_t> m_allocated;
 		std::atomic<size_t> m_activeSize{0};
 		std::vector<uint8_t> m_bodyActive;
+		std::vector<uint8_t> m_collisionEnabled;
 
 		float* m_mass;
 		float* m_invMass;

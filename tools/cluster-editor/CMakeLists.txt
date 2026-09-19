@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # ==============================================================================
 # 1. Project Configuration
 # ==============================================================================
-project(MoleculeEditorTool)
+project(WeirdClusterEditor)
 
 # Path to the WeirdEngine directory. Change this depending on where your project is located.
 # Examples inside weird-engine use "../../"
@@ -142,7 +142,7 @@ if(DEPLOY_STANDALONE)
 
     if(BUILD_WEB)
         # For web builds, generate the HTML shell from the shared template
-        set(WEIRD_WEB_TITLE "MoleculeEditor")
+        set(WEIRD_WEB_TITLE "ClusterEditor")
         configure_file(
             "${WEIRD_ENGINE_REAL_SOURCE}/cmake/web/index.html"
             "${CMAKE_CURRENT_BINARY_DIR}/web/index.html"

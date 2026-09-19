@@ -93,10 +93,8 @@ private:
 
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
 
-		Entity globalSettingsEnt = registry.createEntity();
-		auto& settings = registry.addComponent<GlobalPhysicsSettings>(globalSettingsEnt);
-		settings.gravity = -10.0f;
-		registry.setComponentDirty(settings);
+		services.physics().setGravity(-10.0f);
+		services.physics().setDamping(0.05f);
 	}
 
 	void onUpdate(Registry& registry, ServiceProvider& services) override

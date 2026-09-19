@@ -3,7 +3,7 @@
 
 #include "weird-engine/components/Transform.h"
 #include "weird-physics/components/DistanceConstraint.h"
-#include "weird-physics/components/GlobalPhysicsSettings.h"
+
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
 #include "weird-renderer/components/CustomShape.h"
@@ -144,21 +144,6 @@ namespace WeirdEngine
 				auto& ej = collectEntity(e);
 				ej["textRenderer"] = {
 					{"text", tr.text}, {"material", tr.material}, {"width", tr.width}, {"height", tr.height}};
-			}
-
-			// GlobalPhysicsSettings
-			auto globalSettingsArray = scene.m_registry.getComponentArray<GlobalPhysicsSettings>();
-			if (globalSettingsArray)
-			{
-				for (size_t i = 0; i < globalSettingsArray->getSize(); i++)
-				{
-					Entity e = globalSettingsArray->getEntityAtIdx(i);
-					if (isBlacklisted(e))
-						continue;
-					auto& gs = globalSettingsArray->getDataAtIdx(i);
-					auto& ej = collectEntity(e);
-					ej["globalPhysicsSettings"] = {{"gravity", gs.gravity}, {"damping", gs.damping}};
-				}
 			}
 
 			// Save entities in order of their ID
@@ -378,15 +363,6 @@ namespace WeirdEngine
 					tr.width = trj.value("width", 0.0f);
 					tr.height = trj.value("height", 0.0f);
 					scene.m_registry.getComponentArray<TextRenderer>()->setEntityDirty(entity, true);
-				}
-
-				if (ej.contains("globalPhysicsSettings"))
-				{
-					auto& gs = scene.m_registry.addComponent<GlobalPhysicsSettings>(entity);
-					const auto& gsj = ej["globalPhysicsSettings"];
-					gs.gravity = gsj.value("gravity", 0.0f);
-					gs.damping = gsj.value("damping", 0.05f);
-					scene.m_registry.getComponentArray<GlobalPhysicsSettings>()->setEntityDirty(entity, true);
 				}
 
 				if (ej.contains("rigidBody2D"))

@@ -108,9 +108,29 @@ namespace WeirdEngine
 			simulation.setGravity(gravity);
 		}
 
+		float getGravity() const
+		{
+			return simulation.getGravity();
+		}
+
 		void setDamping(float damping)
 		{
 			simulation.setDamping(damping);
+		}
+
+		float getDamping() const
+		{
+			return simulation.getDamping();
+		}
+
+		void setFriction(float friction)
+		{
+			simulation.setFriction(friction);
+		}
+
+		float getFriction() const
+		{
+			return simulation.getFriction();
 		}
 
 		void pause()

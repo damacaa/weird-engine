@@ -1242,6 +1242,12 @@ namespace WeirdEngine
 				m_simulation2D.setDamping(damping);
 			}
 
+			float friction = m_simulation2D.getFriction();
+			if (ImGui::DragFloat("Contact friction", &friction, 0.001f, 0.0f, 2.0f, "%.3f"))
+			{
+				m_simulation2D.setFriction(friction);
+			}
+
 			ImGui::EndTabItem();
 		}
 #endif

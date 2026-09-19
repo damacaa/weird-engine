@@ -673,7 +673,8 @@ namespace WeirdEngine
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
 		, m_materials2D{scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId}
 		, m_materials3D{scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId}
-		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry)
+		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,
+				  &scene.m_serializationBlacklist)
 		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
@@ -757,6 +758,10 @@ namespace WeirdEngine
 
 		if (m_visualizationEntity != INVALID_ENTITY && registry)
 		{
+			if (serializationBlacklist)
+			{
+				serializationBlacklist->erase(m_visualizationEntity);
+			}
 			registry->destroyEntity(m_visualizationEntity);
 			m_visualizationEntity = INVALID_ENTITY;
 		}
@@ -803,6 +808,11 @@ namespace WeirdEngine
 		std::copy_n(song->getParameters(), 8, config.variables.data);
 
 		m_visualizationEntity = shapes->addUIShape(config);
+
+		if (serializationBlacklist)
+		{
+			serializationBlacklist->insert(m_visualizationEntity);
+		}
 
 		for (size_t i = 0; i < 8; ++i)
 		{

@@ -670,15 +670,17 @@ namespace WeirdEngine
 		float& collisionSoundVolume; // 1.0 = 100%, shared with Scene's real impacts
 		ShapeService* shapes = nullptr;
 		Registry* registry = nullptr;
+		std::unordered_set<Entity>* serializationBlacklist = nullptr;
 		Entity m_visualizationEntity = INVALID_ENTITY;
 		float m_lastSyncedParams[8] = {0.0f};
 
 		AudioService(AudioRingBuffer<WeirdAudio::SimpleAudioRequest, SOUND_QUEUE_SIZE>& q, float& csv,
-					 ShapeService* s = nullptr, Registry* r = nullptr)
+					 ShapeService* s = nullptr, Registry* r = nullptr, std::unordered_set<Entity>* blacklist = nullptr)
 			: queue(q)
 			, collisionSoundVolume(csv)
 			, shapes(s)
 			, registry(r)
+			, serializationBlacklist(blacklist)
 		{
 		}
 
@@ -821,6 +823,16 @@ namespace WeirdEngine
 		void blacklistEntity(Entity entity)
 		{
 			blacklist.insert(entity);
+		}
+
+		void unblacklistEntity(Entity entity)
+		{
+			blacklist.erase(entity);
+		}
+
+		bool isBlacklisted(Entity entity) const
+		{
+			return blacklist.find(entity) != blacklist.end();
 		}
 
 		// Set the path to a .weird file to load when the scene starts

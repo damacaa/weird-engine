@@ -39,7 +39,7 @@ private:
 
 	RenderPlane m_renderPlane;
 
-	void onCreate(Registry& registry, ServiceProvider& services) override
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
 
 		// Base shaders
@@ -184,6 +184,8 @@ private:
 		m_brightPassTexture = new Texture(Display::rWidth, Display::rHeight, Texture::TextureType::Data);
 		m_bloomRenderTarget = new RenderTarget(false);
 		m_bloomRenderTarget->bindColorTextureToFrameBuffer(*m_brightPassTexture);
+
+		services.debug().setDebugFly(false);
 	}
 
 	void onDestroy(Registry& registry, ServiceProvider& services) override
@@ -224,12 +226,6 @@ private:
 		delete m_bloomRenderTarget;
 
 		m_renderPlane.free();
-	}
-
-	// Inherited via Scene
-	void onStart(Registry& registry, ServiceProvider& services) override
-	{
-		services.debug().setDebugFly(false);
 	}
 
 	float m_time = 3.1416f;

@@ -146,7 +146,7 @@ struct State
 	float timer = 0.0f;
 };
 
-void onCreateSystem(Registry& registry, ServiceProvider& services)
+void stateInitSystem(Registry& registry, ServiceProvider& services)
 {
 	Entity stateEntity = registry.createEntity();
 	registry.addComponent<State>(stateEntity);
@@ -172,7 +172,6 @@ Register systems inside your scene constructor:
 ```cpp
 MyScene()
 {
-	addCreateSystem(onCreateSystem);
 	addStartSystem(onStartSystem);
 	addUpdateSystem(movementSystem);
 	addUpdateSystem(combatSystem);

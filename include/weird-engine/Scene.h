@@ -101,10 +101,6 @@ namespace WeirdEngine
 		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
 
 		// ---- System Dispatcher (Register systems to be called automatically)
-		void addCreateSystem(CoreSystem system)
-		{
-			m_createSystems.push_back(std::move(system));
-		}
 		void addStartSystem(CoreSystem system)
 		{
 			m_startSystems.push_back(std::move(system));
@@ -136,7 +132,6 @@ namespace WeirdEngine
 		Scene(RenderMode mode);
 
 		// ---- Lifecycle callbacks
-		virtual void onCreate(Registry& registry, ServiceProvider& services) {};
 		virtual void onStart(Registry& registry, ServiceProvider& services) {}
 		virtual void onUpdate(Registry& registry, ServiceProvider& services) {};
 		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
@@ -351,7 +346,6 @@ namespace WeirdEngine
 		std::unordered_map<Entity, std::string> m_entityToTag;
 
 		// ---- Registered Systems
-		std::vector<CoreSystem> m_createSystems;
 		std::vector<CoreSystem> m_startSystems;
 		std::vector<CoreSystem> m_updateSystems;
 		std::vector<CoreSystem> m_destroySystems;

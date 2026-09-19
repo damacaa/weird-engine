@@ -27,9 +27,9 @@ using namespace WeirdEngine;
 // Systems never touch Scene internals: everything they need is either on the
 // Registry& or on the ServiceProvider& passed to the callback. Even the
 // scene's own state lives in the ECS (see State below): a single "state"
-// entity owns it, and systems reach it through the component array.
+// entity owns it, and systems reach it through its tag.
 //
-// Registered as systems: onCreate, onStart, onUpdate (4 systems),
+// Registered as systems: onStart (state init + 4 systems),
 // onImGuiRender, onEntityCollision, onEntityShapeCollision, onDestroy.
 // Inlined overrides: onRender and the physics-thread callbacks
 // (onPhysicsStep, onPhysicsRigidBodyCollision, onPhysicsShapeCollision).
@@ -65,7 +65,7 @@ namespace ServiceShowcase
 	};
 
 	// Scene state as an ECS component: attached to a single "state" entity
-	// created by onCreateSystem. This is the ECS-native way for systems to
+	// created by stateInitSystem. This is the ECS-native way for systems to
 	// share state instead of passing a struct around.
 	struct State
 	{
@@ -89,12 +89,11 @@ namespace ServiceShowcase
 		int shapeCollisions = 0;
 	};
 
-	// State entity lookup: there is exactly one State component in the scene
-	// (created by onCreateSystem), so it always lives at index 0 of the State
-	// component array.
+	// State entity lookup by tag: there is exactly one "state" entity in the
+	// scene, created by stateInitSystem.
 	inline State& getState(Registry& registry, ServiceProvider& services)
 	{
-		return registry.getComponentArray<State>()->getDataAtIdx(0);
+		return registry.getComponent<State>(services.tags().getEntityByTag("state"));
 	}
 
 	inline Entity spawnBall(Registry& registry, ServiceProvider& services, vec2 position)
@@ -113,11 +112,10 @@ namespace ServiceShowcase
 		return entity;
 	}
 
-	// ---------------------------------------------------------------- onCreate
-	// Runs after the ECS, materials and camera exist, before any scene file is
-	// loaded and before onStart. Creates the "state" entity that owns the
-	// scene's State component.
-	inline void onCreateSystem(Registry& registry, ServiceProvider& services)
+	// ----------------------------------------------------------- onStart: state
+	// Registered as the first start system: creates the "state" entity that
+	// owns the scene's State component before the systems that read it run.
+	inline void stateInitSystem(Registry& registry, ServiceProvider& services)
 	{
 		Entity stateEntity = registry.createEntity();
 		registry.addComponent<State>(stateEntity);
@@ -126,7 +124,7 @@ namespace ServiceShowcase
 
 		State& state = getState(registry, services);
 		state.initialTime = services.time().time();
-		std::cout << "[ServiceShowcase] onCreate at simulation time " << state.initialTime << "s" << std::endl;
+		std::cout << "[ServiceShowcase] state initialized at simulation time " << state.initialTime << "s" << std::endl;
 	}
 
 	inline std::shared_ptr<WeirdAudio::SdfSong> createSceneSong()
@@ -494,7 +492,7 @@ class ServiceShowcaseScene : public Scene2D
 public:
 	ServiceShowcaseScene()
 	{
-		addCreateSystem(ServiceShowcase::onCreateSystem);
+		addStartSystem(ServiceShowcase::stateInitSystem);
 		addStartSystem(ServiceShowcase::onStartSystem);
 
 		// Multiple systems for the same stage run sequentially!

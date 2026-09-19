@@ -130,7 +130,8 @@ namespace WeirdEngine
 									 {"physicsPosition", {simPos.x, simPos.y}},
 									 {"velocity", {rb.velocity.x, rb.velocity.y}},
 									 {"mass", rb.mass},
-									 {"isFixed", rb.isFixed}};
+									 {"isFixed", rb.isFixed},
+									 {"enableCollision", rb.enableCollision}};
 			}
 
 			// TextRenderer
@@ -403,8 +404,12 @@ namespace WeirdEngine
 					{
 						rb.isFixed = rbj.value("isFixed", false);
 					}
+					if (rbj.contains("enableCollision"))
+					{
+						rb.enableCollision = rbj.value("enableCollision", true);
+					}
 					scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(
-						entity, true); // Sync velocity, mass, and fixed state to simulation
+						entity, true); // Sync velocity, mass, fixed, and collision state to simulation
 
 					if (rbj.contains("physicsPosition"))
 					{

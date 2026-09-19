@@ -47,6 +47,8 @@ namespace WeirdEngine
 							else
 								simulation.unFix(rb.simulationId);
 
+							simulation.setCollisionEnabled(rb.simulationId, rb.enableCollision);
+
 							registry.setComponentDirty(rb, false);
 						}
 

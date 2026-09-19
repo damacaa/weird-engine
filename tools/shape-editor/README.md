@@ -1,16 +1,16 @@
-# SDF Node Editor
+# Shape Editor
 
-An interactive, visual node-based editor for composing, testing, and visualizing Signed Distance Fields (SDFs) in **WeirdEngine**. The editor compiles node graphs directly into the engine's mathematical expression tree (`Expr` / `Vec2Expr` AST), renders live 2D/3D previews, and couples shape geometries with real-time procedural music synthesis via `SdfMusicEngine`.
+An interactive, visual node-based editor for composing, testing, and visualizing shapes and Signed Distance Fields (SDFs) in **WeirdEngine**. The editor compiles node graphs directly into the engine's mathematical expression tree (`Expr` / `Vec2Expr` AST), renders live 2D/3D previews, and couples shape geometries with real-time procedural music synthesis via `SdfMusicEngine`.
 
 ---
 
 ## Architecture & Project Structure
 
-The tool is located in `tools/sdf-node-editor/` and is structured as follows:
+The tool is located in `tools/shape-editor/` and is structured as follows:
 
 ```
-tools/sdf-node-editor/
-├── CMakeLists.txt              # Target build configuration (produces WeirdSdfNodeEditor)
+tools/shape-editor/
+├── CMakeLists.txt              # Target build configuration (produces WeirdShapeEditor)
 ├── README.md                   # This documentation
 ├── assets/                     # Runtime assets (fonts, icons, presets)
 ├── imnodes/                    # Vendored immediate-mode node editor library for ImGui
@@ -20,7 +20,7 @@ tools/sdf-node-editor/
 ├── include/
 │   ├── NodeRegistry.h          # Node definitions, pin types, categories, and evaluation callbacks
 │   ├── NodeGraph.h             # Graph data model, DAG topological evaluation, serialization, code gen
-│   └── SdfNodeEditorScene.h    # WeirdEngine Scene2D implementation (UI layout, canvas, audio sync)
+│   └── ShapeEditorScene.h      # WeirdEngine Scene2D implementation (UI layout, canvas, audio sync)
 └── src/
     └── main.cpp                # Application entry point
 ```
@@ -57,7 +57,7 @@ tools/sdf-node-editor/
     * *CSG Ring*: Hollow shape demonstrating smooth subtraction.
     * *Basic Circle*: Minimal starter shape.
 
-* **`include/SdfNodeEditorScene.h`**:
+* **`include/ShapeEditorScene.h`**:
   * Inherits from `WeirdEngine::Scene2D`.
   * **Canvas**: Hosts the ImNodes graph canvas with zoom, pan, minimap, right-click context menu, and link creation/deletion.
   * **Live Viewport**: Transparent viewport cutout displaying the real-time raymarched/rasterized shape in WeirdEngine.
@@ -71,7 +71,7 @@ tools/sdf-node-editor/
 
 * **`src/main.cpp`**:
   * Configures `EngineSettings` (1280×800 window, VSync, dark styling).
-  * Registers `SdfNodeEditorScene` with `SceneManager` and starts the engine loop.
+  * Registers `ShapeEditorScene` with `SceneManager` and starts the engine loop.
 
 ---
 
@@ -126,18 +126,18 @@ The right-hand inspector generates live code snippets ready to copy into game pr
 
 ## Building and Running
 
-Ensure `WEIRD_ENGINE_BUILD_EXAMPLES=ON` is enabled in your CMake configuration:
+Ensure `WEIRD_ENGINE_BUILD_TOOLS=ON` is enabled in your CMake configuration:
 
 ```bash
 # Configure
-cmake -B build -DWEIRD_ENGINE_BUILD_EXAMPLES=ON
+cmake -B build -DWEIRD_ENGINE_BUILD_TOOLS=ON
 
-# Build the node editor target
-cmake --build build --target WeirdSdfNodeEditor
+# Build the shape editor target
+cmake --build build --target WeirdShapeEditor
 
 # Run on Linux / macOS
-./build/tools/sdf-node-editor/WeirdSdfNodeEditor
+./build/tools/shape-editor/WeirdShapeEditor
 
 # Run on Windows
-.\build\tools\sdf-node-editor\Debug\WeirdSdfNodeEditor.exe
+.\build\tools\shape-editor\Debug\WeirdShapeEditor.exe
 ```

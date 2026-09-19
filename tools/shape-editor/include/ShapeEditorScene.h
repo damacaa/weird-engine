@@ -24,11 +24,11 @@
 
 namespace WeirdEngine::Editor
 {
-	class SdfNodeEditorScene : public Scene2D
+	class ShapeEditorScene : public Scene2D
 	{
 	public:
-		SdfNodeEditorScene() = default;
-		~SdfNodeEditorScene() override = default;
+		ShapeEditorScene() = default;
+		~ShapeEditorScene() override = default;
 
 	protected:
 		void onCreate(Registry& registry, ServiceProvider& services) override

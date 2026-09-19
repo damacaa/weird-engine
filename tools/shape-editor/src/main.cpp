@@ -1,7 +1,7 @@
 #include <iostream>
 #include <weird-engine.h>
 
-#include "SdfNodeEditorScene.h"
+#include "ShapeEditorScene.h"
 
 using namespace WeirdEngine;
 using namespace WeirdEngine::Editor;
@@ -9,13 +9,13 @@ using namespace WeirdEngine::Editor;
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
-	sceneManager.registerScene<SdfNodeEditorScene>("sdf-node-editor");
+	sceneManager.registerScene<ShapeEditorScene>("shape-editor");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 1280;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
-	displaySettings.windowTitle = "Weird Engine - SDF Node Editor";
+	displaySettings.windowTitle = "Weird Engine - Shape Editor";
 	displaySettings.worldSmoothFactor = 4.0f;
 
 	PhysicsSettings physicsSettings{};

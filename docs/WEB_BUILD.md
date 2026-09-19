@@ -116,12 +116,12 @@ emcmake cmake .. \
   -DCMAKE_C_FLAGS="-pthread" \
   -DCMAKE_CXX_FLAGS="-pthread" \
   -DCMAKE_EXECUTABLE_SUFFIX=".html" \
-  -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file $PWD/../tools/sdf-node-editor/assets@/assets --preload-file $PWD/../src/weird-renderer/fonts@/fonts --preload-file $PWD/../src/weird-renderer/shaders@/shaders"
+  -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file $PWD/../tools/shape-editor/assets@/assets --preload-file $PWD/../src/weird-renderer/fonts@/fonts --preload-file $PWD/../src/weird-renderer/shaders@/shaders"
 
-emmake make WeirdSdfNodeEditor -j"$(nproc)"
+emmake make WeirdShapeEditor -j"$(nproc)"
 ```
 
-Output: `build-web/tools/sdf-node-editor/index.{html,js,wasm,data}`.
+Output: `build-web/tools/shape-editor/index.{html,js,wasm,data}`.
 
 ---
 

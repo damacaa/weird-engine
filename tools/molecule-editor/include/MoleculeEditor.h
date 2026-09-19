@@ -158,6 +158,8 @@ private:
 		g_cameraPositon.y = 0.0f;
 		m_tempRegistry->getComponent<Transform>(m_tempSvc->render().getCameraEntity()).position = g_cameraPositon;
 
+		services.render().getBackground().type = BackgroundType::Solid;
+
 		// Request neutral simulation behavior for this editor scene.
 		Entity globalSettingsEnt = m_tempRegistry->createEntity();
 		auto& settings = m_tempRegistry->addComponent<GlobalPhysicsSettings>(globalSettingsEnt);

@@ -25,10 +25,10 @@ extern WeirdEngine::vec3 g_cameraPositon;
 
 using namespace WeirdEngine;
 
-class MoleculeEditor : public Scene2D
+class ClusterEditor : public Scene2D
 {
 public:
-	MoleculeEditor() {}
+	ClusterEditor() {}
 
 	Registry* m_tempRegistry = nullptr;
 	ServiceProvider* m_tempSvc = nullptr;
@@ -103,7 +103,7 @@ private:
 	ToolMode m_toolMode = ToolMode::Add;
 
 	// ImGui editor UI state
-	char m_fileNameBuf[128] = "molecule";
+	char m_fileNameBuf[128] = "cluster";
 	char m_tagBuf[128] = {};
 	Entity m_tagBufferEntity = static_cast<Entity>(-1);
 	float m_menuBarHeight = 0.0f;
@@ -115,7 +115,7 @@ private:
 	std::mutex m_fileMutex;
 	std::string m_pendingLoadPath;
 	std::string m_pendingSavePath;
-	bool m_pendingNewMolecule = false;
+	bool m_pendingNewCluster = false;
 
 	// Tag editor state
 	Entity m_tagSelectedEntity = static_cast<Entity>(-1);
@@ -200,7 +200,7 @@ private:
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::S))
 		{
-			saveMolecule();
+			saveCluster();
 		}
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::O))
@@ -215,15 +215,15 @@ private:
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::N))
 		{
-			m_pendingNewMolecule = true;
+			m_pendingNewCluster = true;
 		}
 
 		pollFileActions();
 
-		if (m_pendingNewMolecule)
+		if (m_pendingNewCluster)
 		{
-			m_pendingNewMolecule = false;
-			clearMolecule();
+			m_pendingNewCluster = false;
+			clearCluster();
 		}
 
 		handleCameraInput();
@@ -269,21 +269,21 @@ private:
 
 			if (ImGui::BeginMenu("File"))
 			{
-				if (ImGui::MenuItem("New Molecule", "Ctrl+N"))
+				if (ImGui::MenuItem("New Cluster", "Ctrl+N"))
 				{
-					m_pendingNewMolecule = true;
+					m_pendingNewCluster = true;
 				}
-				if (ImGui::MenuItem("Open Molecule...", "Ctrl+O"))
+				if (ImGui::MenuItem("Open Cluster...", "Ctrl+O"))
 				{
 					openLoadFileDialog();
 				}
 
 				const bool hasFile = !m_currentFilePath.empty();
-				if (ImGui::MenuItem(hasFile ? "Save Molecule" : "Save Molecule...", "Ctrl+S"))
+				if (ImGui::MenuItem(hasFile ? "Save Cluster" : "Save Cluster...", "Ctrl+S"))
 				{
-					saveMolecule();
+					saveCluster();
 				}
-				if (ImGui::MenuItem("Save Molecule As..."))
+				if (ImGui::MenuItem("Save Cluster As..."))
 				{
 					openSaveFileDialog();
 				}
@@ -378,9 +378,9 @@ private:
 		}
 	}
 
-	void renderMoleculesSection()
+	void renderClustersSection()
 	{
-		if (!ImGui::CollapsingHeader("Molecules", ImGuiTreeNodeFlags_DefaultOpen))
+		if (!ImGui::CollapsingHeader("Clusters", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			return;
 		}
@@ -425,12 +425,12 @@ private:
 
 		if (fitToGrid)
 		{
-			fitMoleculesToGrid();
+			fitClustersToGrid();
 		}
 
 		if (ImGui::Button("Center Only", ImVec2(-1.0f, 22.0f)))
 		{
-			centerMolecules();
+			centerClusters();
 		}
 
 		if (m_isRelaxing)
@@ -474,13 +474,13 @@ private:
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.115f, 0.115f, 0.125f, 1.0f));
 
-		if (ImGui::Begin("##MoleculePanel", nullptr, flags))
+		if (ImGui::Begin("##ClusterPanel", nullptr, flags))
 		{
 			renderToolsSection();
 			ImGui::Spacing();
 			renderOptionsSection();
 			ImGui::Spacing();
-			renderMoleculesSection();
+			renderClustersSection();
 			ImGui::Spacing();
 			renderMaterialsSection();
 			ImGui::Spacing();
@@ -515,7 +515,7 @@ private:
 
 		ImGui::SetNextWindowSize(ImVec2(400.0f, 360.0f), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(40.0f, m_menuBarHeight + 40.0f), ImGuiCond_FirstUseEver);
-		if (ImGui::Begin("Molecule Editor - Controls", &m_showControls))
+		if (ImGui::Begin("Cluster Editor - Controls", &m_showControls))
 		{
 			ImGui::TextWrapped("Left click: apply the active tool.");
 			ImGui::BulletText("Add: spawn a ball with the selected material");
@@ -532,7 +532,7 @@ private:
 			ImGui::TextWrapped("With grid snapping on, moved atoms (drag or Fit to Grid) resize their links to "
 							   "the new distance.");
 			ImGui::Separator();
-			ImGui::BulletText("Ctrl+N: new molecule");
+			ImGui::BulletText("Ctrl+N: new cluster");
 			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weird scene");
 			ImGui::BulletText("Ctrl+S: save (asks for a path the first time)");
 			ImGui::BulletText("Q: exit the tool");
@@ -719,7 +719,7 @@ private:
 		if (m_tagSelectedEntity == static_cast<Entity>(-1) || !hasTransform(m_tagSelectedEntity))
 		{
 			m_tagSelectedEntity = static_cast<Entity>(-1);
-			ImGui::TextWrapped("No molecule selected. Pick the Tag tool and right-click a ball to select it.");
+			ImGui::TextWrapped("No cluster selected. Pick the Tag tool and right-click a ball to select it.");
 			return;
 		}
 
@@ -822,17 +822,17 @@ private:
 
 		ImGui::TextDisabled("Saved under assets/Organisms/");
 		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::InputTextWithHint("##filename", "molecule.weird", m_fileNameBuf, sizeof(m_fileNameBuf));
+		ImGui::InputTextWithHint("##filename", "cluster.weird", m_fileNameBuf, sizeof(m_fileNameBuf));
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 		if (ImGui::Button("Save", ImVec2(buttonWidth, 0.0f)))
 		{
-			saveMoleculeFromName();
+			saveClusterFromName();
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Load", ImVec2(buttonWidth, 0.0f)))
 		{
-			loadMoleculeFromName();
+			loadClusterFromName();
 		}
 	}
 
@@ -880,7 +880,7 @@ private:
 		g_cameraPositon = camTransform.position;
 	}
 
-	void centerMolecules()
+	void centerClusters()
 	{
 		if (m_balls.empty())
 		{
@@ -945,7 +945,7 @@ private:
 			return;
 		}
 
-		centerMolecules();
+		centerClusters();
 		m_isRelaxing = true;
 		m_relaxationStable = false;
 		m_relaxationStableFrames = 0;
@@ -954,7 +954,7 @@ private:
 		m_relaxationVelocities.clear();
 	}
 
-	void centerAndRelaxMolecules()
+	void centerAndRelaxClusters()
 	{
 		startRelaxation();
 	}
@@ -1235,7 +1235,7 @@ private:
 				m_isRelaxing = false;
 				m_relaxationStable = true;
 				m_relaxationVelocities.clear();
-				WeirdEngine::Logger::log("[MoleculeEditor] Molecule reached stable relaxed position in " +
+				WeirdEngine::Logger::log("[ClusterEditor] Cluster reached stable relaxed position in " +
 										 std::to_string(m_relaxationStepCount) + " steps.");
 			}
 		}
@@ -1250,11 +1250,11 @@ private:
 			m_isRelaxing = false;
 			m_relaxationStable = true;
 			m_relaxationVelocities.clear();
-			WeirdEngine::Logger::log("[MoleculeEditor] Molecule relaxation finished (max steps reached).");
+			WeirdEngine::Logger::log("[ClusterEditor] Cluster relaxation finished (max steps reached).");
 		}
 	}
 
-	void fitMoleculesToGrid()
+	void fitClustersToGrid()
 	{
 		if (!gridEnabled())
 		{
@@ -1437,7 +1437,7 @@ private:
 	// Scene files
 	// -----------------------------------------------------------------------
 
-	void clearMolecule()
+	void clearCluster()
 	{
 		for (DistanceLink& link : m_links)
 		{
@@ -1467,17 +1467,17 @@ private:
 		m_relaxationVelocities.clear();
 	}
 
-	void saveMolecule()
+	void saveCluster()
 	{
 		if (m_currentFilePath.empty())
 		{
 			openSaveFileDialog();
 			return;
 		}
-		saveMoleculeTo(m_currentFilePath);
+		saveClusterTo(m_currentFilePath);
 	}
 
-	void saveMoleculeTo(const std::string& path)
+	void saveClusterTo(const std::string& path)
 	{
 		std::string finalPath = path;
 		if (!finalPath.ends_with(".weird"))
@@ -1487,15 +1487,15 @@ private:
 
 		m_tempSvc->serialization().saveScene(finalPath);
 		m_currentFilePath = finalPath;
-		WeirdEngine::Logger::log("Saved molecule to " + finalPath);
+		WeirdEngine::Logger::log("Saved cluster to " + finalPath);
 	}
 
 	void openLoadFileDialog()
 	{
 #ifdef __EMSCRIPTEN__
-		loadMoleculeFromName();
+		loadClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Molecule (*.weird)", "weird"}};
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
 		SDL_ShowOpenFileDialog(onOpenFileCallback, this, nullptr, filters, 1, nullptr, false);
 #endif
 	}
@@ -1503,10 +1503,10 @@ private:
 	void openSaveFileDialog()
 	{
 #ifdef __EMSCRIPTEN__
-		saveMoleculeFromName();
+		saveClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Molecule (*.weird)", "weird"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "molecule.weird");
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "cluster.weird");
 #endif
 	}
 
@@ -1522,20 +1522,20 @@ private:
 
 		if (!loadPath.empty())
 		{
-			loadMolecule(loadPath);
+			loadCluster(loadPath);
 			m_currentFilePath = loadPath;
 		}
 
 		if (!savePath.empty())
 		{
-			saveMoleculeTo(savePath);
+			saveClusterTo(savePath);
 		}
 	}
 
 #ifndef __EMSCRIPTEN__
 	static void SDLCALL onOpenFileCallback(void* userdata, const char* const* filelist, int filter)
 	{
-		auto* editor = static_cast<MoleculeEditor*>(userdata);
+		auto* editor = static_cast<ClusterEditor*>(userdata);
 		if (!editor || !filelist || !*filelist)
 		{
 			return;
@@ -1547,7 +1547,7 @@ private:
 
 	static void SDLCALL onSaveFileCallback(void* userdata, const char* const* filelist, int filter)
 	{
-		auto* editor = static_cast<MoleculeEditor*>(userdata);
+		auto* editor = static_cast<ClusterEditor*>(userdata);
 		if (!editor || !filelist || !*filelist)
 		{
 			return;
@@ -1563,7 +1563,7 @@ private:
 		std::string fileName(m_fileNameBuf);
 		if (fileName.empty())
 		{
-			fileName = "molecule";
+			fileName = "cluster";
 		}
 		if (!fileName.ends_with(".weird"))
 		{
@@ -1572,17 +1572,17 @@ private:
 		return fileName;
 	}
 
-	void saveMoleculeFromName()
+	void saveClusterFromName()
 	{
-		saveMoleculeTo(m_tempSvc->resources().assetPath("Organisms/") + currentFileName());
+		saveClusterTo(m_tempSvc->resources().assetPath("Organisms/") + currentFileName());
 	}
 
-	void loadMoleculeFromName()
+	void loadClusterFromName()
 	{
 		// Only used by the Emscripten file fallback; keep it referenced everywhere
 		// to avoid dead-code surprises when building for the web.
 		const std::string path = m_tempSvc->resources().assetPath("Organisms/") + currentFileName();
-		loadMolecule(path);
+		loadCluster(path);
 		m_currentFilePath = path;
 	}
 
@@ -2445,7 +2445,7 @@ private:
 		return arr->hasData(e);
 	}
 
-	void loadMolecule(const std::string& path)
+	void loadCluster(const std::string& path)
 	{
 		m_isRelaxing = false;
 		m_relaxationStable = false;
@@ -2556,7 +2556,7 @@ private:
 			newDists++;
 		}
 
-		std::string loadMsg = "[MoleculeEditor] Loaded " + std::to_string(simIdToEntity.size()) + " balls and " +
+		std::string loadMsg = "[ClusterEditor] Loaded " + std::to_string(simIdToEntity.size()) + " balls and " +
 							  std::to_string(newSprings + newDists) + " links from " + path;
 		WeirdEngine::Logger::log(loadMsg);
 	}

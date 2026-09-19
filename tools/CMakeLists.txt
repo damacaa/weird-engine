@@ -3,4 +3,4 @@ project(WeirdEngineTools)
 
 add_subdirectory(molecule-editor)
 add_subdirectory(scene-editor)
-add_subdirectory(sdf-node-editor)
+add_subdirectory(shape-editor)

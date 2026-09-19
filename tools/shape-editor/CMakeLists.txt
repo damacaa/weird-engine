@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # ==============================================================================
 # 1. Project Configuration
 # ==============================================================================
-project(WeirdSdfNodeEditor)
+project(WeirdShapeEditor)
 
 set(WEIRD_ENGINE_LOCAL_PATH "../../")
 
@@ -105,7 +105,7 @@ if(DEPLOY_STANDALONE)
 
     if(BUILD_WEB)
         # For web builds, generate the HTML shell from the shared template
-        set(WEIRD_WEB_TITLE "SdfNodeEditor")
+        set(WEIRD_WEB_TITLE "ShapeEditor")
         configure_file(
             "${WEIRD_ENGINE_REAL_SOURCE}/cmake/web/index.html"
             "${CMAKE_CURRENT_BINARY_DIR}/web/index.html"

@@ -69,6 +69,7 @@ namespace WeirdEngine
 		, m_fixedDeltaTimeF(static_cast<float>(m_fixedDeltaTime))
 		, m_relaxationSteps(settings.relaxationSteps)
 		, m_gravity(settings.gravity)
+		, m_contactFriction(settings.friction)
 		, m_push(10.0f * settings.simulationFrequency)
 		, m_damping(settings.damping)
 		, m_collisionDetectionMethod(MethodNaive)
@@ -989,6 +990,29 @@ namespace WeirdEngine
 
 				m_velocities[col.A] -= m_invMass[col.A] * impulse;
 				m_velocities[col.B] += m_invMass[col.B] * impulse;
+			}
+
+			// Tangential friction (Coulomb + viscous). Acceleration-based like the
+			// shape-collision path: both bodies get the same velocity drop, so the
+			// response does not depend on the mass ratio (same philosophy as the
+			// mass-normalized penalty below). vRelT is unaffected by the normal
+			// impulse above, so the pre-impulse vRel can be reused.
+			vec2 vRelT = vRel - velocityAlongNormal * normal;
+			float speedT = glm::length(vRelT);
+			if (speedT > EPSILON)
+			{
+				vec2 tangent = vRelT / speedT;
+				float normalAcceleration = m_push * penetration;
+				float coulombDrop = m_contactFriction * normalAcceleration * m_fixedDeltaTimeF;
+				float viscousDrop = m_contactFriction * speedT * 10.0f * m_fixedDeltaTimeF;
+				float drop = std::min(coulombDrop + viscousDrop, 0.5f * speedT);
+
+				// Fixed bodies must not gain velocity: unlike the impulse and penalty
+				// paths, this writes velocity directly (not scaled by inverse mass).
+				if (m_invMass[col.A] > 0.0f)
+					m_velocities[col.A] += drop * tangent;
+				if (m_invMass[col.B] > 0.0f)
+					m_velocities[col.B] -= drop * tangent;
 			}
 
 			// Apply penalty

@@ -253,6 +253,14 @@ namespace WeirdEngine
 		{
 			return m_damping;
 		}
+		void setFriction(float friction)
+		{
+			m_contactFriction = friction;
+		}
+		float getFriction() const
+		{
+			return m_contactFriction;
+		}
 
 		// Per-body user data, keyed by SimulationID (entity-free: the ECS maps
 		// simulation IDs back to entities via the RigidBody2D component array).
@@ -489,6 +497,7 @@ namespace WeirdEngine
 		float m_damping;
 
 		float m_gravity;
+		float m_contactFriction;
 
 		// Shapes
 		std::unordered_map<Entity, uint16_t> m_entityToObjectsIdx;

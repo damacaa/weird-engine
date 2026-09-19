@@ -31,15 +31,12 @@ namespace WeirdEngine::Editor
 		~ShapeEditorScene() override = default;
 
 	protected:
-		void onCreate(Registry& registry, ServiceProvider& services) override
+		void onStart(Registry& registry, ServiceProvider& services) override
 		{
 			m_previewController.initMaterials(services);
 			NodeGraphPresets::loadStar(m_graph);
 			m_dirty = true;
-		}
 
-		void onStart(Registry& registry, ServiceProvider& services) override
-		{
 			m_previewController.initCamera(registry, services);
 
 			ImNodes::CreateContext();

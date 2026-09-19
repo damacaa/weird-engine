@@ -137,12 +137,6 @@ namespace WeirdEngine
 
 	void Scene::start()
 	{
-		onCreate(m_registry, m_services);
-		for (auto& sys : m_createSystems)
-		{
-			sys(m_registry, m_services);
-		}
-
 		// Custom component managers
 		std::shared_ptr<RigidBodyManager> rbManager = std::make_shared<RigidBodyManager>(m_simulation2D);
 		m_registry.registerComponent<RigidBody2D>(rbManager);

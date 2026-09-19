@@ -66,7 +66,6 @@ class MainGameScene : public Scene2D
 public:
 	MainGameScene()
 	{
-		addCreateSystem(onCreateSystem);
 		addStartSystem(onStartSystem);
 		addUpdateSystem(onUpdateSystem);
 	}
@@ -196,7 +195,9 @@ registry.registerComponent<Health>();
 ### ECS Native Scene State Pattern
 
 Systems do not keep local state variables inside the scene class.
-Store scene state inside an ECS component attached to a dedicated state entity:
+Store scene state inside an ECS component attached to a dedicated state entity.
+Register the system that creates it as the first `addStartSystem` entry, so it
+runs before the systems that read it:
 
 ```cpp
 struct SceneState
@@ -206,7 +207,7 @@ struct SceneState
 	Entity playerEntity = INVALID_ENTITY;
 };
 
-void onCreateSystem(Registry& registry, ServiceProvider& services)
+void stateInitSystem(Registry& registry, ServiceProvider& services)
 {
 	Entity stateEntity = registry.createEntity();
 	registry.addComponent<SceneState>(stateEntity);
@@ -216,7 +217,7 @@ void onCreateSystem(Registry& registry, ServiceProvider& services)
 
 inline SceneState& getState(Registry& registry, ServiceProvider& services)
 {
-	return registry.getComponentArray<SceneState>()->getDataAtIdx(0);
+	return registry.getComponent<SceneState>(services.tags().getEntityByTag("state"));
 }
 ```
 
@@ -238,8 +239,7 @@ void systemName(Registry& registry, ServiceProvider& services);
 
 Register systems inside your Scene constructor:
 
-- `addCreateSystem`: Runs after ECS initialization before scene loading.
-- `addStartSystem`: Runs once after initial scene setup.
+- `addStartSystem`: Runs once after the scene is fully initialized (component managers, camera and scene file are ready).
 - `addUpdateSystem`: Runs every frame for game logic.
 - `addImGuiRenderSystem`: Runs during ImGui interface rendering.
 - `addEntityCollisionSystem`: Dispatches main-thread entity collision events.
@@ -252,7 +252,6 @@ class ShowcaseScene : public Scene2D
 public:
 	ShowcaseScene()
 	{
-		addCreateSystem(onCreateSystem);
 		addStartSystem(onStartSystem);
 		addUpdateSystem(spawnSystem);
 		addUpdateSystem(inputSystem);

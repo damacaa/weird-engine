@@ -45,26 +45,6 @@ private:
 
 	// -------------------------------------------------------------------------
 
-	void onCreate(Registry& registry, ServiceProvider& services) override
-	{
-
-		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
-							   services.resources().assetPath("water/shaders/water.frag"));
-
-		m_light0 = registry.createEntity();
-		{
-			Transform& t = registry.addComponent<Transform>(m_light0);
-			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
-			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
-
-			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
-			lc.type = LightType::Directional;
-			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.5f);
-		}
-
-		m_waterPlane.build();
-	}
-
 	void onDestroy(Registry& registry, ServiceProvider& services) override
 	{
 		m_waterShader.free();
@@ -88,6 +68,22 @@ private:
 
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
+		m_waterShader = Shader(services.resources().assetPath("water/shaders/water.vert"),
+							   services.resources().assetPath("water/shaders/water.frag"));
+
+		m_light0 = registry.createEntity();
+		{
+			Transform& t = registry.addComponent<Transform>(m_light0);
+			t.position = glm::vec3(0.0f, 0.0f, 0.0f);
+			t.rotation = normalize(glm::vec3(0.0f, 0.4f, 1.0f));
+
+			LightComponent& lc = registry.addComponent<LightComponent>(m_light0);
+			lc.type = LightType::Directional;
+			lc.color = glm::vec4(1.0f, 1.0f, 1.0f, 0.5f);
+		}
+
+		m_waterPlane.build();
+
 		services.debug().setDebugFly(true);
 
 		auto& redMat = services.materials3D().createMaterial();

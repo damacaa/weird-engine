@@ -22,9 +22,9 @@ private:
 
 	Entity m_monkey;
 
-	void onCreate(Registry& registry, ServiceProvider& services) override
+	// Inherited via Scene
+	void onStart(Registry& registry, ServiceProvider& services) override
 	{
-
 		{
 			auto& whiteMat = services.materials3D().createMaterial();
 			m_whiteMatId = whiteMat.id;
@@ -47,11 +47,7 @@ private:
 
 		m_combinationShader = new Shader(SHADERS_PATH "common/screen_plane.vert",
 										 services.resources().assetPath("lines/combination.frag"));
-	}
 
-	// Inherited via Scene
-	void onStart(Registry& registry, ServiceProvider& services) override
-	{
 		services.debug().setDebugFly(false);
 		{
 			Entity entity = registry.createEntity();

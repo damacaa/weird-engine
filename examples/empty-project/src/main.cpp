@@ -4,7 +4,6 @@ using namespace WeirdEngine;
 
 // Starter template for a new game. Register scenes in main() and the engine
 // takes care of the rest. Override the callbacks you need:
-//   onCreate            - once, before the physics thread starts
 //   onStart(registry[, tags])- after the ECS is ready and the physics thread runs
 //   onUpdate(dt, registry)   - game logic, once per frame (pure virtual)
 //   onRender(target)    - extra 3D rendering

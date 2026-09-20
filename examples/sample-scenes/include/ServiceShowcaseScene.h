@@ -190,7 +190,7 @@ namespace ServiceShowcase
 															.combination = CombinationType::Addition,
 															.hasCollision = true,
 															.group = 0});
-			registry.getComponent<CustomShape>(ringEntity).smoothFactor = 2.0f;
+			registry.getComponent<Shape>(ringEntity).smoothFactor = 2.0f;
 		}
 
 		// Floor
@@ -202,7 +202,7 @@ namespace ServiceShowcase
 												   .material = floorMaterial,
 												   .combination = CombinationType::SmoothAddition});
 		services.tags().tag(floor, "floor");
-		registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
+		registry.getComponent<Shape>(floor).smoothFactor = 3.0f;
 
 		// Pit: a subtraction shape; balls that roll into it fall through
 		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
@@ -212,7 +212,7 @@ namespace ServiceShowcase
 									.material = pitMat,
 									.combination = CombinationType::Subtraction,
 									.hasCollision = true,
-									.group = CustomShape::GLOBAL_GROUP});
+									.group = Shape::GLOBAL_GROUP});
 
 		// Camera
 		registry.getComponent<Transform>(services.render().getCameraEntity()).position = g_cameraPositon;

@@ -2,7 +2,7 @@
 
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
-#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/resources/Shader.h"
 
 #include <algorithm>
@@ -29,7 +29,7 @@
  * 1. CPU-Side Representation (AST & ECS):
  *    - Each distinct geometric shape is defined in C++ as an AST (Abstract Syntax Tree) of mathematical expressions
  *      inheriting from `IMathExpression` (e.g., SDF primitives, unions, arithmetic operations).
- *    - Entities in the ECS registry hold a `CustomShape` (World) or `UIShape` (UI) component.
+ *    - Entities in the ECS registry hold a `Shape` (World) or `UIShape` (UI) component.
  *    - Each component stores:
  *        * `distanceFieldId`: Index identifying which AST to evaluate.
  *        * `parameters[8]`: Dynamic per-instance data (position, scale, rotation, animation vars).
@@ -50,7 +50,7 @@
  *           * Unique helper functions required by specific AST nodes (e.g., `sdTriangle_impl`).
  *           * Dedicated `evaluate_sdf_<id>(p, parameters0, parameters1)` functions for each unique shape.
  *
- *    b) Slot 1: `#include "custom_shapes"`
+ *    b) Slot 1: `#include "shapes"`
  *       - Injected inside `getDistanceMaterialMask(p, uv)` in the fragment shader.
  *       - Contains the streamlined per-instance dispatch loop:
  *           * Fetches parameters from texture memory (`t_shapeBuffer`).
@@ -307,11 +307,11 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	/**
 	 * @brief Primary entry point for updating SDF shader code from ECS components.
 	 *
-	 * Inspects all active shapes of type `ShapeClass` (e.g. `CustomShape` or `UIShape`), sorts
+	 * Inspects all active shapes of type `ShapeClass` (e.g. `Shape` or `UIShape`), sorts
 	 * them by `groupIdx`, generates dedicated evaluation functions with CSE, and injects
 	 * both helper functions (Slot 0) and the evaluation loop (Slot 1) into the target shader.
 	 *
-	 * @tparam ShapeClass ECS component type (`CustomShape` or `UIShape`).
+	 * @tparam ShapeClass ECS component type (`Shape` or `UIShape`).
 	 * @tparam RenderContext Render pipeline context tracking update dirty flags.
 	 * @param registry Reference to the active ECS registry.
 	 * @param ctx Reference to render pipeline context.
@@ -342,14 +342,14 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			return ss.str();
 		};
 
-		std::ostringstream oss;			 // Slot 1: injected into #include "custom_shapes"
+		std::ostringstream oss;			 // Slot 1: injected into #include "shapes"
 		std::ostringstream functionsOss; // Slot 0: injected into #include "helper_functions"
 
 		// =========================================================================================
 		// 1. Sort Shapes by Group Index
 		// =========================================================================================
 		oss << "///////////////////////////////////////////\n";
-		oss << "int dataOffset = u_loadedObjects - (2 * u_customShapeCount);\n";
+		oss << "int dataOffset = u_loadedObjects - (2 * u_shapeCount);\n";
 		oss << "int currentGroupColor = -1;\n";
 
 		int currentGroup = -1;
@@ -357,7 +357,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		std::string groupBlendVariable;
 
 		ShapeClass dummyShape;
-		dummyShape.groupIdx = CustomShape::GLOBAL_GROUP - 1;
+		dummyShape.groupIdx = Shape::GLOBAL_GROUP - 1;
 
 		std::vector<size_t> orderedIndices;
 		orderedIndices.reserve(componentArray->getSize());
@@ -413,12 +413,12 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 				oss << "float " << groupBlendVariable << " = 0.0;\n";
 			}
 
-			if (group == CustomShape::GLOBAL_GROUP - 1)
+			if (group == Shape::GLOBAL_GROUP - 1)
 			{
 				break;
 			}
 
-			bool globalEffect = group == CustomShape::GLOBAL_GROUP;
+			bool globalEffect = group == Shape::GLOBAL_GROUP;
 			std::string targetDist = globalEffect ? "minDist" : groupDistanceVariable;
 			std::string targetBlend = globalEffect ? "globalBlend" : groupBlendVariable;
 			std::string targetColor = globalEffect ? "finalMaterialId" : "currentGroupColor";

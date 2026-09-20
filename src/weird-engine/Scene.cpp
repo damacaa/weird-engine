@@ -18,12 +18,12 @@
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
-#include "weird-physics/components/CustomShapeManager.h"
 #include "weird-physics/components/DistanceConstraintManager.h"
 #include "weird-physics/components/RigidBodyManager.h"
+#include "weird-physics/components/ShapeManager.h"
 #include "weird-physics/components/SpringManager.h"
-#include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/components/SDFRenderer.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/components/TextRenderer.h"
 
 #include "weird-engine/systems/ButtonSystem.h"
@@ -143,15 +143,15 @@ namespace WeirdEngine
 
 		if (m_renderMode == RenderMode::RayMarching2D)
 		{
-			std::shared_ptr<CustomShapeManager> shapeManager =
-				std::make_shared<CustomShapeManager>(m_simulation2D, m_2DWorldRenderContext);
-			m_registry.registerComponent<CustomShape>(shapeManager);
+			std::shared_ptr<ShapeManager> shapeManager =
+				std::make_shared<ShapeManager>(m_simulation2D, m_2DWorldRenderContext);
+			m_registry.registerComponent<Shape>(shapeManager);
 		}
 		else
 		{
-			std::shared_ptr<CustomShapeManager> shapeManager =
-				std::make_shared<CustomShapeManager>(m_simulation2D, m_3DWorldRenderContext);
-			m_registry.registerComponent<CustomShape>(shapeManager);
+			std::shared_ptr<ShapeManager> shapeManager =
+				std::make_shared<ShapeManager>(m_simulation2D, m_3DWorldRenderContext);
+			m_registry.registerComponent<Shape>(shapeManager);
 		}
 
 		std::shared_ptr<DistanceConstraintManager> distManager =
@@ -161,8 +161,7 @@ namespace WeirdEngine
 		std::shared_ptr<SpringManager> springManager = std::make_shared<SpringManager>(m_simulation2D, m_registry);
 		m_registry.registerComponent<Spring>(springManager);
 
-		std::shared_ptr<CustomUIShapeManager> uiShapeManager =
-			std::make_shared<CustomUIShapeManager>(m_UIRenderContext);
+		std::shared_ptr<UIShapeManager> uiShapeManager = std::make_shared<UIShapeManager>(m_UIRenderContext);
 		m_registry.registerComponent<UIShape>(uiShapeManager);
 
 		// Shapes
@@ -554,39 +553,39 @@ namespace WeirdEngine
 		return m_registry.getComponent<Camera>(m_mainCamera).camera;
 	}
 
-	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch World Data");
-		customShapeCount = m_registry.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size);
+		shapeCount = m_registry.getComponentArray<Shape>()->getSize();
+		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size);
 	}
 
-	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount)
+	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch 3D World Data");
-		customShapeCount = m_registry.getComponentArray<CustomShape>()->getSize();
-		SDFRenderSystem::update<Dot, CustomShape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
+		shapeCount = m_registry.getComponentArray<Shape>()->getSize();
+		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
 	}
 
-	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount)
+	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
-		customShapeCount = m_registry.getComponentArray<UIShape>()->getSize();
+		shapeCount = m_registry.getComponentArray<UIShape>()->getSize();
 		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
 		m_simulation2D.setSDFs(m_sdfs);
-		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, false>(
-			m_registry, m_2DWorldRenderContext, shader, m_sdfs);
+		SDFShaderGenerationSystem::update<Shape, SDFRenderSystemContext, false>(m_registry, m_2DWorldRenderContext,
+																				shader, m_sdfs);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
 	{
 		m_simulation2D.setSDFs(m_sdfs);
-		SDFShaderGenerationSystem::update<CustomShape, SDFRenderSystemContext, true>(m_registry, m_3DWorldRenderContext,
-																					 shader, m_sdfs);
+		SDFShaderGenerationSystem::update<Shape, SDFRenderSystemContext, true>(m_registry, m_3DWorldRenderContext,
+																			   shader, m_sdfs);
 	}
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
@@ -776,7 +775,7 @@ namespace WeirdEngine
 				// No Transform is involved: the shape's position is baked into the registered SDF
 				// expression (world coordinates), exactly like UI mode bakes the screen anchor.
 				// The listener is the cameraEntity. Per frame:
-				//   1. Register the song shape as a world CustomShape (ShapeService::addShape) so it
+				//   1. Register the song shape as a world Shape (ShapeService::addShape) so it
 				//      renders through the 2D/3D world pipelines instead of the UI pipeline.
 				//   2. Sample that SDF at the cameraEntity position to obtain the distance: XY
 				//      distance with z = 0 in 2D scenes, full 3D distance in 3D scenes.
@@ -987,7 +986,7 @@ namespace WeirdEngine
 			// Cache the rigid bodies component array to avoid repeated lookups in the ECS during the raymarching loop
 			auto rigidBodies = registry.getComponentArray<RigidBody2D>();
 
-			auto shapeArray = registry.getComponentArray<CustomShape>();
+			auto shapeArray = registry.getComponentArray<Shape>();
 			for (size_t j = 0; j < shapeArray->getSize(); j++)
 			{
 				auto& shape = shapeArray->getDataAtIdx(j);
@@ -1021,7 +1020,7 @@ namespace WeirdEngine
 					}
 				}
 
-				if (!groupState && shape.groupIdx != CustomShape::GLOBAL_GROUP)
+				if (!groupState && shape.groupIdx != Shape::GLOBAL_GROUP)
 				{
 					groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f, INVALID_ENTITY});
 					groupState = &groups.back();
@@ -1058,7 +1057,7 @@ namespace WeirdEngine
 					currentEntity = shapeArray->getEntityAtIdx(j);
 				}
 
-				if (shape.groupIdx == CustomShape::GLOBAL_GROUP)
+				if (shape.groupIdx == Shape::GLOBAL_GROUP)
 				{
 					d = currentMinDistance;
 					if (d < minD)

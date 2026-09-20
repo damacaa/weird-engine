@@ -181,9 +181,9 @@ namespace WeirdEngine
 		void update3DWorldShader(WeirdRenderer::Shader& shader);
 		void updateUIShader(WeirdRenderer::Shader& shader);
 		void forceShaderRefresh();
-		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
-		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& customShapeCount);
-		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& customShapeCount);
+		void get2DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount);
+		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount);
+		void getUIData(vec4*& uiData, uint32_t& size, uint32_t& shapeCount);
 		void renderSettingsTab();
 		void renderHierarchyTab();
 		void renderPhysicsTab();

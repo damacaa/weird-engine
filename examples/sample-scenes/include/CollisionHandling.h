@@ -75,7 +75,7 @@ private:
 															   {Primitives::Box::SIZE_Y, 50.0f}},
 												 .material = floorMat,
 												 .combination = CombinationType::SmoothAddition});
-		registry.getComponent<CustomShape>(floor).smoothFactor = 3.0f;
+		registry.getComponent<Shape>(floor).smoothFactor = 3.0f;
 
 		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
 									.variables = {{Primitives::Circle::POS_X, 15.0f},

@@ -14,7 +14,7 @@ namespace WeirdEngine
 		SmoothSubtraction,
 	};
 
-	struct CustomShape
+	struct Shape
 	{
 		uint16_t distanceFieldId = 0;
 		CombinationType combination = CombinationType::Addition;

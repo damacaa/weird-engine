@@ -172,7 +172,7 @@ uniform isampler2D t_gbufferMaterial; // R = material ID
 uniform sampler2D t_gbufferBackDepth; // Back-face depth
 
 uniform int u_loadedObjects;
-uniform int u_customShapeCount;
+uniform int u_shapeCount;
 uniform int u_frameCounter;
 uniform int u_rayBounces;
 
@@ -297,7 +297,7 @@ float perlin3D(vec3 p)
 	return mix(mix0, mix1, f.z);
 }
 
-// Custom shape variables. In 3D these are evaluated on the XZ plane,
+// Shape variables. In 3D these are evaluated on the XZ plane,
 // producing vertically extruded SDFs from the existing 2D math expressions.
 #define var8 u_time
 #define var9 p.x
@@ -538,17 +538,17 @@ vec3 sceneSdf(vec3 p)
 	int finalMaterialId = 16;
 	float globalBlend = 0.0;
 
-	// Runtime-generated custom-shape SDF code is injected at this include point.
-	// SDFShaderGenerationSystem walks the ECS custom shape components when they are marked dirty,
+	// Runtime-generated shape SDF code is injected at this include point.
+	// SDFShaderGenerationSystem walks the ECS shape components when they are marked dirty,
 	// sorts them by group, fetches each shape's math-expression tree from the SDF registry, and
 	// turns that tree into GLSL by calling IMathExpression::print(). The generated block also emits
 	// parameter loads from t_shapeBuffer, expands any array literals the expression needs, applies
 	// the shape's boolean/smooth combination operator, and updates minDist/finalMaterialId for the
 	// current group. Shader::setFragmentIncludeCode(1, replacement) then replaces this include with
-	// the final GLSL string, so every custom shape becomes part of sceneSdf() without a static branch
+	// the final GLSL string, so every shape becomes part of sceneSdf() without a static branch
 	// per shape type in this source file.
-	// Custom shapes
-#include "custom_shapes"
+	// Shapes
+#include "shapes"
 
 #ifdef COMBINE_2D_AND_3D_SDFS
 	{
@@ -561,7 +561,7 @@ vec3 sceneSdf(vec3 p)
 #endif
 
 	// These are just spheres
-	for (int i = 0; i < u_loadedObjects - (2 * u_customShapeCount); i++)
+	for (int i = 0; i < u_loadedObjects - (2 * u_shapeCount); i++)
 	{
 		vec4 positionSizeMaterial = texelFetch(t_shapeBuffer, ivec2(i, 0), 0);
 		int materialId = int(positionSizeMaterial.w);

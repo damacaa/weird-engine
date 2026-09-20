@@ -389,7 +389,7 @@ private:
 	// =====================================================================
 	void selectNearest(vec2 pos)
 	{
-		auto cs = m_tempRegistry->getComponentArray<CustomShape>();
+		auto cs = m_tempRegistry->getComponentArray<Shape>();
 		auto ui = m_tempRegistry->getComponentArray<UIShape>();
 
 		float best = SEL_THRESH;
@@ -486,7 +486,7 @@ private:
 			return;
 		}
 
-		auto& cs = m_tempRegistry->getComponent<CustomShape>(m_selectedEntity);
+		auto& cs = m_tempRegistry->getComponent<Shape>(m_selectedEntity);
 
 		auto& hdr = m_tempRegistry->getComponent<UITextRenderer>(m_selInfoText);
 		const char* name = shapeName(cs.distanceFieldId);
@@ -547,7 +547,7 @@ private:
 
 	bool entityHasShape(Entity e)
 	{
-		auto arr = m_tempRegistry->getComponentArray<CustomShape>();
+		auto arr = m_tempRegistry->getComponentArray<Shape>();
 		for (size_t i = 0; i < arr->getSize(); i++)
 			if (arr->getEntityAtIdx(i) == e)
 				return true;
@@ -562,7 +562,7 @@ private:
 		if (!m_hasSelection || !entityHasShape(m_selectedEntity))
 			return;
 
-		auto& cs = m_tempRegistry->getComponent<CustomShape>(m_selectedEntity);
+		auto& cs = m_tempRegistry->getComponent<Shape>(m_selectedEntity);
 		int pc = paramCount(cs.distanceFieldId);
 		if (idx >= pc)
 			return;
@@ -665,7 +665,7 @@ private:
 												 .combination = m_selectedCombination});
 		if (m_selectedCombination == CombinationType::SmoothAddition ||
 			m_selectedCombination == CombinationType::SmoothSubtraction)
-			m_tempRegistry->getComponent<CustomShape>(e).smoothFactor = 1.5f;
+			m_tempRegistry->getComponent<Shape>(e).smoothFactor = 1.5f;
 		doSelect(e);
 	}
 

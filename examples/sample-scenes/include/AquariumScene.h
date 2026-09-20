@@ -360,7 +360,7 @@ private:
 		registry.forEach<JellyfishComponent, Transform, RigidBody2D>(
 			[&](Entity bellEntity, JellyfishComponent& jf, Transform& bellT, RigidBody2D& rb)
 			{
-				auto& cs = registry.getComponent<CustomShape>(jf.bellShape);
+				auto& cs = registry.getComponent<Shape>(jf.bellShape);
 				cs.parameters[0] = bellT.position.x;
 				cs.parameters[1] = bellT.position.y;
 				float pulse = std::sin(m_time * jf.pulseSpeed + jf.pulsePhase);
@@ -407,8 +407,8 @@ private:
 				}
 			});
 
-		registry.forEach<Seaweed, CustomShape>(
-			[&](Entity, Seaweed& sw, CustomShape& cs)
+		registry.forEach<Seaweed, Shape>(
+			[&](Entity, Seaweed& sw, Shape& cs)
 			{
 				cs.parameters[3] = std::sin(m_time * 1.5f + sw.animationOffset) * 4.0f;
 				registry.setComponentDirty(cs);

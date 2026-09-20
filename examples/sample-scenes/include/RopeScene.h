@@ -246,14 +246,14 @@ private:
 			services.sceneControl().goToNextScene();
 		}
 
-		// Animate custom shape over time
+		// Animate shape over time
 		if (m_star != INVALID_ENTITY)
 		{
 			// Instead of getSimulation().getSimulationTime(), we can just use services.time().time() if Scene provides
 			// it, or track delta.
 			static float animTime = 0.0f;
 			animTime += delta;
-			auto& cs = registry.getComponent<CustomShape>(m_star);
+			auto& cs = registry.getComponent<Shape>(m_star);
 			cs.parameters[4] = static_cast<float>((static_cast<int>(std::floor(animTime)) % 5) + 2);
 			cs.parameters[3] = std::sin(3.1416f * animTime);
 			registry.setComponentDirty(cs);

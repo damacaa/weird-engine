@@ -6,8 +6,8 @@
 
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
-#include "weird-renderer/components/CustomShape.h"
 #include "weird-renderer/components/SDFRenderer.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/components/TextRenderer.h"
 #include <filesystem>
 #include <fstream>
@@ -40,7 +40,7 @@ namespace WeirdEngine
 
 		{
 			auto transformArray = scene.m_registry.getComponentArray<Transform>();
-			auto customShapeArray = scene.m_registry.getComponentArray<CustomShape>();
+			auto shapeArray = scene.m_registry.getComponentArray<Shape>();
 			auto uiShapeArray = scene.m_registry.getComponentArray<UIShape>();
 			auto dotArray = scene.m_registry.getComponentArray<Dot>();
 			auto rigidBodyArray = scene.m_registry.getComponentArray<RigidBody2D>();
@@ -71,23 +71,23 @@ namespace WeirdEngine
 								   {"scale", {t.scale.x, t.scale.y, t.scale.z}}};
 			}
 
-			// CustomShape (skip UIShape entities – serialised separately)
-			for (size_t i = 0; i < customShapeArray->getSize(); i++)
+			// Shape (skip UIShape entities – serialised separately)
+			for (size_t i = 0; i < shapeArray->getSize(); i++)
 			{
-				Entity e = customShapeArray->getEntityAtIdx(i);
+				Entity e = shapeArray->getEntityAtIdx(i);
 				if (isBlacklisted(e))
 					continue;
 				if (uiShapeArray->hasData(e))
 					continue;
-				auto& s = customShapeArray->getDataAtIdx(i);
+				auto& s = shapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
-				ej["customShape"] = {{"distanceFieldId", s.distanceFieldId},
-									 {"combination", static_cast<int>(s.combination)},
-									 {"parameters", json(s.parameters)},
-									 {"hasCollisions", s.hasCollisions},
-									 {"groupIdx", s.groupIdx},
-									 {"material", s.material},
-									 {"smoothFactor", s.smoothFactor}};
+				ej["shape"] = {{"distanceFieldId", s.distanceFieldId},
+							   {"combination", static_cast<int>(s.combination)},
+							   {"parameters", json(s.parameters)},
+							   {"hasCollisions", s.hasCollisions},
+							   {"groupIdx", s.groupIdx},
+							   {"material", s.material},
+							   {"smoothFactor", s.smoothFactor}};
 			}
 
 			// UIShape
@@ -308,10 +308,11 @@ namespace WeirdEngine
 					scene.m_registry.getComponentArray<Transform>()->setEntityDirty(entity, true);
 				}
 
-				if (ej.contains("customShape"))
+				if (ej.contains("shape") || ej.contains("customShape"))
 				{
-					auto& s = scene.m_registry.addComponent<CustomShape>(entity);
-					const auto& sj = ej["customShape"];
+					auto& s = scene.m_registry.addComponent<Shape>(entity);
+					// "customShape" is the legacy key used by scenes saved before the component rename
+					const auto& sj = ej.contains("shape") ? ej["shape"] : ej["customShape"];
 					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
 					s.combination = static_cast<CombinationType>(sj.value("combination", 0));
 					s.hasCollisions = sj.value("hasCollisions", true);
@@ -324,7 +325,7 @@ namespace WeirdEngine
 							s.parameters[pi] =
 								(sj["parameters"][pi].is_number() ? sj["parameters"][pi].get<float>() : 0.0f);
 					}
-					scene.m_registry.getComponentArray<CustomShape>()->setEntityDirty(entity, true);
+					scene.m_registry.getComponentArray<Shape>()->setEntityDirty(entity, true);
 					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
 				}
 

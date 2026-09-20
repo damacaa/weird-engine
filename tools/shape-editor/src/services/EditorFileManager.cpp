@@ -16,7 +16,7 @@ namespace WeirdEngine::Editor
 	{
 #ifdef __EMSCRIPTEN__
 		constexpr const char* WEB_UPLOAD_PATH = "/sdf_editor_uploaded_graph.json";
-		constexpr const char* WEB_DOWNLOAD_FILE = "custom_shape.json";
+		constexpr const char* WEB_DOWNLOAD_FILE = "shape.json";
 #endif
 	} // namespace
 
@@ -31,7 +31,7 @@ namespace WeirdEngine::Editor
 		m_webSaveRequested = true;
 #else
 		SDL_DialogFileFilter filters[1] = {{"SDF Graph JSON (*.json)", "json"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "custom_shape.json");
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "shape.json");
 #endif
 	}
 

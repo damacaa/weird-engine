@@ -85,7 +85,7 @@ uniform vec3 u_camPositionChange;
 uniform float u_deltaTime;
 uniform float u_motionBlurBlendSpeed;
 
-uniform int u_customShapeCount;
+uniform int u_shapeCount;
 
 const float u_uiScale = 50.0;
 
@@ -133,7 +133,7 @@ float perlin(vec2 p)
 	return mix(ab, cd, f.y);
 }
 
-// Custom shape variables
+// Shape variables
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
@@ -233,7 +233,7 @@ vec3 getDistanceMaterialMask(vec2 p, vec2 uv)
 
 	// Slot 1: Injected dynamically by SDFShaderGenerationSystem.
 	// Contains the unrolled per-instance shape evaluation loop, CSG combinations, and group flushes.
-#include "custom_shapes"
+#include "shapes"
 
 	if (minDist <= 0.0)
 	{

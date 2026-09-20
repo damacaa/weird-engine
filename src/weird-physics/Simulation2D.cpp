@@ -743,7 +743,7 @@ namespace WeirdEngine
 		for (int i = 0; i < m_objects.size(); i++)
 		{
 			DistanceFieldObject2D& obj = m_objects[i];
-			if (obj.groupId == CustomShape::GLOBAL_GROUP)
+			if (obj.groupId == Shape::GLOBAL_GROUP)
 			{
 				globalShapes.push_back(i);
 				continue;
@@ -1699,7 +1699,7 @@ namespace WeirdEngine
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
 	}
 
-	void Simulation2D::internalUpdateShape(Entity owner, CustomShape& shape)
+	void Simulation2D::internalUpdateShape(Entity owner, Shape& shape)
 	{
 		if (!shape.hasCollisions)
 		{
@@ -1708,7 +1708,7 @@ namespace WeirdEngine
 		}
 
 		WEIRD_ASSERT(!m_sdfs || shape.distanceFieldId < m_sdfs->size(),
-					 "CustomShape registered with unregistered distanceFieldId");
+					 "Shape registered with unregistered distanceFieldId");
 
 		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters,
 								  shape.smoothFactor);
@@ -1731,7 +1731,7 @@ namespace WeirdEngine
 		}
 	}
 
-	void Simulation2D::internalRemoveShape(Entity owner, CustomShape& shape)
+	void Simulation2D::internalRemoveShape(Entity owner, Shape& shape)
 	{
 		if (m_objects.empty())
 		{
@@ -1763,13 +1763,13 @@ namespace WeirdEngine
 		m_entityToObjectsIdx.erase(it);
 	}
 
-	void Simulation2D::updateShape(Entity owner, CustomShape& shape)
+	void Simulation2D::updateShape(Entity owner, Shape& shape)
 	{
 		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
 		m_pendingShapeUpdates.push_back({false, owner, shape});
 	}
 
-	void Simulation2D::removeShape(Entity owner, CustomShape& shape)
+	void Simulation2D::removeShape(Entity owner, Shape& shape)
 	{
 		std::lock_guard<std::mutex> lock(m_shapeUpdateMutex);
 		m_pendingShapeUpdates.push_back({true, owner, shape});

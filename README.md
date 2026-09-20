@@ -134,10 +134,12 @@ You can also register component types explicitly:
 registry.registerComponent<Health>();
 ```
 
-#### Scene State Component Pattern
+#### Scene State Pattern
 
-Store scene variables in an ECS component instead of global variables.
-Create a `State` component and attach it to a dedicated entity:
+Store scene variables in a scene state instead of global variables. A scene
+state is one instance per type, owned by the registry, and lives for the
+lifetime of the scene. It is runtime data only: scene states are never
+serialized.
 
 ```cpp
 struct State
@@ -148,12 +150,19 @@ struct State
 
 void stateInitSystem(Registry& registry, ServiceProvider& services)
 {
-	Entity stateEntity = registry.createEntity();
-	registry.addComponent<State>(stateEntity);
-	services.tags().tag(stateEntity, "state");
-	services.serialization().blacklistEntity(stateEntity);
+	registry.emplaceState<State>();
+}
+
+inline State& getState(Registry& registry)
+{
+	State* state = registry.getState<State>();
+	WEIRD_ASSERT(state != nullptr, "State is missing: stateInitSystem must run first");
+	return *state;
 }
 ```
+
+Register `stateInitSystem` as the first `addStartSystem` entry so it runs
+before the systems that read the state.
 
 ### Systems and Logic
 

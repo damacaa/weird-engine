@@ -155,6 +155,11 @@ Retrieve components using `registry.getComponent<T>(entity)`:
 auto& transform = registry.getComponent<Transform>(entity);
 ```
 
+Component type parameters are normalized with `std::remove_cvref_t`, so
+cv-qualified or reference spellings resolve to the stored component type:
+`registry.getComponent<const Transform>(entity)` is the same component as
+`registry.getComponent<Transform>(entity)`.
+
 Check component existence using `registry.hasComponent<T>(entity)`:
 
 ```cpp
@@ -192,12 +197,12 @@ You can also register component types explicitly:
 registry.registerComponent<Health>();
 ```
 
-### ECS Native Scene State Pattern
+### Scene State (Registry-Owned)
 
-Systems do not keep local state variables inside the scene class.
-Store scene state inside an ECS component attached to a dedicated state entity.
-Register the system that creates it as the first `addStartSystem` entry, so it
-runs before the systems that read it:
+Systems do not keep local state variables inside the scene class. Store
+scene-wide data in a **scene state**: one instance per type, owned by the
+registry and shared by every system. Register the system that creates it as
+the first `addStartSystem` entry, so it runs before the systems that read it:
 
 ```cpp
 struct SceneState
@@ -209,17 +214,27 @@ struct SceneState
 
 void stateInitSystem(Registry& registry, ServiceProvider& services)
 {
-	Entity stateEntity = registry.createEntity();
-	registry.addComponent<SceneState>(stateEntity);
-	services.tags().tag(stateEntity, "state");
-	services.serialization().blacklistEntity(stateEntity);
+	registry.emplaceState<SceneState>();
 }
 
-inline SceneState& getState(Registry& registry, ServiceProvider& services)
+inline SceneState& getState(Registry& registry)
 {
-	return registry.getComponent<SceneState>(services.tags().getEntityByTag("state"));
+	SceneState* state = registry.getState<SceneState>();
+	WEIRD_ASSERT(state != nullptr, "SceneState is missing: stateInitSystem must run first");
+	return *state;
 }
 ```
+
+- `emplaceState<T>(args...)` creates (or replaces) the state and returns a
+  reference that stays valid until the state is replaced or removed.
+- `getState<T>()` returns `nullptr` when no state was created;
+  `hasState<T>()` checks existence; `removeState<T>()` destroys it.
+- Type parameters are normalized with `std::remove_cvref_t`, so
+  `getState<const SceneState>()` resolves to the same state as
+  `getState<SceneState>()`.
+- Scene states are not entities, are never copied, and are not serialized.
+  Persistence is the game's job (e.g. a save file written by a system).
+- Like the rest of the registry, they are main-thread only.
 
 ---
 

@@ -26,8 +26,8 @@ using namespace WeirdEngine;
 //
 // Systems never touch Scene internals: everything they need is either on the
 // Registry& or on the ServiceProvider& passed to the callback. Even the
-// scene's own state lives in the ECS (see State below): a single "state"
-// entity owns it, and systems reach it through its tag.
+// scene's own state lives in the registry (see State below): a scene state is
+// one instance per type, owned by the registry and shared by systems.
 //
 // Registered as systems: onStart (state init + 4 systems),
 // onImGuiRender, onEntityCollision, onEntityShapeCollision, onDestroy.
@@ -64,9 +64,9 @@ namespace ServiceShowcase
 		float jumpStrength = 5.0f;
 	};
 
-	// Scene state as an ECS component: attached to a single "state" entity
-	// created by stateInitSystem. This is the ECS-native way for systems to
-	// share state instead of passing a struct around.
+	// Scene state: one instance per type, owned by the registry. Created by
+	// stateInitSystem and shared by systems instead of passing a struct
+	// around. Runtime data only: scene states are never serialized.
 	struct State
 	{
 		Entity timeText = INVALID_ENTITY;
@@ -89,11 +89,11 @@ namespace ServiceShowcase
 		int shapeCollisions = 0;
 	};
 
-	// State entity lookup by tag: there is exactly one "state" entity in the
-	// scene, created by stateInitSystem.
-	inline State& getState(Registry& registry, ServiceProvider& services)
+	inline State& getState(Registry& registry)
 	{
-		return registry.getComponent<State>(services.tags().getEntityByTag("state"));
+		State* state = registry.getState<State>();
+		WEIRD_ASSERT(state != nullptr, "State is missing: stateInitSystem must be the first start system");
+		return *state;
 	}
 
 	inline Entity spawnBall(Registry& registry, ServiceProvider& services, vec2 position)
@@ -113,16 +113,11 @@ namespace ServiceShowcase
 	}
 
 	// ----------------------------------------------------------- onStart: state
-	// Registered as the first start system: creates the "state" entity that
-	// owns the scene's State component before the systems that read it run.
+	// Registered as the first start system: creates the scene state before
+	// the systems that read it run.
 	inline void stateInitSystem(Registry& registry, ServiceProvider& services)
 	{
-		Entity stateEntity = registry.createEntity();
-		registry.addComponent<State>(stateEntity);
-		services.tags().tag(stateEntity, "state");
-		services.serialization().blacklistEntity(stateEntity);
-
-		State& state = getState(registry, services);
+		State& state = registry.emplaceState<State>();
 		state.initialTime = services.time().time();
 		std::cout << "[ServiceShowcase] state initialized at simulation time " << state.initialTime << "s" << std::endl;
 	}
@@ -143,7 +138,7 @@ namespace ServiceShowcase
 	// ----------------------------------------------------------------- onStart
 	inline void onStartSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 
 		// Debug flags through the provider
 		services.debug().setDebugFly(true);
@@ -306,7 +301,7 @@ namespace ServiceShowcase
 	// Periodically drops a new ball from the top of the world.
 	inline void spawnSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 
 		state.spawnTimer += services.time().deltaTime();
 		if (state.spawnTimer > 0.35f && registry.getEntityCount() < 160)
@@ -321,7 +316,7 @@ namespace ServiceShowcase
 	// ----------------------------------------------------- update: input system
 	inline void inputSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 
 		// Scene transition through the provider
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
@@ -392,7 +387,7 @@ namespace ServiceShowcase
 	// into the physics simulation through the provider.
 	inline void followSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 
 		Entity leader = services.tags().getEntityByTag("leader");
 		if (leader == INVALID_ENTITY)
@@ -412,7 +407,7 @@ namespace ServiceShowcase
 	// -------------------------------------------------------- update: ui system
 	inline void uiSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 
 		char buffer[64];
 
@@ -439,7 +434,7 @@ namespace ServiceShowcase
 	// the colliding ball and play a sound through the provider.
 	inline void onEntityCollisionSystem(Registry& registry, ServiceProvider& services, EntityCollisionEvent& event)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 		state.entityCollisions++;
 
 		// Flash the colliding ball orange, but keep the character's identity
@@ -465,7 +460,7 @@ namespace ServiceShowcase
 	inline void onEntityShapeCollisionSystem(Registry& registry, ServiceProvider& services,
 											 EntityShapeCollisionEvent& event)
 	{
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 		state.shapeCollisions++;
 
 		if (event.entity != INVALID_ENTITY && event.raw.state != CollisionState::END)
@@ -480,7 +475,7 @@ namespace ServiceShowcase
 	{
 		std::cout << "[ServiceShowcase] scene destroyed at " << services.time().time() << "s" << std::endl;
 
-		State& state = getState(registry, services);
+		State& state = getState(registry);
 		state.ballsSpawned = 0;
 		state.entityCollisions = 0;
 		state.shapeCollisions = 0;
@@ -510,10 +505,10 @@ public:
 		addImGuiRenderSystem(
 			[](Registry& registry, ServiceProvider& services)
 			{
-				auto& state = ServiceShowcase::getState(registry, services);
+				auto& state = ServiceShowcase::getState(registry);
 
 				ImGui::Text("Time: %.2fs", services.time().time());
-				ImGui::Text("Entities: %d", services.registry().getEntityCount());
+				ImGui::Text("Entities: %u", services.registry().getEntityCount().id);
 				ImGui::Text("Gravity: %.1f | Damping: %.2f | Physics %s", state.gravity, state.damping,
 							services.physics().isPaused() ? "paused" : "running");
 				ImGui::Text("Collisions: %d body / %d shape", state.entityCollisions, state.shapeCollisions);

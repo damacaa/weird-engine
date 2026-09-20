@@ -2,6 +2,7 @@
 
 #include "ComponentManager.h"
 #include "Entity.h"
+#include "SceneState.h"
 #include "weird-engine/Assert.h"
 #include "weird-engine/Logger.h"
 
@@ -12,6 +13,7 @@
 #include <queue>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -35,6 +37,20 @@ namespace WeirdEngine
 		{
 			// Each component type gets a unique ID at compile time
 			static const size_t id = nextComponentTypeId();
+			return id;
+		}
+
+		// Scene states use their own counter so the state store is sized by the
+		// number of state types, independent of how many component types exist.
+		inline size_t nextSceneStateTypeId()
+		{
+			static size_t id = 0;
+			return id++;
+		}
+
+		template <typename T> size_t getSceneStateTypeId()
+		{
+			static const size_t id = nextSceneStateTypeId();
 			return id;
 		}
 	} // namespace internal
@@ -119,65 +135,76 @@ namespace WeirdEngine
 			}
 		}
 
-		template <typename T> T& addComponent(Entity entity)
+		// Component accessors normalize T with std::remove_cvref_t, so
+		// cv-qualified or reference spellings (e.g. getComponent<const
+		// Transform>()) always resolve to the stored component type.
+		template <typename T> std::remove_cvref_t<T>& addComponent(Entity entity)
 		{
+			using ComponentType = std::remove_cvref_t<T>;
 			if (entity >= MAX_ENTITIES)
 			{
 				Logger::error("[Registry] Cannot add component: entity ID (" + std::to_string(entity.id) +
 							  ") is invalid (maximum entity capacity is " + std::to_string(MAX_ENTITIES.id) + ").");
-				static T dummy{};
-				dummy = T{};
+				static ComponentType dummy{};
+				dummy = ComponentType{};
 				return dummy;
 			}
-			auto cm = getComponentManager<T>();
+			auto cm = getComponentManager<ComponentType>();
 			auto& component = cm->getNewComponent(entity);
 
 			return component;
 		}
 
-		template <typename T> T& getComponent(Entity entity)
+		template <typename T> std::remove_reference_t<T>& getComponent(Entity entity)
 		{
+			using ComponentType = std::remove_cvref_t<T>;
 			if (entity >= MAX_ENTITIES)
 			{
 				Logger::error("[Registry] Cannot get component from invalid entity (" + std::to_string(entity.id) +
 							  "): entity ID exceeds or equals MAX_ENTITIES (" + std::to_string(MAX_ENTITIES.id) + ").");
-				static T dummy{};
-				dummy = T{};
+				static ComponentType dummy{};
+				dummy = ComponentType{};
 				return dummy;
 			}
-			return getComponentManager<T>()->getComponent(entity);
+			return getComponentManager<ComponentType>()->getComponent(entity);
 		}
 
 		template <typename T> Entity getComponentOwner(const T& component)
 		{
-			return getComponentManager<T>()->getComponentArray()->getEntityFromComponent(component);
+			using ComponentType = std::remove_cvref_t<T>;
+			return getComponentManager<ComponentType>()->getComponentArray()->getEntityFromComponent(component);
 		}
 
 		template <typename T> bool hasComponent(Entity entity) const
 		{
+			using ComponentType = std::remove_cvref_t<T>;
 			if (entity >= MAX_ENTITIES)
 				return false;
-			size_t id = internal::getComponentTypeId<T>();
+			size_t id = internal::getComponentTypeId<ComponentType>();
 			if (id >= m_componentManagers.size() || !m_componentManagers[id])
 				return false;
-			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id])->hasComponent(entity);
+			return std::static_pointer_cast<ComponentManager<ComponentType>>(m_componentManagers[id])
+				->hasComponent(entity);
 		}
 
 		template <typename T> void setEntityDirty(Entity entity, bool dirty = true)
 		{
+			using ComponentType = std::remove_cvref_t<T>;
 			if (entity >= MAX_ENTITIES)
 				return;
-			getComponentManager<T>()->getComponentArray()->setEntityDirty(entity, dirty);
+			getComponentManager<ComponentType>()->getComponentArray()->setEntityDirty(entity, dirty);
 		}
 
 		template <typename T> void setComponentDirty(const T& component, bool dirty = true)
 		{
-			getComponentManager<T>()->getComponentArray()->setComponentDirty(component, dirty);
+			using ComponentType = std::remove_cvref_t<T>;
+			getComponentManager<ComponentType>()->getComponentArray()->setComponentDirty(component, dirty);
 		}
 
 		template <typename T> bool isComponentDirty(const T& component)
 		{
-			return getComponentManager<T>()->getComponentArray()->isComponentDirty(component);
+			using ComponentType = std::remove_cvref_t<T>;
+			return getComponentManager<ComponentType>()->getComponentArray()->isComponentDirty(component);
 		}
 
 		// =====================================================================
@@ -214,19 +241,24 @@ namespace WeirdEngine
 			if (myIdx != targetIdx)
 				return false;
 
-			auto driverArray = std::get<std::shared_ptr<ComponentArray<Driver>>>(arrays);
+			using DriverType = std::remove_cvref_t<Driver>;
+			auto driverArray = std::get<std::shared_ptr<ComponentArray<DriverType>>>(arrays);
 
 			for (size_t i = 0; i < smallestSize; i++)
 			{
 				Entity e = driverArray->getEntityAtIdx(i);
 
 				// Check that this entity exists in ALL component arrays
-				bool hasAll = (std::get<std::shared_ptr<ComponentArray<Ts>>>(arrays)->hasData(e) && ...);
+				bool hasAll =
+					(std::get<std::shared_ptr<ComponentArray<std::remove_cvref_t<Ts>>>>(arrays)->hasData(e) && ...);
 				if (!hasAll)
 					continue;
 
 				// Call the user's lambda with (Entity, T&...)
-				func(e, std::get<std::shared_ptr<ComponentArray<Ts>>>(arrays)->getDataFromEntity(e)...);
+				func(e,
+					 static_cast<std::remove_reference_t<Ts>&>(
+						 std::get<std::shared_ptr<ComponentArray<std::remove_cvref_t<Ts>>>>(arrays)->getDataFromEntity(
+							 e))...);
 			}
 
 			return true; // signal that we ran the loop
@@ -235,19 +267,20 @@ namespace WeirdEngine
 	public:
 		template <typename T> void registerComponent()
 		{
-			size_t id = internal::getComponentTypeId<T>();
+			using ComponentType = std::remove_cvref_t<T>;
+			size_t id = internal::getComponentTypeId<ComponentType>();
 
 			if (id < m_componentManagers.size() && m_componentManagers[id])
 				return;
 
-			ComponentManager<T> manager;
+			ComponentManager<ComponentType> manager;
 			manager.registerComponent();
-			auto pointerToManager = std::make_shared<ComponentManager<T>>(manager);
+			auto pointerToManager = std::make_shared<ComponentManager<ComponentType>>(manager);
 
 			if (id >= m_componentManagers.size())
 				m_componentManagers.resize(id + 1);
 			m_componentManagers[id] = pointerToManager;
-			cacheComponentName<T>(id);
+			cacheComponentName<ComponentType>(id);
 		}
 
 		template <typename T> void registerComponent(std::shared_ptr<ComponentManager<T>> manager)
@@ -271,20 +304,21 @@ namespace WeirdEngine
 			cacheComponentName<T>(id);
 		}
 
-		template <typename T> std::shared_ptr<ComponentManager<T>> getComponentManager()
+		template <typename T> std::shared_ptr<ComponentManager<std::remove_cvref_t<T>>> getComponentManager()
 		{
+			using ComponentType = std::remove_cvref_t<T>;
 
-			size_t id = internal::getComponentTypeId<T>();
+			size_t id = internal::getComponentTypeId<ComponentType>();
 
 			if (id >= m_componentManagers.size() || !m_componentManagers[id])
 			{
-				registerComponent<T>();
+				registerComponent<ComponentType>();
 			}
 
-			return std::static_pointer_cast<ComponentManager<T>>(m_componentManagers[id]);
+			return std::static_pointer_cast<ComponentManager<ComponentType>>(m_componentManagers[id]);
 		}
 
-		template <typename T> std::shared_ptr<ComponentArray<T>> getComponentArray()
+		template <typename T> std::shared_ptr<ComponentArray<std::remove_cvref_t<T>>> getComponentArray()
 		{
 			return getComponentManager<T>()->getComponentArray();
 		}
@@ -310,7 +344,79 @@ namespace WeirdEngine
 			return "Unknown";
 		}
 
+		// =====================================================================
+		// Scene state -- one instance per type, owned by the registry.
+		//
+		// Scene state is scene-scoped data shared by systems (level state,
+		// caches, tables). Unlike components it is not attached to an entity,
+		// is never copied, and is not serialized. Main thread only, like the
+		// rest of the registry.
+		//
+		//   GolfingState& state = registry.emplaceState<GolfingState>();
+		//   if (GolfingState* state = registry.getState<GolfingState>()) { ... }
+		// =====================================================================
+
+		// T is normalized with std::remove_cvref_t, so cv-qualified or
+		// reference spellings (e.g. getState<const GolfingState>()) resolve to
+		// the same state as the plain type.
+		//
+		// Creates (or replaces) the scene state of type T, built in place from
+		// `args`. Returns a reference that stays valid until the state is
+		// replaced or removed. Replacing an existing state invalidates all
+		// references to the previous one.
+		template <typename T, typename... Args> std::remove_cvref_t<T>& emplaceState(Args&&... args)
+		{
+			using StateType = std::remove_cvref_t<T>;
+			auto holder = std::make_unique<SceneStateHolder<StateType>>(std::forward<Args>(args)...);
+			StateType& value = holder->value;
+
+			const size_t id = sceneStateIndex<StateType>();
+			if (id >= m_sceneStates.size())
+				m_sceneStates.resize(id + 1);
+			m_sceneStates[id] = std::move(holder);
+
+			return value;
+		}
+
+		// Returns the scene state of type T, or nullptr when none was created.
+		template <typename T> std::remove_reference_t<T>* getState()
+		{
+			using StateType = std::remove_cvref_t<T>;
+			const size_t id = sceneStateIndex<StateType>();
+			if (id >= m_sceneStates.size() || !m_sceneStates[id])
+				return nullptr;
+			return &static_cast<SceneStateHolder<StateType>*>(m_sceneStates[id].get())->value;
+		}
+
+		template <typename T> const std::remove_reference_t<T>* getState() const
+		{
+			using StateType = std::remove_cvref_t<T>;
+			const size_t id = sceneStateIndex<StateType>();
+			if (id >= m_sceneStates.size() || !m_sceneStates[id])
+				return nullptr;
+			return &static_cast<const SceneStateHolder<StateType>*>(m_sceneStates[id].get())->value;
+		}
+
+		template <typename T> bool hasState() const
+		{
+			const size_t id = sceneStateIndex<T>();
+			return id < m_sceneStates.size() && m_sceneStates[id] != nullptr;
+		}
+
+		template <typename T> void removeState()
+		{
+			const size_t id = sceneStateIndex<T>();
+			if (id < m_sceneStates.size())
+				m_sceneStates[id].reset();
+		}
+
 	private:
+		// Normalizes T and maps it to a slot in m_sceneStates.
+		template <typename T> static size_t sceneStateIndex()
+		{
+			return internal::getSceneStateTypeId<std::remove_cvref_t<T>>();
+		}
+
 		template <typename T> void cacheComponentName(size_t id)
 		{
 			if (m_componentNames.find(id) != m_componentNames.end())
@@ -356,6 +462,7 @@ namespace WeirdEngine
 		}
 
 		std::unordered_map<size_t, std::string> m_componentNames;
+		std::vector<std::unique_ptr<ISceneState>> m_sceneStates;
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::queue<Entity> m_freeEntities;
 		std::queue<Entity> m_entitiesToFree;

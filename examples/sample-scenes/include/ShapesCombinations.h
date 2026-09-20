@@ -108,7 +108,7 @@ private:
 			 .material = voidMat,
 			 .combination = CombinationType::Subtraction,
 			 .hasCollision = true,
-			 .group = CustomShape::GLOBAL_GROUP});
+			 .group = Shape::GLOBAL_GROUP});
 
 		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
 									.variables = {{Primitives::Circle::POS_X, 15.0f},
@@ -117,7 +117,7 @@ private:
 									.material = voidMat,
 									.combination = CombinationType::Intersection,
 									.hasCollision = true,
-									.group = CustomShape::GLOBAL_GROUP});
+									.group = Shape::GLOBAL_GROUP});
 
 		std::vector<Material2DHandle> uiMats;
 		for (int i = 0; i < 10; ++i)
@@ -188,7 +188,7 @@ private:
 		}
 
 		{
-			CustomShape& cs = registry.getComponent<CustomShape>(m_circle);
+			Shape& cs = registry.getComponent<Shape>(m_circle);
 			cs.parameters[0] = m_initialMousePositionInWorld.x;
 			cs.parameters[1] = m_circleRadious <= 0.0f ? -1000.0f : m_initialMousePositionInWorld.y;
 			cs.parameters[2] = m_circleRadious;

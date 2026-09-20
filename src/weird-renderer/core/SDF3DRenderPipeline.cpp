@@ -139,7 +139,7 @@ namespace WeirdEngine
 			gbuffer.backDepth.bind(7);
 
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
-			m_sdfShader.setUniform("u_customShapeCount", (int)shapeCount);
+			m_sdfShader.setUniform("u_shapeCount", (int)shapeCount);
 
 			if (m_frameCounter < m_config.maxAccumulationFrames)
 				m_renderPlane.draw(m_sdfShader);

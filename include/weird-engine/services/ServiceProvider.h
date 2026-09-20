@@ -29,7 +29,7 @@
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
 #include "weird-renderer/components/Camera.h"
-#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/scene/Light.h"
 
@@ -361,7 +361,7 @@ namespace WeirdEngine
 			{
 				return INVALID_ENTITY;
 			}
-			CustomShape& shape = registry.addComponent<CustomShape>(entity);
+			Shape& shape = registry.addComponent<Shape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
 			shape.hasCollisions = config.hasCollision;

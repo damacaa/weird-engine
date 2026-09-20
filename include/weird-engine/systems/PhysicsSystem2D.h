@@ -63,8 +63,8 @@ namespace WeirdEngine
 						}
 					});
 
-				registry.forEach<CustomShape>(
-					[&](Entity entity, CustomShape& shape)
+				registry.forEach<Shape>(
+					[&](Entity entity, Shape& shape)
 					{
 						if (registry.isComponentDirty(shape))
 						{

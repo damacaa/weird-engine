@@ -604,7 +604,7 @@ namespace WeirdEngine
 				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
 
 				m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
-				m_distanceShader.setUniform("u_customShapeCount", static_cast<int>(shapeCount));
+				m_distanceShader.setUniform("u_shapeCount", static_cast<int>(shapeCount));
 				m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
 				m_distanceShader.setUniform("t_shapeBuffer", 1);
 				m_shapeDataBuffer.bind(1);

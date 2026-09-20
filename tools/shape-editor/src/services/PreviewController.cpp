@@ -22,7 +22,7 @@ namespace WeirdEngine::Editor
 		mat0.name = "sdf_preview";
 		mat0.color = glm::vec4(0.15f, 0.85f, 0.95f, 1.0f);
 
-		// Define material 1 with distinct warm amber accent color (World CustomShape preview)
+		// Define material 1 with distinct warm amber accent color (World Shape preview)
 		auto& mat1 = services.materials2D().getOrCreate("world_preview");
 		mat1.color = glm::vec4(1.0f, 0.58f, 0.16f, 1.0f);
 
@@ -93,10 +93,10 @@ namespace WeirdEngine::Editor
 
 		updateCameraPosition(services, winW, winH, targetCenter);
 
-		// 1. World Shape (CustomShape component on separate entity with Material 1)
+		// 1. World Shape (Shape component on separate entity with Material 1)
 		std::shared_ptr<IMathExpression> worldExpr = expr.node;
 
-		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<CustomShape>(m_worldEntity))
+		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<Shape>(m_worldEntity))
 		{
 			registry.destroyEntity(m_worldEntity);
 			m_worldEntity = INVALID_ENTITY;
@@ -113,9 +113,9 @@ namespace WeirdEngine::Editor
 		std::copy_n(params.data(), 8, worldConfig.variables.data);
 
 		m_worldEntity = services.shapes().addShape(worldConfig);
-		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<CustomShape>(m_worldEntity))
+		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<Shape>(m_worldEntity))
 		{
-			auto& cs = registry.getComponent<CustomShape>(m_worldEntity);
+			auto& cs = registry.getComponent<Shape>(m_worldEntity);
 			cs.smoothFactor = 0.0f;
 			cs.material = mat1.id;
 			std::copy_n(params.data(), 8, cs.parameters);
@@ -128,10 +128,10 @@ namespace WeirdEngine::Editor
 
 	void PreviewController::syncParameters(ServiceProvider& services, const std::array<float, 8>& params)
 	{
-		// 1. Update World CustomShape parameters
-		if (m_worldEntity != INVALID_ENTITY && services.registry().hasComponent<CustomShape>(m_worldEntity))
+		// 1. Update World Shape parameters
+		if (m_worldEntity != INVALID_ENTITY && services.registry().hasComponent<Shape>(m_worldEntity))
 		{
-			auto& cs = services.registry().getComponent<CustomShape>(m_worldEntity);
+			auto& cs = services.registry().getComponent<Shape>(m_worldEntity);
 			std::copy_n(params.data(), 8, cs.parameters);
 			services.registry().setComponentDirty(cs);
 		}
@@ -307,7 +307,7 @@ namespace WeirdEngine::Editor
 	void PreviewController::destroyEntities(Registry& registry)
 	{
 		clearSpawnedDots(registry);
-		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<CustomShape>(m_worldEntity))
+		if (m_worldEntity != INVALID_ENTITY && registry.hasComponent<Shape>(m_worldEntity))
 		{
 			registry.destroyEntity(m_worldEntity);
 			m_worldEntity = INVALID_ENTITY;

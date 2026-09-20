@@ -122,7 +122,7 @@ private:
 
 		// Move wall to mouse
 		{
-			CustomShape& cs = registry.getComponent<CustomShape>(m_cursorShape);
+			Shape& cs = registry.getComponent<Shape>(m_cursorShape);
 			auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 			float x = services.input().getMouseX();
 			float y = services.input().getMouseY();

@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "../weird-engine/components/Transform.h"
-#include "../weird-renderer/components/CustomShape.h"
+#include "../weird-renderer/components/Shape.h"
 #include "weird-engine/ecs/Entity.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
@@ -230,8 +230,8 @@ namespace WeirdEngine
 			return m_spatialGridSnapshot;
 		}
 
-		void updateShape(Entity owner, CustomShape& shape);
-		void removeShape(Entity owner, CustomShape& shape);
+		void updateShape(Entity owner, Shape& shape);
+		void removeShape(Entity owner, Shape& shape);
 
 		SimulationID raycast(vec2 pos);
 		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
@@ -378,8 +378,8 @@ namespace WeirdEngine
 		void integrateVelocity(float timeStep);
 		void integratePredict(float timeStep);
 
-		void internalUpdateShape(Entity owner, CustomShape& shape);
-		void internalRemoveShape(Entity owner, CustomShape& shape);
+		void internalUpdateShape(Entity owner, Shape& shape);
+		void internalRemoveShape(Entity owner, Shape& shape);
 
 		struct Collision
 		{
@@ -553,7 +553,7 @@ namespace WeirdEngine
 		{
 			bool isRemove = false;
 			Entity owner = INVALID_ENTITY;
-			CustomShape shape;
+			Shape shape;
 		};
 		std::mutex m_shapeUpdateMutex;
 		std::vector<ShapeUpdateCommand> m_pendingShapeUpdates;

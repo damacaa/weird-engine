@@ -90,7 +90,7 @@ namespace WeirdEngine::Editor
 	{
 		ImGui::Spacing();
 		ImGui::TextColored(ImVec4(1.0f, 0.65f, 0.2f, 1.0f), "World Shape Parameters (var0 .. var7)");
-		ImGui::TextDisabled("Dynamic parameters bound to CustomShape (var0..var7).");
+		ImGui::TextDisabled("Dynamic parameters bound to Shape (var0..var7).");
 		ImGui::Separator();
 		ImGui::Spacing();
 

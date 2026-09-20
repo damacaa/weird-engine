@@ -136,7 +136,7 @@ ShapeId ringShapeId = services.shapes().registerSDF(ring);
 
 You can also register global default SDFs before scene start using `Scene::registerDefaultSDF(ring)`.
 
-### Adding the Custom Shape Entity
+### Adding the Shape Entity
 
 Pass a `ShapeConfig` struct to `addShape`. You can pass variables positionally or by index offset (`{{INDEX, value}, ...}`):
 

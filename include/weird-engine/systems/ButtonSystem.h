@@ -4,7 +4,7 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
 #include "weird-renderer/components/Button.h"
-#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/Shape.h"
 
 #include <memory>
 #include <vector>

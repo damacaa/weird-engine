@@ -2,18 +2,18 @@
 
 #include "weird-engine/ecs/ComponentManager.h"
 #include "weird-physics/Simulation2D.h"
-#include "weird-renderer/components/CustomShape.h"
+#include "weird-renderer/components/Shape.h"
 
 namespace WeirdEngine
 {
-	class CustomShapeManager : public ComponentManager<CustomShape>
+	class ShapeManager : public ComponentManager<Shape>
 	{
 	private:
 		Simulation2D* m_simulation;
 		SDFRenderSystemContext* m_renderContext;
 
 	public:
-		CustomShapeManager(Simulation2D& simulation, SDFRenderSystemContext& renderContext)
+		ShapeManager(Simulation2D& simulation, SDFRenderSystemContext& renderContext)
 			: m_simulation(&simulation)
 			, m_renderContext(&renderContext)
 		{
@@ -21,28 +21,28 @@ namespace WeirdEngine
 
 		// Can't add the shape to the simulation here because the component data is not initialized yet, so we will add
 		// it in the next update of the PhysicsSystem2D
-		void handleNewComponent(Entity entity, CustomShape& component) override
+		void handleNewComponent(Entity entity, Shape& component) override
 		{
 			m_renderContext->shapesNeedUpdate = true;
 		}
 
 		void handleDestroyedComponent(Entity entity) override
 		{
-			auto componentArray = std::static_pointer_cast<ComponentArray<CustomShape>>(m_componentArray);
-			CustomShape& removedShape = componentArray->getDataFromEntity(entity);
+			auto componentArray = std::static_pointer_cast<ComponentArray<Shape>>(m_componentArray);
+			Shape& removedShape = componentArray->getDataFromEntity(entity);
 			m_simulation->removeShape(entity, removedShape);
 
 			m_renderContext->shapesNeedUpdate = true;
 		}
 	};
 
-	class CustomUIShapeManager : public ComponentManager<UIShape>
+	class UIShapeManager : public ComponentManager<UIShape>
 	{
 	private:
 		SDFRenderSystemContext* m_renderContext;
 
 	public:
-		CustomUIShapeManager(SDFRenderSystemContext& context)
+		UIShapeManager(SDFRenderSystemContext& context)
 			: m_renderContext(&context)
 		{
 		}

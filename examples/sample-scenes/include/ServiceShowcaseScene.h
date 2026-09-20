@@ -41,6 +41,7 @@ using namespace WeirdEngine;
 //   Left / Right   damping down / up (live)
 //   Ctrl+S         save the scene to assets/scenes/service_showcase.weird
 //   Ctrl+L         load the saved scene into the current one
+//   Ctrl+D         toggle debug fly camera / debug input
 //   Q              go to the next scene
 // ============================================================================
 
@@ -106,7 +107,7 @@ namespace ServiceShowcase
 		dot.materialId = services.materials2D().getHandle("ball").id;
 
 		auto& rb = registry.addComponent<RigidBody2D>(entity);
-		rb.velocity = vec2((std::rand() % 200 - 100) / 40.0f, 0.0f);
+		rb.velocity = vec2(services.random().range(-2.5f, 2.5f), 0.0f);
 		registry.setComponentDirty(rb);
 
 		return entity;
@@ -139,10 +140,6 @@ namespace ServiceShowcase
 	inline void onStartSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
-
-		// Debug flags through the provider
-		services.debug().setDebugFly(true);
-		services.debug().setDebugInput(true);
 
 		// Initialize audio with scene-defined showcase song
 		services.audio().setSong(createSceneSong(), {.mode = SongVisualizationMode::UI});
@@ -307,7 +304,7 @@ namespace ServiceShowcase
 		if (state.spawnTimer > 0.35f && registry.getEntityCount() < 160)
 		{
 			state.spawnTimer = 0.0f;
-			float x = 3.0f + static_cast<float>(std::rand() % 240) / 10.0f;
+			float x = services.random().range(3.0f, 27.0f);
 			spawnBall(registry, services, vec2(x, 35.0f));
 			state.ballsSpawned++;
 		}
@@ -322,6 +319,13 @@ namespace ServiceShowcase
 		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
 			services.sceneControl().goToNextScene();
+		}
+
+		// Debug fly camera / debug input, opt-in so the scene starts stable
+		if (services.input().getKeyDown(Input::D) && services.input().getKey(Input::LeftCtrl))
+		{
+			services.debug().setDebugInput(!services.debug().debugInput());
+			services.debug().setDebugFly(services.debug().debugInput());
 		}
 
 		// Pause / resume through the provider

@@ -954,6 +954,11 @@ namespace WeirdEngine
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getTimeBetweenBeats();
 	}
 
+	float AudioService::getAudioVolume() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getAudioVolume();
+	}
+
 	RaymarchResult raymarchScene(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
 								 Simulation2D& simulation, float time, glm::vec2 origin, glm::vec2 direction,
 								 float epsilon, float maxDistance)

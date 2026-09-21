@@ -748,6 +748,7 @@ namespace WeirdEngine
 		float getTension() const;
 		float getTempo() const;
 		float getTimeBetweenBeats() const;
+		float getAudioVolume() const;
 
 		// Re-sample procedural shape parameters (call after updating shape variables in real time)
 		void resampleShape();

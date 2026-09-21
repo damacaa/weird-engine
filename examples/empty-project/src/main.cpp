@@ -15,7 +15,7 @@ using namespace WeirdEngine;
 //   addDestroySystem              - before the scene is replaced
 //
 // Legacy virtual callbacks are still supported. See docs/SCENE_AND_ECS.md and
-// examples/sample-scenes ServiceShowcaseScene for a full systems example.
+// examples/sample-scenes for full systems examples (UiScene, CollisionHandling, etc.).
 class EmptyScene : public Scene2D
 {
 public:

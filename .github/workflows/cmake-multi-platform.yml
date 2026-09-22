@@ -57,7 +57,7 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Configure CMake (Desktop)
         if: matrix.target != 'web'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_TEST_HOOKS=ON
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_ENGINE_BUILD_TOOLS=ON -DWEIRD_TEST_HOOKS=ON
 
       - name: Build (Desktop)
         if: matrix.target != 'web'

@@ -809,7 +809,7 @@ namespace WeirdEngine
 						break;
 					case BackgroundType::Grid:
 						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
-									   "    float zoom = -2.0 * u_camMatrix[3].z;\n"
+									   "    float zoom = -1.0 * u_camMatrix[3].z;\n"
 									   "    float freq = 0.1 * u_bgScale;\n"
 									   "    float threshold = 2.0 * freq * zoom / u_resolution.y;\n"
 									   "    float gridLine = (fract(freq * worldPos.x) >= threshold && \n"

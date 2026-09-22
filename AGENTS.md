@@ -28,6 +28,7 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 | Option | Default | Purpose |
 |---|---|---|
 | `WEIRD_ENGINE_BUILD_EXAMPLES` | `OFF` | Must be `ON` to build executables in `examples/` |
+| `WEIRD_ENGINE_BUILD_TOOLS` | `OFF` | Must be `ON` to build executables in `tools/` |
 | `WEIRD_DISABLE_IMGUI` | `OFF` | Strip ImGui (used for muOS build) |
 | `WEIRD_TEST_HOOKS` | `OFF` | Enables `WEIRD_AUTO_QUIT_SECONDS` / `WEIRD_SCREENSHOT_FRAME` env vars |
 | `WEIRD_ENGINE_ENABLE_ASAN` | `OFF` | AddressSanitizer |

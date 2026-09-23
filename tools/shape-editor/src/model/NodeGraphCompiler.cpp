@@ -54,13 +54,23 @@ namespace WeirdEngine::Editor
 		std::string exprCode = generateNodeCpp(graph, outputId, visited, lines);
 
 		std::ostringstream ss;
-		ss << "// Generated Weird Engine SDF Expression\n";
-		ss << "using namespace WeirdEngine;\n";
-		ss << "using namespace WeirdEngine::SDF;\n\n";
+
+		for (size_t i = 0; i < graph.getParameterNames().size(); ++i)
+		{
+			const std::string& name = graph.getParameterName(i);
+			if (!name.empty())
+			{
+				ss << "// var(" << i << "): " << name << "\n";
+			}
+		}
+
+		ss << "\n";
+
 		for (const auto& line : lines)
 		{
 			ss << line << "\n";
 		}
+
 		ss << "Expr finalShape = " << exprCode << ";\n";
 		return ss.str();
 	}

@@ -53,6 +53,12 @@ if(WEIRD_ENGINE_ENABLE_ASSERTS)
     target_compile_definitions(${PROJECT_NAME} PUBLIC WEIRD_ENABLE_ASSERTS=1)
 endif()
 
+# Debug mode definition: enabled in debug-like configurations (Debug, RelWithDebInfo),
+# disabled in Release/MinSizeRel. Exported as PUBLIC so games linking WeirdEngine inherit it.
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    $<$<CONFIG:Debug,RelWithDebInfo>:WEIRD_DEBUG=1>
+)
+
 if(NOT WEIRD_DISABLE_IMGUI)
 # ImGui setup
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party/imgui)

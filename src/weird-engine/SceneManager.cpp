@@ -51,7 +51,7 @@ namespace WeirdEngine
 		currentScene = sceneFactories[sceneName](); // Instantiate the scene
 		currentScene->m_services.resources().setAssetsBasePath(m_assetsPath);
 		currentScene->start();
-#ifndef NDEBUG
+#if defined(WEIRD_DEBUG)
 		WeirdEngine::Logger::log("Changed to " + sceneName + " scene");
 #endif
 	}

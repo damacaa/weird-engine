@@ -53,7 +53,13 @@ namespace WeirdEngine
 				(unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
 
 			// Load shaders
-			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_distance.frag");
+			m_shapeShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_shapes.frag");
+			if (m_config.isUI)
+			{
+				m_shapeShader.addDefine("UI_PIPELINE");
+			}
+
+			m_distanceShader = Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/sdf_dots.frag");
 
 			if (config.ballK > 0.0f)
 				m_distanceShader.addDefine("BLEND_SHAPES");
@@ -120,6 +126,10 @@ namespace WeirdEngine
 			}
 
 			// Initialize textures and render targets
+			m_shapeTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_shapeRender = RenderTarget(false);
+			m_shapeRender.bindColorTextureToFrameBuffer(m_shapeTexture);
+
 			m_distanceTextureA =
 				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderA = RenderTarget(false);
@@ -212,6 +222,7 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::free()
 		{
+			m_shapeShader.free();
 			m_distanceShader.free();
 			m_jumpFloodInitShader.free();
 			m_jumpFloodStepShader.free();
@@ -222,6 +233,7 @@ namespace WeirdEngine
 			m_defaultBackgroundShader.free();
 			m_lightingShader.free();
 
+			m_shapeRender.free();
 			m_distanceRenderA.free();
 			m_distanceRenderB.free();
 			m_jumpFloodInitRender.free();
@@ -238,6 +250,7 @@ namespace WeirdEngine
 
 			m_litSceneRender.free();
 
+			m_shapeTexture.dispose();
 			m_distanceTextureA.dispose();
 			m_distanceTextureB.dispose();
 			m_jumpFloodInitTexture.dispose();
@@ -264,6 +277,7 @@ namespace WeirdEngine
 				(unsigned int)(m_config.renderHeight * m_config.distanceSampleScale * overscanScale);
 
 			// Dispose old textures
+			m_shapeTexture.dispose();
 			m_distanceTextureA.dispose();
 			m_distanceTextureB.dispose();
 			m_jumpFloodInitTexture.dispose();
@@ -279,6 +293,9 @@ namespace WeirdEngine
 			m_litSceneTexture.dispose();
 
 			// Recreate textures with new dimensions and rebind to existing render targets
+			m_shapeTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_shapeRender.bindColorTextureToFrameBuffer(m_shapeTexture);
+
 			m_distanceTextureA =
 				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
 			m_distanceRenderA.bindColorTextureToFrameBuffer(m_distanceTextureA);
@@ -561,9 +578,42 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
 
-			{
-				// PROFILE_SCOPE(m_config.isUI ? "Upload data (UI)" : "Upload data (World)");
+			// Upload shape data buffer used by both passes
+			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
 
+			// -----------------------------------------------------------------
+			// Pass 1: Render Shape Distance Field
+			// -----------------------------------------------------------------
+			{
+				m_shapeRender.bind();
+
+				if (shapeCount == 0)
+				{
+					glClearColor(100000.0f, 0.0f, 0.0f, 1.0f);
+					glClear(GL_COLOR_BUFFER_BIT);
+				}
+				else
+				{
+					m_shapeShader.use();
+					m_shapeShader.setUniform("u_camMatrix", camera.view);
+					m_shapeShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
+					m_shapeShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
+					m_shapeShader.setUniform("u_time", static_cast<float>(time));
+					m_shapeShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
+					m_shapeShader.setUniform("u_loadedObjects", static_cast<int>(dataSize));
+					m_shapeShader.setUniform("u_shapeCount", static_cast<int>(shapeCount));
+
+					m_shapeShader.setUniform("t_shapeBuffer", 0);
+					m_shapeDataBuffer.bind(0);
+
+					m_renderPlane.draw(m_shapeShader);
+				}
+			}
+
+			// -----------------------------------------------------------------
+			// Pass 2: Render Dots Distance Field & Composite (Motion Blur)
+			// -----------------------------------------------------------------
+			{
 				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
 
@@ -592,37 +642,37 @@ namespace WeirdEngine
 				m_lastCameraPosition = camera.position;
 				m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 
-				m_distanceShader.setUniform("u_time", time);
-				m_distanceShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
+				m_distanceShader.setUniform("u_time", static_cast<float>(time));
 				m_distanceShader.setUniform("u_deltaTime", static_cast<float>(delta));
 				m_distanceShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 				m_distanceShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 				m_distanceShader.setUniform("u_motionBlurBlendSpeed", m_config.motionBlurBlendSpeed);
 				m_distanceShader.setUniform("u_k", m_config.ballK);
 
+				// Slot 0: Previous frame distance texture (motion blur)
 				m_distanceShader.setUniform("t_colorTexture", 0);
 				m_distanceTextureDoubleBuffer[previousDistanceIndex]->getColorAttachment()->bind(0);
 
-				m_distanceShader.setUniform("u_loadedObjects", (int)dataSize);
-				m_distanceShader.setUniform("u_shapeCount", static_cast<int>(shapeCount));
-				m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
-				m_distanceShader.setUniform("t_shapeBuffer", 1);
-				m_shapeDataBuffer.bind(1);
+				// Slot 1: Intermediate Shape Distance texture (from Pass 1)
+				m_distanceShader.setUniform("t_shapeDistanceTexture", 1);
+				m_shapeTexture.bind(1);
 
+				// Slot 2: Shape data buffer (for dot positions & materials)
+				m_distanceShader.setUniform("u_loadedObjects", static_cast<int>(dataSize));
+				m_distanceShader.setUniform("t_shapeBuffer", 2);
+				m_shapeDataBuffer.bind(2);
+
+				// Slot 3 & 4: Acceleration grid
 				m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
 				m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
 				m_distanceShader.setUniform("u_gridCols", grid.gridCols);
 				m_distanceShader.setUniform("u_gridRows", grid.gridRows);
 
-				m_distanceShader.setUniform("t_gridHeader", 2);
-				m_gridHeaderBuffer.bind(2);
-				m_distanceShader.setUniform("t_gridIndices", 3);
-				m_gridIndicesBuffer.bind(3);
-			}
+				m_distanceShader.setUniform("t_gridHeader", 3);
+				m_gridHeaderBuffer.bind(3);
+				m_distanceShader.setUniform("t_gridIndices", 4);
+				m_gridIndicesBuffer.bind(4);
 
-			// Upload grid
-			{
-				// PROFILE_SCOPE(m_config.isUI ? "Render distance (UI)" : "Render distance (World)");
 				m_renderPlane.draw(m_distanceShader);
 				Profiler::get().gpuSync();
 			}
@@ -1060,6 +1110,11 @@ namespace WeirdEngine
 
 			ImGui::PopID();
 #endif
+		}
+
+		Shader& SDF2DRenderPipeline::getShapeShader()
+		{
+			return m_shapeShader;
 		}
 
 		Shader& SDF2DRenderPipeline::getDistanceShader()

@@ -373,8 +373,8 @@ namespace WeirdEngine
 
 			// Render UI
 			// Shape data
-			m_uiPipeline->getDistanceShader().use();
-			scene.updateUIShader(m_uiPipeline->getDistanceShader());
+			m_uiPipeline->getShapeShader().use();
+			scene.updateUIShader(m_uiPipeline->getShapeShader());
 
 			static uint32_t dataSize;
 			static uint32_t shapeCount;
@@ -819,8 +819,8 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE("2D Render", enable3D);
 
-				m_worldPipeline->getDistanceShader().use();
-				scene.update2DWorldShader(m_worldPipeline->getDistanceShader());
+				m_worldPipeline->getShapeShader().use();
+				scene.update2DWorldShader(m_worldPipeline->getShapeShader());
 				scene.get2DShapesData(data, dataSize, shapeCount);
 
 				auto& lights2D = scene.getLights2D();

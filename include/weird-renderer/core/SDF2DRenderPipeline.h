@@ -52,6 +52,7 @@ namespace WeirdEngine
 			SDF2DRenderPipeline(const Config& config, RenderPlane& renderPlane);
 			~SDF2DRenderPipeline();
 
+			Shader& getShapeShader();
 			Shader& getDistanceShader();
 			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light2D>& lights,
 							const Material2D* materials, const Camera& camera, double time, double delta,
@@ -68,6 +69,7 @@ namespace WeirdEngine
 			unsigned int m_distanceSampleHeight;
 			unsigned int m_materialBlendIterations;
 
+			Shader m_shapeShader;
 			Shader m_distanceShader;
 			Shader m_jumpFloodInitShader;
 			Shader m_jumpFloodStepShader;
@@ -77,6 +79,9 @@ namespace WeirdEngine
 			Shader m_materialBlendShader;
 			Shader m_defaultBackgroundShader;
 			Shader m_lightingShader;
+
+			Texture m_shapeTexture;
+			RenderTarget m_shapeRender;
 
 			Texture m_distanceTextureA;
 			RenderTarget m_distanceRenderA;

@@ -36,6 +36,8 @@ There are no tests. CI runs `ctest` but no test targets are defined.
 | `WEIRD_USE_FBDEV_EGL` | `OFF` | fbdev EGL backend for Mali devices (no GBM/KMS) |
 | `WEIRD_ENGINE_USE_RUNTIME_ASSETS` | `OFF` | Load shaders/fonts from `./shaders/` `./fonts/` instead of source tree |
 
+The engine automatically exports the `WEIRD_DEBUG` preprocessor macro (`1`) in `Debug` and `RelWithDebInfo` configurations (disabled/undefined in `Release` and `MinSizeRel`). All targets linking `WeirdEngine` inherit this definition. In C++, `WeirdEngine::isDebug` provides a corresponding `constexpr bool`.
+
 ## Architecture
 
 - **Engine is a static library** (`libWeirdEngine.a`) built from `src/` + `include/`.

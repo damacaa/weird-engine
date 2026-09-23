@@ -389,7 +389,7 @@ namespace WeirdEngine
 
 			m_lastCompleteFragmentCode = fragmentCodeAfterIncludes;
 
-#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
+#if defined(WEIRD_DEBUG) && defined(LOG_SHADER_COMPILATION)
 			if (m_fragmentFile && std::string(m_fragmentFile).find("sdf_") != std::string::npos)
 			{
 				bool isUI = false;
@@ -412,7 +412,7 @@ namespace WeirdEngine
 			const char* vertexSource = vertexCode.c_str();
 			const char* fragmentSource = fragmentCodeAfterIncludes.c_str();
 
-#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
+#if defined(WEIRD_DEBUG) && defined(LOG_SHADER_COMPILATION)
 			auto startTime = std::chrono::high_resolution_clock::now();
 #endif
 
@@ -451,7 +451,7 @@ namespace WeirdEngine
 			glDeleteShader(vertexShader);
 			glDeleteShader(fragmentShader);
 
-#if !defined(NDEBUG) && defined(LOG_SHADER_COMPILATION)
+#if defined(WEIRD_DEBUG) && defined(LOG_SHADER_COMPILATION)
 			auto endTime = std::chrono::high_resolution_clock::now();
 			auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 

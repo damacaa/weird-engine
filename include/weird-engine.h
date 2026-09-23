@@ -52,6 +52,11 @@ extern "C"
 
 namespace WeirdEngine
 {
+#if defined(WEIRD_DEBUG)
+	inline constexpr bool isDebug = true;
+#else
+	inline constexpr bool isDebug = false;
+#endif
 
 	using namespace WeirdRenderer;
 	using namespace WeirdAudio;
@@ -91,7 +96,7 @@ namespace WeirdEngine
 			ctx.prevTime = ctx.time;
 			ctx.frameCounter++;
 
-#ifndef NDEBUG
+#if defined(WEIRD_DEBUG)
 			if (ctx.timeDiff >= 1.0)
 			{
 				// Creates new title

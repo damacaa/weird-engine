@@ -329,7 +329,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 			return;
 		}
 
-#if !defined(NDEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
 		std::cout << "Updating shader code for: " << std::string(typeid(ShapeClass).name()) << "\n";
 #endif
 
@@ -486,7 +486,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		shader.setFragmentIncludeCode(0, helperFunctionsTotal, false);
 		shader.setFragmentIncludeCode(1, replacement, true);
 
-#if !defined(NDEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
 		if (!helperFunctionsTotal.empty())
 		{
 			WeirdEngine::Logger::log("HELPER FUNCTIONS TOTAL:\n" + helperFunctionsTotal);

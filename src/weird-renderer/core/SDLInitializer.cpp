@@ -182,7 +182,7 @@ namespace WeirdEngine
 			ImGui_ImplOpenGL3_Init("#version 300 es"); // matches your GL ES 3.0 context
 #endif
 
-#if !defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+#if !defined(__EMSCRIPTEN__) && defined(WEIRD_DEBUG)
 			// Enable debug output via KHR_debug extension if supported
 			if (GLAD_GL_KHR_debug && glDebugMessageCallback && glDebugMessageControl)
 			{

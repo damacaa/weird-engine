@@ -4,7 +4,10 @@
 
 namespace WeirdEngine
 {
-	SceneManager::SceneManager() {}
+	SceneManager::SceneManager()
+	{
+		Scene::registerBuiltinSDFs();
+	}
 
 	SceneManager::~SceneManager() {}
 

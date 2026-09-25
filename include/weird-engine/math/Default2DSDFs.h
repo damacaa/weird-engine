@@ -15,123 +15,79 @@ namespace WeirdEngine
 	{
 		using namespace SDF;
 
-		namespace Circle
+#define WEIRD_BUILTIN_SHAPES_2D(X)                                                                                     \
+	X(CIRCLE, Circle, (POS_X, POS_Y, RADIUS),                                                                          \
+	  sdCircle(translate(point(), {var(Circle::POS_X), var(Circle::POS_Y)}), var(Circle::RADIUS)))                     \
+	X(CIRCLE_LINE, CircleLine, (POS_X, POS_Y, RADIUS, THICKNESS),                                                      \
+	  sdfOnion(                                                                                                        \
+		  sdCircle(translate(point(), {var(CircleLine::POS_X), var(CircleLine::POS_Y)}), var(CircleLine::RADIUS)),     \
+		  var(CircleLine::THICKNESS)))                                                                                 \
+	X(BOX, Box, (POS_X, POS_Y, SIZE_X, SIZE_Y),                                                                        \
+	  sdBox(translate(point(), {var(Box::POS_X), var(Box::POS_Y)}), {var(Box::SIZE_X), var(Box::SIZE_Y)}))             \
+	X(BOX_LINE, BoxLine, (POS_X, POS_Y, SIZE_X, SIZE_Y, THICKNESS),                                                    \
+	  sdfOnion(sdBox(translate(point(), {var(BoxLine::POS_X), var(BoxLine::POS_Y)}),                                   \
+					 {var(BoxLine::SIZE_X), var(BoxLine::SIZE_Y)}),                                                    \
+			   var(BoxLine::THICKNESS)))                                                                               \
+	X(TRIANGLE, Triangle, (POS_X, POS_Y, WIDTH, HEIGHT),                                                               \
+	  sdTriangle(translate(point(), {var(Triangle::POS_X), var(Triangle::POS_Y)}), var(Triangle::WIDTH),               \
+				 var(Triangle::HEIGHT)))                                                                               \
+	X(TRIANGLE_LINE, TriangleLine, (POS_X, POS_Y, WIDTH, HEIGHT, THICKNESS),                                           \
+	  sdfOnion(sdTriangle(translate(point(), {var(TriangleLine::POS_X), var(TriangleLine::POS_Y)}),                    \
+						  var(TriangleLine::WIDTH), var(TriangleLine::HEIGHT)),                                        \
+			   var(TriangleLine::THICKNESS)))                                                                          \
+	X(LINE, Line, (START_X, START_Y, END_X, END_Y, WIDTH),                                                             \
+	  sdLine(point(), {var(Line::START_X), var(Line::START_Y)}, {var(Line::END_X), var(Line::END_Y)},                  \
+			 var(Line::WIDTH)))                                                                                        \
+	X(RAMP, Ramp, (POS_X, POS_Y, WIDTH, HEIGHT, SKEW),                                                                 \
+	  sdRamp(translate(point(), {var(Ramp::POS_X), var(Ramp::POS_Y)}), var(Ramp::WIDTH), var(Ramp::HEIGHT),            \
+			 var(Ramp::SKEW)))                                                                                         \
+	X(SINE, SineWave, (AMPLITUDE, PERIOD, SPEED, OFFSET),                                                              \
+	  sdSineWave(point(), var(SineWave::AMPLITUDE), var(SineWave::PERIOD), var(SineWave::SPEED),                       \
+				 var(SineWave::OFFSET)))                                                                               \
+	X(STAR, Star, (), getStarShape())                                                                                  \
+	X(BOX_ROTATED, BoxRotated, (POS_X, POS_Y, SIZE_X, SIZE_Y, ANGLE),                                                  \
+	  sdBox(rotate(translate(point(), {var(BoxRotated::POS_X), var(BoxRotated::POS_Y)}), var(BoxRotated::ANGLE)),      \
+			{var(BoxRotated::SIZE_X), var(BoxRotated::SIZE_Y)}))                                                       \
+	X(BOX_LINE_ROTATED, BoxLineRotated, (POS_X, POS_Y, SIZE_X, SIZE_Y, ANGLE, THICKNESS),                              \
+	  sdfOnion(sdBox(rotate(translate(point(), {var(BoxLineRotated::POS_X), var(BoxLineRotated::POS_Y)}),              \
+							var(BoxLineRotated::ANGLE)),                                                               \
+					 {var(BoxLineRotated::SIZE_X), var(BoxLineRotated::SIZE_Y)}),                                      \
+			   var(BoxLineRotated::THICKNESS)))                                                                        \
+	X(TRIANGLE_ROTATED, TriangleRotated, (POS_X, POS_Y, WIDTH, HEIGHT, ANGLE),                                         \
+	  sdTriangle(rotate(translate(point(), {var(TriangleRotated::POS_X), var(TriangleRotated::POS_Y)}),                \
+						var(TriangleRotated::ANGLE)),                                                                  \
+				 var(TriangleRotated::WIDTH), var(TriangleRotated::HEIGHT)))                                           \
+	X(TRIANGLE_LINE_ROTATED, TriangleLineRotated, (POS_X, POS_Y, WIDTH, HEIGHT, ANGLE, THICKNESS),                     \
+	  sdfOnion(                                                                                                        \
+		  sdTriangle(rotate(translate(point(), {var(TriangleLineRotated::POS_X), var(TriangleLineRotated::POS_Y)}),    \
+							var(TriangleLineRotated::ANGLE)),                                                          \
+					 var(TriangleLineRotated::WIDTH), var(TriangleLineRotated::HEIGHT)),                               \
+		  var(TriangleLineRotated::THICKNESS)))                                                                        \
+	X(RAMP_ROTATED, RampRotated, (POS_X, POS_Y, WIDTH, HEIGHT, SKEW, ANGLE),                                           \
+	  sdRamp(rotate(translate(point(), {var(RampRotated::POS_X), var(RampRotated::POS_Y)}), var(RampRotated::ANGLE)),  \
+			 var(RampRotated::WIDTH), var(RampRotated::HEIGHT), var(RampRotated::SKEW)))
+
+#define WEIRD_UNPACK_PARAMS_2D(...) __VA_ARGS__
+#define WEIRD_GEN_PARAM_STRUCT_2D(ID, StructName, params, expr)                                                        \
+	struct StructName                                                                                                  \
+	{                                                                                                                  \
+		enum Params : uint8_t                                                                                          \
+		{                                                                                                              \
+			WEIRD_UNPACK_PARAMS_2D params                                                                              \
+		};                                                                                                             \
+	};
+
+		WEIRD_BUILTIN_SHAPES_2D(WEIRD_GEN_PARAM_STRUCT_2D)
+#undef WEIRD_GEN_PARAM_STRUCT_2D
+#undef WEIRD_UNPACK_PARAMS_2D
+
+		enum : ShapeId
 		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t RADIUS = 2;
-		} // namespace Circle
-
-		namespace CircleLine
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t RADIUS = 2;
-			constexpr uint8_t THICKNESS = 3;
-		} // namespace CircleLine
-
-		namespace Box
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t SIZE_X = 2;
-			constexpr uint8_t SIZE_Y = 3;
-		} // namespace Box
-
-		namespace BoxLine
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t SIZE_X = 2;
-			constexpr uint8_t SIZE_Y = 3;
-			constexpr uint8_t THICKNESS = 4;
-		} // namespace BoxLine
-
-		namespace Triangle
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t WIDTH = 2;
-			constexpr uint8_t HEIGHT = 3;
-		} // namespace Triangle
-
-		namespace TriangleLine
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t WIDTH = 2;
-			constexpr uint8_t HEIGHT = 3;
-			constexpr uint8_t THICKNESS = 4;
-		} // namespace TriangleLine
-
-		namespace Line
-		{
-			constexpr uint8_t START_X = 0;
-			constexpr uint8_t START_Y = 1;
-			constexpr uint8_t END_X = 2;
-			constexpr uint8_t END_Y = 3;
-			constexpr uint8_t WIDTH = 4;
-		} // namespace Line
-
-		namespace Ramp
-		{
-			constexpr uint8_t POS_X = 0;
-			constexpr uint8_t POS_Y = 1;
-			constexpr uint8_t WIDTH = 2;
-			constexpr uint8_t HEIGHT = 3;
-			constexpr uint8_t SKEW = 4;
-		} // namespace Ramp
-
-		namespace SineWave
-		{
-			constexpr uint8_t AMPLITUDE = 0;
-			constexpr uint8_t PERIOD = 1;
-			constexpr uint8_t SPEED = 2;
-			constexpr uint8_t OFFSET = 3;
-		} // namespace SineWave
-
-		inline const uint16_t CIRCLE =
-			Scene::registerDefaultSDF(sdCircle(translate(point(), {var(0), var(1)}), var(2)));
-
-		inline const uint16_t CIRCLE_LINE =
-			Scene::registerDefaultSDF(sdfOnion(sdCircle(translate(point(), {var(0), var(1)}), var(2)), var(3)));
-
-		inline const uint16_t BOX =
-			Scene::registerDefaultSDF(sdBox(translate(point(), {var(0), var(1)}), {var(2), var(3)}));
-
-		inline const uint16_t BOX_LINE =
-			Scene::registerDefaultSDF(sdfOnion(sdBox(translate(point(), {var(0), var(1)}), {var(2), var(3)}), var(4)));
-
-		inline const uint16_t TRIANGLE =
-			Scene::registerDefaultSDF(sdTriangle(translate(point(), {var(0), var(1)}), var(2), var(3)));
-
-		inline const uint16_t TRIANGLE_LINE = Scene::registerDefaultSDF(
-			sdfOnion(sdTriangle(translate(point(), {var(0), var(1)}), var(2), var(3)), var(4)));
-
-		inline const uint16_t LINE =
-			Scene::registerDefaultSDF(sdLine(point(), {var(0), var(1)}, {var(2), var(3)}, var(4)));
-
-		inline const uint16_t RAMP =
-			Scene::registerDefaultSDF(sdRamp(translate(point(), {var(0), var(1)}), var(2), var(3), var(4)));
-
-		inline const uint16_t SINE = Scene::registerDefaultSDF(sdSineWave(point(), var(0), var(1), var(2), var(3)));
-
-		inline const uint16_t STAR = Scene::registerDefaultSDF(getStarShape());
-
-		inline const uint16_t BOX_ROTATED =
-			Scene::registerDefaultSDF(sdBox(rotate(translate(point(), {var(0), var(1)}), var(4)), {var(2), var(3)}));
-
-		inline const uint16_t BOX_LINE_ROTATED = Scene::registerDefaultSDF(
-			sdfOnion(sdBox(rotate(translate(point(), {var(0), var(1)}), var(4)), {var(2), var(3)}), var(5)));
-
-		inline const uint16_t TRIANGLE_ROTATED =
-			Scene::registerDefaultSDF(sdTriangle(rotate(translate(point(), {var(0), var(1)}), var(4)), var(2), var(3)));
-
-		inline const uint16_t TRIANGLE_LINE_ROTATED = Scene::registerDefaultSDF(
-			sdfOnion(sdTriangle(rotate(translate(point(), {var(0), var(1)}), var(4)), var(2), var(3)), var(5)));
-
-		inline const uint16_t RAMP_ROTATED = Scene::registerDefaultSDF(
-			sdRamp(rotate(translate(point(), {var(0), var(1)}), var(5)), var(2), var(3), var(4)));
+#define WEIRD_SHAPE_2D_ENUM(ID, StructName, params, expr) ID,
+			WEIRD_BUILTIN_SHAPES_2D(WEIRD_SHAPE_2D_ENUM)
+#undef WEIRD_SHAPE_2D_ENUM
+			COUNT_2D
+		};
 
 	} // namespace DefaultShapes
 } // namespace WeirdEngine

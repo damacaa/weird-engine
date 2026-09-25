@@ -13,6 +13,33 @@
 
 #include "weird-engine/Scene.h"
 
+#include "weird-engine/math/Default2DSDFs.h"
+
+#define WEIRD_BUILTIN_SHAPES_3D(X)                                                                                     \
+	X(PLANE, Plane, (HEIGHT), std::make_shared<Primitives3D::Plane>(DefaultShapes3D::var(Plane::HEIGHT)))              \
+	X(BOX, Box, (POS_X, POS_Y, POS_Z, SIZE_X, SIZE_Y, SIZE_Z),                                                         \
+	  std::make_shared<Primitives3D::Box>(DefaultShapes3D::var(Box::POS_X), DefaultShapes3D::var(Box::POS_Y),          \
+										  DefaultShapes3D::var(Box::POS_Z), DefaultShapes3D::var(Box::SIZE_X),         \
+										  DefaultShapes3D::var(Box::SIZE_Y), DefaultShapes3D::var(Box::SIZE_Z)))       \
+	X(SPHERE, Sphere, (POS_X, POS_Y, POS_Z, RADIUS),                                                                   \
+	  std::make_shared<Primitives3D::Sphere>(DefaultShapes3D::var(Sphere::POS_X), DefaultShapes3D::var(Sphere::POS_Y), \
+											 DefaultShapes3D::var(Sphere::POS_Z),                                      \
+											 DefaultShapes3D::var(Sphere::RADIUS)))                                    \
+	X(CYLINDER, Cylinder, (POS_X, POS_Y, POS_Z, RADIUS, HEIGHT),                                                       \
+	  std::make_shared<Primitives3D::Cylinder>(                                                                        \
+		  DefaultShapes3D::var(Cylinder::POS_X), DefaultShapes3D::var(Cylinder::POS_Y),                                \
+		  DefaultShapes3D::var(Cylinder::POS_Z), DefaultShapes3D::var(Cylinder::RADIUS),                               \
+		  DefaultShapes3D::var(Cylinder::HEIGHT)))                                                                     \
+	X(TORUS, Torus, (POS_X, POS_Y, POS_Z, RADIUS_SMALL, RADIUS_LARGE),                                                 \
+	  std::make_shared<Primitives3D::Torus>(                                                                           \
+		  DefaultShapes3D::var(Torus::POS_X), DefaultShapes3D::var(Torus::POS_Y), DefaultShapes3D::var(Torus::POS_Z),  \
+		  DefaultShapes3D::var(Torus::RADIUS_SMALL), DefaultShapes3D::var(Torus::RADIUS_LARGE)))                       \
+	X(CAPSULE, Capsule, (POS_X, POS_Y, POS_Z, RADIUS, HEIGHT),                                                         \
+	  std::make_shared<Primitives3D::Capsule>(                                                                         \
+		  DefaultShapes3D::var(Capsule::POS_X), DefaultShapes3D::var(Capsule::POS_Y),                                  \
+		  DefaultShapes3D::var(Capsule::POS_Z), DefaultShapes3D::var(Capsule::RADIUS),                                 \
+		  DefaultShapes3D::var(Capsule::HEIGHT)))
+
 namespace WeirdEngine
 {
 	namespace DefaultShapes3D
@@ -22,29 +49,29 @@ namespace WeirdEngine
 			return std::make_shared<detail::FloatVariable>(index);
 		}
 
-		inline const uint16_t PLANE =
-			Scene::registerDefaultSDF(std::make_shared<Primitives3D::Plane>(var(Primitives3D::Plane::HEIGHT)));
+#define WEIRD_UNPACK_PARAMS_3D(...) __VA_ARGS__
+#define WEIRD_GEN_PARAM_STRUCT_3D(ID, StructName, params, expr)                                                        \
+	struct StructName                                                                                                  \
+	{                                                                                                                  \
+		enum Params : uint8_t                                                                                          \
+		{                                                                                                              \
+			WEIRD_UNPACK_PARAMS_3D params                                                                              \
+		};                                                                                                             \
+	};
+		WEIRD_BUILTIN_SHAPES_3D(WEIRD_GEN_PARAM_STRUCT_3D)
+#undef WEIRD_GEN_PARAM_STRUCT_3D
+#undef WEIRD_UNPACK_PARAMS_3D
 
-		inline const uint16_t BOX = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Box>(
-			var(Primitives3D::Box::POS_X), var(Primitives3D::Box::POS_Y), var(Primitives3D::Box::POS_Z),
-			var(Primitives3D::Box::SIZE_X), var(Primitives3D::Box::SIZE_Y), var(Primitives3D::Box::SIZE_Z)));
+		enum : ShapeId
+		{
+			_OFFSET_3D = DefaultShapes::COUNT_2D - 1,
+#define WEIRD_SHAPE_3D_ENUM(ID, StructName, params, expr) ID,
+			WEIRD_BUILTIN_SHAPES_3D(WEIRD_SHAPE_3D_ENUM)
+#undef WEIRD_SHAPE_3D_ENUM
+			COUNT_3D
+		};
 
-		inline const uint16_t SPHERE = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Sphere>(
-			var(Primitives3D::Sphere::POS_X), var(Primitives3D::Sphere::POS_Y), var(Primitives3D::Sphere::POS_Z),
-			var(Primitives3D::Sphere::RADIUS)));
-
-		inline const uint16_t CYLINDER = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Cylinder>(
-			var(Primitives3D::Cylinder::POS_X), var(Primitives3D::Cylinder::POS_Y), var(Primitives3D::Cylinder::POS_Z),
-			var(Primitives3D::Cylinder::RADIUS), var(Primitives3D::Cylinder::HEIGHT)));
-
-		inline const uint16_t TORUS = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Torus>(
-			var(Primitives3D::Torus::POS_X), var(Primitives3D::Torus::POS_Y), var(Primitives3D::Torus::POS_Z),
-			var(Primitives3D::Torus::RADIUS_SMALL), var(Primitives3D::Torus::RADIUS_LARGE)));
-
-		inline const uint16_t CAPSULE = Scene::registerDefaultSDF(std::make_shared<Primitives3D::Capsule>(
-			var(Primitives3D::Capsule::POS_X), var(Primitives3D::Capsule::POS_Y), var(Primitives3D::Capsule::POS_Z),
-			var(Primitives3D::Capsule::RADIUS), var(Primitives3D::Capsule::HEIGHT)));
-
+		constexpr size_t TOTAL_BUILTIN_SHAPES = COUNT_3D;
 	} // namespace DefaultShapes3D
 } // namespace WeirdEngine
 

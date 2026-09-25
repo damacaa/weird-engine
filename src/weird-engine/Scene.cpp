@@ -11,11 +11,14 @@
 #include <imgui.h>
 #endif
 
+#include "weird-engine/Assert.h"
 #include "weird-engine/components/FlyMovement.h"
 #include "weird-engine/components/FlyMovement2D.h"
 #include "weird-engine/components/Transform.h"
 #include "weird-engine/Input.h"
 #include "weird-engine/math/Default2DSDFs.h"
+#include "weird-engine/math/Default3DSDFs.h"
+#include "weird-engine/math/Primitives3D.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-physics/components/DistanceConstraintManager.h"
@@ -37,10 +40,50 @@
 
 namespace WeirdEngine
 {
-	static std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFsInternal()
+	using BuiltinSDFArray = std::array<std::shared_ptr<IMathExpression>, DefaultShapes3D::TOTAL_BUILTIN_SHAPES>;
+
+	static BuiltinSDFArray& getBuiltinSDFsInternal()
 	{
-		static std::vector<std::shared_ptr<IMathExpression>> s_globalSdfs;
-		return s_globalSdfs;
+		static BuiltinSDFArray s_builtinSdfs{};
+		return s_builtinSdfs;
+	}
+
+	static bool s_defaultSDFsLocked = false;
+
+	void Scene::registerBuiltinSDFs()
+	{
+		static bool s_builtinRegistered = false;
+		if (s_builtinRegistered)
+		{
+			return;
+		}
+
+		auto& sdfs = getBuiltinSDFsInternal();
+
+		// 2D Default Shapes
+		{
+			using namespace SDF;
+			using namespace DefaultShapes;
+#define WEIRD_REGISTER_SHAPE_2D(ID, StructName, params, expr) sdfs[ID] = (expr).node;
+			WEIRD_BUILTIN_SHAPES_2D(WEIRD_REGISTER_SHAPE_2D)
+#undef WEIRD_REGISTER_SHAPE_2D
+		}
+
+		// 3D Default Shapes
+		{
+			using namespace DefaultShapes3D;
+#define WEIRD_REGISTER_SHAPE_3D(ID, StructName, params, expr) sdfs[ID] = expr;
+			WEIRD_BUILTIN_SHAPES_3D(WEIRD_REGISTER_SHAPE_3D)
+#undef WEIRD_REGISTER_SHAPE_3D
+		}
+
+		s_builtinRegistered = true;
+		s_defaultSDFsLocked = true;
+	}
+
+	std::span<const std::shared_ptr<IMathExpression>> Scene::getBuiltinSDFs()
+	{
+		return getBuiltinSDFsInternal();
 	}
 
 	ShapeId Scene::registerDefaultSDF(const Expr& sdf)
@@ -48,16 +91,12 @@ namespace WeirdEngine
 		return registerDefaultSDF(sdf.node);
 	}
 
-	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> sdf)
+	ShapeId Scene::registerDefaultSDF(std::shared_ptr<IMathExpression> /*sdf*/)
 	{
-		auto& sdfs = getGlobalSDFsInternal();
-		sdfs.push_back(sdf);
-		return static_cast<ShapeId>(sdfs.size() - 1);
-	}
-
-	const std::vector<std::shared_ptr<IMathExpression>>& Scene::getGlobalSDFs()
-	{
-		return getGlobalSDFsInternal();
+		WEIRD_ASSERT(
+			!s_defaultSDFsLocked,
+			"Scene::registerDefaultSDF is locked! Custom shapes must be registered via ShapeService::registerSDF.");
+		return 0;
 	}
 
 	Scene::Scene()
@@ -165,7 +204,9 @@ namespace WeirdEngine
 		m_registry.registerComponent<UIShape>(uiShapeManager);
 
 		// Shapes
-		m_sdfs = Scene::getGlobalSDFs();
+		registerBuiltinSDFs();
+		auto builtins = Scene::getBuiltinSDFs();
+		m_sdfs.assign(builtins.begin(), builtins.end());
 		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation

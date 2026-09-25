@@ -19,6 +19,7 @@
 #include "weird-physics/Simulation2D.h"
 
 #include <functional>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -95,10 +96,15 @@ namespace WeirdEngine
 
 		virtual ~Scene();
 
-		// ---- Global SDF registry (engine-level, shared across scenes)
+		// ---- Global Builtin SDF registry (engine-level, shared across scenes)
+		static void registerBuiltinSDFs();
+		static std::span<const std::shared_ptr<IMathExpression>> getBuiltinSDFs();
+		static std::span<const std::shared_ptr<IMathExpression>> getGlobalSDFs()
+		{
+			return getBuiltinSDFs();
+		}
 		static ShapeId registerDefaultSDF(const Expr& sdf);
 		static ShapeId registerDefaultSDF(std::shared_ptr<IMathExpression> sdf);
-		static const std::vector<std::shared_ptr<IMathExpression>>& getGlobalSDFs();
 
 		// ---- System Dispatcher (Register systems to be called automatically)
 		void addStartSystem(CoreSystem system)

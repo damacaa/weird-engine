@@ -160,7 +160,12 @@ Some of these are simple expression compositions. Others, such as `Polygon`, `Tr
 
 ## Default Registered Shapes
 
-`Default2DSDFs.h` and `Default3DSDFs.h` register built-in shapes with `Scene` through `Scene::registerDefaultSDF(...)`. Each registered shape is exposed as an inline `uint16_t` constant.
+Built-in engine shapes are defined in `Default2DSDFs.h` (`DefaultShapes`) and `Default3DSDFs.h` (`DefaultShapes3D`) via compile-time X-macro definition tables (`WEIRD_BUILTIN_SHAPES_2D` and `WEIRD_BUILTIN_SHAPES_3D`).
+
+The table automatically generates:
+1. Compile-time `ShapeId` enum constants (e.g. `DefaultShapes::CIRCLE`, `DefaultShapes::BOX`).
+2. Scoped parameter index structures (e.g. `DefaultShapes::Circle::POS_X`, `POS_Y`, `RADIUS`).
+3. Deterministic registration in `Scene::registerBuiltinSDFs()` stored in a fixed `std::array` without heap allocations.
 
 ## Default 2D Shapes
 

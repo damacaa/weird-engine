@@ -261,6 +261,7 @@ namespace WeirdEngine
 					  PhysicsSettings physicsSettings = {}, WeirdAudio::AudioSettings audioSettings = {}, int argc = 0,
 					  char** argv = nullptr, const std::string& assetsPath = ASSETS_PATH)
 	{
+		Scene::registerBuiltinSDFs();
 		sceneManager.setAssetsPath(assetsPath);
 		WeirdEngine::Logger::log("Starting Weird Engine...");
 

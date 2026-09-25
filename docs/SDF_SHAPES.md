@@ -128,13 +128,13 @@ Expr ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
 
 ### Registering the SDF
 
-Register your `Expr` directly with `services.shapes().registerSDF(expr)` to obtain a `ShapeId`:
+Register your `Expr` directly with `services.shapes().registerSDF(expr)` to obtain a `ShapeId` for the current scene:
 
 ```cpp
 ShapeId ringShapeId = services.shapes().registerSDF(ring);
 ```
 
-You can also register global default SDFs before scene start using `Scene::registerDefaultSDF(ring)`.
+> **Note**: Custom shapes are registered per-scene via `services.shapes().registerSDF(...)`. Global built-in shapes available across all scenes are defined in `Default2DSDFs.h` / `Default3DSDFs.h` and registered at engine startup.
 
 ### Adding the Shape Entity
 

@@ -29,15 +29,11 @@ struct Material2D
 	vec4 secondaryColor;
 	int pattern;
 	float patternScale;
-	float emission;
-	float edgeThickness;
-	vec4 edgeColor;
-	float refraction;
 };
 
 uniform Material2D u_materials[16];
 
-vec4 evaluatePattern(Material2D mat, vec2 worldPos, float dist)
+vec4 evaluatePattern(Material2D mat, vec2 worldPos)
 {
 	vec4 baseColor = mat.color;
 
@@ -62,19 +58,14 @@ vec4 evaluatePattern(Material2D mat, vec2 worldPos, float dist)
 	}
 	else if (mat.pattern == 3) // Waves
 	{
-		float w = sin(worldPos.y * mat.patternScale + sin(worldPos.x * mat.patternScale * 0.5) + u_time * 2.0) * 0.5 + 0.5;
+		float w =
+			sin(worldPos.y * mat.patternScale + sin(worldPos.x * mat.patternScale * 0.5) + u_time * 2.0) * 0.5 + 0.5;
 		baseColor = mix(mat.color, mat.secondaryColor, w);
 	}
 	else if (mat.pattern == 4) // Gradient
 	{
 		float g = clamp(0.5 + (worldPos.y * mat.patternScale * 0.1), 0.0, 1.0);
 		baseColor = mix(mat.secondaryColor, mat.color, g);
-	}
-
-	if (mat.edgeThickness > 0.0 && dist <= 0.0)
-	{
-		float edgeFactor = 1.0 - smoothstep(0.0, mat.edgeThickness, -dist);
-		baseColor = mix(baseColor, mat.edgeColor, edgeFactor);
 	}
 
 	return baseColor;
@@ -98,7 +89,7 @@ void main()
 	vec4 c = vec4(1.0, 1.0, 1.0, 0.0);
 	if (materialId >= 0 && materialId < 16)
 	{
-		c = evaluatePattern(u_materials[materialId], worldPos, distance);
+		c = evaluatePattern(u_materials[materialId], worldPos);
 	}
 	c = vec4(toLinear(c.rgb), c.a);
 

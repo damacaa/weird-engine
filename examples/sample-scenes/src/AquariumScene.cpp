@@ -200,19 +200,15 @@ namespace AquariumSceneNamespace
 
 		auto& jellyMat0 = services.materials2D().createMaterial("jelly_red");
 		jellyMat0.color = vec4(ColorPalette::Red, 0.9f);
-		jellyMat0.emission = 0.5f;
 
 		auto& jellyMat1 = services.materials2D().createMaterial("jelly_yellow");
 		jellyMat1.color = vec4(ColorPalette::Yellow, 0.9f);
-		jellyMat1.emission = 0.5f;
 
 		auto& jellyMat2 = services.materials2D().createMaterial("jelly_cyan");
 		jellyMat2.color = vec4(ColorPalette::Cyan, 0.9f);
-		jellyMat2.emission = 0.5f;
 
 		auto& jellyMat3 = services.materials2D().createMaterial("jelly_pink");
 		jellyMat3.color = vec4(ColorPalette::Pink, 0.9f);
-		jellyMat3.emission = 0.5f;
 
 		auto& eelMat0 = services.materials2D().createMaterial("eel_red");
 		eelMat0.color = ColorPalette::Red;
@@ -225,12 +221,10 @@ namespace AquariumSceneNamespace
 
 		auto& foodMat = services.materials2D().createMaterial("fish_food");
 		foodMat.color = ColorPalette::Orange;
-		foodMat.emission = 0.3f;
 		state.foodMat = foodMat.id;
 
 		auto& bubbleMat = services.materials2D().createMaterial("aquarium_bubble");
 		bubbleMat.color = vec4(ColorPalette::White, 0.55f);
-		bubbleMat.emission = 0.2f;
 		state.bubbleMat = bubbleMat.id;
 
 		for (int i = 0; i < 6; ++i)

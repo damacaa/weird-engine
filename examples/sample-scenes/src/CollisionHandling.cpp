@@ -107,7 +107,6 @@ namespace CollisionHandlingNamespace
 
 		auto& hitMat = services.materials2D().createMaterial("lane_hit");
 		hitMat.color = ColorPalette::Orange;
-		hitMat.emission = 0.5f;
 		state.hitMat = hitMat.id;
 
 		auto& barrierMat = services.materials2D().createMaterial("lane_barrier");
@@ -116,7 +115,6 @@ namespace CollisionHandlingNamespace
 
 		auto& padMat = services.materials2D().createMaterial("launch_pad");
 		padMat.color = ColorPalette::LightGreen;
-		padMat.emission = 0.4f;
 
 		auto& floorMat = services.materials2D().createMaterial("main_floor");
 		floorMat.color = ColorPalette::DarkGray;

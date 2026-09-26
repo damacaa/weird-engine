@@ -76,8 +76,6 @@ float sdBox(in vec2 p, in vec2 b)
 	return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
-
-
 // y = sin(5x + t) / 5
 // 0 = sin(5x + t) / 5 - y
 float shape_sine(vec2 p, float time)
@@ -115,8 +113,6 @@ vec3 draw_line(float d, vec2 resolution)
 {
 	return draw_line(d, 0.0025, resolution);
 }
-
-
 
 float dot2(vec3 v)
 {

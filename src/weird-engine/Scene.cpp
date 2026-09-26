@@ -107,14 +107,10 @@ namespace WeirdEngine
 		// Default 2D material (slot 0)
 		m_materials2D[0].id = 0;
 		m_materials2D[0].name = "default";
-		m_materials2D[0].color = vec4(1.0f);
+		m_materials2D[0].color = ColorPalette::LightGray;
 		m_materials2D[0].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		m_materials2D[0].pattern = Pattern2D::None;
 		m_materials2D[0].patternScale = 1.0f;
-		m_materials2D[0].emission = 0.0f;
-		m_materials2D[0].edgeThickness = 0.0f;
-		m_materials2D[0].edgeColor = vec4(0.0f);
-		m_materials2D[0].refraction = 0.0f;
 		m_material2DNameToId["default"] = 0;
 
 		for (size_t i = 1; i < 16; ++i)
@@ -125,16 +121,12 @@ namespace WeirdEngine
 			m_materials2D[i].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 			m_materials2D[i].pattern = Pattern2D::None;
 			m_materials2D[i].patternScale = 1.0f;
-			m_materials2D[i].emission = 0.0f;
-			m_materials2D[i].edgeThickness = 0.0f;
-			m_materials2D[i].edgeColor = vec4(0.0f);
-			m_materials2D[i].refraction = 0.0f;
 		}
 
 		// Default 3D material (slot 0)
 		m_materials3D[0].id = 0;
 		m_materials3D[0].name = "default";
-		m_materials3D[0].color = vec4(1.0f);
+		m_materials3D[0].color = ColorPalette::LightGray;
 		m_materials3D[0].secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 		m_materials3D[0].metallic = 0.0f;
 		m_materials3D[0].roughness = 1.0f;
@@ -1237,6 +1229,184 @@ namespace WeirdEngine
 					ImGui::DragFloat("Scale", &m_background.scale, 0.05f, 0.01f, 100.0f);
 					ImGui::DragFloat("Intensity", &m_background.intensity, 0.05f, 0.0f, 10.0f);
 					ImGui::SliderFloat("Parallax", &m_background.parallax, 0.0f, 1.0f);
+				}
+
+				ImGui::Unindent();
+			}
+
+			if (ImGui::CollapsingHeader("Materials"))
+			{
+				ImGui::Indent();
+
+				static int selectedMaterial = 0;
+				static int matType = 0; // 0 = 2D, 1 = 3D
+				static bool showColorWheel = true;
+
+				bool is3D = false;
+				if (m_renderMode == RenderMode::RayMarching3D)
+				{
+					is3D = true;
+				}
+				else if (m_renderMode == RenderMode::RayMarchingBoth)
+				{
+					ImGui::RadioButton("2D Materials", &matType, 0);
+					ImGui::SameLine();
+					ImGui::RadioButton("3D Materials", &matType, 1);
+					is3D = (matType == 1);
+				}
+
+				selectedMaterial = std::clamp(selectedMaterial, 0, 15);
+
+				// Palette swatches grid
+				const float swatchSize = 22.0f;
+				const float spacing = ImGui::GetStyle().ItemSpacing.x;
+				const float availableWidth = ImGui::GetContentRegionAvail().x;
+				const int columns =
+					(std::max)(1, static_cast<int>((availableWidth + spacing) / (swatchSize + spacing)));
+
+				for (int i = 0; i < 16; ++i)
+				{
+					if (i % columns != 0)
+					{
+						ImGui::SameLine();
+					}
+
+					ImGui::PushID(i);
+					const bool selected = (selectedMaterial == i);
+					const vec4 color = is3D ? m_materials3D[i].color : m_materials2D[i].color;
+
+					if (selected)
+					{
+						ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+					}
+
+					if (ImGui::ColorButton("##mat_swatch", ImVec4(color.r, color.g, color.b, color.a),
+										   ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop,
+										   ImVec2(swatchSize, swatchSize)))
+					{
+						selectedMaterial = i;
+					}
+
+					if (selected)
+					{
+						ImGui::PopStyleColor();
+						ImGui::PopStyleVar();
+					}
+
+					if (ImGui::IsItemHovered())
+					{
+						const std::string& name = is3D ? m_materials3D[i].name : m_materials2D[i].name;
+						if (!name.empty())
+						{
+							ImGui::SetTooltip("[%d] %s%s", i, name.c_str(), selected ? " (selected)" : "");
+						}
+						else
+						{
+							ImGui::SetTooltip("Material %d%s", i, selected ? " (selected)" : "");
+						}
+					}
+
+					ImGui::PopID();
+				}
+
+				ImGui::Spacing();
+
+				// Dropdown selector
+				char previewBuf[64];
+				const std::string& currentName =
+					is3D ? m_materials3D[selectedMaterial].name : m_materials2D[selectedMaterial].name;
+				if (!currentName.empty())
+				{
+					snprintf(previewBuf, sizeof(previewBuf), "[%d] %s", selectedMaterial, currentName.c_str());
+				}
+				else
+				{
+					snprintf(previewBuf, sizeof(previewBuf), "Material %d", selectedMaterial);
+				}
+
+				if (ImGui::BeginCombo("Select Material", previewBuf))
+				{
+					for (int i = 0; i < 16; ++i)
+					{
+						ImGui::PushID(i);
+						char itemBuf[64];
+						const std::string& name = is3D ? m_materials3D[i].name : m_materials2D[i].name;
+						if (!name.empty())
+						{
+							snprintf(itemBuf, sizeof(itemBuf), "[%d] %s", i, name.c_str());
+						}
+						else
+						{
+							snprintf(itemBuf, sizeof(itemBuf), "Material %d", i);
+						}
+
+						const bool isSelected = (selectedMaterial == i);
+						if (ImGui::Selectable(itemBuf, isSelected))
+						{
+							selectedMaterial = i;
+						}
+						if (isSelected)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndCombo();
+				}
+
+				ImGui::Separator();
+
+				// Material properties
+				if (is3D)
+				{
+					auto& mat = m_materials3D[selectedMaterial];
+					if (!mat.name.empty())
+					{
+						ImGui::TextDisabled("Slot %d: %s", selectedMaterial, mat.name.c_str());
+					}
+
+					ImGui::ColorEdit4("Primary Color", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
+					ImGui::SameLine();
+					ImGui::Checkbox("Picker Wheel", &showColorWheel);
+					if (showColorWheel)
+					{
+						ImGui::ColorPicker4("##Picker3D", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
+					}
+
+					ImGui::SliderFloat("Metallic", &mat.metallic, 0.0f, 1.0f);
+					ImGui::SliderFloat("Roughness", &mat.roughness, 0.0f, 1.0f);
+
+					const char* pattern3DNames[] = {"None", "Checkers", "Perlin Noise", "Waves"};
+					int currentPattern = static_cast<int>(mat.pattern);
+					if (ImGui::Combo("Pattern", &currentPattern, pattern3DNames, 4))
+					{
+						mat.pattern = static_cast<MaterialPattern>(currentPattern);
+					}
+
+					if (mat.pattern != MaterialPattern::None)
+					{
+						ImGui::ColorEdit4("Secondary Color", &mat.secondaryColor[0], ImGuiColorEditFlags_AlphaBar);
+						ImGui::DragFloat("Pattern Scale", &mat.patternScale, 0.05f, 0.01f, 100.0f);
+					}
+
+					ImGui::DragFloat("Emission", &mat.emission, 0.05f, 0.0f, 10.0f);
+				}
+				else
+				{
+					auto& mat = m_materials2D[selectedMaterial];
+					if (!mat.name.empty())
+					{
+						ImGui::TextDisabled("Slot %d: %s", selectedMaterial, mat.name.c_str());
+					}
+
+					ImGui::ColorEdit4("Color", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
+					ImGui::SameLine();
+					ImGui::Checkbox("Picker Wheel", &showColorWheel);
+					if (showColorWheel)
+					{
+						ImGui::ColorPicker4("##Picker2D", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
+					}
 				}
 
 				ImGui::Unindent();

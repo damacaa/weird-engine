@@ -123,7 +123,7 @@ namespace WeirdEngine
 				t.position = vec3(mousePositionInWorld.x, mousePositionInWorld.y, 0.0);
 
 				auto& dot = registry.addComponent<Dot>(entity);
-				dot.materialId = m_currentMaterial + 4;
+				dot.materialId = m_currentMaterial;
 
 				RigidBody2D& rb = registry.addComponent<RigidBody2D>(entity);
 				if (!m_usingController)
@@ -141,7 +141,7 @@ namespace WeirdEngine
 
 			if (Input::GetKeyDown(Input::C))
 			{
-				m_currentMaterial = (m_currentMaterial + 1) % 12;
+				m_currentMaterial = (m_currentMaterial + 1) % 16;
 			}
 
 			switch (m_currentInteractionMode)

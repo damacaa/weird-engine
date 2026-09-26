@@ -791,10 +791,6 @@ namespace WeirdEngine
 				m_materialColorShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
 				m_materialColorShader.setUniform(prefix + "pattern", static_cast<int>(materials[i].pattern));
 				m_materialColorShader.setUniform(prefix + "patternScale", materials[i].patternScale);
-				m_materialColorShader.setUniform(prefix + "emission", materials[i].emission);
-				m_materialColorShader.setUniform(prefix + "edgeThickness", materials[i].edgeThickness);
-				m_materialColorShader.setUniform(prefix + "edgeColor", materials[i].edgeColor);
-				m_materialColorShader.setUniform(prefix + "refraction", materials[i].refraction);
 			}
 			m_materialColorShader.setUniform("u_materialBlendSpeed", m_config.materialBlendSpeed);
 			m_materialColorShader.setUniform("u_camPositionChange", cameraPositionChange);
@@ -955,10 +951,6 @@ namespace WeirdEngine
 				m_lightingShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
 				m_lightingShader.setUniform(prefix + "pattern", static_cast<int>(materials[i].pattern));
 				m_lightingShader.setUniform(prefix + "patternScale", materials[i].patternScale);
-				m_lightingShader.setUniform(prefix + "emission", materials[i].emission);
-				m_lightingShader.setUniform(prefix + "edgeThickness", materials[i].edgeThickness);
-				m_lightingShader.setUniform(prefix + "edgeColor", materials[i].edgeColor);
-				m_lightingShader.setUniform(prefix + "refraction", materials[i].refraction);
 			}
 
 			// Color texture

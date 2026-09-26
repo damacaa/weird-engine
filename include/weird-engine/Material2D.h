@@ -20,15 +20,12 @@ namespace WeirdEngine
 		uint16_t id = 0;
 		std::string name = "";
 
-		vec4 color = vec4(1.0f);							// Primary fill color
+		vec4 color = vec4(1.0f); // Primary fill color
+
+		// Currently unsupported. Would require rewritting the material blending shader
 		vec4 secondaryColor = vec4(0.0f, 0.0f, 0.0f, 1.0f); // Secondary color for patterns/gradients
 		Pattern2D pattern = Pattern2D::None;
 		float patternScale = 1.0f;
-
-		float emission = 0.0f;		 // Self-illumination / glow factor (bypasses shadow darkness)
-		float edgeThickness = 0.0f;	 // Outline/border thickness in world units
-		vec4 edgeColor = vec4(0.0f); // Outline/border color
-		float refraction = 0.0f;	 // Per-material refraction strength (0.0 = none)
 	};
 
 	struct Material2DHandle

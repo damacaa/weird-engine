@@ -39,14 +39,14 @@ uniform float u_refractionIntensity;
 
 struct Light2D
 {
-	int type;           // 0=Directional, 1=Point, 2=Cone
-	vec2 position;      // World position
-	vec2 direction;     // Normalized direction vector (Directional & Cone)
-	vec4 color;         // RGB = color, A = intensity
-	float radius;       // Attenuation radius (Point & Cone)
-	float coneAngle;    // Cone half-angle in radians
+	int type;			// 0=Directional, 1=Point, 2=Cone
+	vec2 position;		// World position
+	vec2 direction;		// Normalized direction vector (Directional & Cone)
+	vec4 color;			// RGB = color, A = intensity
+	float radius;		// Attenuation radius (Point & Cone)
+	float coneAngle;	// Cone half-angle in radians
 	float conePenumbra; // Cone penumbra angle in radians
-	int castShadows;    // 1 = true, 0 = false
+	int castShadows;	// 1 = true, 0 = false
 };
 
 struct Material2D
@@ -55,10 +55,6 @@ struct Material2D
 	vec4 secondaryColor;
 	int pattern;
 	float patternScale;
-	float emission;
-	float edgeThickness;
-	vec4 edgeColor;
-	float refraction;
 };
 
 uniform int u_numLights;
@@ -247,7 +243,8 @@ void main()
 					shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 				}
 #endif
-				float lightFactor = calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
+				float lightFactor =
+					calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
 				accumulatedShapeLight += lightColor * lightFactor;
 				minShadowValue = min(minShadowValue, shadows);
 			}
@@ -268,7 +265,8 @@ void main()
 						shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 					}
 #endif
-					float lightFactor = calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
+					float lightFactor =
+						calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
 					accumulatedShapeLight += lightColor * att * lightFactor;
 					minShadowValue = min(minShadowValue, mix(1.0, shadows, att));
 				}
@@ -300,7 +298,8 @@ void main()
 							shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 						}
 #endif
-						float lightFactor = calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
+						float lightFactor =
+							calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
 						accumulatedShapeLight += lightColor * att * coneFactor * lightFactor;
 						minShadowValue = min(minShadowValue, mix(1.0, shadows, att * coneFactor));
 					}
@@ -331,7 +330,7 @@ void main()
 
 	// Refraction
 #ifdef REFRACTION
-	float effectiveRefraction = (mat.refraction > 0.0) ? mat.refraction : u_refractionIntensity;
+	float effectiveRefraction = u_refractionIntensity;
 	float refractionDistance = -1.0 / (1.0 - clamp(((-distance * 100.0) + 1.0), 0.0, 10.0));
 	refractionDistance = max(0.0, refractionDistance - 0.1);
 	vec2 backgroundOffset = 0.01 * shapeFactor * refractionDistance * normal * effectiveRefraction;
@@ -369,8 +368,7 @@ void main()
 	vec3 shadowTransmittance = mix(u_shadowTint * ambientOcclusion, vec3(1.0), litFactor);
 	vec3 shadedBackground = backgroundColor * shadowTransmittance;
 
-	vec3 emissionColor = mat.emission * mat.color.rgb * shapeFactor;
-	vec3 litShapeColor = (color * accumulatedShapeLight) + emissionColor;
+	vec3 litShapeColor = color * accumulatedShapeLight;
 
 	color = mix(litShapeColor, shadedBackground, 1.0 - finalAlpha);
 
@@ -379,8 +377,9 @@ void main()
 #ifdef DEBUG_SHOW_DISTANCE
 	float debugDistance = 0.5 * texture(t_distanceSampledTexture, screenUV).x;
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
-	vec3 debugColor = debugDistance > 0.0 ? mix(vec3(1), vec3(0.2), value) :
-						  (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.9, 0.5, 0.5), value);
+	vec3 debugColor = debugDistance > 0.0
+						  ? mix(vec3(1), vec3(0.2), value)
+						  : (debugDistance + 1.0) * mix(vec3(1.0, 0.2, 0.2), vec3(0.9, 0.5, 0.5), value);
 	FragColor = vec4(debugColor, 1.0);
 #endif
 }

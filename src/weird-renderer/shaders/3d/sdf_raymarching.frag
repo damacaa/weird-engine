@@ -4,7 +4,6 @@ precision highp int;
 precision highp sampler2D;
 precision highp isampler2D;
 
-
 // SDF Operations
 float fOpUnionSoft(float a, float b, float r)
 {
@@ -324,7 +323,8 @@ void fetchShapeParams(int idx, out vec4 p0, out vec4 p1)
 	p1 = texelFetch(t_shapeBuffer, ivec2((idx + 1) % 16384, (idx + 1) / 16384), 0);
 }
 
-void applyShapeAddition(float dist, int material, inout float currentMinDist, inout float currentBlend, inout int groupColor)
+void applyShapeAddition(float dist, int material, inout float currentMinDist, inout float currentBlend,
+						inout int groupColor)
 {
 	if (dist <= currentMinDist)
 	{
@@ -344,7 +344,8 @@ void applyShapeIntersection(float dist, inout float currentMinDist)
 	currentMinDist = max(currentMinDist, dist);
 }
 
-void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inout float currentMinDist, inout float currentBlend, inout int groupColor)
+void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inout float currentMinDist,
+							  inout float currentBlend, inout int groupColor)
 {
 	vec2 res = fOpUnionSoft_blend(currentMinDist, dist, smoothFactor);
 	if (res.y > 0.0)
@@ -367,7 +368,8 @@ void applyShapeSmoothSubtraction(float dist, float smoothFactor, inout float cur
 	currentMinDist = fOpSubSoft(currentMinDist, dist, smoothFactor);
 }
 
-void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout float minDist, inout float globalBlend, inout int finalMaterialId)
+void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout float minDist, inout float globalBlend,
+					 inout int finalMaterialId)
 {
 	if (groupDist <= max(minDist, 0.0))
 	{

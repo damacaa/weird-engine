@@ -38,7 +38,7 @@ uniform float u_time;
 uniform float u_k;
 
 uniform sampler2D t_shapeDistanceTexture; // Intermediate distance field from Pass 1 (shapes)
-uniform sampler2D t_colorTexture;         // Previous frame distance texture (for motion blur)
+uniform sampler2D t_colorTexture;		  // Previous frame distance texture (for motion blur)
 
 uniform int u_loadedObjects;
 uniform highp sampler2D t_shapeBuffer;

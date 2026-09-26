@@ -39,6 +39,11 @@ if(WEIRD_TEST_HOOKS)
     add_compile_definitions(WEIRD_TEST_HOOKS)
 endif()
 
+option(WEIRD_DISABLE_PARALLEL_SHADER_COMPILE "Disable parallel/async shader compilation" OFF)
+if(WEIRD_DISABLE_PARALLEL_SHADER_COMPILE)
+    add_compile_definitions(WEIRD_DISABLE_PARALLEL_SHADER_COMPILE)
+endif()
+
 # Runtime assertions: enabled by default in debug-like configurations
 # (Debug, RelWithDebInfo), disabled in Release/MinSizeRel. Games that build
 # the engine via add_subdirectory inherit this through the PUBLIC definition.

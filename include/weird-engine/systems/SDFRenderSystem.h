@@ -9,7 +9,6 @@
 
 namespace WeirdEngine
 {
-	// Make this a component?
 	struct SDFRenderSystemContext
 	{
 		float dotRadious = 5.0f;
@@ -17,6 +16,9 @@ namespace WeirdEngine
 		WeirdRenderer::Font font;
 
 		bool shapesNeedUpdate = true;
+		bool isInitialCompile = true;
+		std::vector<Entity> activeShapeEntities;
+		std::vector<Entity> pendingShapeEntities;
 
 		SDFRenderSystemContext()
 			: font(FONTS_PATH "small.bmp", 3, 4, 1,
@@ -29,7 +31,8 @@ namespace WeirdEngine
 	{
 
 		template <typename DotClass, typename ShapeClass, typename TextClass>
-		inline void update(Registry& registry, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
+		inline void update(Registry& registry, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size,
+						   uint32_t& outShapeCount)
 		{
 			uint32_t normalDots = 0;
 			if (auto dotArray = registry.getComponentArray<DotClass>())
@@ -64,11 +67,8 @@ namespace WeirdEngine
 
 			uint32_t dotCount = normalDots + textDots;
 
-			uint32_t shapeCount = 0;
-			if (auto shapeArray = registry.getComponentArray<ShapeClass>())
-			{
-				shapeCount = shapeArray->getSize();
-			}
+			uint32_t shapeCount = static_cast<uint32_t>(ctx.activeShapeEntities.size());
+			outShapeCount = shapeCount;
 
 			// Each ShapeClass will contribute 2 dots to the buffer
 			uint32_t newSize = dotCount + (2 * shapeCount);
@@ -161,13 +161,14 @@ namespace WeirdEngine
 					}
 				});
 
-			// Process ShapeClass instances
-			int shapeIdx = 0;
-			registry.forEach<ShapeClass>(
-				[&](Entity entity, ShapeClass& shapeComp)
+			// Process ShapeClass instances matching active shader
+			auto shapeArray = registry.getComponentArray<ShapeClass>();
+			for (size_t shapeIdx = 0; shapeIdx < shapeCount; ++shapeIdx)
+			{
+				Entity entity = ctx.activeShapeEntities[shapeIdx];
+				if (shapeArray && shapeArray->hasData(entity))
 				{
-					// Assuming ShapeClass has m_parameters[0] through m_parameters[7]
-					// Make sure your ShapeClass provides these members.
+					const ShapeClass& shapeComp = shapeArray->getDataFromEntity(entity);
 					data[dotCount + (2 * shapeIdx)].x = shapeComp.parameters[0];
 					data[dotCount + (2 * shapeIdx)].y = shapeComp.parameters[1];
 					data[dotCount + (2 * shapeIdx)].z = shapeComp.parameters[2];
@@ -177,8 +178,21 @@ namespace WeirdEngine
 					data[dotCount + (2 * shapeIdx) + 1].y = shapeComp.parameters[5];
 					data[dotCount + (2 * shapeIdx) + 1].z = shapeComp.parameters[6];
 					data[dotCount + (2 * shapeIdx) + 1].w = shapeComp.parameters[7];
-					shapeIdx++;
-				});
+				}
+				else
+				{
+					// Entity was deleted while async compile was in flight; hide off-screen
+					data[dotCount + (2 * shapeIdx)] = vec4(100000.0f, 100000.0f, 0.0f, 0.0f);
+					data[dotCount + (2 * shapeIdx) + 1] = vec4(0.0f);
+				}
+			}
+		}
+
+		template <typename DotClass, typename ShapeClass, typename TextClass>
+		inline void update(Registry& registry, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)
+		{
+			uint32_t dummyShapeCount = 0;
+			update<DotClass, ShapeClass, TextClass>(registry, ctx, data, size, dummyShapeCount);
 		}
 
 	} // namespace SDFRenderSystem

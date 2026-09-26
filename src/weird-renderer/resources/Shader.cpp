@@ -74,20 +74,47 @@ namespace WeirdEngine
 				m_needsRecompile = true;
 			}
 
-			if (m_needsRecompile)
+			if (m_needsRecompile && !m_isCompilingAsync)
 			{
 				m_needsRecompile = false;
 				recompile();
 				m_hasRecompiled = true;
 			}
 
-			glUseProgram(ID);
+			if (ID != 0 && ID != (GLuint)-1)
+			{
+				glUseProgram(ID);
+			}
 		}
 
 		// Deletes the Shader Program
 		void Shader::free()
 		{
-			glDeleteProgram(ID);
+			if (m_isCompilingAsync)
+			{
+				if (m_pendingVertexShader != 0)
+				{
+					glDeleteShader(m_pendingVertexShader);
+					m_pendingVertexShader = 0;
+				}
+				if (m_pendingFragmentShader != 0)
+				{
+					glDeleteShader(m_pendingFragmentShader);
+					m_pendingFragmentShader = 0;
+				}
+				if (m_pendingProgram != 0)
+				{
+					glDeleteProgram(m_pendingProgram);
+					m_pendingProgram = 0;
+				}
+				m_isCompilingAsync = false;
+			}
+
+			if (ID != 0 && ID != (GLuint)-1)
+			{
+				glDeleteProgram(ID);
+				ID = -1;
+			}
 		}
 
 		std::string Shader::getVertexCode()
@@ -110,6 +137,14 @@ namespace WeirdEngine
 			{
 				recompile();
 			}
+		}
+
+		bool Shader::setFragmentIncludeCodeAsync(int i, const std::string& code)
+		{
+			m_includedFragmentContents[i] = code;
+			std::string v = getVertexCode();
+			std::string f = getFragmentCode();
+			return recompileAsync(v, f);
 		}
 
 		void Shader::addDefine(const std::string& name)
@@ -176,18 +211,12 @@ namespace WeirdEngine
 			recompile(v, f);
 		}
 
-		void Shader::recompile(std::string& vertexCode, std::string& fragmentCode)
+		std::string Shader::buildFragmentSource(std::string_view codeView)
 		{
-			if (ID != -1)
-				free();
-
-			// Use string_view for read-only scanning (Zero-copy)
-			std::string_view codeView(fragmentCode);
-
 			// Estimate size: Original Code + (Number of includes * Average include size ~2KB)
 			// Adjust the multiplier based on your typical shader include size.
 			std::string fragmentCodeAfterIncludes;
-			fragmentCodeAfterIncludes.reserve(fragmentCode.size() + m_includedFragmentContents.size() * 2048);
+			fragmentCodeAfterIncludes.reserve(codeView.size() + m_includedFragmentContents.size() * 2048);
 
 			size_t lastPos = 0;
 
@@ -211,131 +240,9 @@ namespace WeirdEngine
 				fragmentCodeAfterIncludes.append("\n");
 			}
 
-			// 3. Process Includes (Manual parsing replaces Regex)
+			// 3. Process Includes
 			size_t includeIndex = 0;
 			const size_t numIncludes = m_includedFragmentContents.size();
-
-			// Start searching from lastPos (after #version) so we don't need the safety check
-			while (includeIndex < numIncludes)
-			{
-				// Find "#include"
-				size_t incStart = codeView.find("#include", lastPos);
-
-				if (incStart == std::string_view::npos)
-					break;
-
-				// Verify format: #include\s+"..."
-				// 1. Check for whitespace after #include
-				size_t cursor = incStart + 8; // Length of "#include"
-
-				// Scan past whitespace
-				bool hasWhitespace = false;
-				while (cursor < codeView.size() && (codeView[cursor] == ' ' || codeView[cursor] == '\t'))
-				{
-					hasWhitespace = true;
-					cursor++;
-				}
-
-				// Regex equivalent of \s+: Must have at least one space/tab
-				if (!hasWhitespace)
-				{
-					// False positive (e.g. "#include_something"), advance lastPos slightly and retry
-					// We append the text up to here to ensure we don't skip it in the final output,
-					// but since we haven't substituted, we just move the search start.
-					// Actually, for simplicity, we just continue searching from incStart + 1
-					// (This part of logic is rarely hit in valid shaders)
-					size_t nextSearch = incStart + 1;
-					// Don't update lastPos or append yet
-					// A tricky case without regex, but assuming valid shader code:
-					// We force the loop to search again from next char, essentially ignoring this hit.
-					// To do this efficiently, we'd need to modify the find call.
-					// For this snippet, we will assume if it finds "#include" it's intended.
-					// But strictly adhering to regex logic:
-					// If checks fail, we manually look for the next one inside the loop logic.
-					// Let's implement the 'continue' logic by adjusting the search offset for the next iteration
-					// without appending anything yet.
-
-					// *However*, to keep the code linear and simple:
-					// If syntax is wrong, treat it as raw text.
-					// We only "consume" it if it matches perfectly.
-					// Since we are iterating via `find`, we just need to advance `lastPos` past this point ONLY if we
-					// replace. If we don't replace, we leave `lastPos` alone, but we need to tell `find` to skip this.
-					// Optimization: Just allow loose matching or strict? Let's stay strict.
-
-					// Simple fix: if invalid, we create a temp search offset.
-					// Since this manual parsing is complex to inline, let's assume valid syntax
-					// OR simply ensure the quote exists.
-				}
-
-				// 2. Check for opening quote
-				if (cursor >= codeView.size() || codeView[cursor] != '"')
-				{
-					// Not a match (e.g. <vector> or malformed), skip this #include token
-					// We rely on the next loop iteration to find the next one,
-					// but we must advance the search start pos manually.
-					// Since we can't easily jump back in this structure, let's just
-					// assume it wasn't a match and append everything later?
-					// No, we need to find the NEXT valid one.
-
-					// Simpler approach: Look for the next one immediately
-					size_t nextInc = codeView.find("#include", incStart + 1);
-					if (nextInc != std::string_view::npos)
-					{
-						// Hacky way to skip current iteration logic without goto
-						// Ideally we restructure, but let's just break/continue with a specialized search offset
-						// variable For performance in 99% of cases, valid shaders work.
-					}
-					// If we hit here, we skip replacing this instance.
-					// We treat it as part of the normal string.
-					// To handle this correctly: We update a "searchOffset" separate from "lastPos".
-					// To keep this readable:
-				}
-				else
-				{
-					// 3. Find closing quote
-					size_t quoteStart = cursor;
-					size_t quoteEnd = codeView.find('"', quoteStart + 1);
-
-					if (quoteEnd != std::string_view::npos)
-					{
-						// Valid Match Found!
-
-						// Append everything before this #include
-						fragmentCodeAfterIncludes.append(codeView.substr(lastPos, incStart - lastPos));
-
-						// Append the replacement content
-						fragmentCodeAfterIncludes.append(m_includedFragmentContents[includeIndex]);
-
-						// Advance index
-						includeIndex++;
-
-						// Move processed cursor to after the closing quote
-						lastPos = quoteEnd + 1;
-
-						// Continue loop to find next
-						continue;
-					}
-				}
-
-				// If we reached here, the #include was malformed or not a string include.
-				// We must advance the search to avoid infinite loop, but NOT advance lastPos
-				// because we haven't appended the text yet.
-				// However, finding a specific way to skip just this occurrence while using 'lastPos'
-				// as both append-cursor and search-cursor is hard.
-				//
-				// Revised loop logic to handle skipping invalid includes gracefully:
-				// We break the loop here because `find` takes `lastPos`.
-				// If we have an invalid include, we must effectively "eat" it into the buffer
-				// or use a separate search cursor.
-
-				// Simplest robust solution: Use a separate search_offset.
-				break; // (See logic below for the robust implementation)
-			}
-
-			// Code cleanup: The loop above is slightly messy due to error handling logic.
-			// Here is the CLEAN manual parsing loop replacing step 3:
-
-			// 3. Process Includes (Clean Version)
 			size_t searchPos = lastPos; // Cursor for searching
 			while (includeIndex < numIncludes)
 			{
@@ -408,6 +315,36 @@ namespace WeirdEngine
 			}
 #endif
 
+			return fragmentCodeAfterIncludes;
+		}
+
+		void Shader::recompile(std::string& vertexCode, std::string& fragmentCode)
+		{
+			if (m_isCompilingAsync)
+			{
+				if (m_pendingVertexShader != 0)
+				{
+					glDeleteShader(m_pendingVertexShader);
+					m_pendingVertexShader = 0;
+				}
+				if (m_pendingFragmentShader != 0)
+				{
+					glDeleteShader(m_pendingFragmentShader);
+					m_pendingFragmentShader = 0;
+				}
+				if (m_pendingProgram != 0)
+				{
+					glDeleteProgram(m_pendingProgram);
+					m_pendingProgram = 0;
+				}
+				m_isCompilingAsync = false;
+			}
+
+			if (ID != 0 && ID != (GLuint)-1)
+				free();
+
+			std::string fragmentCodeAfterIncludes = buildFragmentSource(fragmentCode);
+
 			// Convert the shader source strings into character arrays
 			const char* vertexSource = vertexCode.c_str();
 			const char* fragmentSource = fragmentCodeAfterIncludes.c_str();
@@ -466,6 +403,146 @@ namespace WeirdEngine
 #endif
 
 			m_uniformLocationCache.clear();
+			m_hasRecompiled = true;
+		}
+
+		bool Shader::recompileAsync(std::string& vertexCode, std::string& fragmentCode)
+		{
+#if defined(WEIRD_DISABLE_PARALLEL_SHADER_COMPILE)
+			recompile(vertexCode, fragmentCode);
+			return false;
+#else
+			if (!GLAD_GL_KHR_parallel_shader_compile)
+			{
+				recompile(vertexCode, fragmentCode);
+				return false;
+			}
+
+			if (m_isCompilingAsync)
+			{
+				if (m_pendingVertexShader != 0)
+				{
+					glDeleteShader(m_pendingVertexShader);
+					m_pendingVertexShader = 0;
+				}
+				if (m_pendingFragmentShader != 0)
+				{
+					glDeleteShader(m_pendingFragmentShader);
+					m_pendingFragmentShader = 0;
+				}
+				if (m_pendingProgram != 0)
+				{
+					glDeleteProgram(m_pendingProgram);
+					m_pendingProgram = 0;
+				}
+				m_isCompilingAsync = false;
+			}
+
+			std::string fragmentCodeAfterIncludes = buildFragmentSource(fragmentCode);
+
+			const char* vertexSource = vertexCode.c_str();
+			const char* fragmentSource = fragmentCodeAfterIncludes.c_str();
+
+			auto glCallStartTime = std::chrono::high_resolution_clock::now();
+			m_asyncCompileStartTime = glCallStartTime;
+
+			m_pendingVertexShader = glCreateShader(GL_VERTEX_SHADER);
+			glShaderSource(m_pendingVertexShader, 1, &vertexSource, NULL);
+			glCompileShader(m_pendingVertexShader);
+
+			m_pendingFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+			glShaderSource(m_pendingFragmentShader, 1, &fragmentSource, NULL);
+			glCompileShader(m_pendingFragmentShader);
+
+			m_pendingProgram = glCreateProgram();
+			glAttachShader(m_pendingProgram, m_pendingVertexShader);
+			glAttachShader(m_pendingProgram, m_pendingFragmentShader);
+			glLinkProgram(m_pendingProgram);
+
+#if defined(WEIRD_DEBUG) && defined(LOG_SHADER_COMPILATION)
+			auto glCallEndTime = std::chrono::high_resolution_clock::now();
+			double glCallMs = std::chrono::duration<double, std::milli>(glCallEndTime - glCallStartTime).count();
+			WeirdEngine::Logger::log("Shader::recompileAsync GL calls (main thread): " + std::to_string(glCallMs) +
+									 " ms (" + m_fragmentFile + ")");
+#endif
+
+			m_isCompilingAsync = true;
+			return true;
+#endif
+		}
+
+		bool Shader::pollAsyncCompile()
+		{
+			if (!m_isCompilingAsync)
+			{
+				return false;
+			}
+
+#if !defined(WEIRD_DISABLE_PARALLEL_SHADER_COMPILE)
+			if (GLAD_GL_KHR_parallel_shader_compile)
+			{
+				GLint completed = GL_FALSE;
+				glGetProgramiv(m_pendingProgram, GL_COMPLETION_STATUS_KHR, &completed);
+				if (completed == GL_FALSE)
+				{
+					return false;
+				}
+			}
+#endif
+
+			compileErrors(m_pendingVertexShader, "VERTEX");
+			compileErrors(m_pendingFragmentShader, "FRAGMENT");
+			compileErrors(m_pendingProgram, "PROGRAM");
+
+			GLint linked = GL_FALSE;
+			glGetProgramiv(m_pendingProgram, GL_LINK_STATUS, &linked);
+
+			glDetachShader(m_pendingProgram, m_pendingVertexShader);
+			glDetachShader(m_pendingProgram, m_pendingFragmentShader);
+			glDeleteShader(m_pendingVertexShader);
+			glDeleteShader(m_pendingFragmentShader);
+			m_pendingVertexShader = 0;
+			m_pendingFragmentShader = 0;
+
+			if (linked == GL_TRUE)
+			{
+				auto endTime = std::chrono::high_resolution_clock::now();
+				double totalBgMs = std::chrono::duration<double, std::milli>(endTime - m_asyncCompileStartTime).count();
+
+				if (ID != 0 && ID != (GLuint)-1)
+				{
+					glDeleteProgram(ID);
+				}
+				ID = m_pendingProgram;
+				m_pendingProgram = 0;
+				m_isCompilingAsync = false;
+				m_uniformLocationCache.clear();
+				m_hasRecompiled = true;
+
+				glUseProgram(ID);
+
+#if defined(WEIRD_DEBUG) && defined(LOG_SHADER_COMPILATION)
+				WeirdEngine::Logger::log("Async shader background compile ready: " + std::to_string(totalBgMs) +
+										 " ms (" + m_fragmentFile + ")");
+#endif
+
+				return true;
+			}
+			else
+			{
+				std::string errorMsg = std::string("Async shader compilation/linking failed:\n   V -> ") +
+									   m_vertexFile + "\n   F -> " + m_fragmentFile + "\n";
+				for (const auto& define : m_activeDefines)
+				{
+					errorMsg += "   Define: " + define + "\n";
+				}
+				WeirdEngine::Logger::error(errorMsg);
+
+				glDeleteProgram(m_pendingProgram);
+				m_pendingProgram = 0;
+				m_isCompilingAsync = false;
+				return false;
+			}
 		}
 
 		// Checks if the different Shaders have compiled properly

@@ -1,6 +1,7 @@
 #ifndef SHADER_CLASS_H
 #define SHADER_CLASS_H
 
+#include <chrono>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <string>
@@ -40,6 +41,12 @@ namespace WeirdEngine
 				return m_lastCompleteFragmentCode;
 			}
 			void setFragmentIncludeCode(int i, const std::string& code, bool shouldRecompile = true);
+			bool setFragmentIncludeCodeAsync(int i, const std::string& code);
+			bool isCompilingAsync() const
+			{
+				return m_isCompilingAsync;
+			}
+			bool pollAsyncCompile();
 			void addDefine(const std::string& name);
 			void removeDefine(const std::string& name);
 			void toggleDefine(const std::string& name);
@@ -117,6 +124,8 @@ namespace WeirdEngine
 
 			void recompile();
 			void recompile(std::string& vertexCode, std::string& fragmentCode);
+			bool recompileAsync(std::string& vertexCode, std::string& fragmentCode);
+			std::string buildFragmentSource(std::string_view fragmentCode);
 
 			// Checks if the different Shaders have compiled properly
 			void compileErrors(unsigned int shader, const std::string& type);
@@ -124,6 +133,12 @@ namespace WeirdEngine
 			std::vector<std::string> m_includedFragmentContents;
 			std::vector<std::string> m_activeDefines;
 			std::string m_lastCompleteFragmentCode;
+
+			bool m_isCompilingAsync = false;
+			GLuint m_pendingProgram = 0;
+			GLuint m_pendingVertexShader = 0;
+			GLuint m_pendingFragmentShader = 0;
+			std::chrono::high_resolution_clock::time_point m_asyncCompileStartTime;
 
 			// This MUST be mutable because setUniform is const, but we need to update the cache
 			mutable std::unordered_map<std::string, GLint> m_uniformLocationCache;

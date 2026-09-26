@@ -149,6 +149,13 @@ namespace WeirdEngine
 				}
 			}
 
+#ifndef WEIRD_DISABLE_PARALLEL_SHADER_COMPILE
+			if (GLAD_GL_KHR_parallel_shader_compile && glMaxShaderCompilerThreadsKHR)
+			{
+				glMaxShaderCompilerThreadsKHR(0xFFFFFFFF);
+			}
+#endif
+
 			std::cout << "GL_SHADING_LANGUAGE_VERSION: " << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)
 					  << std::endl;
 

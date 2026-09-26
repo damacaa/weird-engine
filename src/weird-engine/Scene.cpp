@@ -589,22 +589,20 @@ namespace WeirdEngine
 	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch World Data");
-		shapeCount = m_registry.getComponentArray<Shape>()->getSize();
-		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size);
+		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size, shapeCount);
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch 3D World Data");
-		shapeCount = m_registry.getComponentArray<Shape>()->getSize();
-		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
+		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size, shapeCount);
 	}
 
 	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
-		shapeCount = m_registry.getComponentArray<UIShape>()->getSize();
-		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
+		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size,
+																shapeCount);
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)

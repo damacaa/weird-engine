@@ -2,10 +2,12 @@
 
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Input.h"
+#include "weird-engine/Logger.h"
 #include "weird-renderer/components/Shape.h"
 #include "weird-renderer/resources/Shader.h"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -64,6 +66,8 @@
  *    - Fixed-Precision Literals: Float constants are printed as exact GLSL literals (`0.500000`),
  *      eliminating runtime string patching and maintaining 100% compile-time purity.
  */
+
+// #define LOG_SDF_SHADER_GENERATION
 
 namespace WeirdEngine::SDFShaderGenerationSystem
 {
@@ -322,18 +326,52 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	inline void update(Registry& registry, RenderContext& ctx, WeirdRenderer::Shader& shader,
 					   const std::vector<std::shared_ptr<IMathExpression>>& sdfs)
 	{
-		const auto componentArray = registry.getComponentManager<ShapeClass>()->getComponentArray();
+		if (shader.isCompilingAsync())
+		{
+			if (shader.pollAsyncCompile())
+			{
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+				WeirdEngine::Logger::log("SDF shader swapped (" + std::to_string(ctx.pendingShapeEntities.size()) +
+										 " shapes active)");
+#endif
+				ctx.activeShapeEntities = std::move(ctx.pendingShapeEntities);
+				ctx.pendingShapeEntities.clear();
+			}
+			else if (!shader.isCompilingAsync())
+			{
+				WeirdEngine::Logger::error(
+					"Async SDF shader compilation failed; discarding pending shapes and keeping current shader.");
+				ctx.pendingShapeEntities.clear();
+				return;
+			}
+			else
+			{
+				// Still compiling in background; keep existing shader and data
+				return;
+			}
+		}
 
 		if (!ctx.shapesNeedUpdate)
 		{
 			return;
 		}
 
+		auto cpuGenStartTime = std::chrono::high_resolution_clock::now();
+
+		const auto componentArray = registry.getComponentManager<ShapeClass>()->getComponentArray();
+
 #if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
 		std::cout << "Updating shader code for: " << std::string(typeid(ShapeClass).name()) << "\n";
 #endif
 
 		ctx.shapesNeedUpdate = false;
+
+		ctx.pendingShapeEntities.clear();
+		ctx.pendingShapeEntities.reserve(componentArray->getSize());
+		for (size_t i = 0; i < componentArray->getSize(); i++)
+		{
+			ctx.pendingShapeEntities.push_back(componentArray->getEntityAtIdx(i));
+		}
 
 		auto toGlslFloat = [](float value)
 		{
@@ -481,10 +519,43 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 
 		std::string replacement = oss.str();
 		std::string helperFunctionsTotal = functionsOss.str();
+		auto cpuGenEndTime = std::chrono::high_resolution_clock::now();
+		double cpuGenMs = std::chrono::duration<double, std::milli>(cpuGenEndTime - cpuGenStartTime).count();
 
 		// Inject generated GLSL blocks into the shader's include slots
 		shader.setFragmentIncludeCode(0, helperFunctionsTotal, false);
-		shader.setFragmentIncludeCode(1, replacement, true);
+		if (ctx.isInitialCompile)
+		{
+			shader.setFragmentIncludeCode(1, replacement, true);
+
+			ctx.activeShapeEntities = ctx.pendingShapeEntities;
+			ctx.pendingShapeEntities.clear();
+			ctx.isInitialCompile = false;
+
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+			auto cpuGenEndTime = std::chrono::high_resolution_clock::now();
+			double cpuGenMs = std::chrono::duration<double, std::milli>(cpuGenEndTime - cpuGenStartTime).count();
+			WeirdEngine::Logger::log("SDF initial compile (" + std::to_string(componentArray->getSize()) +
+									 " shapes): CPU string gen = " + std::to_string(cpuGenMs) + " ms");
+#endif
+		}
+		else
+		{
+			bool isAsync = shader.setFragmentIncludeCodeAsync(1, replacement);
+
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+			auto cpuGenEndTime = std::chrono::high_resolution_clock::now();
+			double cpuGenMs = std::chrono::duration<double, std::milli>(cpuGenEndTime - cpuGenStartTime).count();
+			WeirdEngine::Logger::log("SDF shape update (" + std::to_string(componentArray->getSize()) +
+									 " shapes): CPU string gen = " + std::to_string(cpuGenMs) + " ms");
+#endif
+
+			if (!isAsync)
+			{
+				ctx.activeShapeEntities = std::move(ctx.pendingShapeEntities);
+				ctx.pendingShapeEntities.clear();
+			}
+		}
 
 #if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
 		if (!helperFunctionsTotal.empty())

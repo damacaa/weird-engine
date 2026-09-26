@@ -76,6 +76,7 @@ namespace RopeSceneNamespace
 
 		auto& uiBoxMat = services.materials2D().createMaterial("ui_box");
 		uiBoxMat.color = ColorPalette::Yellow;
+		uiBoxMat.color.a = 0.25f;
 
 		for (int i = 0; i < 8; ++i)
 		{
@@ -237,14 +238,48 @@ namespace RopeSceneNamespace
 			throwBalls(registry, services, state);
 		}
 
-		if (services.input().getKeyDown(Input::N))
+		if (services.input().getKeyDown(Input::M) || services.input().getKeyDown(Input::N))
 		{
 			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
 			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
 			vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-			services.shapes().addShape({.shapeId = DefaultShapes::STAR,
-										.variables = {world.x, world.y, 5.0f, 7.5f, 1.0f},
+			state.boxStart = screen;
+		}
+
+		if (services.input().getKeyUp(Input::M))
+		{
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+
+			vec2 pos = (screen + state.boxStart) / 2.0f;
+			vec2 size = 0.5f * glm::abs(screen - state.boxStart);
+			size = glm::max(size, vec2(1.0f));
+
+			services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
+										  .variables = {{Primitives::Box::POS_X, pos.x},
+														{Primitives::Box::POS_Y, pos.y},
+														{Primitives::Box::SIZE_X, size.x},
+														{Primitives::Box::SIZE_Y, size.y}},
+										  .material = services.materials2D().getHandle("ui_box")});
+		}
+
+		if (services.input().getKeyUp(Input::N))
+		{
+			auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
+			vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+			vec2 worldStart = ECS::Camera::screenPositionToWorldPosition2D(cam, state.boxStart);
+			vec2 worldEnd = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+			vec2 pos = (worldEnd + worldStart) / 2.0f;
+			vec2 size = 0.5f * glm::abs(worldEnd - worldStart);
+			size = glm::max(size, vec2(1.0f));
+
+			services.shapes().addShape({.shapeId = DefaultShapes::BOX,
+										.variables = {{Primitives::Box::POS_X, pos.x},
+													  {Primitives::Box::POS_Y, pos.y},
+													  {Primitives::Box::SIZE_X, size.x},
+													  {Primitives::Box::SIZE_Y, size.y}},
 										.material = services.materials2D().getHandle("ground")});
 		}
 	}

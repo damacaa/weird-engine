@@ -42,6 +42,8 @@ namespace RopeSceneNamespace
 		float deleteRopeBallsTimer = 0.0f;
 
 		WeirdEngine::Entity draggedBall = WeirdEngine::INVALID_ENTITY;
+
+		WeirdEngine::vec2 boxStart;
 	};
 
 	State& getState(WeirdEngine::Registry& registry);

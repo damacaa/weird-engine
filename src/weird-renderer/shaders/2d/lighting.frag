@@ -141,22 +141,17 @@ float mapInside(vec2 p)
 	return texture(t_distanceSampledTexture, p).x;
 }
 
-float calculateLightForRay(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance, float edgeThickness)
+vec2 calculateLightForRay(vec2 uv, vec2 rd, vec2 normal, float shadows, float innerDistance, float edgeThickness)
 {
 	float lightNormalDot = -(dot(-rd, normal));
 
-	float innerShapeFade = clamp(innerDistance / max(edgeThickness, 0.0001), 0.0, 1.0);
-	float innerShadowValue = mix(shadows, SHADOW_VALUE, innerShapeFade);
-
-	float extraLight = max(0.0, 0.5 * lightNormalDot);
-	float lightVisibility = smoothstep(SHADOW_VALUE, 1.0, innerShadowValue);
-	extraLight *= lightVisibility;
-
+	float shadowVisibility = smoothstep(SHADOW_VALUE, 1.0, shadows);
 	float borderMask = 1.0 - smoothstep(0.0, max(edgeThickness, 0.0001), innerDistance);
-	float lightOnBorderOnly = extraLight * borderMask;
-	float light = 1.0 + lightOnBorderOnly;
 
-	return clamp(light, 0.0, 10.0);
+	float diffuse = 1.0;
+	float extraLight = max(0.0, 0.5 * lightNormalDot) * shadowVisibility * borderMask;
+
+	return vec2(diffuse, extraLight);
 }
 
 void main()
@@ -198,6 +193,7 @@ void main()
 	float smoothing = min(1.0 * fwidth(distance), maxSmoothing);
 	float shapeFactor = 1.0 - smoothstep(-smoothing, smoothing, distance);
 #else
+	float smoothing = 1.0 / u_resolution.y;
 	float shapeFactor = distance <= 0.0 ? 1.0 : 0.0;
 #endif
 
@@ -206,10 +202,11 @@ void main()
 #endif
 
 	float baseLightShadowOffset = min(0.005 * zoom, 0.3);
-	float lightShadowOffset = baseLightShadowOffset / (zoom * overscanScale);
-	float lightEdgeThickness = (baseLightShadowOffset / zoom) * (0.5 / aspectRatio) * overscanScale;
+	float lightShadowOffset = max(baseLightShadowOffset / (zoom * overscanScale), 4.0 * smoothing);
+	float highlightThickness = smoothing;
 
-	vec3 accumulatedShapeLight = vec3(0.0);
+	vec3 accumulatedShapeDiffuse = vec3(0.0);
+	vec3 accumulatedShapeHighlight = vec3(0.0);
 	float minShadowValue = 1.0;
 
 	int activeLightCount = u_numLights;
@@ -222,8 +219,9 @@ void main()
 #else
 		float shadows = 1.0;
 #endif
-		float light = calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
-		accumulatedShapeLight += vec3(light);
+		vec2 lightFactors = calculateLightForRay(screenUV, rd, normal, shadows, -distance, highlightThickness);
+		accumulatedShapeDiffuse += vec3(lightFactors.x);
+		accumulatedShapeHighlight += vec3(lightFactors.y);
 		minShadowValue = min(minShadowValue, shadows);
 	}
 	else
@@ -243,9 +241,9 @@ void main()
 					shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 				}
 #endif
-				float lightFactor =
-					calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
-				accumulatedShapeLight += lightColor * lightFactor;
+				vec2 lightFactors = calculateLightForRay(screenUV, rd, normal, shadows, -distance, highlightThickness);
+				accumulatedShapeDiffuse += lightColor * lightFactors.x;
+				accumulatedShapeHighlight += lightColor * lightFactors.y;
 				minShadowValue = min(minShadowValue, shadows);
 			}
 			else if (light.type == 1) // Point
@@ -265,9 +263,10 @@ void main()
 						shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 					}
 #endif
-					float lightFactor =
-						calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
-					accumulatedShapeLight += lightColor * att * lightFactor;
+					vec2 lightFactors =
+						calculateLightForRay(screenUV, rd, normal, shadows, -distance, highlightThickness);
+					accumulatedShapeDiffuse += lightColor * att * lightFactors.x;
+					accumulatedShapeHighlight += lightColor * att * lightFactors.y;
 					minShadowValue = min(minShadowValue, mix(1.0, shadows, att));
 				}
 			}
@@ -298,9 +297,10 @@ void main()
 							shadows = renderShadows(screenUV + (lightShadowOffset * rd), rd);
 						}
 #endif
-						float lightFactor =
-							calculateLightForRay(screenUV, rd, normal, shadows, -distance, lightEdgeThickness * 0.5);
-						accumulatedShapeLight += lightColor * att * coneFactor * lightFactor;
+						vec2 lightFactors =
+							calculateLightForRay(screenUV, rd, normal, shadows, -distance, highlightThickness);
+						accumulatedShapeDiffuse += lightColor * att * coneFactor * lightFactors.x;
+						accumulatedShapeHighlight += lightColor * att * coneFactor * lightFactors.y;
 						minShadowValue = min(minShadowValue, mix(1.0, shadows, att * coneFactor));
 					}
 				}
@@ -356,7 +356,9 @@ void main()
 	vec3 backgroundColor = texture(t_backgroundTexture, screenUV).rgb;
 #endif
 
-	float finalAlpha = clamp(alpha + 0.1, 0.0, 1.0) * shapeFactor;
+	float highlightStrength =
+		max(accumulatedShapeHighlight.r, max(accumulatedShapeHighlight.g, accumulatedShapeHighlight.b));
+	float finalAlpha = clamp(alpha + 0.1 + highlightStrength, 0.0, 1.0) * shapeFactor;
 
 #ifdef DEBUG_SHOW_NORMALS
 	color = vec3(normal, 0.0);
@@ -368,7 +370,10 @@ void main()
 	vec3 shadowTransmittance = mix(u_shadowTint * ambientOcclusion, vec3(1.0), litFactor);
 	vec3 shadedBackground = backgroundColor * shadowTransmittance;
 
-	vec3 litShapeColor = color * accumulatedShapeLight;
+	// Subtle highlight: preserves original material color, with shadow tint providing a gentle floor for dark materials
+	vec3 highlightColor = mix(color, u_shadowTint, 0.35);
+	vec3 edgeHighlight = highlightColor * accumulatedShapeHighlight;
+	vec3 litShapeColor = (color * accumulatedShapeDiffuse) + edgeHighlight;
 
 	color = mix(litShapeColor, shadedBackground, 1.0 - finalAlpha);
 

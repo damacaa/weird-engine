@@ -755,11 +755,8 @@ namespace WeirdEngine
 			}
 
 			float params[12];
-			std::copy_n(obj.parameters, 8, params);
-			params[8] = static_cast<float>(m_simulationTime);
-			params[9] = p.x;
-			params[10] = p.y;
-			params[11] = m_audioVolume.load(std::memory_order_relaxed);
+			packSdfParameters(params, obj.parameters, static_cast<float>(m_simulationTime), p,
+							  m_audioVolume.load(std::memory_order_relaxed));
 
 			// Distance
 
@@ -844,11 +841,8 @@ namespace WeirdEngine
 			}
 
 			float params[12];
-			std::copy_n(obj.parameters, 8, params);
-			params[8] = static_cast<float>(m_simulationTime);
-			params[9] = p.x;
-			params[10] = p.y;
-			params[11] = m_audioVolume.load(std::memory_order_relaxed);
+			packSdfParameters(params, obj.parameters, static_cast<float>(m_simulationTime), p,
+							  m_audioVolume.load(std::memory_order_relaxed));
 
 			// Distance
 
@@ -1794,38 +1788,6 @@ namespace WeirdEngine
 		}
 
 		return INVALID_SIMULATION_ID;
-	}
-
-	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR)
-	{
-		int closestShape;
-
-		return raymarch(pos, direction, FAR, closestShape);
-	}
-
-	float Simulation2D::raymarch(vec2 pos, vec2 direction, const float FAR, int& closestShape)
-	{
-		float d;
-		float traveled = 0.0;
-
-		for (int i = 0; i < 100; i++)
-		{
-			vec2 p = pos + (traveled * direction);
-
-			d = map(p, closestShape);
-
-			if (d <= -EPSILON)
-				break;
-
-			traveled += std::abs(d) + EPSILON;
-
-			if (traveled >= FAR)
-			{
-				return FAR;
-			}
-		}
-
-		return traveled - EPSILON;
 	}
 
 	void Simulation2D::runSimulationThread()

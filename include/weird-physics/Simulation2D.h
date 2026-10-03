@@ -234,8 +234,6 @@ namespace WeirdEngine
 		void removeShape(Entity owner, Shape& shape);
 
 		SimulationID raycast(vec2 pos);
-		float raymarch(vec2 pos, vec2 direction, const float FAR = 100.0f);
-		float raymarch(vec2 pos, vec2 direction, const float FAR, int& closestShape);
 
 		void setGravity(float gravity)
 		{

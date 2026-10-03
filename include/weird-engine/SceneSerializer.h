@@ -2,9 +2,9 @@
 
 #include <cstdint>
 #include <string>
-#include <unordered_map>
 
 #include "weird-engine/ecs/Entity.h"
+#include "weird-engine/services/TagService.h"
 
 namespace WeirdEngine
 {
@@ -14,7 +14,7 @@ namespace WeirdEngine
 	{
 	public:
 		/// Tag map type: tag name → entity id.
-		using TagMap = std::unordered_map<std::string, Entity>;
+		using TagMap = ::WeirdEngine::TagMap;
 
 		// Serialize the full scene state (entities, components, physics constraints,
 		// and entity tags) to a .weird file (JSON internally).

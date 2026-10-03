@@ -283,11 +283,15 @@ Multiple systems registered to the same stage execute sequentially in registrati
 ## 5. ServiceProvider Subsystems
 
 The `ServiceProvider` parameter provides controlled access to engine subsystems.
+Each service is a self-contained class in its own header under `include/weird-engine/services/`
+(for example `TimeService.h`, `PhysicsService.h`). Their state is private; games interact only
+through the public methods listed below. Code that needs a single service can include its header
+directly instead of `ServiceProvider.h`.
 
 | Subsystem | Service Call | Purpose |
 |---|---|---|
 | Input | `services.input()` | Query keys, mouse coordinates, and gamepads |
-| Physics | `services.physics()` | Control gravity, damping, pause state, and raycasts |
+| Physics | `services.physics()` | Control gravity, damping, pause state, and query shapes/rigidbodies |
 | Render | `services.render()` | Access camera, lights, and trigger shader updates |
 | Shapes | `services.shapes()` | Register custom SDFs and spawn shapes (see [SDF Shapes Guide](SDF_SHAPES.md)) |
 | Materials 2D | `services.materials2D()` | Create, share, and query 2D material definitions |
@@ -369,13 +373,42 @@ void onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEven
 }
 ```
 
+### Scene Queries (Shapes and Rigidbodies)
+
+`services.physics()` provides two main-thread scene queries. Both share the
+`RaymarchResult { distance; entity; }` result type and take `includeRigidbodies`
+to control whether rigidbodies are considered (`true` by default):
+
+```cpp
+// Point query: what is at this world coordinate? Returns the entity owning the
+// closest surface and the signed distance to it (negative = inside a shape/body).
+RaymarchResult sample = services.physics().sampleAt(worldPos);
+if (sample.entity != INVALID_ENTITY && sample.distance < 0.0f)
+{
+	// The point is inside the returned entity's shape or rigidbody
+}
+
+// Ray query: march from origin along direction up to maxDistance. Returns the
+// distance traveled to the first hit plus the owning entity, or
+// {maxDistance, INVALID_ENTITY} when nothing is hit.
+RaymarchResult hit = services.physics().raymarch(origin, direction, 0.001f, 150.0f);
+if (hit.entity != INVALID_ENTITY)
+{
+	vec2 hitPoint = origin + direction * hit.distance;
+}
+```
+
+Both queries respect shape combination/group semantics and skip shapes with
+`hasCollisions = false`. Rigidbodies are evaluated through the physics spatial
+grid snapshot, so the queries stay safe on the main thread.
+
 ### Hit-Testing Rigidbodies and SimulationID Mapping
 
 Rigidbodies are identified within the physics simulation by strongly-typed `SimulationID` (stored in `rb.simulationId`).
 You can query rigidbodies at world positions and map between simulation and ECS entities:
 
 ```cpp
-// Hit-test active rigidbodies at a 2D world position; returns INVALID_ENTITY if none hit
+// Bodies-only pick: returns the rigidbody containing the position, or INVALID_ENTITY
 Entity hitEntity = services.physics().getRigidbodyAt(mouseWorldPos);
 
 // Translate a SimulationID back to its owning ECS Entity
@@ -386,6 +419,11 @@ Entity ownerEntity = services.physics().entityForSimulationId(rb.simulationId);
 
 ## 7. Sample Scene Reference
 
-For a complete working example demonstrating systems, `ServiceProvider`, custom SDFs, UI text, and physics callbacks, consult:
+Working examples live in `examples/sample-scenes/`:
 
-`examples/sample-scenes/include/ServiceShowcaseScene.h`
+| Scene | Demonstrates |
+|---|---|
+| `RayQueryScene.h` | `PhysicsService::sampleAt` and `PhysicsService::raymarch` (see Section 6) |
+| `RopeScene.h` | Rigidbody picking (`getRigidbodyAt`), springs, and distance constraints |
+| `MouseCollisionScene.h` | Collision callbacks, materials, and cursor-driven interaction |
+| `ShapesCombinations.h` | Custom SDF registration and shape combination types |

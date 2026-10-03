@@ -79,7 +79,7 @@ namespace WeirdEngine
 		friend class SceneManager;
 		friend class SceneSerializer;
 		friend class ServiceProvider;
-		friend struct SerializationService;
+		friend class SerializationService;
 
 		friend class WeirdAudio::AudioEngine;
 		friend class WeirdRenderer::Renderer;

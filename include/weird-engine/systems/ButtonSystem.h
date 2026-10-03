@@ -33,13 +33,9 @@ namespace WeirdEngine
 				{
 					{
 						float parameters[12];
-
-						std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
-
-						parameters[8] = time;
-						parameters[9] = Input::GetMouseX();
-						parameters[10] = Input::GetMouseY();
-						parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
+						packSdfParameters(parameters, shape.parameters, time,
+										  vec2(Input::GetMouseX(), Input::GetMouseY()),
+										  WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						buttonComponent.hovered = distance < buttonComponent.clickPadding;
@@ -110,13 +106,9 @@ namespace WeirdEngine
 				{
 					{
 						float parameters[12];
-
-						std::copy(std::begin(shape.parameters), std::end(shape.parameters), std::begin(parameters));
-
-						parameters[8] = time;
-						parameters[9] = Input::GetMouseX();
-						parameters[10] = Input::GetMouseY();
-						parameters[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
+						packSdfParameters(parameters, shape.parameters, time,
+										  vec2(Input::GetMouseX(), Input::GetMouseY()),
+										  WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 
 						float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
 						toggleComponent.hovered = distance < toggleComponent.clickPadding;

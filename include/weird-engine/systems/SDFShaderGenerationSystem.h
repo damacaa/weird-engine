@@ -37,6 +37,10 @@
  *        * `material`: Material/color palette index.
  *        * `combination`: CSG operation (Addition, Subtraction, Intersection, SmoothAddition, etc.).
  *        * `smoothFactor`: Blend radius parameter used for smooth CSG unions/subtractions.
+ *    - The 12-slot evaluation array passed to `getValue` is packed by `packSdfParameters`
+ *      (weird-renderer/components/Shape.h): [0..7] shape variables, [8] time,
+ *      [9..10] sample point, [11] audio volume. For repeated multi-point evaluation,
+ *      `packSdfParameterPrefix` packs the same layout without the sample point.
  *
  * 2. Shader Injection Points:
  *    The fragment shaders (`sdf_distance.frag` for 2D, `sdf_raymarching.frag` for 3D) contain

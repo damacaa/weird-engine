@@ -1,7 +1,9 @@
 #include "weird-audio/SdfMusicEngine.h"
+
 #include <algorithm>
 #include <cmath>
 
+#include "weird-renderer/components/Shape.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -148,12 +150,8 @@ namespace WeirdEngine
 			}
 
 			float params[12]{};
-			for (size_t i = 0; i < 8; ++i)
-			{
-				params[i] = m_currentSong->getParameter(i);
-			}
-			params[8] = 0.0f; // Static time for parameter sampling
-			params[11] = 0.0f;
+			// Static time for parameter sampling
+			packSdfParameterPrefix(params, m_currentSong->getParameters(), 0.0f);
 
 			auto evalAt = [&](float px, float py) -> float
 			{
@@ -311,12 +309,7 @@ namespace WeirdEngine
 			static const auto sampleOffsets = createDomainSamples();
 
 			float params[12]{};
-			for (size_t i = 0; i < 8; ++i)
-			{
-				params[i] = m_currentSong->getParameter(i);
-			}
-			params[8] = static_cast<float>(m_sceneTime);
-			params[11] = 0.0f;
+			packSdfParameterPrefix(params, m_currentSong->getParameters(), static_cast<float>(m_sceneTime));
 
 			float totalFill = 0.0f;
 			float totalCurvature = 0.0f;
@@ -374,12 +367,7 @@ namespace WeirdEngine
 				return;
 
 			float params[12]{};
-			for (size_t i = 0; i < 8; ++i)
-			{
-				params[i] = m_currentSong->getParameter(i);
-			}
-			params[8] = static_cast<float>(sceneTime);
-			params[11] = 0.0f;
+			packSdfParameterPrefix(params, m_currentSong->getParameters(), static_cast<float>(sceneTime));
 
 			// Sample point for current frame
 			size_t currentIndex = m_sampleIndex % sampleOffsets.size();
@@ -1332,14 +1320,9 @@ namespace WeirdEngine
 					}
 
 					float params[12]{};
-					for (size_t i = 0; i < 8; ++i)
-					{
-						params[i] = m_currentSong->getParameter(i);
-					}
-					params[8] = static_cast<float>(m_sceneTime);
+					packSdfParameterPrefix(params, m_currentSong->getParameters(), static_cast<float>(m_sceneTime));
 					params[9] = sampleR * std::cos(theta);
 					params[10] = sampleR * std::sin(theta);
-					params[11] = 0.0f;
 
 					float dist = m_currentSong->getRawShapeExpression()->getValue(params);
 

@@ -1,6 +1,5 @@
 #include "MouseCollisionScene.h"
 
-#include "globals.h"
 #include <cmath>
 
 using namespace WeirdEngine;
@@ -52,32 +51,32 @@ namespace MouseCollisionSceneNamespace
 		auto& cursorMat = services.materials2D().createMaterial("cursor");
 
 		// Floor
-		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-									.variables = {{Primitives::SineWave::AMPLITUDE, 0.0f},
-												  {Primitives::SineWave::PERIOD, 1.5f},
-												  {Primitives::SineWave::SPEED, 1.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 0.0f},
+												  {DefaultShapes::SineWave::Period, 1.5f},
+												  {DefaultShapes::SineWave::Speed, 1.0f}},
 									.material = wallMat});
 
 		// Wall right
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, 35.0f},
-												  {Primitives::Box::POS_Y, 0.0f},
-												  {Primitives::Box::SIZE_X, 5.0f},
-												  {Primitives::Box::SIZE_Y, 30.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 35.0f},
+												  {DefaultShapes::Box::PosY, 0.0f},
+												  {DefaultShapes::Box::SizeX, 5.0f},
+												  {DefaultShapes::Box::SizeY, 30.0f}},
 									.material = wallMat});
 
 		// Wall left
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, -5.0f},
-												  {Primitives::Box::POS_Y, 0.0f},
-												  {Primitives::Box::SIZE_X, 5.0f},
-												  {Primitives::Box::SIZE_Y, 30.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, -5.0f},
+												  {DefaultShapes::Box::PosY, 0.0f},
+												  {DefaultShapes::Box::SizeX, 5.0f},
+												  {DefaultShapes::Box::SizeY, 30.0f}},
 									.material = wallMat});
 
-		state.cursorShape = services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-														.variables = {{Primitives::Circle::POS_X, -15.0f},
-																	  {Primitives::Circle::POS_Y, 50.0f},
-																	  {Primitives::Circle::RADIUS, 5.0f}},
+		state.cursorShape = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+														.variables = {{DefaultShapes::Circle::PosX, -15.0f},
+																	  {DefaultShapes::Circle::PosY, 50.0f},
+																	  {DefaultShapes::Circle::Radius, 5.0f}},
 														.material = cursorMat});
 	}
 
@@ -99,14 +98,6 @@ namespace MouseCollisionSceneNamespace
 
 			registry.addComponent<RigidBody2D>(entity);
 			registry.addComponent<CollisionCounter>(entity);
-		}
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
 		}
 	}
 
@@ -177,13 +168,4 @@ namespace MouseCollisionSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace MouseCollisionSceneNamespace

@@ -1,6 +1,5 @@
 #include "LifeScene.h"
 
-#include "globals.h"
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -37,18 +36,18 @@ namespace LifeSceneNamespace
 		}
 
 		// Circular arena boundary: large outer circle with inner arena circle subtracted
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{DefaultShapes::Circle::POS_X, 0.0f},
-												  {DefaultShapes::Circle::POS_Y, 0.0f},
-												  {DefaultShapes::Circle::RADIUS, OUTER_BOUNDARY_RADIUS}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, 0.0f},
+												  {DefaultShapes::Circle::PosY, 0.0f},
+												  {DefaultShapes::Circle::Radius, OUTER_BOUNDARY_RADIUS}},
 									.material = 0,
 									.combination = CombinationType::Addition,
 									.hasCollision = true});
 
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{DefaultShapes::Circle::POS_X, 0.0f},
-												  {DefaultShapes::Circle::POS_Y, 0.0f},
-												  {DefaultShapes::Circle::RADIUS, INNER_BOUNDARY_RADIUS}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, 0.0f},
+												  {DefaultShapes::Circle::PosY, 0.0f},
+												  {DefaultShapes::Circle::Radius, INNER_BOUNDARY_RADIUS}},
 									.material = 0,
 									.combination = CombinationType::Subtraction,
 									.hasCollision = true});
@@ -220,14 +219,6 @@ namespace LifeSceneNamespace
 		}
 	}
 
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
-	}
-
 	void organismMovementSystem(Registry& registry, ServiceProvider& services)
 	{
 		float currentTime = services.time().time();
@@ -275,13 +266,4 @@ namespace LifeSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace LifeSceneNamespace

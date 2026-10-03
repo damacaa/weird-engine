@@ -64,7 +64,7 @@ namespace WeirdEngine
 		{
 			using namespace SDF;
 			using namespace DefaultShapes;
-#define WEIRD_REGISTER_SHAPE_2D(ID, StructName, params, expr) sdfs[ID] = (expr).node;
+#define WEIRD_REGISTER_SHAPE_2D(Name, params, expr) sdfs[Name] = (expr).node;
 			WEIRD_BUILTIN_SHAPES_2D(WEIRD_REGISTER_SHAPE_2D)
 #undef WEIRD_REGISTER_SHAPE_2D
 		}
@@ -72,7 +72,7 @@ namespace WeirdEngine
 		// 3D Default Shapes
 		{
 			using namespace DefaultShapes3D;
-#define WEIRD_REGISTER_SHAPE_3D(ID, StructName, params, expr) sdfs[ID] = expr;
+#define WEIRD_REGISTER_SHAPE_3D(Name, params, expr) sdfs[Name] = expr;
 			WEIRD_BUILTIN_SHAPES_3D(WEIRD_REGISTER_SHAPE_3D)
 #undef WEIRD_REGISTER_SHAPE_3D
 		}

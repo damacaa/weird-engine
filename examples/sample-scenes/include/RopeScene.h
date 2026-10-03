@@ -3,6 +3,7 @@
 #include <stack>
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace RopeSceneNamespace
@@ -54,7 +55,6 @@ namespace RopeSceneNamespace
 	void setupMaterialsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupRopeGridSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupShapesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void starAnimationSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnerSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void clampToggleSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -62,8 +62,6 @@ namespace RopeSceneNamespace
 	void ballDragSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void ropeCleanupSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void fallCleanupSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace RopeSceneNamespace
 
 class RopeScene : public WeirdEngine::Scene2D
@@ -76,9 +74,9 @@ public:
 		addStartSystem(RopeSceneNamespace::setupMaterialsSystem);
 		addStartSystem(RopeSceneNamespace::setupRopeGridSystem);
 		addStartSystem(RopeSceneNamespace::setupShapesSystem);
-		addStartSystem(RopeSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(RopeSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(RopeSceneNamespace::starAnimationSystem);
 		addUpdateSystem(RopeSceneNamespace::spawnerSystem);
 		addUpdateSystem(RopeSceneNamespace::clampToggleSystem);
@@ -86,7 +84,7 @@ public:
 		addUpdateSystem(RopeSceneNamespace::ballDragSystem);
 		addUpdateSystem(RopeSceneNamespace::ropeCleanupSystem);
 		addUpdateSystem(RopeSceneNamespace::fallCleanupSystem);
-		addUpdateSystem(RopeSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 
 	void onPhysicsStep(WeirdEngine::Simulation2D& simulation) override;

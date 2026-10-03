@@ -1,7 +1,6 @@
 #include "model/NodeRegistry.h"
 
 #include "weird-engine/math/MathExpressions.h"
-#include "weird-engine/math/Primitives.h"
 #include "weird-engine/math/Primitives3D.h"
 #include "weird-engine/math/SDF.h"
 

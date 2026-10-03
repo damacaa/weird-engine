@@ -13,7 +13,6 @@ The math module provides a small expression system used to describe 2D and 3D SD
 | `CompiledMathExpressions.h` | Experimental bytecode VM representation for math expressions. |
 | `Default2DSDFs.h` | Registers default 2D SDF shapes with `Scene`. |
 | `Default3DSDFs.h` | Registers default 3D SDF shapes with `Scene`. |
-| `Primitives.h` | Standalone 2D primitive expression classes. |
 | `Primitives3D.h` | Standalone 3D primitive expression classes. |
 | `ShapeMacro.h` | Abstract base type for shape macros. |
 | `StarShape.h` | Helper that builds a star SDF expression. |
@@ -163,8 +162,8 @@ Some of these are simple expression compositions. Others, such as `Polygon`, `Tr
 Built-in engine shapes are defined in `Default2DSDFs.h` (`DefaultShapes`) and `Default3DSDFs.h` (`DefaultShapes3D`) via compile-time X-macro definition tables (`WEIRD_BUILTIN_SHAPES_2D` and `WEIRD_BUILTIN_SHAPES_3D`).
 
 The table automatically generates:
-1. Compile-time `ShapeId` enum constants (e.g. `DefaultShapes::CIRCLE`, `DefaultShapes::BOX`).
-2. Scoped parameter index structures (e.g. `DefaultShapes::Circle::POS_X`, `POS_Y`, `RADIUS`).
+1. Compile-time `ShapeId` enum constants (e.g. `DefaultShapes::Circle`, `DefaultShapes::Box`).
+2. Scoped parameter index structures (e.g. `DefaultShapes::Circle::PosX`, `POS_Y`, `RADIUS`).
 3. Deterministic registration in `Scene::registerBuiltinSDFs()` stored in a fixed `std::array` without heap allocations.
 
 ## Default 2D Shapes
@@ -173,21 +172,21 @@ These are defined in `WeirdEngine::DefaultShapes`.
 
 | Shape | Expression Used | Parameters |
 |---|---|---|
-| `CIRCLE` | `sdCircle` | `var0` X, `var1` Y, `var2` radius |
-| `CIRCLE_LINE` | `sdfOnion(sdCircle(...))` | `var0` X, `var1` Y, `var2` radius, `var3` thickness |
-| `BOX` | `sdBox` | `var0` X, `var1` Y, `var2` size X, `var3` size Y |
-| `BOX_LINE` | `sdfOnion(sdBox(...))` | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` thickness |
-| `TRIANGLE` | `sdTriangle` | `var0` X, `var1` Y, `var2` width, `var3` height |
-| `TRIANGLE_LINE` | `sdfOnion(sdTriangle(...))` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` thickness |
-| `LINE` | `sdLine` | `var0` A.X, `var1` A.Y, `var2` B.X, `var3` B.Y, `var4` width |
-| `RAMP` | `sdRamp` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` skew |
-| `SINE` | `sdSineWave` | `var0` amplitude, `var1` frequency, `var2` speed, `var3` offset |
-| `STAR` | `sdStar` via `getStarShape()` | `var0` X, `var1` Y, `var2` radius, `var3` displacement, `var4` points, `var5` speed |
-| `BOX_ROTATED` | rotated `sdBox` | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` angle |
-| `BOX_LINE_ROTATED` | rotated `sdBox` + onion | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` angle, `var5` thickness |
-| `TRIANGLE_ROTATED` | rotated `sdTriangle` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` angle |
-| `TRIANGLE_LINE_ROTATED` | rotated `sdTriangle` + onion | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` angle, `var5` thickness |
-| `RAMP_ROTATED` | rotated `sdRamp` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` skew, `var5` angle |
+| `Circle` | `sdCircle` | `var0` X, `var1` Y, `var2` radius |
+| `CircleLine` | `sdfOnion(sdCircle(...))` | `var0` X, `var1` Y, `var2` radius, `var3` thickness |
+| `Box` | `sdBox` | `var0` X, `var1` Y, `var2` size X, `var3` size Y |
+| `BoxLine` | `sdfOnion(sdBox(...))` | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` thickness |
+| `Triangle` | `sdTriangle` | `var0` X, `var1` Y, `var2` width, `var3` height |
+| `TriangleLine` | `sdfOnion(sdTriangle(...))` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` thickness |
+| `Line` | `sdLine` | `var0` A.X, `var1` A.Y, `var2` B.X, `var3` B.Y, `var4` width |
+| `Ramp` | `sdRamp` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` skew |
+| `SineWave` | `sdSineWave` | `var0` amplitude, `var1` frequency, `var2` speed, `var3` offset |
+| `Star` | `sdStar` via `getStarShape()` | `var0` X, `var1` Y, `var2` radius, `var3` displacement, `var4` points, `var5` speed |
+| `BoxRotated` | rotated `sdBox` | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` angle |
+| `BoxLineRotated` | rotated `sdBox` + onion | `var0` X, `var1` Y, `var2` size X, `var3` size Y, `var4` angle, `var5` thickness |
+| `TriangleRotated` | rotated `sdTriangle` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` angle |
+| `TriangleLineRotated` | rotated `sdTriangle` + onion | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` angle, `var5` thickness |
+| `RampRotated` | rotated `sdRamp` | `var0` X, `var1` Y, `var2` width, `var3` height, `var4` skew, `var5` angle |
 
 ## Default 3D Shapes
 
@@ -195,47 +194,11 @@ These are defined in `WeirdEngine::DefaultShapes3D`.
 
 | Shape | Primitive Class | Parameters |
 |---|---|---|
-| `PLANE` | `Primitives3D::Plane` | `var0` height |
-| `BOX` | `Primitives3D::Box` | `var0` X, `var1` Y, `var2` Z, `var3` size X, `var4` size Y, `var5` size Z |
-| `SPHERE` | `Primitives3D::Sphere` | `var0` X, `var1` Y, `var2` Z, `var3` radius |
-| `CYLINDER` | `Primitives3D::Cylinder` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
-| `TORUS` | `Primitives3D::Torus` | `var0` X, `var1` Y, `var2` Z, `var3` small radius, `var4` large radius |
-| `CAPSULE` | `Primitives3D::Capsule` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
-
-## 2D Primitive Classes
-
-`Primitives.h` defines `WeirdEngine::Primitives`, a set of 2D shape classes that directly implement `IMathExpression`.
-
-Visible primitive classes include:
-
-- `Circle`
-- `Box`
-- `SineWave`
-- `Ramp`
-- `Triangle`
-- `Line`
-
-There are also parameter-layout structs:
-
-- `BoxRotated`
-- `TriangleRotated`
-- `RampRotated`
-- `Star`
-
-These classes duplicate much of the functionality available through the `SDF` expression DSL. They are useful when a shape needs a self-contained expression object with explicit parameter constants and shader printing behavior.
-
-Example parameter constants from `Primitives::Circle`:
-
-```cpp
-static constexpr uint8_t POS_X = 0;
-static constexpr uint8_t POS_Y = 1;
-static constexpr uint8_t RADIUS = 2;
-static constexpr uint8_t THICKNESS = 3;
-static constexpr uint8_t TIME = 8;
-static constexpr uint8_t WORLD_X = 9;
-static constexpr uint8_t WORLD_Y = 10;
-```
-
+| `Plane` | `Primitives3D::Plane` | `var0` height |
+| `Box` | `Primitives3D::Box` | `var0` X, `var1` Y, `var2` Z, `var3` size X, `var4` size Y, `var5` size Z |
+| `Sphere` | `Primitives3D::Sphere` | `var0` X, `var1` Y, `var2` Z, `var3` radius |
+| `Cylinder` | `Primitives3D::Cylinder` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
+| `Torus` | `Primitives3D::Torus` | `var0` X, `var1` Y, `var2` Z, `var3` small radius, `var4` large radius |
 ## 3D Primitive Classes
 
 `Primitives3D.h` defines `WeirdEngine::Primitives3D`.
@@ -338,10 +301,8 @@ This appears to be an experimental alternate representation for expressions. It 
 
 ## Observations
 
-- The module has two main 2D expression styles:
-  - The composable `SDF` DSL in `SDF.h`.
-  - The standalone primitive classes in `Primitives.h`.
-- `Default2DSDFs.h` primarily uses the `SDF` DSL.
+- The module defines 2D expressions via the composable `SDF` DSL in `SDF.h`.
+- `Default2DSDFs.h` uses the `SDF` DSL.
 - `Default3DSDFs.h` uses `Primitives3D` classes.
 - 2D expressions generally support CPU evaluation.
 - 3D expressions appear to be mainly shader-printing placeholders, because their CPU `getValue()` implementations return a large constant.

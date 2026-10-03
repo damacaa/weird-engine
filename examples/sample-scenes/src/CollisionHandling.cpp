@@ -1,6 +1,5 @@
 #include "CollisionHandling.h"
 
-#include "globals.h"
 #include <cstdio>
 
 using namespace WeirdEngine;
@@ -132,73 +131,73 @@ namespace CollisionHandlingNamespace
 
 		// ------------------------------------------------------- Lane Dividers & Shapes
 		// Main ground floor
-		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-									.variables = {{Primitives::SineWave::AMPLITUDE, 0.0f},
-												  {Primitives::SineWave::PERIOD, 0.0f},
-												  {Primitives::SineWave::SPEED, 0.0f},
-												  {Primitives::SineWave::OFFSET, 0.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 0.0f},
+												  {DefaultShapes::SineWave::Period, 0.0f},
+												  {DefaultShapes::SineWave::Speed, 0.0f},
+												  {DefaultShapes::SineWave::Offset, 0.0f}},
 									.material = floorMat,
 									.combination = CombinationType::Addition});
 
 		// Left boundary wall
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, -22.0f},
-												  {Primitives::Box::POS_Y, 15.0f},
-												  {Primitives::Box::SIZE_X, 2.0f},
-												  {Primitives::Box::SIZE_Y, 25.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, -22.0f},
+												  {DefaultShapes::Box::PosY, 15.0f},
+												  {DefaultShapes::Box::SizeX, 2.0f},
+												  {DefaultShapes::Box::SizeY, 25.0f}},
 									.material = state.barrierMat});
 
 		// Divider 1 (between Lane 1 and Lane 2)
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, -4.0f},
-												  {Primitives::Box::POS_Y, 12.0f},
-												  {Primitives::Box::SIZE_X, 1.5f},
-												  {Primitives::Box::SIZE_Y, 20.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, -4.0f},
+												  {DefaultShapes::Box::PosY, 12.0f},
+												  {DefaultShapes::Box::SizeX, 1.5f},
+												  {DefaultShapes::Box::SizeY, 20.0f}},
 									.material = state.barrierMat});
 
 		// Divider 2 (between Lane 2 and Lane 3)
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, 15.0f},
-												  {Primitives::Box::POS_Y, 12.0f},
-												  {Primitives::Box::SIZE_X, 1.5f},
-												  {Primitives::Box::SIZE_Y, 20.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 15.0f},
+												  {DefaultShapes::Box::PosY, 12.0f},
+												  {DefaultShapes::Box::SizeX, 1.5f},
+												  {DefaultShapes::Box::SizeY, 20.0f}},
 									.material = state.barrierMat});
 
 		// Right boundary wall
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, 36.0f},
-												  {Primitives::Box::POS_Y, 15.0f},
-												  {Primitives::Box::SIZE_X, 2.0f},
-												  {Primitives::Box::SIZE_Y, 25.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 36.0f},
+												  {DefaultShapes::Box::PosY, 15.0f},
+												  {DefaultShapes::Box::SizeX, 2.0f},
+												  {DefaultShapes::Box::SizeY, 25.0f}},
 									.material = state.barrierMat});
 
 		// Lane 1 Obstacle: Pegs for ECS collision triggers
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{Primitives::Circle::POS_X, -13.0f},
-												  {Primitives::Circle::POS_Y, 10.0f},
-												  {Primitives::Circle::RADIUS, 1.5f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, -13.0f},
+												  {DefaultShapes::Circle::PosY, 10.0f},
+												  {DefaultShapes::Circle::Radius, 1.5f}},
 									.material = state.barrierMat});
 
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{Primitives::Circle::POS_X, -8.0f},
-												  {Primitives::Circle::POS_Y, 6.0f},
-												  {Primitives::Circle::RADIUS, 1.5f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, -8.0f},
+												  {DefaultShapes::Circle::PosY, 6.0f},
+												  {DefaultShapes::Circle::Radius, 1.5f}},
 									.material = state.barrierMat});
 
 		// Lane 2 Obstacle: Launch Pad (trigger zone for physics-thread shape collision)
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, 6.0f},
-												  {Primitives::Box::POS_Y, 0.0f},
-												  {Primitives::Box::SIZE_X, 4.0f},
-												  {Primitives::Box::SIZE_Y, 1.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 6.0f},
+												  {DefaultShapes::Box::PosY, 0.0f},
+												  {DefaultShapes::Box::SizeX, 4.0f},
+												  {DefaultShapes::Box::SizeY, 1.0f}},
 									.material = padMat});
 
 		// Lane 3 Obstacle: Angled ramps to funnel balls toward each other for body collisions
-		services.shapes().addShape({.shapeId = DefaultShapes::TRIANGLE,
-									.variables = {{DefaultShapes::Triangle::POS_X, 18.0f},
-												  {DefaultShapes::Triangle::POS_Y, 6.0f},
-												  {DefaultShapes::Triangle::WIDTH, 5.0f},
-												  {DefaultShapes::Triangle::HEIGHT, 5.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Triangle,
+									.variables = {{DefaultShapes::Triangle::PosX, 18.0f},
+												  {DefaultShapes::Triangle::PosY, 6.0f},
+												  {DefaultShapes::Triangle::Width, 5.0f},
+												  {DefaultShapes::Triangle::Height, 5.0f}},
 									.material = state.barrierMat});
 	}
 
@@ -224,14 +223,6 @@ namespace CollisionHandlingNamespace
 	{
 		State& state = getState(registry);
 		spawnLaneBalls(registry, services, state);
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
 	}
 
 	void spawnerSystem(Registry& registry, ServiceProvider& services)
@@ -297,15 +288,6 @@ namespace CollisionHandlingNamespace
 		services.audio().playSound({0.02f, 750.0f, true, vec3(event.raw.position, 0.0f), 1});
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace CollisionHandlingNamespace
 
 void CollisionHandlingScene::onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)

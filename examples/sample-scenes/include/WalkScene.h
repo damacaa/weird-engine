@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace WalkSceneNamespace
@@ -28,14 +29,11 @@ namespace WalkSceneNamespace
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void loadCharacterSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupGroundSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void walkingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void feetCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 							 WeirdEngine::EntityCollisionEvent& event);
 	void floorCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 							  WeirdEngine::EntityShapeCollisionEvent& event);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace WalkSceneNamespace
 
 class WalkScene : public WeirdEngine::Scene2D
@@ -47,11 +45,11 @@ public:
 		addStartSystem(WalkSceneNamespace::setupEnvironmentSystem);
 		addStartSystem(WalkSceneNamespace::loadCharacterSystem);
 		addStartSystem(WalkSceneNamespace::setupGroundSystem);
-		addStartSystem(WalkSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(WalkSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(WalkSceneNamespace::walkingSystem);
-		addUpdateSystem(WalkSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(WalkSceneNamespace::feetCollisionSystem);
 		addEntityShapeCollisionSystem(WalkSceneNamespace::floorCollisionSystem);

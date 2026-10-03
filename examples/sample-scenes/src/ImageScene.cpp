@@ -7,7 +7,6 @@
 #include <limits>
 #include <utility>
 
-#include "globals.h"
 #include <glm/gtx/norm.hpp>
 #include <SDL3/SDL_dialog.h> // ???
 
@@ -157,20 +156,20 @@ namespace ImageSceneNamespace
 		if (registry.isEntityValid(state.leftWallEntity) && registry.hasComponent<Shape>(state.leftWallEntity))
 		{
 			auto& lw = registry.getComponent<Shape>(state.leftWallEntity);
-			lw.parameters[Primitives::Box::POS_X] = leftWallCenterX;
-			lw.parameters[Primitives::Box::POS_Y] = wallCenterY;
-			lw.parameters[Primitives::Box::SIZE_X] = wallHalfW;
-			lw.parameters[Primitives::Box::SIZE_Y] = wallHalfH;
+			lw.parameters[DefaultShapes::Box::PosX] = leftWallCenterX;
+			lw.parameters[DefaultShapes::Box::PosY] = wallCenterY;
+			lw.parameters[DefaultShapes::Box::SizeX] = wallHalfW;
+			lw.parameters[DefaultShapes::Box::SizeY] = wallHalfH;
 			registry.setComponentDirty(lw);
 		}
 
 		if (registry.isEntityValid(state.rightWallEntity) && registry.hasComponent<Shape>(state.rightWallEntity))
 		{
 			auto& rw = registry.getComponent<Shape>(state.rightWallEntity);
-			rw.parameters[Primitives::Box::POS_X] = rightWallCenterX;
-			rw.parameters[Primitives::Box::POS_Y] = wallCenterY;
-			rw.parameters[Primitives::Box::SIZE_X] = wallHalfW;
-			rw.parameters[Primitives::Box::SIZE_Y] = wallHalfH;
+			rw.parameters[DefaultShapes::Box::PosX] = rightWallCenterX;
+			rw.parameters[DefaultShapes::Box::PosY] = wallCenterY;
+			rw.parameters[DefaultShapes::Box::SizeX] = wallHalfW;
+			rw.parameters[DefaultShapes::Box::SizeY] = wallHalfH;
 			registry.setComponentDirty(rw);
 		}
 
@@ -426,25 +425,25 @@ namespace ImageSceneNamespace
 		}
 
 		// Initial chamber shapes
-		state.floorEntity = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-														.variables = {{Primitives::Box::POS_X, 15.0f},
-																	  {Primitives::Box::POS_Y, -50.0f},
-																	  {Primitives::Box::SIZE_X, 2000.0f},
-																	  {Primitives::Box::SIZE_Y, 50.0f}},
+		state.floorEntity = services.shapes().addShape({.shapeId = DefaultShapes::Box,
+														.variables = {{DefaultShapes::Box::PosX, 15.0f},
+																	  {DefaultShapes::Box::PosY, -50.0f},
+																	  {DefaultShapes::Box::SizeX, 2000.0f},
+																	  {DefaultShapes::Box::SizeY, 50.0f}},
 														.material = 3});
 
-		state.rightWallEntity = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-															.variables = {{Primitives::Box::POS_X, 36.0f},
-																		  {Primitives::Box::POS_Y, 20.0f},
-																		  {Primitives::Box::SIZE_X, 5.0f},
-																		  {Primitives::Box::SIZE_Y, 30.0f}},
+		state.rightWallEntity = services.shapes().addShape({.shapeId = DefaultShapes::Box,
+															.variables = {{DefaultShapes::Box::PosX, 36.0f},
+																		  {DefaultShapes::Box::PosY, 20.0f},
+																		  {DefaultShapes::Box::SizeX, 5.0f},
+																		  {DefaultShapes::Box::SizeY, 30.0f}},
 															.material = 3});
 
-		state.leftWallEntity = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-														   .variables = {{Primitives::Box::POS_X, -6.0f},
-																		 {Primitives::Box::POS_Y, 20.0f},
-																		 {Primitives::Box::SIZE_X, 5.0f},
-																		 {Primitives::Box::SIZE_Y, 30.0f}},
+		state.leftWallEntity = services.shapes().addShape({.shapeId = DefaultShapes::Box,
+														   .variables = {{DefaultShapes::Box::PosX, -6.0f},
+																		 {DefaultShapes::Box::PosY, 20.0f},
+																		 {DefaultShapes::Box::SizeX, 5.0f},
+																		 {DefaultShapes::Box::SizeY, 30.0f}},
 														   .material = 3});
 	}
 
@@ -468,11 +467,11 @@ namespace ImageSceneNamespace
 
 		// 1. Button 1: Square button to find image and load into memory
 		{
-			state.loadButton = services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-															 .variables = {{Primitives::Box::POS_X, btn1CenterX},
-																		   {Primitives::Box::POS_Y, btnY},
-																		   {Primitives::Box::SIZE_X, BTN_HALF},
-																		   {Primitives::Box::SIZE_Y, BTN_HALF}},
+			state.loadButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															 .variables = {{DefaultShapes::Box::PosX, btn1CenterX},
+																		   {DefaultShapes::Box::PosY, btnY},
+																		   {DefaultShapes::Box::SizeX, BTN_HALF},
+																		   {DefaultShapes::Box::SizeY, BTN_HALF}},
 															 .material = 6});
 			auto& btn = registry.addComponent<ShapeButton>(state.loadButton);
 			btn.clickPadding = 4.0f;
@@ -483,10 +482,10 @@ namespace ImageSceneNamespace
 
 		// 2. Button 2: Second button to save material for each rigidbody
 		{
-			state.saveButton = services.shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
-															 .variables = {{Primitives::Circle::POS_X, btn2CenterX},
-																		   {Primitives::Circle::POS_Y, btnY},
-																		   {Primitives::Circle::RADIUS, BTN_HALF}},
+			state.saveButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Circle,
+															 .variables = {{DefaultShapes::Circle::PosX, btn2CenterX},
+																		   {DefaultShapes::Circle::PosY, btnY},
+																		   {DefaultShapes::Circle::Radius, BTN_HALF}},
 															 .material = 4});
 			auto& btn = registry.addComponent<ShapeButton>(state.saveButton);
 			btn.clickPadding = 4.0f;
@@ -498,7 +497,7 @@ namespace ImageSceneNamespace
 		// 3. Button 3: Third button (90-degree rotated triangle ▶) that reruns simulation
 		{
 			state.rerunButton = services.shapes().addUIShape(
-				{.shapeId = DefaultShapes::TRIANGLE_ROTATED,
+				{.shapeId = DefaultShapes::TriangleRotated,
 				 .variables = {{0, btn3CenterX}, {1, btnY}, {2, BTN_SIZE}, {3, BTN_SIZE}, {4, 1.5707963f}},
 				 .material = 5});
 
@@ -553,14 +552,6 @@ namespace ImageSceneNamespace
 					spawnBalls(registry, state, true);
 				}
 			}
-		}
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
 		}
 	}
 
@@ -674,13 +665,4 @@ namespace ImageSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace ImageSceneNamespace

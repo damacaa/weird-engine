@@ -1,6 +1,5 @@
 #include "AquariumScene.h"
 
-#include "globals.h"
 #include <cmath>
 #include <cstdlib>
 
@@ -25,7 +24,7 @@ namespace AquariumSceneNamespace
 		dot.materialId = material.id;
 		registry.addComponent<RigidBody2D>(bellEntity);
 
-		Entity bellShape = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+		Entity bellShape = services.shapes().addShape({.shapeId = DefaultShapes::Star,
 													   .variables = {x, y, 2.5f * scale, 0.8f, 6.0f, 2.0f},
 													   .material = material,
 													   .combination = CombinationType::Addition,
@@ -241,47 +240,47 @@ namespace AquariumSceneNamespace
 		auto& tankMat = services.materials2D().get("tank");
 
 		{
-			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-														 .variables = {{Primitives::SineWave::AMPLITUDE, 3.0f},
-																	   {Primitives::SineWave::PERIOD, 1.2f},
-																	   {Primitives::SineWave::SPEED, 2.5f}},
+			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+														 .variables = {{DefaultShapes::SineWave::Amplitude, 3.0f},
+																	   {DefaultShapes::SineWave::Period, 1.2f},
+																	   {DefaultShapes::SineWave::Speed, 2.5f}},
 														 .material = seaweedDark});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 0.0f;
 		}
 
 		{
-			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-														 .variables = {{Primitives::SineWave::AMPLITUDE, 2.5f},
-																	   {Primitives::SineWave::PERIOD, 1.5f},
-																	   {Primitives::SineWave::SPEED, 2.0f}},
+			Entity seaweed = services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+														 .variables = {{DefaultShapes::SineWave::Amplitude, 2.5f},
+																	   {DefaultShapes::SineWave::Period, 1.5f},
+																	   {DefaultShapes::SineWave::Speed, 2.0f}},
 														 .material = seaweedLight});
 			auto& sw = registry.addComponent<Seaweed>(seaweed);
 			sw.animationOffset = 1.0f;
 		}
 
 		// Tank boundary shapes
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, TANK_CX},
-												  {Primitives::Box::POS_Y, TANK_CY},
-												  {Primitives::Box::SIZE_X, TANK_W},
-												  {Primitives::Box::SIZE_Y, TANK_H}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, TANK_CX},
+												  {DefaultShapes::Box::PosY, TANK_CY},
+												  {DefaultShapes::Box::SizeX, TANK_W},
+												  {DefaultShapes::Box::SizeY, TANK_H}},
 									.material = tankMat});
 
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, TANK_CX},
-												  {Primitives::Box::POS_Y, TANK_CY},
-												  {Primitives::Box::SIZE_X, TANK_W - 4.0f},
-												  {Primitives::Box::SIZE_Y, TANK_H - 4.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, TANK_CX},
+												  {DefaultShapes::Box::PosY, TANK_CY},
+												  {DefaultShapes::Box::SizeX, TANK_W - 4.0f},
+												  {DefaultShapes::Box::SizeY, TANK_H - 4.0f}},
 									.material = tankMat,
 									.combination = CombinationType::Subtraction});
 
 		// Floor sand
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, TANK_CX},
-												  {Primitives::Box::POS_Y, TANK_BOTTOM + 2.0f},
-												  {Primitives::Box::SIZE_X, TANK_W},
-												  {Primitives::Box::SIZE_Y, 4.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, TANK_CX},
+												  {DefaultShapes::Box::PosY, TANK_BOTTOM + 2.0f},
+												  {DefaultShapes::Box::SizeX, TANK_W},
+												  {DefaultShapes::Box::SizeY, 4.0f}},
 									.material = seaweedDark,
 									.combination = CombinationType::Addition});
 	}
@@ -327,14 +326,6 @@ namespace AquariumSceneNamespace
 			fishComp.alignmentWeight = 1.0f;
 			fishComp.cohesionWeight = 1.0f;
 			fishComp.perceptionRadius = 5.0f;
-		}
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
 		}
 	}
 
@@ -770,13 +761,4 @@ namespace AquariumSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace AquariumSceneNamespace

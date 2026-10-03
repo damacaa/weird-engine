@@ -1,6 +1,5 @@
 #include "DestroyScene.h"
 
-#include "globals.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -35,14 +34,6 @@ namespace DestroySceneNamespace
 			auto& mat = services.materials2D().createMaterial("mat_" + std::to_string(i));
 			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
 			state.materials.push_back(mat.id);
-		}
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
 		}
 	}
 
@@ -90,11 +81,11 @@ namespace DestroySceneNamespace
 							float w = static_cast<float>(std::rand() % 4 + 1);
 							float h = static_cast<float>(std::rand() % 4 + 1);
 							auto material = state.materials[std::rand() % state.materials.size()];
-							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-																	   .variables = {{Primitives::Box::POS_X, x},
-																					 {Primitives::Box::POS_Y, y},
-																					 {Primitives::Box::SIZE_X, w},
-																					 {Primitives::Box::SIZE_Y, h}},
+							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::Box,
+																	   .variables = {{DefaultShapes::Box::PosX, x},
+																					 {DefaultShapes::Box::PosY, y},
+																					 {DefaultShapes::Box::SizeX, w},
+																					 {DefaultShapes::Box::SizeY, h}},
 																	   .material = material,
 																	   .combination = CombinationType::Addition});
 							state.testShapes.push_back(shape);
@@ -199,13 +190,4 @@ namespace DestroySceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace DestroySceneNamespace

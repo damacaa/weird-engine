@@ -170,12 +170,12 @@ private:
 		}
 
 		{
-			Entity outside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
+			Entity outside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::Circle,
 														   .variables = {0.0f, 0.0f, 3000.0f},
 														   .material = 0,
 														   .combination = CombinationType::Addition});
 
-			Entity inside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::BOX,
+			Entity inside = m_tempSvc->shapes().addShape({.shapeId = DefaultShapes::Box,
 														  .variables = {0.0f, 0.0f, 20.0f, 20.0f},
 														  .material = 0,
 														  .combination = CombinationType::Subtraction});
@@ -2154,7 +2154,7 @@ private:
 		float lineVars[8]{};
 		computeScreenLineParams(pa, pb, lineVars);
 		Entity line = m_tempSvc->shapes().addUIShape(
-			{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
+			{.shapeId = DefaultShapes::Line, .variables = lineVars, .material = lineColor});
 		if (line == INVALID_ENTITY)
 		{
 			m_tempRegistry->destroyEntity(constraintEnt);
@@ -2387,14 +2387,14 @@ private:
 		if (m_tagCircleOuter == static_cast<Entity>(-1))
 		{
 			float p[8]{};
-			m_tagCircleOuter = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+			m_tagCircleOuter = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::Circle,
 															   .variables = p,
 															   .material = 7,
 															   .combination = CombinationType::Addition,
 															   .group = TAG_RING_GROUP});
 			m_tempSvc->serialization().blacklistEntity(m_tagCircleOuter);
 
-			m_tagCircleInner = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+			m_tagCircleInner = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::Circle,
 															   .variables = p,
 															   .material = 7,
 															   .combination = CombinationType::Subtraction,
@@ -2514,7 +2514,7 @@ private:
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
 			Entity line = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
+				{.shapeId = DefaultShapes::Line, .variables = lineVars, .material = lineColor});
 
 			m_tempSvc->serialization().blacklistEntity(line);
 
@@ -2546,7 +2546,7 @@ private:
 			float lineVars[8]{};
 			computeScreenLineParams(pa, pb, lineVars);
 			Entity line = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::LINE, .variables = lineVars, .material = lineColor});
+				{.shapeId = DefaultShapes::Line, .variables = lineVars, .material = lineColor});
 
 			m_tempSvc->serialization().blacklistEntity(line);
 

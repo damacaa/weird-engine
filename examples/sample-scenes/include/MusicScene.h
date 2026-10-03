@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace MusicSceneNamespace
@@ -44,7 +45,6 @@ namespace MusicSceneNamespace
 	void setupVisualizerDotsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupWorldSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void toggleSelectionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void playbackControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void parameterControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -54,8 +54,6 @@ namespace MusicSceneNamespace
 	void updateWorldVisualsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 
 	void onDestroySystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace MusicSceneNamespace
 
 class MusicScene : public WeirdEngine::Scene2D
@@ -68,17 +66,17 @@ public:
 		addStartSystem(MusicSceneNamespace::setupTogglesSystem);
 		addStartSystem(MusicSceneNamespace::setupControlsSystem);
 		addStartSystem(MusicSceneNamespace::setupVisualizerDotsSystem);
-		addStartSystem(MusicSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 		addStartSystem(MusicSceneNamespace::setupWorldSystem);
 
-		addUpdateSystem(MusicSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(MusicSceneNamespace::toggleSelectionSystem);
 		addUpdateSystem(MusicSceneNamespace::playbackControlSystem);
 		addUpdateSystem(MusicSceneNamespace::parameterControlSystem);
 		addUpdateSystem(MusicSceneNamespace::statusTextSystem);
 		addUpdateSystem(MusicSceneNamespace::songLayoutSystem);
 		addUpdateSystem(MusicSceneNamespace::uiDotsSystem);
-		addUpdateSystem(MusicSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 		addUpdateSystem(MusicSceneNamespace::updateWorldVisualsSystem);
 
 		addDestroySystem(MusicSceneNamespace::onDestroySystem);

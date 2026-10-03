@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace ImageSceneNamespace
@@ -56,13 +57,10 @@ namespace ImageSceneNamespace
 	void setupChamberSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupControlsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void loadInitialImageSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void fileDialogSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void buttonSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void shortcutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void layoutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace ImageSceneNamespace
 
 class ImageScene : public WeirdEngine::Scene2D
@@ -74,13 +72,13 @@ public:
 		addStartSystem(ImageSceneNamespace::setupChamberSystem);
 		addStartSystem(ImageSceneNamespace::setupControlsSystem);
 		addStartSystem(ImageSceneNamespace::loadInitialImageSystem);
-		addStartSystem(ImageSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(ImageSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ImageSceneNamespace::fileDialogSystem);
 		addUpdateSystem(ImageSceneNamespace::buttonSystem);
 		addUpdateSystem(ImageSceneNamespace::shortcutSystem);
 		addUpdateSystem(ImageSceneNamespace::layoutSystem);
-		addUpdateSystem(ImageSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

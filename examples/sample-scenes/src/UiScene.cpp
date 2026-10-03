@@ -1,6 +1,5 @@
 #include "UiScene.h"
 
-#include "globals.h"
 #include <cstdio>
 #include <string>
 
@@ -66,11 +65,11 @@ namespace UiSceneNamespace
 
 		// Interactive Counter Click Button (Box shape + ShapeButton)
 		{
-			state.clickButton = services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-															  .variables = {{Primitives::Box::POS_X, 120.0f},
-																			{Primitives::Box::POS_Y, 150.0f},
-																			{Primitives::Box::SIZE_X, 90.0f},
-																			{Primitives::Box::SIZE_Y, 22.0f}},
+			state.clickButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															  .variables = {{DefaultShapes::Box::PosX, 120.0f},
+																			{DefaultShapes::Box::PosY, 150.0f},
+																			{DefaultShapes::Box::SizeX, 90.0f},
+																			{DefaultShapes::Box::SizeY, 22.0f}},
 															  .material = btnMat});
 			auto& btn = registry.addComponent<ShapeButton>(state.clickButton);
 			btn.clickPadding = 8.0f;
@@ -78,11 +77,11 @@ namespace UiSceneNamespace
 
 		// Reset Counter Button
 		{
-			state.resetButton = services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-															  .variables = {{Primitives::Box::POS_X, 120.0f},
-																			{Primitives::Box::POS_Y, 210.0f},
-																			{Primitives::Box::SIZE_X, 90.0f},
-																			{Primitives::Box::SIZE_Y, 22.0f}},
+			state.resetButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															  .variables = {{DefaultShapes::Box::PosX, 120.0f},
+																			{DefaultShapes::Box::PosY, 210.0f},
+																			{DefaultShapes::Box::SizeX, 90.0f},
+																			{DefaultShapes::Box::SizeY, 22.0f}},
 															  .material = btnMat});
 			auto& btn = registry.addComponent<ShapeButton>(state.resetButton);
 			btn.clickPadding = 8.0f;
@@ -90,11 +89,11 @@ namespace UiSceneNamespace
 
 		// Toggle Button (ShapeToggle)
 		{
-			state.modeToggle = services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-															 .variables = {{Primitives::Box::POS_X, 120.0f},
-																		   {Primitives::Box::POS_Y, 270.0f},
-																		   {Primitives::Box::SIZE_X, 90.0f},
-																		   {Primitives::Box::SIZE_Y, 22.0f}},
+			state.modeToggle = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															 .variables = {{DefaultShapes::Box::PosX, 120.0f},
+																		   {DefaultShapes::Box::PosY, 270.0f},
+																		   {DefaultShapes::Box::SizeX, 90.0f},
+																		   {DefaultShapes::Box::SizeY, 22.0f}},
 															 .material = toggleMat});
 			auto& toggle = registry.addComponent<ShapeToggle>(state.modeToggle);
 			toggle.active = false;
@@ -202,14 +201,6 @@ namespace UiSceneNamespace
 			tr.material = cyanMat.id;
 			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
-		}
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
 		}
 	}
 
@@ -330,13 +321,4 @@ namespace UiSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace UiSceneNamespace

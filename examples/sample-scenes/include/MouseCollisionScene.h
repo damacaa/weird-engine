@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace MouseCollisionSceneNamespace
@@ -24,14 +25,11 @@ namespace MouseCollisionSceneNamespace
 	void setupMaterialsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupBoundariesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnDotsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void cursorTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void ballEntityCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								   WeirdEngine::EntityCollisionEvent& event);
 	void ballShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								  WeirdEngine::EntityShapeCollisionEvent& event);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace MouseCollisionSceneNamespace
 
 class MouseCollisionScene : public WeirdEngine::Scene2D
@@ -43,11 +41,11 @@ public:
 		addStartSystem(MouseCollisionSceneNamespace::setupMaterialsSystem);
 		addStartSystem(MouseCollisionSceneNamespace::setupBoundariesSystem);
 		addStartSystem(MouseCollisionSceneNamespace::spawnDotsSystem);
-		addStartSystem(MouseCollisionSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(MouseCollisionSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(MouseCollisionSceneNamespace::cursorTrackingSystem);
-		addUpdateSystem(MouseCollisionSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(MouseCollisionSceneNamespace::ballEntityCollisionSystem);
 		addEntityShapeCollisionSystem(MouseCollisionSceneNamespace::ballShapeCollisionSystem);

@@ -27,19 +27,19 @@ Weird Engine includes default shape primitives in `WeirdEngine::DefaultShapes` (
 
 ### Available Default Shapes
 
-- **Standard Shapes**: `DefaultShapes::CIRCLE`, `DefaultShapes::BOX`, `DefaultShapes::TRIANGLE`, `DefaultShapes::LINE`, `DefaultShapes::RAMP`, `DefaultShapes::SINE`, `DefaultShapes::STAR`
-- **Border / Line Shapes**: `DefaultShapes::CIRCLE_LINE`, `DefaultShapes::BOX_LINE`, `DefaultShapes::TRIANGLE_LINE`
-- **Rotated Shapes**: `DefaultShapes::BOX_ROTATED`, `DefaultShapes::TRIANGLE_ROTATED`, `DefaultShapes::RAMP_ROTATED`
-- **Rotated Border Shapes**: `DefaultShapes::BOX_LINE_ROTATED`, `DefaultShapes::TRIANGLE_LINE_ROTATED`
+- **Standard Shapes**: `DefaultShapes::Circle`, `DefaultShapes::Box`, `DefaultShapes::Triangle`, `DefaultShapes::Line`, `DefaultShapes::Ramp`, `DefaultShapes::SineWave`, `DefaultShapes::Star`
+- **Border / Line Shapes**: `DefaultShapes::CircleLine`, `DefaultShapes::BoxLine`, `DefaultShapes::TriangleLine`
+- **Rotated Shapes**: `DefaultShapes::BoxRotated`, `DefaultShapes::TriangleRotated`, `DefaultShapes::RampRotated`
+- **Rotated Border Shapes**: `DefaultShapes::BoxLineRotated`, `DefaultShapes::TriangleLineRotated`
 
 ### Parameter Offset Constants
 
-Each default shape provides parameter index constants under `DefaultShapes::<ShapeName>` (or `Primitives::<ShapeName>`):
-- `DefaultShapes::Circle::POS_X`, `POS_Y`, `RADIUS`
-- `DefaultShapes::Box::POS_X`, `POS_Y`, `SIZE_X`, `SIZE_Y`
-- `DefaultShapes::Triangle::POS_X`, `POS_Y`, `WIDTH`, `HEIGHT`
-- `DefaultShapes::Line::START_X`, `START_Y`, `END_X`, `END_Y`, `WIDTH`
-- `DefaultShapes::Ramp::POS_X`, `POS_Y`, `WIDTH`, `HEIGHT`, `SKEW`
+Each default shape provides parameter index constants under `DefaultShapes::<ShapeName>`:
+- `DefaultShapes::Circle::PosX`, `POS_Y`, `RADIUS`
+- `DefaultShapes::Box::PosX`, `POS_Y`, `SIZE_X`, `SIZE_Y`
+- `DefaultShapes::Triangle::PosX`, `POS_Y`, `WIDTH`, `HEIGHT`
+- `DefaultShapes::Line::StartX`, `START_Y`, `END_X`, `END_Y`, `WIDTH`
+- `DefaultShapes::Ramp::PosX`, `POS_Y`, `WIDTH`, `HEIGHT`, `SKEW`
 
 ### Adding a Default Shape to a Scene
 
@@ -47,11 +47,11 @@ Use `services.shapes().addShape(...)` with a `ShapeConfig` struct to instantiate
 
 ```cpp
 Entity circle = services.shapes().addShape({
-	.shapeId = DefaultShapes::CIRCLE,
+	.shapeId = DefaultShapes::Circle,
 	.variables = {
-		{DefaultShapes::Circle::POS_X, 15.0f},
-		{DefaultShapes::Circle::POS_Y, 10.0f},
-		{DefaultShapes::Circle::RADIUS, 5.0f}
+		{DefaultShapes::Circle::PosX, 15.0f},
+		{DefaultShapes::Circle::PosY, 10.0f},
+		{DefaultShapes::Circle::Radius, 5.0f}
 	},
 	.material = materialId,
 	.combination = CombinationType::Addition,
@@ -65,7 +65,7 @@ For rendering shapes on the 2D user interface layer (which is screen-space and d
 
 ```cpp
 Entity uiBox = services.shapes().addUIShape({
-	.shapeId = DefaultShapes::BOX,
+	.shapeId = DefaultShapes::Box,
 	.variables = {Display::width * 0.5f, 90.0f, 40.0f, 14.0f}, // Inline positional array
 	.material = 2,
 	.combination = CombinationType::Addition

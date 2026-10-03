@@ -1,6 +1,5 @@
 #include "WalkScene.h"
 
-#include "globals.h"
 #include <cmath>
 
 using namespace WeirdEngine;
@@ -69,21 +68,13 @@ namespace WalkSceneNamespace
 		auto& groundMat = services.materials2D().createMaterial("ground");
 		groundMat.color = ColorPalette::LightGreen;
 
-		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-									.variables = {{Primitives::SineWave::AMPLITUDE, 0.0f},
-												  {Primitives::SineWave::PERIOD, 0.0f},
-												  {Primitives::SineWave::SPEED, 0.0f},
-												  {Primitives::SineWave::OFFSET, 0.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 0.0f},
+												  {DefaultShapes::SineWave::Period, 0.0f},
+												  {DefaultShapes::SineWave::Speed, 0.0f},
+												  {DefaultShapes::SineWave::Offset, 0.0f}},
 									.material = groundMat,
 									.combination = CombinationType::Addition});
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
 	}
 
 	void walkingSystem(Registry& registry, ServiceProvider& services)
@@ -198,13 +189,4 @@ namespace WalkSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace WalkSceneNamespace

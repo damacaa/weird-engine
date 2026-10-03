@@ -1,6 +1,5 @@
 #include "ShapesCombinations.h"
 
-#include "globals.h"
 #include <algorithm>
 #include <cmath>
 #include <random>
@@ -41,10 +40,10 @@ namespace ShapeCombinationsNamespace
 		voidMat.color = ColorPalette::Black;
 
 		// Floor shape
-		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-									.variables = {{Primitives::SineWave::AMPLITUDE, 0.5f},
-												  {Primitives::SineWave::PERIOD, 2.5f},
-												  {Primitives::SineWave::SPEED, 1.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 0.5f},
+												  {DefaultShapes::SineWave::Period, 2.5f},
+												  {DefaultShapes::SineWave::Speed, 1.0f}},
 									.material = floorMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
@@ -56,17 +55,17 @@ namespace ShapeCombinationsNamespace
 		std::uniform_real_distribution<float> distrib(-range, range);
 
 		// Circle
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{Primitives::Circle::POS_X, 15.0f},
-												  {Primitives::Circle::POS_Y, 7.5f},
-												  {Primitives::Circle::RADIUS, 5.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, 15.0f},
+												  {DefaultShapes::Circle::PosY, 7.5f},
+												  {DefaultShapes::Circle::Radius, 5.0f}},
 									.material = circleMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
 									.group = 2});
 
 		// Subtract star
-		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+		services.shapes().addShape({.shapeId = DefaultShapes::Star,
 									.variables = {-2.5f + 15.0f, 12.5f, 5.0f, 0.5f, 13.0f, 5.0f},
 									.material = voidMat,
 									.combination = CombinationType::SmoothSubtraction,
@@ -75,29 +74,21 @@ namespace ShapeCombinationsNamespace
 
 		// Cursor circle
 		state.circle = services.shapes().addShape(
-			{.shapeId = DefaultShapes::CIRCLE,
-			 .variables = {{Primitives::Circle::POS_X, 250.0f}, {Primitives::Circle::POS_Y, 10.0f}},
+			{.shapeId = DefaultShapes::Circle,
+			 .variables = {{DefaultShapes::Circle::PosX, 250.0f}, {DefaultShapes::Circle::PosY, 10.0f}},
 			 .material = voidMat,
 			 .combination = CombinationType::Subtraction,
 			 .hasCollision = true,
 			 .group = Shape::GLOBAL_GROUP});
 
-		services.shapes().addShape({.shapeId = DefaultShapes::CIRCLE,
-									.variables = {{Primitives::Circle::POS_X, 15.0f},
-												  {Primitives::Circle::POS_Y, 0.0f},
-												  {Primitives::Circle::RADIUS, 30.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+									.variables = {{DefaultShapes::Circle::PosX, 15.0f},
+												  {DefaultShapes::Circle::PosY, 0.0f},
+												  {DefaultShapes::Circle::Radius, 30.0f}},
 									.material = voidMat,
 									.combination = CombinationType::Intersection,
 									.hasCollision = true,
 									.group = Shape::GLOBAL_GROUP});
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
 	}
 
 	void cursorCircleSystem(Registry& registry, ServiceProvider& services)
@@ -151,13 +142,4 @@ namespace ShapeCombinationsNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace ShapeCombinationsNamespace

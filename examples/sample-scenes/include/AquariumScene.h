@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace AquariumSceneNamespace
@@ -85,7 +86,6 @@ namespace AquariumSceneNamespace
 	void setupMaterialsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupTankShapesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnCreaturesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void feedingInputSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void bubbleSpawnerSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void bubblePhysicsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -97,8 +97,6 @@ namespace AquariumSceneNamespace
 									  WeirdEngine::EntityShapeCollisionEvent& event);
 	void onEntityCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								 WeirdEngine::EntityCollisionEvent& event);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace AquariumSceneNamespace
 
 class AquariumScene : public WeirdEngine::Scene2D
@@ -111,9 +109,9 @@ public:
 		addStartSystem(AquariumSceneNamespace::setupMaterialsSystem);
 		addStartSystem(AquariumSceneNamespace::setupTankShapesSystem);
 		addStartSystem(AquariumSceneNamespace::spawnCreaturesSystem);
-		addStartSystem(AquariumSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(AquariumSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(AquariumSceneNamespace::feedingInputSystem);
 		addUpdateSystem(AquariumSceneNamespace::bubbleSpawnerSystem);
 		addUpdateSystem(AquariumSceneNamespace::bubblePhysicsSystem);
@@ -121,7 +119,7 @@ public:
 		addUpdateSystem(AquariumSceneNamespace::seaweedSystem);
 		addUpdateSystem(AquariumSceneNamespace::eelSystem);
 		addUpdateSystem(AquariumSceneNamespace::fishFlockingSystem);
-		addUpdateSystem(AquariumSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(AquariumSceneNamespace::onEntityCollisionSystem);
 		addEntityShapeCollisionSystem(AquariumSceneNamespace::onEntityShapeCollisionSystem);

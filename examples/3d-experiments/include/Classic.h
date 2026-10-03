@@ -52,14 +52,14 @@ private:
 			m_ball = entity;
 		}
 
-		services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+		services.shapes().addShape({.shapeId = DefaultShapes::Star,
 									.variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 0.0f},
 									.material = orangeMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
 									.group = 0});
 
-		services.shapes().addShape({.shapeId = DefaultShapes3D::PLANE,
+		services.shapes().addShape({.shapeId = DefaultShapes3D::Plane,
 									.variables = {},
 									.material = floorMaterial,
 									.combination = CombinationType::Addition,

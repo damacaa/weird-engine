@@ -164,8 +164,8 @@ private:
 	// =====================================================================
 	void buildShapeButtons()
 	{
-		const uint16_t types[] = {DefaultShapes::CIRCLE, DefaultShapes::BOX,  DefaultShapes::TRIANGLE,
-								  DefaultShapes::LINE,	 DefaultShapes::RAMP, DefaultShapes::STAR};
+		const uint16_t types[] = {DefaultShapes::Circle, DefaultShapes::Box,  DefaultShapes::Triangle,
+								  DefaultShapes::Line,	 DefaultShapes::Ramp, DefaultShapes::Star};
 
 		for (int i = 0; i < 6; i++)
 		{
@@ -187,27 +187,27 @@ private:
 	void previewParams(uint16_t t, float cx, float cy, float p[8])
 	{
 		const float s = BTN_SIZE;
-		if (t == DefaultShapes::CIRCLE)
+		if (t == DefaultShapes::Circle)
 		{
 			p[0] = cx;
 			p[1] = cy;
 			p[2] = s;
 		}
-		else if (t == DefaultShapes::BOX)
+		else if (t == DefaultShapes::Box)
 		{
 			p[0] = cx;
 			p[1] = cy;
 			p[2] = s;
 			p[3] = s;
 		}
-		else if (t == DefaultShapes::TRIANGLE)
+		else if (t == DefaultShapes::Triangle)
 		{
 			p[0] = cx;
 			p[1] = cy;
 			p[2] = 2.0f * s;
 			p[3] = 2.0f * s;
 		}
-		else if (t == DefaultShapes::LINE)
+		else if (t == DefaultShapes::Line)
 		{
 			p[0] = cx - s * 0.8f;
 			p[1] = cy - s * 0.7f;
@@ -215,7 +215,7 @@ private:
 			p[3] = cy + s * 0.7f;
 			p[4] = 4.0f;
 		}
-		else if (t == DefaultShapes::RAMP)
+		else if (t == DefaultShapes::Ramp)
 		{
 			p[0] = cx;
 			p[1] = cy;
@@ -223,7 +223,7 @@ private:
 			p[3] = s;
 			p[4] = 0.0f;
 		}
-		else if (t == DefaultShapes::STAR)
+		else if (t == DefaultShapes::Star)
 		{
 			p[0] = cx;
 			p[1] = cy;
@@ -253,7 +253,7 @@ private:
 			int g = COMB_GRP_BASE + i;
 
 			float p1[8]{cx - off * 0.5f, cy, r};
-			Entity e1 = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::CIRCLE,
+			Entity e1 = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::Circle,
 														.variables = p1,
 														.material = 1,
 														.combination = CombinationType::Addition,
@@ -261,7 +261,7 @@ private:
 
 			float p2[8]{cx + off * 0.5f, cy, r};
 			Entity e2 = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::CIRCLE, .variables = p2, .material = 1, .combination = ct[i], .group = g});
+				{.shapeId = DefaultShapes::Circle, .variables = p2, .material = 1, .combination = ct[i], .group = g});
 
 			if (ct[i] == CombinationType::SmoothAddition || ct[i] == CombinationType::SmoothSubtraction)
 				m_tempRegistry->getComponent<UIShape>(e2).smoothFactor = 5.0f;
@@ -296,7 +296,7 @@ private:
 			float px = START_X + i * MAT_SPACING;
 			float p[8]{px, MAT_Y, BTN_SIZE - 4.0f};
 			Entity e = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::CIRCLE, .variables = p, .material = static_cast<uint16_t>(i)});
+				{.shapeId = DefaultShapes::Circle, .variables = p, .material = static_cast<uint16_t>(i)});
 
 			auto& tog = m_tempRegistry->addComponent<ShapeToggle>(e);
 			tog.clickPadding = BTN_SIZE + 3.0f;
@@ -329,7 +329,7 @@ private:
 			float py = PANEL_TOP_Y - i * PARAM_GAP;
 
 			Entity be = m_tempSvc->shapes().addUIShape(
-				{.shapeId = DefaultShapes::BOX, .variables = {HIDDEN, py, P_BTN_W, P_BTN_H}, .material = 3});
+				{.shapeId = DefaultShapes::Box, .variables = {HIDDEN, py, P_BTN_W, P_BTN_H}, .material = 3});
 			auto& btn = m_tempRegistry->addComponent<ShapeButton>(be);
 			btn.modifierAmount = 1.0f;
 			btn.clickPadding = 3.0f;
@@ -572,7 +572,7 @@ private:
 		float v;
 		if (std::cin >> v)
 		{
-			if (cs.distanceFieldId == DefaultShapes::STAR && idx == 4)
+			if (cs.distanceFieldId == DefaultShapes::Star && idx == 4)
 				v = std::round(v);
 			cs.parameters[idx] = v;
 			m_tempRegistry->setComponentDirty(cs);
@@ -683,70 +683,70 @@ private:
 	// =====================================================================
 	static const char* shapeName(uint16_t t)
 	{
-		if (t == DefaultShapes::CIRCLE)
+		if (t == DefaultShapes::Circle)
 			return "Circle";
-		if (t == DefaultShapes::CIRCLE_LINE)
+		if (t == DefaultShapes::CircleLine)
 			return "CircleLine";
-		if (t == DefaultShapes::BOX)
+		if (t == DefaultShapes::Box)
 			return "Box";
-		if (t == DefaultShapes::BOX_LINE)
+		if (t == DefaultShapes::BoxLine)
 			return "BoxLine";
-		if (t == DefaultShapes::TRIANGLE)
+		if (t == DefaultShapes::Triangle)
 			return "Triangle";
-		if (t == DefaultShapes::TRIANGLE_LINE)
+		if (t == DefaultShapes::TriangleLine)
 			return "TriangleLine";
-		if (t == DefaultShapes::LINE)
+		if (t == DefaultShapes::Line)
 			return "Line";
-		if (t == DefaultShapes::RAMP)
+		if (t == DefaultShapes::Ramp)
 			return "Ramp";
-		if (t == DefaultShapes::SINE)
+		if (t == DefaultShapes::SineWave)
 			return "Sine";
-		if (t == DefaultShapes::STAR)
+		if (t == DefaultShapes::Star)
 			return "Star";
-		if (t == DefaultShapes::BOX_ROTATED)
+		if (t == DefaultShapes::BoxRotated)
 			return "BoxRotated";
-		if (t == DefaultShapes::BOX_LINE_ROTATED)
+		if (t == DefaultShapes::BoxLineRotated)
 			return "BoxLineRotated";
-		if (t == DefaultShapes::TRIANGLE_ROTATED)
+		if (t == DefaultShapes::TriangleRotated)
 			return "TriangleRotated";
-		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+		if (t == DefaultShapes::TriangleLineRotated)
 			return "TriangleLineRotated";
-		if (t == DefaultShapes::RAMP_ROTATED)
+		if (t == DefaultShapes::RampRotated)
 			return "RampRotated";
 		return "Shape";
 	}
 
 	static int paramCount(uint16_t t)
 	{
-		if (t == DefaultShapes::CIRCLE)
+		if (t == DefaultShapes::Circle)
 			return 3;
-		if (t == DefaultShapes::CIRCLE_LINE)
+		if (t == DefaultShapes::CircleLine)
 			return 4;
-		if (t == DefaultShapes::BOX)
+		if (t == DefaultShapes::Box)
 			return 4;
-		if (t == DefaultShapes::BOX_LINE)
+		if (t == DefaultShapes::BoxLine)
 			return 5;
-		if (t == DefaultShapes::TRIANGLE)
+		if (t == DefaultShapes::Triangle)
 			return 4;
-		if (t == DefaultShapes::TRIANGLE_LINE)
+		if (t == DefaultShapes::TriangleLine)
 			return 5;
-		if (t == DefaultShapes::LINE)
+		if (t == DefaultShapes::Line)
 			return 5;
-		if (t == DefaultShapes::RAMP)
+		if (t == DefaultShapes::Ramp)
 			return 5;
-		if (t == DefaultShapes::SINE)
+		if (t == DefaultShapes::SineWave)
 			return 4;
-		if (t == DefaultShapes::STAR)
+		if (t == DefaultShapes::Star)
 			return 6;
-		if (t == DefaultShapes::BOX_ROTATED)
+		if (t == DefaultShapes::BoxRotated)
 			return 5;
-		if (t == DefaultShapes::BOX_LINE_ROTATED)
+		if (t == DefaultShapes::BoxLineRotated)
 			return 6;
-		if (t == DefaultShapes::TRIANGLE_ROTATED)
+		if (t == DefaultShapes::TriangleRotated)
 			return 5;
-		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+		if (t == DefaultShapes::TriangleLineRotated)
 			return 6;
-		if (t == DefaultShapes::RAMP_ROTATED)
+		if (t == DefaultShapes::RampRotated)
 			return 6;
 		return 3;
 	}
@@ -768,35 +768,35 @@ private:
 		static const char* TR[] = {"posX", "posY", "w", "h", "angle"};
 		static const char* TLR[] = {"posX", "posY", "w", "h", "angle", "thick"};
 		static const char* RR[] = {"posX", "posY", "w", "h", "skew", "angle"};
-		if (t == DefaultShapes::CIRCLE)
+		if (t == DefaultShapes::Circle)
 			return C[i];
-		if (t == DefaultShapes::CIRCLE_LINE)
+		if (t == DefaultShapes::CircleLine)
 			return CL[i];
-		if (t == DefaultShapes::BOX)
+		if (t == DefaultShapes::Box)
 			return B[i];
-		if (t == DefaultShapes::BOX_LINE)
+		if (t == DefaultShapes::BoxLine)
 			return BL[i];
-		if (t == DefaultShapes::TRIANGLE)
+		if (t == DefaultShapes::Triangle)
 			return T[i];
-		if (t == DefaultShapes::TRIANGLE_LINE)
+		if (t == DefaultShapes::TriangleLine)
 			return TL[i];
-		if (t == DefaultShapes::LINE)
+		if (t == DefaultShapes::Line)
 			return L[i];
-		if (t == DefaultShapes::RAMP)
+		if (t == DefaultShapes::Ramp)
 			return R[i];
-		if (t == DefaultShapes::SINE)
+		if (t == DefaultShapes::SineWave)
 			return SI[i];
-		if (t == DefaultShapes::STAR)
+		if (t == DefaultShapes::Star)
 			return ST[i];
-		if (t == DefaultShapes::BOX_ROTATED)
+		if (t == DefaultShapes::BoxRotated)
 			return BR[i];
-		if (t == DefaultShapes::BOX_LINE_ROTATED)
+		if (t == DefaultShapes::BoxLineRotated)
 			return BLR[i];
-		if (t == DefaultShapes::TRIANGLE_ROTATED)
+		if (t == DefaultShapes::TriangleRotated)
 			return TR[i];
-		if (t == DefaultShapes::TRIANGLE_LINE_ROTATED)
+		if (t == DefaultShapes::TriangleLineRotated)
 			return TLR[i];
-		if (t == DefaultShapes::RAMP_ROTATED)
+		if (t == DefaultShapes::RampRotated)
 			return RR[i];
 		return "?";
 	}
@@ -820,20 +820,20 @@ private:
 	{
 		std::memset(p, 0, sizeof(float) * 8);
 		vec2 c = camCentre();
-		if (type == DefaultShapes::CIRCLE)
+		if (type == DefaultShapes::Circle)
 		{
 			p[0] = c.x + rnd(-2.0f, 2.0f);
 			p[1] = c.y + rnd(-2.0f, 2.0f);
 			p[2] = rnd(0.6f, 2.5f);
 		}
-		else if (type == DefaultShapes::BOX)
+		else if (type == DefaultShapes::Box)
 		{
 			p[0] = c.x + rnd(-3.0f, 3.0f);
 			p[1] = c.y + rnd(-3.0f, 3.0f);
 			p[2] = rnd(0.5f, 3.0f);
 			p[3] = rnd(0.5f, 3.0f);
 		}
-		else if (type == DefaultShapes::LINE)
+		else if (type == DefaultShapes::Line)
 		{
 			p[0] = c.x + rnd(-3.0f, -0.5f);
 			p[1] = c.y + rnd(-2.0f, 2.0f);
@@ -841,7 +841,7 @@ private:
 			p[3] = c.y + rnd(-2.0f, 2.0f);
 			p[4] = rnd(0.05f, 0.3f);
 		}
-		else if (type == DefaultShapes::RAMP)
+		else if (type == DefaultShapes::Ramp)
 		{
 			p[0] = c.x + rnd(-2.0f, 2.0f);
 			p[1] = c.y + rnd(-2.0f, 2.0f);
@@ -849,7 +849,7 @@ private:
 			p[3] = rnd(1.0f, 4.0f);
 			p[4] = rnd(-1.5f, 1.5f);
 		}
-		else if (type == DefaultShapes::STAR)
+		else if (type == DefaultShapes::Star)
 		{
 			p[0] = c.x + rnd(-2.0f, 2.0f);
 			p[1] = c.y + rnd(-2.0f, 2.0f);

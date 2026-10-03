@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace CollisionHandlingNamespace
@@ -27,15 +28,12 @@ namespace CollisionHandlingNamespace
 	void setupArenaShapesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupHudSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnInitialBallsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnerSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void hudSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void onEntityShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 									  WeirdEngine::EntityShapeCollisionEvent& event);
 	void onEntityCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								 WeirdEngine::EntityCollisionEvent& event);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace CollisionHandlingNamespace
 
 class CollisionHandlingScene : public WeirdEngine::Scene2D
@@ -49,12 +47,12 @@ public:
 		addStartSystem(CollisionHandlingNamespace::setupArenaShapesSystem);
 		addStartSystem(CollisionHandlingNamespace::setupHudSystem);
 		addStartSystem(CollisionHandlingNamespace::spawnInitialBallsSystem);
-		addStartSystem(CollisionHandlingNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(CollisionHandlingNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(CollisionHandlingNamespace::spawnerSystem);
 		addUpdateSystem(CollisionHandlingNamespace::hudSystem);
-		addUpdateSystem(CollisionHandlingNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(CollisionHandlingNamespace::onEntityCollisionSystem);
 		addEntityShapeCollisionSystem(CollisionHandlingNamespace::onEntityShapeCollisionSystem);

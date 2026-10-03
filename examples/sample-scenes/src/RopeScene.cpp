@@ -1,6 +1,5 @@
 #include "RopeScene.h"
 
-#include "globals.h"
 #include <cmath>
 
 using namespace WeirdEngine;
@@ -185,31 +184,23 @@ namespace RopeSceneNamespace
 		auto groundMat = services.materials2D().createMaterial("ground");
 
 		// Add base shapes (walls, ground, custom)
-		services.shapes().addShape({.shapeId = DefaultShapes::SINE,
-									.variables = {{Primitives::SineWave::AMPLITUDE, 1.0f},
-												  {Primitives::SineWave::PERIOD, 0.5f},
-												  {Primitives::SineWave::SPEED, 1.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 1.0f},
+												  {DefaultShapes::SineWave::Period, 0.5f},
+												  {DefaultShapes::SineWave::Speed, 1.0f}},
 									.material = groundMat});
 
-		state.star = services.shapes().addShape({.shapeId = DefaultShapes::STAR,
+		state.star = services.shapes().addShape({.shapeId = DefaultShapes::Star,
 												 .variables = {25.0f, 10.0f, 5.0f, 0.5f, 13.0f, 5.0f},
 												 .material = groundMat});
 
-		services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-									.variables = {{Primitives::Box::POS_X, 15.0f},
-												  {Primitives::Box::POS_Y, -98.0f},
-												  {Primitives::Box::SIZE_X, 15.0f},
-												  {Primitives::Box::SIZE_Y, 100.0f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 15.0f},
+												  {DefaultShapes::Box::PosY, -98.0f},
+												  {DefaultShapes::Box::SizeX, 15.0f},
+												  {DefaultShapes::Box::SizeY, 100.0f}},
 									.material = groundMat,
 									.combination = CombinationType::Addition});
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
 	}
 
 	void starAnimationSystem(Registry& registry, ServiceProvider& services)
@@ -256,11 +247,11 @@ namespace RopeSceneNamespace
 			vec2 size = 0.5f * glm::abs(screen - state.boxStart);
 			size = glm::max(size, vec2(1.0f));
 
-			services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-										  .variables = {{Primitives::Box::POS_X, pos.x},
-														{Primitives::Box::POS_Y, pos.y},
-														{Primitives::Box::SIZE_X, size.x},
-														{Primitives::Box::SIZE_Y, size.y}},
+			services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+										  .variables = {{DefaultShapes::Box::PosX, pos.x},
+														{DefaultShapes::Box::PosY, pos.y},
+														{DefaultShapes::Box::SizeX, size.x},
+														{DefaultShapes::Box::SizeY, size.y}},
 										  .material = services.materials2D().getHandle("ui_box")});
 		}
 
@@ -275,11 +266,11 @@ namespace RopeSceneNamespace
 			vec2 size = 0.5f * glm::abs(worldEnd - worldStart);
 			size = glm::max(size, vec2(1.0f));
 
-			services.shapes().addShape({.shapeId = DefaultShapes::BOX,
-										.variables = {{Primitives::Box::POS_X, pos.x},
-													  {Primitives::Box::POS_Y, pos.y},
-													  {Primitives::Box::SIZE_X, size.x},
-													  {Primitives::Box::SIZE_Y, size.y}},
+			services.shapes().addShape({.shapeId = DefaultShapes::Box,
+										.variables = {{DefaultShapes::Box::PosX, pos.x},
+													  {DefaultShapes::Box::PosY, pos.y},
+													  {DefaultShapes::Box::SizeX, size.x},
+													  {DefaultShapes::Box::SizeY, size.y}},
 										.material = services.materials2D().getHandle("ground")});
 		}
 	}
@@ -534,15 +525,6 @@ namespace RopeSceneNamespace
 		}
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace RopeSceneNamespace
 
 void RopeScene::onPhysicsStep(Simulation2D& simulation)

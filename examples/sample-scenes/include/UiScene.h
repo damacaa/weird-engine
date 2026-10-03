@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace UiSceneNamespace
@@ -33,13 +34,10 @@ namespace UiSceneNamespace
 	void setupUiMaterialsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupButtonsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupTextLabelsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void buttonInteractionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void labelUpdateSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void mouseTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void responsiveLayoutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace UiSceneNamespace
 
 class UiScene : public WeirdEngine::Scene2D
@@ -52,13 +50,13 @@ public:
 		addStartSystem(UiSceneNamespace::setupUiMaterialsSystem);
 		addStartSystem(UiSceneNamespace::setupButtonsSystem);
 		addStartSystem(UiSceneNamespace::setupTextLabelsSystem);
-		addStartSystem(UiSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(UiSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(UiSceneNamespace::buttonInteractionSystem);
 		addUpdateSystem(UiSceneNamespace::labelUpdateSystem);
 		addUpdateSystem(UiSceneNamespace::mouseTrackingSystem);
 		addUpdateSystem(UiSceneNamespace::responsiveLayoutSystem);
-		addUpdateSystem(UiSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

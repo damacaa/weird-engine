@@ -3,7 +3,6 @@
 
 #include <cstdint>
 
-#include "Primitives.h"
 #include "SDF.h"
 #include "StarShape.h"
 
@@ -16,60 +15,57 @@ namespace WeirdEngine
 		using namespace SDF;
 
 #define WEIRD_BUILTIN_SHAPES_2D(X)                                                                                     \
-	X(CIRCLE, Circle, (POS_X, POS_Y, RADIUS),                                                                          \
-	  sdCircle(translate(point(), {var(Circle::POS_X), var(Circle::POS_Y)}), var(Circle::RADIUS)))                     \
-	X(CIRCLE_LINE, CircleLine, (POS_X, POS_Y, RADIUS, THICKNESS),                                                      \
-	  sdfOnion(                                                                                                        \
-		  sdCircle(translate(point(), {var(CircleLine::POS_X), var(CircleLine::POS_Y)}), var(CircleLine::RADIUS)),     \
-		  var(CircleLine::THICKNESS)))                                                                                 \
-	X(BOX, Box, (POS_X, POS_Y, SIZE_X, SIZE_Y),                                                                        \
-	  sdBox(translate(point(), {var(Box::POS_X), var(Box::POS_Y)}), {var(Box::SIZE_X), var(Box::SIZE_Y)}))             \
-	X(BOX_LINE, BoxLine, (POS_X, POS_Y, SIZE_X, SIZE_Y, THICKNESS),                                                    \
-	  sdfOnion(sdBox(translate(point(), {var(BoxLine::POS_X), var(BoxLine::POS_Y)}),                                   \
-					 {var(BoxLine::SIZE_X), var(BoxLine::SIZE_Y)}),                                                    \
-			   var(BoxLine::THICKNESS)))                                                                               \
-	X(TRIANGLE, Triangle, (POS_X, POS_Y, WIDTH, HEIGHT),                                                               \
-	  sdTriangle(translate(point(), {var(Triangle::POS_X), var(Triangle::POS_Y)}), var(Triangle::WIDTH),               \
-				 var(Triangle::HEIGHT)))                                                                               \
-	X(TRIANGLE_LINE, TriangleLine, (POS_X, POS_Y, WIDTH, HEIGHT, THICKNESS),                                           \
-	  sdfOnion(sdTriangle(translate(point(), {var(TriangleLine::POS_X), var(TriangleLine::POS_Y)}),                    \
-						  var(TriangleLine::WIDTH), var(TriangleLine::HEIGHT)),                                        \
-			   var(TriangleLine::THICKNESS)))                                                                          \
-	X(LINE, Line, (START_X, START_Y, END_X, END_Y, WIDTH),                                                             \
-	  sdLine(point(), {var(Line::START_X), var(Line::START_Y)}, {var(Line::END_X), var(Line::END_Y)},                  \
-			 var(Line::WIDTH)))                                                                                        \
-	X(RAMP, Ramp, (POS_X, POS_Y, WIDTH, HEIGHT, SKEW),                                                                 \
-	  sdRamp(translate(point(), {var(Ramp::POS_X), var(Ramp::POS_Y)}), var(Ramp::WIDTH), var(Ramp::HEIGHT),            \
-			 var(Ramp::SKEW)))                                                                                         \
-	X(SINE, SineWave, (AMPLITUDE, PERIOD, SPEED, OFFSET),                                                              \
-	  sdSineWave(point(), var(SineWave::AMPLITUDE), var(SineWave::PERIOD), var(SineWave::SPEED),                       \
-				 var(SineWave::OFFSET)))                                                                               \
-	X(STAR, Star, (), getStarShape())                                                                                  \
-	X(BOX_ROTATED, BoxRotated, (POS_X, POS_Y, SIZE_X, SIZE_Y, ANGLE),                                                  \
-	  sdBox(rotate(translate(point(), {var(BoxRotated::POS_X), var(BoxRotated::POS_Y)}), var(BoxRotated::ANGLE)),      \
-			{var(BoxRotated::SIZE_X), var(BoxRotated::SIZE_Y)}))                                                       \
-	X(BOX_LINE_ROTATED, BoxLineRotated, (POS_X, POS_Y, SIZE_X, SIZE_Y, ANGLE, THICKNESS),                              \
-	  sdfOnion(sdBox(rotate(translate(point(), {var(BoxLineRotated::POS_X), var(BoxLineRotated::POS_Y)}),              \
-							var(BoxLineRotated::ANGLE)),                                                               \
-					 {var(BoxLineRotated::SIZE_X), var(BoxLineRotated::SIZE_Y)}),                                      \
-			   var(BoxLineRotated::THICKNESS)))                                                                        \
-	X(TRIANGLE_ROTATED, TriangleRotated, (POS_X, POS_Y, WIDTH, HEIGHT, ANGLE),                                         \
-	  sdTriangle(rotate(translate(point(), {var(TriangleRotated::POS_X), var(TriangleRotated::POS_Y)}),                \
-						var(TriangleRotated::ANGLE)),                                                                  \
-				 var(TriangleRotated::WIDTH), var(TriangleRotated::HEIGHT)))                                           \
-	X(TRIANGLE_LINE_ROTATED, TriangleLineRotated, (POS_X, POS_Y, WIDTH, HEIGHT, ANGLE, THICKNESS),                     \
-	  sdfOnion(                                                                                                        \
-		  sdTriangle(rotate(translate(point(), {var(TriangleLineRotated::POS_X), var(TriangleLineRotated::POS_Y)}),    \
-							var(TriangleLineRotated::ANGLE)),                                                          \
-					 var(TriangleLineRotated::WIDTH), var(TriangleLineRotated::HEIGHT)),                               \
-		  var(TriangleLineRotated::THICKNESS)))                                                                        \
-	X(RAMP_ROTATED, RampRotated, (POS_X, POS_Y, WIDTH, HEIGHT, SKEW, ANGLE),                                           \
-	  sdRamp(rotate(translate(point(), {var(RampRotated::POS_X), var(RampRotated::POS_Y)}), var(RampRotated::ANGLE)),  \
-			 var(RampRotated::WIDTH), var(RampRotated::HEIGHT), var(RampRotated::SKEW)))
+	X(Circle, (PosX, PosY, Radius),                                                                                    \
+	  sdCircle(translate(point(), {var(Circle::PosX), var(Circle::PosY)}), var(Circle::Radius)))                       \
+	X(CircleLine, (PosX, PosY, Radius, Thickness),                                                                     \
+	  sdfOnion(sdCircle(translate(point(), {var(CircleLine::PosX), var(CircleLine::PosY)}), var(CircleLine::Radius)),  \
+			   var(CircleLine::Thickness)))                                                                            \
+	X(Box, (PosX, PosY, SizeX, SizeY),                                                                                 \
+	  sdBox(translate(point(), {var(Box::PosX), var(Box::PosY)}), {var(Box::SizeX), var(Box::SizeY)}))                 \
+	X(BoxLine, (PosX, PosY, SizeX, SizeY, Thickness),                                                                  \
+	  sdfOnion(sdBox(translate(point(), {var(BoxLine::PosX), var(BoxLine::PosY)}),                                     \
+					 {var(BoxLine::SizeX), var(BoxLine::SizeY)}),                                                      \
+			   var(BoxLine::Thickness)))                                                                               \
+	X(Triangle, (PosX, PosY, Width, Height),                                                                           \
+	  sdTriangle(translate(point(), {var(Triangle::PosX), var(Triangle::PosY)}), var(Triangle::Width),                 \
+				 var(Triangle::Height)))                                                                               \
+	X(TriangleLine, (PosX, PosY, Width, Height, Thickness),                                                            \
+	  sdfOnion(sdTriangle(translate(point(), {var(TriangleLine::PosX), var(TriangleLine::PosY)}),                      \
+						  var(TriangleLine::Width), var(TriangleLine::Height)),                                        \
+			   var(TriangleLine::Thickness)))                                                                          \
+	X(Line, (StartX, StartY, EndX, EndY, Width),                                                                       \
+	  sdLine(point(), {var(Line::StartX), var(Line::StartY)}, {var(Line::EndX), var(Line::EndY)}, var(Line::Width)))   \
+	X(Ramp, (PosX, PosY, Width, Height, Skew),                                                                         \
+	  sdRamp(translate(point(), {var(Ramp::PosX), var(Ramp::PosY)}), var(Ramp::Width), var(Ramp::Height),              \
+			 var(Ramp::Skew)))                                                                                         \
+	X(SineWave, (Amplitude, Period, Speed, Offset),                                                                    \
+	  sdSineWave(point(), var(SineWave::Amplitude), var(SineWave::Period), var(SineWave::Speed),                       \
+				 var(SineWave::Offset)))                                                                               \
+	X(Star, (), getStarShape())                                                                                        \
+	X(BoxRotated, (PosX, PosY, SizeX, SizeY, Angle),                                                                   \
+	  sdBox(rotate(translate(point(), {var(BoxRotated::PosX), var(BoxRotated::PosY)}), var(BoxRotated::Angle)),        \
+			{var(BoxRotated::SizeX), var(BoxRotated::SizeY)}))                                                         \
+	X(BoxLineRotated, (PosX, PosY, SizeX, SizeY, Angle, Thickness),                                                    \
+	  sdfOnion(sdBox(rotate(translate(point(), {var(BoxLineRotated::PosX), var(BoxLineRotated::PosY)}),                \
+							var(BoxLineRotated::Angle)),                                                               \
+					 {var(BoxLineRotated::SizeX), var(BoxLineRotated::SizeY)}),                                        \
+			   var(BoxLineRotated::Thickness)))                                                                        \
+	X(TriangleRotated, (PosX, PosY, Width, Height, Angle),                                                             \
+	  sdTriangle(rotate(translate(point(), {var(TriangleRotated::PosX), var(TriangleRotated::PosY)}),                  \
+						var(TriangleRotated::Angle)),                                                                  \
+				 var(TriangleRotated::Width), var(TriangleRotated::Height)))                                           \
+	X(TriangleLineRotated, (PosX, PosY, Width, Height, Angle, Thickness),                                              \
+	  sdfOnion(sdTriangle(rotate(translate(point(), {var(TriangleLineRotated::PosX), var(TriangleLineRotated::PosY)}), \
+								 var(TriangleLineRotated::Angle)),                                                     \
+						  var(TriangleLineRotated::Width), var(TriangleLineRotated::Height)),                          \
+			   var(TriangleLineRotated::Thickness)))                                                                   \
+	X(RampRotated, (PosX, PosY, Width, Height, Skew, Angle),                                                           \
+	  sdRamp(rotate(translate(point(), {var(RampRotated::PosX), var(RampRotated::PosY)}), var(RampRotated::Angle)),    \
+			 var(RampRotated::Width), var(RampRotated::Height), var(RampRotated::Skew)))
 
 #define WEIRD_UNPACK_PARAMS_2D(...) __VA_ARGS__
-#define WEIRD_GEN_PARAM_STRUCT_2D(ID, StructName, params, expr)                                                        \
-	struct StructName                                                                                                  \
+#define WEIRD_GEN_PARAM_STRUCT_2D(Name, params, expr)                                                                  \
+	struct Name                                                                                                        \
 	{                                                                                                                  \
 		enum Params : uint8_t                                                                                          \
 		{                                                                                                              \
@@ -83,7 +79,7 @@ namespace WeirdEngine
 
 		enum : ShapeId
 		{
-#define WEIRD_SHAPE_2D_ENUM(ID, StructName, params, expr) ID,
+#define WEIRD_SHAPE_2D_ENUM(Name, params, expr) Name,
 			WEIRD_BUILTIN_SHAPES_2D(WEIRD_SHAPE_2D_ENUM)
 #undef WEIRD_SHAPE_2D_ENUM
 			COUNT_2D

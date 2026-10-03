@@ -1,6 +1,5 @@
 #include "MusicScene.h"
 
-#include "globals.h"
 #include <cstdio>
 
 using namespace WeirdEngine;
@@ -195,33 +194,33 @@ namespace MusicSceneNamespace
 		// 1. Play Button: Triangle ▶
 		{
 			state.playButton =
-				services.shapes().addUIShape({.shapeId = DefaultShapes::TRIANGLE_ROTATED,
-											  .variables = {{Primitives::TriangleRotated::POS_X, 55.0f},
-															{Primitives::TriangleRotated::POS_Y, 55.0f},
-															{Primitives::TriangleRotated::SIZE_X, 26.0f},
-															{Primitives::TriangleRotated::SIZE_Y, 26.0f},
-															{Primitives::TriangleRotated::ANGLE, 1.5707963f}},
+				services.shapes().addUIShape({.shapeId = DefaultShapes::TriangleRotated,
+											  .variables = {{DefaultShapes::TriangleRotated::PosX, 55.0f},
+															{DefaultShapes::TriangleRotated::PosY, 55.0f},
+															{DefaultShapes::TriangleRotated::Width, 26.0f},
+															{DefaultShapes::TriangleRotated::Height, 26.0f},
+															{DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
 											  .material = playMat});
 			auto& btn = registry.addComponent<ShapeButton>(state.playButton);
 			btn.clickPadding = 8.0f;
 			btn.modifierAmount = 3.0f;
-			btn.parameterModifierMask.set(Primitives::TriangleRotated::SIZE_X);
-			btn.parameterModifierMask.set(Primitives::TriangleRotated::SIZE_Y);
+			btn.parameterModifierMask.set(DefaultShapes::TriangleRotated::Width);
+			btn.parameterModifierMask.set(DefaultShapes::TriangleRotated::Height);
 		}
 
 		// 2. Square Pause Button: Box ⏹
 		{
-			state.pauseButton = services.shapes().addUIShape({.shapeId = DefaultShapes::BOX,
-															  .variables = {{Primitives::Box::POS_X, 105.0f},
-																			{Primitives::Box::POS_Y, 55.0f},
-																			{Primitives::Box::SIZE_X, 13.0f},
-																			{Primitives::Box::SIZE_Y, 13.0f}},
+			state.pauseButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															  .variables = {{DefaultShapes::Box::PosX, 105.0f},
+																			{DefaultShapes::Box::PosY, 55.0f},
+																			{DefaultShapes::Box::SizeX, 13.0f},
+																			{DefaultShapes::Box::SizeY, 13.0f}},
 															  .material = pauseMat});
 			auto& btn = registry.addComponent<ShapeButton>(state.pauseButton);
 			btn.clickPadding = 8.0f;
 			btn.modifierAmount = 3.0f;
-			btn.parameterModifierMask.set(Primitives::Box::SIZE_X);
-			btn.parameterModifierMask.set(Primitives::Box::SIZE_Y);
+			btn.parameterModifierMask.set(DefaultShapes::Box::SizeX);
+			btn.parameterModifierMask.set(DefaultShapes::Box::SizeY);
 		}
 
 		// 3. UI Texts
@@ -280,14 +279,6 @@ namespace MusicSceneNamespace
 	{
 		// Shape& shape = registry.getComponent<Shape>(getState(registry).backgroundShape);
 		// registry.setComponentDirty(shape);
-	}
-
-	void sceneControlSystem(Registry& registry, ServiceProvider& services)
-	{
-		if (services.input().getKeyDown(Input::Q) || services.input().getGamepadButtonDown(Input::GamepadButton::North))
-		{
-			services.sceneControl().goToNextScene();
-		}
 	}
 
 	void toggleSelectionSystem(Registry& registry, ServiceProvider& services)
@@ -589,13 +580,4 @@ namespace MusicSceneNamespace
 		services.audio().resampleShape();
 	}
 
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		g_cameraPositon = registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position;
-	}
-
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
-	{
-		registry.getComponent<WeirdEngine::Transform>(services.render().getCameraEntity()).position = g_cameraPositon;
-	}
 } // namespace MusicSceneNamespace

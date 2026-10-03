@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace ShapeCombinationsNamespace
@@ -18,10 +19,7 @@ namespace ShapeCombinationsNamespace
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupShapesSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void cursorCircleSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace ShapeCombinationsNamespace
 
 class ShapeCombinationsScene : public WeirdEngine::Scene2D
@@ -32,11 +30,11 @@ public:
 		addStartSystem(ShapeCombinationsNamespace::stateInitSystem);
 		addStartSystem(ShapeCombinationsNamespace::setupEnvironmentSystem);
 		addStartSystem(ShapeCombinationsNamespace::setupShapesSystem);
-		addStartSystem(ShapeCombinationsNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(ShapeCombinationsNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ShapeCombinationsNamespace::cursorCircleSystem);
-		addUpdateSystem(ShapeCombinationsNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };
 

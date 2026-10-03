@@ -16,29 +16,29 @@
 #include "weird-engine/math/Default2DSDFs.h"
 
 #define WEIRD_BUILTIN_SHAPES_3D(X)                                                                                     \
-	X(PLANE, Plane, (HEIGHT), std::make_shared<Primitives3D::Plane>(DefaultShapes3D::var(Plane::HEIGHT)))              \
-	X(BOX, Box, (POS_X, POS_Y, POS_Z, SIZE_X, SIZE_Y, SIZE_Z),                                                         \
-	  std::make_shared<Primitives3D::Box>(DefaultShapes3D::var(Box::POS_X), DefaultShapes3D::var(Box::POS_Y),          \
-										  DefaultShapes3D::var(Box::POS_Z), DefaultShapes3D::var(Box::SIZE_X),         \
-										  DefaultShapes3D::var(Box::SIZE_Y), DefaultShapes3D::var(Box::SIZE_Z)))       \
-	X(SPHERE, Sphere, (POS_X, POS_Y, POS_Z, RADIUS),                                                                   \
-	  std::make_shared<Primitives3D::Sphere>(DefaultShapes3D::var(Sphere::POS_X), DefaultShapes3D::var(Sphere::POS_Y), \
-											 DefaultShapes3D::var(Sphere::POS_Z),                                      \
-											 DefaultShapes3D::var(Sphere::RADIUS)))                                    \
-	X(CYLINDER, Cylinder, (POS_X, POS_Y, POS_Z, RADIUS, HEIGHT),                                                       \
+	X(Plane, (Height), std::make_shared<Primitives3D::Plane>(DefaultShapes3D::var(Plane::Height)))                     \
+	X(Box, (PosX, PosY, PosZ, SizeX, SizeY, SizeZ),                                                                    \
+	  std::make_shared<Primitives3D::Box>(DefaultShapes3D::var(Box::PosX), DefaultShapes3D::var(Box::PosY),            \
+										  DefaultShapes3D::var(Box::PosZ), DefaultShapes3D::var(Box::SizeX),           \
+										  DefaultShapes3D::var(Box::SizeY), DefaultShapes3D::var(Box::SizeZ)))         \
+	X(Sphere, (PosX, PosY, PosZ, Radius),                                                                              \
+	  std::make_shared<Primitives3D::Sphere>(DefaultShapes3D::var(Sphere::PosX), DefaultShapes3D::var(Sphere::PosY),   \
+											 DefaultShapes3D::var(Sphere::PosZ),                                       \
+											 DefaultShapes3D::var(Sphere::Radius)))                                    \
+	X(Cylinder, (PosX, PosY, PosZ, Radius, Height),                                                                    \
 	  std::make_shared<Primitives3D::Cylinder>(                                                                        \
-		  DefaultShapes3D::var(Cylinder::POS_X), DefaultShapes3D::var(Cylinder::POS_Y),                                \
-		  DefaultShapes3D::var(Cylinder::POS_Z), DefaultShapes3D::var(Cylinder::RADIUS),                               \
-		  DefaultShapes3D::var(Cylinder::HEIGHT)))                                                                     \
-	X(TORUS, Torus, (POS_X, POS_Y, POS_Z, RADIUS_SMALL, RADIUS_LARGE),                                                 \
+		  DefaultShapes3D::var(Cylinder::PosX), DefaultShapes3D::var(Cylinder::PosY),                                  \
+		  DefaultShapes3D::var(Cylinder::PosZ), DefaultShapes3D::var(Cylinder::Radius),                                \
+		  DefaultShapes3D::var(Cylinder::Height)))                                                                     \
+	X(Torus, (PosX, PosY, PosZ, RadiusSmall, RadiusLarge),                                                             \
 	  std::make_shared<Primitives3D::Torus>(                                                                           \
-		  DefaultShapes3D::var(Torus::POS_X), DefaultShapes3D::var(Torus::POS_Y), DefaultShapes3D::var(Torus::POS_Z),  \
-		  DefaultShapes3D::var(Torus::RADIUS_SMALL), DefaultShapes3D::var(Torus::RADIUS_LARGE)))                       \
-	X(CAPSULE, Capsule, (POS_X, POS_Y, POS_Z, RADIUS, HEIGHT),                                                         \
+		  DefaultShapes3D::var(Torus::PosX), DefaultShapes3D::var(Torus::PosY), DefaultShapes3D::var(Torus::PosZ),     \
+		  DefaultShapes3D::var(Torus::RadiusSmall), DefaultShapes3D::var(Torus::RadiusLarge)))                         \
+	X(Capsule, (PosX, PosY, PosZ, Radius, Height),                                                                     \
 	  std::make_shared<Primitives3D::Capsule>(                                                                         \
-		  DefaultShapes3D::var(Capsule::POS_X), DefaultShapes3D::var(Capsule::POS_Y),                                  \
-		  DefaultShapes3D::var(Capsule::POS_Z), DefaultShapes3D::var(Capsule::RADIUS),                                 \
-		  DefaultShapes3D::var(Capsule::HEIGHT)))
+		  DefaultShapes3D::var(Capsule::PosX), DefaultShapes3D::var(Capsule::PosY),                                    \
+		  DefaultShapes3D::var(Capsule::PosZ), DefaultShapes3D::var(Capsule::Radius),                                  \
+		  DefaultShapes3D::var(Capsule::Height)))
 
 namespace WeirdEngine
 {
@@ -50,8 +50,8 @@ namespace WeirdEngine
 		}
 
 #define WEIRD_UNPACK_PARAMS_3D(...) __VA_ARGS__
-#define WEIRD_GEN_PARAM_STRUCT_3D(ID, StructName, params, expr)                                                        \
-	struct StructName                                                                                                  \
+#define WEIRD_GEN_PARAM_STRUCT_3D(Name, params, expr)                                                                  \
+	struct Name                                                                                                        \
 	{                                                                                                                  \
 		enum Params : uint8_t                                                                                          \
 		{                                                                                                              \
@@ -65,7 +65,7 @@ namespace WeirdEngine
 		enum : ShapeId
 		{
 			_OFFSET_3D = DefaultShapes::COUNT_2D - 1,
-#define WEIRD_SHAPE_3D_ENUM(ID, StructName, params, expr) ID,
+#define WEIRD_SHAPE_3D_ENUM(Name, params, expr) Name,
 			WEIRD_BUILTIN_SHAPES_3D(WEIRD_SHAPE_3D_ENUM)
 #undef WEIRD_SHAPE_3D_ENUM
 			COUNT_3D

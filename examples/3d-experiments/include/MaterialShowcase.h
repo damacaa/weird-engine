@@ -115,7 +115,7 @@ private:
 		floorMaterial.pattern = MaterialPattern::Checkers;
 		floorMaterial.secondaryColor = floorMaterial.color * 0.8f;
 
-		services.shapes().addShape({.shapeId = DefaultShapes3D::PLANE,
+		services.shapes().addShape({.shapeId = DefaultShapes3D::Plane,
 									.variables = {3},
 									.material = floorMaterial,
 									.combination = CombinationType::Addition,
@@ -131,12 +131,12 @@ private:
 			auto boxId = services.shapes().registerSDF(box);
 
 			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::POS_X, -5.0f},
-													  {Primitives3D::Box::POS_Y, -2.0f},
-													  {Primitives3D::Box::POS_Z, 0.0f},
-													  {Primitives3D::Box::SIZE_X, 0.1f},
-													  {Primitives3D::Box::SIZE_Y, 1.0f},
-													  {Primitives3D::Box::SIZE_Z, 3.0f}},
+										.variables = {{Primitives3D::Box::PosX, -5.0f},
+													  {Primitives3D::Box::PosY, -2.0f},
+													  {Primitives3D::Box::PosZ, 0.0f},
+													  {Primitives3D::Box::SizeX, 0.1f},
+													  {Primitives3D::Box::SizeY, 1.0f},
+													  {Primitives3D::Box::SizeZ, 3.0f}},
 										.material = mirrorMaterial,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
@@ -147,12 +147,12 @@ private:
 			auto boxId = services.shapes().registerSDF(box);
 
 			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::POS_X, 20.0f},
-													  {Primitives3D::Box::POS_Y, -2.0f},
-													  {Primitives3D::Box::POS_Z, 0.0f},
-													  {Primitives3D::Box::SIZE_X, 0.1f},
-													  {Primitives3D::Box::SIZE_Y, 1.0f},
-													  {Primitives3D::Box::SIZE_Z, 3.0f}},
+										.variables = {{Primitives3D::Box::PosX, 20.0f},
+													  {Primitives3D::Box::PosY, -2.0f},
+													  {Primitives3D::Box::PosZ, 0.0f},
+													  {Primitives3D::Box::SizeX, 0.1f},
+													  {Primitives3D::Box::SizeY, 1.0f},
+													  {Primitives3D::Box::SizeZ, 3.0f}},
 										.material = mirrorMaterial,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});

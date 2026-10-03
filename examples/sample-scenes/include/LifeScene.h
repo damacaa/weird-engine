@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GlobalSystems.h"
 #include <weird-engine.h>
 
 namespace LifeSceneNamespace
@@ -30,10 +31,7 @@ namespace LifeSceneNamespace
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupArenaSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void spawnOrganismsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void sceneControlSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void organismMovementSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraTrackingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void cameraInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace LifeSceneNamespace
 
 class LifeScene : public WeirdEngine::Scene2D
@@ -44,10 +42,10 @@ public:
 		addStartSystem(LifeSceneNamespace::stateInitSystem);
 		addStartSystem(LifeSceneNamespace::setupArenaSystem);
 		addStartSystem(LifeSceneNamespace::spawnOrganismsSystem);
-		addStartSystem(LifeSceneNamespace::cameraInitSystem);
+		addStartSystem(GlobalSystems::cameraInitSystem);
 
-		addUpdateSystem(LifeSceneNamespace::sceneControlSystem);
+		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(LifeSceneNamespace::organismMovementSystem);
-		addUpdateSystem(LifeSceneNamespace::cameraTrackingSystem);
+		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

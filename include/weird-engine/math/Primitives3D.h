@@ -17,7 +17,8 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_h;
 
 	public:
-		static constexpr uint8_t HEIGHT = 0;
+		static constexpr uint8_t Height = 0;
+		static constexpr uint8_t HEIGHT = Height;
 
 		Plane(std::shared_ptr<IMathExpression> h)
 			: m_h(std::move(h))
@@ -64,12 +65,19 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_sx, m_sy, m_sz;
 
 	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t POS_Z = 2;
-		static constexpr uint8_t SIZE_X = 3;
-		static constexpr uint8_t SIZE_Y = 4;
-		static constexpr uint8_t SIZE_Z = 5;
+		static constexpr uint8_t PosX = 0;
+		static constexpr uint8_t PosY = 1;
+		static constexpr uint8_t PosZ = 2;
+		static constexpr uint8_t SizeX = 3;
+		static constexpr uint8_t SizeY = 4;
+		static constexpr uint8_t SizeZ = 5;
+
+		static constexpr uint8_t POS_X = PosX;
+		static constexpr uint8_t POS_Y = PosY;
+		static constexpr uint8_t POS_Z = PosZ;
+		static constexpr uint8_t SIZE_X = SizeX;
+		static constexpr uint8_t SIZE_Y = SizeY;
+		static constexpr uint8_t SIZE_Z = SizeZ;
 
 		Box(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
 			std::shared_ptr<IMathExpression> pz, std::shared_ptr<IMathExpression> sx,
@@ -109,10 +117,15 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_r;
 
 	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t POS_Z = 2;
-		static constexpr uint8_t RADIUS = 3;
+		static constexpr uint8_t PosX = 0;
+		static constexpr uint8_t PosY = 1;
+		static constexpr uint8_t PosZ = 2;
+		static constexpr uint8_t Radius = 3;
+
+		static constexpr uint8_t POS_X = PosX;
+		static constexpr uint8_t POS_Y = PosY;
+		static constexpr uint8_t POS_Z = PosZ;
+		static constexpr uint8_t RADIUS = Radius;
 
 		Sphere(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
 			   std::shared_ptr<IMathExpression> pz, std::shared_ptr<IMathExpression> r)
@@ -141,11 +154,17 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_r, m_h;
 
 	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t POS_Z = 2;
-		static constexpr uint8_t RADIUS = 3;
-		static constexpr uint8_t HEIGHT = 4;
+		static constexpr uint8_t PosX = 0;
+		static constexpr uint8_t PosY = 1;
+		static constexpr uint8_t PosZ = 2;
+		static constexpr uint8_t Radius = 3;
+		static constexpr uint8_t Height = 4;
+
+		static constexpr uint8_t POS_X = PosX;
+		static constexpr uint8_t POS_Y = PosY;
+		static constexpr uint8_t POS_Z = PosZ;
+		static constexpr uint8_t RADIUS = Radius;
+		static constexpr uint8_t HEIGHT = Height;
 
 		Cylinder(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
 				 std::shared_ptr<IMathExpression> pz, std::shared_ptr<IMathExpression> r,
@@ -176,11 +195,17 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_r1, m_r2;
 
 	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t POS_Z = 2;
-		static constexpr uint8_t RADIUS_SMALL = 3;
-		static constexpr uint8_t RADIUS_LARGE = 4;
+		static constexpr uint8_t PosX = 0;
+		static constexpr uint8_t PosY = 1;
+		static constexpr uint8_t PosZ = 2;
+		static constexpr uint8_t RadiusSmall = 3;
+		static constexpr uint8_t RadiusLarge = 4;
+
+		static constexpr uint8_t POS_X = PosX;
+		static constexpr uint8_t POS_Y = PosY;
+		static constexpr uint8_t POS_Z = PosZ;
+		static constexpr uint8_t RADIUS_SMALL = RadiusSmall;
+		static constexpr uint8_t RADIUS_LARGE = RadiusLarge;
 
 		Torus(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
 			  std::shared_ptr<IMathExpression> pz, std::shared_ptr<IMathExpression> r1,
@@ -211,11 +236,17 @@ namespace WeirdEngine::Primitives3D
 		std::shared_ptr<IMathExpression> m_r, m_h;
 
 	public:
-		static constexpr uint8_t POS_X = 0;
-		static constexpr uint8_t POS_Y = 1;
-		static constexpr uint8_t POS_Z = 2;
-		static constexpr uint8_t RADIUS = 3;
-		static constexpr uint8_t HEIGHT = 4;
+		static constexpr uint8_t PosX = 0;
+		static constexpr uint8_t PosY = 1;
+		static constexpr uint8_t PosZ = 2;
+		static constexpr uint8_t Radius = 3;
+		static constexpr uint8_t Height = 4;
+
+		static constexpr uint8_t POS_X = PosX;
+		static constexpr uint8_t POS_Y = PosY;
+		static constexpr uint8_t POS_Z = PosZ;
+		static constexpr uint8_t RADIUS = Radius;
+		static constexpr uint8_t HEIGHT = Height;
 
 		Capsule(std::shared_ptr<IMathExpression> px, std::shared_ptr<IMathExpression> py,
 				std::shared_ptr<IMathExpression> pz, std::shared_ptr<IMathExpression> r,

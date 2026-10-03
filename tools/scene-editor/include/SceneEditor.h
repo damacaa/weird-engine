@@ -402,11 +402,8 @@ private:
 				continue;
 
 			auto& s = cs->getDataAtIdx(i);
-			float p[12]{};
-			std::copy(std::begin(s.parameters), std::end(s.parameters), p);
-			p[9] = pos.x;
-			p[10] = pos.y;
-			p[11] = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
+			float p[12];
+			packSdfParameters(p, s.parameters, 0.0f, pos, WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 			float d = m_tempSvc->shapes().getSDFs()[s.distanceFieldId]->getValue(p);
 			if (d < best)
 			{

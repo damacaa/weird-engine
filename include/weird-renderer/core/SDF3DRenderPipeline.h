@@ -61,12 +61,17 @@ namespace WeirdEngine
 			void free();
 			void showDebugUI();
 
+			void setAntialiasing(bool enable);
+			void setPathTracer(bool enable);
+
 			Config& getConfig()
 			{
 				return m_config;
 			}
 
 		private:
+			void updatePipelineDefines();
+
 			Config m_config;
 			RenderPlane& m_renderPlane;
 

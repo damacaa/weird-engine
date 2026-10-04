@@ -411,7 +411,7 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 	{
 		vec2 offset = HashID(float(objectId)); // +1 to avoid zero ID correlation
 
-#ifdef PATH_TRACING
+#if defined(PATH_TRACING) || defined(ANTIALIASING)
 		// Step through all 16 states of the 4x4 Bayer matrix using the frame counter.
 		// Since we have Temporal Accumulation (TAA), this perfectly averages out the dither noise
 		// into smooth glass-like transparency over 16 frames!
@@ -598,7 +598,7 @@ vec3 sceneSdf(vec3 p)
 	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 }
 
-vec3 getMaterial(vec3 p, int id)
+vec3 getMaterial(vec3 p, int id, vec3 N, vec3 dpdx, vec3 dpdy)
 {
 	vec3 color = id < 16 ? u_materials[id].color.xyz : (0.83 * vec3(1.0));
 	vec3 secondaryColor = id < 16 ? u_materials[id].secondaryColor.xyz : vec3(0.0);
@@ -612,7 +612,39 @@ vec3 getMaterial(vec3 p, int id)
 
 		if (pattern == 1)
 		{
-			patternShape = mod(floor(sp.x) + floor(sp.y) + floor(sp.z), 2.0);
+			// Triplanar 2D coordinates: project onto the surface tangent plane using dominant normal axis.
+			// This avoids 3D voxel boundary numerical artifacts and step-count concentric rings on planes.
+			vec2 uv;
+			vec2 d_uv_x;
+			vec2 d_uv_y;
+
+			vec3 absN = abs(N);
+			if (absN.y >= absN.x && absN.y >= absN.z)
+			{
+				uv = sp.xz;
+				d_uv_x = dpdx.xz * patternScale;
+				d_uv_y = dpdy.xz * patternScale;
+			}
+			else if (absN.x >= absN.z)
+			{
+				uv = sp.yz;
+				d_uv_x = dpdx.yz * patternScale;
+				d_uv_y = dpdy.yz * patternScale;
+			}
+			else
+			{
+				uv = sp.xy;
+				d_uv_x = dpdx.xy * patternScale;
+				d_uv_y = dpdy.xy * patternScale;
+			}
+
+			vec2 w = max(abs(d_uv_x) + abs(d_uv_y), 0.001);
+			vec2 i = 2.0 * (abs(fract((uv - 0.5 * w) * 0.5) - 0.5) - abs(fract((uv + 0.5 * w) * 0.5) - 0.5)) / w;
+
+			// Window out periodic box-filter sidelobes to guarantee smooth monotonic fade without ringing
+			i *= clamp(1.0 - smoothstep(0.6, 1.0, w), 0.0, 1.0);
+
+			patternShape = 0.5 - 0.5 * i.x * i.y;
 		}
 		else if (pattern == 2) // Perlin Noise
 		{
@@ -628,6 +660,16 @@ vec3 getMaterial(vec3 p, int id)
 	}
 
 	return color;
+}
+
+vec3 getMaterial(vec3 p, int id, vec3 dpdx, vec3 dpdy)
+{
+	return getMaterial(p, id, vec3(0.0, 1.0, 0.0), dpdx, dpdy);
+}
+
+vec3 getMaterial(vec3 p, int id)
+{
+	return getMaterial(p, id, vec3(0.0, 1.0, 0.0), dFdx(p), dFdy(p));
 }
 
 vec3 getColor(vec3 p)
@@ -765,8 +807,8 @@ const float SKY_BOUNCE_APPROX = 0.3;
 
 // Realtime only: ambient floor so indoor / black-sky scenes never crush to
 // pure black. The path tracer resolves this via interreflection bounces.
-const float LIGHT_BOUNCE_AMBIENT = 0.03; // scales Σ light color × intensity
-const float AMBIENT_FLOOR = 0.03;		 // tiny constant neutral floor
+const float LIGHT_BOUNCE_AMBIENT = 0.01; // scales Σ light color × intensity
+const float AMBIENT_FLOOR = 0.05;		 // tiny constant neutral floor
 
 // One mapping from material roughness to Blinn-Phong exponent, used by BOTH
 // realtime and path-traced direct lighting so highlight sizes always match.
@@ -976,8 +1018,7 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		// Stylization hack: roughness grows with each bounce to prevent infinite
 		// mirror-like reflections (aesthetic choice, not physical correctness).
 		float currentRoughness =
-			u_rayBounces == 1 ? max(roughness, 0.2)
-							  : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0);
+			u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0);
 
 		// On the first bounce use the injected normal (supports both SDF and mesh
 		// primary hits). Subsequent bounces always use the SDF analytical gradient.
@@ -1133,7 +1174,10 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;	// [0,1], 1.0 = no mesh
+	float _ar = u_resolution.x / u_resolution.y;
+	vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
+
+	float meshDepthSample = texture(t_depthTexture, gbufferUV).r;	// [0,1], 1.0 = no mesh
 	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample); // eye-space metres
 
 	// Ray march SDF
@@ -1161,6 +1205,7 @@ vec4 render(in vec2 uv)
 
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
+	float finalDepth = 1.0;
 
 	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter);
 	pcg(state); // Warm up the state
@@ -1176,9 +1221,6 @@ vec4 render(in vec2 uv)
 		// so mesh shading varies per frame and accumulates correctly in the temporal denoiser.
 		// Note: this can produce edge artifacts when the jitter pushes the lookup outside
 		// the mesh silhouette — that is an accepted trade-off.
-		float _ar = u_resolution.x / u_resolution.y;
-		vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
-
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
 		vec3 meshAlbedo = texture(t_gbufferAlbedo, gbufferUV).rgb;
 		vec3 meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
@@ -1186,7 +1228,8 @@ vec4 render(in vec2 uv)
 		vec3 meshNormal = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
 		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
-		meshAlbedo *= getMaterial(meshWorldPos, materialId); // Apply material palette color to mesh albedo
+		meshAlbedo *= getMaterial(meshWorldPos, materialId, meshNormal, dFdx(meshWorldPos),
+								  dFdy(meshWorldPos)); // Apply material palette color to mesh albedo
 
 		col = integrate(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
 
@@ -1194,15 +1237,14 @@ vec4 render(in vec2 uv)
 		float fog = smoothstep(u_far * 0.0, u_far, meshDepthLinear);
 		col = mix(col, getSkyColor(rd), fog);
 
-		// Write the mesh depth to the depth buffer
-		gl_FragDepth = meshDepthSample;
+		finalDepth = meshDepthSample;
 	}
 	else if (minDepth < u_far)
 	{
 		// --- SDF hit is in front ---
 		vec3 p = ro + object * rd;
 
-#ifdef PATH_TRACING
+#if defined(PATH_TRACING) || defined(ANTIALIASING)
 		// Jitter the material sampling point with high-frequency 3D noise.
 		// Temporal accumulation will blend material colors at smooth-union
 		// boundaries into smooth gradients.
@@ -1218,22 +1260,31 @@ vec4 render(in vec2 uv)
 
 		vec3 sceneResult = sceneSdf(materialSamplePos);
 		int materialId = int(sceneResult.y);
-		vec3 baseColor = getMaterial(materialSamplePos, materialId);
+		vec3 N = getNormal(p);
 
-		col = integrate(p, rd, baseColor, materialId, getNormal(p), seed);
+		vec3 d_rd_x = dFdx(rd);
+		vec3 d_rd_y = dFdy(rd);
+		float NdotRD = dot(N, rd);
+		float denom = -max(abs(NdotRD), 0.05);
+		vec3 dpdx = object * (d_rd_x - rd * (dot(N, d_rd_x) / denom));
+		vec3 dpdy = object * (d_rd_y - rd * (dot(N, d_rd_y) / denom));
+
+		vec3 baseColor = getMaterial(materialSamplePos, materialId, N, dpdx, dpdy);
+
+		col = integrate(p, rd, baseColor, materialId, N, seed);
 
 		float fog = smoothstep(u_far * 0.0, u_far, minDepth);
 		col = mix(col, getSkyColor(rd), fog);
 
-		gl_FragDepth = sdfDepthNDC;
+		finalDepth = sdfDepthNDC;
 	}
 	else
 	{
 		// Sky
-		gl_FragDepth = sdfDepthNDC;
+		finalDepth = sdfDepthNDC;
 	}
 
-	return vec4(col, 1.0); // accumAlpha);
+	return vec4(col, finalDepth);
 }
 
 float rand(vec2 co)
@@ -1244,11 +1295,9 @@ float rand(vec2 co)
 void main()
 {
 	vec2 screenUV = v_texCoord;
-
 	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
 
-	// Temporal jitter for anti-aliasing
 #ifdef PATH_TRACING
 #ifdef ANTIALIASING
 	if (u_frameCounter > 0)
@@ -1259,11 +1308,9 @@ void main()
 #endif
 
 	uv.x *= aspectRatio;
-
-	// Because AA jitter is baked into the original UVs being sent to render(),
-	// we just evaluate the render directly to extract the jittered target color.
 	vec4 data = render(uv);
 	vec3 col = data.xyz;
+	gl_FragDepth = data.w;
 
 	// Firefly suppression: clamp per-sample luminance before accumulation.
 	// Fireflies are caused by rare specular paths hitting a bright light,
@@ -1284,10 +1331,6 @@ void main()
 	if (u_frameCounter > 0)
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
-
-		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap
-		// to prevent the weight from becoming too small, allowing the image to
-		// continually refine and denoise even after many frames.
 		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
 		col = mix(prevColor.xyz, col, weight);
 	}

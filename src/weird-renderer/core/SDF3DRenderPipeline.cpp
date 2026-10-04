@@ -100,7 +100,7 @@ namespace WeirdEngine
 										 const std::vector<Light>& lights, const Camera& camera, double time,
 										 const GBuffer& gbuffer, const Material3D* materials)
 		{
-			// Reset frame counter when path tracer is disabled (no accumulation)
+			// Reset frame counter when path tracer is disabled (no accumulation in realtime)
 			if (!m_config.enablePathTracer)
 				m_frameCounter = 0;
 
@@ -182,7 +182,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_shapeCount", (int)shapeCount);
 
-			if (m_frameCounter < m_config.maxAccumulationFrames)
+			if (!m_config.enablePathTracer || m_frameCounter < m_config.maxAccumulationFrames)
 				m_renderPlane.draw(m_sdfShader);
 
 			m_frameCounter++;

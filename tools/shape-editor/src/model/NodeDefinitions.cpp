@@ -1,7 +1,6 @@
 #include "model/NodeRegistry.h"
 
 #include "weird-engine/math/MathExpressions.h"
-#include "weird-engine/math/Primitives3D.h"
 #include "weird-engine/math/SDF.h"
 
 namespace WeirdEngine::Editor
@@ -378,25 +377,25 @@ namespace WeirdEngine::Editor
 		// =====================================================================
 		// 9. 3D Primitives
 		// =====================================================================
-		registerNode(
-			NodeDef{"sphere_3d",
-					"Sphere 3D",
-					NodeCategory::Primitives3D,
-					{{"px", PinType::Float, 0.0f},
-					 {"py", PinType::Float, 0.0f},
-					 {"pz", PinType::Float, 0.0f},
-					 {"radius", PinType::Float, 5.0f}},
-					{{"d", PinType::Float}},
-					[](const auto& in, const auto&)
-					{
-						return NodeValue(Expr(std::make_shared<Primitives3D::Sphere>(
-							asFloat(in[0]).node, asFloat(in[1]).node, asFloat(in[2]).node, asFloat(in[3]).node)));
-					},
-					[](const auto& in, const auto&)
-					{
-						return "std::make_shared<Primitives3D::Sphere>(" + in[0] + ".node, " + in[1] + ".node, " +
-							   in[2] + ".node, " + in[3] + ".node)";
-					}});
+		registerNode(NodeDef{"sphere_3d",
+							 "Sphere 3D",
+							 NodeCategory::Primitives3D,
+							 {{"px", PinType::Float, 0.0f},
+							  {"py", PinType::Float, 0.0f},
+							  {"pz", PinType::Float, 0.0f},
+							  {"radius", PinType::Float, 5.0f}},
+							 {{"d", PinType::Float}},
+							 [](const auto& in, const auto&)
+							 {
+								 return NodeValue(SDF::sdSphere(
+									 SDF::translate(SDF::point3D(), {asFloat(in[0]), asFloat(in[1]), asFloat(in[2])}),
+									 asFloat(in[3])));
+							 },
+							 [](const auto& in, const auto&)
+							 {
+								 return "SDF::sdSphere(SDF::translate(SDF::point3D(), {" + in[0] + ", " + in[1] + ", " +
+										in[2] + "}), " + in[3] + ")";
+							 }});
 
 		registerNode(NodeDef{"box_3d",
 							 "Box 3D",
@@ -410,25 +409,24 @@ namespace WeirdEngine::Editor
 							 {{"d", PinType::Float}},
 							 [](const auto& in, const auto&)
 							 {
-								 return NodeValue(Expr(std::make_shared<Primitives3D::Box>(
-									 asFloat(in[0]).node, asFloat(in[1]).node, asFloat(in[2]).node, asFloat(in[3]).node,
-									 asFloat(in[4]).node, asFloat(in[5]).node)));
+								 return NodeValue(SDF::sdBox(
+									 SDF::translate(SDF::point3D(), {asFloat(in[0]), asFloat(in[1]), asFloat(in[2])}),
+									 {asFloat(in[3]), asFloat(in[4]), asFloat(in[5])}));
 							 },
 							 [](const auto& in, const auto&)
 							 {
-								 return "std::make_shared<Primitives3D::Box>(" + in[0] + ".node, " + in[1] + ".node, " +
-										in[2] + ".node, " + in[3] + ".node, " + in[4] + ".node, " + in[5] + ".node)";
+								 return "SDF::sdBox(SDF::translate(SDF::point3D(), {" + in[0] + ", " + in[1] + ", " +
+										in[2] + "}), {" + in[3] + ", " + in[4] + ", " + in[5] + "})";
 							 }});
 
-		registerNode(NodeDef{"plane_3d",
-							 "Plane 3D",
-							 NodeCategory::Primitives3D,
-							 {{"height", PinType::Float, 0.0f}},
-							 {{"d", PinType::Float}},
-							 [](const auto& in, const auto&)
-							 { return NodeValue(Expr(std::make_shared<Primitives3D::Plane>(asFloat(in[0]).node))); },
-							 [](const auto& in, const auto&)
-							 { return "std::make_shared<Primitives3D::Plane>(" + in[0] + ".node)"; }});
+		registerNode(
+			NodeDef{"plane_3d",
+					"Plane 3D",
+					NodeCategory::Primitives3D,
+					{{"height", PinType::Float, 0.0f}},
+					{{"d", PinType::Float}},
+					[](const auto& in, const auto&) { return NodeValue(SDF::sdPlane(SDF::point3D(), asFloat(in[0]))); },
+					[](const auto& in, const auto&) { return "SDF::sdPlane(SDF::point3D(), " + in[0] + ")"; }});
 
 		registerNode(NodeDef{"cylinder_3d",
 							 "Cylinder 3D",
@@ -441,14 +439,14 @@ namespace WeirdEngine::Editor
 							 {{"d", PinType::Float}},
 							 [](const auto& in, const auto&)
 							 {
-								 return NodeValue(Expr(std::make_shared<Primitives3D::Cylinder>(
-									 asFloat(in[0]).node, asFloat(in[1]).node, asFloat(in[2]).node, asFloat(in[3]).node,
-									 asFloat(in[4]).node)));
+								 return NodeValue(SDF::sdCylinder(
+									 SDF::translate(SDF::point3D(), {asFloat(in[0]), asFloat(in[1]), asFloat(in[2])}),
+									 asFloat(in[3]), asFloat(in[4])));
 							 },
 							 [](const auto& in, const auto&)
 							 {
-								 return "std::make_shared<Primitives3D::Cylinder>(" + in[0] + ".node, " + in[1] +
-										".node, " + in[2] + ".node, " + in[3] + ".node, " + in[4] + ".node)";
+								 return "SDF::sdCylinder(SDF::translate(SDF::point3D(), {" + in[0] + ", " + in[1] +
+										", " + in[2] + "}), " + in[3] + ", " + in[4] + ")";
 							 }});
 
 		registerNode(NodeDef{"torus_3d",
@@ -462,14 +460,14 @@ namespace WeirdEngine::Editor
 							 {{"d", PinType::Float}},
 							 [](const auto& in, const auto&)
 							 {
-								 return NodeValue(Expr(std::make_shared<Primitives3D::Torus>(
-									 asFloat(in[0]).node, asFloat(in[1]).node, asFloat(in[2]).node, asFloat(in[3]).node,
-									 asFloat(in[4]).node)));
+								 return NodeValue(SDF::sdTorus(
+									 SDF::translate(SDF::point3D(), {asFloat(in[0]), asFloat(in[1]), asFloat(in[2])}),
+									 asFloat(in[3]), asFloat(in[4])));
 							 },
 							 [](const auto& in, const auto&)
 							 {
-								 return "std::make_shared<Primitives3D::Torus>(" + in[0] + ".node, " + in[1] +
-										".node, " + in[2] + ".node, " + in[3] + ".node, " + in[4] + ".node)";
+								 return "SDF::sdTorus(SDF::translate(SDF::point3D(), {" + in[0] + ", " + in[1] + ", " +
+										in[2] + "}), " + in[3] + ", " + in[4] + ")";
 							 }});
 
 		registerNode(NodeDef{"capsule_3d",
@@ -483,14 +481,14 @@ namespace WeirdEngine::Editor
 							 {{"d", PinType::Float}},
 							 [](const auto& in, const auto&)
 							 {
-								 return NodeValue(Expr(std::make_shared<Primitives3D::Capsule>(
-									 asFloat(in[0]).node, asFloat(in[1]).node, asFloat(in[2]).node, asFloat(in[3]).node,
-									 asFloat(in[4]).node)));
+								 return NodeValue(SDF::sdCapsule(
+									 SDF::translate(SDF::point3D(), {asFloat(in[0]), asFloat(in[1]), asFloat(in[2])}),
+									 asFloat(in[3]), asFloat(in[4])));
 							 },
 							 [](const auto& in, const auto&)
 							 {
-								 return "std::make_shared<Primitives3D::Capsule>(" + in[0] + ".node, " + in[1] +
-										".node, " + in[2] + ".node, " + in[3] + ".node, " + in[4] + ".node)";
+								 return "SDF::sdCapsule(SDF::translate(SDF::point3D(), {" + in[0] + ", " + in[1] +
+										", " + in[2] + "}), " + in[3] + ", " + in[4] + ")";
 							 }});
 
 		// =====================================================================

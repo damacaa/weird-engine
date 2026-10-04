@@ -301,8 +301,7 @@ float perlin3D(vec3 p)
 #define var8 u_time
 #define var9 p.x
 #define var10 p.y
-#define var11 u_audioVolume
-#define var12 p.z
+#define var11 p.z
 
 #define var0 parameters0.x
 #define var1 parameters0.y

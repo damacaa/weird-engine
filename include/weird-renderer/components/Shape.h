@@ -58,6 +58,18 @@ namespace WeirdEngine
 		parameters[11] = audioVolume;
 	}
 
+	// Packs the 12-slot array passed to IMathExpression::getValue for one 3D shape
+	// evaluation: [0..7] = shape variables, [8] = time, [9..11] = sample point (x, y, z).
+	// Audio volume is skipped in 3D evaluation to keep the array at 12 floats.
+	inline void packSdfParameters(float (&parameters)[12], const float* variables, float time, vec3 point)
+	{
+		std::copy_n(variables, 8, parameters);
+		parameters[8] = time;
+		parameters[9] = point.x;
+		parameters[10] = point.y;
+		parameters[11] = point.z;
+	}
+
 	// Packs the shared prefix for repeated evaluations where the caller varies the
 	// sample point per call: [0..7] = parameters, [8] = time, [11] = 0 (analysis
 	// must not feed back through the audio volume). Slots [9..10] are left unset

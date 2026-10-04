@@ -18,7 +18,6 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/math/Default3DSDFs.h"
-#include "weird-engine/math/Primitives3D.h"
 #include "weird-engine/Profiler.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-physics/components/DistanceConstraintManager.h"
@@ -71,8 +70,9 @@ namespace WeirdEngine
 
 		// 3D Default Shapes
 		{
+			using namespace SDF;
 			using namespace DefaultShapes3D;
-#define WEIRD_REGISTER_SHAPE_3D(Name, params, expr) sdfs[Name] = expr;
+#define WEIRD_REGISTER_SHAPE_3D(Name, params, expr) sdfs[Name] = (expr).node;
 			WEIRD_BUILTIN_SHAPES_3D(WEIRD_REGISTER_SHAPE_3D)
 #undef WEIRD_REGISTER_SHAPE_3D
 		}

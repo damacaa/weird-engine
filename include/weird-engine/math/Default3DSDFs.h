@@ -1,53 +1,35 @@
 #ifndef WEIRDSAMPLES_DEFAULT3DSDFS_H
 #define WEIRDSAMPLES_DEFAULT3DSDFS_H
 
-#include <algorithm>
-#include <cmath>
 #include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
 
-#include "weird-engine/math/MathExpressions.h"
-#include "weird-engine/math/Primitives3D.h"
-
-#include "weird-engine/Scene.h"
+#include "SDF.h"
 
 #include "weird-engine/math/Default2DSDFs.h"
-
-#define WEIRD_BUILTIN_SHAPES_3D(X)                                                                                     \
-	X(Plane, (Height), std::make_shared<Primitives3D::Plane>(DefaultShapes3D::var(Plane::Height)))                     \
-	X(Box, (PosX, PosY, PosZ, SizeX, SizeY, SizeZ),                                                                    \
-	  std::make_shared<Primitives3D::Box>(DefaultShapes3D::var(Box::PosX), DefaultShapes3D::var(Box::PosY),            \
-										  DefaultShapes3D::var(Box::PosZ), DefaultShapes3D::var(Box::SizeX),           \
-										  DefaultShapes3D::var(Box::SizeY), DefaultShapes3D::var(Box::SizeZ)))         \
-	X(Sphere, (PosX, PosY, PosZ, Radius),                                                                              \
-	  std::make_shared<Primitives3D::Sphere>(DefaultShapes3D::var(Sphere::PosX), DefaultShapes3D::var(Sphere::PosY),   \
-											 DefaultShapes3D::var(Sphere::PosZ),                                       \
-											 DefaultShapes3D::var(Sphere::Radius)))                                    \
-	X(Cylinder, (PosX, PosY, PosZ, Radius, Height),                                                                    \
-	  std::make_shared<Primitives3D::Cylinder>(                                                                        \
-		  DefaultShapes3D::var(Cylinder::PosX), DefaultShapes3D::var(Cylinder::PosY),                                  \
-		  DefaultShapes3D::var(Cylinder::PosZ), DefaultShapes3D::var(Cylinder::Radius),                                \
-		  DefaultShapes3D::var(Cylinder::Height)))                                                                     \
-	X(Torus, (PosX, PosY, PosZ, RadiusSmall, RadiusLarge),                                                             \
-	  std::make_shared<Primitives3D::Torus>(                                                                           \
-		  DefaultShapes3D::var(Torus::PosX), DefaultShapes3D::var(Torus::PosY), DefaultShapes3D::var(Torus::PosZ),     \
-		  DefaultShapes3D::var(Torus::RadiusSmall), DefaultShapes3D::var(Torus::RadiusLarge)))                         \
-	X(Capsule, (PosX, PosY, PosZ, Radius, Height),                                                                     \
-	  std::make_shared<Primitives3D::Capsule>(                                                                         \
-		  DefaultShapes3D::var(Capsule::PosX), DefaultShapes3D::var(Capsule::PosY),                                    \
-		  DefaultShapes3D::var(Capsule::PosZ), DefaultShapes3D::var(Capsule::Radius),                                  \
-		  DefaultShapes3D::var(Capsule::Height)))
+#include "weird-engine/Scene.h"
 
 namespace WeirdEngine
 {
 	namespace DefaultShapes3D
 	{
-		inline auto var(uint8_t index)
-		{
-			return std::make_shared<detail::FloatVariable>(index);
-		}
+		using namespace SDF;
+
+#define WEIRD_BUILTIN_SHAPES_3D(X)                                                                                     \
+	X(Plane, (Height), sdPlane(point3D(), var(Plane::Height)))                                                         \
+	X(Box, (PosX, PosY, PosZ, SizeX, SizeY, SizeZ),                                                                    \
+	  sdBox(translate(point3D(), {var(Box::PosX), var(Box::PosY), var(Box::PosZ)}),                                    \
+			{var(Box::SizeX), var(Box::SizeY), var(Box::SizeZ)}))                                                      \
+	X(Sphere, (PosX, PosY, PosZ, Radius),                                                                              \
+	  sdSphere(translate(point3D(), {var(Sphere::PosX), var(Sphere::PosY), var(Sphere::PosZ)}), var(Sphere::Radius)))  \
+	X(Cylinder, (PosX, PosY, PosZ, Radius, Height),                                                                    \
+	  sdCylinder(translate(point3D(), {var(Cylinder::PosX), var(Cylinder::PosY), var(Cylinder::PosZ)}),                \
+				 var(Cylinder::Radius), var(Cylinder::Height)))                                                        \
+	X(Torus, (PosX, PosY, PosZ, MajorRadius, MinorRadius),                                                             \
+	  sdTorus(translate(point3D(), {var(Torus::PosX), var(Torus::PosY), var(Torus::PosZ)}), var(Torus::MajorRadius),   \
+			  var(Torus::MinorRadius)))                                                                                \
+	X(Capsule, (PosX, PosY, PosZ, Radius, Height),                                                                     \
+	  sdCapsule(translate(point3D(), {var(Capsule::PosX), var(Capsule::PosY), var(Capsule::PosZ)}),                    \
+				var(Capsule::Radius), var(Capsule::Height)))
 
 #define WEIRD_UNPACK_PARAMS_3D(...) __VA_ARGS__
 #define WEIRD_GEN_PARAM_STRUCT_3D(Name, params, expr)                                                                  \

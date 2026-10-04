@@ -127,32 +127,26 @@ private:
 		mirrorMaterial.roughness = 0.0f;
 
 		{
-			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = services.shapes().registerSDF(box);
-
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, -5.0f},
-													  {Primitives3D::Box::PosY, -2.0f},
-													  {Primitives3D::Box::PosZ, 0.0f},
-													  {Primitives3D::Box::SizeX, 0.1f},
-													  {Primitives3D::Box::SizeY, 1.0f},
-													  {Primitives3D::Box::SizeZ, 3.0f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, -5.0f},
+													  {DefaultShapes3D::Box::PosY, -2.0f},
+													  {DefaultShapes3D::Box::PosZ, 0.0f},
+													  {DefaultShapes3D::Box::SizeX, 0.1f},
+													  {DefaultShapes3D::Box::SizeY, 1.0f},
+													  {DefaultShapes3D::Box::SizeZ, 3.0f}},
 										.material = mirrorMaterial,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
 		}
 
 		{
-			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = services.shapes().registerSDF(box);
-
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 20.0f},
-													  {Primitives3D::Box::PosY, -2.0f},
-													  {Primitives3D::Box::PosZ, 0.0f},
-													  {Primitives3D::Box::SizeX, 0.1f},
-													  {Primitives3D::Box::SizeY, 1.0f},
-													  {Primitives3D::Box::SizeZ, 3.0f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 20.0f},
+													  {DefaultShapes3D::Box::PosY, -2.0f},
+													  {DefaultShapes3D::Box::PosZ, 0.0f},
+													  {DefaultShapes3D::Box::SizeX, 0.1f},
+													  {DefaultShapes3D::Box::SizeY, 1.0f},
+													  {DefaultShapes3D::Box::SizeZ, 3.0f}},
 										.material = mirrorMaterial,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});

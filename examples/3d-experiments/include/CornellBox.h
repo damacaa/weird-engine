@@ -52,77 +52,74 @@ private:
 		}
 
 		{
-			std::shared_ptr<IMathExpression> box = std::make_shared<Primitives3D::Box>();
-			auto boxId = services.shapes().registerSDF(box);
-
 			// Left
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, -2.0f * 2.6f},
-													  {Primitives3D::Box::PosY, 2.6f},
-													  {Primitives3D::Box::PosZ, 0.0f},
-													  {Primitives3D::Box::SizeX, 2.6f},
-													  {Primitives3D::Box::SizeY, 2.6f},
-													  {Primitives3D::Box::SizeZ, 2.6f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, -2.0f * 2.6f},
+													  {DefaultShapes3D::Box::PosY, 2.6f},
+													  {DefaultShapes3D::Box::PosZ, 0.0f},
+													  {DefaultShapes3D::Box::SizeX, 2.6f},
+													  {DefaultShapes3D::Box::SizeY, 2.6f},
+													  {DefaultShapes3D::Box::SizeZ, 2.6f}},
 										.material = redMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
 
 			// Right
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 2.0f * 2.6f},
-													  {Primitives3D::Box::PosY, 2.6f},
-													  {Primitives3D::Box::PosZ, 0.0f},
-													  {Primitives3D::Box::SizeX, 2.6f},
-													  {Primitives3D::Box::SizeY, 2.6f},
-													  {Primitives3D::Box::SizeZ, 2.6f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 2.0f * 2.6f},
+													  {DefaultShapes3D::Box::PosY, 2.6f},
+													  {DefaultShapes3D::Box::PosZ, 0.0f},
+													  {DefaultShapes3D::Box::SizeX, 2.6f},
+													  {DefaultShapes3D::Box::SizeY, 2.6f},
+													  {DefaultShapes3D::Box::SizeZ, 2.6f}},
 										.material = greenMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
 
 			// Back
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 0.0f},
-													  {Primitives3D::Box::PosY, 2.6f},
-													  {Primitives3D::Box::PosZ, -2.0f * 2.6f},
-													  {Primitives3D::Box::SizeX, 3.0f * 2.6f},
-													  {Primitives3D::Box::SizeY, 2.6f},
-													  {Primitives3D::Box::SizeZ, 2.6f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 0.0f},
+													  {DefaultShapes3D::Box::PosY, 2.6f},
+													  {DefaultShapes3D::Box::PosZ, -2.0f * 2.6f},
+													  {DefaultShapes3D::Box::SizeX, 3.0f * 2.6f},
+													  {DefaultShapes3D::Box::SizeY, 2.6f},
+													  {DefaultShapes3D::Box::SizeZ, 2.6f}},
 										.material = whiteMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
 
 			// Top
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 0.0f},
-													  {Primitives3D::Box::PosY, 3.0f * 2.6f},
-													  {Primitives3D::Box::PosZ, -2.6f},
-													  {Primitives3D::Box::SizeX, 3.0f * 2.6f},
-													  {Primitives3D::Box::SizeY, 2.6f},
-													  {Primitives3D::Box::SizeZ, 2.0f * 2.6f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 0.0f},
+													  {DefaultShapes3D::Box::PosY, 3.0f * 2.6f},
+													  {DefaultShapes3D::Box::PosZ, -2.6f},
+													  {DefaultShapes3D::Box::SizeX, 3.0f * 2.6f},
+													  {DefaultShapes3D::Box::SizeY, 2.6f},
+													  {DefaultShapes3D::Box::SizeZ, 2.0f * 2.6f}},
 										.material = whiteMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});
 
 			// Light hole
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 0.0f},
-													  {Primitives3D::Box::PosY, 2.0f * 2.6f},
-													  {Primitives3D::Box::PosZ, 0.0f},
-													  {Primitives3D::Box::SizeX, 0.5f},
-													  {Primitives3D::Box::SizeY, 1.0f},
-													  {Primitives3D::Box::SizeZ, 0.5f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 0.0f},
+													  {DefaultShapes3D::Box::PosY, 2.0f * 2.6f},
+													  {DefaultShapes3D::Box::PosZ, 0.0f},
+													  {DefaultShapes3D::Box::SizeX, 0.5f},
+													  {DefaultShapes3D::Box::SizeY, 1.0f},
+													  {DefaultShapes3D::Box::SizeZ, 0.5f}},
 										.material = whiteMat,
 										.combination = CombinationType::Subtraction,
 										.hasCollision = false});
 
 			// Floor
-			services.shapes().addShape({.shapeId = boxId,
-										.variables = {{Primitives3D::Box::PosX, 0.0f},
-													  {Primitives3D::Box::PosY, -1.0f * 2.6f},
-													  {Primitives3D::Box::PosZ, -2.6f},
-													  {Primitives3D::Box::SizeX, 3.0f * 2.6f},
-													  {Primitives3D::Box::SizeY, 2.6f},
-													  {Primitives3D::Box::SizeZ, 2.0f * 2.6f}},
+			services.shapes().addShape({.shapeId = DefaultShapes3D::Box,
+										.variables = {{DefaultShapes3D::Box::PosX, 0.0f},
+													  {DefaultShapes3D::Box::PosY, -1.0f * 2.6f},
+													  {DefaultShapes3D::Box::PosZ, -2.6f},
+													  {DefaultShapes3D::Box::SizeX, 3.0f * 2.6f},
+													  {DefaultShapes3D::Box::SizeY, 2.6f},
+													  {DefaultShapes3D::Box::SizeZ, 2.0f * 2.6f}},
 										.material = whiteMat,
 										.combination = CombinationType::Addition,
 										.hasCollision = false});

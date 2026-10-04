@@ -7,43 +7,75 @@ All instructions follow the ASD-STE100 Simplified Technical English standard.
 
 ## 1. Overview of SDF Shapes
 
-A Signed Distance Field (SDF) evaluates the shortest distance from a world position to the surface of a shape.
+A Signed Distance Field (SDF) evaluates the shortest distance from a coordinate position to the surface of a shape.
 
 - **Negative values**: Inside the shape.
-- **Zero**: Exactly on the boundary.
+- **Zero**: Exactly on the boundary surface.
 - **Positive values**: Outside the shape.
 
-In Weird Engine, shape definitions are expressed in pure C++ through the `Expr` and `Vec2Expr` domain-specific language (defined in `include/weird-engine/math/SDF.h`).
+In Weird Engine, shape definitions are expressed in pure C++ through the `Expr`, `Vec2Expr`, and `Vec3Expr` domain-specific language (defined in `include/weird-engine/math/SDF.h`).
 
 The engine evaluates expressions in two ways:
-- On the CPU: Evaluates distance for physics collisions and CPU raymarching.
-- On the GPU: Compiles the expression graph into optimized GLSL raymarching shaders.
+- **On the CPU**: Evaluates distance for physics collisions (via `getValue(parameters)`) and CPU queries.
+- **On the GPU**: Compiles the expression graph into optimized GLSL raymarching shaders with Common Subexpression Elimination (CSE).
 
 ---
 
 ## 2. Using Default Primitive Shapes
 
-Weird Engine includes default shape primitives in `WeirdEngine::DefaultShapes` (defined in `include/weird-engine/math/Default2DSDFs.h`).
+Weird Engine includes pre-registered 2D and 3D default shape primitives.
 
-### Available Default Shapes
+### 2.1 Default 2D Shapes (`DefaultShapes`)
 
-- **Standard Shapes**: `DefaultShapes::Circle`, `DefaultShapes::Box`, `DefaultShapes::Triangle`, `DefaultShapes::Line`, `DefaultShapes::Ramp`, `DefaultShapes::SineWave`, `DefaultShapes::Star`
-- **Border / Line Shapes**: `DefaultShapes::CircleLine`, `DefaultShapes::BoxLine`, `DefaultShapes::TriangleLine`
-- **Rotated Shapes**: `DefaultShapes::BoxRotated`, `DefaultShapes::TriangleRotated`, `DefaultShapes::RampRotated`
-- **Rotated Border Shapes**: `DefaultShapes::BoxLineRotated`, `DefaultShapes::TriangleLineRotated`
+Defined in `include/weird-engine/math/Default2DSDFs.h` under namespace `WeirdEngine::DefaultShapes`:
 
-### Parameter Offset Constants
+- **Standard Shapes**: `Circle`, `Box`, `Triangle`, `Line`, `Ramp`, `SineWave`, `Star`
+- **Border / Line Shapes**: `CircleLine`, `BoxLine`, `TriangleLine`
+- **Rotated Shapes**: `BoxRotated`, `TriangleRotated`, `RampRotated`
+- **Rotated Border Shapes**: `BoxLineRotated`, `TriangleLineRotated`
 
-Each default shape provides parameter index constants under `DefaultShapes::<ShapeName>`:
-- `DefaultShapes::Circle::PosX`, `POS_Y`, `RADIUS`
-- `DefaultShapes::Box::PosX`, `POS_Y`, `SIZE_X`, `SIZE_Y`
-- `DefaultShapes::Triangle::PosX`, `POS_Y`, `WIDTH`, `HEIGHT`
-- `DefaultShapes::Line::StartX`, `START_Y`, `END_X`, `END_Y`, `WIDTH`
-- `DefaultShapes::Ramp::PosX`, `POS_Y`, `WIDTH`, `HEIGHT`, `SKEW`
+#### Parameter Constants (2D)
 
-### Adding a Default Shape to a Scene
+- `Circle::PosX`, `PosY`, `Radius`
+- `CircleLine::PosX`, `PosY`, `Radius`, `Thickness`
+- `Box::PosX`, `PosY`, `SizeX`, `SizeY` (half-extents)
+- `BoxLine::PosX`, `PosY`, `SizeX`, `SizeY`, `Thickness`
+- `Triangle::PosX`, `PosY`, `Width`, `Height`
+- `TriangleLine::PosX`, `PosY`, `Width`, `Height`, `Thickness`
+- `Line::StartX`, `StartY`, `EndX`, `EndY`, `Width`
+- `Ramp::PosX`, `PosY`, `Width`, `Height`, `Skew`
+- `SineWave::Amplitude`, `Period`, `Speed`, `Offset`
+- `BoxRotated::PosX`, `PosY`, `SizeX`, `SizeY`, `Angle`
+- `TriangleRotated::PosX`, `PosY`, `Width`, `Height`, `Angle`
+- `RampRotated::PosX`, `PosY`, `Width`, `Height`, `Skew`, `Angle`
 
-Use `services.shapes().addShape(...)` with a `ShapeConfig` struct to instantiate a shape entity:
+### 2.2 Default 3D Shapes (`DefaultShapes3D`)
+
+Defined in `include/weird-engine/math/Default3DSDFs.h` under namespace `WeirdEngine::DefaultShapes3D`:
+
+- `DefaultShapes3D::Plane`: Flat horizontal ground plane
+- `DefaultShapes3D::Box`: 3D rectangular cuboid
+- `DefaultShapes3D::Sphere`: 3D sphere
+- `DefaultShapes3D::Cylinder`: Vertical cylinder along Y axis
+- `DefaultShapes3D::Torus`: Torus on XZ plane
+- `DefaultShapes3D::Capsule`: Vertical capsule along Y axis
+
+#### Parameter Constants (3D)
+
+- `Plane::Height`
+- `Box::PosX`, `PosY`, `PosZ`, `SizeX`, `SizeY`, `SizeZ` (half-extents)
+- `Sphere::PosX`, `PosY`, `PosZ`, `Radius`
+- `Cylinder::PosX`, `PosY`, `PosZ`, `Radius`, `Height` (half-height)
+- `Torus::PosX`, `PosY`, `PosZ`, `MajorRadius`, `MinorRadius`
+- `Capsule::PosX`, `PosY`, `PosZ`, `Radius`, `Height` (half-height)
+
+---
+
+## 3. Adding Shapes to a Scene
+
+### Adding a 2D Shape
+
+Use `services.shapes().addShape(...)` with a `ShapeConfig` struct:
 
 ```cpp
 Entity circle = services.shapes().addShape({
@@ -55,11 +87,30 @@ Entity circle = services.shapes().addShape({
 	},
 	.material = materialId,
 	.combination = CombinationType::Addition,
-	.hasCollision = true // Enable collisions
+	.hasCollision = true // Enable 2D physics collisions
 });
 ```
 
-### Adding a UI Shape
+### Adding a 3D Shape
+
+```cpp
+Entity box = services.shapes().addShape({
+	.shapeId = DefaultShapes3D::Box,
+	.variables = {
+		{DefaultShapes3D::Box::PosX, 0.0f},
+		{DefaultShapes3D::Box::PosY, 2.5f},
+		{DefaultShapes3D::Box::PosZ, 0.0f},
+		{DefaultShapes3D::Box::SizeX, 2.0f},
+		{DefaultShapes3D::Box::SizeY, 2.0f},
+		{DefaultShapes3D::Box::SizeZ, 2.0f}
+	},
+	.material = whiteMat,
+	.combination = CombinationType::Addition,
+	.hasCollision = false
+});
+```
+
+### Adding a UI Shape (2D Screen-Space)
 
 For rendering shapes on the 2D user interface layer (which is screen-space and does not use physical collisions), use `addUIShape` with a `UIShapeConfig`:
 
@@ -74,92 +125,88 @@ Entity uiBox = services.shapes().addUIShape({
 
 ---
 
-## 3. Creating Custom SDF Shapes with `Expr`
+## 4. Creating Custom SDF Shapes with `Expr`
 
-Build custom geometric shapes by composing mathematical expressions using `Expr` and `Vec2Expr`.
-
-### Building Expressions
+Build custom geometric shapes by composing mathematical expressions using `Expr`, `Vec2Expr`, and `Vec3Expr`.
 
 Include `#include "weird-engine/math/SDF.h"`.
 
-- **Variables & Points**:
-  - `var(index)`: Accesses entity parameter float at `index` (`0` to `7`).
-  - `point()`: Returns the 2D evaluation coordinate (`point().x`, `point().y`).
-  - `time()`: Returns the current scene elapsed time.
-- **SDF Primitives**:
-  - `sdCircle(p, radius)`
-  - `sdBox(p, halfSize)`
-  - `sdSegment(p, a, b)`
-  - `sdLine(p, a, b, width)`
-  - `sdTriangle(p, width, height)`
-  - `sdRamp(p, width, height, skew)`
-  - `sdPolygon(p, vertices)`
-  - `sdTerrain(p, surfacePoints, valleyRadius)`
-  - `sdStar(p, radius, displacement, points, speed)`
-- **Transforms & CSG Combinations**:
-  - `translate(p, offset)`
-  - `rotate(p, angle)`
-  - `sdfUnion(a, b)` (or `min(a, b)`)
-  - `sdfSubtract(a, b)`
-  - `sdfIntersect(a, b)`
-  - `sdfSmoothUnion(a, b, radius)`
-  - `sdfSmoothSubtract(a, b, radius)`
-  - `sdfOnion(d, thickness)`
-  - `sdfRound(d, radius)`
-  - `sdfErode(d, radius)`
+### Variables & Coordinates
 
-### Defining a Custom Ring SDF
+- `var(index)`: Accesses entity parameter float at `index` (`0` to `7`).
+- `point()`: Returns the 2D evaluation coordinate (`Vec2Expr {point().x, point().y}`).
+- `point3D()`: Returns the 3D evaluation coordinate (`Vec3Expr {point3D().x, point3D().y, point3D().z}`).
+- `time()`: Returns the current scene elapsed time.
 
-The following example builds a ring by subtracting an inner circle from an outer circle:
+### 2D Primitives
+
+- `sdCircle(p, radius)`
+- `sdBox(p, halfSize)`
+- `sdSegment(p, a, b)`
+- `sdLine(p, a, b, width)`
+- `sdTriangle(p, width, height)`
+- `sdRamp(p, width, height, skew)`
+- `sdPolygon(p, vertices)`
+- `sdTerrain(p, surfacePoints, valleyRadius)`
+- `sdStar(p, radius, displacement, points, speed)`
+- `sdSineWave(p, amplitude, frequency, speed, offset)`
+
+### 3D Primitives
+
+- `sdPlane(p, height)` or `sdPlane(p, normal, distanceFromOrigin)`
+- `sdSphere(p, radius)`
+- `sdBox(p, halfSize)`
+- `sdCylinder(p, radius, height)`
+- `sdTorus(p, majorRadius, minorRadius)`
+- `sdCapsule(p, radius, height)` (vertical) or `sdCapsule(p, a, b, radius)` (segment)
+
+### Transforms
+
+- **2D**: `translate(p, offset)`, `rotate(p, angle)`, `mirrorX(p)`, `repeat(p, spacing)`
+- **3D**: `translate(p, offset)`, `rotateX(p, angle)`, `rotateY(p, angle)`, `rotateZ(p, angle)`
+
+### CSG & Modifiers
+
+- `sdfUnion(a, b)` (or `min(a, b)`)
+- `sdfSubtract(a, b)` (or `max(a, -b)`)
+- `sdfIntersect(a, b)` (or `max(a, b)`)
+- `sdfSmoothUnion(a, b, radius)`
+- `sdfSmoothSubtract(a, b, radius)`
+- `sdfOnion(d, thickness)`
+- `sdfRound(d, radius)`
+- `sdfErode(d, radius)`
+
+---
+
+## 5. Registering and Instantiating Custom SDFs
+
+### Registering Custom 2D / 3D SDF
+
+Register your `Expr` with `services.shapes().registerSDF(expr)` to obtain a dynamic `ShapeId` for the current scene:
 
 ```cpp
 using namespace WeirdEngine::SDF;
 
-// Translate evaluation point by entity position: var(0) = X, var(1) = Y
-auto p = translate(point(), {var(0), var(1)});
-
-// Subtract inner circle (radius = var(3)) from outer circle (radius = var(2))
-Expr ring = sdfSubtract(sdCircle(p, var(2)), sdCircle(p, var(3)));
-```
-
----
-
-## 4. Registering and Instantiating Custom SDFs
-
-### Registering the SDF
-
-Register your `Expr` directly with `services.shapes().registerSDF(expr)` to obtain a `ShapeId` for the current scene:
-
-```cpp
+// Custom 2D Ring:
+auto p2 = translate(point(), {var(0), var(1)});
+Expr ring = sdfSubtract(sdCircle(p2, var(2)), sdCircle(p2, var(3)));
 ShapeId ringShapeId = services.shapes().registerSDF(ring);
+
+// Custom 3D Hollow Sphere:
+auto p3 = translate(point3D(), {var(0), var(1), var(2)});
+Expr hollowSphere = sdfOnion(sdSphere(p3, var(3)), var(4));
+ShapeId hollowSphereId = services.shapes().registerSDF(hollowSphere);
 ```
 
-> **Note**: Custom shapes are registered per-scene via `services.shapes().registerSDF(...)`. Global built-in shapes available across all scenes are defined in `Default2DSDFs.h` / `Default3DSDFs.h` and registered at engine startup.
-
-### Adding the Shape Entity
-
-Pass a `ShapeConfig` struct to `addShape`. You can pass variables positionally or by index offset (`{{INDEX, value}, ...}`):
+### Adding Custom Shape Entity
 
 ```cpp
-// 1. Positional syntax
-Entity ringEntity = services.shapes().addShape({
-	.shapeId = ringShapeId,
-	.variables = {15.0f, 10.0f, 5.0f, 4.0f}, // [pos_x, pos_y, outer_radius, inner_radius]
-	.material = ringMaterial,
+// Add custom 3D shape entity
+Entity hollowSphereEntity = services.shapes().addShape({
+	.shapeId = hollowSphereId,
+	.variables = {0.0f, 5.0f, 0.0f, 3.0f, 0.2f}, // [pos_x, pos_y, pos_z, radius, thickness]
+	.material = materialId,
 	.combination = CombinationType::Addition,
-	.hasCollision = true,
-	.group = 0
-});
-
-// 2. Indexed offset syntax using constants
-Entity ringEntity2 = services.shapes().addShape({
-	.shapeId = ringShapeId,
-	.variables = {
-		{0, 30.0f}, // pos_x
-		{1, 5.0f},  // pos_y
-		{2, 6.0f},  // outer_radius
-		{3, 4.5f}   // inner_radius
-	},
-	.material = ringMaterial
+	.hasCollision = false
 });
 ```

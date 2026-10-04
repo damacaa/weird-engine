@@ -22,6 +22,20 @@ private:
 
 	Entity m_monkey;
 
+	struct PerlinPlane : public WeirdEngine::IMathExpression
+	{
+		float getValue(const float*) const override
+		{
+			return 1000.0f;
+		}
+		std::string print() const override
+		{
+			return "fPlane(\n"
+				   "    p, vec3(0.0, 1.0, 0.0), 3.0 + (0.5 * perlin(1.2 * vec2(p.x, p.z))) + (3.0 * perlin(0.2 * "
+				   "vec2(p.x, p.z))))\n";
+		}
+	};
+
 	// Inherited via Scene
 	void onStart(Registry& registry, ServiceProvider& services) override
 	{
@@ -30,7 +44,7 @@ private:
 			m_whiteMatId = whiteMat.id;
 			whiteMat.pattern = MaterialPattern::Checkers;
 
-			std::shared_ptr<IMathExpression> plane = std::make_shared<Primitives3D::PerlinPlane>(0.0f);
+			std::shared_ptr<IMathExpression> plane = std::make_shared<PerlinPlane>();
 			auto planeId = services.shapes().registerSDF(plane);
 
 			Entity start = services.shapes().addShape({.shapeId = planeId, .variables = {}, .material = whiteMat});

@@ -205,6 +205,88 @@ namespace WeirdEngine
 	};
 
 	// =========================================================================
+	// Vec3Expr - 3D Vector AST Expression Wrapper
+	// =========================================================================
+
+	struct Vec3Expr
+	{
+		Expr x, y, z;
+
+		Vec3Expr()
+			: x(0.0f)
+			, y(0.0f)
+			, z(0.0f)
+		{
+		}
+
+		Vec3Expr(Expr x_, Expr y_, Expr z_)
+			: x(std::move(x_))
+			, y(std::move(y_))
+			, z(std::move(z_))
+		{
+		}
+
+		Vec3Expr(float x_, float y_, float z_)
+			: x(x_)
+			, y(y_)
+			, z(z_)
+		{
+		}
+
+		Vec3Expr(const glm::vec3& v)
+			: x(v.x)
+			, y(v.y)
+			, z(v.z)
+		{
+		}
+
+		friend Vec3Expr operator+(const Vec3Expr& a, const Vec3Expr& b)
+		{
+			return {a.x + b.x, a.y + b.y, a.z + b.z};
+		}
+
+		friend Vec3Expr operator-(const Vec3Expr& a, const Vec3Expr& b)
+		{
+			return {a.x - b.x, a.y - b.y, a.z - b.z};
+		}
+
+		friend Vec3Expr operator*(const Vec3Expr& a, const Expr& s)
+		{
+			return {a.x * s, a.y * s, a.z * s};
+		}
+
+		friend Vec3Expr operator*(const Expr& s, const Vec3Expr& a)
+		{
+			return {a.x * s, a.y * s, a.z * s};
+		}
+
+		friend Vec3Expr operator/(const Vec3Expr& a, const Expr& s)
+		{
+			return {a.x / s, a.y / s, a.z / s};
+		}
+
+		friend Vec3Expr operator-(const Vec3Expr& a)
+		{
+			return {-a.x, -a.y, -a.z};
+		}
+
+		Vec2Expr xy() const
+		{
+			return {x, y};
+		}
+
+		Vec2Expr xz() const
+		{
+			return {x, z};
+		}
+
+		Vec2Expr yz() const
+		{
+			return {y, z};
+		}
+	};
+
+	// =========================================================================
 	// System Variables & Evaluation Coordinates
 	// =========================================================================
 
@@ -214,6 +296,7 @@ namespace WeirdEngine
 		constexpr uint8_t POINT_X = 9;
 		constexpr uint8_t POINT_Y = 10;
 		constexpr uint8_t AUDIO_VOLUME = 11;
+		constexpr uint8_t POINT_Z = 11; // 3D evaluation reuses slot 11 for Z (skipping audio volume)
 	} // namespace SystemParams
 
 	inline Expr var(int index)
@@ -234,6 +317,11 @@ namespace WeirdEngine
 	inline Vec2Expr point()
 	{
 		return {var(SystemParams::POINT_X), var(SystemParams::POINT_Y)};
+	}
+
+	inline Vec3Expr point3D()
+	{
+		return {var(SystemParams::POINT_X), var(SystemParams::POINT_Y), var(SystemParams::POINT_Z)};
 	}
 
 	inline Vec2Expr samplePoint()
@@ -405,6 +493,57 @@ namespace WeirdEngine
 		return a.x * b.x + a.y * b.y;
 	}
 
+	inline Expr length(const Vec3Expr& p)
+	{
+		float vx, vy, vz;
+		if (getConstantVal(p.x.node, vx) && getConstantVal(p.y.node, vy) && getConstantVal(p.z.node, vz))
+		{
+			return Expr(std::hypot(vx, vy, vz));
+		}
+
+		return Expr(std::make_shared<Length3D>(p.x.node, p.y.node, p.z.node));
+	}
+
+	inline Expr dot(const Vec3Expr& a, const Vec3Expr& b)
+	{
+		return a.x * b.x + a.y * b.y + a.z * b.z;
+	}
+
+	inline Vec3Expr abs(const Vec3Expr& p)
+	{
+		return {abs(p.x), abs(p.y), abs(p.z)};
+	}
+
+	inline Vec3Expr max(const Vec3Expr& a, const Vec3Expr& b)
+	{
+		return {max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
+	}
+
+	inline Vec3Expr max(const Vec3Expr& a, const Expr& b)
+	{
+		return {max(a.x, b), max(a.y, b), max(a.z, b)};
+	}
+
+	inline Vec3Expr min(const Vec3Expr& a, const Vec3Expr& b)
+	{
+		return {min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
+	}
+
+	inline Vec3Expr min(const Vec3Expr& a, const Expr& b)
+	{
+		return {min(a.x, b), min(a.y, b), min(a.z, b)};
+	}
+
+	inline Expr vmax(const Vec3Expr& v)
+	{
+		return max(max(v.x, v.y), v.z);
+	}
+
+	inline Expr vmin(const Vec3Expr& v)
+	{
+		return min(min(v.x, v.y), v.z);
+	}
+
 	// =========================================================================
 	// SDF Primitives, Transforms, and CSG Combinations
 	// =========================================================================
@@ -412,11 +551,18 @@ namespace WeirdEngine
 	namespace SDF
 	{
 		using WeirdEngine::point;
+		using WeirdEngine::point3D;
 		using WeirdEngine::samplePoint;
+		using WeirdEngine::var;
 
 		// --- Transforms ---
 
 		inline Vec2Expr translate(const Vec2Expr& p, const Vec2Expr& offset)
+		{
+			return p - offset;
+		}
+
+		inline Vec3Expr translate(const Vec3Expr& p, const Vec3Expr& offset)
 		{
 			return p - offset;
 		}
@@ -426,6 +572,27 @@ namespace WeirdEngine
 			Expr c = cos(angle);
 			Expr s = sin(angle);
 			return {c * p.x - s * p.y, s * p.x + c * p.y};
+		}
+
+		inline Vec3Expr rotateX(const Vec3Expr& p, const Expr& angle)
+		{
+			Expr c = cos(angle);
+			Expr s = sin(angle);
+			return {p.x, c * p.y - s * p.z, s * p.y + c * p.z};
+		}
+
+		inline Vec3Expr rotateY(const Vec3Expr& p, const Expr& angle)
+		{
+			Expr c = cos(angle);
+			Expr s = sin(angle);
+			return {c * p.x + s * p.z, p.y, -s * p.x + c * p.z};
+		}
+
+		inline Vec3Expr rotateZ(const Vec3Expr& p, const Expr& angle)
+		{
+			Expr c = cos(angle);
+			Expr s = sin(angle);
+			return {c * p.x - s * p.y, s * p.x + c * p.y, p.z};
 		}
 
 		inline Vec2Expr mirrorX(const Vec2Expr& p)
@@ -668,6 +835,55 @@ namespace WeirdEngine
 							   const Expr& offset = 0.0f)
 		{
 			return (p.y - offset) - amplitude * sin(frequency * p.x + speed * time());
+		}
+
+		// --- 3D Primitives ---
+
+		inline Expr sdPlane(const Vec3Expr& p, const Vec3Expr& n, const Expr& distanceFromOrigin)
+		{
+			return dot(p, n) + distanceFromOrigin;
+		}
+
+		inline Expr sdPlane(const Vec3Expr& p, const Expr& height)
+		{
+			return sdPlane(p, Vec3Expr(0.0f, 1.0f, 0.0f), height);
+		}
+
+		inline Expr sdSphere(const Vec3Expr& p, const Expr& radius)
+		{
+			return length(p) - radius;
+		}
+
+		inline Expr sdBox(const Vec3Expr& p, const Vec3Expr& halfSize)
+		{
+			Vec3Expr d = abs(p) - halfSize;
+			return length(max(d, 0.0f)) + min(vmax(d), 0.0f);
+		}
+
+		inline Expr sdCylinder(const Vec3Expr& p, const Expr& radius, const Expr& height)
+		{
+			Expr d = length(p.xz()) - radius;
+			return max(d, abs(p.y) - height);
+		}
+
+		inline Expr sdTorus(const Vec3Expr& p, const Expr& majorRadius, const Expr& minorRadius)
+		{
+			Vec2Expr q = {length(p.xz()) - majorRadius, p.y};
+			return length(q) - minorRadius;
+		}
+
+		inline Expr sdCapsule(const Vec3Expr& p, const Expr& radius, const Expr& height)
+		{
+			Vec3Expr q = {p.x, p.y - clamp(p.y, -height, height), p.z};
+			return length(q) - radius;
+		}
+
+		inline Expr sdCapsule(const Vec3Expr& p, const Vec3Expr& a, const Vec3Expr& b, const Expr& radius)
+		{
+			Vec3Expr pa = p - a;
+			Vec3Expr ba = b - a;
+			Expr h = clamp(dot(pa, ba) / dot(ba, ba), 0.0f, 1.0f);
+			return length(pa - ba * h) - radius;
 		}
 
 	} // namespace SDF

@@ -13,7 +13,6 @@ The math module provides a small expression system used to describe 2D and 3D SD
 | `CompiledMathExpressions.h` | Experimental bytecode VM representation for math expressions. |
 | `Default2DSDFs.h` | Registers default 2D SDF shapes with `Scene`. |
 | `Default3DSDFs.h` | Registers default 3D SDF shapes with `Scene`. |
-| `Primitives3D.h` | Standalone 3D primitive expression classes. |
 | `ShapeMacro.h` | Abstract base type for shape macros. |
 | `StarShape.h` | Helper that builds a star SDF expression. |
 
@@ -190,40 +189,18 @@ These are defined in `WeirdEngine::DefaultShapes`.
 
 ## Default 3D Shapes
 
-These are defined in `WeirdEngine::DefaultShapes3D`.
+These are defined in `WeirdEngine::DefaultShapes3D` using the unified `SDF.h` expression system (`sdPlane`, `sdBox`, `sdSphere`, `sdCylinder`, `sdTorus`, `sdCapsule`).
 
-| Shape | Primitive Class | Parameters |
+| Shape | Expression | Parameters |
 |---|---|---|
-| `Plane` | `Primitives3D::Plane` | `var0` height |
-| `Box` | `Primitives3D::Box` | `var0` X, `var1` Y, `var2` Z, `var3` size X, `var4` size Y, `var5` size Z |
-| `Sphere` | `Primitives3D::Sphere` | `var0` X, `var1` Y, `var2` Z, `var3` radius |
-| `Cylinder` | `Primitives3D::Cylinder` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
-| `Torus` | `Primitives3D::Torus` | `var0` X, `var1` Y, `var2` Z, `var3` small radius, `var4` large radius |
-## 3D Primitive Classes
+| `Plane` | `sdPlane` | `var0` height |
+| `Box` | `sdBox` | `var0` X, `var1` Y, `var2` Z, `var3` size X, `var4` size Y, `var5` size Z |
+| `Sphere` | `sdSphere` | `var0` X, `var1` Y, `var2` Z, `var3` radius |
+| `Cylinder` | `sdCylinder` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
+| `Torus` | `sdTorus` | `var0` X, `var1` Y, `var2` Z, `var3` major radius, `var4` minor radius |
+| `Capsule` | `sdCapsule` | `var0` X, `var1` Y, `var2` Z, `var3` radius, `var4` height |
 
-`Primitives3D.h` defines `WeirdEngine::Primitives3D`.
-
-Visible primitive classes include:
-
-- `Plane`
-- `PerlinPlane`
-- `Box`
-- `Sphere`
-- `Cylinder`
-- `Torus`
-- `Capsule`
-
-These classes define parameter constants and `print()` methods that emit shader-style expressions such as:
-
-```glsl
-fBox(p - vec3(var0, var1, var2), vec3(var3, var4, var5))
-fSphere(p - vec3(var0, var1, var2), var3)
-fCylinder(p - vec3(var0, var1, var2), var3, var4)
-fTorus(p - vec3(var0, var1, var2), var3, var4)
-fCapsule(p - vec3(var0, var1, var2), var3, var4)
-```
-
-Their CPU `getValue()` implementations currently return `1000.0f`, which indicates that 3D primitives are primarily intended for shader-side evaluation rather than CPU-side SDF evaluation.
+In 3D evaluation, coordinates are sampled via `point3D()` (`var9` = X, `var10` = Y, `var11` = Z, with slot 11 reused for Z). Expressions support full AST traversal, CSE shader optimization, and CPU evaluation.
 
 ## Shape Macro Base
 
@@ -301,11 +278,9 @@ This appears to be an experimental alternate representation for expressions. It 
 
 ## Observations
 
-- The module defines 2D expressions via the composable `SDF` DSL in `SDF.h`.
-- `Default2DSDFs.h` uses the `SDF` DSL.
-- `Default3DSDFs.h` uses `Primitives3D` classes.
-- 2D expressions generally support CPU evaluation.
-- 3D expressions appear to be mainly shader-printing placeholders, because their CPU `getValue()` implementations return a large constant.
+- The module defines both 2D and 3D expressions via the composable `SDF` DSL in `SDF.h`.
+- `Default2DSDFs.h` and `Default3DSDFs.h` use the same X-macro and `SDF` expression architecture.
+- Both 2D and 3D expressions support CPU evaluation and GLSL shader generation with CSE optimization.
 - `print()` output is shader-oriented, not necessarily valid C++.
 - `collectHelperFunctions()` is used to emit GLSL helper functions for complex shapes such as polygons, triangles, and ramps.
 - The compiled bytecode VM is smaller and more experimental than the expression tree system.

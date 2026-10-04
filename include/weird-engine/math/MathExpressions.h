@@ -761,12 +761,36 @@ namespace WeirdEngine
 				return "fOpSubSoft(" + c[0] + ", " + c[1] + ", " + c[2] + ")";
 			}
 		};
+
+		struct Length3D : ThreeFloatOperation
+		{
+			using ThreeFloatOperation::ThreeFloatOperation;
+
+			WEIRD_MATH_CLONE_THREE(Length3D)
+
+			[[nodiscard]]
+			float getValue(const float* parameters) const override
+			{
+				float a = valueA->getValue(parameters);
+				float b = valueB->getValue(parameters);
+				float c = valueC->getValue(parameters);
+
+				return std::hypot(a, b, c);
+			}
+
+			[[nodiscard]]
+			std::string printWithChildren(const std::vector<std::string>& c) const override
+			{
+				return "length(vec3(" + c[0] + ", " + c[1] + ", " + c[2] + "))";
+			}
+		};
 	} // namespace detail
 
 	using detail::FloatConstant;
 	using detail::FloatVariable;
 	using detail::fOpSubSoft;
 	using detail::fOpUnionSoft;
+	using detail::Length3D;
 	using detail::Ternary;
 
 	using Scale = detail::Multiplication;

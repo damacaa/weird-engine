@@ -40,10 +40,11 @@ namespace WeirdEngine
 							simulation.setVelocity(rb.simulationId, rb.velocity);
 							simulation.setMass(rb.simulationId, rb.mass);
 
+							BodyType type = rb.type;
 							if (rb.isFixed)
-								simulation.fix(rb.simulationId);
-							else
-								simulation.unFix(rb.simulationId);
+								type = BodyType::Fixed;
+
+							simulation.setBodyType(rb.simulationId, type);
 
 							simulation.setCollisionEnabled(rb.simulationId, rb.enableCollision);
 

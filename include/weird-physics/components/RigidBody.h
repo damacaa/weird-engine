@@ -5,6 +5,13 @@
 
 namespace WeirdEngine
 {
+	enum class BodyType : uint8_t
+	{
+		Dynamic = 0,
+		Kinematic,
+		Fixed
+	};
+
 	struct RigidBody
 	{
 		SimulationID simulationId = INVALID_SIMULATION_ID;
@@ -17,6 +24,7 @@ namespace WeirdEngine
 		glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
 		glm::vec2 pendingImpulseForce = glm::vec2(0.0f, 0.0f);
 		glm::vec2 pendingContinuousForce = glm::vec2(0.0f, 0.0f);
+		BodyType type = BodyType::Dynamic;
 		bool isFixed = false;
 		bool enableCollision = true;
 	};

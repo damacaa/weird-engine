@@ -134,11 +134,21 @@ namespace WeirdEngine
 		// shapes only. Main thread only.
 		RaymarchResult sampleAt(vec2 point, bool includeRigidbodies = true);
 
+		// Sample signed distance from the SDF at a world position (negative = inside a shape).
+		// Pass false to test world shapes only (excluding rigidbodies). Main thread only.
+		float sampleDistance(vec2 point, bool includeRigidbodies = true);
+
 		// Ray query: march from origin along direction up to maxDistance. Returns
 		// the distance traveled to the first surface hit and the owning entity, or
 		// {maxDistance, INVALID_ENTITY} when the ray misses. Main thread only.
 		RaymarchResult raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon = 0.001f,
 								float maxDistance = 150.0f, bool includeRigidbodies = true);
+
+		// Evaluates the normalized unit gradient of the signed distance field (∇d) at a world position.
+		// Points in the direction of steepest distance increase (directly away from nearest geometry).
+		// Corresponds to the outward surface normal when sampled on or near a shape boundary.
+		// Pass false to test world shapes only (excluding rigidbodies). Main thread only.
+		glm::vec2 sampleGradient(vec2 point, bool includeRigidbodies = true, float epsilon = 0.005f);
 
 	private:
 		Registry& m_registry;

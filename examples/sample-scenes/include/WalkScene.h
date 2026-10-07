@@ -28,6 +28,7 @@ namespace WalkSceneNamespace
 		float groundDecel = 55.0f;
 		float airAccel = 28.0f;
 		float airDecel = 15.0f;
+		float gravity = 32.0f;
 		float jumpCutMultiplier = 0.5f;
 		float terminalFallVelocity = -25.0f;
 		float coyoteTime = 0.12f;

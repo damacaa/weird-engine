@@ -66,7 +66,7 @@ namespace WalkSceneNamespace
 
 		auto& rb = registry.addComponent<RigidBody2D>(player);
 		rb.mass = 1.0f;
-		rb.isFixed = false;
+		rb.type = BodyType::Kinematic;
 		rb.enableCollision = true;
 
 		state.player = player;
@@ -348,7 +348,7 @@ namespace WalkSceneNamespace
 			}
 		}
 
-		// 4. Update Coyote Time & Wall Slide
+		// 4. Update Coyote Time & Ground State
 		if (groundedThisFrame)
 		{
 			state.coyoteTimer = state.coyoteTime;
@@ -359,23 +359,7 @@ namespace WalkSceneNamespace
 		{
 			state.coyoteTimer -= delta;
 			state.isGrounded = false;
-
-			if (wallThisFrame)
-			{
-				state.isOnWall = true;
-
-				// Wall slide: limit downward sliding speed
-				if (rb.velocity.y < -state.wallSlideSpeed)
-				{
-					float excess = -state.wallSlideSpeed - rb.velocity.y;
-					rb.pendingImpulseForce.y += excess * rb.mass;
-					rb.velocity.y = -state.wallSlideSpeed;
-				}
-			}
-			else
-			{
-				state.isOnWall = false;
-			}
+			state.isOnWall = wallThisFrame;
 		}
 
 		if (jumpPressed)
@@ -387,8 +371,7 @@ namespace WalkSceneNamespace
 			state.jumpBufferTimer -= delta;
 		}
 
-		// 5. Normal-based Jump Execution (unified for ground, slopes, and walls)
-		// Combines surface normal push + constant upward lift, clamped to prevent excessive combination
+		// 5. Jump Execution (unified for ground, slopes, and walls)
 		if (state.jumpBufferTimer > 0.0f && (state.coyoteTimer > 0.0f || state.isOnWall))
 		{
 			vec2 n = state.lastContactNormal;
@@ -412,25 +395,17 @@ namespace WalkSceneNamespace
 			}
 			jumpVel.y = normalPush.y + upwardLift.y;
 
-			// Clamp so they don't combine excessively:
-			// 1. Clamp vertical component
+			// Clamp vertical and horizontal jump velocities
 			jumpVel.y = std::clamp(jumpVel.y, state.minJumpVelocityY, state.maxJumpVelocityY);
-
-			// 2. Clamp horizontal component
 			jumpVel.x = std::clamp(jumpVel.x, -state.maxJumpVelocityX, state.maxJumpVelocityX);
 
-			// 3. Clamp total velocity vector magnitude
 			float speed = glm::length(jumpVel);
 			if (speed > state.maxJumpSpeed)
 			{
 				jumpVel = (jumpVel / speed) * state.maxJumpSpeed;
 			}
 
-			// Cleanly set rigidbody velocity for the jump so residual downward collision velocity
-			// or rebound penalty forces don't distort or amplify the jump
 			rb.velocity = jumpVel;
-			rb.pendingImpulseForce = vec2(0.0f);
-			registry.setComponentDirty(rb);
 
 			// Reset timers
 			state.jumpBufferTimer = 0.0f;
@@ -447,12 +422,10 @@ namespace WalkSceneNamespace
 		// Variable jump height: cut vertical velocity if jump is released early while rising
 		else if (jumpReleased && rb.velocity.y > 0.0f)
 		{
-			float cutVy = rb.velocity.y * (state.jumpCutMultiplier - 1.0f);
-			rb.pendingImpulseForce.y += cutVy * rb.mass;
-			rb.velocity.y += cutVy;
+			rb.velocity.y *= state.jumpCutMultiplier;
 		}
 
-		// 6. Horizontal movement via pending impulse (leaves Y axis free for gravity)
+		// 6. Horizontal movement (applied directly to kinematic velocity)
 		float targetVx = inputX * state.moveSpeed;
 		float accel = 0.0f;
 		if (state.isGrounded)
@@ -466,26 +439,42 @@ namespace WalkSceneNamespace
 
 		float maxDeltaVx = accel * delta;
 		float deltaVx = std::clamp(targetVx - rb.velocity.x, -maxDeltaVx, maxDeltaVx);
-		rb.pendingImpulseForce.x += deltaVx * rb.mass;
 		rb.velocity.x += deltaVx;
 
-		// 7. Clamp vertical speeds
-		// Terminal fall velocity (downward)
-		if (rb.velocity.y < state.terminalFallVelocity)
+		// 7. Vertical movement (kinematic gravity & wall slide)
+		if (state.isGrounded)
 		{
-			float excessFall = state.terminalFallVelocity - rb.velocity.y;
-			rb.pendingImpulseForce.y += excessFall * rb.mass;
-			rb.velocity.y = state.terminalFallVelocity;
+			// Gentle ground snap velocity so player stays glued to downward slopes
+			if (rb.velocity.y < 0.0f)
+			{
+				rb.velocity.y = -1.0f;
+			}
+		}
+		else
+		{
+			// Kinematic bodies do not receive world physics gravity, so apply custom platformer gravity
+			rb.velocity.y -= state.gravity * delta;
+
+			// Wall slide: limit downward sliding speed
+			if (state.isOnWall && rb.velocity.y < -state.wallSlideSpeed)
+			{
+				rb.velocity.y = -state.wallSlideSpeed;
+			}
+
+			// Terminal fall velocity clamp
+			if (rb.velocity.y < state.terminalFallVelocity)
+			{
+				rb.velocity.y = state.terminalFallVelocity;
+			}
 		}
 
-		// Continuously clamp vertical upward speed to prevent launching into orbit
-		// from SDF collision response penalty forces and overlapping jump impulses
 		if (rb.velocity.y > state.maxUpwardVelocity)
 		{
 			rb.velocity.y = state.maxUpwardVelocity;
-			rb.pendingImpulseForce.y = 0.0f;
-			registry.setComponentDirty(rb);
 		}
+
+		// Synchronize kinematic velocity to the physics thread
+		registry.setComponentDirty(rb);
 
 		// 8. Update visual feedback material: Yellow on floor, Orange on wall, Magenta in air
 		if (state.isGrounded)

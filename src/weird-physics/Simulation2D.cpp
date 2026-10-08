@@ -654,7 +654,10 @@ namespace WeirdEngine
 			float d = map(p, shapeIdx);
 			collisionEvent.shape = shapeIdx;
 
-			if (d < m_radious)
+			bool previousCollision = m_collisionMap[i];
+			float hysteresis = previousCollision ? 0.02f : 0.0f;
+
+			if (d < (m_radious + hysteresis))
 			{
 				float d1 = map(p + vec2(EPSILON, 0.0f)) - map(p - vec2(EPSILON, 0.0f));
 				float d2 = map(p + vec2(0.0f, EPSILON)) - map(p - vec2(0.0f, EPSILON));
@@ -665,23 +668,26 @@ namespace WeirdEngine
 							 "NaN normal in shape collision calculation");
 
 				float distanceAtSurface = map(p - m_radious * collisionEvent.normal);
-				if (distanceAtSurface <= 0.0f)
+				if (distanceAtSurface <= hysteresis)
 				{
-					float penetration;
-					if (d >= 0.0f && distanceAtSurface < 0.0f)
+					float penetration = 0.0f;
+					if (distanceAtSurface <= 0.0f)
 					{
-						// The signs confirm a crossing on this segment. Interpolate its position
-						// using both samples; this is exact when the field varies linearly here.
-						float surfaceDistance = m_radious * d / (d - distanceAtSurface);
-						penetration = m_radious - surfaceDistance;
-					}
-					else
-					{
-						// Preserve the existing response when the center is already inside.
-						// Gradient scaling is a local approximation, not an exact distance.
-						float gradMag = gradLen / (2.0f * EPSILON);
-						float distanceScale = gradMag > 0.05f && gradMag < 1.0f ? gradMag : 1.0f;
-						penetration = (std::min)(-distanceAtSurface / distanceScale, m_radious - d / distanceScale);
+						if (d >= 0.0f)
+						{
+							// The signs confirm a crossing on this segment. Interpolate its position
+							// using both samples; this is exact when the field varies linearly here.
+							float surfaceDistance = m_radious * d / (d - distanceAtSurface);
+							penetration = m_radious - surfaceDistance;
+						}
+						else
+						{
+							// Preserve the existing response when the center is already inside.
+							// Gradient scaling is a local approximation, not an exact distance.
+							float gradMag = gradLen / (2.0f * EPSILON);
+							float distanceScale = gradMag > 0.05f && gradMag < 1.0f ? gradMag : 1.0f;
+							penetration = (std::min)(-distanceAtSurface / distanceScale, m_radious - d / distanceScale);
+						}
 					}
 
 					currentCollision = true;
@@ -693,7 +699,6 @@ namespace WeirdEngine
 				}
 			}
 
-			bool previousCollision = m_collisionMap[i];
 			if (currentCollision != previousCollision)
 			{
 				if (currentCollision)
@@ -1083,13 +1088,13 @@ namespace WeirdEngine
 				{
 					// PBD direct depenetration
 					m_positions[bodyId] += collisionEvent.penetration * collisionEvent.normal;
+				}
 
-					// Clip velocity into the surface (slide along tangent)
-					float vn = glm::dot(m_velocities[bodyId], collisionEvent.normal);
-					if (vn < 0.0f)
-					{
-						m_velocities[bodyId] -= vn * collisionEvent.normal;
-					}
+				// Clip velocity into the surface (slide along tangent)
+				float vn = glm::dot(m_velocities[bodyId], collisionEvent.normal);
+				if (vn < 0.0f)
+				{
+					m_velocities[bodyId] -= vn * collisionEvent.normal;
 				}
 				continue;
 			}

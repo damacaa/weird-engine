@@ -444,10 +444,11 @@ namespace WalkSceneNamespace
 		// 7. Vertical movement (kinematic gravity & wall slide)
 		if (state.isGrounded)
 		{
-			// Gentle ground snap velocity so player stays glued to downward slopes
+			// When grounded on a surface, zero out downward vertical velocity so the
+			// kinematic body rests cleanly without pushing into the floor.
 			if (rb.velocity.y < 0.0f)
 			{
-				rb.velocity.y = -1.0f;
+				rb.velocity.y = 0.0f;
 			}
 		}
 		else

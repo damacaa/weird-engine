@@ -1048,6 +1048,15 @@ namespace WeirdEngine
 				else
 					m_lightingShader.removeDefine("DEBUG_SHOW_DISTANCE");
 			}
+
+			if (ImGui::Checkbox("Show Lighting Distance Field", &m_config.debugLightingDistanceField))
+			{
+				if (m_config.debugLightingDistanceField)
+					m_lightingShader.addDefine("DEBUG_SHOW_LIGHTING_DISTANCE");
+				else
+					m_lightingShader.removeDefine("DEBUG_SHOW_LIGHTING_DISTANCE");
+			}
+
 			if (ImGui::Checkbox("Show Material Colors", &m_config.debugMaterialColors))
 			{
 				if (m_config.debugMaterialColors)

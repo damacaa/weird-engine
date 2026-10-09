@@ -42,6 +42,7 @@ namespace WeirdEngine
 				float motionBlurBlendSpeed = 10.0f;
 				MotionBlurMethod motionBlurMethod = MotionBlurMethod::AsymmetricDelta;
 				bool debugDistanceField;
+				bool debugLightingDistanceField = false;
 				bool debugMaterialColors;
 				bool debugGrid = false;
 				float ballK;

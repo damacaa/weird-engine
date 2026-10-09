@@ -29,7 +29,7 @@ uniform float u_time;
 uniform sampler2D t_colorTexture;
 uniform sampler2D t_distanceSampledTexture; // Used for inner lighting
 uniform sampler2D t_backgroundTexture;
-uniform sampler2D t_floodTexture; // (seed.xy, squaredDistance) used for shadows and AO
+uniform sampler2D t_floodTexture; // (seed.xy, signed squared distance) used for shadows and AO
 
 uniform float u_ambienOcclusionRadius;
 uniform float u_ambienOcclusionStrength;
@@ -62,13 +62,21 @@ uniform Light2D u_lights[8];
 uniform Material2D u_materials[16];
 
 // For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union
-// artifacts and acceleration grid truncation. The jump flood stores the squared aspect-corrected UV distance to the
-// nearest seed in .z, so the real distance is recovered with a square root.
+// artifacts and acceleration grid truncation. The jump flood stores the signed squared aspect-corrected UV distance
+// to the surface in .z (negative inside), so the real distance is recovered with a square root of the clamped value.
 float mapOutside(vec2 p)
 {
 	// Remap screen UV to overscan texture UV
 	vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
-	return sqrt(texture(t_floodTexture, overscanUV).z);
+	return sqrt(max(texture(t_floodTexture, overscanUV).z, 0.0));
+}
+
+// Signed variant for debugging: real distance with the inside negative, in distance texture units
+float mapOutsideSigned(vec2 p)
+{
+	vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
+	float z = texture(t_floodTexture, overscanUV).z;
+	return sign(z) * sqrt(abs(z)) * (1.0 + u_overscan);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float initialDistance, float far, float k)
@@ -383,11 +391,11 @@ void main()
 #if defined(DEBUG_SHOW_DISTANCE) || defined(DEBUG_SHOW_LIGHTING_DISTANCE)
 	float debugSourceDistance;
 #if defined(DEBUG_SHOW_DISTANCE) && defined(DEBUG_SHOW_LIGHTING_DISTANCE)
-	debugSourceDistance = (mod(u_time, 2.0) < 1.0) ? distance : mapOutside(screenUV);
+	debugSourceDistance = (mod(u_time, 2.0) < 1.0) ? distance : mapOutsideSigned(screenUV);
 #elif defined(DEBUG_SHOW_DISTANCE)
 	debugSourceDistance = distance;
 #else
-	debugSourceDistance = mapOutside(screenUV);
+	debugSourceDistance = mapOutsideSigned(screenUV);
 #endif
 	float debugDistance = 0.5 * debugSourceDistance;
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);

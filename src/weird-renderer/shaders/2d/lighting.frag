@@ -380,8 +380,16 @@ void main()
 
 	FragColor = vec4(color, 1.0);
 
-#ifdef DEBUG_SHOW_DISTANCE
-	float debugDistance = 0.5 * texture(t_distanceSampledTexture, screenUV).x;
+#if defined(DEBUG_SHOW_DISTANCE) || defined(DEBUG_SHOW_LIGHTING_DISTANCE)
+	float debugSourceDistance;
+#if defined(DEBUG_SHOW_DISTANCE) && defined(DEBUG_SHOW_LIGHTING_DISTANCE)
+	debugSourceDistance = (mod(u_time, 2.0) < 1.0) ? distance : mapOutside(screenUV);
+#elif defined(DEBUG_SHOW_DISTANCE)
+	debugSourceDistance = distance;
+#else
+	debugSourceDistance = mapOutside(screenUV);
+#endif
+	float debugDistance = 0.5 * debugSourceDistance;
 	float value = 0.5 * (cos(500.0 * debugDistance) + 1.0);
 	vec3 debugColor = debugDistance > 0.0
 						  ? mix(vec3(1), vec3(0.2), value)

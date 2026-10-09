@@ -82,8 +82,6 @@ namespace WeirdEngine
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_init.frag");
 			m_jumpFloodStepShader =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/jump_flood_step.frag");
-			m_distanceCorrectionShader =
-				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_correction.frag");
 			m_distanceUpscalerShader =
 				Shader(SHADERS_PATH "common/screen_plane.vert", SHADERS_PATH "2d/distance_upscaler.frag");
 			m_materialColorShader =
@@ -161,21 +159,14 @@ namespace WeirdEngine
 			m_jumpFloodInitRender = RenderTarget(false);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
-			m_jumpFloodTexturePong =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPing = RenderTarget(false);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 			m_jumpFloodRenderPong = RenderTarget(false);
 			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
 			m_jumpFloodDoubleBuffer[0] = &m_jumpFloodRenderPing;
 			m_jumpFloodDoubleBuffer[1] = &m_jumpFloodRenderPong;
-
-			m_distanceTextureCorrected =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
-			m_distanceCorrectionRender = RenderTarget(false);
-			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
 			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_distanceUpscaler = RenderTarget(false);
@@ -226,7 +217,6 @@ namespace WeirdEngine
 			m_distanceShader.free();
 			m_jumpFloodInitShader.free();
 			m_jumpFloodStepShader.free();
-			m_distanceCorrectionShader.free();
 			m_distanceUpscalerShader.free();
 			m_materialColorShader.free();
 			m_materialBlendShader.free();
@@ -239,7 +229,6 @@ namespace WeirdEngine
 			m_jumpFloodInitRender.free();
 			m_jumpFloodRenderPing.free();
 			m_jumpFloodRenderPong.free();
-			m_distanceCorrectionRender.free();
 			m_distanceUpscaler.free();
 			m_colorRender.free();
 			m_postProcessRenderFront.free();
@@ -256,7 +245,6 @@ namespace WeirdEngine
 			m_jumpFloodInitTexture.dispose();
 			m_jumpFloodTexturePing.dispose();
 			m_jumpFloodTexturePong.dispose();
-			m_distanceTextureCorrected.dispose();
 			m_distanceUpscaled.dispose();
 			m_colorTexture.dispose();
 			m_postProcessTextureFront.dispose();
@@ -283,7 +271,6 @@ namespace WeirdEngine
 			m_jumpFloodInitTexture.dispose();
 			m_jumpFloodTexturePing.dispose();
 			m_jumpFloodTexturePong.dispose();
-			m_distanceTextureCorrected.dispose();
 			m_distanceUpscaled.dispose();
 			m_colorTexture.dispose();
 			m_postProcessTextureFront.dispose();
@@ -320,17 +307,11 @@ namespace WeirdEngine
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 
-			m_jumpFloodTexturePong =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::LinearData);
+			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
-
-			m_distanceTextureCorrected =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
-			m_distanceCorrectionRender.bindColorTextureToFrameBuffer(m_distanceTextureCorrected);
 
 			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
 			m_distanceUpscaler.bindColorTextureToFrameBuffer(m_distanceUpscaled);
@@ -369,7 +350,7 @@ namespace WeirdEngine
 
 			if (m_config.enableShadows)
 			{
-				applyJumpFloodCorrection(time); // To generate a corrected distance texture
+				applyJumpFloodCorrection(); // Produces the flood texture consumed by lighting for shadows/AO
 			}
 
 			upscaleDistance();
@@ -678,13 +659,20 @@ namespace WeirdEngine
 			}
 		}
 
-		void SDF2DRenderPipeline::applyJumpFloodCorrection(double time)
+		void SDF2DRenderPipeline::applyJumpFloodCorrection()
 		{
 			PROFILE_SCOPE(m_config.isUI ? "applyJumpFloodCorrection (UI)" : "applyJumpFloodCorrection (World)");
 
 			float maxDim =
 				std::max(static_cast<float>(m_distanceSampleWidth), static_cast<float>(m_distanceSampleHeight));
-			uint16_t jumpFloodIterations = static_cast<uint16_t>(largestPowerOfTwoBelow(static_cast<int>(maxDim)));
+			int startJump = largestPowerOfTwoBelow(static_cast<int>(maxDim));
+
+			// Regular shadows only march up to SHADOW_WORLD_DISTANCE / zoom in UV space, far below the screen
+			// diagonal, so jumps larger than that can never contribute to a visible shadow. Long shadows use the
+			// full screen extent (FAR), so they keep the uncapped start jump.
+			if (!m_config.enableLongShadows)
+				startJump = std::min(startJump, 256);
+
 			bool pingpong = true;
 
 			// Initialize
@@ -703,18 +691,16 @@ namespace WeirdEngine
 			m_jumpFloodStepShader.setUniform("t_prevSeeds", 0);
 			m_jumpFloodStepShader.setUniform("u_texelSize",
 											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
+			m_jumpFloodStepShader.setUniform("u_resolution", glm::ivec2(m_distanceSampleWidth, m_distanceSampleHeight));
 
-			float jump = jumpFloodIterations;
+			int jump = startJump;
 			bool first = true;
 
 			while (jump >= 1)
 			{
 				m_jumpFloodDoubleBuffer[pingpong]->bind();
 
-				vec2 uJumpSize;
-				uJumpSize.x = float(jump) / float(m_distanceSampleWidth);
-				uJumpSize.y = float(jump) / float(m_distanceSampleHeight);
-				m_jumpFloodStepShader.setUniform("u_jumpSize", uJumpSize);
+				m_jumpFloodStepShader.setUniform("u_jump", jump);
 
 				if (first)
 				{
@@ -732,22 +718,8 @@ namespace WeirdEngine
 				jump /= 2;
 			}
 
-			// Distance correction
-			m_distanceCorrectionRender.bind();
-			m_distanceCorrectionShader.use();
-			m_distanceCorrectionShader.setUniform("u_resolution",
-												  glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
-			m_distanceCorrectionShader.setUniform("u_time", time);
-			m_distanceCorrectionShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
-
-			m_distanceCorrectionShader.setUniform("t_originalDistanceTexture", 0);
-			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
-
-			m_distanceCorrectionShader.setUniform("t_distanceTexture", 1);
-			int lastIndex = pingpong ? 0 : 1;
-			m_jumpFloodDoubleBuffer[lastIndex]->getColorAttachment()->bind(1);
-
-			m_renderPlane.draw(m_distanceCorrectionShader);
+			// The lighting shader samples this directly and takes the square root of the squared distance
+			m_lastFloodTextureIdx = pingpong ? 0 : 1;
 			Profiler::get().gpuSync();
 		}
 
@@ -987,11 +959,11 @@ namespace WeirdEngine
 				}
 			}
 
-			// Corrected distance for shadows
+			// Flood field (seed + squared distance) for shadows and AO
 			if (m_config.enableShadows)
 			{
-				m_lightingShader.setUniform("t_distanceCorrectedTexture", 3);
-				m_distanceTextureCorrected.bind(3);
+				m_lightingShader.setUniform("t_floodTexture", 3);
+				m_jumpFloodDoubleBuffer[m_lastFloodTextureIdx]->getColorAttachment()->bind(3);
 			}
 
 			m_renderPlane.draw(m_lightingShader);

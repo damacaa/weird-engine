@@ -29,7 +29,7 @@ uniform float u_time;
 uniform sampler2D t_colorTexture;
 uniform sampler2D t_distanceSampledTexture; // Used for inner lighting
 uniform sampler2D t_backgroundTexture;
-uniform sampler2D t_distanceCorrectedTexture; // Used for shadows and AO
+uniform sampler2D t_floodTexture; // (seed.xy, squaredDistance) used for shadows and AO
 
 uniform float u_ambienOcclusionRadius;
 uniform float u_ambienOcclusionStrength;
@@ -62,12 +62,13 @@ uniform Light2D u_lights[8];
 uniform Material2D u_materials[16];
 
 // For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union
-// artifacts Real distance in screen UV space
+// artifacts and acceleration grid truncation. The jump flood stores the squared aspect-corrected UV distance to the
+// nearest seed in .z, so the real distance is recovered with a square root.
 float mapOutside(vec2 p)
 {
 	// Remap screen UV to overscan texture UV
 	vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
-	return texture(t_distanceCorrectedTexture, overscanUV).x;
+	return sqrt(texture(t_floodTexture, overscanUV).z);
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float initialDistance, float far, float k)

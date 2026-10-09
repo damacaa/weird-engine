@@ -25,6 +25,7 @@
 
 #include "PhysicsSettings.h"
 #include "weird-physics/BodyUserData.h"
+#include "weird-physics/components/RigidBody.h"
 #include "weird-physics/SimulationID.h"
 
 namespace WeirdEngine
@@ -38,6 +39,7 @@ namespace WeirdEngine
 		SetPosition,
 		Fix,
 		UnFix,
+		SetBodyType,
 		SetMass,
 		ActivatePending,
 		AddImpulse,
@@ -150,9 +152,12 @@ namespace WeirdEngine
 		bool setDistanceConstraintDistance(SimulationID a, SimulationID b, float distance);
 		bool removeDistanceConstraint(SimulationID a, SimulationID b);
 
+		void setBodyType(SimulationID id, BodyType type);
+		BodyType getBodyType(SimulationID id);
 		void fix(SimulationID id);
 		void unFix(SimulationID id);
 		bool isFixed(SimulationID id);
+		bool isKinematic(SimulationID id);
 
 		void enableCollision(SimulationID id);
 		void disableCollision(SimulationID id);
@@ -479,6 +484,7 @@ namespace WeirdEngine
 		std::atomic<size_t> m_activeSize{0};
 		std::vector<uint8_t> m_bodyActive;
 		std::vector<uint8_t> m_collisionEnabled;
+		std::vector<BodyType> m_bodyType;
 
 		float* m_mass;
 		float* m_invMass;

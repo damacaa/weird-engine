@@ -461,18 +461,22 @@ namespace WeirdEngine
 				if (ev.state == CollisionState::START)
 				{
 					float normalSpeed = std::abs(glm::dot(ev.normal, ev.velocity));
-					float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
-					float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
-
-					if (impactIntensity > 0.02f && canTriggerImpact(ev.body))
+					// Play impact audio only if there is an actual impact velocity towards the surface
+					if (normalSpeed > 0.25f)
 					{
-						markImpactTriggered(ev.body);
+						float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
+						float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
 
-						WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
-							vec3(ev.position, 0.0f), impactIntensity, WeirdAudio::SimpleAudioRequest::ImpactType::Shape,
-							m_collisionSoundVolume);
+						if (impactIntensity > 0.02f && canTriggerImpact(ev.body))
+						{
+							markImpactTriggered(ev.body);
 
-						addCandidateImpact(req, impactIntensity);
+							WeirdAudio::SimpleAudioRequest req = WeirdAudio::SimpleAudioRequest::makeImpact(
+								vec3(ev.position, 0.0f), impactIntensity,
+								WeirdAudio::SimpleAudioRequest::ImpactType::Shape, m_collisionSoundVolume);
+
+							addCandidateImpact(req, impactIntensity);
+						}
 					}
 				}
 			}

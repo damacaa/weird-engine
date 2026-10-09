@@ -79,6 +79,7 @@ namespace WeirdEngine
 		, m_radious(m_diameter / 2.0f)
 		, m_bodyActive(size, 0)
 		, m_collisionEnabled(size, 1)
+		, m_bodyType(size, BodyType::Dynamic)
 		, m_collisionMap(size)
 		, m_head(8191, -1)
 	{
@@ -249,28 +250,66 @@ namespace WeirdEngine
 						break;
 					case PhysicsCommandType::SetMass:
 						m_mass[cmd.id] = cmd.floatData;
-						if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end())
+						if (m_bodyType[cmd.id] == BodyType::Dynamic)
 						{
 							m_invMass[cmd.id] = cmd.floatData > 0.0f ? 1.0f / cmd.floatData : 0.0f;
 						}
 						break;
-					case PhysicsCommandType::Fix:
-						if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end())
+					case PhysicsCommandType::SetBodyType:
+					{
+						BodyType type = static_cast<BodyType>(static_cast<int>(cmd.floatData));
+						m_bodyType[cmd.id] = type;
+						auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id);
+						if (type == BodyType::Fixed)
 						{
-							m_fixedObjects.emplace_back(cmd.id);
+							if (it == m_fixedObjects.end())
+							{
+								m_fixedObjects.emplace_back(cmd.id);
+							}
 							m_invMass[cmd.id] = 0.0f;
 							m_velocities[cmd.id] = vec2(0.0f);
 							m_forces[cmd.id] = vec2(0.0f);
 						}
+						else if (type == BodyType::Kinematic)
+						{
+							if (it != m_fixedObjects.end())
+							{
+								m_fixedObjects.erase(it);
+							}
+							m_invMass[cmd.id] = 0.0f;
+							m_forces[cmd.id] = vec2(0.0f);
+						}
+						else // Dynamic
+						{
+							if (it != m_fixedObjects.end())
+							{
+								m_fixedObjects.erase(it);
+							}
+							m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
+						}
 						break;
+					}
+					case PhysicsCommandType::Fix:
+					{
+						m_bodyType[cmd.id] = BodyType::Fixed;
+						if (std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id) == m_fixedObjects.end())
+						{
+							m_fixedObjects.emplace_back(cmd.id);
+						}
+						m_invMass[cmd.id] = 0.0f;
+						m_velocities[cmd.id] = vec2(0.0f);
+						m_forces[cmd.id] = vec2(0.0f);
+						break;
+					}
 					case PhysicsCommandType::UnFix:
 					{
+						m_bodyType[cmd.id] = BodyType::Dynamic;
 						auto it = std::find(m_fixedObjects.begin(), m_fixedObjects.end(), cmd.id);
 						if (it != m_fixedObjects.end())
 						{
 							m_fixedObjects.erase(it);
-							m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
 						}
+						m_invMass[cmd.id] = m_mass[cmd.id] > 0.0f ? 1.0f / m_mass[cmd.id] : 0.0f;
 						break;
 					}
 					case PhysicsCommandType::ActivatePending:
@@ -601,6 +640,8 @@ namespace WeirdEngine
 		{
 			if (!m_bodyActive[i] || !m_collisionEnabled[i])
 				continue;
+			if (m_bodyType[i] == BodyType::Fixed)
+				continue;
 			vec2& p = m_positions[i];
 
 			// Check
@@ -613,7 +654,10 @@ namespace WeirdEngine
 			float d = map(p, shapeIdx);
 			collisionEvent.shape = shapeIdx;
 
-			if (d < m_radious)
+			bool previousCollision = m_collisionMap[i];
+			float hysteresis = previousCollision ? 0.02f : 0.0f;
+
+			if (d < (m_radious + hysteresis))
 			{
 				float d1 = map(p + vec2(EPSILON, 0.0f)) - map(p - vec2(EPSILON, 0.0f));
 				float d2 = map(p + vec2(0.0f, EPSILON)) - map(p - vec2(0.0f, EPSILON));
@@ -624,23 +668,26 @@ namespace WeirdEngine
 							 "NaN normal in shape collision calculation");
 
 				float distanceAtSurface = map(p - m_radious * collisionEvent.normal);
-				if (distanceAtSurface <= 0.0f)
+				if (distanceAtSurface <= hysteresis)
 				{
-					float penetration;
-					if (d >= 0.0f && distanceAtSurface < 0.0f)
+					float penetration = 0.0f;
+					if (distanceAtSurface <= 0.0f)
 					{
-						// The signs confirm a crossing on this segment. Interpolate its position
-						// using both samples; this is exact when the field varies linearly here.
-						float surfaceDistance = m_radious * d / (d - distanceAtSurface);
-						penetration = m_radious - surfaceDistance;
-					}
-					else
-					{
-						// Preserve the existing response when the center is already inside.
-						// Gradient scaling is a local approximation, not an exact distance.
-						float gradMag = gradLen / (2.0f * EPSILON);
-						float distanceScale = gradMag > 0.05f && gradMag < 1.0f ? gradMag : 1.0f;
-						penetration = (std::min)(-distanceAtSurface / distanceScale, m_radious - d / distanceScale);
+						if (d >= 0.0f)
+						{
+							// The signs confirm a crossing on this segment. Interpolate its position
+							// using both samples; this is exact when the field varies linearly here.
+							float surfaceDistance = m_radious * d / (d - distanceAtSurface);
+							penetration = m_radious - surfaceDistance;
+						}
+						else
+						{
+							// Preserve the existing response when the center is already inside.
+							// Gradient scaling is a local approximation, not an exact distance.
+							float gradMag = gradLen / (2.0f * EPSILON);
+							float distanceScale = gradMag > 0.05f && gradMag < 1.0f ? gradMag : 1.0f;
+							penetration = (std::min)(-distanceAtSurface / distanceScale, m_radious - d / distanceScale);
+						}
 					}
 
 					currentCollision = true;
@@ -652,7 +699,6 @@ namespace WeirdEngine
 				}
 			}
 
-			bool previousCollision = m_collisionMap[i];
 			if (currentCollision != previousCollision)
 			{
 				if (currentCollision)
@@ -940,10 +986,15 @@ namespace WeirdEngine
 			WEIRD_ASSERT(!std::isnan(normal.x) && !std::isnan(normal.y), "NaN normal in sphere-sphere collision");
 			float penetration = (m_radious + m_radious) - std::sqrt(lengthSquared);
 
-			// Position
-			/*vec2 translation = 0.5f * penetration * normal;
-			m_positions[col.A] -= translation;
-			m_positions[col.B] += translation;*/
+			// Position depenetration for kinematic/fixed vs dynamic bodies
+			if (m_invMass[col.A] == 0.0f && m_invMass[col.B] > 0.0f)
+			{
+				m_positions[col.B] += penetration * normal;
+			}
+			else if (m_invMass[col.B] == 0.0f && m_invMass[col.A] > 0.0f)
+			{
+				m_positions[col.A] -= penetration * normal;
+			}
 
 			// Impulse method
 			float restitution = 0.5f;
@@ -1029,6 +1080,28 @@ namespace WeirdEngine
 
 			if (collisionEvent.state == CollisionState::END)
 				continue;
+
+			SimulationID bodyId = collisionEvent.body;
+			if (m_bodyType[bodyId] == BodyType::Kinematic)
+			{
+				if (collisionEvent.penetration > 0.0f)
+				{
+					// PBD direct depenetration
+					m_positions[bodyId] += collisionEvent.penetration * collisionEvent.normal;
+				}
+
+				// Clip velocity into the surface (slide along tangent)
+				float vn = glm::dot(m_velocities[bodyId], collisionEvent.normal);
+				if (vn < 0.0f)
+				{
+					m_velocities[bodyId] -= vn * collisionEvent.normal;
+				}
+				continue;
+			}
+			else if (m_bodyType[bodyId] == BodyType::Fixed)
+			{
+				continue;
+			}
 
 			// Use the current velocity of the body for accurate response
 			vec2 vel = m_velocities[collisionEvent.body];
@@ -1159,6 +1232,18 @@ namespace WeirdEngine
 			// Store current position
 			m_previousPositions[i] = m_positions[i];
 
+			if (m_bodyType[i] == BodyType::Kinematic)
+			{
+				m_positions[i] += m_velocities[i] * timeStep;
+				m_forces[i] = vec2(0.0f);
+				continue;
+			}
+			else if (m_bodyType[i] == BodyType::Fixed)
+			{
+				m_forces[i] = vec2(0.0f);
+				continue;
+			}
+
 			// Apply forces to velocity (v = v + a*dt)
 			vec2 acc = m_forces[i] * m_invMass[i];
 			m_velocities[i] += acc * timeStep;
@@ -1183,6 +1268,11 @@ namespace WeirdEngine
 		{
 			if (!m_bodyActive[i])
 				continue;
+
+			// Kinematic and Fixed bodies preserve their velocity without damping or position rewriting
+			if (m_bodyType[i] == BodyType::Kinematic || m_bodyType[i] == BodyType::Fixed)
+				continue;
+
 			// How much did the particle actually move after constraints pushed it around?
 			vec2 newVelocity = (m_positions[i] - m_previousPositions[i]) * invTimeStep;
 
@@ -1241,6 +1331,7 @@ namespace WeirdEngine
 				m_continuousForcesWrite[id] = vec2(0.0f);
 				m_mass[id] = 1.0f;
 				m_invMass[id] = 1.0f;
+				m_bodyType[id] = BodyType::Dynamic;
 				m_collisionMap[id] = false;
 				m_collisionEnabled[id] = 1;
 				m_positionsAux[id] = vec2(0.0f);
@@ -1301,6 +1392,8 @@ namespace WeirdEngine
 		m_bodyActive[fromId] = 0;
 		m_collisionEnabled[toId] = m_collisionEnabled[fromId];
 		m_collisionEnabled[fromId] = 1;
+		m_bodyType[toId] = m_bodyType[fromId];
+		m_bodyType[fromId] = BodyType::Dynamic;
 
 		if (toId != fromId)
 		{
@@ -1531,27 +1624,44 @@ namespace WeirdEngine
 		return previousSize != m_distanceConstraints.size();
 	}
 
-	void Simulation2D::fix(SimulationID id)
+	void Simulation2D::setBodyType(SimulationID id, BodyType type)
 	{
-		enqueueCommand({PhysicsCommandType::Fix, id});
+		WEIRD_ASSERT(id < m_allocated, "setBodyType called with invalid simulation id");
+		enqueueCommand({PhysicsCommandType::SetBodyType, id, vec2(0.0f), static_cast<float>(type)});
 	}
 
-	void Simulation2D::unFix(SimulationID id)
+	BodyType Simulation2D::getBodyType(SimulationID id)
 	{
-		enqueueCommand({PhysicsCommandType::UnFix, id});
-	}
-
-	bool Simulation2D::isFixed(SimulationID id)
-	{
+		WEIRD_ASSERT(id < m_allocated, "getBodyType called with invalid simulation id");
 		if (!isPhysicsExecutionContext())
 		{
-			bool result = false;
-			executeSynchronous([&] { result = isFixed(id); });
+			BodyType result = BodyType::Dynamic;
+			executeSynchronous([&] { result = getBodyType(id); });
 			return result;
 		}
 
 		std::lock_guard<std::mutex> lock(m_structuralMutex);
-		return std::find(m_fixedObjects.begin(), m_fixedObjects.end(), id) != m_fixedObjects.end();
+		return m_bodyType[id];
+	}
+
+	void Simulation2D::fix(SimulationID id)
+	{
+		setBodyType(id, BodyType::Fixed);
+	}
+
+	void Simulation2D::unFix(SimulationID id)
+	{
+		setBodyType(id, BodyType::Dynamic);
+	}
+
+	bool Simulation2D::isFixed(SimulationID id)
+	{
+		return getBodyType(id) == BodyType::Fixed;
+	}
+
+	bool Simulation2D::isKinematic(SimulationID id)
+	{
+		return getBodyType(id) == BodyType::Kinematic;
 	}
 
 	void Simulation2D::enableCollision(SimulationID id)

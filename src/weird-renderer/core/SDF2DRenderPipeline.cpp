@@ -159,10 +159,8 @@ namespace WeirdEngine
 			m_jumpFloodInitRender = RenderTarget(false);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
-			m_jumpFloodTexturePong =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPing = RenderTarget(false);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 			m_jumpFloodRenderPong = RenderTarget(false);
@@ -309,12 +307,10 @@ namespace WeirdEngine
 			m_jumpFloodInitTexture = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodInitRender.bindColorTextureToFrameBuffer(m_jumpFloodInitTexture);
 
-			m_jumpFloodTexturePing =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodTexturePing = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPing.bindColorTextureToFrameBuffer(m_jumpFloodTexturePing);
 
-			m_jumpFloodTexturePong =
-				Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
+			m_jumpFloodTexturePong = Texture(m_distanceSampleWidth, m_distanceSampleHeight, Texture::TextureType::Data);
 			m_jumpFloodRenderPong.bindColorTextureToFrameBuffer(m_jumpFloodTexturePong);
 
 			m_distanceUpscaled = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
@@ -695,8 +691,7 @@ namespace WeirdEngine
 			m_jumpFloodStepShader.setUniform("t_prevSeeds", 0);
 			m_jumpFloodStepShader.setUniform("u_texelSize",
 											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
-			m_jumpFloodStepShader.setUniform("u_resolution",
-											 glm::ivec2(m_distanceSampleWidth, m_distanceSampleHeight));
+			m_jumpFloodStepShader.setUniform("u_resolution", glm::ivec2(m_distanceSampleWidth, m_distanceSampleHeight));
 
 			int jump = startJump;
 			bool first = true;

@@ -119,6 +119,8 @@ void main()
 	int startIndex = int(cellData.x);
 	int count = int(cellData.y);
 
+	float minDotDist = 1e6; // Far value; must exceed any real distance so empty cells leave the shape field untouched
+
 	for (int i = 0; i < count; i++)
 	{
 		int flatIndex = startIndex + i;
@@ -139,13 +141,16 @@ void main()
 
 #ifdef BLEND_SHAPES
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-		minDist = fOpUnionSoft(objectDist, minDist, u_k, inv_k);
+		minDotDist = fOpUnionSoft(objectDist, minDotDist, u_k, inv_k);
 		minColorDist = min(minColorDist, objectDist);
 #else
-		finalMaterialId = objectDist <= minDist ? materialId : finalMaterialId;
-		minDist = min(minDist, objectDist);
+		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
+		minColorDist = min(minColorDist, objectDist);
+		minDotDist = min(minDotDist, objectDist);
 #endif
 	}
+
+	minDist = min(minDist, minDotDist);
 
 #ifdef UI_PIPELINE
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode

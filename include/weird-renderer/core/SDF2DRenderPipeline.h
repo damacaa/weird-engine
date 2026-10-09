@@ -73,7 +73,6 @@ namespace WeirdEngine
 			Shader m_distanceShader;
 			Shader m_jumpFloodInitShader;
 			Shader m_jumpFloodStepShader;
-			Shader m_distanceCorrectionShader;
 			Shader m_distanceUpscalerShader;
 			Shader m_materialColorShader;
 			Shader m_materialBlendShader;
@@ -98,9 +97,7 @@ namespace WeirdEngine
 			RenderTarget m_jumpFloodRenderPing;
 			RenderTarget m_jumpFloodRenderPong;
 			RenderTarget* m_jumpFloodDoubleBuffer[2];
-
-			Texture m_distanceTextureCorrected;
-			RenderTarget m_distanceCorrectionRender;
+			int m_lastFloodTextureIdx = 0;
 
 			Texture m_distanceUpscaled;
 			RenderTarget m_distanceUpscaler;
@@ -159,7 +156,7 @@ namespace WeirdEngine
 										   const Camera& camera);
 			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
 									 double time, double delta);
-			void applyJumpFloodCorrection(double time);
+			void applyJumpFloodCorrection();
 			void upscaleDistance();
 			void renderMaterialColors(const Material2D* materials, const Camera& camera, double time, double delta);
 			void blendMaterials(double time);

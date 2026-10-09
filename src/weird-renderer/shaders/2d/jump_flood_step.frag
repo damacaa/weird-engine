@@ -2,21 +2,17 @@
 precision highp float;
 precision highp int;
 
-// Constants
-
 // Outputs u_staticColors in RGBA
 layout(location = 0) out vec4 FragColor;
 
 // Inputs from vertex shader
-in vec3 v_worldPos;
-in vec3 v_normal;
-in vec3 v_color;
 in vec2 v_texCoord;
 
 // Uniforms
 uniform sampler2D t_prevSeeds; // previous seed texture
-uniform vec2 u_jumpSize;	   // in UV units (so jump in pixels / texture size)
+uniform int u_jump;			   // jump distance in texels
 uniform vec2 u_texelSize;	   // 1.0 / texture resolution (e.g., 1/width, 1/height)
+uniform ivec2 u_resolution;	   // texture resolution in texels
 
 float distanceSqrt(vec2 a, vec2 b)
 {
@@ -28,32 +24,31 @@ float distanceSqrt(vec2 a, vec2 b)
 	return dot(d, d);
 }
 
+// 8 directions
+const ivec2 OFFSETS[8] = ivec2[8](ivec2(-1, 0), ivec2(1, 0), ivec2(0, -1), ivec2(0, 1), ivec2(-1, -1), ivec2(-1, 1),
+								  ivec2(1, -1), ivec2(1, 1));
+
 void main()
 {
 	vec2 uv = v_texCoord;
+	ivec2 coord = ivec2(gl_FragCoord.xy);
 
-	vec3 data = texture(t_prevSeeds, uv).xyz;
+	vec3 data = texelFetch(t_prevSeeds, coord, 0).xyz;
 	// Current best seed from previous pass
 	vec2 bestSeed = data.xy;
-	// TODO: include in output and read from texture instead
-	// TODO: replace distance with distanceSqrt to avoid square roots, real distance will be calculated in a different
-	// shader
 	float bestDist = data.z;
-
-	// 8 directions
-	const vec2 OFFSETS[8] = vec2[8](vec2(-1.0, 0.0), vec2(1.0, 0.0), vec2(0.0, -1.0), vec2(0.0, 1.0), vec2(-1.0, -1.0),
-									vec2(-1.0, 1.0), vec2(1.0, -1.0), vec2(1.0, 1.0));
 
 	// Check neighbors at jump distance
 	for (int i = 0; i < 8; i++)
 	{
-		vec2 sampleUV = uv + (OFFSETS[i] * u_jumpSize);
+		ivec2 sampleCoord = coord + (OFFSETS[i] * u_jump);
 
-		// Optional: clamp or skip if out of bounds
-		if (sampleUV.x < 0.0 || sampleUV.x > 1.0 || sampleUV.y < 0.0 || sampleUV.y > 1.0)
+		// Skip samples outside the texture
+		if (sampleCoord.x < 0 || sampleCoord.y < 0 || sampleCoord.x >= u_resolution.x ||
+			sampleCoord.y >= u_resolution.y)
 			continue;
 
-		vec2 nSeed = texture(t_prevSeeds, sampleUV).xy;
+		vec2 nSeed = texelFetch(t_prevSeeds, sampleCoord, 0).xy;
 
 		if (nSeed.x < 0.0) // invalid
 			continue;

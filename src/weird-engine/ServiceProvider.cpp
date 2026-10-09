@@ -391,8 +391,10 @@ namespace WeirdEngine
 					{
 						case CombinationType::Addition:
 							if (dist < currentMinDistance)
+							{
 								closestEntityUpdated = true;
-							currentMinDistance = dist;
+								currentMinDistance = dist;
+							}
 							break;
 						case CombinationType::Subtraction:
 							currentMinDistance = std::max(currentMinDistance, -dist);
@@ -538,6 +540,11 @@ namespace WeirdEngine
 		return sampler.sample(point);
 	}
 
+	float PhysicsService::sampleDistance(vec2 point, bool includeRigidbodies)
+	{
+		return sampleAt(point, includeRigidbodies).distance;
+	}
+
 	RaymarchResult PhysicsService::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance,
 											bool includeRigidbodies)
 	{
@@ -567,5 +574,32 @@ namespace WeirdEngine
 		}
 
 		return {traveled, INVALID_ENTITY};
+	}
+
+	glm::vec2 PhysicsService::sampleGradient(vec2 point, bool includeRigidbodies, float epsilon)
+	{
+		if (epsilon <= 0.0f)
+		{
+			epsilon = 0.005f;
+		}
+
+		SceneSampler sampler(m_registry, m_sdfs, static_cast<float>(m_simulation.getSimulationTime()),
+							 includeRigidbodies ? &m_simulation : nullptr);
+
+		float dx =
+			sampler.sample(point + vec2(epsilon, 0.0f)).distance - sampler.sample(point - vec2(epsilon, 0.0f)).distance;
+		float dy =
+			sampler.sample(point + vec2(0.0f, epsilon)).distance - sampler.sample(point - vec2(0.0f, epsilon)).distance;
+
+		vec2 grad(dx, dy);
+		float len = glm::length(grad);
+		vec2 normal = (len > 0.0001f) ? (grad / len) : vec2(0.0f, 1.0f);
+
+		if (std::isnan(normal.x) || std::isnan(normal.y))
+		{
+			normal = vec2(0.0f, 1.0f);
+		}
+
+		return normal;
 	}
 } // namespace WeirdEngine

@@ -151,6 +151,7 @@ namespace WalkSceneNamespace
 		}
 
 		auto& previewUi = registry.getComponent<UIShape>(state.previewBox);
+		auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
 
 		if (!state.isCreatingBox)
 		{
@@ -170,7 +171,7 @@ namespace WalkSceneNamespace
 			if (state.isCreatingBox)
 			{
 				vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
-				state.boxStart = screen;
+				state.boxStart = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 				// Position initial outline box cursor at click
 				previewUi.parameters[DefaultShapes::BoxLine::PosX] = screen.x;
@@ -190,8 +191,9 @@ namespace WalkSceneNamespace
 			if (services.input().getMouseButton(activeBtn))
 			{
 				vec2 currentScreen = {services.input().getMouseX(), services.input().getMouseY()};
-				vec2 pos = (currentScreen + state.boxStart) / 2.0f;
-				vec2 size = 0.5f * glm::abs(currentScreen - state.boxStart);
+				vec2 startScreen = ECS::Camera::worldPosition2DToScreenPosition(cam, state.boxStart);
+				vec2 pos = (currentScreen + startScreen) / 2.0f;
+				vec2 size = 0.5f * glm::abs(currentScreen - startScreen);
 
 				previewUi.parameters[DefaultShapes::BoxLine::PosX] = pos.x;
 				previewUi.parameters[DefaultShapes::BoxLine::PosY] = pos.y;
@@ -205,13 +207,11 @@ namespace WalkSceneNamespace
 			{
 				state.isCreatingBox = false;
 
-				auto& cam = registry.getComponent<Transform>(services.render().getCameraEntity());
 				vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
-				vec2 worldStart = ECS::Camera::screenPositionToWorldPosition2D(cam, state.boxStart);
 				vec2 worldEnd = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
-				vec2 pos = (worldEnd + worldStart) / 2.0f;
-				vec2 size = 0.5f * glm::abs(worldEnd - worldStart);
+				vec2 pos = (worldEnd + state.boxStart) / 2.0f;
+				vec2 size = 0.5f * glm::abs(worldEnd - state.boxStart);
 
 				// If clicked without significant drag, spawn a handy default platform
 				if (size.x < 0.4f && size.y < 0.4f)

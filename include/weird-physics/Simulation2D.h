@@ -122,6 +122,7 @@ namespace WeirdEngine
 		void update(double delta);
 
 		double getSimulationTime();
+		void setSimulationTime(double time);
 		double getDeltaTime()
 		{
 			return m_fixedDeltaTime;

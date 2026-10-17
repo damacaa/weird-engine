@@ -23,6 +23,7 @@ namespace WeirdEngine
 
 		json j;
 		j["version"] = 1;
+		j["simulationTime"] = scene.m_simulation2D.getSimulationTime();
 
 		// Save camera state
 		{
@@ -125,12 +126,13 @@ namespace WeirdEngine
 					continue;
 				auto& rb = rigidBodyArray->getDataAtIdx(i);
 				vec2 simPos = scene.m_simulation2D.getPosition(rb.simulationId);
+				BodyType effectiveType = rb.isFixed ? BodyType::Fixed : rb.type;
 				auto& ej = collectEntity(e);
 				ej["rigidBody2D"] = {{"simulationId", rb.simulationId},
 									 {"physicsPosition", {simPos.x, simPos.y}},
 									 {"velocity", {rb.velocity.x, rb.velocity.y}},
 									 {"mass", rb.mass},
-									 {"isFixed", rb.isFixed},
+									 {"bodyType", static_cast<int>(effectiveType)},
 									 {"enableCollision", rb.enableCollision}};
 			}
 
@@ -255,6 +257,12 @@ namespace WeirdEngine
 			return;
 		}
 
+		// Restore simulation time if present
+		if (j.contains("simulationTime"))
+		{
+			scene.m_simulation2D.setSimulationTime(j["simulationTime"].get<double>());
+		}
+
 		// Restore camera state
 		if (j.contains("camera"))
 		{
@@ -377,10 +385,22 @@ namespace WeirdEngine
 						rb.velocity = vec2(rbj["velocity"][0].get<float>(), rbj["velocity"][1].get<float>());
 					}
 					rb.mass = rbj.value("mass", 1.0f);
-					if (rbj.contains("isFixed"))
+					if (rbj.contains("bodyType"))
+					{
+						rb.type = static_cast<BodyType>(rbj["bodyType"].get<int>());
+						rb.isFixed = (rb.type == BodyType::Fixed);
+					}
+					else if (rbj.contains("type"))
+					{
+						rb.type = static_cast<BodyType>(rbj["type"].get<int>());
+						rb.isFixed = (rb.type == BodyType::Fixed);
+					}
+					else if (rbj.contains("isFixed"))
 					{
 						rb.isFixed = rbj.value("isFixed", false);
+						rb.type = rb.isFixed ? BodyType::Fixed : BodyType::Dynamic;
 					}
+
 					if (rbj.contains("enableCollision"))
 					{
 						rb.enableCollision = rbj.value("enableCollision", true);
@@ -541,6 +561,7 @@ namespace WeirdEngine
 						{
 							auto& rb = scene.m_registry.getComponent<RigidBody2D>(e);
 							rb.isFixed = true;
+							rb.type = BodyType::Fixed;
 							scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(e, true);
 						}
 						// The actual fix will happen in PhysicsSystem2D::update thanks to isDirty=true

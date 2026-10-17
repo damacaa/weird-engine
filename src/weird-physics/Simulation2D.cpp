@@ -470,6 +470,11 @@ namespace WeirdEngine
 		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
 	}
+
+	void Simulation2D::setSimulationTime(double time)
+	{
+		m_simulationTime.store(time);
+	}
 	void Simulation2D::setUserData(SimulationID id, std::unique_ptr<BodyUserData> data)
 	{
 		WEIRD_ASSERT(!isPhysicsExecutionContext(), "setUserData() may not be called from physics execution context");

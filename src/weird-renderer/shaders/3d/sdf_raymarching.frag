@@ -678,11 +678,17 @@ vec3 getColor(vec3 p)
 	return getMaterial(p, int(scene.y));
 }
 
-float rayMarch(vec3 ro, vec3 rd)
+struct RayHit
 {
-	float hit;
+	float dist;
+	bool hit;
+};
 
+RayHit rayMarch(vec3 ro, vec3 rd)
+{
+	float hit = 1.0;
 	float traveled = u_near;
+	bool hasHit = false;
 
 	for (int i = 0; i < MAX_STEPS; i++)
 	{
@@ -690,15 +696,32 @@ float rayMarch(vec3 ro, vec3 rd)
 
 		hit = sceneSdf(p).x;
 
-		if (abs(hit) < RAYMARCH_EPSILON || traveled > u_far)
+		// Distance-adaptive precision: scale threshold with distance
+		float precis = max(RAYMARCH_EPSILON, traveled * 0.0005);
+
+		if (abs(hit) < precis)
+		{
+			hasHit = true;
+			break;
+		}
+
+		if (traveled > u_far)
 			break;
 
 		traveled += hit;
 	}
 
-	// traveled += sceneSdf(ro + rd * traveled).x; // Final SDF evaluation to reduce overshoot
+	// Also treat rays that reached near the surface before running out of steps as hits
+	if (!hasHit && traveled <= u_far)
+	{
+		float fallbackPrecis = max(RAYMARCH_EPSILON, traveled * 0.002);
+		if (abs(hit) < fallbackPrecis)
+		{
+			hasHit = true;
+		}
+	}
 
-	return traveled;
+	return RayHit(traveled, hasHit && (traveled <= u_far));
 }
 
 vec3 getNormal(vec3 p)
@@ -762,11 +785,11 @@ vec3 getSkyColor(vec3 dir)
 	vec3 horizonColor = vec3(0.5, 0.6, 0.7);
 	vec3 groundColor = vec3(0.1, 0.1, 0.12);
 
-	vec3 sky = mix(horizonColor, zenithColor, pow(t, 0.4));
+	vec3 sky = mix(horizonColor, zenithColor, pow(t, 0.85));
 	if (dir.y < 0.0)
 	{
 		// Fake ground bounce color below horizon
-		sky = mix(horizonColor, groundColor, pow(-dir.y, 0.5));
+		sky = mix(horizonColor, groundColor, pow(-dir.y, 0.85));
 	}
 
 	// Procedural pseudo-Sun using the first directional light
@@ -780,6 +803,15 @@ vec3 getSkyColor(vec3 dir)
 	}
 
 	return sky;
+}
+
+vec3 getFogColor(vec3 dir)
+{
+	// Atmosphere fog color matches the horizon sky color in that azimuthal direction
+	vec2 horiz = dir.xz;
+	float len = length(horiz);
+	vec3 horizonDir = (len > 0.0001) ? vec3(horiz.x / len, 0.0, horiz.y / len) : vec3(0.0, 0.0, 1.0);
+	return getSkyColor(horizonDir);
 }
 
 // === Unified BRDF parameters (shared by realtime & path tracer) =============
@@ -938,11 +970,8 @@ vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, f
 
 		// Shadowing
 #ifdef PATH_TRACING
-		float dLight = rayMarch(p + N * 0.01, L);
-
-		// Check if we hit nothing before reaching the light (or if the ray just ran out of steps grazing the
-		// surface)
-		bool hitObstacle = (dLight < lightDist) && (sceneSdf(p + N * 0.01 + dLight * L).x < RAYMARCH_EPSILON * 5.0);
+		RayHit shadowHit = rayMarch(p + N * 0.01, L);
+		bool hitObstacle = shadowHit.hit && (shadowHit.dist < lightDist);
 		float shadow = hitObstacle ? 0.0 : 1.0;
 #else
 		float shadow = softShadow(p + N * 0.01, L, lightDist, 1.0 / softness);
@@ -1061,7 +1090,8 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		vec3 bounceDir = isSpecular ? specularDir : diffuseDir;
 		currentRd = bounceDir;
 
-		float d = rayMarch(p + N * 0.01, bounceDir);
+		RayHit bounceHit = rayMarch(p + N * 0.01, bounceDir);
+		float d = bounceHit.dist;
 
 		// modulate throughput based on branch
 		if (isSpecular)
@@ -1069,7 +1099,14 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		else
 			throughput *= currentAlbedo;
 
-		bool bounceHitObstacle = (d < u_far) && (sceneSdf(p + N * 0.01 + d * bounceDir).x < RAYMARCH_EPSILON * 5.0);
+		bool bounceHitObstacle = bounceHit.hit && (d < u_far);
+
+		// Distance fog along the bounce ray
+		float bounceFogStart = u_far * 0.50;
+		float bounceFogEnd = u_far * 0.95;
+		float bounceFog = smoothstep(bounceFogStart, bounceFogEnd, d);
+		vec3 bounceFogColor = getFogColor(bounceDir);
+		float bounceFactor = isSpecular ? 1.0 : 0.5;
 
 		if (!bounceHitObstacle)
 		{
@@ -1078,11 +1115,21 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 
 			// Keep sky at full brightness for reflections, but dim it for diffuse ambient lighting
 			float skyIntensity = isSpecular ? 1.0 : SKY_AMBIENT_DIFFUSE_WEIGHT;
-			finalColor += throughput * getSkyColor(bounceDir) * skyIntensity;
+			vec3 skyCol = (bounceDir.y < 0.0) ? bounceFogColor : getSkyColor(bounceDir);
+			finalColor += throughput * skyCol * skyIntensity;
 			break;
 		}
 		else
 		{
+			// Apply atmospheric distance fog to the reflection
+			finalColor += throughput * bounceFogColor * bounceFog * bounceFactor;
+			throughput *= (1.0 - bounceFog);
+
+			if (bounceFog >= 1.0)
+			{
+				break;
+			}
+
 			p = p + N * 0.01 + d * bounceDir;
 			// Jitter the material sampling point on bounces too, so
 			// smooth-union color blending works for indirect lighting.
@@ -1099,7 +1146,7 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			roughness = u_materials[bounceMatId].roughness;
 			f0 = u_materials[bounceMatId].metallic;
 
-			vec3 emission = max(bounceMaterial - vec3(1.0), vec3(0.0));
+			vec3 emission = max(bounceMaterial - vec3(1.0), vec3(0.0)) + (u_materials[bounceMatId].emission * bounceMaterial);
 			currentAlbedo = min(bounceMaterial, vec3(1.0));
 
 			finalColor += throughput * emission; // Emit light from the glowing object!
@@ -1121,7 +1168,8 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	vec3 specularDir = normalize(R + dither3(100.0) * roughness);
 	if (dot(specularDir, N) < 0.0)
 		specularDir = R; // prevent pointing inside
-	finalColor += fresnel * mix(vec3(1.0), currentAlbedo, f0) * getSkyColor(specularDir);
+	vec3 reflectionColor = (specularDir.y < 0.0) ? getFogColor(specularDir) : getSkyColor(specularDir);
+	finalColor += fresnel * mix(vec3(1.0), currentAlbedo, f0) * reflectionColor;
 
 	// 3. Ambient. The path tracer lights shadowed areas via multi-bounce
 	//    interreflection; realtime approximates that with these terms:
@@ -1181,12 +1229,14 @@ vec4 render(in vec2 uv)
 	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample); // eye-space metres
 
 	// Ray march SDF
-	float object = rayMarch(ro, rd);
+	RayHit sdfHit = rayMarch(ro, rd);
+	float object = sdfHit.dist;
 
 	// --- THE FIX ---
 	// Convert Euclidean ray distance to Planar View-Z distance!
 	vec3 rdCam = normalize(vec3(uv, -u_fov));
-	float planarDepth = object * abs(rdCam.z);
+	float absCosAngle = max(abs(rdCam.z), 0.0001);
+	float planarDepth = object * absCosAngle;
 
 	// Use planar depth to properly compare against the G-Buffer
 	float minDepth = planarDepth;
@@ -1196,12 +1246,21 @@ vec4 render(in vec2 uv)
 	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near);
 	float sdfDepthNDC = (z_n + 1.0) * 0.5;
 
-	// Determine whether a valid mesh pixel is closer than the SDF hit
+	// Determine whether a valid mesh or SDF hit occurred
 	bool meshValid = (meshDepthSample < 1.0 - 0.0001);
-	bool meshInFront = meshValid && (meshDepthLinear < minDepth);
+	bool sdfValid = sdfHit.hit && (object < u_far);
+	bool meshInFront = meshValid && (!sdfValid || meshDepthLinear < minDepth);
 
-	// Output color
-	vec3 col = getSkyColor(rd);
+	// Atmospheric distance fog: keep foreground and midground clear, fade smoothly into horizon in the distance
+	float fogStart = u_far * 0.50;
+	float fogEnd = u_far * 0.95;
+
+	// Distant atmospheric horizon fog color
+	vec3 fogColor = getFogColor(rd);
+
+	// Output color for sky / infinite distance:
+	// If looking below horizon into empty distance, fade into horizon fog rather than fake dark ground bounce
+	vec3 col = (rd.y < 0.0) ? fogColor : getSkyColor(rd);
 
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
@@ -1233,13 +1292,14 @@ vec4 render(in vec2 uv)
 
 		col = integrate(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
 
-		// Fog at mesh depth
-		float fog = smoothstep(u_far * 0.0, u_far, meshDepthLinear);
-		col = mix(col, getSkyColor(rd), fog);
+		// Fog at mesh depth (Euclidean distance along ray)
+		float meshEuclideanDist = meshDepthLinear / absCosAngle;
+		float fog = smoothstep(fogStart, fogEnd, meshEuclideanDist);
+		col = mix(col, fogColor, fog);
 
 		finalDepth = meshDepthSample;
 	}
-	else if (minDepth < u_far)
+	else if (sdfValid)
 	{
 		// --- SDF hit is in front ---
 		vec3 p = ro + object * rd;
@@ -1273,15 +1333,16 @@ vec4 render(in vec2 uv)
 
 		col = integrate(p, rd, baseColor, materialId, N, seed);
 
-		float fog = smoothstep(u_far * 0.0, u_far, minDepth);
-		col = mix(col, getSkyColor(rd), fog);
+		// Fog at SDF depth (Euclidean distance along ray)
+		float fog = smoothstep(fogStart, fogEnd, object);
+		col = mix(col, fogColor, fog);
 
 		finalDepth = sdfDepthNDC;
 	}
 	else
 	{
 		// Sky
-		finalDepth = sdfDepthNDC;
+		finalDepth = 1.0;
 	}
 
 	return vec4(col, finalDepth);

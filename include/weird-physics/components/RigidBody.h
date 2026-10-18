@@ -27,5 +27,6 @@ namespace WeirdEngine
 		BodyType type = BodyType::Dynamic;
 		bool isFixed = false;
 		bool enableCollision = true;
+		bool enableShapeCollision = true;
 	};
 } // namespace WeirdEngine

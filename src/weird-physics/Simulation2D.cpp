@@ -79,6 +79,7 @@ namespace WeirdEngine
 		, m_radious(m_diameter / 2.0f)
 		, m_bodyActive(size, 0)
 		, m_collisionEnabled(size, 1)
+		, m_shapeCollisionEnabled(size, 1)
 		, m_bodyType(size, BodyType::Dynamic)
 		, m_collisionMap(size)
 		, m_head(8191, -1)
@@ -349,6 +350,23 @@ namespace WeirdEngine
 						}
 						break;
 					}
+					case PhysicsCommandType::EnableShapeCollision:
+					{
+						if (cmd.id < m_allocated)
+						{
+							m_shapeCollisionEnabled[cmd.id] = 1;
+						}
+						break;
+					}
+					case PhysicsCommandType::DisableShapeCollision:
+					{
+						if (cmd.id < m_allocated)
+						{
+							m_shapeCollisionEnabled[cmd.id] = 0;
+							m_collisionMap[cmd.id] = false;
+						}
+						break;
+					}
 					default:
 						break;
 				}
@@ -469,6 +487,11 @@ namespace WeirdEngine
 	{
 		// std::lock_guard<std::mutex> lock(g_simulationTimeMutex);
 		return m_simulationTime;
+	}
+
+	void Simulation2D::setSimulationTime(double time)
+	{
+		m_simulationTime.store(time);
 	}
 	void Simulation2D::setUserData(SimulationID id, std::unique_ptr<BodyUserData> data)
 	{
@@ -638,7 +661,7 @@ namespace WeirdEngine
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
-			if (!m_bodyActive[i] || !m_collisionEnabled[i])
+			if (!m_bodyActive[i] || !m_collisionEnabled[i] || !m_shapeCollisionEnabled[i])
 				continue;
 			if (m_bodyType[i] == BodyType::Fixed)
 				continue;
@@ -1068,7 +1091,7 @@ namespace WeirdEngine
 		// Shape collisions
 		for (auto& collisionEvent : m_collisionQueue)
 		{
-			if (!m_collisionEnabled[collisionEvent.body])
+			if (!m_collisionEnabled[collisionEvent.body] || !m_shapeCollisionEnabled[collisionEvent.body])
 				continue;
 
 			// Send event
@@ -1334,6 +1357,7 @@ namespace WeirdEngine
 				m_bodyType[id] = BodyType::Dynamic;
 				m_collisionMap[id] = false;
 				m_collisionEnabled[id] = 1;
+				m_shapeCollisionEnabled[id] = 1;
 				m_positionsAux[id] = vec2(0.0f);
 				m_velocitiesAux[id] = vec2(0.0f);
 				std::lock_guard<std::recursive_mutex> lock(m_userDataMutex);
@@ -1392,6 +1416,8 @@ namespace WeirdEngine
 		m_bodyActive[fromId] = 0;
 		m_collisionEnabled[toId] = m_collisionEnabled[fromId];
 		m_collisionEnabled[fromId] = 1;
+		m_shapeCollisionEnabled[toId] = m_shapeCollisionEnabled[fromId];
+		m_shapeCollisionEnabled[fromId] = 1;
 		m_bodyType[toId] = m_bodyType[fromId];
 		m_bodyType[fromId] = BodyType::Dynamic;
 
@@ -1694,6 +1720,38 @@ namespace WeirdEngine
 		if (id >= m_allocated)
 			return false;
 		return m_collisionEnabled[id] != 0;
+	}
+
+	void Simulation2D::enableShapeCollision(SimulationID id)
+	{
+		enqueueCommand({PhysicsCommandType::EnableShapeCollision, id});
+	}
+
+	void Simulation2D::disableShapeCollision(SimulationID id)
+	{
+		enqueueCommand({PhysicsCommandType::DisableShapeCollision, id});
+	}
+
+	void Simulation2D::setShapeCollisionEnabled(SimulationID id, bool enabled)
+	{
+		if (enabled)
+			enableShapeCollision(id);
+		else
+			disableShapeCollision(id);
+	}
+
+	bool Simulation2D::isShapeCollisionEnabled(SimulationID id)
+	{
+		if (!isPhysicsExecutionContext())
+		{
+			bool result = false;
+			executeSynchronous([&] { result = isShapeCollisionEnabled(id); });
+			return result;
+		}
+
+		if (id >= m_allocated)
+			return false;
+		return m_shapeCollisionEnabled[id] != 0;
 	}
 
 	// Safe from any thread (main thread, or physics callbacks while the

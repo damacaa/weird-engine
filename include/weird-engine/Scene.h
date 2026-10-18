@@ -196,6 +196,7 @@ namespace WeirdEngine
 		void renderAudioTab();
 		void renderCustomUI();
 		void renderPhysicsStatsUI();
+		void renderConstraintsDebug();
 
 		// ---- Scene state access (engine-driven)
 		WeirdRenderer::Camera& getCamera();
@@ -278,6 +279,7 @@ namespace WeirdEngine
 		Simulation2D m_simulation2D;
 		bool m_runSimulationInThread;
 		bool m_simulationIsPaused = false;
+		bool m_debugDrawConstraints = false;
 
 		// ---- Collision queues (physics thread pushes, main thread drains)
 		std::mutex m_collisionQueueMutex;

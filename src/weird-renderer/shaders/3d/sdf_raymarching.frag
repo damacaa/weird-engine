@@ -211,7 +211,6 @@ const float NORMAL_EPSILON = 0.0001;
 uniform float u_near;
 uniform float u_far;
 
-const float OVERSHOOT = 1.0;
 const float DOT_BLEND_K = 0.2;
 
 // === Render Style Parameters (Post-Processing) =================
@@ -412,7 +411,7 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 	{
 		vec2 offset = HashID(float(objectId)); // +1 to avoid zero ID correlation
 
-#ifdef PATH_TRACING
+#if defined(PATH_TRACING) || defined(ANTIALIASING)
 		// Step through all 16 states of the 4x4 Bayer matrix using the frame counter.
 		// Since we have Temporal Accumulation (TAA), this perfectly averages out the dither noise
 		// into smooth glass-like transparency over 16 frames!
@@ -599,7 +598,7 @@ vec3 sceneSdf(vec3 p)
 	return vec3(minDist, max(float(finalMaterialId), 0.0), globalBlend);
 }
 
-vec3 getMaterial(vec3 p, int id)
+vec3 getMaterial(vec3 p, int id, vec3 N, vec3 dpdx, vec3 dpdy)
 {
 	vec3 color = id < 16 ? u_materials[id].color.xyz : (0.83 * vec3(1.0));
 	vec3 secondaryColor = id < 16 ? u_materials[id].secondaryColor.xyz : vec3(0.0);
@@ -613,7 +612,39 @@ vec3 getMaterial(vec3 p, int id)
 
 		if (pattern == 1)
 		{
-			patternShape = mod(floor(sp.x) + floor(sp.y) + floor(sp.z), 2.0);
+			// Triplanar 2D coordinates: project onto the surface tangent plane using dominant normal axis.
+			// This avoids 3D voxel boundary numerical artifacts and step-count concentric rings on planes.
+			vec2 uv;
+			vec2 d_uv_x;
+			vec2 d_uv_y;
+
+			vec3 absN = abs(N);
+			if (absN.y >= absN.x && absN.y >= absN.z)
+			{
+				uv = sp.xz;
+				d_uv_x = dpdx.xz * patternScale;
+				d_uv_y = dpdy.xz * patternScale;
+			}
+			else if (absN.x >= absN.z)
+			{
+				uv = sp.yz;
+				d_uv_x = dpdx.yz * patternScale;
+				d_uv_y = dpdy.yz * patternScale;
+			}
+			else
+			{
+				uv = sp.xy;
+				d_uv_x = dpdx.xy * patternScale;
+				d_uv_y = dpdy.xy * patternScale;
+			}
+
+			vec2 w = max(abs(d_uv_x) + abs(d_uv_y), 0.001);
+			vec2 i = 2.0 * (abs(fract((uv - 0.5 * w) * 0.5) - 0.5) - abs(fract((uv + 0.5 * w) * 0.5) - 0.5)) / w;
+
+			// Window out periodic box-filter sidelobes to guarantee smooth monotonic fade without ringing
+			i *= clamp(1.0 - smoothstep(0.6, 1.0, w), 0.0, 1.0);
+
+			patternShape = 0.5 - 0.5 * i.x * i.y;
 		}
 		else if (pattern == 2) // Perlin Noise
 		{
@@ -629,6 +660,16 @@ vec3 getMaterial(vec3 p, int id)
 	}
 
 	return color;
+}
+
+vec3 getMaterial(vec3 p, int id, vec3 dpdx, vec3 dpdy)
+{
+	return getMaterial(p, id, vec3(0.0, 1.0, 0.0), dpdx, dpdy);
+}
+
+vec3 getMaterial(vec3 p, int id)
+{
+	return getMaterial(p, id, vec3(0.0, 1.0, 0.0), dFdx(p), dFdy(p));
 }
 
 vec3 getColor(vec3 p)
@@ -688,30 +729,6 @@ vec3 getNormal(vec3 p)
 	vec2 e = vec2(NORMAL_EPSILON, 0.0);
 	vec3 n = vec3(sceneSdf(p).x) - vec3(sceneSdf(p - e.xyy).x, sceneSdf(p - e.yxy).x, sceneSdf(p - e.yyx).x);
 	return normalize(n);
-}
-
-vec3 getPointLight(vec3 p, vec3 rd, vec3 color)
-{
-
-	vec3 lightPos = u_lights[0].position;
-
-	vec3 L = normalize(lightPos - p);
-	vec3 N = getNormal(p);
-	vec3 V = -rd;
-	vec3 R = reflect(-L, N);
-
-	vec3 specColor = vec3(0.5);
-	vec3 specular = specColor * pow(clamp(dot(R, V), 0.0, 1.0), 100.0);
-
-	vec3 diffuse = color * clamp(dot(L, N), 0.0, 1.0);
-
-	vec3 ambient = color * 0.05;
-	vec3 fresnel = 0.1 * color * pow(1.0 + dot(rd, N), 3.0);
-
-	RayHit shadowHit = rayMarch(p - rd * 0.02, normalize(lightPos));
-	float d = shadowHit.dist;
-
-	return (d > length(lightPos - p)) ? diffuse + ambient + specular + fresnel : ambient + fresnel;
 }
 
 // Random functions for path tracing
@@ -797,15 +814,217 @@ vec3 getFogColor(vec3 dir)
 	return getSkyColor(horizonDir);
 }
 
+// === Unified BRDF parameters (shared by realtime & path tracer) =============
+// Both render modes compile from the same integrator below, so every
+// parameter that affects the look lives here exactly once. Tune these to
+// change BOTH modes at the same time.
+
+// Fresnel exponent: dielectrics get a tight retro rim, metals broaden out.
+const float FRESNEL_POWER_DIELECTRIC = 50.0;
+const float FRESNEL_POWER_METALLIC = 1.0;
+
+// specMultiplier: intensity/scaling of the direct specular lobe.
+// Retro just blows it out for that classic '90s CG highlight.
+const vec3 SPEC_MULTIPLIER = vec3(5.0);
+
+// Sky ambient weights. The path tracer converges to these stochastically;
+// the realtime path applies them analytically, so ambient matches in both.
+const float SKY_AMBIENT_DIFFUSE_WEIGHT = 0.5;
+const float SKY_AMBIENT_FILL = 0.15;
+
+// Realtime only: where SDF occlusion detects nearby geometry, that geometry
+// bounces a bit of light back instead of going black. Approximates the
+// multi-bounce interreflection the path tracer resolves naturally.
+const float SKY_BOUNCE_APPROX = 0.3;
+
+// Realtime only: ambient floor so indoor / black-sky scenes never crush to
+// pure black. The path tracer resolves this via interreflection bounces.
+const float LIGHT_BOUNCE_AMBIENT = 0.01; // scales Σ light color × intensity
+const float AMBIENT_FLOOR = 0.05;		 // tiny constant neutral floor
+
+// One mapping from material roughness to Blinn-Phong exponent, used by BOTH
+// realtime and path-traced direct lighting so highlight sizes always match.
+float specExponentFromRoughness(float roughness)
+{
+	return exp2(mix(11.0, 5.0, sqrt(clamp(roughness, 0.0, 1.0))));
+}
+
+// Unified Schlick fresnel
+float computeFresnel(float f0, float cosTheta)
+{
+	float fresnelPower = mix(FRESNEL_POWER_DIELECTRIC, FRESNEL_POWER_METALLIC, f0);
+	return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), fresnelPower);
+}
+
+// Stable screen-space ordered dither in [-1,1]^3, decorrelated by `salt`.
+// Realtime mode uses this instead of RNG: it mimics the path tracer's
+// converged soft look without needing temporal accumulation.
+vec3 dither3(float salt)
+{
+	vec2 coord = gl_FragCoord.xy + HashID(salt);
+	return vec3(GetBayerThreshold(coord), GetBayerThreshold(coord + vec2(37.0, 17.0)),
+				GetBayerThreshold(coord + vec2(17.0, 37.0))) *
+			   2.0 -
+		   1.0;
+}
+
+// Light-direction jitter for soft shadows.
+// Path tracing: stochastic sample per pixel/frame — temporal accumulation
+// averages it into soft shadows.
+// Realtime: zero — exact light directions; shadow softness comes from the
+// SDF penumbra estimate in softShadow() instead.
+vec3 shadowJitter(float scale, inout float seed)
+{
+#ifdef PATH_TRACING
+	return (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * scale;
+#else
+	return vec3(0.0);
+#endif
+}
+
+// Smooth SDF soft shadows (realtime only): classic penumbra estimate. While
+// marching toward the light, the ratio of closest-approach distance to
+// travel distance gives a smooth shadow factor in [0,1]. k controls the
+// penumbra angle (larger k = harder shadows).
+float softShadow(vec3 ro, vec3 rd, float lightDist, float k)
+{
+	float res = 1.0;
+	float t = 0.05; // start bias to avoid self-shadow acne
+	for (int i = 0; i < MAX_STEPS; i++)
+	{
+		float h = sceneSdf(ro + rd * t).x;
+		res = min(res, k * h / t);
+		if (res < RAYMARCH_EPSILON || t > lightDist)
+			break;
+		t += max(h, 0.02); // full SDF step: fast in open space, dense near occluders
+	}
+	return clamp(res, 0.0, 1.0);
+}
+
+// Shared per-light direct lighting: same attenuation and same BRDF terms in
+// both modes. Only the shadow technique differs: the path tracer jitters the
+// light direction stochastically (accumulates into soft shadows), realtime
+// uses exact directions with an analytic SDF penumbra.
+vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, float fresnel, inout float seed)
+{
+	vec3 V = -rd;
+	vec3 directLighting = vec3(0.0);
+
+	for (int i = 0; i < u_numLights; i++)
+	{
+		Light light = u_lights[i];
+
+		vec3 L;
+		float lightDist;
+		float attenuation = 1.0;
+		// Angular softness of this light. The path tracer jitters L by this
+		// amount; realtime feeds 1/softness as the penumbra hardness below,
+		// so both modes produce matching penumbra sizes.
+		float softness;
+
+		if (light.type == 0)
+		{
+			// Directional
+			L = light.direction;
+			lightDist = u_far * 0.5;
+			softness = 0.05;
+		}
+		else if (light.type == 1)
+		{
+			// Point
+			vec3 lightVec = light.position - p;
+			lightDist = length(lightVec);
+			L = lightVec;
+
+			float a = 3.0;
+			float b = 0.7;
+			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+
+			softness = 0.25;
+		}
+		else
+		{
+			// Cone
+			vec3 lightVec = light.position - p;
+			lightDist = length(lightVec);
+			L = lightVec;
+
+			float a = 3.0;
+			float b = 0.7;
+			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
+
+			// Cone falloff (spot effect)
+			vec3 surfaceToLight = normalize(light.position - p);
+			float spotEffect = dot(surfaceToLight, normalize(light.direction));
+
+			float innerCone = 0.95;
+			float outerCone = 0.80;
+
+			attenuation *= smoothstep(outerCone, innerCone, spotEffect);
+
+			softness = 0.15;
+		}
+
+		// Stochastic jitter in the path tracer only (see shadowJitter)
+		L = normalize(L + shadowJitter(softness, seed));
+
+		// Shadowing
+#ifdef PATH_TRACING
+		RayHit shadowHit = rayMarch(p + N * 0.01, L);
+		bool hitObstacle = shadowHit.hit && (shadowHit.dist < lightDist);
+		float shadow = hitObstacle ? 0.0 : 1.0;
+#else
+		float shadow = softShadow(p + N * 0.01, L, lightDist, 1.0 / softness);
+#endif
+		if (shadow > 0.0)
+		{
+			vec3 diffuse = albedo * max(dot(N, L), 0.0) * (1.0 - fresnel);
+
+			vec3 H = normalize(L + V);
+			float specPow = pow(max(dot(N, H), 0.0), specExponentFromRoughness(roughness));
+			vec3 specular = SPEC_MULTIPLIER * specPow * fresnel;
+
+			directLighting += (diffuse + specular) * shadow * attenuation * light.color.xyz * light.color.w;
+		}
+	}
+
+	return directLighting;
+}
+
+// Cheap SDF ambient occlusion (realtime only): samples the SDF a few times
+// along the surface normal; nearby geometry blocks the sky ambient. Stands in
+// for the contact darkening the path tracer resolves through light bounces.
+float sdfAmbientOcclusion(vec3 p, vec3 N)
+{
+	float occlusion = 0.0;
+	float weight = 1.0;
+	for (int i = 1; i <= 4; i++)
+	{
+		float h = 0.02 + 0.12 * float(i);
+		float d = sceneSdf(p + N * h).x;
+		occlusion += (h - d) * weight;
+		weight *= 0.9;
+	}
+	return clamp(1.0 - 1.2 * occlusion, 0.0, 1.0);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Core path-tracing kernel shared by SDF and mesh surfaces.
+// Unified shading integrator shared by SDF and mesh surfaces.
+//
+//   PATH_TRACING defined:   offline Monte-Carlo path tracer (stochastic
+//                           sampling + temporal accumulation, multi-bounce GI).
+//   PATH_TRACING undefined: realtime — the same integrator evaluated with a
+//                           single deterministic ray per pixel. Monte-Carlo
+//                           randomness is replaced by stable ordered dither,
+//                           and multi-bounce GI is approximated with analytic
+//                           sky ambient + cheap SDF occlusion.
 //
 // firstN  – surface normal at the primary hit point.
 //   • SDF  surfaces: pass getNormal(p) before calling.
 //   • Mesh surfaces: pass the GBuffer normal directly.
 // All secondary-bounce normals are always derived from the SDF analytically.
 // ─────────────────────────────────────────────────────────────────────────────
-vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
+vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
 {
 	int currentMatId = clamp(materialId, 0, 15);
 
@@ -813,39 +1032,28 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	vec3 finalColor = max(initialColor - vec3(1.0), vec3(0.0)) + (u_materials[currentMatId].emission * initialColor);
 	vec3 currentAlbedo = min(initialColor, vec3(1.0)); // Albedo reflects 100% light max
 
-	vec3 currentRd = rd;
-
-	// === Render Style Parameters ===================================
-	// roughness and f0 are driven by the material palette; other params remain constant
+	// The material palette drives the unified BRDF in both modes
 	float roughness = u_materials[currentMatId].roughness;
 	float f0 = u_materials[currentMatId].metallic;
 
-	// fresnelPower: exponent for viewing angle reflection falloff
-	float fresnelPower = 5.0; // Retro: 2.0,       Realistic: 5.0
-
-	// specExponent: tightness of the direct specular highlight
-	float specExponent = 2000.0; // Retro: 400.0,     Realistic: 100.0
-
-	// specMultiplier: intensity/scaling of the direct specular lobe
-	// Retro just blows it out for that classic '90s CG highlight.
-	vec3 specMultiplier = vec3(5.0f);
-	// Perform bounces
+#ifdef PATH_TRACING
+	// ── Offline: stochastic Monte-Carlo path tracing ───────────────────────
+	vec3 currentRd = rd;
 	vec3 throughput = vec3(1.0);
 
 	for (int bounce = 0; bounce <= u_rayBounces; bounce++)
 	{
 		float currentF0 = f0;
+		// Stylization hack: roughness grows with each bounce to prevent infinite
+		// mirror-like reflections (aesthetic choice, not physical correctness).
 		float currentRoughness =
-			u_rayBounces == 1 ? max(roughness, 0.2)
-							  : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)),
-									1.0); // Add roughness with each bounce to prevent infinite mirror-like reflections
-		fresnelPower = mix(50.0, 1.0, currentF0);
+			u_rayBounces == 1 ? max(roughness, 0.2) : min(roughness + (float(bounce) * 0.1 / float(u_rayBounces)), 1.0);
 
 		// On the first bounce use the injected normal (supports both SDF and mesh
 		// primary hits). Subsequent bounces always use the SDF analytical gradient.
 		vec3 N = (bounce == 0) ? firstN : getNormal(p);
 
-		float fresnel = currentF0 + ((1.0 - currentF0) * pow(clamp(1.0 - dot(-currentRd, N), 0.0, 1.0), fresnelPower));
+		float fresnel = computeFresnel(currentF0, dot(-currentRd, N));
 
 		if (bounce == u_rayBounces && bounce > 0)
 		{
@@ -856,88 +1064,17 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		float randVal = hash2(seed).x;
 		bool isSpecular = randVal < fresnel;
 
-		// 1. Accumulate Direct Lighting from all active lights
-		vec3 directLighting = vec3(0.0);
-
-		for (int i = 0; i < u_numLights; i++)
-		{
-			Light light = u_lights[i];
-
-			vec3 L;
-			float lightDist;
-			float attenuation = 1.0;
-
-			if (light.type == 0)
-			{
-				// Directional
-				L = normalize(light.direction + (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.05);
-				lightDist = u_far * 0.5;
-			}
-			else if (light.type == 1)
-			{
-				// Point
-				vec3 lightVec = light.position - p;
-				lightDist = length(lightVec);
-				vec3 jitter = (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.25;
-				L = normalize(lightVec + jitter);
-
-				float a = 3.0;
-				float b = 0.7;
-				attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-			}
-			else
-			{
-				// Cone
-				vec3 lightVec = light.position - p;
-				lightDist = length(lightVec);
-				vec3 jitter = (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * 0.15;
-				L = normalize(lightVec + jitter);
-
-				float a = 3.0;
-				float b = 0.7;
-				attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-
-				// Cone falloff (spot effect)
-				vec3 surfaceToLight = normalize(light.position - p);
-				float spotEffect = dot(surfaceToLight, normalize(light.direction));
-
-				float innerCone = 0.95;
-				float outerCone = 0.80;
-
-				attenuation *= smoothstep(outerCone, innerCone, spotEffect);
-			}
-
-			// Direct shadow ray for this specific light
-			RayHit shadowHit = rayMarch(p + N * 0.01, L);
-
-			// Check if we hit an obstacle before reaching the light
-			bool hitObstacle = shadowHit.hit && (shadowHit.dist < lightDist);
-			if (!hitObstacle)
-			{
-				vec3 diffuse = currentAlbedo * max(dot(N, L), 0.0) * (1.0 - fresnel);
-
-				vec3 H = normalize(L - currentRd);
-				float specPow = pow(max(dot(N, H), 0.0), specExponent);
-				vec3 specular = specMultiplier * specPow *
-								fresnel; // Note: for realistic, multiply this by 'fresnel' for energy conservation
-
-				directLighting += (diffuse + specular) * attenuation * light.color.xyz * light.color.w;
-			}
-		}
-
-		// Add all direct light contributions for this bounce
-		finalColor += throughput * directLighting;
+		// 1. Direct lighting from all active lights (stochastic soft shadows)
+		finalColor += throughput * evalDirectLighting(p, N, currentRd, currentAlbedo, currentRoughness, fresnel, seed);
 
 		if (bounce == u_rayBounces)
 		{
-
 			// If this final hit is in a shadow, it will still evaluate to black.
 			// Add a little bit of sky ambient so deep shadows always have some color.
 			if (bounce > 0)
 			{
-				finalColor += throughput * currentAlbedo * getSkyColor(N) * 0.15;
+				finalColor += throughput * currentAlbedo * getSkyColor(N) * SKY_AMBIENT_FILL;
 			}
-			// ==========================================
 			break;
 		}
 
@@ -977,7 +1114,7 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			// Path Tracing natively evaluates the bounceDir hemisphere into the procedural sky dome!
 
 			// Keep sky at full brightness for reflections, but dim it for diffuse ambient lighting
-			float skyIntensity = isSpecular ? 1.0 : 0.5;
+			float skyIntensity = isSpecular ? 1.0 : SKY_AMBIENT_DIFFUSE_WEIGHT;
 			vec3 skyCol = (bounceDir.y < 0.0) ? bounceFogColor : getSkyColor(bounceDir);
 			finalColor += throughput * skyCol * skyIntensity;
 			break;
@@ -1017,95 +1154,48 @@ vec3 pathTrace(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	}
 
 	return finalColor;
-}
+#else
+	// ── Realtime: deterministic single-ray evaluation of the same integrator ─
+	vec3 N = firstN;
+	float fresnel = computeFresnel(f0, dot(-rd, N));
 
-// Standard forward lighting combining all light types and sky reflections
-vec3 standardLighting(vec3 p, vec3 rd, vec3 albedo, int materialId, vec3 N)
-{
-	vec3 V = -rd;
+	// 1. Direct lighting (dithered soft shadows)
+	finalColor += evalDirectLighting(p, N, rd, currentAlbedo, roughness, fresnel, seed);
 
-	// === Render Style Parameters ===================================
-	int matId = clamp(materialId, 0, 15);
-	float f0 = u_materials[matId].metallic;
-	float roughness = u_materials[matId].roughness;
-	float fresnelPower = 10.0;
-	float specExponent = 100.0;
-	vec3 specMultiplier = vec3(5.0);
-	// ===============================================================
+	// 2. Sky reflection, dither-blurred by roughness. Matches the path tracer's
+	//    expected specular-branch value: fresnel * metallicTint * sky(mirrorDir).
+	vec3 R = reflect(rd, N);
+	vec3 specularDir = normalize(R + dither3(100.0) * roughness);
+	if (dot(specularDir, N) < 0.0)
+		specularDir = R; // prevent pointing inside
+	vec3 reflectionColor = (specularDir.y < 0.0) ? getFogColor(specularDir) : getSkyColor(specularDir);
+	finalColor += fresnel * mix(vec3(1.0), currentAlbedo, f0) * reflectionColor;
 
-	float fresnel = f0 + (1.0 - f0) * pow(clamp(1.0 - dot(V, N), 0.0, 1.0), fresnelPower);
+	// 3. Ambient. The path tracer lights shadowed areas via multi-bounce
+	//    interreflection; realtime approximates that with these terms:
+	//      - sky dome ambient (occluded by cheap SDF AO)
+	//      - fake bounce: occluded sky fraction becomes interreflection
+	//      - a small unoccluded sky fill
+	//      - an interreflection floor driven by the scene lights themselves
+	//        (light-colored, works even when the sky is fully black)
+	//      - a tiny constant neutral floor so nothing reaches pure black
+	float ao = sdfAmbientOcclusion(p, N);
+	vec3 skyAmbient = getSkyColor(N);
+	vec3 ambient = skyAmbient * ao * SKY_AMBIENT_DIFFUSE_WEIGHT * (1.0 - fresnel);
+	ambient += skyAmbient * (1.0 - ao) * SKY_BOUNCE_APPROX; // fake interreflection
+	ambient += skyAmbient * SKY_AMBIENT_FILL;				// unoccluded fill
 
-	vec3 directLighting = vec3(0.0);
-
+	vec3 lightBounce = vec3(0.0);
 	for (int i = 0; i < u_numLights; i++)
 	{
-		Light light = u_lights[i];
-
-		vec3 L;
-		float lightDist;
-		float attenuation = 1.0;
-
-		if (light.type == 0)
-		{
-			// Directional
-			L = normalize(light.direction);
-			lightDist = u_far * 0.5;
-		}
-		else if (light.type == 1)
-		{
-			// Point
-			vec3 lightVec = light.position - p;
-			lightDist = length(lightVec);
-			L = normalize(lightVec);
-
-			float a = 3.0;
-			float b = 0.7;
-			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-		}
-		else
-		{
-			// Cone
-			vec3 lightVec = light.position - p;
-			lightDist = length(lightVec);
-			L = normalize(lightVec);
-
-			float a = 3.0;
-			float b = 0.7;
-			attenuation = 10.0 / (a * lightDist * lightDist + b * lightDist + 1.0);
-
-			// Cone falloff (spot effect)
-			vec3 surfaceToLight = normalize(light.position - p);
-			float spotEffect = dot(surfaceToLight, normalize(light.direction));
-
-			float innerCone = 0.95;
-			float outerCone = 0.80;
-
-			attenuation *= smoothstep(outerCone, innerCone, spotEffect);
-		}
-
-		// Hard Shadows
-		RayHit shadowHit = rayMarch(p + N * 0.01, L);
-
-		// Check if we hit an obstacle before reaching the light
-		bool hitObstacle = shadowHit.hit && (shadowHit.dist < lightDist * 0.95);
-		if (!hitObstacle)
-		{
-			vec3 diffuse = albedo * max(dot(N, L), 0.0) * (1.0 - fresnel);
-
-			vec3 H = normalize(L + V);
-			float specPow = pow(max(dot(N, H), 0.0), specExponent);
-			vec3 specular = specMultiplier * specPow * fresnel;
-
-			directLighting += (diffuse + specular) * attenuation * light.color.xyz * light.color.w;
-		}
+		lightBounce += u_lights[i].color.xyz * u_lights[i].color.w;
 	}
+	ambient += lightBounce * LIGHT_BOUNCE_AMBIENT + vec3(AMBIENT_FLOOR);
 
-	// Ambient and Sky Reflections
-	vec3 R = reflect(rd, N);
-	vec3 reflectionColor = (R.y < 0.0) ? getFogColor(R) : getSkyColor(R);
-	vec3 ambient = albedo * 0.1 + reflectionColor * fresnel;
+	finalColor += currentAlbedo * ambient;
 
-	return directLighting + ambient;
+	return finalColor;
+#endif
 }
 
 // Returns the linearised (eye-space) depth from a [0,1] depth-buffer value.
@@ -1132,7 +1222,10 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	float meshDepthSample = texture(t_depthTexture, v_texCoord).r;	// [0,1], 1.0 = no mesh
+	float _ar = u_resolution.x / u_resolution.y;
+	vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
+
+	float meshDepthSample = texture(t_depthTexture, gbufferUV).r;	// [0,1], 1.0 = no mesh
 	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample); // eye-space metres
 
 	// Ray march SDF
@@ -1171,6 +1264,7 @@ vec4 render(in vec2 uv)
 
 	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
 	float accumAlpha = 1.0;
+	float finalDepth = 1.0;
 
 	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter);
 	pcg(state); // Warm up the state
@@ -1186,9 +1280,6 @@ vec4 render(in vec2 uv)
 		// so mesh shading varies per frame and accumulates correctly in the temporal denoiser.
 		// Note: this can produce edge artifacts when the jitter pushes the lookup outside
 		// the mesh silhouette — that is an accepted trade-off.
-		float _ar = u_resolution.x / u_resolution.y;
-		vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
-
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
 		vec3 meshAlbedo = texture(t_gbufferAlbedo, gbufferUV).rgb;
 		vec3 meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
@@ -1196,28 +1287,24 @@ vec4 render(in vec2 uv)
 		vec3 meshNormal = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
 
 		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
-		meshAlbedo *= getMaterial(meshWorldPos, materialId); // Apply material palette color to mesh albedo
+		meshAlbedo *= getMaterial(meshWorldPos, materialId, meshNormal, dFdx(meshWorldPos),
+								  dFdy(meshWorldPos)); // Apply material palette color to mesh albedo
 
-#ifdef PATH_TRACING
-		col = pathTrace(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
-#else
-		col = standardLighting(meshWorldPos, rd, meshAlbedo, materialId, meshNormal);
-#endif
+		col = integrate(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
 
 		// Fog at mesh depth (Euclidean distance along ray)
 		float meshEuclideanDist = meshDepthLinear / absCosAngle;
 		float fog = smoothstep(fogStart, fogEnd, meshEuclideanDist);
 		col = mix(col, fogColor, fog);
 
-		// Write the mesh depth to the depth buffer
-		gl_FragDepth = meshDepthSample;
+		finalDepth = meshDepthSample;
 	}
 	else if (sdfValid)
 	{
 		// --- SDF hit is in front ---
 		vec3 p = ro + object * rd;
 
-#ifdef PATH_TRACING
+#if defined(PATH_TRACING) || defined(ANTIALIASING)
 		// Jitter the material sampling point with high-frequency 3D noise.
 		// Temporal accumulation will blend material colors at smooth-union
 		// boundaries into smooth gradients.
@@ -1233,27 +1320,32 @@ vec4 render(in vec2 uv)
 
 		vec3 sceneResult = sceneSdf(materialSamplePos);
 		int materialId = int(sceneResult.y);
-		vec3 baseColor = getMaterial(materialSamplePos, materialId);
+		vec3 N = getNormal(p);
 
-#ifdef PATH_TRACING
-		col = pathTrace(p, rd, baseColor, materialId, getNormal(p), seed);
-#else
-		col = standardLighting(p, rd, baseColor, materialId, getNormal(p));
-#endif
+		vec3 d_rd_x = dFdx(rd);
+		vec3 d_rd_y = dFdy(rd);
+		float NdotRD = dot(N, rd);
+		float denom = -max(abs(NdotRD), 0.05);
+		vec3 dpdx = object * (d_rd_x - rd * (dot(N, d_rd_x) / denom));
+		vec3 dpdy = object * (d_rd_y - rd * (dot(N, d_rd_y) / denom));
+
+		vec3 baseColor = getMaterial(materialSamplePos, materialId, N, dpdx, dpdy);
+
+		col = integrate(p, rd, baseColor, materialId, N, seed);
 
 		// Fog at SDF depth (Euclidean distance along ray)
 		float fog = smoothstep(fogStart, fogEnd, object);
 		col = mix(col, fogColor, fog);
 
-		gl_FragDepth = sdfDepthNDC;
+		finalDepth = sdfDepthNDC;
 	}
 	else
 	{
 		// Sky
-		gl_FragDepth = 1.0;
+		finalDepth = 1.0;
 	}
 
-	return vec4(col, 1.0); // accumAlpha);
+	return vec4(col, finalDepth);
 }
 
 float rand(vec2 co)
@@ -1264,11 +1356,9 @@ float rand(vec2 co)
 void main()
 {
 	vec2 screenUV = v_texCoord;
-
 	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
 
-	// Temporal jitter for anti-aliasing
 #ifdef PATH_TRACING
 #ifdef ANTIALIASING
 	if (u_frameCounter > 0)
@@ -1279,11 +1369,9 @@ void main()
 #endif
 
 	uv.x *= aspectRatio;
-
-	// Because AA jitter is baked into the original UVs being sent to render(),
-	// we just evaluate the render directly to extract the jittered target color.
 	vec4 data = render(uv);
 	vec3 col = data.xyz;
+	gl_FragDepth = data.w;
 
 	// Firefly suppression: clamp per-sample luminance before accumulation.
 	// Fireflies are caused by rare specular paths hitting a bright light,
@@ -1304,10 +1392,6 @@ void main()
 	if (u_frameCounter > 0)
 	{
 		vec4 prevColor = texture(t_previousColor, screenUV);
-
-		// Temporal Denoiser: Use an Exponential Moving Average (EMA) cap
-		// to prevent the weight from becoming too small, allowing the image to
-		// continually refine and denoise even after many frames.
 		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
 		col = mix(prevColor.xyz, col, weight);
 	}

@@ -31,15 +31,7 @@ namespace WeirdEngine
 			m_shapeDataBuffer = new DataBuffer();
 			resize(config.renderWidth, config.renderHeight);
 
-			if (m_config.enablePathTracer)
-			{
-				m_sdfShader.addDefine("PATH_TRACING");
-			}
-
-			if (m_config.enableAntialiasing)
-			{
-				m_sdfShader.addDefine("ANTIALIASING");
-			}
+			updatePipelineDefines();
 
 			m_sdfShader.addDefine("MESH_SHADOW_SDF");
 		}
@@ -48,6 +40,55 @@ namespace WeirdEngine
 		{
 			free();
 			delete m_shapeDataBuffer;
+		}
+
+		void SDF3DRenderPipeline::updatePipelineDefines()
+		{
+			if (m_config.enablePathTracer)
+			{
+				m_sdfShader.addDefine("PATH_TRACING");
+				m_resolveShader.removeDefine("FXAA");
+				if (m_config.enableAntialiasing)
+				{
+					m_sdfShader.addDefine("ANTIALIASING");
+				}
+				else
+				{
+					m_sdfShader.removeDefine("ANTIALIASING");
+				}
+			}
+			else
+			{
+				m_sdfShader.removeDefine("PATH_TRACING");
+				m_sdfShader.removeDefine("ANTIALIASING");
+				if (m_config.enableAntialiasing)
+				{
+					m_resolveShader.addDefine("FXAA");
+				}
+				else
+				{
+					m_resolveShader.removeDefine("FXAA");
+				}
+			}
+		}
+
+		void SDF3DRenderPipeline::setAntialiasing(bool enable)
+		{
+			if (m_config.enableAntialiasing != enable)
+			{
+				m_config.enableAntialiasing = enable;
+				updatePipelineDefines();
+			}
+		}
+
+		void SDF3DRenderPipeline::setPathTracer(bool enable)
+		{
+			if (m_config.enablePathTracer != enable)
+			{
+				m_config.enablePathTracer = enable;
+				m_frameCounter = 0;
+				updatePipelineDefines();
+			}
 		}
 
 		Shader& SDF3DRenderPipeline::getShader()
@@ -59,7 +100,7 @@ namespace WeirdEngine
 										 const std::vector<Light>& lights, const Camera& camera, double time,
 										 const GBuffer& gbuffer, const Material3D* materials)
 		{
-			// Reset frame counter when path tracer is disabled (no accumulation)
+			// Reset frame counter when path tracer is disabled (no accumulation in realtime)
 			if (!m_config.enablePathTracer)
 				m_frameCounter = 0;
 
@@ -141,7 +182,7 @@ namespace WeirdEngine
 			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
 			m_sdfShader.setUniform("u_shapeCount", (int)shapeCount);
 
-			if (m_frameCounter < m_config.maxAccumulationFrames)
+			if (!m_config.enablePathTracer || m_frameCounter < m_config.maxAccumulationFrames)
 				m_renderPlane.draw(m_sdfShader);
 
 			m_frameCounter++;
@@ -151,6 +192,8 @@ namespace WeirdEngine
 
 			m_resolveShader.use();
 			m_resolveShader.setUniform("t_input", 0);
+			m_resolveShader.setUniform("u_inverseResolution",
+									   glm::vec2(1.0f / m_config.renderWidth, 1.0f / m_config.renderHeight));
 			m_accumTexture[m_accumIdx].bind(0);
 
 			glDisable(GL_DEPTH_TEST);
@@ -223,22 +266,15 @@ namespace WeirdEngine
 			{
 				WeirdEngine::Logger::log(std::string("Path tracer ") +
 										 (m_config.enablePathTracer ? "enabled" : "disabled"));
-
-				if (m_config.enablePathTracer)
-					m_sdfShader.addDefine("PATH_TRACING");
-				else
-					m_sdfShader.removeDefine("PATH_TRACING");
+				m_frameCounter = 0;
+				updatePipelineDefines();
 			}
 
 			if (ImGui::Checkbox("Enable Anti-Aliasing", &m_config.enableAntialiasing))
 			{
 				WeirdEngine::Logger::log(std::string("Anti-Aliasing ") +
 										 (m_config.enableAntialiasing ? "enabled" : "disabled"));
-
-				if (m_config.enableAntialiasing)
-					m_sdfShader.addDefine("ANTIALIASING");
-				else
-					m_sdfShader.removeDefine("ANTIALIASING");
+				updatePipelineDefines();
 			}
 
 			if (ImGui::SliderFloat("Contrast", &m_config.contrast, 1.0f, 10.0f))

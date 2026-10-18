@@ -47,6 +47,7 @@ namespace WeirdEngine
 							simulation.setBodyType(rb.simulationId, type);
 
 							simulation.setCollisionEnabled(rb.simulationId, rb.enableCollision);
+							simulation.setShapeCollisionEnabled(rb.simulationId, rb.enableShapeCollision);
 
 							registry.setComponentDirty(rb, false);
 						}

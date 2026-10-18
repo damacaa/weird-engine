@@ -133,7 +133,8 @@ namespace WeirdEngine
 									 {"velocity", {rb.velocity.x, rb.velocity.y}},
 									 {"mass", rb.mass},
 									 {"bodyType", static_cast<int>(effectiveType)},
-									 {"enableCollision", rb.enableCollision}};
+									 {"enableCollision", rb.enableCollision},
+									 {"enableShapeCollision", rb.enableShapeCollision}};
 			}
 
 			// TextRenderer
@@ -404,6 +405,11 @@ namespace WeirdEngine
 					if (rbj.contains("enableCollision"))
 					{
 						rb.enableCollision = rbj.value("enableCollision", true);
+					}
+
+					if (rbj.contains("enableShapeCollision"))
+					{
+						rb.enableShapeCollision = rbj.value("enableShapeCollision", true);
 					}
 					scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(
 						entity, true); // Sync velocity, mass, fixed, and collision state to simulation

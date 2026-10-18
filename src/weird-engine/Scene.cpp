@@ -24,6 +24,7 @@
 #include "weird-physics/components/RigidBodyManager.h"
 #include "weird-physics/components/ShapeManager.h"
 #include "weird-physics/components/SpringManager.h"
+#include "weird-renderer/components/Camera.h"
 #include "weird-renderer/components/SDFRenderer.h"
 #include "weird-renderer/components/Shape.h"
 #include "weird-renderer/components/TextRenderer.h"
@@ -945,6 +946,21 @@ namespace WeirdEngine
 				m_simulation2D.setFriction(friction);
 			}
 
+			ImGui::Separator();
+			ImGui::Checkbox("Show Constraints & Springs", &m_debugDrawConstraints);
+			if (m_debugDrawConstraints)
+			{
+				auto distArray = m_registry.getComponentArray<DistanceConstraint>();
+				auto springArray = m_registry.getComponentArray<Spring>();
+				size_t distCount = distArray ? distArray->getSize() : 0;
+				size_t springCount = springArray ? springArray->getSize() : 0;
+
+				ImGui::Indent();
+				ImGui::TextColored(ImVec4(0.0f, 0.86f, 1.0f, 1.0f), "Distance Constraints: %zu (Cyan)", distCount);
+				ImGui::TextColored(ImVec4(1.0f, 0.67f, 0.0f, 1.0f), "Springs: %zu (Orange)", springCount);
+				ImGui::Unindent();
+			}
+
 			ImGui::EndTabItem();
 		}
 #endif
@@ -1338,7 +1354,78 @@ namespace WeirdEngine
 	void Scene::renderCustomUI()
 	{
 #ifndef WEIRD_DISABLE_IMGUI
+		renderConstraintsDebug();
 		onCustomUI(m_registry, m_services);
+#endif
+	}
+
+	void Scene::renderConstraintsDebug()
+	{
+#ifndef WEIRD_DISABLE_IMGUI
+		if (!m_debugDrawConstraints)
+		{
+			return;
+		}
+
+		if (m_mainCamera == INVALID_ENTITY || !m_registry.hasComponent<Transform>(m_mainCamera))
+		{
+			return;
+		}
+
+		const auto& cameraTransform = m_registry.getComponent<Transform>(m_mainCamera);
+		if (cameraTransform.position.z == 0.0f)
+		{
+			return;
+		}
+
+		const float winH = static_cast<float>((std::max)(1, WeirdRenderer::Display::height));
+		auto toImGui = [&](vec2 world) -> ImVec2
+		{
+			const vec2 screen = ECS::Camera::worldPosition2DToScreenPosition(cameraTransform, world);
+			return ImVec2(screen.x, winH - screen.y);
+		};
+
+		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+		const ImU32 distColor = IM_COL32(0, 220, 255, 220);
+		const ImU32 springColor = IM_COL32(255, 170, 0, 220);
+
+		auto distArray = m_registry.getComponentArray<DistanceConstraint>();
+		if (distArray && distArray->getSize() > 0)
+		{
+			m_registry.forEach<DistanceConstraint>(
+				[&](Entity entity, DistanceConstraint& constraint)
+				{
+					if (constraint.entityA != INVALID_ENTITY && constraint.entityB != INVALID_ENTITY &&
+						m_registry.hasComponent<Transform>(constraint.entityA) &&
+						m_registry.hasComponent<Transform>(constraint.entityB))
+					{
+						const auto& tA = m_registry.getComponent<Transform>(constraint.entityA);
+						const auto& tB = m_registry.getComponent<Transform>(constraint.entityB);
+						ImVec2 pA = toImGui(vec2(tA.position.x, tA.position.y));
+						ImVec2 pB = toImGui(vec2(tB.position.x, tB.position.y));
+						drawList->AddLine(pA, pB, distColor, 2.0f);
+					}
+				});
+		}
+
+		auto springArray = m_registry.getComponentArray<Spring>();
+		if (springArray && springArray->getSize() > 0)
+		{
+			m_registry.forEach<Spring>(
+				[&](Entity entity, Spring& spring)
+				{
+					if (spring.entityA != INVALID_ENTITY && spring.entityB != INVALID_ENTITY &&
+						m_registry.hasComponent<Transform>(spring.entityA) &&
+						m_registry.hasComponent<Transform>(spring.entityB))
+					{
+						const auto& tA = m_registry.getComponent<Transform>(spring.entityA);
+						const auto& tB = m_registry.getComponent<Transform>(spring.entityB);
+						ImVec2 pA = toImGui(vec2(tA.position.x, tA.position.y));
+						ImVec2 pB = toImGui(vec2(tB.position.x, tB.position.y));
+						drawList->AddLine(pA, pB, springColor, 2.0f);
+					}
+				});
+		}
 #endif
 	}
 } // namespace WeirdEngine

@@ -45,7 +45,9 @@ namespace WeirdEngine
 		AddImpulse,
 		Action,
 		EnableCollision,
-		DisableCollision
+		DisableCollision,
+		EnableShapeCollision,
+		DisableShapeCollision
 	};
 
 	struct PhysicsCommand
@@ -122,6 +124,7 @@ namespace WeirdEngine
 		void update(double delta);
 
 		double getSimulationTime();
+		void setSimulationTime(double time);
 		double getDeltaTime()
 		{
 			return m_fixedDeltaTime;
@@ -163,6 +166,11 @@ namespace WeirdEngine
 		void disableCollision(SimulationID id);
 		void setCollisionEnabled(SimulationID id, bool enabled);
 		bool isCollisionEnabled(SimulationID id);
+
+		void enableShapeCollision(SimulationID id);
+		void disableShapeCollision(SimulationID id);
+		void setShapeCollisionEnabled(SimulationID id, bool enabled);
+		bool isShapeCollisionEnabled(SimulationID id);
 
 		// Performance Stats
 		struct PerformanceStats
@@ -484,6 +492,7 @@ namespace WeirdEngine
 		std::atomic<size_t> m_activeSize{0};
 		std::vector<uint8_t> m_bodyActive;
 		std::vector<uint8_t> m_collisionEnabled;
+		std::vector<uint8_t> m_shapeCollisionEnabled;
 		std::vector<BodyType> m_bodyType;
 
 		float* m_mass;

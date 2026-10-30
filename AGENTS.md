@@ -67,7 +67,7 @@ The engine automatically exports the `WEIRD_DEBUG` preprocessor macro (`1`) in `
 - Shaders and fonts are loaded at runtime from paths baked in at compile time (`SHADERS_PATH`, `FONTS_PATH`, `ASSETS_PATH` macros). The post-build step copies them next to the executable for example projects.
 - The `build/` and `build-muos/` directories are separate CMake trees; do not mix them.
 - `compile_flags.txt` exists for clangd; it does not drive the actual build.
-- The `.vscode/settings.json` enables `WEIRD_ENGINE_BUILD_EXAMPLES=ON` by default.
+- The `.vscode/settings.json` enables `WEIRD_ENGINE_BUILD_EXAMPLES=ON` and `WEIRD_ENGINE_BUILD_TOOLS=ON` by default.
 
 ## Commit Guidelines
 

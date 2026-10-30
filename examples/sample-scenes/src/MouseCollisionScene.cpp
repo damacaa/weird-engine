@@ -47,6 +47,10 @@ namespace MouseCollisionSceneNamespace
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
 
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(15.0f, 15.0f, 35.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
+
 		auto& wallMat = services.materials2D().createMaterial("wall");
 		auto& cursorMat = services.materials2D().createMaterial("cursor");
 

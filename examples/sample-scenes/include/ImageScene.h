@@ -72,13 +72,11 @@ public:
 		addStartSystem(ImageSceneNamespace::setupChamberSystem);
 		addStartSystem(ImageSceneNamespace::setupControlsSystem);
 		addStartSystem(ImageSceneNamespace::loadInitialImageSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ImageSceneNamespace::fileDialogSystem);
 		addUpdateSystem(ImageSceneNamespace::buttonSystem);
 		addUpdateSystem(ImageSceneNamespace::shortcutSystem);
 		addUpdateSystem(ImageSceneNamespace::layoutSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

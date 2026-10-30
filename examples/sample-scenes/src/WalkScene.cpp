@@ -42,6 +42,7 @@ namespace WalkSceneNamespace
 
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position = vec3(0.0f, 4.0f, 25.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
 	void loadCharacterSystem(Registry& registry, ServiceProvider& services)

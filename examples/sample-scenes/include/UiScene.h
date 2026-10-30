@@ -50,13 +50,11 @@ public:
 		addStartSystem(UiSceneNamespace::setupUiMaterialsSystem);
 		addStartSystem(UiSceneNamespace::setupButtonsSystem);
 		addStartSystem(UiSceneNamespace::setupTextLabelsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(UiSceneNamespace::buttonInteractionSystem);
 		addUpdateSystem(UiSceneNamespace::labelUpdateSystem);
 		addUpdateSystem(UiSceneNamespace::mouseTrackingSystem);
 		addUpdateSystem(UiSceneNamespace::responsiveLayoutSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

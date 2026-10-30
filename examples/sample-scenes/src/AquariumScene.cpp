@@ -181,7 +181,9 @@ namespace AquariumSceneNamespace
 		services.physics().setGravity(-10.0f);
 		services.physics().setDamping(0.025f);
 
-		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(TANK_CX, TANK_CY, 45.0f);
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(TANK_CX, TANK_CY, 45.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
 	void setupMaterialsSystem(Registry& registry, ServiceProvider& services)

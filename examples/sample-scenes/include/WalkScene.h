@@ -80,6 +80,5 @@ public:
 		addUpdateSystem(WalkSceneNamespace::platformBuilderSystem);
 		addUpdateSystem(WalkSceneNamespace::walkingSystem);
 		addUpdateSystem(WalkSceneNamespace::cameraFollowSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

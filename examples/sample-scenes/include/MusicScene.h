@@ -66,7 +66,6 @@ public:
 		addStartSystem(MusicSceneNamespace::setupTogglesSystem);
 		addStartSystem(MusicSceneNamespace::setupControlsSystem);
 		addStartSystem(MusicSceneNamespace::setupVisualizerDotsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 		addStartSystem(MusicSceneNamespace::setupWorldSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
@@ -76,7 +75,6 @@ public:
 		addUpdateSystem(MusicSceneNamespace::statusTextSystem);
 		addUpdateSystem(MusicSceneNamespace::songLayoutSystem);
 		addUpdateSystem(MusicSceneNamespace::uiDotsSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 		addUpdateSystem(MusicSceneNamespace::updateWorldVisualsSystem);
 
 		addDestroySystem(MusicSceneNamespace::onDestroySystem);

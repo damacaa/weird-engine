@@ -74,7 +74,6 @@ public:
 		addStartSystem(RopeSceneNamespace::setupMaterialsSystem);
 		addStartSystem(RopeSceneNamespace::setupRopeGridSystem);
 		addStartSystem(RopeSceneNamespace::setupShapesSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(RopeSceneNamespace::starAnimationSystem);
@@ -84,7 +83,6 @@ public:
 		addUpdateSystem(RopeSceneNamespace::ballDragSystem);
 		addUpdateSystem(RopeSceneNamespace::ropeCleanupSystem);
 		addUpdateSystem(RopeSceneNamespace::fallCleanupSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 
 	void onPhysicsStep(WeirdEngine::Simulation2D& simulation) override;

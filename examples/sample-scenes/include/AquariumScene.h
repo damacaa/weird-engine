@@ -109,7 +109,6 @@ public:
 		addStartSystem(AquariumSceneNamespace::setupMaterialsSystem);
 		addStartSystem(AquariumSceneNamespace::setupTankShapesSystem);
 		addStartSystem(AquariumSceneNamespace::spawnCreaturesSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(AquariumSceneNamespace::feedingInputSystem);
@@ -119,7 +118,6 @@ public:
 		addUpdateSystem(AquariumSceneNamespace::seaweedSystem);
 		addUpdateSystem(AquariumSceneNamespace::eelSystem);
 		addUpdateSystem(AquariumSceneNamespace::fishFlockingSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(AquariumSceneNamespace::onEntityCollisionSystem);
 		addEntityShapeCollisionSystem(AquariumSceneNamespace::onEntityShapeCollisionSystem);

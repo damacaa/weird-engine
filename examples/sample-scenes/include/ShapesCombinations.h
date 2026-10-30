@@ -30,11 +30,9 @@ public:
 		addStartSystem(ShapeCombinationsNamespace::stateInitSystem);
 		addStartSystem(ShapeCombinationsNamespace::setupEnvironmentSystem);
 		addStartSystem(ShapeCombinationsNamespace::setupShapesSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ShapeCombinationsNamespace::cursorCircleSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };
 

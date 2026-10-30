@@ -37,10 +37,8 @@ public:
 		addStartSystem(DestroySceneNamespace::stateInitSystem);
 		addStartSystem(DestroySceneNamespace::setupEnvironmentSystem);
 		addStartSystem(DestroySceneNamespace::setupMaterialsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(DestroySceneNamespace::stressTestSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

@@ -47,12 +47,10 @@ public:
 		addStartSystem(CollisionHandlingNamespace::setupArenaShapesSystem);
 		addStartSystem(CollisionHandlingNamespace::setupHudSystem);
 		addStartSystem(CollisionHandlingNamespace::spawnInitialBallsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(CollisionHandlingNamespace::spawnerSystem);
 		addUpdateSystem(CollisionHandlingNamespace::hudSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(CollisionHandlingNamespace::onEntityCollisionSystem);
 		addEntityShapeCollisionSystem(CollisionHandlingNamespace::onEntityShapeCollisionSystem);

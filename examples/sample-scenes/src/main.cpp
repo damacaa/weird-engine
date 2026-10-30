@@ -5,6 +5,7 @@
 #include "DestroyScene.h"
 #include "ImageScene.h"
 #include "LifeScene.h"
+#include "MenuScene.h"
 #include "MouseCollisionScene.h"
 #include "MusicScene.h"
 #include "RopeScene.h"
@@ -12,17 +13,15 @@
 #include "UiScene.h"
 #include "WalkScene.h"
 
-#include "globals.h"
 #include "weird-renderer/core/Display.h"
 
 using namespace WeirdEngine;
-
-WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
 
 int main(int argc, char* argv[])
 {
 	SceneManager& sceneManager = SceneManager::getInstance();
 
+	sceneManager.registerScene<MenuScene>("menu");
 	sceneManager.registerScene<ShapeCombinationsScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MusicScene>("music");
@@ -43,7 +42,8 @@ int main(int argc, char* argv[])
 	displaySettings.width = 800;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
-	displaySettings.distanceSampleScale = 0.5f;
+	displaySettings.distanceSampleScale = 2.0f;
+	displaySettings.uiSmoothFactor = 10.0f;
 
 	PhysicsSettings physicsSettings{};
 

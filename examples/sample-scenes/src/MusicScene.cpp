@@ -68,7 +68,7 @@ namespace MusicSceneNamespace
 		State& state = getState(registry);
 
 		services.debug().setDebugInput(false);
-		services.debug().setDebugFly(true);
+		services.debug().setDebugFly(false);
 
 		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
 		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
@@ -255,6 +255,10 @@ namespace MusicSceneNamespace
 
 	void setupWorldSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
 	{
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(0.0f, 0.0f, 25.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
+
 		auto& floorMat = services.materials2D().createMaterial("main_floor");
 		floorMat.color = ColorPalette::LightGray;
 

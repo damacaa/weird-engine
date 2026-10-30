@@ -92,7 +92,9 @@ namespace CollisionHandlingNamespace
 		services.physics().setDamping(0.001f);
 
 		// Set Camera framing the 3 lanes nicely
-		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(7.0f, 15.0f, 40.0f);
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(7.0f, 15.0f, 40.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
 	void setupMaterialsSystem(Registry& registry, ServiceProvider& services)

@@ -42,10 +42,8 @@ public:
 		addStartSystem(LifeSceneNamespace::stateInitSystem);
 		addStartSystem(LifeSceneNamespace::setupArenaSystem);
 		addStartSystem(LifeSceneNamespace::spawnOrganismsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(LifeSceneNamespace::organismMovementSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 	}
 };

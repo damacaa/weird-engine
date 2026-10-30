@@ -418,6 +418,10 @@ namespace ImageSceneNamespace
 		services.debug().setDebugInput(false);
 		services.debug().setDebugFly(true);
 
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(15.0f, 15.0f, 35.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
+
 		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
 		{
 			auto& m = services.materials2D().get(static_cast<uint16_t>(i));

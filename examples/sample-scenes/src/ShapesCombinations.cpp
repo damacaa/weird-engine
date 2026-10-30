@@ -24,6 +24,10 @@ namespace ShapeCombinationsNamespace
 	{
 		services.debug().setDebugInput(true);
 		services.debug().setDebugFly(true);
+
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(15.0f, 7.5f, 35.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
 	void setupShapesSystem(Registry& registry, ServiceProvider& services)

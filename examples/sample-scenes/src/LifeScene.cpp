@@ -53,7 +53,9 @@ namespace LifeSceneNamespace
 									.hasCollision = true});
 
 		// Frame the circular arena nicely at startup
-		registry.getComponent<Transform>(services.render().getCameraEntity()).position = vec3(0.0f, 0.0f, 65.0f);
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(0.0f, 0.0f, 150.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
 	void spawnOrganismsSystem(Registry& registry, ServiceProvider& services)

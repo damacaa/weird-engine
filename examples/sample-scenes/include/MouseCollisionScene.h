@@ -41,11 +41,9 @@ public:
 		addStartSystem(MouseCollisionSceneNamespace::setupMaterialsSystem);
 		addStartSystem(MouseCollisionSceneNamespace::setupBoundariesSystem);
 		addStartSystem(MouseCollisionSceneNamespace::spawnDotsSystem);
-		addStartSystem(GlobalSystems::cameraInitSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(MouseCollisionSceneNamespace::cursorTrackingSystem);
-		addUpdateSystem(GlobalSystems::cameraTrackingSystem);
 
 		addEntityCollisionSystem(MouseCollisionSceneNamespace::ballEntityCollisionSystem);
 		addEntityShapeCollisionSystem(MouseCollisionSceneNamespace::ballShapeCollisionSystem);

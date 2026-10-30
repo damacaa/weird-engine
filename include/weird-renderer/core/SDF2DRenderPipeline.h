@@ -55,6 +55,10 @@ namespace WeirdEngine
 
 			Shader& getShapeShader();
 			Shader& getDistanceShader();
+			void resetCameraReprojection()
+			{
+				m_resetCameraReprojection = true;
+			}
 			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light2D>& lights,
 							const Material2D* materials, const Camera& camera, double time, double delta,
 							const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
@@ -144,6 +148,7 @@ namespace WeirdEngine
 
 			bool horizontal = true;
 			glm::vec3 cameraPositionChange = glm::vec3(0.0f);
+			bool m_resetCameraReprojection = true;
 
 			BackgroundType m_lastBackgroundType = (BackgroundType)-1;
 			std::string m_lastBackgroundCustomCode = "";

@@ -23,7 +23,7 @@ namespace WeirdEngine
 		RenderService(Registry& registry, Entity& cameraEntity, SDFRenderSystemContext& context2D,
 					  SDFRenderSystemContext& context3D, SDFRenderSystemContext& contextUI,
 					  std::vector<WeirdRenderer::Light2D>& lights2D, std::vector<WeirdRenderer::Light3D>& lights3D,
-					  BackgroundParams& background, RenderMode& renderMode)
+					  BackgroundParams& background, RenderMode& renderMode, bool& resetCameraReprojection)
 			: m_registry(registry)
 			, m_cameraEntity(cameraEntity)
 			, m_context2D(context2D)
@@ -33,6 +33,7 @@ namespace WeirdEngine
 			, m_lights3D(lights3D)
 			, m_background(background)
 			, m_renderMode(renderMode)
+			, m_resetCameraReprojection(resetCameraReprojection)
 		{
 		}
 
@@ -108,6 +109,11 @@ namespace WeirdEngine
 			forceShaderRefreshUI();
 		}
 
+		void resetCameraReprojection()
+		{
+			m_resetCameraReprojection = true;
+		}
+
 	private:
 		Registry& m_registry;
 		Entity& m_cameraEntity;
@@ -118,5 +124,6 @@ namespace WeirdEngine
 		std::vector<WeirdRenderer::Light3D>& m_lights3D;
 		BackgroundParams& m_background;
 		RenderMode& m_renderMode;
+		bool& m_resetCameraReprojection;
 	};
 } // namespace WeirdEngine

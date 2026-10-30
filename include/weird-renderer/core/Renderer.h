@@ -34,6 +34,7 @@ namespace WeirdEngine
 			void handleEvent(const SDL_Event& event);
 
 			SDL_Window* getWindow();
+			void resetCameraReprojection();
 
 		private:
 			Texture& renderScene(Scene& scene, const double time, const double delta);
@@ -82,6 +83,7 @@ namespace WeirdEngine
 			static constexpr int STATS_HISTORY_SIZE = 128;
 			float m_frametimeHistory[STATS_HISTORY_SIZE] = {};
 			int m_historyOffset = 0;
+			uint64_t m_lastSceneInstanceId = 0;
 
 			void output(Scene& scene, Texture& texture, const double delta);
 			void freeAll();

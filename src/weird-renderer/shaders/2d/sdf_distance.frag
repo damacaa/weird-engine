@@ -375,7 +375,7 @@ void main()
 	// Derivation: worldPos = zoom * uv + camPos, so prevUV = (worldPos - oldCamPos) / oldZoom
 	// which gives: prevTexCoord = (zoom/oldZoom) * (texCoord - 0.5) + 0.5 + 0.5 * camPositionChange / (oldZoom *
 	// [aspectRatio, 1])
-	float oldZoom = -u_oldCamMatrix[3].z;
+	float oldZoom = max(-u_oldCamMatrix[3].z, 0.001);
 	float zoomRatio = zoom / oldZoom;
 	vec2 prevTexCoord;
 	prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);

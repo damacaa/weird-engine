@@ -45,6 +45,7 @@ namespace WeirdEngine
 			, m_oldCameraMatrix(1.0f)
 			, m_prevFrameCameraMatrix(1.0f)
 			, m_lastCameraPosition(0.0f)
+			, m_resetCameraReprojection(true)
 		{
 			float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
 			float overscanScale = 1.0f + 2.0f * overscan;
@@ -613,20 +614,25 @@ namespace WeirdEngine
 				m_distanceShader.use();
 
 				// Set uniforms
-				m_prevFrameCameraMatrix = m_oldCameraMatrix; // save before overwrite so other shaders can access the
-															 // true previous frame matrix
-				if (m_oldCameraMatrix == glm::mat4(1.0f))
+				if (m_resetCameraReprojection || m_oldCameraMatrix == glm::mat4(1.0f))
 				{
 					m_oldCameraMatrix = camera.view;
 					m_prevFrameCameraMatrix = camera.view;
+					m_lastCameraPosition = camera.position;
+					cameraPositionChange = glm::vec3(0.0f);
+					m_resetCameraReprojection = false;
+				}
+				else
+				{
+					m_prevFrameCameraMatrix = m_oldCameraMatrix;
+					cameraPositionChange = camera.position - m_lastCameraPosition;
+					m_lastCameraPosition = camera.position;
 				}
 
 				m_distanceShader.setUniform("u_camMatrix", camera.view);
 				m_distanceShader.setUniform("u_oldCamMatrix", m_oldCameraMatrix);
 				m_oldCameraMatrix = camera.view;
 
-				cameraPositionChange = camera.position - m_lastCameraPosition;
-				m_lastCameraPosition = camera.position;
 				m_distanceShader.setUniform("u_camPositionChange", cameraPositionChange);
 
 				m_distanceShader.setUniform("u_time", static_cast<float>(time));

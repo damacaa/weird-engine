@@ -249,6 +249,26 @@ namespace WeirdEngine
 			return m_nextScene;
 		};
 
+		uint64_t getSceneInstanceId() const
+		{
+			return m_sceneInstanceId;
+		}
+
+		bool shouldResetCameraReprojection() const
+		{
+			return m_resetCameraReprojection;
+		}
+
+		void clearResetCameraReprojection()
+		{
+			m_resetCameraReprojection = false;
+		}
+
+		void resetCameraReprojection()
+		{
+			m_resetCameraReprojection = true;
+		}
+
 		// Set the path to a .weird file to load when the scene starts
 		void setSceneFilePath(const std::string& path)
 		{
@@ -362,6 +382,8 @@ namespace WeirdEngine
 		std::vector<EntityShapeCollisionSystem> m_entityShapeCollisionSystems;
 
 		float m_lastDelta = 0.0f;
+		uint64_t m_sceneInstanceId = 0;
+		bool m_resetCameraReprojection = true;
 	};
 	class Scene2D : public Scene
 	{

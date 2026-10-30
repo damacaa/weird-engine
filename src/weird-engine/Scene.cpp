@@ -3,6 +3,7 @@
 #include "weird-engine/SceneManager.h"
 
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -49,6 +50,7 @@ namespace WeirdEngine
 	}
 
 	static bool s_defaultSDFsLocked = false;
+	static std::atomic<uint64_t> s_sceneInstanceCounter{0};
 
 	void Scene::registerBuiltinSDFs()
 	{
@@ -101,7 +103,9 @@ namespace WeirdEngine
 	}
 
 	Scene::Scene()
-		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
+		: m_sceneInstanceId(++s_sceneInstanceCounter)
+		, m_resetCameraReprojection(true)
+		, m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
 		, m_runSimulationInThread(SceneManager::getInstance().getPhysicsSettings().runSimulationInThread)
 		, m_services(*this)
 	{

@@ -165,6 +165,13 @@ namespace WeirdEngine
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
+			if (scene.shouldResetCameraReprojection() || scene.getSceneInstanceId() != m_lastSceneInstanceId)
+			{
+				m_lastSceneInstanceId = scene.getSceneInstanceId();
+				scene.clearResetCameraReprojection();
+				resetCameraReprojection();
+			}
+
 			auto& result = renderScene(scene, time, clampedDelta);
 			output(scene, result, clampedDelta);
 			glFinish();
@@ -459,6 +466,18 @@ namespace WeirdEngine
 		SDL_Window* Renderer::getWindow()
 		{
 			return m_window;
+		}
+
+		void Renderer::resetCameraReprojection()
+		{
+			if (m_worldPipeline)
+			{
+				m_worldPipeline->resetCameraReprojection();
+			}
+			if (m_uiPipeline)
+			{
+				m_uiPipeline->resetCameraReprojection();
+			}
 		}
 
 		void Renderer::drawStatsUI(Scene& scene, double delta)

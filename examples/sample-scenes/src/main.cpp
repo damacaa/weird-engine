@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 	displaySettings.width = 800;
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
-	displaySettings.distanceSampleScale = 2.0f;
+	displaySettings.distanceSampleScale = 0.5f;
 	displaySettings.uiSmoothFactor = 10.0f;
 
 	PhysicsSettings physicsSettings{};

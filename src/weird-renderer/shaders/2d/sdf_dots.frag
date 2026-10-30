@@ -175,7 +175,7 @@ void main()
 
 #ifdef MOTION_BLUR
 	// Compensating for both camera translation and zoom change
-	float oldZoom = -u_oldCamMatrix[3].z;
+	float oldZoom = max(-u_oldCamMatrix[3].z, 0.001);
 	float zoomRatio = zoom / oldZoom;
 	vec2 prevTexCoord;
 	prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);

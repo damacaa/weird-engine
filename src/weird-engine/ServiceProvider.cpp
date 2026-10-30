@@ -23,7 +23,8 @@ namespace WeirdEngine
 		, m_physics(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
 		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
 		, m_render(scene.m_registry, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
-				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode)
+				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode,
+				   scene.m_resetCameraReprojection)
 		, m_materials2D(scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId)
 		, m_materials3D(scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId)
 		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,

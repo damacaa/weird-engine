@@ -18,7 +18,7 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <vector>
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
 #include <cstdlib>
 #include <cxxabi.h>
 #endif
@@ -424,7 +424,7 @@ namespace WeirdEngine
 
 			const char* rawName = typeid(T).name();
 			std::string finalName;
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
 			int status = -4;
 			char* demangled = abi::__cxa_demangle(rawName, nullptr, nullptr, &status);
 			if (status == 0 && demangled)

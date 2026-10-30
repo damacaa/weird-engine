@@ -104,7 +104,7 @@ void main()
 	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
 	// Read shape distance and material from Pass 1
-	vec4 shapeSample = texture(t_shapeDistanceTexture, v_texCoord);
+	vec4 shapeSample = texelFetch(t_shapeDistanceTexture, ivec2(gl_FragCoord.xy), 0);
 	float minDist = shapeSample.x;
 	float minColorDist = minDist;
 	int finalMaterialId = int(shapeSample.y);

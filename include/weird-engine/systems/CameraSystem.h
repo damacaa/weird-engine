@@ -14,7 +14,15 @@ namespace WeirdEngine
 					[](Entity camOwner, Camera& c, Transform& t)
 					{
 						c.camera.position = t.position;
-						c.camera.orientation = t.rotation;
+						if (glm::dot(t.rotation, t.rotation) > 0.0001f)
+						{
+							c.camera.orientation = glm::normalize(t.rotation);
+						}
+						else
+						{
+							c.camera.orientation = glm::vec3(0.0f, 0.0f, -1.0f);
+							t.rotation = glm::vec3(0.0f, 0.0f, -1.0f);
+						}
 						c.camera.nearPlane = c.nearPlane;
 						c.camera.farPlane = c.farPlane;
 					});

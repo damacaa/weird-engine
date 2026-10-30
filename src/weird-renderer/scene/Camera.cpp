@@ -19,8 +19,18 @@ namespace WeirdEngine
 		{
 			if (lookAtMode)
 			{
+				glm::vec3 dir = orientation;
+				if (glm::dot(dir, dir) > 0.0001f)
+				{
+					dir = glm::normalize(dir);
+				}
+				else
+				{
+					dir = glm::vec3(0.0f, 0.0f, -1.0f);
+				}
+
 				// Makes camera look in the right direction from the right position
-				view = glm::lookAt(position, position + orientation, up);
+				view = glm::lookAt(position, position + dir, up);
 			}
 			else
 			{

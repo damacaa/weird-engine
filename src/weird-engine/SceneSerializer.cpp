@@ -233,7 +233,8 @@ namespace WeirdEngine
 		WeirdEngine::Logger::log("[SceneSerializer] Scene saved to " + filename);
 	}
 
-	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags)
+	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags,
+							   bool restoreCamera)
 	{
 		using json = nlohmann::json;
 
@@ -265,7 +266,7 @@ namespace WeirdEngine
 		}
 
 		// Restore camera state
-		if (j.contains("camera"))
+		if (restoreCamera && j.contains("camera"))
 		{
 			auto& camTransform = scene.m_registry.getComponent<Transform>(scene.m_mainCamera);
 			const auto& cam = j["camera"];

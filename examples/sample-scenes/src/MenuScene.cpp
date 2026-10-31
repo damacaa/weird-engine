@@ -1,4 +1,5 @@
 #include "MenuScene.h"
+#include "MusicShapes.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,57 +28,61 @@ namespace MenuSceneNamespace
 		return *state;
 	}
 
-	// Procedural SDF Shape generator for Song 1 (Synthwave Star)
-	static Expr getSongShape01(Vec2Expr p)
+	glm::vec2 getClockPreviewCenter(Registry& registry)
 	{
-		Expr star = sdStar(p, Expr(var(0)), Expr(var(0)) * 0.2f, 12.0f, Expr(var(1)) * 5.0f);
-		Expr eclipseX = sin(Expr(var(1)) * time() * 0.7f) * (Expr(var(0)) * 1.0f);
-		Vec2Expr moonCenter = {eclipseX, Expr(0.0f)};
-		Expr moon = sdCircle(p - moonCenter, Expr(var(0)) * 0.42f);
-		return sdfSubtract(star, moon);
-	}
+		State& state = getState(registry);
+		float screenW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+		float screenH = static_cast<float>(Display::height > 0 ? Display::height : 800);
 
-	// Procedural SDF Shape generator for Song 2 (Ambient Wave Bubble)
-	static Expr getSongShape02(Vec2Expr p)
-	{
-		Expr wave = sdSineWave(p, Expr(var(0)) * 0.22f, 0.08f, Expr(var(1)) * 1.5f, 0.0f);
-		Expr bubbleY = sin(Expr(var(1)) * time() * 2.0f) * (Expr(var(0)) * 0.25f);
-		Vec2Expr bubbleCenter = {Expr(0.0f), bubbleY};
-		Expr bubble = sdCircle(p - bubbleCenter, Expr(var(0)) * 0.45f);
-		return sdfSmoothUnion(wave, bubble, Expr(var(0)) * 0.15f);
-	}
+		float clockWidth = 190.0f;
+		float clockHeight = 40.0f;
+		float clockRight = screenW - 40.0f;
+		float clockTop = screenH - 40.0f;
 
-	// Procedural SDF Shape generator for Song 3 (Velocity Star Shuriken)
-	static Expr getSongShape03(Vec2Expr p)
-	{
-		Expr theta = Expr(var(1)) * time() * 1.6f;
-		Vec2Expr rotP = {p.x * cos(theta) - p.y * sin(theta), p.x * sin(theta) + p.y * cos(theta)};
-		Expr shuriken = sdStar(rotP, Expr(var(0)) * 0.75f, Expr(var(0)) * 0.42f, 4.0f, 0.0f);
-		Expr centerHole = sdBox(rotate(p, theta * -1.0f), Vec2Expr(var(0) * 0.5f, var(0) * 0.5f));
-		return sdfSubtract(shuriken, centerHole);
+		if (registry.isEntityValid(state.clockLabel) && registry.hasComponent<UITextRenderer>(state.clockLabel))
+		{
+			const auto& tr = registry.getComponent<UITextRenderer>(state.clockLabel);
+			const auto& t = registry.getComponent<Transform>(state.clockLabel);
+			clockRight = t.position.x;
+			clockTop = t.position.y;
+			if (tr.width > 0.0f)
+			{
+				clockWidth = tr.width;
+			}
+			if (tr.height > 0.0f)
+			{
+				clockHeight = tr.height;
+			}
+		}
+
+		float centerX = clockRight - (clockWidth * 0.5f);
+		float centerY = (clockTop - clockHeight) - 15.0f - SdfSong::DOMAIN_RADIUS;
+		return glm::vec2(centerX, centerY);
 	}
 
 	void stateInitSystem(Registry& registry, ServiceProvider& services)
 	{
 		auto& state = registry.emplaceState<State>();
 
-		// Initialize 3 Categories: GAME, MUSIC, SETTINGS
+		// Initialize 3 Categories: SCENES, MUSIC, SETTINGS
 		state.categories = {
-			MenuCategory{"GAME",
-						 {
-							 {"SHAPES", "2D Signed Distance Field shapes showcase", "launch_scene", "shapes"},
-							 {"ROPE", "Verlet physics rope simulation", "launch_scene", "rope"},
-							 {"WALK", "Character platformer and terrain demo", "launch_scene", "walk"},
-							 {"LIFE", "Game of Life cellular automata", "launch_scene", "life"},
-							 {"CURSOR", "Mouse cursor collision dynamics", "launch_scene", "cursor-collision"},
-							 {"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},
-							 {"MUSIC DEMO", "Original Music Scene visualizer", "launch_scene", "music"},
-						 }},
+			MenuCategory{
+				"SCENES",
+				{
+					{"SHAPES", "2D Signed Distance Field shapes showcase", "launch_scene", "shapes"},
+					{"ROPE", "Verlet physics rope simulation", "launch_scene", "rope"},
+					{"PLATFORMER", "2D character platformer with terrain collision", "launch_scene", "platformer"},
+					{"LIFE", "Game of Life cellular automata", "launch_scene", "life"},
+					{"COLLISIONS", "Interactive particle collision dynamics", "launch_scene", "collisions"},
+					{"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},
+					{"MUSIC", "Original Music Scene visualizer", "launch_scene", "music"},
+				}},
 			MenuCategory{"MUSIC",
 						 {
 							 {"TRACK 01", "Midnight Pulse (Synthwave Beat)", "play_song", "", 0},
 							 {"TRACK 02", "Silica Dreams (Ambient Chill)", "play_song", "", 1},
 							 {"TRACK 03", "Velocity (Electronic Melody)", "play_song", "", 2},
+							 {"TRACK 04", "Vortex (Hypnotic Rhythm)", "play_song", "", 3},
 							 {"STOP MUSIC", "Silence background audio playback", "stop_song", "", -1},
 						 }},
 			MenuCategory{"SETTINGS",
@@ -103,30 +108,17 @@ namespace MenuSceneNamespace
 		}
 		else
 		{
-			state.selectedCategory = 0; // Default to GAME
+			state.selectedCategory = 0; // Default to SCENES
 			state.selectedItem = 0;
 			state.smoothCategory = 0.0f;
 			state.smoothItem = 0.0f;
 			state.currentTheme = 0;
 		}
 
-		// Instantiate 3 procedural songs using WeirdEngine's SdfSong music synthesizer
-		auto song1 = WeirdAudio::SdfSong::create("Midnight Pulse", getSongShape01(point()), 120.0f,
-												 WeirdAudio::MusicalScale::PentatonicMinor, 57);
-		song1->setParameter(0, 26.0f);
-		song1->setParameter(1, 1.0f);
+		glm::vec2 previewCenter = getClockPreviewCenter(registry);
 
-		auto song2 = WeirdAudio::SdfSong::create("Silica Dreams", getSongShape02(point()), 92.0f,
-												 WeirdAudio::MusicalScale::PentatonicMajor, 60);
-		song2->setParameter(0, 24.0f);
-		song2->setParameter(1, 0.8f);
-
-		auto song3 = WeirdAudio::SdfSong::create("Velocity", getSongShape03(point()), 138.0f,
-												 WeirdAudio::MusicalScale::Dorian, 62);
-		song3->setParameter(0, 22.0f);
-		song3->setParameter(1, 1.2f);
-
-		state.songs = {song1, song2, song3};
+		// Instantiate procedural songs using shared MusicShapes definitions
+		state.songs = MusicShapes::createAllSongs(previewCenter);
 		state.currentPlayingSong = -1;
 	}
 
@@ -138,7 +130,7 @@ namespace MenuSceneNamespace
 		services.debug().setDebugFly(false);
 
 		// Camera looking at XY plane from Z=25, aligned with restored category parallax
-		float catOffset = state.smoothCategory - 1.0f; // -1: GAME, 0: MUSIC, +1: SETTINGS
+		float catOffset = state.smoothCategory - 1.0f; // -1: SCENES, 0: MUSIC, +1: SETTINGS
 		float parallaxX = catOffset * 3.5f;
 
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
@@ -170,7 +162,7 @@ namespace MenuSceneNamespace
 		Material2D& uiToast = services.materials2D().createMaterial("ui_toast");
 		uiToast.color = vec4(1.0f, 0.84f, 0.28f, 0.95f);
 
-		// Apply active theme (restored or default Classic Midnight Grid)
+		// Apply active theme (restored or default Classic)
 		State& state = getState(registry);
 		applyTheme(registry, services, state.currentTheme);
 	}
@@ -261,6 +253,63 @@ namespace MenuSceneNamespace
 		}
 	}
 
+	// Custom Procedural Category Icon Shapes (SCENES, MUSIC, SETTINGS)
+	namespace
+	{
+		inline Expr getScenesIconShape(const Vec2Expr& p, const Expr& s, const Expr& angle)
+		{
+			Vec2Expr rotP = rotate(p, angle);
+			// 16-point star shape
+			return sdStar(rotP, s * 0.70f, s * 0.10f, 16.0f, 0.0f);
+		}
+
+		inline Expr getMusicIconShape(const Vec2Expr& p, const Expr& s)
+		{
+			// Center vertically: note heads at bottom, beam at top
+			Vec2Expr pC = p - Vec2Expr(Expr(0.0f), s * 0.06f);
+
+			// Left and right note heads: angled ovals
+			Expr headL = sdfRound(
+				sdBox(rotate(pC - Vec2Expr(-s * 0.32f, -s * 0.30f), Expr(0.35f)), Vec2Expr(s * 0.18f, s * 0.11f)),
+				s * 0.08f);
+			Expr headR = sdfRound(
+				sdBox(rotate(pC - Vec2Expr(s * 0.26f, -s * 0.12f), Expr(0.35f)), Vec2Expr(s * 0.18f, s * 0.11f)),
+				s * 0.08f);
+
+			// Vertical stems connecting heads to top beam
+			Expr stemL = sdLine(pC, Vec2Expr(-s * 0.16f, -s * 0.28f), Vec2Expr(-s * 0.16f, s * 0.44f), s * 0.055f);
+			Expr stemR = sdLine(pC, Vec2Expr(s * 0.42f, -s * 0.10f), Vec2Expr(s * 0.42f, s * 0.60f), s * 0.055f);
+
+			// Bold angled crossbeam
+			Expr beam = sdLine(pC, Vec2Expr(-s * 0.20f, s * 0.38f), Vec2Expr(s * 0.46f, s * 0.54f), s * 0.11f);
+
+			Expr heads = sdfUnion(headL, headR);
+			Expr stems = sdfUnion(stemL, stemR);
+			return sdfUnion(heads, sdfUnion(stems, beam));
+		}
+
+		inline Expr getSettingsIconShape(const Vec2Expr& p, const Expr& s, const Expr& angle)
+		{
+			Vec2Expr rotP = rotate(p, angle);
+
+			// Central circular disc
+			Expr wheel = sdCircle(rotP, s * 0.70f);
+
+			// 6 radial teeth formed by 3 crossed rounded bars (0 deg, 60 deg, 120 deg)
+			Expr bar0 = sdfRound(sdBox(rotP, Vec2Expr(s * 0.86f, s * 0.16f)), s * 0.06f);
+			Expr bar1 = sdfRound(sdBox(rotate(rotP, Expr(1.04719755f)), Vec2Expr(s * 0.86f, s * 0.16f)), s * 0.06f);
+			Expr bar2 = sdfRound(sdBox(rotate(rotP, Expr(2.09439510f)), Vec2Expr(s * 0.86f, s * 0.16f)), s * 0.06f);
+
+			Expr teeth = sdfUnion(bar0, sdfUnion(bar1, bar2));
+			Expr cog = sdfUnion(wheel, teeth);
+
+			// Center axle hole
+			Expr axleHole = sdCircle(rotP, s * 0.28f);
+
+			return sdfSubtract(cog, axleHole);
+		}
+	} // namespace
+
 	void setupCategoryUiSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
@@ -269,42 +318,35 @@ namespace MenuSceneNamespace
 		auto& uiCyan = services.materials2D().get("ui_cyan");
 		auto& uiWhite = services.materials2D().get("ui_white");
 
-		// Category outer icon shapes: All use CircleLine for 100% identical outer size
-		uint16_t outerShapes[State::CATEGORY_COUNT] = {
-			DefaultShapes::CircleLine, // GAME
-			DefaultShapes::CircleLine, // MUSIC
-			DefaultShapes::CircleLine, // SETTINGS
-		};
+		// Register custom procedural SDF icons: SCENES (16-point star), MUSIC (beamed notes), SETTINGS (gear)
+		Vec2Expr pScenes = translate(point(), Vec2Expr(var(0), var(1)));
+		state.categoryShapeIds[0] = services.shapes().registerSDF(getScenesIconShape(pScenes, var(2), var(3)));
 
-		// Category inner icon shapes:
-		uint16_t innerShapes[State::CATEGORY_COUNT] = {
-			DefaultShapes::Box,		   // GAME (console / gamepad body)
-			DefaultShapes::Circle,	   // MUSIC (optical disc hub / spindle)
-			DefaultShapes::BoxRotated, // SETTINGS (diamond calibration dial)
-		};
+		Vec2Expr pMusic = translate(point(), Vec2Expr(var(0), var(1)));
+		state.categoryShapeIds[1] = services.shapes().registerSDF(getMusicIconShape(pMusic, var(2)));
+
+		Vec2Expr pSettings = translate(point(), Vec2Expr(var(0), var(1)));
+		state.categoryShapeIds[2] = services.shapes().registerSDF(getSettingsIconShape(pSettings, var(2), var(3)));
 
 		for (size_t i = 0; i < State::CATEGORY_COUNT; ++i)
 		{
-			// Outer icon (uniform CircleLine)
-			state.categoryOuterIcons[i] = services.shapes().addUIShape({
-				.shapeId = outerShapes[i],
-				.variables = {0.0f, 0.0f, 15.0f, 1.6f},
-				.material = uiDimmed,
-			});
-
-			// Inner icon
-			state.categoryInnerIcons[i] = services.shapes().addUIShape({
-				.shapeId = innerShapes[i],
-				.variables = {0.0f, 0.0f, 5.0f, 5.0f, 0.785398f},
-				.material = uiDimmed,
+			state.categoryIcons[i] = services.shapes().addUIShape({
+				.shapeId = state.categoryShapeIds[i],
+				.variables = {0.0f, 0.0f, 32.0f, 0.0f},
+				.material = (static_cast<int>(i) == state.selectedCategory ? uiWhite.id : uiDimmed.id),
 			});
 		}
+		state.lastRenderedCategory = state.selectedCategory;
 
-		// Active Category Focus Halo Ring (pulsing ring centered on active category)
+		// Active Category Focus Indicator (small triangle at the left pointing at the icon)
 		{
-			state.categoryFocusRing = services.shapes().addUIShape({
-				.shapeId = DefaultShapes::CircleLine,
-				.variables = {0.0f, 0.0f, 25.0f, 1.8f},
+			state.categoryIndicator = services.shapes().addUIShape({
+				.shapeId = DefaultShapes::TriangleRotated,
+				.variables = {{DefaultShapes::TriangleRotated::PosX, 0.0f},
+							  {DefaultShapes::TriangleRotated::PosY, 0.0f},
+							  {DefaultShapes::TriangleRotated::Width, 14.0f},
+							  {DefaultShapes::TriangleRotated::Height, 14.0f},
+							  {DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
 				.material = uiCyan,
 			});
 		}
@@ -365,6 +407,7 @@ namespace MenuSceneNamespace
 		State& state = getState(registry);
 
 		auto& uiWhite = services.materials2D().get("ui_white");
+		auto& uiDimmed = services.materials2D().get("ui_dimmed");
 
 		// Header: Minimal Clock text in top-right
 		{
@@ -375,20 +418,46 @@ namespace MenuSceneNamespace
 
 			auto& tr = registry.addComponent<UITextRenderer>(state.clockLabel);
 			tr.text = "12:00";
-			tr.material = uiWhite.id;
+			tr.material = uiDimmed.id;
 			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Top;
+		}
+
+		// Reconnect song preview if background music is already playing
+		auto activeSong = services.audio().music().getCurrentSong();
+		if (activeSong && services.audio().music().getVolume() > 0.0f)
+		{
+			for (size_t i = 0; i < state.songs.size(); ++i)
+			{
+				if (state.songs[i]->getName() == activeSong->getName())
+				{
+					state.songs[i] = activeSong;
+					state.currentPlayingSong = static_cast<int>(i);
+					break;
+				}
+			}
+
+			if (state.currentPlayingSong >= 0)
+			{
+				glm::vec2 previewCenter = getClockPreviewCenter(registry);
+				state.songs[state.currentPlayingSong]->setCenter(previewCenter);
+
+				auto& uiCyan = services.materials2D().get("ui_cyan");
+				services.audio().setSong(
+					state.songs[state.currentPlayingSong],
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, false);
+			}
 		}
 	}
 
 	void applyTheme(Registry& registry, ServiceProvider& services, int themeIndex)
 	{
 		State& state = getState(registry);
-		state.currentTheme = (themeIndex % 6 + 6) % 6;
+		state.currentTheme = (themeIndex % 7 + 7) % 7;
 
 		auto& bg = services.render().getBackground();
 		bg.type = BackgroundType::Grid;
-		bg.scale = 1.0f;
+		bg.scale = 4.0f;
 		bg.intensity = 1.0f;
 		bg.parallax = 0.5f;
 
@@ -401,7 +470,19 @@ namespace MenuSceneNamespace
 
 		switch (state.currentTheme)
 		{
-			case 0: // Classic Midnight Grid
+			case 0: // Classic
+				bg.primaryColor = vec4(0.7f, 0.7f, 0.71f, 1.0f);
+				bg.secondaryColor = vec4(0.55f, 0.55f, 0.58f, 1.0f);
+				matPrim.color = ColorPalette::Red;
+				matSec.color = ColorPalette::Green;
+				matAcc.color = ColorPalette::Blue;
+				matBrt.color = ColorPalette::Yellow;
+				matPart.color = ColorPalette::Magenta;
+				matCyan.color = ColorPalette::Cyan;
+				state.toastMessage = "THEME: CLASSIC GRID";
+				break;
+
+			case 1: // Classic Midnight Grid
 				bg.primaryColor = vec4(0.03f, 0.05f, 0.10f, 1.0f);
 				bg.secondaryColor = vec4(0.10f, 0.16f, 0.28f, 1.0f);
 				matPrim.color = vec4(0.24f, 0.68f, 1.0f, 0.85f);
@@ -413,7 +494,7 @@ namespace MenuSceneNamespace
 				state.toastMessage = "THEME: MIDNIGHT GRID";
 				break;
 
-			case 1: // Obsidian Onyx Grid
+			case 2: // Obsidian Onyx Grid
 				bg.primaryColor = vec4(0.02f, 0.02f, 0.03f, 1.0f);
 				bg.secondaryColor = vec4(0.12f, 0.14f, 0.18f, 1.0f);
 				matPrim.color = vec4(0.85f, 0.88f, 0.95f, 0.82f);
@@ -425,7 +506,7 @@ namespace MenuSceneNamespace
 				state.toastMessage = "THEME: OBSIDIAN GRID";
 				break;
 
-			case 2: // Crimson Silk Grid
+			case 3: // Crimson Silk Grid
 				bg.primaryColor = vec4(0.08f, 0.02f, 0.03f, 1.0f);
 				bg.secondaryColor = vec4(0.24f, 0.06f, 0.09f, 1.0f);
 				matPrim.color = vec4(1.0f, 0.25f, 0.38f, 0.85f);
@@ -437,7 +518,7 @@ namespace MenuSceneNamespace
 				state.toastMessage = "THEME: CRIMSON GRID";
 				break;
 
-			case 3: // Emerald Aurora Grid
+			case 4: // Emerald Aurora Grid
 				bg.primaryColor = vec4(0.02f, 0.06f, 0.03f, 1.0f);
 				bg.secondaryColor = vec4(0.06f, 0.22f, 0.11f, 1.0f);
 				matPrim.color = vec4(0.20f, 0.95f, 0.55f, 0.85f);
@@ -449,7 +530,7 @@ namespace MenuSceneNamespace
 				state.toastMessage = "THEME: EMERALD GRID";
 				break;
 
-			case 4: // Amethyst Purple Grid
+			case 5: // Amethyst Purple Grid
 				bg.primaryColor = vec4(0.05f, 0.02f, 0.08f, 1.0f);
 				bg.secondaryColor = vec4(0.20f, 0.06f, 0.28f, 1.0f);
 				matPrim.color = vec4(0.85f, 0.30f, 0.95f, 0.85f);
@@ -461,7 +542,7 @@ namespace MenuSceneNamespace
 				state.toastMessage = "THEME: AMETHYST GRID";
 				break;
 
-			case 5: // Amber Sunset Grid
+			case 6: // Amber Sunset Grid
 				bg.primaryColor = vec4(0.07f, 0.03f, 0.01f, 1.0f);
 				bg.secondaryColor = vec4(0.25f, 0.11f, 0.04f, 1.0f);
 				matPrim.color = vec4(1.0f, 0.65f, 0.15f, 0.85f);
@@ -475,6 +556,35 @@ namespace MenuSceneNamespace
 		}
 
 		state.toastTimer = 2.4f;
+	}
+
+	void updateCategoryIconMaterials(Registry& registry, ServiceProvider& services)
+	{
+		State& state = getState(registry);
+		auto& uiDimmed = services.materials2D().get("ui_dimmed");
+		auto& uiWhite = services.materials2D().get("ui_white");
+
+		bool changed = false;
+		for (size_t i = 0; i < State::CATEGORY_COUNT; ++i)
+		{
+			if (registry.isEntityValid(state.categoryIcons[i]))
+			{
+				auto& ui = registry.getComponent<UIShape>(state.categoryIcons[i]);
+				uint16_t targetMat = (static_cast<int>(i) == state.selectedCategory ? uiWhite.id : uiDimmed.id);
+				if (ui.material != targetMat)
+				{
+					ui.material = targetMat;
+					registry.setComponentDirty(ui);
+					changed = true;
+				}
+			}
+		}
+
+		if (changed)
+		{
+			services.render().forceShaderRefreshUI();
+		}
+		state.lastRenderedCategory = state.selectedCategory;
 	}
 
 	void playNavigationSound(ServiceProvider& services, float freq, float vol)
@@ -514,7 +624,13 @@ namespace MenuSceneNamespace
 		{
 			if (item.songIndex >= 0 && item.songIndex < static_cast<int>(state.songs.size()))
 			{
-				services.audio().setSong(state.songs[item.songIndex], true);
+				glm::vec2 previewCenter = getClockPreviewCenter(registry);
+				state.songs[item.songIndex]->setCenter(previewCenter);
+
+				auto& uiCyan = services.materials2D().get("ui_cyan");
+				services.audio().setSong(
+					state.songs[item.songIndex],
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, true);
 				services.audio().music().setVolume(0.85f);
 				services.audio().music().setTrackToggles({true, true, true, true});
 				state.currentPlayingSong = item.songIndex;
@@ -526,6 +642,8 @@ namespace MenuSceneNamespace
 		else if (item.actionId == "stop_song")
 		{
 			services.audio().setSong(nullptr, false);
+			services.audio().music().setTrackToggles({false, false, false, false});
+			services.audio().music().setVolume(0.0f);
 			state.currentPlayingSong = -1;
 			state.toastMessage = "MUSIC STOPPED";
 			state.toastTimer = 2.0f;
@@ -584,6 +702,7 @@ namespace MenuSceneNamespace
 			{
 				state.categories[state.selectedCategory].selectedItem = state.selectedItem;
 				state.selectedCategory = nextCat;
+				updateCategoryIconMaterials(registry, services);
 				int newItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
 				state.selectedItem = std::clamp(state.categories[state.selectedCategory].selectedItem, 0, newItemsMax);
 				state.smoothItem = static_cast<float>(state.selectedItem);
@@ -661,6 +780,7 @@ namespace MenuSceneNamespace
 				{
 					state.categories[state.selectedCategory].selectedItem = state.selectedItem;
 					state.selectedCategory = clickedCat;
+					updateCategoryIconMaterials(registry, services);
 					int newItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
 					state.selectedItem =
 						std::clamp(state.categories[state.selectedCategory].selectedItem, 0, newItemsMax);
@@ -810,13 +930,23 @@ namespace MenuSceneNamespace
 		// Layout constants
 		float focusX = screenW * 0.28f;
 		float categoryY = screenH * 0.62f;
-		float categorySpacing = 92.0f;
+		float categorySpacing = 116.0f;
 
 		float itemSpacingY = 56.0f;
-		float iconGapY = 68.0f;
+		float iconGapY = 88.0f;
 		float focusItemY = categoryY - iconGapY; // Selected item padded under the icon
 
-		// 1. Update Horizontal Categories UI Shapes (All 3 categories have 100% identical outer size)
+		// 1. Update Horizontal Categories UI Shapes (Custom procedural shapes)
+		if (state.lastRenderedCategory != state.selectedCategory)
+		{
+			updateCategoryIconMaterials(registry, services);
+		}
+
+		// Update continuous rotation angle for SCENES 16-point star (slow when unselected, fast when selected)
+		float scenesFocusWeight = std::clamp(1.0f - std::abs(state.smoothCategory), 0.0f, 1.0f);
+		float starSpeed = 0.1f + 0.5f * scenesFocusWeight;
+		state.scenesStarAngle += delta * starSpeed;
+
 		for (size_t i = 0; i < State::CATEGORY_COUNT; ++i)
 		{
 			float catOffset = static_cast<float>(i) - state.smoothCategory;
@@ -826,56 +956,43 @@ namespace MenuSceneNamespace
 			float distToFocus = std::abs(catOffset);
 			float focusWeight = std::clamp(1.0f - distToFocus, 0.0f, 1.0f);
 
-			// Outer icon: uniform CircleLine, EXACT SAME outer size for all 3 categories
-			float outerRadius = 15.0f + 4.0f * focusWeight; // 15px unfocused, 19px focused
+			// Scale icon smoothly: 32px unfocused, 42px focused
+			float iconScale = 32.0f + 10.0f * focusWeight;
 
-			if (registry.isEntityValid(state.categoryOuterIcons[i]))
+			if (registry.isEntityValid(state.categoryIcons[i]))
 			{
-				auto& ui = registry.getComponent<UIShape>(state.categoryOuterIcons[i]);
+				auto& ui = registry.getComponent<UIShape>(state.categoryIcons[i]);
 				ui.parameters[0] = posX;
 				ui.parameters[1] = posY;
-				ui.parameters[2] = outerRadius;
-				ui.parameters[3] = 1.6f; // Uniform stroke thickness for all
-				registry.setComponentDirty(ui);
-			}
+				ui.parameters[2] = iconScale;
 
-			// Inner icon: distinct, well-proportioned glyphs inside each category
-			if (registry.isEntityValid(state.categoryInnerIcons[i]))
-			{
-				auto& ui = registry.getComponent<UIShape>(state.categoryInnerIcons[i]);
-				ui.parameters[0] = posX;
-				ui.parameters[1] = posY;
-
-				if (i == 0) // GAME: Console / gamepad rectangle
+				if (i == 0) // SCENES: 16-point star continuous rotation
 				{
-					ui.parameters[2] = 6.0f + 1.5f * focusWeight; // half-width
-					ui.parameters[3] = 3.6f + 1.0f * focusWeight; // half-height
+					ui.parameters[3] = state.scenesStarAngle;
 				}
-				else if (i == 1) // MUSIC: Optical disc hub / spindle circle
+				else if (i == 2) // SETTINGS: gear rotates smoothly with horizontal navigation
 				{
-					ui.parameters[2] = 4.5f + 1.2f * focusWeight; // radius
+					ui.parameters[3] = 0.26f + state.smoothCategory * 1.5f;
 				}
-				else if (i == 2) // SETTINGS: Diamond dial (BoxRotated 45 deg)
+				else
 				{
-					float diamondHalf = 4.2f + 1.0f * focusWeight;
-					ui.parameters[2] = diamondHalf; // half-width
-					ui.parameters[3] = diamondHalf; // half-height
-					ui.parameters[4] = 0.785398f;	// 45 degrees
+					ui.parameters[3] = 0.0f;
 				}
 
 				registry.setComponentDirty(ui);
 			}
 		}
 
-		// 2. Active Category Focus Halo Ring
-		if (registry.isEntityValid(state.categoryFocusRing))
+		// 2. Active Category Focus Indicator (small triangle at the left of current icon, pointing at it)
+		if (registry.isEntityValid(state.categoryIndicator))
 		{
-			float ringPulse = 25.0f + 1.2f * std::sin(time * 3.5f);
-			auto& ui = registry.getComponent<UIShape>(state.categoryFocusRing);
-			ui.parameters[0] = focusX;
-			ui.parameters[1] = categoryY;
-			ui.parameters[2] = ringPulse;
-			ui.parameters[3] = 1.8f;
+			auto& ui = registry.getComponent<UIShape>(state.categoryIndicator);
+			ui.parameters[DefaultShapes::TriangleRotated::PosX] = focusX - 58.0f;
+			ui.parameters[DefaultShapes::TriangleRotated::PosY] = categoryY;
+			ui.parameters[DefaultShapes::TriangleRotated::Width] = 14.0f;
+			ui.parameters[DefaultShapes::TriangleRotated::Height] = 14.0f;
+			ui.parameters[DefaultShapes::TriangleRotated::Angle] =
+				1.5707963f; // 90 degrees, pointing right towards icon
 			registry.setComponentDirty(ui);
 		}
 
@@ -884,7 +1001,7 @@ namespace MenuSceneNamespace
 		{
 			auto& t = registry.getComponent<Transform>(state.activeCategoryLabel);
 			t.position.x = focusX;
-			t.position.y = categoryY + 48.0f;
+			t.position.y = categoryY + 62.0f;
 			registry.setComponentDirty(t);
 
 			auto& tr = registry.getComponent<UITextRenderer>(state.activeCategoryLabel);
@@ -1022,7 +1139,7 @@ namespace MenuSceneNamespace
 		}
 
 		// Pure horizontal camera parallax responding only to horizontal menu navigation (strictly no vertical motion)
-		float catOffset = state.smoothCategory - 1.0f; // -1: GAME, 0: MUSIC, +1: SETTINGS
+		float catOffset = state.smoothCategory - 1.0f; // -1: SCENES, 0: MUSIC, +1: SETTINGS
 		float parallaxX = catOffset * 3.5f;
 
 		// Camera is completely rock-solid and static at rest (zero idle drift/wobble)
@@ -1078,6 +1195,24 @@ namespace MenuSceneNamespace
 				t.position.x = screenW - 40.0f;
 				t.position.y = screenH - 40.0f;
 				registry.setComponentDirty(t);
+			}
+
+			// Keep live preview centered right under the clock across window resizes
+			glm::vec2 previewCenter = getClockPreviewCenter(registry);
+			for (auto& song : state.songs)
+			{
+				if (song)
+				{
+					song->setCenter(previewCenter);
+				}
+			}
+
+			if (state.currentPlayingSong >= 0 && state.currentPlayingSong < static_cast<int>(state.songs.size()))
+			{
+				auto& uiCyan = services.materials2D().get("ui_cyan");
+				services.audio().setSong(
+					state.songs[state.currentPlayingSong],
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, false);
 			}
 		}
 	}

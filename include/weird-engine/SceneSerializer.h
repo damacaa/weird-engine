@@ -29,6 +29,7 @@ namespace WeirdEngine
 		// If outTags is non-null, loaded tags are stored there (using new entity
 		// IDs) instead of being added to the scene's internal tag maps.  When
 		// outTags is nullptr the tags are inserted into the scene as before.
-		static void load(Scene& scene, const std::string& path, TagMap* outTags = nullptr);
+		// If restoreCamera is true, camera state from the file is applied to the main camera.
+		static void load(Scene& scene, const std::string& path, TagMap* outTags = nullptr, bool restoreCamera = true);
 	};
 } // namespace WeirdEngine

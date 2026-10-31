@@ -1,15 +1,15 @@
-#include "MouseCollisionScene.h"
+#include "CollisionScene.h"
 
 #include <cmath>
 
 using namespace WeirdEngine;
 
-namespace MouseCollisionSceneNamespace
+namespace CollisionSceneNamespace
 {
 	State& getState(Registry& registry)
 	{
 		State* state = registry.getState<State>();
-		WEIRD_ASSERT(state != nullptr, "MouseCollisionScene State is missing: stateInitSystem must run first");
+		WEIRD_ASSERT(state != nullptr, "CollisionScene State is missing: stateInitSystem must run first");
 		return *state;
 	}
 
@@ -172,4 +172,4 @@ namespace MouseCollisionSceneNamespace
 		}
 	}
 
-} // namespace MouseCollisionSceneNamespace
+} // namespace CollisionSceneNamespace

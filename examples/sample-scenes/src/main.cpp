@@ -2,16 +2,16 @@
 
 #include "AquariumScene.h"
 #include "CollisionHandling.h"
+#include "CollisionScene.h"
 #include "DestroyScene.h"
 #include "ImageScene.h"
 #include "LifeScene.h"
 #include "MenuScene.h"
-#include "MouseCollisionScene.h"
 #include "MusicScene.h"
+#include "PlatformerScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
 #include "UiScene.h"
-#include "WalkScene.h"
 
 #include "weird-renderer/core/Display.h"
 
@@ -26,9 +26,9 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MusicScene>("music");
 	sceneManager.registerScene<LifeScene>("life");
-	sceneManager.registerScene<WalkScene>("walk");
+	sceneManager.registerScene<PlatformerScene>("platformer");
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop
-	sceneManager.registerScene<MouseCollisionScene>("cursor-collision");
+	sceneManager.registerScene<CollisionScene>("collisions");
 	sceneManager.registerScene<ImageScene>("image");
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 

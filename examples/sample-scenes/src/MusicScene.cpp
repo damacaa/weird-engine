@@ -1,4 +1,5 @@
 #include "MusicScene.h"
+#include "MusicShapes.h"
 
 #include <cstdio>
 
@@ -20,49 +21,6 @@ namespace MusicSceneNamespace
 
 	using namespace SDF;
 
-	Expr getSongShape01(Vec2Expr p)
-	{
-		// var(0): overall radius / size
-		// var(1): speed multiplier
-		Expr star = sdStar(p, Expr(var(0)), Expr(var(0)) * 0.2f, 12.0f, Expr(var(1)) * 5.0f);
-		Expr eclipseX = sin(Expr(var(1)) * time() * 0.7f) * (Expr(var(0)) * 1.0f);
-		Vec2Expr moonCenter = {eclipseX, Expr(0.0f)};
-		Expr moon = sdCircle(p - moonCenter, Expr(var(0)) * 0.42f);
-		return sdfSubtract(star, moon);
-	}
-
-	Expr getSongShape02(Vec2Expr p)
-	{
-		// var(0): overall size / amplitude
-		// var(1): speed multiplier
-		Expr wave = sdSineWave(p, Expr(var(0)) * 0.22f, 0.08f, Expr(var(1)) * 1.5f, 0.0f);
-		Expr bubbleY = sin(Expr(var(1)) * time() * 2.0f) * (Expr(var(0)) * 0.25f);
-		Vec2Expr bubbleCenter = {Expr(0.0f), bubbleY};
-		Expr bubble = sdCircle(p - bubbleCenter, Expr(var(0)) * 0.45f);
-		return sdfSmoothUnion(wave, bubble, Expr(var(0)) * 0.15f);
-	}
-
-	Expr getSongShape03(Vec2Expr p)
-	{
-		// var(0): overall radius / size
-		// var(1): rotation speed
-		Expr theta = Expr(var(1)) * time() * 1.6f;
-		Vec2Expr rotP = {p.x * cos(theta) - p.y * sin(theta), p.x * sin(theta) + p.y * cos(theta)};
-		Expr shuriken = sdStar(rotP, Expr(var(0)) * 0.75f, Expr(var(0)) * 0.42f, 4.0f, 0.0f);
-		Expr centerHole = sdBox(rotate(p, theta * -1.0f), Vec2Expr(var(0) * 0.5f, var(0) * 0.5f));
-		return sdfSubtract(shuriken, centerHole);
-	}
-
-	Expr getSongShape04(Vec2Expr p)
-	{
-		// Generated Weird Engine SDF Expression
-		Expr finalShape = SDF::sdCircle(
-			SDF::repeat(SDF::rotate(SDF::translate(p, Vec2Expr(1000.0f, 0.0f)), (time() * var(1) * 0.5f)), 20.0f),
-			(var(0) * 0.3f));
-
-		return finalShape;
-	}
-
 	void setupSongsSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
@@ -82,22 +40,46 @@ namespace MusicSceneNamespace
 			state.songMats[i] = mat.id;
 		}
 
-		// 3. Instantiate the 4 songs
-		std::vector<Expr> shapeExprs = {getSongShape01(point()), getSongShape02(point()), getSongShape03(point()),
-										getSongShape04(point())};
-
+		// 3. Instantiate the 4 songs using shared MusicShapes definitions
 		for (size_t i = 0; i < State::NUM_SONGS; ++i)
 		{
-			auto song = WeirdAudio::SdfSong::create("song_1" + std::to_string(i), shapeExprs[i], previewCenter);
-			song->setParameter(0, 26.0f);
-			song->setParameter(1, 1.0f);
-			state.songs[i] = song;
+			state.songs[i] = MusicShapes::createSong(i, previewCenter);
 		}
 
-		// Initially ensure music playback is silent
-		services.audio().setSong(nullptr, false);
-		services.audio().music().setTrackToggles({false, false, false, false});
-		services.audio().music().setVolume(0.0f);
+		auto activeSong = services.audio().music().getCurrentSong();
+		int activeIdx = -1;
+		if (activeSong && services.audio().music().getVolume() > 0.0f)
+		{
+			for (size_t i = 0; i < State::NUM_SONGS; ++i)
+			{
+				if (state.songs[i]->getName() == activeSong->getName())
+				{
+					state.songs[i] = activeSong;
+					activeIdx = static_cast<int>(i);
+					break;
+				}
+			}
+		}
+
+		if (activeIdx >= 0)
+		{
+			state.selectedSongIndex = activeIdx;
+			state.currentLoadedSongIndex = activeIdx;
+			state.isPlaying = true;
+			state.paramSize = activeSong->getParameter(0);
+			state.paramSpeed = activeSong->getParameter(1);
+			state.songs[activeIdx]->setCenter(previewCenter);
+			services.audio().setSong(
+				state.songs[activeIdx],
+				SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = state.songMats[activeIdx]},
+				false);
+		}
+		else
+		{
+			services.audio().setSong(nullptr, false);
+			services.audio().music().setTrackToggles({false, false, false, false});
+			services.audio().music().setVolume(0.0f);
+		}
 	}
 
 	void setupTogglesSystem(Registry& registry, ServiceProvider& services)
@@ -117,61 +99,16 @@ namespace MusicSceneNamespace
 			return sdfIntersect(shape, sdCircle(p, Expr(var(0)) * 1.2f));
 		};
 
-		// Toggle 0: Eclipse
+		for (size_t i = 0; i < State::NUM_SONGS; ++i)
 		{
 			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId idEclipse = services.shapes().registerSDF(boundToggle(getSongShape01(p), p));
-			state.songToggles[0] = services.shapes().addUIShape(
-				{.shapeId = idEclipse,
-				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + 0.0f * spacingX}, {3, toggleY}},
-				 .material = state.songMats[0]});
-			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[0]);
-			toggle.active = false;
-			toggle.clickPadding = 6.0f;
-			toggle.modifierAmount = 4.0f;
-			toggle.parameterModifierMask.set(0);
-		}
-
-		// Toggle 1
-		{
-			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId idFloat = services.shapes().registerSDF(boundToggle(getSongShape02(p), p));
-			state.songToggles[1] = services.shapes().addUIShape(
-				{.shapeId = idFloat,
-				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + 1.0f * spacingX}, {3, toggleY}},
-				 .material = state.songMats[1]});
-			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[1]);
-			toggle.active = false;
-			toggle.clickPadding = 6.0f;
-			toggle.modifierAmount = 4.0f;
-			toggle.parameterModifierMask.set(0);
-		}
-
-		// Toggle 2
-		{
-			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId idNinjas = services.shapes().registerSDF(boundToggle(getSongShape03(p), p));
-			state.songToggles[2] = services.shapes().addUIShape(
-				{.shapeId = idNinjas,
-				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + 2.0f * spacingX}, {3, toggleY}},
-				 .material = state.songMats[2]});
-			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[2]);
-			toggle.active = false;
-			toggle.clickPadding = 6.0f;
-			toggle.modifierAmount = 4.0f;
-			toggle.parameterModifierMask.set(0);
-		}
-
-		// Toggle 3
-		{
-			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId idVortex = services.shapes().registerSDF(boundToggle(getSongShape04(p), p));
-			state.songToggles[3] = services.shapes().addUIShape(
-				{.shapeId = idVortex,
-				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + 3.0f * spacingX}, {3, toggleY}},
-				 .material = state.songMats[3]});
-			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[3]);
-			toggle.active = false;
+			ShapeId id = services.shapes().registerSDF(boundToggle(MusicShapes::getSongShape(i, p), p));
+			state.songToggles[i] = services.shapes().addUIShape(
+				{.shapeId = id,
+				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + static_cast<float>(i) * spacingX}, {3, toggleY}},
+				 .material = state.songMats[i]});
+			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[i]);
+			toggle.active = (state.selectedSongIndex == static_cast<int>(i));
 			toggle.clickPadding = 6.0f;
 			toggle.modifierAmount = 4.0f;
 			toggle.parameterModifierMask.set(0);
@@ -312,6 +249,11 @@ namespace MusicSceneNamespace
 				}
 			}
 			state.selectedSongIndex = keySelected;
+			if (state.songs[keySelected])
+			{
+				state.paramSize = state.songs[keySelected]->getParameter(0);
+				state.paramSpeed = state.songs[keySelected]->getParameter(1);
+			}
 			services.audio().playSound({0.03f, 500.0f + keySelected * 90.0f, false, vec3(0.0f), 1});
 			return;
 		}
@@ -327,6 +269,11 @@ namespace MusicSceneNamespace
 				{
 					// Toggle i was selected! Make it the only active toggle (radio behavior)
 					state.selectedSongIndex = static_cast<int>(i);
+					if (state.songs[i])
+					{
+						state.paramSize = state.songs[i]->getParameter(0);
+						state.paramSpeed = state.songs[i]->getParameter(1);
+					}
 					for (size_t j = 0; j < State::NUM_SONGS; ++j)
 					{
 						if (j != i && registry.isEntityValid(state.songToggles[j]) &&
@@ -572,16 +519,6 @@ namespace MusicSceneNamespace
 				t.position = vec3(px, py, 0.0f);
 			}
 		}
-	}
-
-	void onDestroySystem(Registry& registry, ServiceProvider& services)
-	{
-		services.audio().setSong(nullptr, false);
-		services.audio().music().setTrackToggles({false, false, false, false});
-		services.audio().music().setVolume(0.0f);
-		services.audio().setSongParameter(0, 0.0f);
-		services.audio().setSongParameter(1, 0.0f);
-		services.audio().resampleShape();
 	}
 
 } // namespace MusicSceneNamespace

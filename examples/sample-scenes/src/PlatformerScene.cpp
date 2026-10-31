@@ -1,16 +1,16 @@
-#include "WalkScene.h"
+#include "PlatformerScene.h"
 
 #include <algorithm>
 #include <cmath>
 
 using namespace WeirdEngine;
 
-namespace WalkSceneNamespace
+namespace PlatformerSceneNamespace
 {
 	State& getState(Registry& registry)
 	{
 		State* state = registry.getState<State>();
-		WEIRD_ASSERT(state != nullptr, "WalkScene State is missing: stateInitSystem must run first");
+		WEIRD_ASSERT(state != nullptr, "PlatformerScene State is missing: stateInitSystem must run first");
 		return *state;
 	}
 
@@ -512,4 +512,4 @@ namespace WalkSceneNamespace
 			glm::mix(cameraTransform.position.y, playerTransform.position.y + 2.0f, FOLLOW_SPEED * delta);
 		cameraTransform.position.z = 25.0f;
 	}
-} // namespace WalkSceneNamespace
+} // namespace PlatformerSceneNamespace

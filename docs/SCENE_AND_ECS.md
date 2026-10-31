@@ -425,5 +425,5 @@ Working examples live in `examples/sample-scenes/`:
 |---|---|
 | `RayQueryScene.h` | `PhysicsService::sampleAt` and `PhysicsService::raymarch` (see Section 6) |
 | `RopeScene.h` | Rigidbody picking (`getRigidbodyAt`), springs, and distance constraints |
-| `MouseCollisionScene.h` | Collision callbacks, materials, and cursor-driven interaction |
+| `CollisionScene.h` | Collision callbacks, materials, and cursor-driven interaction |
 | `ShapesCombinations.h` | Custom SDF registration and shape combination types |

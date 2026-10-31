@@ -54,11 +54,11 @@ namespace WeirdEngine
 		SceneSerializer::save(m_scene, filename);
 	}
 
-	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities)
+	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities, bool restoreCamera)
 	{
 		TagMap loadedTags;
 		Entity firstNewEntity = m_scene.m_registry.getEntityCount();
-		SceneSerializer::load(m_scene, path, &loadedTags);
+		SceneSerializer::load(m_scene, path, &loadedTags, restoreCamera);
 		if (blacklistEntities)
 		{
 			Entity lastNewEntity = m_scene.m_registry.getEntityCount();
@@ -109,7 +109,10 @@ namespace WeirdEngine
 								 const SongVisualizationOptions& visualOptions, bool beatSynced)
 	{
 		auto songPtr = song;
-		WeirdAudio::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
+		if (WeirdAudio::AudioEngine::getInstance().getMusicEngine().getCurrentSong() != song)
+		{
+			WeirdAudio::AudioEngine::getInstance().getMusicEngine().setSong(song, beatSynced);
+		}
 
 		if (m_visualizationEntity != INVALID_ENTITY && m_registry)
 		{

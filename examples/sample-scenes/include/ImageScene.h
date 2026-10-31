@@ -56,7 +56,6 @@ namespace ImageSceneNamespace
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupChamberSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupControlsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void loadInitialImageSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void fileDialogSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void buttonSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void shortcutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -71,7 +70,6 @@ public:
 		addStartSystem(ImageSceneNamespace::stateInitSystem);
 		addStartSystem(ImageSceneNamespace::setupChamberSystem);
 		addStartSystem(ImageSceneNamespace::setupControlsSystem);
-		addStartSystem(ImageSceneNamespace::loadInitialImageSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ImageSceneNamespace::fileDialogSystem);

@@ -526,6 +526,10 @@ namespace WeirdEngine
 		void SdfMusicEngine::setSong(std::shared_ptr<SdfSong> song, bool beatSynced)
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+			if (m_currentSong == song && song != nullptr)
+			{
+				return;
+			}
 			if (!m_currentSong || !beatSynced)
 			{
 				m_currentSong = std::move(song);

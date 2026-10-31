@@ -3,7 +3,7 @@
 #include "GlobalSystems.h"
 #include <weird-engine.h>
 
-namespace WalkSceneNamespace
+namespace PlatformerSceneNamespace
 {
 	struct State
 	{
@@ -64,21 +64,21 @@ namespace WalkSceneNamespace
 	void platformBuilderSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void walkingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void cameraFollowSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-} // namespace WalkSceneNamespace
+} // namespace PlatformerSceneNamespace
 
-class WalkScene : public WeirdEngine::Scene2D
+class PlatformerScene : public WeirdEngine::Scene2D
 {
 public:
-	WalkScene()
+	PlatformerScene()
 	{
-		addStartSystem(WalkSceneNamespace::stateInitSystem);
-		addStartSystem(WalkSceneNamespace::setupEnvironmentSystem);
-		addStartSystem(WalkSceneNamespace::loadCharacterSystem);
-		addStartSystem(WalkSceneNamespace::setupGroundSystem);
+		addStartSystem(PlatformerSceneNamespace::stateInitSystem);
+		addStartSystem(PlatformerSceneNamespace::setupEnvironmentSystem);
+		addStartSystem(PlatformerSceneNamespace::loadCharacterSystem);
+		addStartSystem(PlatformerSceneNamespace::setupGroundSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
-		addUpdateSystem(WalkSceneNamespace::platformBuilderSystem);
-		addUpdateSystem(WalkSceneNamespace::walkingSystem);
-		addUpdateSystem(WalkSceneNamespace::cameraFollowSystem);
+		addUpdateSystem(PlatformerSceneNamespace::platformBuilderSystem);
+		addUpdateSystem(PlatformerSceneNamespace::walkingSystem);
+		addUpdateSystem(PlatformerSceneNamespace::cameraFollowSystem);
 	}
 };

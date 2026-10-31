@@ -28,8 +28,9 @@ namespace WeirdEngine
 		// Dynamically load a .weird file and add its contents to the scene.
 		// If blacklistEntities is true, all entities created by the load will be
 		// excluded from future scene serialization.
+		// If restoreCamera is true, camera state in the file overrides the main camera.
 		// Returns a map of tag names to their corresponding entities.
-		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false);
+		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false);
 
 		void blacklistEntity(Entity entity)
 		{

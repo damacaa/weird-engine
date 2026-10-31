@@ -5,7 +5,7 @@
 #include "GlobalSystems.h"
 #include <weird-engine.h>
 
-namespace MouseCollisionSceneNamespace
+namespace CollisionSceneNamespace
 {
 	struct CollisionCounter
 	{
@@ -30,22 +30,22 @@ namespace MouseCollisionSceneNamespace
 								   WeirdEngine::EntityCollisionEvent& event);
 	void ballShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								  WeirdEngine::EntityShapeCollisionEvent& event);
-} // namespace MouseCollisionSceneNamespace
+} // namespace CollisionSceneNamespace
 
-class MouseCollisionScene : public WeirdEngine::Scene2D
+class CollisionScene : public WeirdEngine::Scene2D
 {
 public:
-	MouseCollisionScene()
+	CollisionScene()
 	{
-		addStartSystem(MouseCollisionSceneNamespace::stateInitSystem);
-		addStartSystem(MouseCollisionSceneNamespace::setupMaterialsSystem);
-		addStartSystem(MouseCollisionSceneNamespace::setupBoundariesSystem);
-		addStartSystem(MouseCollisionSceneNamespace::spawnDotsSystem);
+		addStartSystem(CollisionSceneNamespace::stateInitSystem);
+		addStartSystem(CollisionSceneNamespace::setupMaterialsSystem);
+		addStartSystem(CollisionSceneNamespace::setupBoundariesSystem);
+		addStartSystem(CollisionSceneNamespace::spawnDotsSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
-		addUpdateSystem(MouseCollisionSceneNamespace::cursorTrackingSystem);
+		addUpdateSystem(CollisionSceneNamespace::cursorTrackingSystem);
 
-		addEntityCollisionSystem(MouseCollisionSceneNamespace::ballEntityCollisionSystem);
-		addEntityShapeCollisionSystem(MouseCollisionSceneNamespace::ballShapeCollisionSystem);
+		addEntityCollisionSystem(CollisionSceneNamespace::ballEntityCollisionSystem);
+		addEntityShapeCollisionSystem(CollisionSceneNamespace::ballShapeCollisionSystem);
 	}
 };

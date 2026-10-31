@@ -182,6 +182,11 @@ namespace ImageSceneNamespace
 
 	void spawnBalls(Registry& registry, State& state, bool useSavedMaterials)
 	{
+		if (state.loadedImage.rgb.empty())
+		{
+			return;
+		}
+
 		const size_t ballCount = calculateBallCount(state.imageWidth, state.imageHeight);
 		const float chamberCenter = 15.0f;
 
@@ -249,33 +254,11 @@ namespace ImageSceneNamespace
 		}
 	}
 
-	static bool checkIfFileExists(const char* filename)
-	{
-		std::ifstream infile(filename);
-		return infile.good();
-	}
-
 	static void saveToFile(const char* filename, const std::string& content)
 	{
 		std::ofstream out(filename);
 		out << content;
 		out.close();
-	}
-
-	static std::string get_file_contents(const char* filename)
-	{
-		std::ifstream in(filename, std::ios::in | std::ios::binary);
-		if (in)
-		{
-			std::string contents;
-			in.seekg(0, std::ios::end);
-			contents.resize(in.tellg());
-			in.seekg(0, std::ios::beg);
-			in.read(&contents[0], contents.size());
-			in.close();
-			return contents;
-		}
-		return "";
 	}
 
 	void saveMaterials(Registry& registry, ServiceProvider& services, State& state)
@@ -513,52 +496,6 @@ namespace ImageSceneNamespace
 		}
 	}
 
-	void loadInitialImageSystem(Registry& registry, ServiceProvider& services)
-	{
-		State& state = getState(registry);
-
-		// Load default image
-		std::string defaultPath = services.resources().assetPath("jimmy.jpg");
-		loadImage(registry, services, state, defaultPath);
-
-		// If cache exists for default image, load saved materials
-		if (checkIfFileExists(state.cacheFilePath.c_str()))
-		{
-			std::string cache = get_file_contents(state.cacheFilePath.c_str());
-			if (!cache.empty() && cache != "0")
-			{
-				size_t idx = 0;
-				state.savedMaterials.clear();
-				while (idx < cache.size())
-				{
-					std::string idStr;
-					while (idx < cache.size() && cache[idx] != '-')
-					{
-						idStr += cache[idx++];
-					}
-					idx++;
-					if (!idStr.empty())
-					{
-						state.savedMaterials.push_back(std::stoi(idStr));
-					}
-				}
-
-				bool allZeros =
-					!state.savedMaterials.empty() &&
-					std::all_of(state.savedMaterials.begin(), state.savedMaterials.end(), [](int m) { return m == 0; });
-				if (allZeros)
-				{
-					state.savedMaterials.clear();
-				}
-				else if (state.savedMaterials.size() == state.balls.size())
-				{
-					state.hasSavedMaterials = true;
-					spawnBalls(registry, state, true);
-				}
-			}
-		}
-	}
-
 	void fileDialogSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
@@ -596,8 +533,11 @@ namespace ImageSceneNamespace
 			auto& btn = registry.getComponent<ShapeButton>(state.saveButton);
 			if (btn.state == ButtonState::Down)
 			{
-				services.audio().playSound({0.04f, 800.0f, false, vec3(0.0f), 1});
-				saveMaterials(registry, services, state);
+				if (!state.loadedImage.rgb.empty())
+				{
+					services.audio().playSound({0.04f, 800.0f, false, vec3(0.0f), 1});
+					saveMaterials(registry, services, state);
+				}
 			}
 		}
 
@@ -607,8 +547,11 @@ namespace ImageSceneNamespace
 			auto& btn = registry.getComponent<ShapeButton>(state.rerunButton);
 			if (btn.state == ButtonState::Down)
 			{
-				services.audio().playSound({0.04f, 1000.0f, false, vec3(0.0f), 1});
-				spawnBalls(registry, state, true);
+				if (!state.loadedImage.rgb.empty())
+				{
+					services.audio().playSound({0.04f, 1000.0f, false, vec3(0.0f), 1});
+					spawnBalls(registry, state, true);
+				}
 			}
 		}
 	}
@@ -623,11 +566,17 @@ namespace ImageSceneNamespace
 		}
 		if (services.input().getKeyDown(Input::S))
 		{
-			saveMaterials(registry, services, state);
+			if (!state.loadedImage.rgb.empty())
+			{
+				saveMaterials(registry, services, state);
+			}
 		}
 		if (services.input().getKeyDown(Input::R))
 		{
-			spawnBalls(registry, state, true);
+			if (!state.loadedImage.rgb.empty())
+			{
+				spawnBalls(registry, state, true);
+			}
 		}
 	}
 

@@ -39,11 +39,13 @@ namespace MenuSceneNamespace
 
 	struct State
 	{
-		// Navigation State: 0 = GAME, 1 = MUSIC, 2 = SETTINGS
+		// Navigation State: 0 = SCENES, 1 = MUSIC, 2 = SETTINGS
 		int selectedCategory = 0;
+		int lastRenderedCategory = -1;
 		int selectedItem = 0;
 		float smoothCategory = 0.0f;
 		float smoothItem = 0.0f;
+		float scenesStarAngle = 0.0f;
 
 		// Key repeat timers
 		float keyHoldTimer = 0.0f;
@@ -76,11 +78,11 @@ namespace MenuSceneNamespace
 		WeirdEngine::Entity waveRibbons[4] = {WeirdEngine::INVALID_ENTITY};
 		std::vector<Particle> particles;
 
-		// UI Shapes: Category Bar (GAME, MUSIC, SETTINGS)
+		// UI Shapes: Category Bar (SCENES, MUSIC, SETTINGS)
 		static constexpr size_t CATEGORY_COUNT = 3;
-		WeirdEngine::Entity categoryOuterIcons[CATEGORY_COUNT] = {WeirdEngine::INVALID_ENTITY};
-		WeirdEngine::Entity categoryInnerIcons[CATEGORY_COUNT] = {WeirdEngine::INVALID_ENTITY};
-		WeirdEngine::Entity categoryFocusRing = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::ShapeId categoryShapeIds[CATEGORY_COUNT] = {0};
+		WeirdEngine::Entity categoryIcons[CATEGORY_COUNT] = {WeirdEngine::INVALID_ENTITY};
+		WeirdEngine::Entity categoryIndicator = WeirdEngine::INVALID_ENTITY;
 		WeirdEngine::Entity activeCategoryLabel = WeirdEngine::INVALID_ENTITY;
 
 		// UI Entities: Vertical Sub-Items Pool (slots relative to focal row)
@@ -114,6 +116,7 @@ namespace MenuSceneNamespace
 	void responsiveLayoutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 
 	void applyTheme(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, int themeIndex);
+	void updateCategoryIconMaterials(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void playNavigationSound(WeirdEngine::ServiceProvider& services, float freq, float vol = 0.35f);
 	void playConfirmSound(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void playCancelSound(WeirdEngine::ServiceProvider& services);

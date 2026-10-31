@@ -54,7 +54,7 @@ namespace LifeSceneNamespace
 
 		// Frame the circular arena nicely at startup
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
-		cameraTransform.position = vec3(0.0f, 0.0f, 150.0f);
+		cameraTransform.position = vec3(0.0f, 0.0f, 65.0f);
 		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 

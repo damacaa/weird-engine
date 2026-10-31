@@ -87,8 +87,8 @@ namespace MenuSceneNamespace
 						 }},
 			MenuCategory{"SETTINGS",
 						 {
-							 {"THEME", "Cycle background wave color palette", "cycle_theme", ""},
-							 {"SYSTEM", "WeirdEngine OS Version 3.80 - Free Space: 112 GB", "system_info", ""},
+							 {"THEME", "Cycle background color palette", "cycle_theme", ""},
+							 {"SYSTEM", "WeirdEngine 1.0", "system_info", ""},
 						 }}};
 
 		if (s_menuPositionSaved)
@@ -142,7 +142,7 @@ namespace MenuSceneNamespace
 
 	void setupMaterialsSystem(Registry& registry, ServiceProvider& services)
 	{
-		// Background World Materials
+		// Background Theme Materials (for custom background shapes)
 		services.materials2D().createMaterial("bg_wave_primary");
 		services.materials2D().createMaterial("bg_wave_secondary");
 		services.materials2D().createMaterial("bg_wave_accent");
@@ -156,8 +156,8 @@ namespace MenuSceneNamespace
 		Material2D& uiDimmed = services.materials2D().createMaterial("ui_dimmed");
 		uiDimmed.color = vec4(0.72f, 0.78f, 0.88f, 0.38f);
 
-		Material2D& uiCyan = services.materials2D().createMaterial("ui_cyan");
-		uiCyan.color = vec4(0.25f, 0.75f, 1.0f, 0.95f);
+		Material2D& uiAccent = services.materials2D().createMaterial("ui_accent");
+		uiAccent.color = vec4(0.25f, 0.75f, 1.0f, 0.95f);
 
 		Material2D& uiToast = services.materials2D().createMaterial("ui_toast");
 		uiToast.color = vec4(1.0f, 0.84f, 0.28f, 0.95f);
@@ -165,92 +165,7 @@ namespace MenuSceneNamespace
 		// Apply active theme (restored or default Classic)
 		State& state = getState(registry);
 		applyTheme(registry, services, state.currentTheme);
-	}
-
-	void setupWorldWaveSystem(Registry& registry, ServiceProvider& services)
-	{
-		State& state = getState(registry);
-
-		// Register custom wave ribbon SDF
-		Expr wave = (point().y - var(3)) - var(0) * sin(var(1) * point().x + var(2) * time() + var(5));
-		Expr waveRibbon = sdfOnion(wave, var(4));
-		state.waveRibbonSdfId = services.shapes().registerSDF(waveRibbon);
-
-		auto& matPrim = services.materials2D().get("bg_wave_primary");
-		auto& matSec = services.materials2D().get("bg_wave_secondary");
-		auto& matAcc = services.materials2D().get("bg_wave_accent");
-		auto& matBrt = services.materials2D().get("bg_wave_bright");
-
-		// Ribbon 0: Main flowing foreground ribbon
-		state.waveRibbons[0] = services.shapes().addShape({
-			.shapeId = state.waveRibbonSdfId,
-			.variables = {2.6f, 0.11f, 0.85f, -2.2f, 0.55f, 0.0f},
-			.material = matPrim,
-			.combination = CombinationType::Addition,
-			.hasCollision = false,
-			.group = 0,
-		});
-
-		// Ribbon 1: Harmonic secondary wave ribbon
-		state.waveRibbons[1] = services.shapes().addShape({
-			.shapeId = state.waveRibbonSdfId,
-			.variables = {2.1f, 0.15f, 0.62f, -1.4f, 0.42f, 1.8f},
-			.material = matSec,
-			.combination = CombinationType::Addition,
-			.hasCollision = false,
-			.group = 1,
-		});
-
-		// Ribbon 2: Deep lower ambient wave ribbon
-		state.waveRibbons[2] = services.shapes().addShape({
-			.shapeId = state.waveRibbonSdfId,
-			.variables = {3.6f, 0.07f, 0.42f, -4.2f, 0.85f, 3.2f},
-			.material = matAcc,
-			.combination = CombinationType::Addition,
-			.hasCollision = false,
-			.group = 2,
-		});
-
-		// Ribbon 3: Delicate high flutter wave ribbon
-		state.waveRibbons[3] = services.shapes().addShape({
-			.shapeId = state.waveRibbonSdfId,
-			.variables = {1.1f, 0.22f, 1.35f, -2.6f, 0.22f, 0.8f},
-			.material = matBrt,
-			.combination = CombinationType::Addition,
-			.hasCollision = false,
-			.group = 3,
-		});
-
-		// Ambient drifting particles in the 2D raymarching world
-		auto& matParticle = services.materials2D().get("bg_particle");
-		state.particles.resize(8);
-
-		float initialX[8] = {-28.0f, -18.0f, -8.0f, 2.0f, 12.0f, 22.0f, 32.0f, -22.0f};
-		float initialY[8] = {-3.5f, -1.5f, -4.8f, -2.0f, -5.2f, -1.8f, -3.8f, -4.2f};
-		float speedX[8] = {1.2f, 0.8f, 1.5f, 0.9f, 1.1f, 0.7f, 1.4f, 1.0f};
-		float freqY[8] = {1.2f, 1.8f, 0.9f, 1.5f, 1.1f, 2.0f, 1.3f, 1.6f};
-		float ampY[8] = {0.8f, 0.6f, 1.1f, 0.7f, 0.9f, 0.5f, 1.0f, 0.75f};
-		float radii[8] = {0.45f, 0.35f, 0.55f, 0.40f, 0.50f, 0.30f, 0.60f, 0.42f};
-
-		for (size_t i = 0; i < 8; ++i)
-		{
-			state.particles[i].baseX = initialX[i];
-			state.particles[i].baseY = initialY[i];
-			state.particles[i].speedX = speedX[i];
-			state.particles[i].freqY = freqY[i];
-			state.particles[i].ampY = ampY[i];
-			state.particles[i].phase = static_cast<float>(i) * 1.1f;
-			state.particles[i].baseRadius = radii[i];
-
-			state.particles[i].entity = services.shapes().addShape({
-				.shapeId = DefaultShapes::Circle,
-				.variables = {initialX[i], initialY[i], radii[i]},
-				.material = matParticle,
-				.combination = CombinationType::Addition,
-				.hasCollision = false,
-				.group = Shape::GLOBAL_GROUP,
-			});
-		}
+		state.toastTimer = 0.0f; // Prevent toast from showing on startup
 	}
 
 	// Custom Procedural Category Icon Shapes (SCENES, MUSIC, SETTINGS)
@@ -315,7 +230,7 @@ namespace MenuSceneNamespace
 		State& state = getState(registry);
 
 		auto& uiDimmed = services.materials2D().get("ui_dimmed");
-		auto& uiCyan = services.materials2D().get("ui_cyan");
+		auto& uiAccent = services.materials2D().get("ui_accent");
 		auto& uiWhite = services.materials2D().get("ui_white");
 
 		// Register custom procedural SDF icons: SCENES (16-point star), MUSIC (beamed notes), SETTINGS (gear)
@@ -347,7 +262,7 @@ namespace MenuSceneNamespace
 							  {DefaultShapes::TriangleRotated::Width, 14.0f},
 							  {DefaultShapes::TriangleRotated::Height, 14.0f},
 							  {DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
-				.material = uiCyan,
+				.material = uiAccent,
 			});
 		}
 
@@ -397,7 +312,7 @@ namespace MenuSceneNamespace
 			auto& tr = registry.addComponent<UITextRenderer>(state.toastLabel);
 			tr.text = "";
 			tr.material = uiToast.id;
-			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
+			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 		}
 	}
@@ -442,43 +357,70 @@ namespace MenuSceneNamespace
 				glm::vec2 previewCenter = getClockPreviewCenter(registry);
 				state.songs[state.currentPlayingSong]->setCenter(previewCenter);
 
-				auto& uiCyan = services.materials2D().get("ui_cyan");
+				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
 					state.songs[state.currentPlayingSong],
-					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, false);
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, false);
 			}
 		}
 	}
+
+	void setupBackgroundSystem(Registry& registry, ServiceProvider& services)
+	{
+		auto& mat = services.materials2D().get("bg_wave_primary");
+		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
+									.variables = {{DefaultShapes::SineWave::Amplitude, 0.5f},
+												  {DefaultShapes::SineWave::Period, 2.5f},
+												  {DefaultShapes::SineWave::Speed, 1.0f},
+												  {DefaultShapes::SineWave::Offset, -20.0f}},
+									.material = mat.id,
+									.combination = CombinationType::Addition,
+									.hasCollision = true,
+									.group = 0});
+	}
+
+	void updateBackgroundSystem(Registry& registry, ServiceProvider& services) {}
 
 	void applyTheme(Registry& registry, ServiceProvider& services, int themeIndex)
 	{
 		State& state = getState(registry);
 		state.currentTheme = (themeIndex % 7 + 7) % 7;
 
-		auto& bg = services.render().getBackground();
-		bg.type = BackgroundType::Grid;
-		bg.scale = 4.0f;
-		bg.intensity = 1.0f;
-		bg.parallax = 0.5f;
-
 		auto& matPrim = services.materials2D().get("bg_wave_primary");
 		auto& matSec = services.materials2D().get("bg_wave_secondary");
 		auto& matAcc = services.materials2D().get("bg_wave_accent");
 		auto& matBrt = services.materials2D().get("bg_wave_bright");
 		auto& matPart = services.materials2D().get("bg_particle");
-		auto& matCyan = services.materials2D().get("ui_cyan");
+		auto& matAccent = services.materials2D().get("ui_accent");
+		auto& matWhite = services.materials2D().get("ui_white");
+		auto& matDimmed = services.materials2D().get("ui_dimmed");
+
+		auto& bg = services.render().getBackground();
+
+		bg.type = BackgroundType::Sky;
+		bg.scale = 1.0f;
+		bg.intensity = 1.0f;
+		bg.parallax = 0.5f;
 
 		switch (state.currentTheme)
 		{
-			case 0: // Classic
+			case 0: // Classic Grid
+				bg.type = BackgroundType::Grid;
+				bg.scale = 10.0f;
+				bg.intensity = 1.0f;
+				bg.parallax = 0.5f;
+
 				bg.primaryColor = vec4(0.7f, 0.7f, 0.71f, 1.0f);
 				bg.secondaryColor = vec4(0.55f, 0.55f, 0.58f, 1.0f);
-				matPrim.color = ColorPalette::Red;
+				matPrim.color = ColorPalette::Magenta;
 				matSec.color = ColorPalette::Green;
 				matAcc.color = ColorPalette::Blue;
 				matBrt.color = ColorPalette::Yellow;
 				matPart.color = ColorPalette::Magenta;
-				matCyan.color = ColorPalette::Cyan;
+				matAccent.color = ColorPalette::Cyan;
+				matWhite.color = vec4(1.0f, 1.0f, 1.0f, 0.98f);
+				matDimmed.color = vec4(0.72f, 0.78f, 0.88f, 0.38f);
+
 				state.toastMessage = "THEME: CLASSIC GRID";
 				break;
 
@@ -490,20 +432,26 @@ namespace MenuSceneNamespace
 				matAcc.color = vec4(0.35f, 0.20f, 0.72f, 0.45f);
 				matBrt.color = vec4(0.75f, 0.92f, 1.0f, 0.95f);
 				matPart.color = vec4(0.70f, 0.90f, 1.0f, 0.40f);
-				matCyan.color = vec4(0.25f, 0.75f, 1.0f, 0.95f);
+				matAccent.color = vec4(0.25f, 0.75f, 1.0f, 0.95f);
+				matWhite.color = vec4(0.95f, 0.98f, 1.0f, 0.98f);
+				matDimmed.color = vec4(0.55f, 0.68f, 0.85f, 0.40f);
 				state.toastMessage = "THEME: MIDNIGHT GRID";
 				break;
 
 			case 2: // Obsidian Onyx Grid
+				bg.type = BackgroundType::Solid;
+
 				bg.primaryColor = vec4(0.02f, 0.02f, 0.03f, 1.0f);
-				bg.secondaryColor = vec4(0.12f, 0.14f, 0.18f, 1.0f);
+				bg.secondaryColor = vec4(0.05f, 0.05f, 0.08f, 1.0f);
 				matPrim.color = vec4(0.85f, 0.88f, 0.95f, 0.82f);
 				matSec.color = vec4(0.50f, 0.55f, 0.68f, 0.62f);
 				matAcc.color = vec4(0.28f, 0.32f, 0.42f, 0.42f);
 				matBrt.color = vec4(1.0f, 1.0f, 1.0f, 0.95f);
 				matPart.color = vec4(0.90f, 0.92f, 1.0f, 0.35f);
-				matCyan.color = vec4(0.90f, 0.90f, 0.95f, 0.95f);
-				state.toastMessage = "THEME: OBSIDIAN GRID";
+				matAccent.color = vec4(0.90f, 0.90f, 0.95f, 0.95f);
+				matWhite.color = vec4(1.0f, 1.0f, 1.0f, 0.98f);
+				matDimmed.color = ColorPalette::fromHex("#2D183E61");
+				state.toastMessage = "THEME: OBSIDIAN";
 				break;
 
 			case 3: // Crimson Silk Grid
@@ -514,7 +462,9 @@ namespace MenuSceneNamespace
 				matAcc.color = vec4(0.52f, 0.10f, 0.22f, 0.45f);
 				matBrt.color = vec4(1.0f, 0.75f, 0.82f, 0.95f);
 				matPart.color = vec4(1.0f, 0.70f, 0.75f, 0.40f);
-				matCyan.color = vec4(1.0f, 0.35f, 0.45f, 0.95f);
+				matAccent.color = vec4(1.0f, 0.35f, 0.45f, 0.95f);
+				matWhite.color = vec4(1.0f, 0.94f, 0.96f, 0.98f);
+				matDimmed.color = vec4(0.85f, 0.52f, 0.60f, 0.40f);
 				state.toastMessage = "THEME: CRIMSON GRID";
 				break;
 
@@ -526,7 +476,9 @@ namespace MenuSceneNamespace
 				matAcc.color = vec4(0.08f, 0.42f, 0.26f, 0.45f);
 				matBrt.color = vec4(0.70f, 1.0f, 0.85f, 0.95f);
 				matPart.color = vec4(0.65f, 1.0f, 0.80f, 0.40f);
-				matCyan.color = vec4(0.30f, 0.95f, 0.60f, 0.95f);
+				matAccent.color = vec4(0.30f, 0.95f, 0.60f, 0.95f);
+				matWhite.color = vec4(0.94f, 1.0f, 0.96f, 0.98f);
+				matDimmed.color = vec4(0.50f, 0.78f, 0.65f, 0.40f);
 				state.toastMessage = "THEME: EMERALD GRID";
 				break;
 
@@ -538,7 +490,9 @@ namespace MenuSceneNamespace
 				matAcc.color = vec4(0.40f, 0.10f, 0.58f, 0.45f);
 				matBrt.color = vec4(0.92f, 0.75f, 1.0f, 0.95f);
 				matPart.color = vec4(0.88f, 0.70f, 1.0f, 0.40f);
-				matCyan.color = vec4(0.88f, 0.45f, 1.0f, 0.95f);
+				matAccent.color = vec4(0.88f, 0.45f, 1.0f, 0.95f);
+				matWhite.color = vec4(0.97f, 0.94f, 1.0f, 0.98f);
+				matDimmed.color = vec4(0.72f, 0.55f, 0.85f, 0.40f);
 				state.toastMessage = "THEME: AMETHYST GRID";
 				break;
 
@@ -550,7 +504,9 @@ namespace MenuSceneNamespace
 				matAcc.color = vec4(0.55f, 0.22f, 0.08f, 0.45f);
 				matBrt.color = vec4(1.0f, 0.90f, 0.60f, 0.95f);
 				matPart.color = vec4(1.0f, 0.85f, 0.50f, 0.40f);
-				matCyan.color = vec4(1.0f, 0.75f, 0.25f, 0.95f);
+				matAccent.color = vec4(1.0f, 0.75f, 0.25f, 0.95f);
+				matWhite.color = vec4(1.0f, 0.97f, 0.92f, 0.98f);
+				matDimmed.color = vec4(0.85f, 0.68f, 0.50f, 0.40f);
 				state.toastMessage = "THEME: AMBER GRID";
 				break;
 		}
@@ -627,10 +583,10 @@ namespace MenuSceneNamespace
 				glm::vec2 previewCenter = getClockPreviewCenter(registry);
 				state.songs[item.songIndex]->setCenter(previewCenter);
 
-				auto& uiCyan = services.materials2D().get("ui_cyan");
+				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
 					state.songs[item.songIndex],
-					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, true);
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, true);
 				services.audio().music().setVolume(0.85f);
 				services.audio().music().setTrackToggles({true, true, true, true});
 				state.currentPlayingSong = item.songIndex;
@@ -656,7 +612,7 @@ namespace MenuSceneNamespace
 		}
 		else if (item.actionId == "system_info")
 		{
-			state.toastMessage = "WEIRD ENGINE OS 3.80 - 112 GB FREE";
+			state.toastMessage = "WEIRD ENGINE 1.0";
 			state.toastTimer = 2.5f;
 			playConfirmSound(registry, services);
 		}
@@ -1096,7 +1052,7 @@ namespace MenuSceneNamespace
 			if (registry.isEntityValid(state.toastLabel))
 			{
 				auto& t = registry.getComponent<Transform>(state.toastLabel);
-				t.position.x = focusX - 20.0f;
+				t.position.x = screenW * 0.5f;
 				t.position.y = 120.0f;
 				registry.setComponentDirty(t);
 
@@ -1114,35 +1070,11 @@ namespace MenuSceneNamespace
 				registry.setComponentDirty(tr);
 			}
 		}
-	}
 
-	void worldWaveAnimationSystem(Registry& registry, ServiceProvider& services)
-	{
-		State& state = getState(registry);
-		float time = services.time().time();
-
-		// Update drifting ambient particles in the 2D raymarching world
-		for (auto& p : state.particles)
-		{
-			if (registry.isEntityValid(p.entity))
-			{
-				float curX = std::fmod(p.baseX + p.speedX * time + 72.0f, 72.0f) - 36.0f;
-				float curY = p.baseY + std::sin(time * p.freqY + p.phase) * p.ampY;
-				float curRadius = p.baseRadius * (0.85f + 0.15f * std::sin(time * 2.5f + p.phase));
-
-				auto& cs = registry.getComponent<Shape>(p.entity);
-				cs.parameters[DefaultShapes::Circle::PosX] = curX;
-				cs.parameters[DefaultShapes::Circle::PosY] = curY;
-				cs.parameters[DefaultShapes::Circle::Radius] = curRadius;
-				registry.setComponentDirty(cs);
-			}
-		}
-
-		// Pure horizontal camera parallax responding only to horizontal menu navigation (strictly no vertical motion)
+		// 7. Pure horizontal camera parallax responding only to horizontal menu navigation
 		float catOffset = state.smoothCategory - 1.0f; // -1: SCENES, 0: MUSIC, +1: SETTINGS
 		float parallaxX = catOffset * 3.5f;
 
-		// Camera is completely rock-solid and static at rest (zero idle drift/wobble)
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position.x = parallaxX;
 		cameraTransform.position.y = 0.0f;
@@ -1209,10 +1141,10 @@ namespace MenuSceneNamespace
 
 			if (state.currentPlayingSong >= 0 && state.currentPlayingSong < static_cast<int>(state.songs.size()))
 			{
-				auto& uiCyan = services.materials2D().get("ui_cyan");
+				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
 					state.songs[state.currentPlayingSong],
-					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiCyan.id}, false);
+					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, false);
 			}
 		}
 	}

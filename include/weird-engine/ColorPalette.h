@@ -1,6 +1,8 @@
 #pragma once
 
 #include "weird-engine/vec.h"
+#include <cstdint>
+#include <string_view>
 #include <vector>
 
 namespace WeirdEngine
@@ -28,6 +30,48 @@ namespace WeirdEngine
 		inline const std::vector<glm::vec3> Default = {Black,	   White,  Gray,	  LightGray, Red,  Green,
 													   Blue,	   Yellow, Orange,	  Purple,	 Cyan, Magenta,
 													   LightGreen, Pink,   LightBlue, Brown};
+
+		inline glm::vec4 fromHex(uint32_t hex)
+		{
+			return glm::vec4(static_cast<float>((hex >> 24) & 0xFF) / 255.0f,
+							 static_cast<float>((hex >> 16) & 0xFF) / 255.0f,
+							 static_cast<float>((hex >> 8) & 0xFF) / 255.0f, static_cast<float>(hex & 0xFF) / 255.0f);
+		}
+
+		inline glm::vec4 fromHex(std::string_view hex)
+		{
+			if (hex.starts_with('#'))
+			{
+				hex.remove_prefix(1);
+			}
+
+			uint32_t val = 0;
+			for (char c : hex)
+			{
+				val <<= 4;
+				if (c >= '0' && c <= '9')
+				{
+					val |= static_cast<uint32_t>(c - '0');
+				}
+				else if (c >= 'a' && c <= 'f')
+				{
+					val |= static_cast<uint32_t>(c - 'a' + 10);
+				}
+				else if (c >= 'A' && c <= 'F')
+				{
+					val |= static_cast<uint32_t>(c - 'A' + 10);
+				}
+			}
+
+			if (hex.size() == 6)
+			{
+				return glm::vec4(static_cast<float>((val >> 16) & 0xFF) / 255.0f,
+								 static_cast<float>((val >> 8) & 0xFF) / 255.0f,
+								 static_cast<float>(val & 0xFF) / 255.0f, 1.0f);
+			}
+
+			return fromHex(val);
+		}
 	} // namespace ColorPalette
 
 	namespace Colors = ColorPalette;

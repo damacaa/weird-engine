@@ -25,18 +25,6 @@ namespace MenuSceneNamespace
 		int selectedItem = 0;
 	};
 
-	struct Particle
-	{
-		float baseX = 0.0f;
-		float baseY = 0.0f;
-		float speedX = 0.0f;
-		float freqY = 0.0f;
-		float ampY = 0.0f;
-		float phase = 0.0f;
-		float baseRadius = 0.5f;
-		WeirdEngine::Entity entity = WeirdEngine::INVALID_ENTITY;
-	};
-
 	struct State
 	{
 		// Navigation State: 0 = SCENES, 1 = MUSIC, 2 = SETTINGS
@@ -73,11 +61,6 @@ namespace MenuSceneNamespace
 		std::vector<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>> songs;
 		int currentPlayingSong = -1;
 
-		// Background World Shapes (Dynamic Wave ribbons & particles)
-		WeirdEngine::ShapeId waveRibbonSdfId = 0;
-		WeirdEngine::Entity waveRibbons[4] = {WeirdEngine::INVALID_ENTITY};
-		std::vector<Particle> particles;
-
 		// UI Shapes: Category Bar (SCENES, MUSIC, SETTINGS)
 		static constexpr size_t CATEGORY_COUNT = 3;
 		WeirdEngine::ShapeId categoryShapeIds[CATEGORY_COUNT] = {0};
@@ -104,16 +87,16 @@ namespace MenuSceneNamespace
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupMaterialsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void setupWorldWaveSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupCategoryUiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupItemUiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupStatusUiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void setupBackgroundSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 
 	void menuInputSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void menuAnimationSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void worldWaveAnimationSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void statusUpdateSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void responsiveLayoutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void updateBackgroundSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 
 	void applyTheme(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, int themeIndex);
 	void updateCategoryIconMaterials(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -130,15 +113,15 @@ public:
 		addStartSystem(MenuSceneNamespace::stateInitSystem);
 		addStartSystem(MenuSceneNamespace::setupEnvironmentSystem);
 		addStartSystem(MenuSceneNamespace::setupMaterialsSystem);
-		addStartSystem(MenuSceneNamespace::setupWorldWaveSystem);
 		addStartSystem(MenuSceneNamespace::setupCategoryUiSystem);
 		addStartSystem(MenuSceneNamespace::setupItemUiSystem);
 		addStartSystem(MenuSceneNamespace::setupStatusUiSystem);
+		addStartSystem(MenuSceneNamespace::setupBackgroundSystem);
 
 		addUpdateSystem(MenuSceneNamespace::menuInputSystem);
 		addUpdateSystem(MenuSceneNamespace::menuAnimationSystem);
-		addUpdateSystem(MenuSceneNamespace::worldWaveAnimationSystem);
 		addUpdateSystem(MenuSceneNamespace::statusUpdateSystem);
 		addUpdateSystem(MenuSceneNamespace::responsiveLayoutSystem);
+		addUpdateSystem(MenuSceneNamespace::updateBackgroundSystem);
 	}
 };

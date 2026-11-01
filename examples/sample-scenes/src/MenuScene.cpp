@@ -69,6 +69,7 @@ namespace MenuSceneNamespace
 			MenuCategory{
 				"SCENES",
 				{
+					{"TETROMINOES", "Falling polyomino block puzzle game", "launch_scene", "tetrominoes"},
 					{"SHAPES", "2D Signed Distance Field shapes showcase", "launch_scene", "shapes"},
 					{"ROPE", "Verlet physics rope simulation", "launch_scene", "rope"},
 					{"PLATFORMER", "2D character platformer with terrain collision", "launch_scene", "platformer"},

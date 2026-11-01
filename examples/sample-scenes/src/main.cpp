@@ -11,6 +11,7 @@
 #include "PlatformerScene.h"
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
+#include "TetrominoScene.h"
 #include "UiScene.h"
 
 #include "weird-renderer/core/Display.h"
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop
 	sceneManager.registerScene<CollisionScene>("collisions");
 	sceneManager.registerScene<ImageScene>("image");
+	sceneManager.registerScene<TetrominoScene>("tetrominoes");
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 
 	// Stress tests / benchmarks (commented out due to runtime shader rebuild overhead)

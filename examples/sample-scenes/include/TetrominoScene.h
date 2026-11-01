@@ -21,6 +21,21 @@ namespace TetrominoSceneNamespace
 		float moveInterval = 0.15f;
 		int moveDirection = 0;
 		int currentPieceType = 0;
+		int currentPieceMaterial = 2;
+		int nextPieceType = -1;
+		int nextPieceMaterial = 2;
+		int heldPieceType = -1;
+		int heldPieceMaterial = 0;
+		bool canHold = true;
+		std::array<WeirdEngine::Entity, 4> nextPreviewDots{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
+														   WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY};
+		std::array<WeirdEngine::Entity, 4> holdPreviewDots{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
+														   WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY};
+		int ghostMaterial = 0;
+		std::array<WeirdEngine::Entity, 4> ghostPreviewDots{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
+															WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY};
+		WeirdEngine::Entity gameOverText = WeirdEngine::INVALID_ENTITY;
+		float prevStickX = 0.0f;
 	};
 
 	// Coordinate conversion helpers

@@ -678,6 +678,18 @@ namespace WeirdEngine
 			return length({max(dx, 0.0f), max(dy, 0.0f)}) + min(max(dx, dy), 0.0f);
 		}
 
+		inline Expr sdRoundBox(const Vec2Expr& p, const Vec2Expr& halfSize, const Expr& radius)
+		{
+			Expr r = max(radius, 0.0f);
+			Vec2Expr b = {max(halfSize.x - r, 0.0f), max(halfSize.y - r, 0.0f)};
+			return sdBox(p, b) - r;
+		}
+
+		inline Expr sdRoundedBox(const Vec2Expr& p, const Vec2Expr& halfSize, const Expr& radius)
+		{
+			return sdRoundBox(p, halfSize, radius);
+		}
+
 		inline Expr sdSegment(const Vec2Expr& p, const Vec2Expr& a, const Vec2Expr& b)
 		{
 			Vec2Expr pa = p - a;

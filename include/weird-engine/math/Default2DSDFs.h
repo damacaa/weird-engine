@@ -26,6 +26,20 @@ namespace WeirdEngine
 	  sdfOnion(sdBox(translate(point(), {var(BoxLine::PosX), var(BoxLine::PosY)}),                                     \
 					 {var(BoxLine::SizeX), var(BoxLine::SizeY)}),                                                      \
 			   var(BoxLine::Thickness)))                                                                               \
+	X(RoundBox, (PosX, PosY, SizeX, SizeY, Radius),                                                                    \
+	  sdRoundBox(translate(point(), {var(RoundBox::PosX), var(RoundBox::PosY)}),                                       \
+				 {var(RoundBox::SizeX), var(RoundBox::SizeY)}, var(RoundBox::Radius)))                                 \
+	X(RoundBoxLine, (PosX, PosY, SizeX, SizeY, Radius, Thickness),                                                     \
+	  sdfOnion(sdRoundBox(translate(point(), {var(RoundBoxLine::PosX), var(RoundBoxLine::PosY)}),                      \
+						  {var(RoundBoxLine::SizeX), var(RoundBoxLine::SizeY)}, var(RoundBoxLine::Radius)),            \
+			   var(RoundBoxLine::Thickness)))                                                                          \
+	X(RoundedBox, (PosX, PosY, SizeX, SizeY, Radius),                                                                  \
+	  sdRoundedBox(translate(point(), {var(RoundedBox::PosX), var(RoundedBox::PosY)}),                                 \
+				   {var(RoundedBox::SizeX), var(RoundedBox::SizeY)}, var(RoundedBox::Radius)))                         \
+	X(RoundedBoxLine, (PosX, PosY, SizeX, SizeY, Radius, Thickness),                                                   \
+	  sdfOnion(sdRoundedBox(translate(point(), {var(RoundedBoxLine::PosX), var(RoundedBoxLine::PosY)}),                \
+							{var(RoundedBoxLine::SizeX), var(RoundedBoxLine::SizeY)}, var(RoundedBoxLine::Radius)),    \
+			   var(RoundedBoxLine::Thickness)))                                                                        \
 	X(Triangle, (PosX, PosY, Width, Height),                                                                           \
 	  sdTriangle(translate(point(), {var(Triangle::PosX), var(Triangle::PosY)}), var(Triangle::Width),                 \
 				 var(Triangle::Height)))                                                                               \

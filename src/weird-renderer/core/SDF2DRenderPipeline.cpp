@@ -856,6 +856,15 @@ namespace WeirdEngine
 									   "u_bgIntensity;\n"
 									   "}";
 						break;
+					case BackgroundType::Checkers:
+						injectedCode = "vec3 getBackground(vec2 uv, vec2 worldPos) {\n"
+									   "    float freq = 0.1 * u_bgScale;\n"
+									   "    vec2 p = floor(freq * worldPos);\n"
+									   "    float check = mod(p.x + p.y, 2.0);\n"
+									   "    return mix(u_bgPrimaryColor.rgb, u_bgSecondaryColor.rgb, check) * "
+									   "u_bgIntensity;\n"
+									   "}";
+						break;
 					case BackgroundType::Sky:
 						injectedCode =
 							"vec3 getBackground(vec2 uv, vec2 worldPos) {\n"

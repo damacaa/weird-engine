@@ -708,9 +708,9 @@ namespace WeirdEngine
 			if (ImGui::CollapsingHeader("Background"))
 			{
 				ImGui::Indent();
-				const char* bgTypes[] = {"Solid", "Grid", "Sky", "Custom"};
+				const char* bgTypes[] = {"Solid", "Grid", "Checkers", "Sky", "Custom"};
 				int bgTypeIdx = static_cast<int>(m_background.type);
-				if (ImGui::Combo("Background Type", &bgTypeIdx, bgTypes, 4))
+				if (ImGui::Combo("Background Type", &bgTypeIdx, bgTypes, 5))
 				{
 					m_background.type = static_cast<BackgroundType>(bgTypeIdx);
 				}

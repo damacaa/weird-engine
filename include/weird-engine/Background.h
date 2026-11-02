@@ -9,6 +9,7 @@ namespace WeirdEngine
 	{
 		Solid,
 		Grid,
+		Checkers,
 		Sky,
 		Custom
 	};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GlobalSystems.h"
+#include <atomic>
 #include <cmath>
 #include <weird-engine.h>
 
@@ -14,8 +15,12 @@ namespace TetrominoSceneNamespace
 		std::vector<WeirdEngine::Entity> activeDots;
 		std::array<std::array<WeirdEngine::Entity, 20>, 10> grid{}; // 20 rows x 10 columns grid for the game
 		bool isGameOver = false;									// Flag to indicate if the game is over
+		bool isPaused = false;										// Flag to indicate if the game is paused
+		std::array<int, 7> pieceMaterials{};
 		int lastMaterial = 2;
 		int score = 0;
+		int lines = 0;
+		int level = 1;
 		bool moving = false;
 		float timeSinceLastMove = 0.0f;
 		float moveInterval = 0.15f;
@@ -35,8 +40,29 @@ namespace TetrominoSceneNamespace
 		std::array<WeirdEngine::Entity, 4> ghostPreviewDots{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
 															WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY};
 		WeirdEngine::Entity gameOverText = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity pauseText = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity scoreText = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity linesText = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity levelText = WeirdEngine::INVALID_ENTITY;
+		int scoreMaterial = 0;
+		int pipeDotMaterial = 0;
 		float prevStickX = 0.0f;
+
+		// Tetromino pipe machine state
+		std::vector<WeirdEngine::Entity> pipeDots;
+		WeirdEngine::Entity pipePistonEntity = WeirdEngine::INVALID_ENTITY;
+		float pistonCurrentS = 10.0f;
+		float pistonTargetS = 10.0f;
+		std::array<glm::ivec2, 4> activeGridPos{};
+		std::array<WeirdEngine::vec2, 4> spawnStartPos{};
+		std::array<WeirdEngine::vec2, 4> spawnTargetPos{};
+		bool isSpawningPiece = false;
+		float spawnAnimTimer = 0.0f;
+		float spawnAnimDuration = 0.25f;
+		WeirdEngine::Entity pipeNozzleShape = WeirdEngine::INVALID_ENTITY;
 	};
+
+	inline std::atomic<bool> g_isGameOverPhysics{false};
 
 	// Coordinate conversion helpers
 	// Grid: [0..9] columns, [0..19] rows.
@@ -84,5 +110,16 @@ public:
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(TetrominoSceneNamespace::updateTetrominoSystem);
+	}
+
+protected:
+	void onPhysicsShapeCollision(WeirdEngine::Simulation2D& simulation,
+								 WeirdEngine::PhysicsShapeCollisionEvent& event) override
+	{
+		if (!TetrominoSceneNamespace::g_isGameOverPhysics.load(std::memory_order_relaxed))
+		{
+			event.friction = 0.0f;
+			event.penetration = std::sqrt(std::max(0.0f, event.penetration));
+		}
 	}
 };

@@ -47,6 +47,8 @@ namespace TetrominoSceneNamespace
 		int scoreMaterial = 0;
 		int pipeDotMaterial = 0;
 		float prevStickX = 0.0f;
+		float prevLeftTrigger = 0.0f;
+		float prevRightTrigger = 0.0f;
 
 		// Tetromino pipe machine state
 		std::vector<WeirdEngine::Entity> pipeDots;

@@ -1095,15 +1095,16 @@ namespace TetrominoSceneNamespace
 		{
 			updateGhostPreview(registry, state);
 			if (input.getKeyDown(Input::Space) || input.getGamepadButtonDown(Input::GamepadButton::South) ||
-				input.getGamepadButtonDown(Input::GamepadButton::Start))
+				input.getGamepadButtonDown(Input::GamepadButton::Start) ||
+				input.getGamepadButtonDown(Input::GamepadButton::Select))
 			{
 				services.sceneControl().goToNextScene("menu");
 			}
 			return;
 		}
 
-		// Pause toggle: key P
-		if (input.getKeyDown(Input::P))
+		// Pause toggle: key P or controller Start button
+		if (input.getKeyDown(Input::P) || input.getGamepadButtonDown(Input::GamepadButton::Start))
 		{
 			state.isPaused = !state.isPaused;
 			if (state.isPaused)
@@ -1134,8 +1135,7 @@ namespace TetrominoSceneNamespace
 		// Save / Restore (Hold)
 		bool holdTriggered = input.getKeyDown(Input::C) || input.getKeyDown(Input::LeftShift) ||
 							 input.getKeyDown(Input::H) || input.getKeyDown(Input::S) ||
-							 input.getGamepadButtonDown(Input::GamepadButton::LeftShoulder) ||
-							 input.getGamepadButtonDown(Input::GamepadButton::RightShoulder);
+							 input.getGamepadButtonDown(Input::GamepadButton::North);
 		if (holdTriggered)
 		{
 			if (state.canHold && state.activeDots.size() == 4 && !state.isGameOver)
@@ -1289,13 +1289,24 @@ namespace TetrominoSceneNamespace
 			}
 		}
 
+		float leftTrigger = input.getGamepadAxis(Input::GamepadAxis::LeftTrigger);
+		float rightTrigger = input.getGamepadAxis(Input::GamepadAxis::RightTrigger);
+		bool leftTriggerDown = (leftTrigger > 0.5f && state.prevLeftTrigger <= 0.5f);
+		bool rightTriggerDown = (rightTrigger > 0.5f && state.prevRightTrigger <= 0.5f);
+		state.prevLeftTrigger = leftTrigger;
+		state.prevRightTrigger = rightTrigger;
+
+		bool leftShoulderDown = input.getGamepadButtonDown(Input::GamepadButton::LeftShoulder);
+		bool rightShoulderDown = input.getGamepadButtonDown(Input::GamepadButton::RightShoulder);
+
 		bool rotateCW = input.getKeyDown(Input::Up) || input.getKeyDown(Input::W) || input.getKeyDown(Input::X) ||
 						input.getGamepadButtonDown(Input::GamepadButton::DpadUp) ||
-						input.getGamepadButtonDown(Input::GamepadButton::South) ||
-						input.getGamepadButtonDown(Input::GamepadButton::North);
+						input.getGamepadButtonDown(Input::GamepadButton::East) ||
+						rightTriggerDown || rightShoulderDown;
 
-		bool rotateCCW = input.getKeyDown(Input::Z) || input.getGamepadButtonDown(Input::GamepadButton::East) ||
-						 input.getGamepadButtonDown(Input::GamepadButton::West);
+		bool rotateCCW = input.getKeyDown(Input::Z) ||
+						 input.getGamepadButtonDown(Input::GamepadButton::West) ||
+						 leftTriggerDown || leftShoulderDown;
 
 		if (rotateCW)
 		{
@@ -1389,8 +1400,8 @@ namespace TetrominoSceneNamespace
 		}
 
 		float stickY = input.getGamepadAxis(Input::GamepadAxis::LeftY);
-		bool downHeld =
-			input.getKey(Input::Down) || input.getGamepadButton(Input::GamepadButton::DpadDown) || (stickY > 0.5f);
+		bool downHeld = input.getKey(Input::Down) || input.getGamepadButton(Input::GamepadButton::DpadDown) ||
+						input.getGamepadButton(Input::GamepadButton::South) || (stickY > 0.5f);
 
 		float speed = 1.0f;
 		if (downHeld)

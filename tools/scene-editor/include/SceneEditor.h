@@ -67,6 +67,8 @@ namespace WeirdEngine
 		// Simulation state
 		bool m_isSimulating = false;
 		bool m_hasSnapshot = false;
+		float m_playGravity = -9.8f;
+		float m_playDamping = 0.001f;
 
 		// UI Panel Layout
 		float m_menuBarHeight = 26.0f;
@@ -100,7 +102,9 @@ namespace WeirdEngine
 			// Turn OFF debug input so clicking in the viewport does NOT spawn physics test balls!
 			m_services->debug().setDebugInput(false);
 			m_services->debug().setDebugFly(false);
-			m_simulation2D.pause();
+			m_simulation2D.resume();
+			m_simulation2D.setGravity(0.0f);
+			m_simulation2D.setDamping(1.0f);
 
 			auto& cam = m_registry->getComponent<Transform>(m_services->render().getCameraEntity());
 			cam.position = g_cameraPositon;
@@ -468,6 +472,8 @@ namespace WeirdEngine
 			if (m_selectedClusterId != 0)
 			{
 				m_services->clusters().destroyCluster(m_selectedClusterId);
+				m_registry->freeRemovedComponents();
+				m_2DWorldRenderContext.shapesNeedUpdate = true;
 				m_selectedClusterId = 0;
 				m_isSceneDirty = true;
 			}
@@ -476,6 +482,8 @@ namespace WeirdEngine
 				m_services->names().removeName(m_selectedEntity);
 				m_services->tags().removeAllTags(m_selectedEntity);
 				m_registry->destroyEntity(m_selectedEntity);
+				m_registry->freeRemovedComponents();
+				m_2DWorldRenderContext.shapesNeedUpdate = true;
 				m_selectedEntity = INVALID_ENTITY;
 				m_isSceneDirty = true;
 			}
@@ -537,7 +545,9 @@ namespace WeirdEngine
 
 			// 4. Reset physics bodies, particles, and shapes
 			m_simulation2D.resetBodiesAndShapes();
-			m_simulation2D.pause();
+			m_simulation2D.resume();
+			m_simulation2D.setGravity(0.0f);
+			m_simulation2D.setDamping(1.0f);
 			m_isSimulating = false;
 			m_hasSnapshot = false;
 
@@ -658,17 +668,19 @@ namespace WeirdEngine
 				// Take temporary snapshot before physics simulation
 				m_services->serialization().saveSnapshot("temp_editor.weirdsnap");
 				m_hasSnapshot = true;
-				m_simulation2D.resume();
-				Logger::log("[SceneEditor] Simulation started (snapshot taken).");
+				m_simulation2D.setGravity(m_playGravity);
+				m_simulation2D.setDamping(m_playDamping);
+				Logger::log("[SceneEditor] Simulation started (play mode).");
 			}
 			else
 			{
-				m_simulation2D.pause();
+				m_simulation2D.setGravity(0.0f);
+				m_simulation2D.setDamping(1.0f);
 				// Revert to snapshot on pause
 				if (m_hasSnapshot)
 				{
 					m_services->serialization().loadSnapshot("temp_editor.weirdsnap");
-					Logger::log("[SceneEditor] Simulation paused (reverted to snapshot).");
+					Logger::log("[SceneEditor] Simulation paused (design mode, reverted to snapshot).");
 				}
 			}
 		}
@@ -860,10 +872,13 @@ namespace WeirdEngine
 
 				if (ImGui::BeginMenu("Simulation"))
 				{
-					if (ImGui::MenuItem(m_isSimulating ? "Pause Physics" : "Play Physics", "Space"))
+					if (ImGui::MenuItem(m_isSimulating ? "Stop Simulation" : "Play Simulation", "Space"))
 					{
 						toggleSimulation();
 					}
+					ImGui::Separator();
+					ImGui::DragFloat("Play Gravity", &m_playGravity, 0.1f, -50.0f, 50.0f, "%.1f");
+					ImGui::DragFloat("Play Damping", &m_playDamping, 0.001f, 0.0f, 1.0f, "%.3f");
 					if (ImGui::MenuItem("Take Snapshot"))
 					{
 						m_services->serialization().saveSnapshot("dev.weirdsnap");

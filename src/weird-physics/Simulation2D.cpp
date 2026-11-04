@@ -388,25 +388,26 @@ namespace WeirdEngine
 
 			auto start = std::chrono::high_resolution_clock::now();
 
+			// Always process shape updates even if physics is paused
+			{
+				std::lock_guard<std::mutex> shapeLock(m_shapeUpdateMutex);
+				for (auto& cmd : m_pendingShapeUpdates)
+				{
+					if (cmd.isRemove)
+					{
+						internalRemoveShape(cmd.owner, cmd.shape);
+					}
+					else
+					{
+						internalUpdateShape(cmd.owner, cmd.shape);
+					}
+				}
+				m_pendingShapeUpdates.clear();
+				m_sdfsSnapshot = m_sdfs;
+			}
+
 			if (!m_isPaused)
 			{
-				{
-					std::lock_guard<std::mutex> shapeLock(m_shapeUpdateMutex);
-					for (auto& cmd : m_pendingShapeUpdates)
-					{
-						if (cmd.isRemove)
-						{
-							internalRemoveShape(cmd.owner, cmd.shape);
-						}
-						else
-						{
-							internalUpdateShape(cmd.owner, cmd.shape);
-						}
-					}
-					m_pendingShapeUpdates.clear();
-					m_sdfsSnapshot = m_sdfs;
-				}
-
 				double timerBroad = 0, timerNarrow = 0, timerShape = 0;
 				checkCollisions(timerBroad, timerNarrow, timerShape);
 

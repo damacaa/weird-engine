@@ -284,7 +284,7 @@ namespace WeirdEngine
 	}
 
 	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::NameMap* outNames,
-							   bool restoreCamera)
+							   bool restoreCamera, std::vector<Entity>* outEntities)
 	{
 		using json = nlohmann::json;
 
@@ -338,6 +338,8 @@ namespace WeirdEngine
 			for (const auto& ej : j["entities"])
 			{
 				Entity entity = scene.m_registry.createEntity();
+				if (outEntities)
+					outEntities->push_back(entity);
 				if (entity == INVALID_ENTITY)
 				{
 					Logger::error("[SceneSerializer] Maximum entity capacity reached while loading scene; stopping "
@@ -613,6 +615,8 @@ namespace WeirdEngine
 						if (k >= 1.0f)
 						{
 							Entity constraintEnt = scene.m_registry.createEntity();
+							if (outEntities && constraintEnt != INVALID_ENTITY)
+								outEntities->push_back(constraintEnt);
 							auto& constraint =
 								scene.m_registry.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
 							constraint.entityA = entityA;
@@ -622,6 +626,8 @@ namespace WeirdEngine
 						else
 						{
 							Entity springEnt = scene.m_registry.createEntity();
+							if (outEntities && springEnt != INVALID_ENTITY)
+								outEntities->push_back(springEnt);
 							auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 							spring.entityA = entityA;
 							spring.entityB = entityB;
@@ -642,6 +648,8 @@ namespace WeirdEngine
 					if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end())
 					{
 						Entity springEnt = scene.m_registry.createEntity();
+						if (outEntities && springEnt != INVALID_ENTITY)
+							outEntities->push_back(springEnt);
 						auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 						spring.entityA = entityIdMap[savedA];
 						spring.entityB = entityIdMap[savedB];

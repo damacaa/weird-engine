@@ -30,6 +30,8 @@ namespace WeirdEngine
 		// IDs) instead of being added to the scene's internal name maps.  When
 		// outNames is nullptr the names are inserted into the scene as before.
 		// If restoreCamera is true, camera state from the file is applied to the main camera.
-		static void load(Scene& scene, const std::string& path, NameMap* outNames = nullptr, bool restoreCamera = true);
+		// If outEntities is non-null, every newly created Entity ID is appended to it.
+		static void load(Scene& scene, const std::string& path, NameMap* outNames = nullptr, bool restoreCamera = true,
+						 std::vector<Entity>* outEntities = nullptr);
 	};
 } // namespace WeirdEngine

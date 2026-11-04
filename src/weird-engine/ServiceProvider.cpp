@@ -761,15 +761,10 @@ namespace WeirdEngine
 		else
 			instance.name = instance.type + "_" + std::to_string(instance.id);
 
-		Entity firstNewEntity = m_scene.m_registry.getEntityCount();
+		SceneSerializer::load(m_scene, assetPath, &instance.localNames, false, &instance.entities);
 
-		SceneSerializer::load(m_scene, assetPath, &instance.localNames, false);
-
-		Entity lastNewEntity = m_scene.m_registry.getEntityCount();
-
-		for (Entity e = firstNewEntity; e < lastNewEntity; ++e)
+		for (Entity e : instance.entities)
 		{
-			instance.entities.push_back(e);
 			for (const auto& tag : instanceTags)
 			{
 				m_scene.m_services.tags().addTag(e, tag);
@@ -937,6 +932,9 @@ namespace WeirdEngine
 			m_scene.m_services.tags().removeAllTags(e);
 			m_scene.m_registry.destroyEntity(e);
 		}
+
+		m_scene.m_registry.freeRemovedComponents();
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
 
 		m_clusters.erase(it);
 	}

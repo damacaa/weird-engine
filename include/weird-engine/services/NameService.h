@@ -70,6 +70,11 @@ namespace WeirdEngine
 			return it->second;
 		}
 
+		std::string getName(Entity entity) const
+		{
+			return getEntityName(entity);
+		}
+
 		Entity getEntityByName(const std::string& name) const
 		{
 			auto it = m_nameToEntity.find(name);

@@ -7,6 +7,10 @@
 
 namespace CollisionHandlingNamespace
 {
+	struct LaneBall
+	{
+	};
+
 	struct State
 	{
 		WeirdEngine::Entity hudText = WeirdEngine::INVALID_ENTITY;
@@ -16,8 +20,9 @@ namespace CollisionHandlingNamespace
 
 		float respawnTimer = 0.0f;
 		int ecsCollisionCount = 0;
-		std::vector<WeirdEngine::Entity> activeBalls;
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	State& getState(WeirdEngine::Registry& registry);
 	void spawnLaneBalls(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, State& state);

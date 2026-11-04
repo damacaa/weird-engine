@@ -62,12 +62,20 @@ namespace WeirdEngine
 		static_assert(std::is_base_of<Scene, T>::value, "T must derive from Scene");
 
 		names.push_back(sceneName);
-		sceneFactories[sceneName] = [this, sceneFilePath]()
+		sceneFactories[sceneName] = [this, sceneName, sceneFilePath]()
 		{
 			auto scene = std::make_unique<T>();
+			scene->setName(sceneName);
 			if (!sceneFilePath.empty())
 			{
-				scene->setSceneFilePath(sceneFilePath);
+				if (sceneFilePath.ends_with(".weirdsnap"))
+				{
+					scene->setSnapshotFilePath(sceneFilePath);
+				}
+				else
+				{
+					scene->setSceneFilePath(sceneFilePath);
+				}
 			}
 			return scene;
 		};

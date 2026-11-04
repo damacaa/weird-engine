@@ -11,7 +11,15 @@ cmake --build build
 ./build/examples/sample-scenes/WeirdSamples
 ```
 
-There are no tests. CI runs `ctest` but no test targets are defined.
+Optional snapshot regression tests run without opening a window:
+
+```bash
+cmake -B build -DWEIRD_ENGINE_BUILD_TESTS=ON
+cmake --build build --target WeirdSnapshotTests
+ctest --test-dir build --output-on-failure
+```
+
+For multi-configuration generators, use `--config Debug` when building and `-C Debug` when running CTest.
 
 ## AI Agent Guidelines (Token Efficiency & Build Verification)
 

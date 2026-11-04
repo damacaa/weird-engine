@@ -1979,4 +1979,106 @@ namespace WeirdEngine
 		}
 	}
 
+	Simulation2D::SnapshotSettings Simulation2D::captureSnapshotSettings()
+	{
+		SnapshotSettings settings;
+		executeSynchronous(
+			[&]
+			{
+				settings.gravity = m_gravity;
+				settings.damping = m_damping;
+				settings.friction = m_contactFriction;
+				settings.paused = m_isPaused;
+				settings.attractionEnabled = m_attracttionEnabled;
+				settings.repulsionEnabled = m_repulsionEnabled;
+				settings.liftEnabled = m_liftEnabled;
+			});
+		return settings;
+	}
+
+	void Simulation2D::restoreSnapshotSettings(const SnapshotSettings& settings)
+	{
+		executeSynchronous(
+			[this, settings]
+			{
+				m_gravity = settings.gravity;
+				m_damping = settings.damping;
+				m_contactFriction = settings.friction;
+				m_attracttionEnabled = settings.attractionEnabled;
+				m_repulsionEnabled = settings.repulsionEnabled;
+				m_liftEnabled = settings.liftEnabled;
+				m_isPaused = settings.paused;
+			});
+	}
+
+	void Simulation2D::resetBodiesAndShapes()
+	{
+		executeSynchronous(
+			[this]
+			{
+				std::scoped_lock lock(m_structuralMutex, m_externalForcesMutex, m_fixMutex, m_readMutex,
+									  m_userDataMutex);
+				for (size_t i = 0; i < m_allocated; ++i)
+				{
+					delete m_userData[i];
+					m_userData[i] = nullptr;
+					m_bodyActive[i] = 0;
+				}
+				m_allocated = 0;
+				m_size = 0;
+				m_activeSize = 0;
+				m_fixedObjects.clear();
+				m_distanceConstraints.clear();
+				m_gravitationalConstraints.clear();
+				m_objects.clear();
+				m_entityToObjectsIdx.clear();
+				m_pendingShapeUpdates.clear();
+			});
+	}
+
+	void Simulation2D::allocateBodiesUpTo(size_t count)
+	{
+		if (count > m_maxSize)
+			count = m_maxSize;
+		if (count <= m_allocated.load())
+			return;
+
+		{
+			std::lock_guard<std::mutex> lock(m_readMutex);
+			for (size_t id = m_allocated.load(); id < count; ++id)
+			{
+				m_positionsRead[id] = vec2(0.0f);
+				m_positionsAux[id] = vec2(0.0f);
+				m_velocitiesRead[id] = vec2(0.0f);
+				m_velocitiesAux[id] = vec2(0.0f);
+			}
+		}
+
+		m_allocated = count;
+
+		executeSynchronous(
+			[this, count]
+			{
+				for (size_t id = 0; id < count; ++id)
+				{
+					m_positions[id] = vec2(0.0f);
+					m_previousPositions[id] = vec2(0.0f);
+					m_velocities[id] = vec2(0.0f);
+					m_forces[id] = vec2(0.0f);
+					m_impulses[id] = vec2(0.0f);
+					m_continuousForcesRead[id] = vec2(0.0f);
+					m_continuousForcesWrite[id] = vec2(0.0f);
+					m_mass[id] = 1.0f;
+					m_invMass[id] = 1.0f;
+					m_bodyType[id] = BodyType::Dynamic;
+					m_collisionMap[id] = false;
+					m_collisionEnabled[id] = 1;
+					m_shapeCollisionEnabled[id] = 1;
+					m_bodyActive[id] = 0;
+				}
+				m_size = count;
+				m_activeSize = 0;
+			});
+	}
+
 } // namespace WeirdEngine

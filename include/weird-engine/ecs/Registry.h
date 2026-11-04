@@ -6,10 +6,13 @@
 #include "weird-engine/Assert.h"
 #include "weird-engine/Logger.h"
 
+#include <bitset>
 #include <cstddef>
 #include <iostream>
+#include <istream>
 #include <limits>
 #include <memory>
+#include <ostream>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -61,12 +64,16 @@ namespace WeirdEngine
 	class Registry
 	{
 	public:
+		static constexpr uint32_t SNAPSHOT_MAGIC = 0x504E5357; // 'WSNP'
+		static constexpr uint32_t SNAPSHOT_VERSION = 1;
+
 		Entity createEntity()
 		{
 			if (!m_freeEntities.empty())
 			{
 				Entity e = m_freeEntities.front();
 				m_freeEntities.pop();
+				m_destroyedEntities.reset(e.id);
 				return e;
 			}
 			if (m_entityCount >= MAX_ENTITIES)
@@ -105,8 +112,9 @@ namespace WeirdEngine
 
 		void destroyEntity(Entity entity)
 		{
-			if (entity >= MAX_ENTITIES)
+			if (entity >= m_entityCount || entity >= MAX_ENTITIES || m_destroyedEntities.test(entity.id))
 				return;
+			m_destroyedEntities.set(entity.id);
 			for (auto const& manager : m_componentManagers)
 			{
 				if (manager)
@@ -349,7 +357,7 @@ namespace WeirdEngine
 		//
 		// Scene state is scene-scoped data shared by systems (level state,
 		// caches, tables). Unlike components it is not attached to an entity,
-		// is never copied, and is not serialized. Main thread only, like the
+		// is never copied, and supports snapshots for value-only types. Main thread only, like the
 		// rest of the registry.
 		//
 		//   GolfingState& state = registry.emplaceState<GolfingState>();
@@ -374,6 +382,7 @@ namespace WeirdEngine
 			if (id >= m_sceneStates.size())
 				m_sceneStates.resize(id + 1);
 			m_sceneStates[id] = std::move(holder);
+			cacheSceneStateName<StateType>(id);
 
 			return value;
 		}
@@ -410,6 +419,243 @@ namespace WeirdEngine
 				m_sceneStates[id].reset();
 		}
 
+		std::string getSceneStateName(size_t typeId) const
+		{
+			auto it = m_sceneStateNames.find(typeId);
+			if (it != m_sceneStateNames.end())
+				return it->second;
+			return "Unknown";
+		}
+
+		// =====================================================================
+		// Binary Snapshot System
+		// =====================================================================
+
+		bool canSerializeSnapshot() const
+		{
+			for (const auto& manager : m_componentManagers)
+			{
+				if (manager && !manager->isSnapshotSerializable())
+					return false;
+			}
+			for (const auto& state : m_sceneStates)
+			{
+				if (state && !state->isSnapshotSerializable())
+					return false;
+			}
+			return true;
+		}
+
+		bool serializeSnapshot(std::ostream& os, double simulationTime = 0.0)
+		{
+			if (!canSerializeSnapshot())
+			{
+				Logger::error("[Registry] Snapshot contains unsupported component or scene state types.");
+				return false;
+			}
+			// Finish deferred removals so deleted entities and components cannot return after loading.
+			freeRemovedComponents();
+
+			os.write(reinterpret_cast<const char*>(&SNAPSHOT_MAGIC), sizeof(SNAPSHOT_MAGIC));
+			os.write(reinterpret_cast<const char*>(&SNAPSHOT_VERSION), sizeof(SNAPSHOT_VERSION));
+			os.write(reinterpret_cast<const char*>(&simulationTime), sizeof(simulationTime));
+
+			// Entity counts
+			uint32_t entityCount = m_entityCount.id;
+			os.write(reinterpret_cast<const char*>(&entityCount), sizeof(entityCount));
+
+			// Free entities
+			std::queue<Entity> freeCopy = m_freeEntities;
+			uint32_t freeCount = static_cast<uint32_t>(freeCopy.size());
+			os.write(reinterpret_cast<const char*>(&freeCount), sizeof(freeCount));
+			while (!freeCopy.empty())
+			{
+				uint32_t fe = freeCopy.front().id;
+				os.write(reinterpret_cast<const char*>(&fe), sizeof(fe));
+				freeCopy.pop();
+			}
+
+			// Component managers
+			uint32_t validManagerCount = 0;
+			for (size_t i = 0; i < m_componentManagers.size(); ++i)
+			{
+				if (m_componentManagers[i])
+					++validManagerCount;
+			}
+			os.write(reinterpret_cast<const char*>(&validManagerCount), sizeof(validManagerCount));
+
+			for (size_t i = 0; i < m_componentManagers.size(); ++i)
+			{
+				if (!m_componentManagers[i])
+					continue;
+				const std::string& name = m_componentSnapshotNames.at(i);
+				uint32_t nameLen = static_cast<uint32_t>(name.size());
+				os.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+				os.write(name.data(), nameLen);
+
+				m_componentManagers[i]->serializeBinary(os);
+			}
+
+			// Scene states
+			uint32_t validStateCount = 0;
+			for (size_t i = 0; i < m_sceneStates.size(); ++i)
+			{
+				if (m_sceneStates[i])
+					++validStateCount;
+			}
+			os.write(reinterpret_cast<const char*>(&validStateCount), sizeof(validStateCount));
+
+			for (size_t i = 0; i < m_sceneStates.size(); ++i)
+			{
+				if (!m_sceneStates[i])
+					continue;
+				const std::string& name = m_sceneStateSnapshotNames.at(i);
+				uint32_t nameLen = static_cast<uint32_t>(name.size());
+				os.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+				os.write(name.data(), nameLen);
+
+				m_sceneStates[i]->serializeBinary(os);
+			}
+			return static_cast<bool>(os);
+		}
+
+		bool deserializeSnapshot(std::istream& is, double* outSimulationTime = nullptr)
+		{
+			if (!canSerializeSnapshot())
+			{
+				Logger::error("[Registry] Cannot restore unsupported component or scene state types.");
+				return false;
+			}
+			uint32_t magic = 0;
+			is.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+			if (magic != SNAPSHOT_MAGIC)
+			{
+				Logger::error("[Registry] Invalid snapshot magic!");
+				return false;
+			}
+
+			uint32_t version = 0;
+			is.read(reinterpret_cast<char*>(&version), sizeof(version));
+			if (version != SNAPSHOT_VERSION)
+			{
+				Logger::error("[Registry] Unsupported snapshot version: " + std::to_string(version));
+				return false;
+			}
+
+			double simTime = 0.0;
+			is.read(reinterpret_cast<char*>(&simTime), sizeof(simTime));
+			if (outSimulationTime)
+			{
+				*outSimulationTime = simTime;
+			}
+
+			// Entity counts
+			uint32_t entityCount = 0;
+			is.read(reinterpret_cast<char*>(&entityCount), sizeof(entityCount));
+			m_entityCount = Entity{entityCount};
+
+			// Free entities
+			while (!m_freeEntities.empty())
+				m_freeEntities.pop();
+			while (!m_entitiesToFree.empty())
+				m_entitiesToFree.pop();
+			m_droppedEntityCount = 0;
+			m_destroyedEntities.reset();
+
+			uint32_t freeCount = 0;
+			is.read(reinterpret_cast<char*>(&freeCount), sizeof(freeCount));
+			for (uint32_t i = 0; i < freeCount; ++i)
+			{
+				uint32_t fe = 0;
+				is.read(reinterpret_cast<char*>(&fe), sizeof(fe));
+				m_freeEntities.push(Entity{fe});
+				m_destroyedEntities.set(fe);
+			}
+
+			// Clear all existing component managers before loading
+			for (auto& mgr : m_componentManagers)
+			{
+				if (mgr)
+					mgr->clear();
+			}
+
+			// Read components
+			uint32_t managerCount = 0;
+			is.read(reinterpret_cast<char*>(&managerCount), sizeof(managerCount));
+			for (uint32_t i = 0; i < managerCount; ++i)
+			{
+				uint32_t nameLen = 0;
+				is.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+				std::string name(nameLen, '\0');
+				is.read(name.data(), nameLen);
+
+				IComponentManager* targetMgr = nullptr;
+				for (size_t m = 0; m < m_componentManagers.size(); ++m)
+				{
+					if (m_componentManagers[m] && m_componentSnapshotNames.at(m) == name)
+					{
+						targetMgr = m_componentManagers[m].get();
+						break;
+					}
+				}
+
+				if (targetMgr)
+				{
+					targetMgr->deserializeBinary(is, targetMgr->getElementSize());
+				}
+				else
+				{
+					Logger::warning("[Registry] Component '" + name + "' not registered in scene. Skipping its data.");
+					uint32_t count = 0;
+					is.read(reinterpret_cast<char*>(&count), sizeof(count));
+					uint32_t elemSize = 0;
+					is.read(reinterpret_cast<char*>(&elemSize), sizeof(elemSize));
+					if (count > 0 && elemSize > 0)
+					{
+						is.seekg(count * (sizeof(uint32_t) + elemSize), std::ios::cur);
+					}
+				}
+			}
+
+			// Read scene states
+			uint32_t stateCount = 0;
+			is.read(reinterpret_cast<char*>(&stateCount), sizeof(stateCount));
+			for (uint32_t i = 0; i < stateCount; ++i)
+			{
+				uint32_t nameLen = 0;
+				is.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+				std::string name(nameLen, '\0');
+				is.read(name.data(), nameLen);
+
+				ISceneState* targetState = nullptr;
+				for (size_t s = 0; s < m_sceneStates.size(); ++s)
+				{
+					if (m_sceneStates[s] && m_sceneStateSnapshotNames.at(s) == name)
+					{
+						targetState = m_sceneStates[s].get();
+						break;
+					}
+				}
+
+				if (targetState)
+				{
+					targetState->deserializeBinary(is, targetState->getStateSize());
+				}
+				else
+				{
+					Logger::warning("[Registry] SceneState '" + name + "' not registered in scene. Skipping its data.");
+					uint32_t elemSize = 0;
+					is.read(reinterpret_cast<char*>(&elemSize), sizeof(elemSize));
+					if (elemSize > 0)
+					{
+						is.seekg(elemSize, std::ios::cur);
+					}
+				}
+			}
+
+			return true;
+		}
+
 	private:
 		// Normalizes T and maps it to a slot in m_sceneStates.
 		template <typename T> static size_t sceneStateIndex()
@@ -417,11 +663,8 @@ namespace WeirdEngine
 			return internal::getSceneStateTypeId<std::remove_cvref_t<T>>();
 		}
 
-		template <typename T> void cacheComponentName(size_t id)
+		template <typename T> static std::string demangleTypeName()
 		{
-			if (m_componentNames.find(id) != m_componentNames.end())
-				return;
-
 			const char* rawName = typeid(T).name();
 			std::string finalName;
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
@@ -442,30 +685,43 @@ namespace WeirdEngine
 			finalName = rawName;
 #endif
 
-			// Strip namespaces (e.g. "WeirdEngine::Transform" -> "Transform")
-			size_t colonPos = finalName.rfind("::");
-			if (colonPos != std::string::npos)
-			{
-				finalName = finalName.substr(colonPos + 2);
-			}
-			else
-			{
-				// Strip "class " or "struct " prefixes if there was no namespace (mostly for MSVC)
-				size_t spacePos = finalName.rfind(" ");
-				if (spacePos != std::string::npos)
-				{
-					finalName = finalName.substr(spacePos + 1);
-				}
-			}
+			if (finalName.starts_with("struct "))
+				finalName.erase(0, 7);
+			else if (finalName.starts_with("class "))
+				finalName.erase(0, 6);
 
-			m_componentNames[id] = finalName;
+			return finalName;
+		}
+
+		template <typename T> void cacheComponentName(size_t id)
+		{
+			if (m_componentNames.find(id) != m_componentNames.end())
+				return;
+			const std::string fullName = demangleTypeName<T>();
+			m_componentSnapshotNames[id] = fullName;
+			const size_t colonPos = fullName.rfind("::");
+			m_componentNames[id] = colonPos == std::string::npos ? fullName : fullName.substr(colonPos + 2);
+		}
+
+		template <typename T> void cacheSceneStateName(size_t id)
+		{
+			if (m_sceneStateNames.find(id) != m_sceneStateNames.end())
+				return;
+			const std::string fullName = demangleTypeName<T>();
+			m_sceneStateSnapshotNames[id] = fullName;
+			const size_t colonPos = fullName.rfind("::");
+			m_sceneStateNames[id] = colonPos == std::string::npos ? fullName : fullName.substr(colonPos + 2);
 		}
 
 		std::unordered_map<size_t, std::string> m_componentNames;
+		std::unordered_map<size_t, std::string> m_sceneStateNames;
+		std::unordered_map<size_t, std::string> m_componentSnapshotNames;
+		std::unordered_map<size_t, std::string> m_sceneStateSnapshotNames;
 		std::vector<std::unique_ptr<ISceneState>> m_sceneStates;
 		std::vector<std::shared_ptr<IComponentManager>> m_componentManagers;
 		std::queue<Entity> m_freeEntities;
 		std::queue<Entity> m_entitiesToFree;
+		std::bitset<MAX_ENTITIES.id> m_destroyedEntities;
 		Entity m_entityCount = 0;
 		size_t m_droppedEntityCount = 0;
 	};

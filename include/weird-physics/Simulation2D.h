@@ -140,6 +140,22 @@ namespace WeirdEngine
 		void endCommandBatch();
 		void removeObject(SimulationID id);
 		size_t getSize();
+		void resetBodiesAndShapes();
+		void allocateBodiesUpTo(size_t count);
+
+		struct SnapshotSettings
+		{
+			float gravity = -9.8f;
+			float damping = 0.001f;
+			float friction = 0.2f;
+			bool paused = false;
+			bool attractionEnabled = false;
+			bool repulsionEnabled = false;
+			bool liftEnabled = false;
+		};
+
+		SnapshotSettings captureSnapshotSettings();
+		void restoreSnapshotSettings(const SnapshotSettings& settings);
 
 		// Interaction
 		// One-shot kick applied to a body. With massIndependent = false the

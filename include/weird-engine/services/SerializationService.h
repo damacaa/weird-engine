@@ -32,6 +32,18 @@ namespace WeirdEngine
 		// Returns a map of tag names to their corresponding entities.
 		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false);
 
+		// Save full registry binary snapshot
+		void saveSnapshot(const std::string& filename);
+
+		// Restore full registry binary snapshot
+		bool loadSnapshot(const std::string& filename);
+
+		// Delete the scene's configured .weirdsnap file
+		void deleteSnapshotFile();
+
+		// Set the path to a .weirdsnap file to load when the scene starts
+		void setSnapshotFilePath(const std::string& path);
+
 		void blacklistEntity(Entity entity)
 		{
 			m_blacklist.insert(entity);

@@ -5,6 +5,8 @@ namespace WeirdEngine
 {
 	struct InstancedMeshRenderer
 	{
+		static constexpr bool snapshotRawCompatible = true;
+
 		WeirdRenderer::MeshID meshID = 0;
 		glm::vec3 translation = glm::vec3(0.0f);
 		glm::vec3 scale = glm::vec3(1.0f);

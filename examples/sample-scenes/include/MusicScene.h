@@ -15,9 +15,10 @@ namespace MusicSceneNamespace
 	{
 		static constexpr size_t NUM_SONGS = 4;
 
-		std::array<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>, NUM_SONGS> songs;
-		std::array<WeirdEngine::Entity, NUM_SONGS> songToggles;
-		std::array<WeirdEngine::Material2DHandle, NUM_SONGS> songMats;
+		std::array<WeirdEngine::Entity, NUM_SONGS> songToggles{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
+															   WeirdEngine::INVALID_ENTITY,
+															   WeirdEngine::INVALID_ENTITY};
+		std::array<WeirdEngine::Material2DHandle, NUM_SONGS> songMats{};
 
 		int selectedSongIndex = -1;
 		int currentLoadedSongIndex = -1;
@@ -33,8 +34,10 @@ namespace MusicSceneNamespace
 		WeirdEngine::Entity backgroundShape = WeirdEngine::INVALID_ENTITY;
 
 		int lastResolutionHash = 0;
-		std::vector<WeirdEngine::Entity> uiPoints;
+		std::array<WeirdEngine::Entity, 10> uiPoints{};
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	State& getState(WeirdEngine::Registry& registry);
 

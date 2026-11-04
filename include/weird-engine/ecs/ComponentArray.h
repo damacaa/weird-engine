@@ -249,6 +249,13 @@ namespace WeirdEngine
 			return static_cast<int>(size);
 		}
 
+		void clear()
+		{
+			size = 0;
+			entityToIndexMap.fill(INVALID_INDEX);
+			dirtyFlags.fill(false);
+		}
+
 	private:
 		std::array<size_t, MAX_ENTITIES> entityToIndexMap = []
 		{

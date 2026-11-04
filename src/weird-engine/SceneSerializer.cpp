@@ -23,7 +23,6 @@ namespace WeirdEngine
 
 		json j;
 		j["version"] = 1;
-		j["simulationTime"] = scene.m_simulation2D.getSimulationTime();
 
 		// Save camera state
 		{
@@ -257,12 +256,6 @@ namespace WeirdEngine
 		{
 			WeirdEngine::Logger::error("[SceneSerializer] JSON parse error in " + path + ": " + e.what());
 			return;
-		}
-
-		// Restore simulation time if present
-		if (j.contains("simulationTime"))
-		{
-			scene.m_simulation2D.setSimulationTime(j["simulationTime"].get<double>());
 		}
 
 		// Restore camera state

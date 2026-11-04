@@ -7,6 +7,7 @@ using namespace WeirdEngine;
 
 namespace MusicSceneNamespace
 {
+	static std::array<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>, State::NUM_SONGS> s_songs;
 	State& getState(Registry& registry)
 	{
 		State* state = registry.getState<State>();
@@ -43,7 +44,7 @@ namespace MusicSceneNamespace
 		// 3. Instantiate the 4 songs using shared MusicShapes definitions
 		for (size_t i = 0; i < State::NUM_SONGS; ++i)
 		{
-			state.songs[i] = MusicShapes::createSong(i, previewCenter);
+			s_songs[i] = MusicShapes::createSong(i, previewCenter);
 		}
 
 		auto activeSong = services.audio().music().getCurrentSong();
@@ -52,9 +53,9 @@ namespace MusicSceneNamespace
 		{
 			for (size_t i = 0; i < State::NUM_SONGS; ++i)
 			{
-				if (state.songs[i]->getName() == activeSong->getName())
+				if (s_songs[i]->getName() == activeSong->getName())
 				{
-					state.songs[i] = activeSong;
+					s_songs[i] = activeSong;
 					activeIdx = static_cast<int>(i);
 					break;
 				}
@@ -68,9 +69,9 @@ namespace MusicSceneNamespace
 			state.isPlaying = true;
 			state.paramSize = activeSong->getParameter(0);
 			state.paramSpeed = activeSong->getParameter(1);
-			state.songs[activeIdx]->setCenter(previewCenter);
+			s_songs[activeIdx]->setCenter(previewCenter);
 			services.audio().setSong(
-				state.songs[activeIdx],
+				s_songs[activeIdx],
 				SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = state.songMats[activeIdx]},
 				false);
 		}
@@ -186,7 +187,7 @@ namespace MusicSceneNamespace
 			auto& ui = registry.addComponent<UIDot>(ee);
 			ui.materialId = state.songMats[i % State::NUM_SONGS];
 
-			state.uiPoints.push_back(ee);
+			state.uiPoints[i] = ee;
 		}
 	}
 
@@ -249,10 +250,10 @@ namespace MusicSceneNamespace
 				}
 			}
 			state.selectedSongIndex = keySelected;
-			if (state.songs[keySelected])
+			if (s_songs[keySelected])
 			{
-				state.paramSize = state.songs[keySelected]->getParameter(0);
-				state.paramSpeed = state.songs[keySelected]->getParameter(1);
+				state.paramSize = s_songs[keySelected]->getParameter(0);
+				state.paramSpeed = s_songs[keySelected]->getParameter(1);
 			}
 			services.audio().playSound({0.03f, 500.0f + keySelected * 90.0f, false, vec3(0.0f), 1});
 			return;
@@ -269,10 +270,10 @@ namespace MusicSceneNamespace
 				{
 					// Toggle i was selected! Make it the only active toggle (radio behavior)
 					state.selectedSongIndex = static_cast<int>(i);
-					if (state.songs[i])
+					if (s_songs[i])
 					{
-						state.paramSize = state.songs[i]->getParameter(0);
-						state.paramSpeed = state.songs[i]->getParameter(1);
+						state.paramSize = s_songs[i]->getParameter(0);
+						state.paramSpeed = s_songs[i]->getParameter(1);
 					}
 					for (size_t j = 0; j < State::NUM_SONGS; ++j)
 					{
@@ -342,11 +343,11 @@ namespace MusicSceneNamespace
 				float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
 				glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
 
-				state.songs[idx]->setCenter(previewCenter);
-				state.songs[idx]->setParameter(0, state.paramSize);
-				state.songs[idx]->setParameter(1, state.paramSpeed);
+				s_songs[idx]->setCenter(previewCenter);
+				s_songs[idx]->setParameter(0, state.paramSize);
+				s_songs[idx]->setParameter(1, state.paramSpeed);
 
-				services.audio().setSong(state.songs[idx],
+				services.audio().setSong(s_songs[idx],
 										 {.mode = SongVisualizationMode::UI, .material = state.songMats[idx]}, false);
 				services.audio().setSongParameter(0, state.paramSize);
 				services.audio().setSongParameter(1, state.paramSpeed);
@@ -463,9 +464,9 @@ namespace MusicSceneNamespace
 
 			for (size_t i = 0; i < State::NUM_SONGS; ++i)
 			{
-				if (state.songs[i])
+				if (s_songs[i])
 				{
-					state.songs[i]->setCenter(previewCenter);
+					s_songs[i]->setCenter(previewCenter);
 				}
 
 				// Re-center toggles
@@ -485,7 +486,7 @@ namespace MusicSceneNamespace
 			if (state.isPlaying && state.currentLoadedSongIndex >= 0)
 			{
 				int idx = state.currentLoadedSongIndex;
-				services.audio().setSong(state.songs[idx],
+				services.audio().setSong(s_songs[idx],
 										 {.mode = SongVisualizationMode::UI, .material = state.songMats[idx]}, false);
 				services.audio().setSongParameter(0, state.paramSize);
 				services.audio().setSongParameter(1, state.paramSpeed);

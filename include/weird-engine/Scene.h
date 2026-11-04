@@ -131,6 +131,14 @@ namespace WeirdEngine
 		{
 			m_entityShapeCollisionSystems.push_back(std::move(system));
 		}
+		void setSnapshotHotkeysEnabled(bool enabled)
+		{
+			m_enableSnapshotHotkeys = enabled;
+		}
+		bool areSnapshotHotkeysEnabled() const
+		{
+			return m_enableSnapshotHotkeys;
+		}
 
 	protected:
 		// Internal constructors: sets the render mode for Scene2D/Scene3D/SceneBoth.
@@ -141,6 +149,8 @@ namespace WeirdEngine
 		virtual void onStart(Registry& registry, ServiceProvider& services) {}
 		virtual void onUpdate(Registry& registry, ServiceProvider& services) {};
 		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
+		// Rebuild runtime data after restoring the registry, while physics remains paused.
+		virtual void onSnapshotLoaded(Registry& registry, ServiceProvider& services) {};
 		virtual void onImGuiRender(Registry& registry, ServiceProvider& services) {};
 		virtual void onCustomUI(Registry& registry, ServiceProvider& services) {};
 		virtual void onRender(Registry& registry, ServiceProvider& services,
@@ -174,6 +184,10 @@ namespace WeirdEngine
 		void update(double delta, double time);
 		void destroy()
 		{
+			if (m_isSceneComplete && !m_snapshotFilePath.empty())
+			{
+				m_services.serialization().deleteSnapshotFile();
+			}
 			onDestroy(m_registry, m_services);
 			for (auto& sys : m_destroySystems)
 			{
@@ -275,6 +289,21 @@ namespace WeirdEngine
 			m_sceneFilePath = path;
 		}
 
+		// Set the path to a .weirdsnap binary snapshot to restore when the scene starts
+		void setSnapshotFilePath(const std::string& path)
+		{
+			m_snapshotFilePath = path;
+		}
+
+		void setName(const std::string& name)
+		{
+			m_name = name;
+		}
+		const std::string& getName() const
+		{
+			return m_name;
+		}
+
 		// ---- Internal helpers
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(PhysicsCollisionEvent& event, void* userData);
@@ -353,6 +382,9 @@ namespace WeirdEngine
 		// ---- Serialization & visuals
 		std::unordered_set<Entity> m_serializationBlacklist;
 		std::string m_sceneFilePath;
+		std::string m_snapshotFilePath;
+		std::string m_name;
+		bool m_enableSnapshotHotkeys = true;
 		BackgroundParams m_background;
 		Material2D m_materials2D[16];
 		uint16_t m_material2DCount = 0;

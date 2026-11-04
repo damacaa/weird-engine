@@ -49,14 +49,17 @@ namespace PlatformerSceneNamespace
 	{
 		State& state = getState(registry);
 
-		state.floorMaterial = services.materials2D().createMaterial("player_floor");
-		state.floorMaterial.color = ColorPalette::Yellow; // Yellow on floor
+		auto& floorMat = services.materials2D().createMaterial("player_floor");
+		floorMat.color = ColorPalette::Yellow; // Yellow on floor
+		state.floorMaterial = floorMat;
 
-		state.wallMaterial = services.materials2D().createMaterial("player_wall");
-		state.wallMaterial.color = ColorPalette::Orange; // Orange on wall
+		auto& wallMat = services.materials2D().createMaterial("player_wall");
+		wallMat.color = ColorPalette::Orange; // Orange on wall
+		state.wallMaterial = wallMat;
 
-		state.airMaterial = services.materials2D().createMaterial("player_air");
-		state.airMaterial.color = ColorPalette::Magenta; // Magenta in air
+		auto& airMat = services.materials2D().createMaterial("player_air");
+		airMat.color = ColorPalette::Magenta; // Magenta in air
+		state.airMaterial = airMat;
 
 		Entity player = registry.createEntity();
 		auto& t = registry.addComponent<Transform>(player);
@@ -83,11 +86,13 @@ namespace PlatformerSceneNamespace
 		auto& platformMat = services.materials2D().createMaterial("platform");
 		platformMat.color = ColorPalette::Cyan;
 
-		state.previewAddMaterial = services.materials2D().createMaterial("ui_box_preview_add");
-		state.previewAddMaterial.color = ColorPalette::White;
+		auto& addMat = services.materials2D().createMaterial("ui_box_preview_add");
+		addMat.color = ColorPalette::White;
+		state.previewAddMaterial = addMat;
 
-		state.previewSubMaterial = services.materials2D().createMaterial("ui_box_preview_sub");
-		state.previewSubMaterial.color = ColorPalette::Red;
+		auto& subMat = services.materials2D().createMaterial("ui_box_preview_sub");
+		subMat.color = ColorPalette::Red;
+		state.previewSubMaterial = subMat;
 
 		// Main floor: flat ground at y = 0
 		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,

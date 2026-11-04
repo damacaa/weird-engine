@@ -46,6 +46,7 @@ namespace RopeSceneNamespace
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
 			rb.isFixed = false;
+			registry.addComponent<RopeBall>(entity).shouldClamp = state.clampBalls;
 			auto ballData = std::make_unique<BallData>();
 			ballData->shouldClamp = state.clampBalls;
 			services.physics().setUserData(rb.simulationId, std::move(ballData));
@@ -81,17 +82,18 @@ namespace RopeSceneNamespace
 		uiBoxMat.color = ColorPalette::Yellow;
 		uiBoxMat.color.a = 0.25f;
 
-		for (int i = 0; i < 8; ++i)
+		for (size_t i = 0; i < state.ballMats.size(); ++i)
 		{
 			auto& mat = services.materials2D().createMaterial("ball_" + std::to_string(i));
 			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
-			state.ballMats.push_back(mat.id);
+			state.ballMats[i] = mat.id;
 		}
 	}
 
 	void setupRopeGridSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
+		std::vector<Entity> gridBalls;
 
 		constexpr int rowWidth = 30;
 		constexpr int numBalls = rowWidth * 2;
@@ -113,8 +115,9 @@ namespace RopeSceneNamespace
 			sdf.materialId = state.ballMats[i % state.ballMats.size()].id;
 
 			auto& rb = registry.addComponent<RigidBody2D>(entity);
+			registry.addComponent<RopeBall>(entity);
 			services.physics().setUserData(rb.simulationId, std::make_unique<BallData>());
-			state.balls.push_back(entity);
+			gridBalls.push_back(entity);
 		}
 
 		// Connect balls with springs (down and right)
@@ -129,8 +132,8 @@ namespace RopeSceneNamespace
 			{
 				Entity springEnt = registry.createEntity();
 				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = state.balls[i];
-				spring.entityB = state.balls[i + rowWidth];
+				spring.entityA = gridBalls[i];
+				spring.entityB = gridBalls[i + rowWidth];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.0f;
 			}
@@ -139,8 +142,8 @@ namespace RopeSceneNamespace
 			{
 				Entity springEnt = registry.createEntity();
 				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = state.balls[i];
-				spring.entityB = state.balls[i + 1];
+				spring.entityA = gridBalls[i];
+				spring.entityB = gridBalls[i + 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.0f;
 			}
@@ -150,8 +153,8 @@ namespace RopeSceneNamespace
 			{
 				Entity springEnt = registry.createEntity();
 				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = state.balls[i];
-				spring.entityB = state.balls[i + rowWidth + 1];
+				spring.entityA = gridBalls[i];
+				spring.entityB = gridBalls[i + rowWidth + 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.4142f;
 			}
@@ -160,24 +163,24 @@ namespace RopeSceneNamespace
 			{
 				Entity springEnt = registry.createEntity();
 				auto& spring = registry.addComponent<WeirdEngine::Spring>(springEnt);
-				spring.entityA = state.balls[i];
-				spring.entityB = state.balls[i + rowWidth - 1];
+				spring.entityA = gridBalls[i];
+				spring.entityB = gridBalls[i + rowWidth - 1];
 				spring.stiffness = stiffness;
 				spring.restDistance = 1.4142f;
 			}
 		}
 
 		// Fix corners
-		registry.getComponent<RigidBody2D>(state.balls[0]).isFixed = true;
-		registry.setEntityDirty<RigidBody2D>(state.balls[0], true);
+		registry.getComponent<RigidBody2D>(gridBalls[0]).isFixed = true;
+		registry.setEntityDirty<RigidBody2D>(gridBalls[0], true);
 		if (numBalls > rowWidth)
 		{
-			registry.getComponent<RigidBody2D>(state.balls[rowWidth - 1]).isFixed = true;
-			registry.setEntityDirty<RigidBody2D>(state.balls[rowWidth - 1], true);
-			registry.getComponent<RigidBody2D>(state.balls[rowWidth]).isFixed = true;
-			registry.setEntityDirty<RigidBody2D>(state.balls[rowWidth], true);
-			registry.getComponent<RigidBody2D>(state.balls[(2 * rowWidth) - 1]).isFixed = true;
-			registry.setEntityDirty<RigidBody2D>(state.balls[(2 * rowWidth) - 1], true);
+			registry.getComponent<RigidBody2D>(gridBalls[rowWidth - 1]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(gridBalls[rowWidth - 1], true);
+			registry.getComponent<RigidBody2D>(gridBalls[rowWidth]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(gridBalls[rowWidth], true);
+			registry.getComponent<RigidBody2D>(gridBalls[(2 * rowWidth) - 1]).isFixed = true;
+			registry.setEntityDirty<RigidBody2D>(gridBalls[(2 * rowWidth) - 1], true);
 		}
 	}
 
@@ -286,6 +289,7 @@ namespace RopeSceneNamespace
 		if (services.input().getKeyDown(Input::R) || services.input().getGamepadButtonDown(Input::GamepadButton::South))
 		{
 			state.clampBalls = !state.clampBalls;
+			registry.forEach<RopeBall>([&](Entity, RopeBall& ball) { ball.shouldClamp = state.clampBalls; });
 			services.physics().forEachUserData(
 				[&](SimulationID, BodyUserData& data)
 				{
@@ -337,7 +341,9 @@ namespace RopeSceneNamespace
 
 			const bool a = distance(state.startRopeMousePos, world) > state.currentRopeBalls.size() * 1.0f;
 			const bool b = state.currentRopeBalls.size() == 1 && world != state.startRopeMousePos;
-			if (a || b)
+			if ((a || b) && state.currentRopeBalls.size() < state.currentRopeBalls.capacity() &&
+				state.currentRopeSprings.size() < state.currentRopeSprings.capacity() &&
+				registry.getAvailableEntityCount() >= 2)
 			{
 				Entity newBall = registry.createEntity();
 				if (newBall != INVALID_ENTITY)
@@ -397,6 +403,31 @@ namespace RopeSceneNamespace
 		}
 	}
 
+	void cancelRopeCreation(Registry& registry, State& state)
+	{
+		for (auto ball : state.currentRopeBalls)
+		{
+			if (ball == state.draggedBall)
+				state.draggedBall = INVALID_ENTITY;
+			if (state.toDeleteRopeBalls.size() < state.toDeleteRopeBalls.capacity())
+				state.toDeleteRopeBalls.push_back(ball);
+			else
+				registry.destroyEntity(ball);
+		}
+		for (auto spring : state.currentRopeSprings)
+		{
+			if (state.toDeleteRopeSprings.size() < state.toDeleteRopeSprings.capacity())
+				state.toDeleteRopeSprings.push_back(spring);
+			else
+				registry.destroyEntity(spring);
+		}
+		state.creatingRope = false;
+		state.startRopeBall = INVALID_ENTITY;
+		state.lastSelectedBall = INVALID_ENTITY;
+		state.currentRopeBalls.clear();
+		state.currentRopeSprings.clear();
+	}
+
 	void ballDragSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
@@ -405,25 +436,7 @@ namespace RopeSceneNamespace
 		{
 			if (state.creatingRope)
 			{
-				for (auto ball : state.currentRopeBalls)
-				{
-					if (ball == state.draggedBall)
-					{
-						state.draggedBall = INVALID_ENTITY;
-					}
-					state.toDeleteRopeBalls.push(ball);
-				}
-
-				for (auto spring : state.currentRopeSprings)
-				{
-					state.toDeleteRopeSprings.push(spring);
-				}
-
-				state.creatingRope = false;
-				state.startRopeBall = INVALID_ENTITY;
-				state.lastSelectedBall = INVALID_ENTITY;
-				state.currentRopeBalls.clear();
-				state.currentRopeSprings.clear();
+				cancelRopeCreation(registry, state);
 			}
 			else
 			{
@@ -485,16 +498,16 @@ namespace RopeSceneNamespace
 
 			if (!state.toDeleteRopeSprings.empty())
 			{
-				Entity springToDelete = state.toDeleteRopeSprings.top();
-				state.toDeleteRopeSprings.pop();
+				Entity springToDelete = state.toDeleteRopeSprings.back();
+				state.toDeleteRopeSprings.pop_back();
 
 				registry.destroyEntity(springToDelete);
 			}
 
 			if (!state.toDeleteRopeBalls.empty())
 			{
-				Entity ballToDelete = state.toDeleteRopeBalls.top();
-				state.toDeleteRopeBalls.pop();
+				Entity ballToDelete = state.toDeleteRopeBalls.back();
+				state.toDeleteRopeBalls.pop_back();
 
 				if (ballToDelete == state.draggedBall)
 				{
@@ -530,6 +543,18 @@ namespace RopeSceneNamespace
 	}
 
 } // namespace RopeSceneNamespace
+
+void RopeScene::onSnapshotLoaded(Registry& registry, ServiceProvider& services)
+{
+	using namespace RopeSceneNamespace;
+	registry.forEach<RopeBall, RigidBody2D>(
+		[&](Entity, RopeBall& ball, RigidBody2D& rb)
+		{
+			auto data = std::make_unique<BallData>();
+			data->shouldClamp = ball.shouldClamp;
+			services.physics().setUserData(rb.simulationId, std::move(data));
+		});
+}
 
 void RopeScene::onPhysicsStep(Simulation2D& simulation)
 {

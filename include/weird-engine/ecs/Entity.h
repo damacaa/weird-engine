@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <type_traits>
 
 namespace WeirdEngine
 {
@@ -100,6 +101,20 @@ namespace WeirdEngine
 
 	constexpr Entity MAX_ENTITIES{10000};
 	constexpr Entity INVALID_ENTITY{MAX_ENTITIES};
+
+	// Raw snapshots require value-only data. Specialize this trait to false for types with runtime pointers.
+	// Audited math value types can declare snapshotRawCompatible = true for custom copies or empty destructors.
+	template <typename T>
+	inline constexpr bool is_snapshot_serializable_v = []
+	{
+		if constexpr (!std::is_copy_constructible_v<T> || std::is_polymorphic_v<T> || std::is_pointer_v<T> ||
+					  std::is_member_pointer_v<T>)
+			return false;
+		else if constexpr (requires { T::snapshotRawCompatible; })
+			return T::snapshotRawCompatible;
+		else
+			return std::is_trivially_copyable_v<T>;
+	}();
 } // namespace WeirdEngine
 
 template <> struct std::hash<WeirdEngine::Entity>

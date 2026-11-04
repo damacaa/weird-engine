@@ -223,6 +223,18 @@ namespace WeirdEngine
 		m_2DWorldRenderContext.dotRadious = 0.5f;
 		m_2DWorldRenderContext.charSpacing = 1.0f;
 
+		// Pre-register built-in components so they are always known for snapshots
+		m_registry.registerComponent<Transform>();
+		m_registry.registerComponent<ECS::Camera>();
+		m_registry.registerComponent<Dot>();
+		m_registry.registerComponent<UIDot>();
+		m_registry.registerComponent<TextRenderer>();
+		m_registry.registerComponent<UITextRenderer>();
+		m_registry.registerComponent<ShapeButton>();
+		m_registry.registerComponent<ShapeToggle>();
+		m_registry.registerComponent<FlyMovement>();
+		m_registry.registerComponent<FlyMovement2D>();
+
 		// Create camera
 		m_mainCamera = m_registry.createEntity();
 		m_services.tags().tag(m_mainCamera, "mainCamera");
@@ -265,7 +277,14 @@ namespace WeirdEngine
 				break;
 		}
 
-		PhysicsSystem2D::update(m_registry, m_simulation2D);
+		if (!m_snapshotFilePath.empty() && std::filesystem::exists(m_snapshotFilePath))
+		{
+			m_services.serialization().loadSnapshot(m_snapshotFilePath);
+		}
+		else
+		{
+			PhysicsSystem2D::update(m_registry, m_simulation2D);
+		}
 	}
 
 	void Scene::update(double delta, double time)
@@ -278,6 +297,31 @@ namespace WeirdEngine
 		{
 			forceShaderRefresh();
 		}
+
+#if defined(WEIRD_DEBUG)
+		// Global quick-save (F5) and quick-load (F9) enabled in Debug and RelWithDebInfo
+		if (m_enableSnapshotHotkeys)
+		{
+			if (m_services.input().getKeyDown(Input::KeyCode::F5))
+			{
+				std::string snapshotName = !m_snapshotFilePath.empty()
+											   ? m_snapshotFilePath
+											   : (m_name.empty() ? "quicksave.weirdsnap" : (m_name + ".weirdsnap"));
+				m_services.serialization().saveSnapshot(snapshotName);
+				Logger::log("[Snapshot] Quick-saved snapshot to " + snapshotName + " (F5)");
+			}
+			if (m_services.input().getKeyDown(Input::KeyCode::F9))
+			{
+				std::string snapshotName = !m_snapshotFilePath.empty()
+											   ? m_snapshotFilePath
+											   : (m_name.empty() ? "quicksave.weirdsnap" : (m_name + ".weirdsnap"));
+				if (m_services.serialization().loadSnapshot(snapshotName))
+				{
+					Logger::log("[Snapshot] Quick-loaded snapshot from " + snapshotName + " (F9)");
+				}
+			}
+		}
+#endif
 
 		// Update systems
 		{

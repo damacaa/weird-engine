@@ -3,6 +3,7 @@
 #include "weird-engine/math/SDF.h"
 #include "weird-engine/Scene.h"
 #include "weird-engine/SceneSerializer.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/Simulation2D.h"
 #include "weird-renderer/components/Shape.h"
@@ -11,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -70,6 +72,11 @@ namespace WeirdEngine
 
 	void SerializationService::deleteSceneFile()
 	{
+		if (!m_scene.m_snapshotFilePath.empty())
+		{
+			deleteSnapshotFile();
+		}
+
 		if (m_sceneFilePath.empty())
 			return;
 
@@ -82,6 +89,117 @@ namespace WeirdEngine
 		{
 			Logger::error("[SceneSerializer] Failed to delete scene file " + m_sceneFilePath + ": " + ec.message());
 		}
+	}
+
+	void SerializationService::deleteSnapshotFile()
+	{
+		if (m_scene.m_snapshotFilePath.empty())
+			return;
+
+		std::error_code ec;
+		if (std::filesystem::remove(m_scene.m_snapshotFilePath, ec))
+		{
+			Logger::log("[Snapshot] Deleted snapshot file " + m_scene.m_snapshotFilePath);
+		}
+		else if (ec)
+		{
+			Logger::error("[Snapshot] Failed to delete snapshot file " + m_scene.m_snapshotFilePath + ": " +
+						  ec.message());
+		}
+	}
+
+	void SerializationService::setSnapshotFilePath(const std::string& path)
+	{
+		m_scene.m_snapshotFilePath = path;
+	}
+
+	void SerializationService::saveSnapshot(const std::string& filename)
+	{
+		if (!m_scene.m_registry.canSerializeSnapshot())
+		{
+			Logger::error("[Snapshot] Scene contains unsupported component or state types.");
+			return;
+		}
+		m_scene.m_registry.freeRemovedComponents();
+		const auto physicsSettings = m_scene.m_simulation2D.captureSnapshotSettings();
+
+		std::filesystem::path filePath(filename);
+		if (filePath.has_parent_path())
+		{
+			std::filesystem::create_directories(filePath.parent_path());
+		}
+
+		std::ofstream outFile(filename, std::ios::binary);
+		if (!outFile.is_open())
+		{
+			Logger::error("[Snapshot] Failed to open file for writing: " + filename);
+			return;
+		}
+
+		double simTime = m_scene.m_simulation2D.getSimulationTime();
+		if (!m_scene.m_registry.serializeSnapshot(outFile, simTime))
+			return;
+		outFile.write(reinterpret_cast<const char*>(&physicsSettings), sizeof(physicsSettings));
+		Logger::log("[Snapshot] Saved snapshot to " + filename);
+	}
+
+	bool SerializationService::loadSnapshot(const std::string& filename)
+	{
+		if (!m_scene.m_registry.canSerializeSnapshot())
+		{
+			Logger::error("[Snapshot] Scene contains unsupported component or state types.");
+			return false;
+		}
+		std::ifstream inFile(filename, std::ios::binary);
+		if (!inFile.is_open())
+		{
+			Logger::error("[Snapshot] Failed to open snapshot file: " + filename);
+			return false;
+		}
+
+		const bool wasPaused = m_scene.m_simulation2D.isPaused();
+		m_scene.m_simulation2D.pause();
+		m_scene.m_simulation2D.resetBodiesAndShapes();
+
+		double simTime = 0.0;
+		if (!m_scene.m_registry.deserializeSnapshot(inFile, &simTime))
+		{
+			Logger::error("[Snapshot] Failed to deserialize snapshot: " + filename);
+			if (!wasPaused)
+				m_scene.m_simulation2D.resume();
+			return false;
+		}
+		Simulation2D::SnapshotSettings physicsSettings;
+		inFile.read(reinterpret_cast<char*>(&physicsSettings), sizeof(physicsSettings));
+
+		m_scene.m_simulation2D.setSimulationTime(simTime);
+		m_scene.m_bodyLastImpactTime.clear();
+
+		auto rbArray = m_scene.m_registry.getComponentArray<RigidBody2D>();
+		if (rbArray && rbArray->getSize() > 0)
+		{
+			size_t maxSimId = 0;
+			for (size_t i = 0; i < rbArray->getSize(); ++i)
+			{
+				auto& rb = rbArray->getDataAtIdx(i);
+				if (rb.simulationId.id > maxSimId)
+				{
+					maxSimId = rb.simulationId.id;
+				}
+			}
+			m_scene.m_simulation2D.allocateBodiesUpTo(maxSimId + 1);
+		}
+
+		m_scene.onSnapshotLoaded(m_scene.m_registry, m_scene.m_services);
+		ECS::PhysicsSystem2D::update(m_scene.m_registry, m_scene.m_simulation2D);
+		m_scene.m_simulation2D.restoreSnapshotSettings(physicsSettings);
+
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
+		m_scene.m_UIRenderContext.shapesNeedUpdate = true;
+		m_scene.m_3DWorldRenderContext.shapesNeedUpdate = true;
+
+		Logger::log("[Snapshot] Loaded snapshot from " + filename);
+		return true;
 	}
 
 	void AudioService::setSpatialAudioEnabled(bool enabled)

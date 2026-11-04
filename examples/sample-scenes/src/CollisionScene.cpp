@@ -36,7 +36,7 @@ namespace CollisionSceneNamespace
 		{
 			auto& mat = services.materials2D().createMaterial("hit_" + std::to_string(i));
 			mat.color = ColorPalette::Default[(6 + i) % ColorPalette::Default.size()];
-			state.hitMats.push_back(mat.id);
+			state.hitMats[i] = mat.id;
 		}
 	}
 

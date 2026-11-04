@@ -569,7 +569,6 @@ namespace WeirdEngine
 				}
 
 				scene.m_clusters.push_back(std::move(cluster));
-				scene.onClusterLoaded(scene.m_clusters.back());
 			}
 		}
 

@@ -817,7 +817,6 @@ namespace WeirdEngine
 		}
 
 		m_clusters.push_back(std::move(instance));
-		m_scene.onClusterLoaded(m_clusters.back());
 		return m_clusters.back();
 	}
 
@@ -961,7 +960,6 @@ namespace WeirdEngine
 		if (instance.id >= m_nextClusterId)
 			m_nextClusterId = instance.id + 1;
 		m_clusters.push_back(std::move(instance));
-		m_scene.onClusterLoaded(m_clusters.back());
 		return m_clusters.back();
 	}
 

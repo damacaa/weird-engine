@@ -153,7 +153,6 @@ namespace WeirdEngine
 		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
 		// Rebuild runtime data after restoring the registry, while physics remains paused.
 		virtual void onSnapshotLoaded(Registry& registry, ServiceProvider& services) {};
-		virtual void onClusterLoaded(ClusterInstance& cluster) {};
 		virtual void onImGuiRender(Registry& registry, ServiceProvider& services) {};
 		virtual void onCustomUI(Registry& registry, ServiceProvider& services) {};
 		virtual void onRender(Registry& registry, ServiceProvider& services,

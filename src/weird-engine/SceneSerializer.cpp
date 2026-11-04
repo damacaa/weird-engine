@@ -179,6 +179,57 @@ namespace WeirdEngine
 			j["names"] = namesJson;
 		}
 
+		// Save entity tags
+		{
+			json tagsJson = json::array();
+			for (const auto& [entity, tags] : scene.m_entityToTags)
+			{
+				if (isBlacklisted(entity) || tags.empty())
+					continue;
+				tagsJson.push_back({{"entityId", entity}, {"tags", tags}});
+			}
+			j["entityTags"] = tagsJson;
+		}
+
+		// Save clusters
+		{
+			json clustersJson = json::array();
+			for (const auto& cluster : scene.m_clusters)
+			{
+				json cj;
+				cj["id"] = cluster.id;
+				cj["name"] = cluster.name;
+				cj["type"] = cluster.type;
+				cj["assetPath"] = cluster.assetPath;
+				cj["position"] = {cluster.position.x, cluster.position.y};
+				cj["rotation"] = cluster.rotation;
+
+				json entitiesJson = json::array();
+				for (Entity e : cluster.entities)
+				{
+					if (!isBlacklisted(e))
+						entitiesJson.push_back(e);
+				}
+				cj["entities"] = entitiesJson;
+
+				json namesJson = json::object();
+				for (const auto& [localName, e] : cluster.localNames)
+				{
+					if (!isBlacklisted(e))
+						namesJson[localName] = e;
+				}
+				cj["names"] = namesJson;
+
+				json tagsJson = json::array();
+				for (const auto& t : cluster.tags)
+					tagsJson.push_back(t);
+				cj["tags"] = tagsJson;
+
+				clustersJson.push_back(cj);
+			}
+			j["clusters"] = clustersJson;
+		}
+
 		// Save physics constraints directly from ECS components
 		{
 			json distanceConstraintsJson = json::array();
@@ -450,6 +501,74 @@ namespace WeirdEngine
 						scene.m_services.names().setName(newEntity, name);
 					}
 				}
+			}
+		}
+
+		// Restore entity tags
+		if (j.contains("entityTags") && j["entityTags"].is_array())
+		{
+			for (const auto& item : j["entityTags"])
+			{
+				if (!item.contains("entityId") || !item.contains("tags"))
+					continue;
+				Entity savedId = item["entityId"].get<Entity>();
+				auto it = entityIdMap.find(savedId);
+				if (it != entityIdMap.end())
+				{
+					Entity newEntity = it->second;
+					for (const auto& tagJ : item["tags"])
+					{
+						scene.m_services.tags().addTag(newEntity, tagJ.get<std::string>());
+					}
+				}
+			}
+		}
+
+		// Restore clusters (only when loading the root scene, not when loading a sub-cluster asset)
+		if (!outNames && j.contains("clusters") && j["clusters"].is_array())
+		{
+			for (const auto& cj : j["clusters"])
+			{
+				ClusterInstance cluster;
+				cluster.id = cj.value("id", 0u);
+				cluster.name = cj.value("name", "");
+				cluster.type = cj.value("type", "");
+				cluster.assetPath = cj.value("assetPath", "");
+				if (cj.contains("position") && cj["position"].is_array() && cj["position"].size() >= 2)
+				{
+					cluster.position = vec2(cj["position"][0].get<float>(), cj["position"][1].get<float>());
+				}
+				cluster.rotation = cj.value("rotation", 0.0f);
+
+				if (cj.contains("entities") && cj["entities"].is_array())
+				{
+					for (const auto& ej : cj["entities"])
+					{
+						Entity oldId = ej.get<Entity>();
+						auto it = entityIdMap.find(oldId);
+						if (it != entityIdMap.end())
+							cluster.entities.push_back(it->second);
+					}
+				}
+
+				if (cj.contains("names") && cj["names"].is_object())
+				{
+					for (auto it = cj["names"].begin(); it != cj["names"].end(); ++it)
+					{
+						Entity oldId = it.value().get<Entity>();
+						auto mapIt = entityIdMap.find(oldId);
+						if (mapIt != entityIdMap.end())
+							cluster.localNames[it.key()] = mapIt->second;
+					}
+				}
+
+				if (cj.contains("tags") && cj["tags"].is_array())
+				{
+					for (const auto& tj : cj["tags"])
+						cluster.tags.push_back(tj.get<std::string>());
+				}
+
+				scene.m_clusters.push_back(std::move(cluster));
 			}
 		}
 

@@ -32,6 +32,8 @@ namespace WeirdEngine
 		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,
 				  &scene.m_serializationBlacklist)
 		, m_names(scene.m_nameToEntity, scene.m_entityToName)
+		, m_tags(scene.m_tagToEntities, scene.m_entityToTags)
+		, m_clusters(scene, scene.m_clusters)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
 		, m_resources(scene.m_resourceManager, "")
@@ -723,6 +725,242 @@ namespace WeirdEngine
 		}
 
 		return normal;
+	}
+
+	// =========================================================================
+	// ClusterService
+	// =========================================================================
+
+	ClusterService::ClusterService(Scene& scene, std::vector<ClusterInstance>& clusters)
+		: m_scene(scene)
+		, m_clusters(clusters)
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.id >= m_nextClusterId)
+				m_nextClusterId = c.id + 1;
+		}
+	}
+
+	ClusterInstance& ClusterService::instantiate(const std::string& assetPath, vec2 position, float rotation,
+												 const std::string& instanceName,
+												 const std::vector<std::string>& instanceTags)
+	{
+		ClusterInstance instance;
+		instance.id = m_nextClusterId++;
+		instance.assetPath = assetPath;
+		instance.position = position;
+		instance.rotation = rotation;
+		instance.tags = instanceTags;
+
+		std::filesystem::path p(assetPath);
+		instance.type = p.stem().string();
+
+		if (!instanceName.empty())
+			instance.name = instanceName;
+		else
+			instance.name = instance.type + "_" + std::to_string(instance.id);
+
+		Entity firstNewEntity = m_scene.m_registry.getEntityCount();
+
+		SceneSerializer::load(m_scene, assetPath, &instance.localNames, false);
+
+		Entity lastNewEntity = m_scene.m_registry.getEntityCount();
+
+		for (Entity e = firstNewEntity; e < lastNewEntity; ++e)
+		{
+			instance.entities.push_back(e);
+			for (const auto& tag : instanceTags)
+			{
+				m_scene.m_services.tags().addTag(e, tag);
+			}
+		}
+
+		if (position != vec2(0.0f) || rotation != 0.0f)
+		{
+			vec2 centroid(0.0f);
+			size_t count = 0;
+			for (Entity e : instance.entities)
+			{
+				if (m_scene.m_registry.hasComponent<Transform>(e))
+				{
+					centroid += vec2(m_scene.m_registry.getComponent<Transform>(e).position);
+					count++;
+				}
+			}
+			if (count > 0)
+				centroid /= static_cast<float>(count);
+
+			float cosR = std::cos(rotation);
+			float sinR = std::sin(rotation);
+
+			for (Entity e : instance.entities)
+			{
+				if (m_scene.m_registry.hasComponent<Transform>(e))
+				{
+					auto& t = m_scene.m_registry.getComponent<Transform>(e);
+					vec2 rel = vec2(t.position) - centroid;
+					vec2 rotated = vec2(rel.x * cosR - rel.y * sinR, rel.x * sinR + rel.y * cosR);
+					vec2 newWorld = centroid + rotated + position;
+					t.position.x = newWorld.x;
+					t.position.y = newWorld.y;
+					t.rotation.z += rotation;
+					m_scene.m_registry.getComponentArray<Transform>()->setEntityDirty(e, true);
+
+					if (m_scene.m_registry.hasComponent<RigidBody2D>(e))
+					{
+						auto& rb = m_scene.m_registry.getComponent<RigidBody2D>(e);
+						m_scene.m_simulation2D.setPosition(rb.simulationId, newWorld);
+					}
+				}
+			}
+		}
+
+		m_clusters.push_back(std::move(instance));
+		return m_clusters.back();
+	}
+
+	ClusterInstance* ClusterService::getById(uint32_t id)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.id == id)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getById(uint32_t id) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.id == id)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	ClusterInstance* ClusterService::getByName(const std::string& name)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.name == name)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getByName(const std::string& name) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.name == name)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	std::vector<ClusterInstance*> ClusterService::getByType(const std::string& type)
+	{
+		std::vector<ClusterInstance*> result;
+		for (auto& c : m_clusters)
+		{
+			if (c.type == type)
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<const ClusterInstance*> ClusterService::getByType(const std::string& type) const
+	{
+		std::vector<const ClusterInstance*> result;
+		for (const auto& c : m_clusters)
+		{
+			if (c.type == type)
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<ClusterInstance*> ClusterService::getByTag(const std::string& tag)
+	{
+		std::vector<ClusterInstance*> result;
+		for (auto& c : m_clusters)
+		{
+			if (c.hasTag(tag))
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<const ClusterInstance*> ClusterService::getByTag(const std::string& tag) const
+	{
+		std::vector<const ClusterInstance*> result;
+		for (const auto& c : m_clusters)
+		{
+			if (c.hasTag(tag))
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	ClusterInstance* ClusterService::getClusterForEntity(Entity entity)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.hasEntity(entity))
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getClusterForEntity(Entity entity) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.hasEntity(entity))
+				return &c;
+		}
+		return nullptr;
+	}
+
+	void ClusterService::destroyCluster(uint32_t id)
+	{
+		auto it =
+			std::find_if(m_clusters.begin(), m_clusters.end(), [id](const ClusterInstance& c) { return c.id == id; });
+		if (it == m_clusters.end())
+			return;
+
+		for (Entity e : it->entities)
+		{
+			m_scene.m_services.names().removeName(e);
+			m_scene.m_services.tags().removeAllTags(e);
+			m_scene.m_registry.destroyEntity(e);
+		}
+
+		m_clusters.erase(it);
+	}
+
+	void ClusterService::destroyCluster(ClusterInstance* cluster)
+	{
+		if (cluster)
+			destroyCluster(cluster->id);
+	}
+
+	void ClusterService::destroyAll()
+	{
+		while (!m_clusters.empty())
+		{
+			destroyCluster(m_clusters.back().id);
+		}
+	}
+
+	ClusterInstance& ClusterService::addInstance(ClusterInstance instance)
+	{
+		if (instance.id >= m_nextClusterId)
+			m_nextClusterId = instance.id + 1;
+		m_clusters.push_back(std::move(instance));
+		return m_clusters.back();
 	}
 
 } // namespace WeirdEngine

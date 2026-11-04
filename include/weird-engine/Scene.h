@@ -80,6 +80,7 @@ namespace WeirdEngine
 		friend class SceneSerializer;
 		friend class ServiceProvider;
 		friend class SerializationService;
+		friend class ClusterService;
 
 		friend class WeirdAudio::AudioEngine;
 		friend class WeirdRenderer::Renderer;
@@ -404,6 +405,13 @@ namespace WeirdEngine
 		// ---- Entity name storage (bidirectional maps kept in sync)
 		NameMap m_nameToEntity;
 		std::unordered_map<Entity, std::string> m_entityToName;
+
+		// ---- Entity tag storage
+		std::unordered_map<std::string, std::vector<Entity>> m_tagToEntities;
+		std::unordered_map<Entity, std::vector<std::string>> m_entityToTags;
+
+		// ---- Cluster instances
+		std::vector<ClusterInstance> m_clusters;
 
 		// ---- Registered Systems
 		std::vector<CoreSystem> m_startSystems;

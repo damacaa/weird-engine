@@ -105,6 +105,7 @@ private:
 	// ImGui editor UI state
 	char m_fileNameBuf[128] = "cluster";
 	char m_tagBuf[128] = {};
+	char m_newTagBuf[128] = {};
 	Entity m_tagBufferEntity = static_cast<Entity>(-1);
 	float m_menuBarHeight = 0.0f;
 	bool m_cameraCentered = false;
@@ -711,7 +712,7 @@ private:
 
 	void renderTagSection()
 	{
-		if (!ImGui::CollapsingHeader("Tag Editor", ImGuiTreeNodeFlags_DefaultOpen))
+		if (!ImGui::CollapsingHeader("Name & Tags", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			return;
 		}
@@ -719,46 +720,87 @@ private:
 		if (m_tagSelectedEntity == static_cast<Entity>(-1) || !hasTransform(m_tagSelectedEntity))
 		{
 			m_tagSelectedEntity = static_cast<Entity>(-1);
-			ImGui::TextWrapped("No cluster selected. Pick the Tag tool and right-click a ball to select it.");
+			ImGui::TextWrapped("No ball selected. Pick the Tag tool and right-click a ball to select it.");
 			return;
 		}
 
 		if (m_tagBufferEntity != m_tagSelectedEntity)
 		{
 			m_tagBufferEntity = m_tagSelectedEntity;
-			const std::string currentTag = m_tempSvc->names().getEntityName(m_tagSelectedEntity);
-			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentTag.c_str());
+			const std::string currentName = m_tempSvc->names().getEntityName(m_tagSelectedEntity);
+			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentName.c_str());
+			m_newTagBuf[0] = '\0';
 		}
 
 		ImGui::Text("Ball: entity %u", static_cast<unsigned int>(m_tagSelectedEntity));
+
+		// --- Unique Local Name ---
+		ImGui::SeparatorText("Unique Name");
 		ImGui::SetNextItemWidth(-1.0f);
-		const bool submitted = ImGui::InputTextWithHint("##tag", "tag name", m_tagBuf, sizeof(m_tagBuf),
-														ImGuiInputTextFlags_EnterReturnsTrue);
+		const bool submittedName = ImGui::InputTextWithHint("##name", "name (e.g. head, hand)", m_tagBuf,
+															sizeof(m_tagBuf), ImGuiInputTextFlags_EnterReturnsTrue);
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-		const bool apply = ImGui::Button("Apply", ImVec2(buttonWidth, 0.0f)) || submitted;
+		const bool applyName = ImGui::Button("Apply Name", ImVec2(buttonWidth, 0.0f)) || submittedName;
 		ImGui::SameLine();
-		const bool remove = ImGui::Button("Remove", ImVec2(buttonWidth, 0.0f));
+		const bool removeName = ImGui::Button("Clear Name", ImVec2(buttonWidth, 0.0f));
 
-		if (apply)
+		if (applyName)
 		{
-			const std::string newTag(m_tagBuf);
-			if (newTag.empty())
+			const std::string newName(m_tagBuf);
+			if (newName.empty())
 			{
 				m_tempSvc->names().removeName(m_tagSelectedEntity);
 			}
 			else
 			{
-				m_tempSvc->names().setName(m_tagSelectedEntity, newTag);
+				m_tempSvc->names().setName(m_tagSelectedEntity, newName);
 			}
 		}
 
-		if (remove)
+		if (removeName)
 		{
 			m_tempSvc->names().removeName(m_tagSelectedEntity);
 			m_tagBuf[0] = '\0';
 		}
 
+		// --- Multi-Tags ---
+		ImGui::SeparatorText("Tags");
+		const auto& currentTags = m_tempSvc->tags().getTags(m_tagSelectedEntity);
+		if (currentTags.empty())
+		{
+			ImGui::TextDisabled("No tags attached");
+		}
+		else
+		{
+			std::string tagToRemove;
+			for (const auto& tag : currentTags)
+			{
+				ImGui::BulletText("%s", tag.c_str());
+				ImGui::SameLine();
+				std::string btnId = "X##" + tag;
+				if (ImGui::SmallButton(btnId.c_str()))
+				{
+					tagToRemove = tag;
+				}
+			}
+			if (!tagToRemove.empty())
+			{
+				m_tempSvc->tags().removeTag(m_tagSelectedEntity, tagToRemove);
+			}
+		}
+
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 70.0f);
+		const bool submittedTag = ImGui::InputTextWithHint("##newTag", "add tag...", m_newTagBuf, sizeof(m_newTagBuf),
+														   ImGuiInputTextFlags_EnterReturnsTrue);
+		ImGui::SameLine();
+		if ((ImGui::Button("Add Tag", ImVec2(-1.0f, 0.0f)) || submittedTag) && m_newTagBuf[0] != '\0')
+		{
+			m_tempSvc->tags().addTag(m_tagSelectedEntity, m_newTagBuf);
+			m_newTagBuf[0] = '\0';
+		}
+
+		ImGui::Spacing();
 		if (ImGui::Button("Deselect", ImVec2(-1.0f, 0.0f)))
 		{
 			m_tagSelectedEntity = static_cast<Entity>(-1);
@@ -1402,8 +1444,9 @@ private:
 			}
 		}
 
-		// 2. Remove tag
+		// 2. Remove name and tags
 		m_tempSvc->names().removeName(e);
+		m_tempSvc->tags().removeAllTags(e);
 
 		// 3. Remove from m_balls
 		m_balls.erase(std::remove_if(m_balls.begin(), m_balls.end(), [e](const BallInfo& b) { return b.entity == e; }),
@@ -1449,6 +1492,7 @@ private:
 		for (const BallInfo& ball : m_balls)
 		{
 			m_tempSvc->names().removeName(ball.entity);
+			m_tempSvc->tags().removeAllTags(ball.entity);
 			m_tempRegistry->destroyEntity(ball.entity);
 		}
 		m_balls.clear();

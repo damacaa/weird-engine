@@ -72,7 +72,7 @@ namespace WeirdEngine
 		float m_menuBarHeight = 26.0f;
 		static constexpr float LEFT_PANEL_WIDTH = 320.0f;
 		static constexpr float RIGHT_PANEL_WIDTH = 340.0f;
-		static constexpr float BOTTOM_BAR_HEIGHT = 68.0f;
+		static constexpr float BOTTOM_BAR_HEIGHT = 72.0f;
 
 		// Asset Browser Filter
 		int m_assetFilterType = 0; // 0 = All, 1 = Scenes, 2 = Clusters, 3 = Shapes
@@ -97,8 +97,10 @@ namespace WeirdEngine
 			m_registry = &registry;
 			m_services = &services;
 
-			m_services->debug().setDebugInput(true);
+			// Turn OFF debug input so clicking in the viewport does NOT spawn physics test balls!
+			m_services->debug().setDebugInput(false);
 			m_services->debug().setDebugFly(false);
+			m_simulation2D.pause();
 
 			auto& cam = m_registry->getComponent<Transform>(m_services->render().getCameraEntity());
 			cam.position = g_cameraPositon;
@@ -199,7 +201,7 @@ namespace WeirdEngine
 			{
 				deselectAll();
 			}
-			if (m_services->input().getKeyDown(Input::F) || false)
+			if (m_services->input().getKeyDown(Input::F))
 			{
 				resetCamera();
 			}
@@ -257,11 +259,11 @@ namespace WeirdEngine
 
 			const vec2 mouse(m_services->input().getMouseX(), m_services->input().getMouseY());
 			const vec2 world = ECS::Camera::screenPositionToWorldPosition2D(cam, mouse);
-			const float halfHeight = (std::max)(1.0f, static_cast<float>(Display::height) * 0.5f);
+			const float halfHeight = (std::max)(1.0f, ImGui::GetIO().DisplaySize.y * 0.5f);
 			const float scale = newDist / halfHeight;
 
 			cam.position.z = newDist;
-			cam.position.x = world.x - (mouse.x - static_cast<float>(Display::width) * 0.5f) * scale;
+			cam.position.x = world.x - (mouse.x - ImGui::GetIO().DisplaySize.x * 0.5f) * scale;
 			cam.position.y = world.y - (mouse.y - halfHeight) * scale;
 			m_registry->setComponentDirty(cam);
 		}
@@ -269,7 +271,7 @@ namespace WeirdEngine
 		void panCamera(vec2 screenDelta)
 		{
 			auto& cam = m_registry->getComponent<Transform>(m_services->render().getCameraEntity());
-			const float halfHeight = (std::max)(1.0f, static_cast<float>(Display::height) * 0.5f);
+			const float halfHeight = (std::max)(1.0f, ImGui::GetIO().DisplaySize.y * 0.5f);
 			const float scale = cam.position.z / halfHeight;
 
 			cam.position.x -= screenDelta.x * scale;
@@ -517,34 +519,42 @@ namespace WeirdEngine
 		{
 			Entity camEntity = m_services->render().getCameraEntity();
 
-			// Destroy all entities except camera
-			std::vector<Entity> toDestroy;
-			auto transformArray = m_registry->getComponentArray<Transform>();
-			if (transformArray)
+			// 1. Destroy all non-camera entities
+			for (Entity e = 0; e < m_registry->getEntityCount(); ++e)
 			{
-				for (size_t i = 0; i < transformArray->getSize(); ++i)
+				if (e != camEntity && !m_registry->isEntityDestroyed(e))
 				{
-					Entity e = transformArray->getEntityAtIdx(i);
-					if (e != camEntity)
-					{
-						toDestroy.push_back(e);
-					}
+					m_registry->destroyEntity(e);
 				}
 			}
 
-			for (Entity e : toDestroy)
-			{
-				m_services->names().removeName(e);
-				m_services->tags().removeAllTags(e);
-				m_registry->destroyEntity(e);
-			}
+			// 2. Clear all names and tags
+			m_services->names().clear();
+			m_services->tags().clear();
 
+			// 3. Free removed component arrays and entities immediately
+			m_registry->freeRemovedComponents();
+
+			// 4. Reset physics bodies, particles, and shapes
+			m_simulation2D.resetBodiesAndShapes();
+			m_simulation2D.pause();
+			m_isSimulating = false;
+			m_hasSnapshot = false;
+
+			// 5. Clear clusters
 			m_clusters.clear();
+
+			// 6. Update render contexts
+			m_2DWorldRenderContext.shapesNeedUpdate = true;
+			m_UIRenderContext.shapesNeedUpdate = true;
+
+			// 7. Reset editor selection and state
 			m_selectedEntity = INVALID_ENTITY;
 			m_selectedClusterId = 0;
+			m_isDragging = false;
 			m_currentScenePath.clear();
 			m_isSceneDirty = false;
-			Logger::log("[SceneEditor] Created new scene.");
+			Logger::log("[SceneEditor] Cleared scene.");
 		}
 
 		void openLoadSceneDialog()
@@ -648,10 +658,12 @@ namespace WeirdEngine
 				// Take temporary snapshot before physics simulation
 				m_services->serialization().saveSnapshot("temp_editor.weirdsnap");
 				m_hasSnapshot = true;
+				m_simulation2D.resume();
 				Logger::log("[SceneEditor] Simulation started (snapshot taken).");
 			}
 			else
 			{
+				m_simulation2D.pause();
 				// Revert to snapshot on pause
 				if (m_hasSnapshot)
 				{
@@ -836,7 +848,7 @@ namespace WeirdEngine
 
 				if (ImGui::BeginMenu("View"))
 				{
-					if (ImGui::MenuItem("Reset Camera", "F / Home"))
+					if (ImGui::MenuItem("Reset Camera", "F"))
 					{
 						resetCamera();
 					}
@@ -901,9 +913,8 @@ namespace WeirdEngine
 		// =====================================================================
 		void renderLeftPanel()
 		{
-			const float winW = static_cast<float>(Display::width);
-			const float winH = static_cast<float>(Display::height);
-			const float panelH = winH - m_menuBarHeight - BOTTOM_BAR_HEIGHT;
+			const float winH = ImGui::GetIO().DisplaySize.y;
+			const float panelH = winH - m_menuBarHeight; // Full height to window bottom!
 
 			ImGui::SetNextWindowPos(ImVec2(0.0f, m_menuBarHeight), ImGuiCond_Always);
 			ImGui::SetNextWindowSize(ImVec2(LEFT_PANEL_WIDTH, panelH), ImGuiCond_Always);
@@ -913,6 +924,8 @@ namespace WeirdEngine
 										   ImGuiWindowFlags_NoCollapse;
 
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
 			if (ImGui::Begin("##LeftPanel", nullptr, flags))
 			{
@@ -932,6 +945,7 @@ namespace WeirdEngine
 				}
 			}
 			ImGui::End();
+			ImGui::PopStyleVar(2);
 			ImGui::PopStyleColor();
 		}
 
@@ -1147,9 +1161,9 @@ namespace WeirdEngine
 		// =====================================================================
 		void renderInspector()
 		{
-			const float winW = static_cast<float>(Display::width);
-			const float winH = static_cast<float>(Display::height);
-			const float panelH = winH - m_menuBarHeight - BOTTOM_BAR_HEIGHT;
+			const float winW = ImGui::GetIO().DisplaySize.x;
+			const float winH = ImGui::GetIO().DisplaySize.y;
+			const float panelH = winH - m_menuBarHeight; // Full height to window bottom!
 
 			ImGui::SetNextWindowPos(ImVec2(winW - RIGHT_PANEL_WIDTH, m_menuBarHeight), ImGuiCond_Always);
 			ImGui::SetNextWindowSize(ImVec2(RIGHT_PANEL_WIDTH, panelH), ImGuiCond_Always);
@@ -1159,6 +1173,8 @@ namespace WeirdEngine
 										   ImGuiWindowFlags_NoCollapse;
 
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
 			if (ImGui::Begin("##InspectorPanel", nullptr, flags))
 			{
@@ -1181,6 +1197,7 @@ namespace WeirdEngine
 				}
 			}
 			ImGui::End();
+			ImGui::PopStyleVar(2);
 			ImGui::PopStyleColor();
 		}
 
@@ -1496,25 +1513,29 @@ namespace WeirdEngine
 		// =====================================================================
 		void renderBottomToolbar()
 		{
-			const float winW = static_cast<float>(Display::width);
-			const float winH = static_cast<float>(Display::height);
+			const float winW = ImGui::GetIO().DisplaySize.x;
+			const float winH = ImGui::GetIO().DisplaySize.y;
+			const float bottomW = winW - LEFT_PANEL_WIDTH - RIGHT_PANEL_WIDTH;
 
+			// Positioned flush between left panel and right panel at the very bottom
 			ImGui::SetNextWindowPos(ImVec2(LEFT_PANEL_WIDTH, winH - BOTTOM_BAR_HEIGHT), ImGuiCond_Always);
-			ImGui::SetNextWindowSize(ImVec2(winW - LEFT_PANEL_WIDTH - RIGHT_PANEL_WIDTH, BOTTOM_BAR_HEIGHT),
-									 ImGuiCond_Always);
+			ImGui::SetNextWindowSize(ImVec2(bottomW, BOTTOM_BAR_HEIGHT), ImGuiCond_Always);
 
 			const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 										   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
 										   ImGuiWindowFlags_NoCollapse;
 
 			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.14f, 0.14f, 0.15f, 1.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
 			if (ImGui::Begin("##BottomToolbar", nullptr, flags))
 			{
-				ImGui::TextDisabled("SPAWNER PALETTE:");
-				ImGui::SameLine();
-
 				vec2 center = getCameraCenterWorld();
+
+				// Row 1: Primitives
+				ImGui::TextDisabled("Primitives:");
+				ImGui::SameLine();
 
 				if (ImGui::Button("+ Circle"))
 				{
@@ -1551,12 +1572,14 @@ namespace WeirdEngine
 					spawnDefaultShape(DefaultShapes::Star, center);
 				}
 
-				// Clusters dropdown if available
+				// Row 2: Clusters & Custom Shapes from assets
+				ImGui::TextDisabled("From Assets:");
+				ImGui::SameLine();
+
 				const auto& clusterAssets = m_project.getClusters();
 				if (!clusterAssets.empty())
 				{
-					ImGui::SameLine();
-					ImGui::SetNextItemWidth(130.0f);
+					ImGui::SetNextItemWidth(140.0f);
 					if (ImGui::BeginCombo("##SpawnClusterCombo", "+ Cluster..."))
 					{
 						for (const auto& ca : clusterAssets)
@@ -1568,14 +1591,13 @@ namespace WeirdEngine
 						}
 						ImGui::EndCombo();
 					}
+					ImGui::SameLine();
 				}
 
-				// Custom Shapes dropdown if available
 				const auto& shapeAssets = m_project.getCustomShapes();
 				if (!shapeAssets.empty())
 				{
-					ImGui::SameLine();
-					ImGui::SetNextItemWidth(130.0f);
+					ImGui::SetNextItemWidth(140.0f);
 					if (ImGui::BeginCombo("##SpawnShapeCombo", "+ Custom Shape..."))
 					{
 						for (const auto& sa : shapeAssets)
@@ -1587,9 +1609,32 @@ namespace WeirdEngine
 						}
 						ImGui::EndCombo();
 					}
+					ImGui::SameLine();
+				}
+
+				// Simulation Play/Pause button
+				ImGui::SameLine(bottomW - 130.0f);
+				if (m_isSimulating)
+				{
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.3f, 0.2f, 1.0f));
+					if (ImGui::Button("Pause (Space)", ImVec2(120.0f, 22.0f)))
+					{
+						toggleSimulation();
+					}
+					ImGui::PopStyleColor();
+				}
+				else
+				{
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.3f, 1.0f));
+					if (ImGui::Button("Play (Space)", ImVec2(120.0f, 22.0f)))
+					{
+						toggleSimulation();
+					}
+					ImGui::PopStyleColor();
 				}
 			}
 			ImGui::End();
+			ImGui::PopStyleVar(2);
 			ImGui::PopStyleColor();
 		}
 
@@ -1603,10 +1648,11 @@ namespace WeirdEngine
 				return;
 			}
 
+			const float winW = ImGui::GetIO().DisplaySize.x;
+			const float winH = ImGui::GetIO().DisplaySize.y;
+
 			ImGui::SetNextWindowSize(ImVec2(450.0f, 280.0f), ImGuiCond_Always);
-			ImGui::SetNextWindowPos(ImVec2(static_cast<float>(Display::width) * 0.5f - 225.0f,
-										   static_cast<float>(Display::height) * 0.5f - 140.0f),
-									ImGuiCond_Always);
+			ImGui::SetNextWindowPos(ImVec2(winW * 0.5f - 225.0f, winH * 0.5f - 140.0f), ImGuiCond_Always);
 
 			if (ImGui::Begin("Welcome to Scene Editor", nullptr,
 							 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))

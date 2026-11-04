@@ -123,6 +123,12 @@ namespace WeirdEngine
 			return getEntitiesWithTag(tag);
 		}
 
+		void clear()
+		{
+			m_tagToEntities.clear();
+			m_entityToTags.clear();
+		}
+
 	private:
 		std::unordered_map<std::string, std::vector<Entity>>& m_tagToEntities;
 		std::unordered_map<Entity, std::vector<std::string>>& m_entityToTags;

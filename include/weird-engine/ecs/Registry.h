@@ -95,6 +95,16 @@ namespace WeirdEngine
 			return entity < MAX_ENTITIES;
 		}
 
+		bool isEntityAlive(Entity entity) const noexcept
+		{
+			return entity < m_entityCount && !m_destroyedEntities.test(entity.id);
+		}
+
+		bool isEntityDestroyed(Entity entity) const noexcept
+		{
+			return entity >= m_entityCount || m_destroyedEntities.test(entity.id);
+		}
+
 		bool canCreateEntity() const noexcept
 		{
 			return !m_freeEntities.empty() || m_entityCount < MAX_ENTITIES;

@@ -88,6 +88,12 @@ namespace WeirdEngine
 			return m_entityToName.find(entity) != m_entityToName.end();
 		}
 
+		void clear()
+		{
+			m_nameToEntity.clear();
+			m_entityToName.clear();
+		}
+
 	private:
 		NameMap& m_nameToEntity;
 		std::unordered_map<Entity, std::string>& m_entityToName;

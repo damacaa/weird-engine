@@ -237,7 +237,7 @@ namespace WeirdEngine
 
 		// Create camera
 		m_mainCamera = m_registry.createEntity();
-		m_services.tags().tag(m_mainCamera, "mainCamera");
+		m_services.names().setName(m_mainCamera, "mainCamera");
 		Transform& t = m_registry.addComponent<Transform>(m_mainCamera);
 		t.rotation = vec3(0, 0, -1.0f);
 		t.position = vec3(0.0f, 0.0f, 35.0f);
@@ -1363,9 +1363,9 @@ namespace WeirdEngine
 				if (componentIDs.empty())
 					continue;
 
-				std::string tag = m_services.tags().getEntityTag(e);
+				std::string name = m_services.names().getEntityName(e);
 				std::string label =
-					tag.empty() ? ("Entity " + std::to_string(e)) : (tag + " (ID: " + std::to_string(e) + ")");
+					name.empty() ? ("Entity " + std::to_string(e)) : (name + " (ID: " + std::to_string(e) + ")");
 
 				if (ImGui::TreeNode(label.c_str()))
 				{

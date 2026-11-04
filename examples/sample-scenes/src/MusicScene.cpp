@@ -212,7 +212,7 @@ namespace MusicSceneNamespace
 														   .material = floorMat,
 														   .combination = CombinationType::Addition});
 
-		services.tags().tag(backgroundShape, "bg");
+		services.names().setName(backgroundShape, "bg");
 
 		getState(registry).backgroundShape = backgroundShape;
 	}

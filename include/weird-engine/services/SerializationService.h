@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 #include "weird-engine/ecs/Registry.h"
-#include "weird-engine/services/TagService.h"
+#include "weird-engine/services/NameService.h"
 
 namespace WeirdEngine
 {
@@ -29,8 +29,8 @@ namespace WeirdEngine
 		// If blacklistEntities is true, all entities created by the load will be
 		// excluded from future scene serialization.
 		// If restoreCamera is true, camera state in the file overrides the main camera.
-		// Returns a map of tag names to their corresponding entities.
-		TagMap loadWeirdFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false);
+		// Returns a map of entity names to their corresponding entities.
+		NameMap loadWeirdFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false);
 
 		// Save full registry binary snapshot
 		void saveSnapshot(const std::string& filename);

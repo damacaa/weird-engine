@@ -5,6 +5,7 @@
 #include "weird-engine/services/InputService.h"
 #include "weird-engine/services/Material2DService.h"
 #include "weird-engine/services/Material3DService.h"
+#include "weird-engine/services/NameService.h"
 #include "weird-engine/services/PhysicsService.h"
 #include "weird-engine/services/RandomService.h"
 #include "weird-engine/services/RenderService.h"
@@ -12,7 +13,6 @@
 #include "weird-engine/services/SceneControlService.h"
 #include "weird-engine/services/SerializationService.h"
 #include "weird-engine/services/ShapeService.h"
-#include "weird-engine/services/TagService.h"
 #include "weird-engine/services/TimeService.h"
 
 namespace WeirdEngine
@@ -70,9 +70,9 @@ namespace WeirdEngine
 			return m_audio;
 		}
 
-		TagService& tags()
+		NameService& names()
 		{
-			return m_tags;
+			return m_names;
 		}
 
 		SerializationService& serialization()
@@ -114,7 +114,7 @@ namespace WeirdEngine
 		Material2DService m_materials2D;
 		Material3DService m_materials3D;
 		AudioService m_audio;
-		TagService m_tags;
+		NameService m_names;
 		SerializationService m_serialization;
 		SceneControlService m_sceneControl;
 		ResourceService m_resources;

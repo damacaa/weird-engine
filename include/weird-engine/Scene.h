@@ -87,8 +87,8 @@ namespace WeirdEngine
 
 	public:
 		// ---- Types
-		/// Map from tag name (std::string) to the entity that owns it.
-		using TagMap = ::WeirdEngine::TagMap;
+		/// Map from entity name (std::string) to the entity that owns it.
+		using NameMap = ::WeirdEngine::NameMap;
 
 		using RenderMode = ::WeirdEngine::RenderMode;
 
@@ -401,9 +401,9 @@ namespace WeirdEngine
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;
 
-		// ---- Entity tag storage (bidirectional maps kept in sync)
-		TagMap m_tagToEntity;
-		std::unordered_map<Entity, std::string> m_entityToTag;
+		// ---- Entity name storage (bidirectional maps kept in sync)
+		NameMap m_nameToEntity;
+		std::unordered_map<Entity, std::string> m_entityToName;
 
 		// ---- Registered Systems
 		std::vector<CoreSystem> m_startSystems;

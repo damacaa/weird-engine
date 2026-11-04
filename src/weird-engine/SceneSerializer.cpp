@@ -167,16 +167,16 @@ namespace WeirdEngine
 
 		j["entities"] = entitiesJson;
 
-		// Save entity tags
+		// Save entity names
 		{
-			json tagsJson = json::array();
-			for (const auto& [tagName, entity] : scene.m_tagToEntity)
+			json namesJson = json::array();
+			for (const auto& [name, entity] : scene.m_nameToEntity)
 			{
 				if (isBlacklisted(entity))
 					continue;
-				tagsJson.push_back({{"name", tagName}, {"entityId", entity}});
+				namesJson.push_back({{"name", name}, {"entityId", entity}});
 			}
-			j["tags"] = tagsJson;
+			j["names"] = namesJson;
 		}
 
 		// Save physics constraints directly from ECS components
@@ -232,7 +232,7 @@ namespace WeirdEngine
 		WeirdEngine::Logger::log("[SceneSerializer] Scene saved to " + filename);
 	}
 
-	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags,
+	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::NameMap* outNames,
 							   bool restoreCamera)
 	{
 		using json = nlohmann::json;
@@ -423,30 +423,31 @@ namespace WeirdEngine
 			}
 		}
 
-		// Restore entity tags
-		if (j.contains("tags") && j["tags"].is_array())
+		// Restore entity names (with backwards-compatible "tags" fallback)
+		const char* namesKey = j.contains("names") ? "names" : (j.contains("tags") ? "tags" : nullptr);
+		if (namesKey && j[namesKey].is_array())
 		{
-			for (const auto& tagJ : j["tags"])
+			for (const auto& nameJ : j[namesKey])
 			{
-				if (!tagJ.contains("name") || !tagJ.contains("entityId"))
+				if (!nameJ.contains("name") || !nameJ.contains("entityId"))
 					continue;
-				std::string name = tagJ["name"].get<std::string>();
-				Entity savedId = tagJ["entityId"].get<Entity>();
+				std::string name = nameJ["name"].get<std::string>();
+				Entity savedId = nameJ["entityId"].get<Entity>();
 				if (name.empty())
 					continue;
 				auto it = entityIdMap.find(savedId);
 				if (it != entityIdMap.end())
 				{
 					Entity newEntity = it->second;
-					if (outTags)
+					if (outNames)
 					{
 						// Store in the caller-provided map instead of the scene
-						(*outTags)[name] = newEntity;
+						(*outNames)[name] = newEntity;
 					}
 					else
 					{
 						// Use service provider to keep both maps in sync
-						scene.m_services.tags().tag(newEntity, name);
+						scene.m_services.names().setName(newEntity, name);
 					}
 				}
 			}

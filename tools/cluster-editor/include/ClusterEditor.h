@@ -726,7 +726,7 @@ private:
 		if (m_tagBufferEntity != m_tagSelectedEntity)
 		{
 			m_tagBufferEntity = m_tagSelectedEntity;
-			const std::string currentTag = m_tempSvc->tags().getEntityTag(m_tagSelectedEntity);
+			const std::string currentTag = m_tempSvc->names().getEntityName(m_tagSelectedEntity);
 			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentTag.c_str());
 		}
 
@@ -745,17 +745,17 @@ private:
 			const std::string newTag(m_tagBuf);
 			if (newTag.empty())
 			{
-				m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+				m_tempSvc->names().removeName(m_tagSelectedEntity);
 			}
 			else
 			{
-				m_tempSvc->tags().tag(m_tagSelectedEntity, newTag);
+				m_tempSvc->names().setName(m_tagSelectedEntity, newTag);
 			}
 		}
 
 		if (remove)
 		{
-			m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+			m_tempSvc->names().removeName(m_tagSelectedEntity);
 			m_tagBuf[0] = '\0';
 		}
 
@@ -1403,7 +1403,7 @@ private:
 		}
 
 		// 2. Remove tag
-		m_tempSvc->tags().removeTag(e);
+		m_tempSvc->names().removeName(e);
 
 		// 3. Remove from m_balls
 		m_balls.erase(std::remove_if(m_balls.begin(), m_balls.end(), [e](const BallInfo& b) { return b.entity == e; }),
@@ -1448,7 +1448,7 @@ private:
 
 		for (const BallInfo& ball : m_balls)
 		{
-			m_tempSvc->tags().removeTag(ball.entity);
+			m_tempSvc->names().removeName(ball.entity);
 			m_tempRegistry->destroyEntity(ball.entity);
 		}
 		m_balls.clear();
@@ -2456,12 +2456,12 @@ private:
 		size_t prevDistCount = m_tempRegistry->getComponentArray<DistanceConstraint>()->getSize();
 
 		// Load the file — creates new entities / rigid bodies / constraints
-		TagMap loadedTags = m_tempSvc->serialization().loadWeirdFile(path);
+		NameMap loadedTags = m_tempSvc->serialization().loadWeirdFile(path);
 
 		// Apply loaded tags to the scene
 		for (const auto& [name, entity] : loadedTags)
 		{
-			m_tempSvc->tags().tag(entity, name);
+			m_tempSvc->names().setName(entity, name);
 		}
 
 		// Collect new balls: find entities with both Dot and RigidBody2D

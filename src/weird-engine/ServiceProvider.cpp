@@ -31,7 +31,7 @@ namespace WeirdEngine
 		, m_materials3D(scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId)
 		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,
 				  &scene.m_serializationBlacklist)
-		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
+		, m_names(scene.m_nameToEntity, scene.m_entityToName)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
 		, m_resources(scene.m_resourceManager, "")
@@ -56,18 +56,18 @@ namespace WeirdEngine
 		SceneSerializer::save(m_scene, filename);
 	}
 
-	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities, bool restoreCamera)
+	NameMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities, bool restoreCamera)
 	{
-		TagMap loadedTags;
+		NameMap loadedNames;
 		Entity firstNewEntity = m_scene.m_registry.getEntityCount();
-		SceneSerializer::load(m_scene, path, &loadedTags, restoreCamera);
+		SceneSerializer::load(m_scene, path, &loadedNames, restoreCamera);
 		if (blacklistEntities)
 		{
 			Entity lastNewEntity = m_scene.m_registry.getEntityCount();
 			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
 				m_scene.m_serializationBlacklist.insert(entity);
 		}
-		return loadedTags;
+		return loadedNames;
 	}
 
 	void SerializationService::deleteSceneFile()
@@ -724,4 +724,5 @@ namespace WeirdEngine
 
 		return normal;
 	}
+
 } // namespace WeirdEngine

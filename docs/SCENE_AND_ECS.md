@@ -322,7 +322,7 @@ directly instead of `ServiceProvider.h`.
 | Materials 2D | `services.materials2D()` | Create, share, and query 2D material definitions |
 | Materials 3D | `services.materials3D()` | Create, share, and query 3D material definitions |
 | Audio | `services.audio()` | Queue audio requests and read friction audio levels |
-| Tags | `services.tags()` | Assign and query unique string tags on entities |
+| Names | `services.names()` | Assign and query unique string names on entities |
 | Serialization | `services.serialization()` | Save and load `.weird` files and blacklist entities |
 | Time | `services.time()` | Read simulation time and frame delta time |
 | Resources | `services.resources()` | Resolve asset paths and file storage operations |

@@ -1,6 +1,6 @@
-#include "model/NodeGraphPresets.h"
+#include "weird-engine/shapes/NodeGraphPresets.h"
 
-namespace WeirdEngine::Editor
+namespace WeirdEngine
 {
 	void NodeGraphPresets::loadCircle(NodeGraph& graph)
 	{
@@ -204,4 +204,4 @@ namespace WeirdEngine::Editor
 
 		graph.autoLayout();
 	}
-} // namespace WeirdEngine::Editor
+} // namespace WeirdEngine

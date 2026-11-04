@@ -1,8 +1,8 @@
-#include "model/NodeGraphCompiler.h"
+#include "weird-engine/shapes/NodeGraphCompiler.h"
 
 #include <sstream>
 
-namespace WeirdEngine::Editor
+namespace WeirdEngine
 {
 	Expr NodeGraphCompiler::evaluate(NodeGraph& graph)
 	{
@@ -213,4 +213,4 @@ namespace WeirdEngine::Editor
 		}
 		return "0.0f";
 	}
-} // namespace WeirdEngine::Editor
+} // namespace WeirdEngine

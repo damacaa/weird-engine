@@ -1,10 +1,10 @@
-#include "model/NodeGraph.h"
+#include "weird-engine/shapes/NodeGraph.h"
 
 #include <algorithm>
 #include <map>
 #include <unordered_set>
 
-namespace WeirdEngine::Editor
+namespace WeirdEngine
 {
 	NodeGraph::NodeGraph()
 	{
@@ -363,4 +363,4 @@ namespace WeirdEngine::Editor
 			}
 		}
 	}
-} // namespace WeirdEngine::Editor
+} // namespace WeirdEngine

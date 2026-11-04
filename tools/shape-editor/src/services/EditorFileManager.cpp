@@ -15,8 +15,8 @@ namespace WeirdEngine::Editor
 	namespace
 	{
 #ifdef __EMSCRIPTEN__
-		constexpr const char* WEB_UPLOAD_PATH = "/sdf_editor_uploaded_graph.json";
-		constexpr const char* WEB_DOWNLOAD_FILE = "shape.json";
+		constexpr const char* WEB_UPLOAD_PATH = "/sdf_editor_uploaded_graph.weirdshape";
+		constexpr const char* WEB_DOWNLOAD_FILE = "shape.weirdshape";
 #endif
 	} // namespace
 
@@ -30,8 +30,8 @@ namespace WeirdEngine::Editor
 #ifdef __EMSCRIPTEN__
 		m_webSaveRequested = true;
 #else
-		SDL_DialogFileFilter filters[1] = {{"SDF Graph JSON (*.json)", "json"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "shape.json");
+		SDL_DialogFileFilter filters[1] = {{"Weird Shape (*.weirdshape)", "weirdshape"}};
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "shape.weirdshape");
 #endif
 	}
 
@@ -40,7 +40,7 @@ namespace WeirdEngine::Editor
 #ifdef __EMSCRIPTEN__
 		m_webLoadRequested = true;
 #else
-		SDL_DialogFileFilter filters[1] = {{"SDF Graph JSON (*.json)", "json"}};
+		SDL_DialogFileFilter filters[1] = {{"Weird Shape (*.weirdshape)", "weirdshape"}};
 		SDL_ShowOpenFileDialog(onOpenFileCallback, this, nullptr, filters, 1, nullptr, false);
 #endif
 	}
@@ -80,7 +80,7 @@ namespace WeirdEngine::Editor
 		std::string finalPath = path;
 		if (finalPath.find('.') == std::string::npos)
 		{
-			finalPath += ".json";
+			finalPath += ".weirdshape";
 		}
 		std::ofstream f(finalPath);
 		if (!f.is_open())
@@ -128,7 +128,7 @@ namespace WeirdEngine::Editor
 			{
 				var input = document.createElement('input');
 				input.type = 'file';
-				input.accept = '.json,application/json';
+				input.accept = '.weirdshape';
 				input.style.display = 'none';
 				document.body.appendChild(input);
 				input.addEventListener(

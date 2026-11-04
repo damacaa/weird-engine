@@ -116,7 +116,7 @@ private:
 			m_tempSvc->input().getGamepadButtonDown(Input::GamepadButton::North))
 			m_tempSvc->sceneControl().goToNextScene();
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::S))
-			m_tempSvc->serialization().saveScene(m_tempSvc->resources().assetPath("example.weird"));
+			m_tempSvc->serialization().saveScene(m_tempSvc->resources().assetPath("example.weirdscene"));
 
 		syncMaterialToggles();
 		syncCombToggles();

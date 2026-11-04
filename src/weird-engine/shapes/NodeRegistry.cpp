@@ -1,6 +1,6 @@
-#include "model/NodeRegistry.h"
+#include "weird-engine/shapes/NodeRegistry.h"
 
-namespace WeirdEngine::Editor
+namespace WeirdEngine
 {
 	NodeRegistry& NodeRegistry::get()
 	{
@@ -54,4 +54,4 @@ namespace WeirdEngine::Editor
 		}
 		return list;
 	}
-} // namespace WeirdEngine::Editor
+} // namespace WeirdEngine

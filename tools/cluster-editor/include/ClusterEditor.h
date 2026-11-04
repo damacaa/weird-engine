@@ -534,7 +534,7 @@ private:
 							   "the new distance.");
 			ImGui::Separator();
 			ImGui::BulletText("Ctrl+N: new cluster");
-			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weird scene");
+			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weirdcluster file");
 			ImGui::BulletText("Ctrl+S: save (asks for a path the first time)");
 			ImGui::BulletText("Q: exit the tool");
 		}
@@ -864,7 +864,7 @@ private:
 
 		ImGui::TextDisabled("Saved under assets/Organisms/");
 		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::InputTextWithHint("##filename", "cluster.weird", m_fileNameBuf, sizeof(m_fileNameBuf));
+		ImGui::InputTextWithHint("##filename", "cluster.weirdcluster", m_fileNameBuf, sizeof(m_fileNameBuf));
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 		if (ImGui::Button("Save", ImVec2(buttonWidth, 0.0f)))
@@ -1524,9 +1524,9 @@ private:
 	void saveClusterTo(const std::string& path)
 	{
 		std::string finalPath = path;
-		if (!finalPath.ends_with(".weird"))
+		if (!finalPath.ends_with(".weirdcluster"))
 		{
-			finalPath += ".weird";
+			finalPath += ".weirdcluster";
 		}
 
 		m_tempSvc->serialization().saveScene(finalPath);
@@ -1539,7 +1539,7 @@ private:
 #ifdef __EMSCRIPTEN__
 		loadClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weirdcluster)", "weirdcluster"}};
 		SDL_ShowOpenFileDialog(onOpenFileCallback, this, nullptr, filters, 1, nullptr, false);
 #endif
 	}
@@ -1549,8 +1549,8 @@ private:
 #ifdef __EMSCRIPTEN__
 		saveClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "cluster.weird");
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weirdcluster)", "weirdcluster"}};
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "cluster.weirdcluster");
 #endif
 	}
 
@@ -1609,9 +1609,9 @@ private:
 		{
 			fileName = "cluster";
 		}
-		if (!fileName.ends_with(".weird"))
+		if (!fileName.ends_with(".weirdcluster"))
 		{
-			fileName += ".weird";
+			fileName += ".weirdcluster";
 		}
 		return fileName;
 	}

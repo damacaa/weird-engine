@@ -1,8 +1,8 @@
-#include "model/NodeGraphSerializer.h"
+#include "weird-engine/shapes/NodeGraphSerializer.h"
 
 #include <iostream>
 
-namespace WeirdEngine::Editor
+namespace WeirdEngine
 {
 	json NodeGraphSerializer::serialize(const NodeGraph& graph)
 	{
@@ -158,4 +158,4 @@ namespace WeirdEngine::Editor
 			return false;
 		}
 	}
-} // namespace WeirdEngine::Editor
+} // namespace WeirdEngine

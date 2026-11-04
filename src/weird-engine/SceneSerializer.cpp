@@ -294,7 +294,7 @@ namespace WeirdEngine
 			if (!std::filesystem::exists(path))
 				WeirdEngine::Logger::log("[SceneSerializer] No scene file at " + path + ", starting fresh");
 			else
-				WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
+				WeirdEngine::Logger::error("[SceneSerializer] Failed to open file: " + path);
 			return;
 		}
 

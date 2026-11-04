@@ -284,7 +284,7 @@ namespace WeirdEngine
 			m_resetCameraReprojection = true;
 		}
 
-		// Set the path to a .weird file to load when the scene starts
+		// Set the path to a .weirdscene file to load when the scene starts
 		void setSceneFilePath(const std::string& path)
 		{
 			m_sceneFilePath = path;
@@ -309,7 +309,7 @@ namespace WeirdEngine
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(PhysicsCollisionEvent& event, void* userData);
 		static void handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData);
-		// Load scene state from a .weird JSON file
+		// Load scene state from a .weirdscene JSON file
 		void loadFromWeirdFile(const std::string& path);
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId,

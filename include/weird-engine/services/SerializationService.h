@@ -20,17 +20,21 @@ namespace WeirdEngine
 		{
 		}
 
-		// Save the current scene state to a .weird JSON file
+		// Save the current scene state to a .weirdscene JSON file
 		void saveScene(const std::string& filename);
 
 		void deleteSceneFile();
 
-		// Dynamically load a .weird file and add its contents to the scene.
+		// Dynamically load a .weirdscene or .weirdcluster file and add its contents to the scene.
 		// If blacklistEntities is true, all entities created by the load will be
 		// excluded from future scene serialization.
 		// If restoreCamera is true, camera state in the file overrides the main camera.
 		// Returns a map of entity names to their corresponding entities.
 		NameMap loadWeirdFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false);
+		NameMap loadSceneFile(const std::string& path, bool blacklistEntities = false, bool restoreCamera = false)
+		{
+			return loadWeirdFile(path, blacklistEntities, restoreCamera);
+		}
 
 		// Save full registry binary snapshot
 		void saveSnapshot(const std::string& filename);

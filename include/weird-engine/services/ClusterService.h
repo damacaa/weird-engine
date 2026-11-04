@@ -18,7 +18,7 @@ namespace WeirdEngine
 		uint32_t id = 0;
 		std::string name;			   // Unique instance name (e.g. "boss", "guard_left")
 		std::string type;			   // Cluster type (e.g. "man", derived from asset name)
-		std::string assetPath;		   // e.g. "clusters/man.weird"
+		std::string assetPath;		   // e.g. "clusters/man.weirdcluster"
 		vec2 position{0.0f, 0.0f};	   // Spawn or reference position
 		float rotation{0.0f};		   // Spawn or reference rotation
 		std::vector<Entity> entities;  // Member entities
@@ -52,7 +52,7 @@ namespace WeirdEngine
 	public:
 		ClusterService(Scene& scene, std::vector<ClusterInstance>& clusters);
 
-		// Instantiates a cluster into the scene from a .weird file.
+		// Instantiates a cluster into the scene from a .weirdcluster file.
 		// Automatically:
 		// 1. Loads entities & constraints from assetPath into the scene.
 		// 2. Extracts member local names (without polluting global NameService).

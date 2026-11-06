@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -2250,7 +2251,7 @@ namespace WeirdEngine
 			}
 #endif
 
-			// 1. Same directory as SceneEditorTool (when CMAKE_RUNTIME_OUTPUT_DIRECTORY is used)
+			// 1. Same directory as WeirdEditor (when CMAKE_RUNTIME_OUTPUT_DIRECTORY is used)
 			std::filesystem::path candidate = exeDir / exeName;
 			if (std::filesystem::exists(candidate))
 			{
@@ -3936,7 +3937,7 @@ namespace WeirdEngine
 
 			// Name
 			char nameBuf[64];
-			strncpy_s(nameBuf, mat.name.c_str(), sizeof(nameBuf) - 1);
+			std::snprintf(nameBuf, sizeof(nameBuf), "%s", mat.name.c_str());
 			if (ImGui::InputText("Name##SlotName", nameBuf, sizeof(nameBuf)))
 			{
 				mat.name = nameBuf;
@@ -4123,7 +4124,7 @@ namespace WeirdEngine
 			ImGui::Separator();
 
 			char nameBuf[128];
-			strncpy_s(nameBuf, g->name.c_str(), sizeof(nameBuf) - 1);
+			std::snprintf(nameBuf, sizeof(nameBuf), "%s", g->name.c_str());
 			if (ImGui::InputText("Group Name", nameBuf, sizeof(nameBuf)))
 			{
 				g->name = nameBuf;
@@ -4314,7 +4315,7 @@ namespace WeirdEngine
 			ImGui::Separator();
 
 			// Cluster Name
-			strncpy_s(m_clusterNameBuf, cluster->name.c_str(), sizeof(m_clusterNameBuf) - 1);
+			std::snprintf(m_clusterNameBuf, sizeof(m_clusterNameBuf), "%s", cluster->name.c_str());
 			if (ImGui::InputText("Name", m_clusterNameBuf, sizeof(m_clusterNameBuf)))
 			{
 				cluster->name = m_clusterNameBuf;
@@ -4548,7 +4549,7 @@ namespace WeirdEngine
 		void renderEntityInspector()
 		{
 			Entity e = m_selectedEntity;
-			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Entity #%u", e);
+			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Entity #%u", e.id);
 
 			auto* parentCluster = m_services->clusters().getClusterForEntity(e);
 			if (parentCluster)
@@ -4576,7 +4577,7 @@ namespace WeirdEngine
 
 			// 1. Identity: Unique Name
 			std::string currentName = m_services->names().getName(e);
-			strncpy_s(m_entityNameBuf, currentName.c_str(), sizeof(m_entityNameBuf) - 1);
+			std::snprintf(m_entityNameBuf, sizeof(m_entityNameBuf), "%s", currentName.c_str());
 			if (ImGui::InputText("Unique Name", m_entityNameBuf, sizeof(m_entityNameBuf)))
 			{
 				if (m_entityNameBuf[0] == '\0')
@@ -5243,7 +5244,7 @@ namespace WeirdEngine
 					auto& tr = m_registry->getComponent<TextRenderer>(e);
 
 					char textBuf[33];
-					strncpy_s(textBuf, tr.text.c_str(), sizeof(textBuf) - 1);
+					std::snprintf(textBuf, sizeof(textBuf), "%s", tr.text.c_str());
 					if (ImGui::InputText("Text", textBuf, sizeof(textBuf)))
 					{
 						tr.text = textBuf;
@@ -5291,7 +5292,7 @@ namespace WeirdEngine
 					auto& tr = m_registry->getComponent<UITextRenderer>(e);
 
 					char textBuf[33];
-					strncpy_s(textBuf, tr.text.c_str(), sizeof(textBuf) - 1);
+					std::snprintf(textBuf, sizeof(textBuf), "%s", tr.text.c_str());
 					if (ImGui::InputText("Text##UI", textBuf, sizeof(textBuf)))
 					{
 						tr.text = textBuf;

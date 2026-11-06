@@ -5,6 +5,7 @@
 #include <ostream>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "Entity.h"
 #include "weird-engine/Logger.h"
@@ -20,6 +21,8 @@ namespace WeirdEngine
 		virtual bool deserializeBinary(std::istream& is, size_t fileElemSize) = 0;
 		virtual size_t getStateSize() const = 0;
 		virtual bool isSnapshotSerializable() const = 0;
+		virtual bool deserializeToBuffer(std::istream& is, size_t fileElemSize, std::vector<uint8_t>& outBuffer) = 0;
+		virtual void applyBuffer(const std::vector<uint8_t>& buffer) = 0;
 	};
 
 	// Type-erased owner of a single T. Scene state is stored once per type and
@@ -49,7 +52,18 @@ namespace WeirdEngine
 			{
 				uint32_t elemSize = static_cast<uint32_t>(sizeof(T));
 				os.write(reinterpret_cast<const char*>(&elemSize), sizeof(elemSize));
-				os.write(reinterpret_cast<const char*>(&value), sizeof(T));
+
+				alignas(T) char cleanBuf[sizeof(T)];
+				std::memset(cleanBuf, 0, sizeof(T));
+				if constexpr (std::is_copy_assignable_v<T>)
+				{
+					*reinterpret_cast<T*>(cleanBuf) = value;
+				}
+				else
+				{
+					std::memcpy(cleanBuf, &value, sizeof(T));
+				}
+				os.write(cleanBuf, sizeof(T));
 			}
 			else
 			{
@@ -58,34 +72,65 @@ namespace WeirdEngine
 			}
 		}
 
-		bool deserializeBinary(std::istream& is, size_t fileElemSize) override
+		bool deserializeToBuffer(std::istream& is, size_t fileElemSize, std::vector<uint8_t>& outBuffer) override
 		{
 			uint32_t elemSize = 0;
-			is.read(reinterpret_cast<char*>(&elemSize), sizeof(elemSize));
+			if (!readOrFail(is, &elemSize, sizeof(elemSize)))
+				return false;
 
 			if constexpr (is_snapshot_serializable_v<T>)
 			{
 				if (elemSize != sizeof(T))
 				{
 					Logger::error("[Snapshot] SceneState size mismatch! Expected " + std::to_string(sizeof(T)) +
-								  ", got " + std::to_string(elemSize) + ". Skipping.");
-					if (elemSize > 0)
-					{
-						is.seekg(elemSize, std::ios::cur);
-					}
+								  ", got " + std::to_string(elemSize) + ".");
 					return false;
 				}
-				is.read(reinterpret_cast<char*>(&value), sizeof(T));
+				outBuffer.resize(sizeof(T));
+				if (!readOrFail(is, outBuffer.data(), sizeof(T)))
+				{
+					outBuffer.clear();
+					return false;
+				}
 				return true;
 			}
 			else
 			{
 				if (elemSize > 0)
 				{
-					is.seekg(elemSize, std::ios::cur);
+					is.seekg(static_cast<std::streamoff>(elemSize), std::ios::cur);
+					if (!is.good())
+						return false;
 				}
 				return false;
 			}
+		}
+
+		void applyBuffer(const std::vector<uint8_t>& buffer) override
+		{
+			if constexpr (is_snapshot_serializable_v<T>)
+			{
+				if (buffer.size() == sizeof(T))
+				{
+					if constexpr (std::is_copy_assignable_v<T>)
+					{
+						value = *reinterpret_cast<const T*>(buffer.data());
+					}
+					else
+					{
+						std::memcpy(&value, buffer.data(), sizeof(T));
+					}
+				}
+			}
+		}
+
+		bool deserializeBinary(std::istream& is, size_t fileElemSize) override
+		{
+			std::vector<uint8_t> buf;
+			if (!deserializeToBuffer(is, fileElemSize, buf))
+				return false;
+			applyBuffer(buf);
+			return true;
 		}
 
 		T value;

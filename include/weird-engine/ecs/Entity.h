@@ -4,11 +4,21 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
+#include <istream>
 #include <type_traits>
 
 namespace WeirdEngine
 {
+	inline bool readOrFail(std::istream& is, void* dest, size_t size)
+	{
+		if (size == 0)
+			return true;
+		is.read(reinterpret_cast<char*>(dest), static_cast<std::streamsize>(size));
+		return !is.fail() && !is.bad() && static_cast<size_t>(is.gcount()) == size;
+	}
+
 	struct SimulationID;
 
 	// Strong-type Entity struct

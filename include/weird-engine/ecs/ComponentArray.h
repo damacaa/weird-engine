@@ -37,6 +37,10 @@ namespace WeirdEngine
 			}
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
+			if constexpr (std::is_trivially_copyable_v<T>)
+			{
+				std::memset(&values[size], 0, sizeof(T));
+			}
 			values[size] = component;
 			dirtyFlags[size] = true;
 			++size;
@@ -55,6 +59,10 @@ namespace WeirdEngine
 			}
 			entityToIndexMap[entity] = size;
 			indexToEntityMap[size] = entity;
+			if constexpr (std::is_trivially_copyable_v<T>)
+			{
+				std::memset(&values[size], 0, sizeof(T));
+			}
 			values[size] = T{};
 			dirtyFlags[size] = true;
 

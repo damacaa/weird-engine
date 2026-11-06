@@ -537,67 +537,113 @@ namespace WeirdEngine
 				return false;
 			}
 			uint32_t magic = 0;
-			is.read(reinterpret_cast<char*>(&magic), sizeof(magic));
-			if (magic != SNAPSHOT_MAGIC)
+			if (!readOrFail(is, &magic, sizeof(magic)) || magic != SNAPSHOT_MAGIC)
 			{
 				Logger::error("[Registry] Invalid snapshot magic!");
 				return false;
 			}
 
 			uint32_t version = 0;
-			is.read(reinterpret_cast<char*>(&version), sizeof(version));
-			if (version != SNAPSHOT_VERSION)
+			if (!readOrFail(is, &version, sizeof(version)) || version != SNAPSHOT_VERSION)
 			{
 				Logger::error("[Registry] Unsupported snapshot version: " + std::to_string(version));
 				return false;
 			}
 
 			double simTime = 0.0;
-			is.read(reinterpret_cast<char*>(&simTime), sizeof(simTime));
-			if (outSimulationTime)
+			if (!readOrFail(is, &simTime, sizeof(simTime)))
 			{
-				*outSimulationTime = simTime;
+				Logger::error("[Registry] Failed to read simulation time!");
+				return false;
 			}
 
 			// Entity counts
 			uint32_t entityCount = 0;
-			is.read(reinterpret_cast<char*>(&entityCount), sizeof(entityCount));
-			m_entityCount = Entity{entityCount};
-
-			// Free entities
-			while (!m_freeEntities.empty())
-				m_freeEntities.pop();
-			while (!m_entitiesToFree.empty())
-				m_entitiesToFree.pop();
-			m_droppedEntityCount = 0;
-			m_destroyedEntities.reset();
+			if (!readOrFail(is, &entityCount, sizeof(entityCount)))
+			{
+				Logger::error("[Registry] Failed to read entity count!");
+				return false;
+			}
+			if (entityCount > MAX_ENTITIES.id)
+			{
+				Logger::error("[Registry] Snapshot entityCount (" + std::to_string(entityCount) +
+							  ") exceeds MAX_ENTITIES (" + std::to_string(MAX_ENTITIES.id) + ").");
+				return false;
+			}
 
 			uint32_t freeCount = 0;
-			is.read(reinterpret_cast<char*>(&freeCount), sizeof(freeCount));
+			if (!readOrFail(is, &freeCount, sizeof(freeCount)))
+			{
+				Logger::error("[Registry] Failed to read free count!");
+				return false;
+			}
+			if (freeCount > entityCount)
+			{
+				Logger::error("[Registry] Snapshot freeCount (" + std::to_string(freeCount) +
+							  ") exceeds entityCount (" + std::to_string(entityCount) + ").");
+				return false;
+			}
+
+			std::vector<Entity> tempFreeList;
+			tempFreeList.reserve(freeCount);
+			std::bitset<MAX_ENTITIES.id> tempDestroyedEntities;
+
 			for (uint32_t i = 0; i < freeCount; ++i)
 			{
 				uint32_t fe = 0;
-				is.read(reinterpret_cast<char*>(&fe), sizeof(fe));
-				m_freeEntities.push(Entity{fe});
-				m_destroyedEntities.set(fe);
-			}
-
-			// Clear all existing component managers before loading
-			for (auto& mgr : m_componentManagers)
-			{
-				if (mgr)
-					mgr->clear();
+				if (!readOrFail(is, &fe, sizeof(fe)))
+				{
+					Logger::error("[Registry] Failed to read free entity ID!");
+					return false;
+				}
+				if (fe >= entityCount || fe >= MAX_ENTITIES.id)
+				{
+					Logger::error("[Registry] Snapshot free entity ID (" + std::to_string(fe) +
+								  ") is out of bounds [0, " + std::to_string(entityCount) + ").");
+					return false;
+				}
+				if (tempDestroyedEntities.test(fe))
+				{
+					Logger::error("[Registry] Duplicate free entity ID in snapshot: " + std::to_string(fe));
+					return false;
+				}
+				tempFreeList.push_back(Entity{fe});
+				tempDestroyedEntities.set(fe);
 			}
 
 			// Read components
+			constexpr uint32_t MAX_NAME_LEN = 1024;
+			constexpr uint32_t MAX_MANAGER_COUNT = 10000;
 			uint32_t managerCount = 0;
-			is.read(reinterpret_cast<char*>(&managerCount), sizeof(managerCount));
+			if (!readOrFail(is, &managerCount, sizeof(managerCount)))
+			{
+				Logger::error("[Registry] Failed to read manager count!");
+				return false;
+			}
+			if (managerCount > MAX_MANAGER_COUNT)
+			{
+				Logger::error("[Registry] Snapshot managerCount exceeds limit: " + std::to_string(managerCount));
+				return false;
+			}
+
+			std::unordered_map<IComponentManager*, std::shared_ptr<void>> loadedComponentArrays;
 			for (uint32_t i = 0; i < managerCount; ++i)
 			{
 				uint32_t nameLen = 0;
-				is.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+				if (!readOrFail(is, &nameLen, sizeof(nameLen)))
+				{
+					return false;
+				}
+				if (nameLen > MAX_NAME_LEN)
+				{
+					Logger::error("[Registry] Component name length exceeds limit: " + std::to_string(nameLen));
+					return false;
+				}
 				std::string name(nameLen, '\0');
-				is.read(name.data(), nameLen);
+				if (!readOrFail(is, name.data(), nameLen))
+				{
+					return false;
+				}
 
 				IComponentManager* targetMgr = nullptr;
 				for (size_t m = 0; m < m_componentManagers.size(); ++m)
@@ -611,31 +657,69 @@ namespace WeirdEngine
 
 				if (targetMgr)
 				{
-					targetMgr->deserializeBinary(is, targetMgr->getElementSize());
+					if (loadedComponentArrays.contains(targetMgr))
+					{
+						Logger::error("[Registry] Duplicate component block for '" + name + "' in snapshot.");
+						return false;
+					}
+					std::shared_ptr<void> tempArray;
+					if (!targetMgr->deserializeToArray(is, targetMgr->getElementSize(), tempArray))
+					{
+						Logger::error("[Registry] Failed to deserialize component '" + name + "'.");
+						return false;
+					}
+					loadedComponentArrays[targetMgr] = std::move(tempArray);
 				}
 				else
 				{
 					Logger::warning("[Registry] Component '" + name + "' not registered in scene. Skipping its data.");
 					uint32_t count = 0;
-					is.read(reinterpret_cast<char*>(&count), sizeof(count));
+					if (!readOrFail(is, &count, sizeof(count)))
+						return false;
 					uint32_t elemSize = 0;
-					is.read(reinterpret_cast<char*>(&elemSize), sizeof(elemSize));
+					if (!readOrFail(is, &elemSize, sizeof(elemSize)))
+						return false;
 					if (count > 0 && elemSize > 0)
 					{
-						is.seekg(count * (sizeof(uint32_t) + elemSize), std::ios::cur);
+						uint64_t skipBytes = static_cast<uint64_t>(count) * (sizeof(uint32_t) + elemSize);
+						is.seekg(static_cast<std::streamoff>(skipBytes), std::ios::cur);
+						if (!is.good())
+							return false;
 					}
 				}
 			}
 
 			// Read scene states
+			constexpr uint32_t MAX_STATE_COUNT = 1000;
 			uint32_t stateCount = 0;
-			is.read(reinterpret_cast<char*>(&stateCount), sizeof(stateCount));
+			if (!readOrFail(is, &stateCount, sizeof(stateCount)))
+			{
+				return false;
+			}
+			if (stateCount > MAX_STATE_COUNT)
+			{
+				Logger::error("[Registry] Snapshot stateCount exceeds limit: " + std::to_string(stateCount));
+				return false;
+			}
+
+			std::unordered_map<ISceneState*, std::vector<uint8_t>> loadedSceneStateBuffers;
 			for (uint32_t i = 0; i < stateCount; ++i)
 			{
 				uint32_t nameLen = 0;
-				is.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+				if (!readOrFail(is, &nameLen, sizeof(nameLen)))
+				{
+					return false;
+				}
+				if (nameLen > MAX_NAME_LEN)
+				{
+					Logger::error("[Registry] SceneState name length exceeds limit: " + std::to_string(nameLen));
+					return false;
+				}
 				std::string name(nameLen, '\0');
-				is.read(name.data(), nameLen);
+				if (!readOrFail(is, name.data(), nameLen))
+				{
+					return false;
+				}
 
 				ISceneState* targetState = nullptr;
 				for (size_t s = 0; s < m_sceneStates.size(); ++s)
@@ -649,18 +733,72 @@ namespace WeirdEngine
 
 				if (targetState)
 				{
-					targetState->deserializeBinary(is, targetState->getStateSize());
+					if (loadedSceneStateBuffers.contains(targetState))
+					{
+						Logger::error("[Registry] Duplicate scene state block for '" + name + "' in snapshot.");
+						return false;
+					}
+					std::vector<uint8_t> tempBuffer;
+					if (!targetState->deserializeToBuffer(is, targetState->getStateSize(), tempBuffer))
+					{
+						Logger::error("[Registry] Failed to deserialize scene state '" + name + "'.");
+						return false;
+					}
+					loadedSceneStateBuffers[targetState] = std::move(tempBuffer);
 				}
 				else
 				{
 					Logger::warning("[Registry] SceneState '" + name + "' not registered in scene. Skipping its data.");
 					uint32_t elemSize = 0;
-					is.read(reinterpret_cast<char*>(&elemSize), sizeof(elemSize));
+					if (!readOrFail(is, &elemSize, sizeof(elemSize)))
+						return false;
 					if (elemSize > 0)
 					{
-						is.seekg(elemSize, std::ios::cur);
+						is.seekg(static_cast<std::streamoff>(elemSize), std::ios::cur);
+						if (!is.good())
+							return false;
 					}
 				}
+			}
+
+			// ATOMIC COMMIT
+			m_entityCount = Entity{entityCount};
+			m_droppedEntityCount = 0;
+			while (!m_freeEntities.empty())
+				m_freeEntities.pop();
+			while (!m_entitiesToFree.empty())
+				m_entitiesToFree.pop();
+			for (Entity e : tempFreeList)
+			{
+				m_freeEntities.push(e);
+			}
+			m_destroyedEntities = tempDestroyedEntities;
+
+			// Swap or clear component managers
+			for (auto& mgr : m_componentManagers)
+			{
+				if (!mgr)
+					continue;
+				auto it = loadedComponentArrays.find(mgr.get());
+				if (it != loadedComponentArrays.end())
+				{
+					mgr->setArray(std::move(it->second));
+				}
+				else
+				{
+					mgr->setArray(mgr->createEmptyArray());
+				}
+			}
+
+			// Apply scene states
+			for (auto& [state, buf] : loadedSceneStateBuffers)
+			{
+				state->applyBuffer(buf);
+			}
+
+			if (outSimulationTime)
+			{
+				*outSimulationTime = simTime;
 			}
 
 			return true;

@@ -7,8 +7,6 @@ namespace PlatformerSceneNamespace
 {
 	struct State
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		WeirdEngine::Entity player = WeirdEngine::INVALID_ENTITY;
 
 		// Materials for ground, wall, and air visual feedback

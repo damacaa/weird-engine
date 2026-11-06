@@ -10,8 +10,6 @@ namespace TetrominoSceneNamespace
 {
 	struct State
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		// Game state fields can be added here
 		float timeSinceLastDrop = 0.0f;
 		float dropInterval = 0.5f; // Time between automatic drops in seconds

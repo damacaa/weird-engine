@@ -12,8 +12,6 @@ namespace WeirdEngine
 
 	struct Light3DComponent
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		Light3DType type = Light3DType::Directional;
 		glm::vec4 color = glm::vec4(1.0f);
 		float radius = 25.0f;

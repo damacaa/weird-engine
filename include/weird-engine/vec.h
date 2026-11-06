@@ -2,6 +2,7 @@
 #define VEC_H
 
 #include <glm/glm.hpp>
+#include <type_traits>
 
 namespace WeirdEngine
 {
@@ -59,5 +60,12 @@ namespace WeirdEngine
 		}
 	};
 } // namespace WeirdEngine
+
+// Binary snapshots copy component bytes, so math types must stay trivially copyable.
+static_assert(std::is_trivially_copyable_v<WeirdEngine::vec2>);
+static_assert(std::is_trivially_copyable_v<WeirdEngine::vec3>);
+static_assert(std::is_trivially_copyable_v<WeirdEngine::vec4>);
+static_assert(std::is_trivially_copyable_v<glm::vec4>);
+static_assert(std::is_trivially_copyable_v<glm::mat4>);
 
 #endif // VEC_H

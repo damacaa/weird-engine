@@ -244,8 +244,9 @@ Repeated destruction requests do not release an entity ID more than once.
 The format uses full type names to separate types from different namespaces.
 
 Raw snapshots accept trivially copyable value types by default.
+GLM vectors and matrices are trivially copyable, so components made of them need no extra declaration.
 Types that own memory, contain mutexes, or have virtual functions are unsupported.
-Audited value types with custom math copies or empty destructors can declare `static constexpr bool snapshotRawCompatible = true`.
+Audited value types with custom copies or destructors can declare `static constexpr bool snapshotRawCompatible = true`.
 This declaration promises that copying their bytes does not change resource ownership or object lifetimes.
 All fields must contain values without ownership or process-specific addresses.
 Specialize `WeirdEngine::is_snapshot_serializable_v<T>` to `false` for types that contain unmanaged runtime pointers.

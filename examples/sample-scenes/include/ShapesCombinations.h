@@ -9,8 +9,6 @@ namespace ShapeCombinationsNamespace
 {
 	struct State
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		WeirdEngine::Entity circle = WeirdEngine::INVALID_ENTITY;
 		float circleRadius = 0.0f;
 		WeirdEngine::vec2 initialMousePositionInWorld = WeirdEngine::vec2(0.0f);

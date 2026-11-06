@@ -10,8 +10,6 @@ namespace WeirdEngine
 	{
 		struct Camera
 		{
-			static constexpr bool snapshotRawCompatible = true;
-
 			WeirdRenderer::Camera camera{vec3(0.0f)};
 			float nearPlane = 0.1f;
 			float farPlane = 300.0f;

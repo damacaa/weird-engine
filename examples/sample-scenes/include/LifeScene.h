@@ -7,8 +7,6 @@ namespace LifeSceneNamespace
 {
 	struct Head
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		WeirdEngine::vec2 direction = WeirdEngine::vec2(0.0f, 1.0f);
 		float forceMagnitude = 500.0f;
 		float phaseOffset = 0.0f;

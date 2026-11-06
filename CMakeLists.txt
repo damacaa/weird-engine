@@ -179,6 +179,8 @@ target_include_directories(glad
 # Because you are linking to the TARGETS (glad and SDL3::SDL3), CMake automatically
 # handles their include paths and other properties for you.
     target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+    # GLM 1.x: keep zero-initialized vectors/matrices (old 0.9.x behavior) and allow gtx extensions.
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_CTOR_INIT GLM_ENABLE_EXPERIMENTAL)
     target_link_libraries(${PROJECT_NAME} 
         PUBLIC 
             SDL3::SDL3

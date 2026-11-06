@@ -9,8 +9,6 @@ namespace AquariumSceneNamespace
 {
 	struct Fish
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		WeirdEngine::vec2 velocity = WeirdEngine::vec2(0.0f);
 		float maxSpeed = 0.0f;
 		float separationWeight = 0.0f;

@@ -28,8 +28,6 @@ namespace RopeSceneNamespace
 
 	struct State
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		WeirdEngine::Entity star = WeirdEngine::INVALID_ENTITY;
 		double lastSpawnTime = 0.0;
 		float animTime = 0.0f;

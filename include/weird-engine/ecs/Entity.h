@@ -103,7 +103,8 @@ namespace WeirdEngine
 	constexpr Entity INVALID_ENTITY{MAX_ENTITIES};
 
 	// Raw snapshots require value-only data. Specialize this trait to false for types with runtime pointers.
-	// Audited math value types can declare snapshotRawCompatible = true for custom copies or empty destructors.
+	// GLM types are trivially copyable, so components built from them need no annotation.
+	// Audited value types with custom copies or destructors can declare snapshotRawCompatible = true.
 	template <typename T>
 	inline constexpr bool is_snapshot_serializable_v = []
 	{

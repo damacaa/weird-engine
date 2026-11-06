@@ -7,8 +7,6 @@ namespace WeirdEngine
 	{
 		struct FlyMovement2D
 		{
-			static constexpr bool snapshotRawCompatible = true;
-
 			vec3 targetPosition = vec3(0.0f);
 			float scrollSpeed = 5.0f;
 			vec3 v = vec3(0.0f);

@@ -12,8 +12,6 @@ namespace WeirdEngine
 
 	struct Light2DComponent
 	{
-		static constexpr bool snapshotRawCompatible = true;
-
 		Light2DType type = Light2DType::Directional;
 		glm::vec4 color = glm::vec4(1.0f);				   // RGB = color, A = intensity
 		glm::vec2 direction = glm::vec2(0.7071f, 0.7071f); // Direction for Directional and Cone lights

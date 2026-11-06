@@ -22,6 +22,7 @@
 #include <glm/gtx/norm.hpp>
 
 extern WeirdEngine::vec3 g_cameraPositon;
+inline std::string g_initialClusterPath;
 
 using namespace WeirdEngine;
 
@@ -183,6 +184,10 @@ private:
 
 			m_tempSvc->serialization().blacklistEntity(outside);
 			m_tempSvc->serialization().blacklistEntity(inside);
+		}
+		if (!g_initialClusterPath.empty() && std::filesystem::exists(g_initialClusterPath))
+		{
+			loadCluster(g_initialClusterPath);
 		}
 	}
 
@@ -2496,6 +2501,7 @@ private:
 		m_relaxationVelocities.clear();
 
 		// Remember constraint count before loading so we can find new ones
+		m_currentFilePath = path;
 		size_t prevSpringCount = m_tempRegistry->getComponentArray<Spring>()->getSize();
 		size_t prevDistCount = m_tempRegistry->getComponentArray<DistanceConstraint>()->getSize();
 

@@ -1,9 +1,9 @@
 {
   "camera": {
     "position": [
-      0.049999963492155075,
-      -1.7374986410140991,
-      5.00000524520874
+      6.894794940948486,
+      1.7946341037750244,
+      18.470617294311523
     ],
     "rotation": [
       0.0,
@@ -16,19 +16,28 @@
       1.0
     ]
   },
+  "clusters": [],
   "entities": [
     {
       "dot": {
         "isStatic": false,
         "materialId": 15
       },
-      "id": 35,
+      "id": 3,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           0.0,
           0.0
         ],
-        "simulationId": 0
+        "simulationId": 0,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -53,13 +62,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 36,
+      "id": 4,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -1.0,
           0.0
         ],
-        "simulationId": 1
+        "simulationId": 1,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -84,13 +101,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 37,
+      "id": 5,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -1.0,
           -1.0
         ],
-        "simulationId": 2
+        "simulationId": 2,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -115,13 +140,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 38,
+      "id": 6,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -1.0,
           -2.0
         ],
-        "simulationId": 3
+        "simulationId": 3,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -146,13 +179,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 39,
+      "id": 7,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           1.0,
           0.0
         ],
-        "simulationId": 4
+        "simulationId": 4,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -177,13 +218,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 40,
+      "id": 8,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           1.0,
           -1.0
         ],
-        "simulationId": 5
+        "simulationId": 5,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -208,13 +257,21 @@
         "isStatic": false,
         "materialId": 15
       },
-      "id": 41,
+      "id": 9,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           1.0,
           -2.0
         ],
-        "simulationId": 6
+        "simulationId": 6,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -239,13 +296,21 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 42,
+      "id": 10,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           0.0,
           2.0
         ],
-        "simulationId": 7
+        "simulationId": 7,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -270,13 +335,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 43,
+      "id": 11,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -1.0,
           1.0
         ],
-        "simulationId": 8
+        "simulationId": 8,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -301,13 +374,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 44,
+      "id": 12,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           1.0,
           1.0
         ],
-        "simulationId": 9
+        "simulationId": 9,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -332,13 +413,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 45,
+      "id": 13,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           0.0,
           1.0
         ],
-        "simulationId": 10
+        "simulationId": 10,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -363,13 +452,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 46,
+      "id": 14,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           2.0,
           1.0
         ],
-        "simulationId": 11
+        "simulationId": 11,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -394,13 +491,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 47,
+      "id": 15,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           3.0,
           1.0
         ],
-        "simulationId": 12
+        "simulationId": 12,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -425,13 +530,21 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 48,
+      "id": 16,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           4.0,
           1.0
         ],
-        "simulationId": 13
+        "simulationId": 13,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -456,13 +569,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 49,
+      "id": 17,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -2.0,
           1.0
         ],
-        "simulationId": 14
+        "simulationId": 14,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -487,13 +608,21 @@
         "isStatic": false,
         "materialId": 8
       },
-      "id": 50,
+      "id": 18,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -3.0,
           1.0
         ],
-        "simulationId": 15
+        "simulationId": 15,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -518,13 +647,21 @@
         "isStatic": false,
         "materialId": 11
       },
-      "id": 51,
+      "id": 19,
       "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
         "physicsPosition": [
           -4.0,
           1.0
         ],
-        "simulationId": 16
+        "simulationId": 16,
+        "velocity": [
+          0.0,
+          0.0
+        ]
       },
       "transform": {
         "position": [
@@ -543,303 +680,813 @@
           1.0
         ]
       }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 1
+      },
+      "id": 20,
+      "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
+        "physicsPosition": [
+          8.0,
+          7.0
+        ],
+        "simulationId": 17,
+        "velocity": [
+          0.0,
+          0.0
+        ]
+      },
+      "transform": {
+        "position": [
+          8.0,
+          7.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 4
+      },
+      "id": 113,
+      "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
+        "physicsPosition": [
+          8.0,
+          6.0
+        ],
+        "simulationId": 18,
+        "velocity": [
+          0.0,
+          0.0
+        ]
+      },
+      "transform": {
+        "position": [
+          8.0,
+          6.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 4
+      },
+      "id": 114,
+      "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
+        "physicsPosition": [
+          6.999795436859131,
+          6.999772548675537
+        ],
+        "simulationId": 19,
+        "velocity": [
+          0.0,
+          0.0
+        ]
+      },
+      "transform": {
+        "position": [
+          6.999795436859131,
+          6.999772548675537,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 4
+      },
+      "id": 115,
+      "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
+        "physicsPosition": [
+          9.0,
+          7.0
+        ],
+        "simulationId": 20,
+        "velocity": [
+          0.0,
+          0.0
+        ]
+      },
+      "transform": {
+        "position": [
+          9.0,
+          7.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "dot": {
+        "isStatic": false,
+        "materialId": 4
+      },
+      "id": 116,
+      "rigidBody2D": {
+        "bodyType": 0,
+        "enableCollision": true,
+        "enableShapeCollision": true,
+        "mass": 1.0,
+        "physicsPosition": [
+          8.0,
+          8.0
+        ],
+        "simulationId": 21,
+        "velocity": [
+          0.0,
+          0.0
+        ]
+      },
+      "transform": {
+        "position": [
+          8.0,
+          8.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "entityTags": [],
+  "materials2D": [
+    {
+      "color": [
+        0.02500000037252903,
+        0.02500000037252903,
+        0.05000000074505806,
+        1.0
+      ],
+      "id": 0,
+      "name": "default",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "id": 1,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.48399999737739563,
+        0.48399999737739563,
+        0.5839999914169312,
+        1.0
+      ],
+      "id": 2,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.7519999742507935,
+        0.7620000243186951,
+        0.7799999713897705,
+        1.0
+      ],
+      "id": 3,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.800000011920929,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "id": 4,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.10000000149011612,
+        0.949999988079071,
+        0.10000000149011612,
+        1.0
+      ],
+      "id": 5,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.15000000596046448,
+        0.25,
+        0.8500000238418579,
+        1.0
+      ],
+      "id": 6,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        1.0,
+        0.8999999761581421,
+        0.20000000298023224,
+        1.0
+      ],
+      "id": 7,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.949999988079071,
+        0.4000000059604645,
+        0.10000000149011612,
+        1.0
+      ],
+      "id": 8,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.5,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "id": 9,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.0,
+        0.8999999761581421,
+        0.8999999761581421,
+        1.0
+      ],
+      "id": 10,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        1.0,
+        0.30000001192092896,
+        0.6000000238418579,
+        1.0
+      ],
+      "id": 11,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.5,
+        1.0,
+        0.5,
+        1.0
+      ],
+      "id": 12,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        1.0,
+        0.5,
+        0.5,
+        1.0
+      ],
+      "id": 13,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.5,
+        0.5,
+        1.0,
+        1.0
+      ],
+      "id": 14,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "color": [
+        0.4000000059604645,
+        0.25,
+        0.10000000149011612,
+        1.0
+      ],
+      "id": 15,
+      "name": "",
+      "pattern": 0,
+      "patternScale": 1.0,
+      "secondaryColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "names": [
+    {
+      "entityId": 6,
+      "name": "foot_left"
+    },
+    {
+      "entityId": 10,
+      "name": "head"
+    },
+    {
+      "entityId": 9,
+      "name": "foot_right"
     }
   ],
   "physics": {
     "distanceConstraints": [
       {
-        "A": 3,
-        "B": 2,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 21,
+        "entityA": 6,
+        "entityB": 5
       },
       {
-        "A": 2,
-        "B": 1,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 22,
+        "entityA": 5,
+        "entityB": 4
       },
       {
-        "A": 1,
-        "B": 0,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 23,
+        "entityA": 4,
+        "entityB": 3
       },
       {
-        "A": 0,
-        "B": 4,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 24,
+        "entityA": 3,
+        "entityB": 7
       },
       {
-        "A": 4,
-        "B": 5,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 25,
+        "entityA": 7,
+        "entityB": 8
       },
       {
-        "A": 5,
-        "B": 6,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 26,
+        "entityA": 8,
+        "entityB": 9
       },
       {
-        "A": 4,
-        "B": 9,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 27,
+        "entityA": 7,
+        "entityB": 12
       },
       {
-        "A": 0,
-        "B": 10,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 28,
+        "entityA": 3,
+        "entityB": 13
       },
       {
-        "A": 1,
-        "B": 8,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 29,
+        "entityA": 4,
+        "entityB": 11
       },
       {
-        "A": 8,
-        "B": 10,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 30,
+        "entityA": 11,
+        "entityB": 13
       },
       {
-        "A": 10,
-        "B": 9,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 31,
+        "entityA": 13,
+        "entityB": 12
       },
       {
-        "A": 10,
-        "B": 7,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 32,
+        "entityA": 13,
+        "entityB": 10
       },
       {
-        "A": 9,
-        "B": 11,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 33,
+        "entityA": 12,
+        "entityB": 14
       },
       {
-        "A": 11,
-        "B": 12,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 34,
+        "entityA": 14,
+        "entityB": 15
       },
       {
-        "A": 12,
-        "B": 13,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 35,
+        "entityA": 15,
+        "entityB": 16
       },
       {
-        "A": 8,
-        "B": 14,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 36,
+        "entityA": 11,
+        "entityB": 17
       },
       {
-        "A": 14,
-        "B": 15,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 37,
+        "entityA": 17,
+        "entityB": 18
       },
       {
-        "A": 15,
-        "B": 16,
         "distance": 1.0,
-        "k": 1.0
+        "entity": 38,
+        "entityA": 18,
+        "entityB": 19
       },
       {
-        "A": 1,
-        "B": 10,
         "distance": 1.4142135381698608,
-        "k": 1.0
+        "entity": 39,
+        "entityA": 4,
+        "entityB": 13
       },
       {
-        "A": 0,
-        "B": 8,
         "distance": 1.4142135381698608,
-        "k": 1.0
+        "entity": 40,
+        "entityA": 3,
+        "entityB": 11
       },
       {
-        "A": 0,
-        "B": 9,
         "distance": 1.4142135381698608,
-        "k": 1.0
+        "entity": 41,
+        "entityA": 3,
+        "entityB": 12
       },
       {
-        "A": 10,
-        "B": 4,
         "distance": 1.4142135381698608,
-        "k": 1.0
-      },
-      {
-        "A": 16,
-        "B": 7,
-        "distance": 4.123105525970459,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 7,
-        "B": 13,
-        "distance": 4.123105525970459,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 3,
-        "B": 1,
-        "distance": 2.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 3,
-        "B": 0,
-        "distance": 2.2360680103302,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 6,
-        "B": 0,
-        "distance": 2.2360680103302,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 6,
-        "B": 4,
-        "distance": 2.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 2,
-        "B": 0,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 0,
-        "B": 5,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 1,
-        "B": 14,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 4,
-        "B": 11,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 8,
-        "B": 7,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 7,
-        "B": 9,
-        "distance": 1.4142135381698608,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 14,
-        "B": 2,
-        "distance": 2.2360680103302,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 14,
-        "B": 3,
-        "distance": 3.1622776985168457,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 5,
-        "B": 11,
-        "distance": 2.2360680103302,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 6,
-        "B": 11,
-        "distance": 3.1622776985168457,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 5,
-        "B": 9,
-        "distance": 2.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 6,
-        "B": 9,
-        "distance": 3.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 2,
-        "B": 8,
-        "distance": 2.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 3,
-        "B": 8,
-        "distance": 3.0,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 16,
-        "B": 1,
-        "distance": 3.1622776985168457,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 4,
-        "B": 13,
-        "distance": 3.1622776985168457,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 1,
-        "B": 6,
-        "distance": 2.8284270763397217,
-        "k": 0.0024806864093989134
-      },
-      {
-        "A": 3,
-        "B": 4,
-        "distance": 2.8284270763397217,
-        "k": 0.0024806864093989134
+        "entity": 42,
+        "entityA": 13,
+        "entityB": 7
       }
     ],
-    "fixedObjects": [],
-    "gravitationalConstraints": []
+    "springs": [
+      {
+        "distance": 4.123105525970459,
+        "entity": 43,
+        "entityA": 19,
+        "entityB": 10,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 4.123105525970459,
+        "entity": 44,
+        "entityA": 10,
+        "entityB": 16,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.0,
+        "entity": 45,
+        "entityA": 6,
+        "entityB": 4,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.2360680103302,
+        "entity": 46,
+        "entityA": 6,
+        "entityB": 3,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.2360680103302,
+        "entity": 47,
+        "entityA": 9,
+        "entityB": 3,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.0,
+        "entity": 48,
+        "entityA": 9,
+        "entityB": 7,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 49,
+        "entityA": 5,
+        "entityB": 3,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 50,
+        "entityA": 3,
+        "entityB": 8,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 51,
+        "entityA": 4,
+        "entityB": 17,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 52,
+        "entityA": 7,
+        "entityB": 14,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 53,
+        "entityA": 11,
+        "entityB": 10,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 1.4142135381698608,
+        "entity": 54,
+        "entityA": 10,
+        "entityB": 12,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.2360680103302,
+        "entity": 55,
+        "entityA": 17,
+        "entityB": 5,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.1622776985168457,
+        "entity": 56,
+        "entityA": 17,
+        "entityB": 6,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.2360680103302,
+        "entity": 57,
+        "entityA": 8,
+        "entityB": 14,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.1622776985168457,
+        "entity": 58,
+        "entityA": 9,
+        "entityB": 14,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.0,
+        "entity": 59,
+        "entityA": 8,
+        "entityB": 12,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.0,
+        "entity": 60,
+        "entityA": 9,
+        "entityB": 12,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.0,
+        "entity": 61,
+        "entityA": 5,
+        "entityB": 11,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.0,
+        "entity": 62,
+        "entityA": 6,
+        "entityB": 11,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.1622776985168457,
+        "entity": 63,
+        "entityA": 19,
+        "entityB": 4,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 3.1622776985168457,
+        "entity": 64,
+        "entityA": 7,
+        "entityB": 16,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.8284270763397217,
+        "entity": 65,
+        "entityA": 4,
+        "entityB": 9,
+        "k": 0.0024806864093989134
+      },
+      {
+        "distance": 2.8284270763397217,
+        "entity": 66,
+        "entityA": 6,
+        "entityB": 7,
+        "k": 0.0024806864093989134
+      }
+    ]
   },
-  "tags": [
-    {
-      "entityId": 42,
-      "name": "head"
-    },
-    {
-      "entityId": 38,
-      "name": "foot_left"
-    },
-    {
-      "entityId": 41,
-      "name": "foot_right"
-    }
-  ],
   "version": 1
 }

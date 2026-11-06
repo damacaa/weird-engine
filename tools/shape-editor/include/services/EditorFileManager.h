@@ -17,8 +17,13 @@ namespace WeirdEngine::Editor
 		void openSaveFileDialog();
 		void openLoadFileDialog();
 
+		bool saveGraph(const NodeGraph& graph);
 		bool saveGraphToFile(const NodeGraph& graph, const std::string& path);
 		bool loadGraphFromFile(NodeGraph& graph, const std::string& path);
+
+		const std::string& getCurrentFilePath() const;
+		void setCurrentFilePath(const std::string& path);
+		bool hasCurrentFilePath() const;
 
 		void pollFileActions(NodeGraph& graph, bool& outDirty, bool& outSyncPositions);
 
@@ -40,6 +45,7 @@ namespace WeirdEngine::Editor
 		std::string m_pendingLoadPath;
 		std::string m_pendingSavePath;
 		std::deque<std::string> m_recentFiles;
+		std::string m_currentFilePath;
 #ifdef __EMSCRIPTEN__
 		bool m_webLoadRequested = false;
 		bool m_webSaveRequested = false;

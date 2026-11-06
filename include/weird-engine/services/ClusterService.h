@@ -92,6 +92,13 @@ namespace WeirdEngine
 		void destroyCluster(uint32_t id);
 		void destroyCluster(ClusterInstance* cluster);
 		void destroyAll();
+		void clear();
+		void syncNextClusterId();
+
+		// Reloading / Updating
+		bool reloadInstance(uint32_t id, const std::string& overrideAssetPath = "");
+		int reloadAllInstancesOf(const std::string& assetPath);
+		std::vector<ClusterInstance*> getInstancesByAsset(const std::string& assetPath);
 
 		// Internal registration used by SceneSerializer
 		ClusterInstance& addInstance(ClusterInstance instance);

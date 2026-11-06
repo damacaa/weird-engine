@@ -316,8 +316,6 @@ namespace WeirdEngine
 		Entity getEntityForSimulationId(SimulationID simulationId,
 										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
 
-		ServiceProvider m_services;
-
 		// ---- Shared state (managed via ServiceProvider)
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
@@ -425,6 +423,8 @@ namespace WeirdEngine
 		float m_lastDelta = 0.0f;
 		uint64_t m_sceneInstanceId = 0;
 		bool m_resetCameraReprojection = true;
+
+		ServiceProvider m_services;
 	};
 	class Scene2D : public Scene
 	{

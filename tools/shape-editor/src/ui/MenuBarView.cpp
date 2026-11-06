@@ -54,6 +54,7 @@ namespace WeirdEngine::Editor
 				{
 					graph.clear();
 					graph.addNode("sdf_output", {400.0f, 200.0f});
+					fileManager.setCurrentFilePath("");
 					outDirty = true;
 					outSyncPositionsToImNodes = true;
 				}
@@ -93,7 +94,12 @@ namespace WeirdEngine::Editor
 						}
 					}
 				}
-				if (ImGui::MenuItem("Save Graph JSON...", "Ctrl+S"))
+				const bool hasFile = fileManager.hasCurrentFilePath();
+				if (ImGui::MenuItem(hasFile ? "Save Graph JSON" : "Save Graph JSON...", "Ctrl+S"))
+				{
+					fileManager.saveGraph(graph);
+				}
+				if (ImGui::MenuItem("Save Graph JSON As...", "Ctrl+Shift+S"))
 				{
 					fileManager.openSaveFileDialog();
 				}
@@ -188,6 +194,13 @@ namespace WeirdEngine::Editor
 				renderAddNodeMenu(graph, ImVec2(350.0f, 200.0f), outDirty);
 				ImGui::EndMenu();
 			}
+
+			std::string statusText = fileManager.hasCurrentFilePath()
+										 ? std::filesystem::path(fileManager.getCurrentFilePath()).filename().string()
+										 : "Untitled Shape";
+			float textWidth = ImGui::CalcTextSize(statusText.c_str()).x;
+			ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
+			ImGui::TextDisabled("%s", statusText.c_str());
 
 			ImGui::EndMenuBar();
 		}

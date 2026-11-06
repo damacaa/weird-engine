@@ -25,13 +25,44 @@ namespace WeirdEngine::Editor
 		loadRecentFiles();
 	}
 
+	bool EditorFileManager::saveGraph(const NodeGraph& graph)
+	{
+#ifdef __EMSCRIPTEN__
+		saveGraphToWeb(graph);
+		return true;
+#else
+		if (m_currentFilePath.empty())
+		{
+			openSaveFileDialog();
+			return false;
+		}
+		return saveGraphToFile(graph, m_currentFilePath);
+#endif
+	}
+
+	const std::string& EditorFileManager::getCurrentFilePath() const
+	{
+		return m_currentFilePath;
+	}
+
+	void EditorFileManager::setCurrentFilePath(const std::string& path)
+	{
+		m_currentFilePath = path;
+	}
+
+	bool EditorFileManager::hasCurrentFilePath() const
+	{
+		return !m_currentFilePath.empty();
+	}
+
 	void EditorFileManager::openSaveFileDialog()
 	{
 #ifdef __EMSCRIPTEN__
 		m_webSaveRequested = true;
 #else
 		SDL_DialogFileFilter filters[1] = {{"Weird Shape (*.weirdshape)", "weirdshape"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "shape.weirdshape");
+		std::string defaultName = m_currentFilePath.empty() ? "shape.weirdshape" : m_currentFilePath;
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, defaultName.c_str());
 #endif
 	}
 
@@ -89,6 +120,7 @@ namespace WeirdEngine::Editor
 			return false;
 		}
 		f << NodeGraphSerializer::serialize(graph).dump(2);
+		m_currentFilePath = finalPath;
 		addRecentFile(finalPath);
 		Logger::log("Saved graph to " + finalPath);
 		return true;
@@ -108,6 +140,7 @@ namespace WeirdEngine::Editor
 			f >> j;
 			if (NodeGraphSerializer::deserialize(graph, j))
 			{
+				m_currentFilePath = path;
 				addRecentFile(path);
 				Logger::log("Loaded graph from " + path);
 				return true;

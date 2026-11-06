@@ -103,10 +103,10 @@ namespace WeirdEngine
 	}
 
 	Scene::Scene()
-		: m_sceneInstanceId(++s_sceneInstanceCounter)
-		, m_resetCameraReprojection(true)
-		, m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
+		: m_simulation2D(MAX_ENTITIES, SceneManager::getInstance().getPhysicsSettings())
 		, m_runSimulationInThread(SceneManager::getInstance().getPhysicsSettings().runSimulationInThread)
+		, m_sceneInstanceId(++s_sceneInstanceCounter)
+		, m_resetCameraReprojection(true)
 		, m_services(*this)
 	{
 		// Default 2D material (slot 0)

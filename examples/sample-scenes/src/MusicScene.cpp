@@ -65,6 +65,8 @@ namespace MusicSceneNamespace
 		if (activeIdx >= 0)
 		{
 			state.selectedSongIndex = activeIdx;
+			state.confirmedSongIndex = activeIdx;
+			state.cursorSongIndex = activeIdx;
 			state.currentLoadedSongIndex = activeIdx;
 			state.isPlaying = true;
 			state.paramSize = activeSong->getParameter(0);
@@ -77,9 +79,38 @@ namespace MusicSceneNamespace
 		}
 		else
 		{
+			state.selectedSongIndex = -1;
+			state.confirmedSongIndex = -1;
+			state.cursorSongIndex = 0;
 			services.audio().setSong(nullptr, false);
 			services.audio().music().setTrackToggles({false, false, false, false});
 			services.audio().music().setVolume(0.0f);
+		}
+	}
+
+	static void updateCursorDot(Registry& registry, State& state)
+	{
+		if (!registry.isEntityValid(state.cursorDot) || !registry.hasComponent<Transform>(state.cursorDot))
+		{
+			return;
+		}
+
+		auto& t = registry.getComponent<Transform>(state.cursorDot);
+		if (state.selectionMode && state.cursorSongIndex >= 0 &&
+			state.cursorSongIndex < static_cast<int>(State::NUM_SONGS))
+		{
+			float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+			float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+			const float spacingX = 60.0f;
+			const float totalWidth = spacingX * 3;
+			const float startX = (winW * 0.5f) - (totalWidth * 0.5f);
+			const float toggleY = winH - 55.0f;
+
+			t.position = vec3(startX + static_cast<float>(state.cursorSongIndex) * spacingX, toggleY - 38.0f, 0.0f);
+		}
+		else
+		{
+			t.position = vec3(-1000.0f, -1000.0f, 0.0f);
 		}
 	}
 
@@ -114,6 +145,16 @@ namespace MusicSceneNamespace
 			toggle.modifierAmount = 4.0f;
 			toggle.parameterModifierMask.set(0);
 		}
+
+		Material2D& cursorMat = services.materials2D().createMaterial("music_cursor_mat");
+		cursorMat.color = vec4(1.0f, 0.84f, 0.26f, 0.95f);
+		state.cursorMat = cursorMat.id;
+
+		state.cursorDot = registry.createEntity();
+		auto& t = registry.addComponent<Transform>(state.cursorDot);
+		t.position = vec3(-1000.0f, -1000.0f, 0.0f);
+		auto& ui = registry.addComponent<UIDot>(state.cursorDot);
+		ui.materialId = state.cursorMat;
 	}
 
 	void setupControlsSystem(Registry& registry, ServiceProvider& services)
@@ -250,12 +291,15 @@ namespace MusicSceneNamespace
 				}
 			}
 			state.selectedSongIndex = keySelected;
+			state.confirmedSongIndex = keySelected;
+			state.cursorSongIndex = keySelected;
 			if (s_songs[keySelected])
 			{
 				state.paramSize = s_songs[keySelected]->getParameter(0);
 				state.paramSpeed = s_songs[keySelected]->getParameter(1);
 			}
 			services.audio().playSound({0.03f, 500.0f + keySelected * 90.0f, false, vec3(0.0f), 1});
+			updateCursorDot(registry, state);
 			return;
 		}
 
@@ -270,6 +314,8 @@ namespace MusicSceneNamespace
 				{
 					// Toggle i was selected! Make it the only active toggle (radio behavior)
 					state.selectedSongIndex = static_cast<int>(i);
+					state.confirmedSongIndex = static_cast<int>(i);
+					state.cursorSongIndex = static_cast<int>(i);
 					if (s_songs[i])
 					{
 						state.paramSize = s_songs[i]->getParameter(0);
@@ -284,8 +330,91 @@ namespace MusicSceneNamespace
 						}
 					}
 					services.audio().playSound({0.03f, 500.0f + i * 90.0f, false, vec3(0.0f), 1});
+					updateCursorDot(registry, state);
 					break;
 				}
+			}
+		}
+
+		// Gamepad controller support
+		bool dpadLeft = services.input().getGamepadButtonDown(Input::GamepadButton::DpadLeft);
+		bool dpadRight = services.input().getGamepadButtonDown(Input::GamepadButton::DpadRight);
+		bool dpadUp = services.input().getGamepadButtonDown(Input::GamepadButton::DpadUp);
+		bool dpadDown = services.input().getGamepadButtonDown(Input::GamepadButton::DpadDown);
+		bool crossDown = services.input().getGamepadButtonDown(Input::GamepadButton::South);
+		bool circleDown = services.input().getGamepadButtonDown(Input::GamepadButton::East);
+
+		if (!state.selectionMode)
+		{
+			if (dpadLeft || dpadRight || dpadUp || dpadDown)
+			{
+				state.selectionMode = true;
+				if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
+				{
+					state.cursorSongIndex = state.selectedSongIndex;
+				}
+				else
+				{
+					state.cursorSongIndex = 0;
+				}
+
+				if (dpadLeft)
+				{
+					state.cursorSongIndex = (state.cursorSongIndex - 1 + State::NUM_SONGS) % State::NUM_SONGS;
+				}
+				else if (dpadRight)
+				{
+					state.cursorSongIndex = (state.cursorSongIndex + 1) % State::NUM_SONGS;
+				}
+
+				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
+				updateCursorDot(registry, state);
+			}
+		}
+		else
+		{
+			if (circleDown)
+			{
+				// PlayStation circle cancels selection mode
+				state.selectionMode = false;
+				state.cursorSongIndex = (state.selectedSongIndex >= 0 ? state.selectedSongIndex : 0);
+				services.audio().playSound({0.03f, 320.0f, false, vec3(0.0f), 1});
+				updateCursorDot(registry, state);
+			}
+			else if (crossDown)
+			{
+				// PlayStation cross confirms selection
+				state.selectedSongIndex = state.cursorSongIndex;
+				state.confirmedSongIndex = state.cursorSongIndex;
+				for (size_t i = 0; i < State::NUM_SONGS; ++i)
+				{
+					if (registry.isEntityValid(state.songToggles[i]) &&
+						registry.hasComponent<ShapeToggle>(state.songToggles[i]))
+					{
+						registry.getComponent<ShapeToggle>(state.songToggles[i]).active =
+							(static_cast<int>(i) == state.cursorSongIndex);
+					}
+				}
+				if (s_songs[state.cursorSongIndex])
+				{
+					state.paramSize = s_songs[state.cursorSongIndex]->getParameter(0);
+					state.paramSpeed = s_songs[state.cursorSongIndex]->getParameter(1);
+				}
+				services.audio().playSound({0.04f, 750.0f, false, vec3(0.0f), 1});
+			}
+			else if (dpadLeft)
+			{
+				// Left moves dot cursor only
+				state.cursorSongIndex = (state.cursorSongIndex - 1 + State::NUM_SONGS) % State::NUM_SONGS;
+				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
+				updateCursorDot(registry, state);
+			}
+			else if (dpadRight)
+			{
+				// Right moves dot cursor only
+				state.cursorSongIndex = (state.cursorSongIndex + 1) % State::NUM_SONGS;
+				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
+				updateCursorDot(registry, state);
 			}
 		}
 	}
@@ -328,6 +457,17 @@ namespace MusicSceneNamespace
 			{
 				playClicked = true;
 			}
+		}
+
+		// Controller: Triangle plays selected song, Square stops it
+		if (services.input().getGamepadButtonDown(Input::GamepadButton::North))
+		{
+			playClicked = true;
+		}
+
+		if (services.input().getGamepadButtonDown(Input::GamepadButton::West))
+		{
+			pauseClicked = true;
 		}
 
 		// Handle Play Action: loads selected song into preview UI via setSong()
@@ -382,9 +522,11 @@ namespace MusicSceneNamespace
 			}
 
 			state.selectedSongIndex = -1;
+			state.confirmedSongIndex = -1;
 			state.currentLoadedSongIndex = -1;
 			state.isPlaying = false;
 			services.audio().playSound({0.03f, 320.0f, false, vec3(0.0f), 1});
+			updateCursorDot(registry, state);
 		}
 	}
 
@@ -492,6 +634,8 @@ namespace MusicSceneNamespace
 				services.audio().setSongParameter(1, state.paramSpeed);
 				services.audio().resampleShape();
 			}
+
+			updateCursorDot(registry, state);
 		}
 	}
 

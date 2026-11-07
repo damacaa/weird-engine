@@ -35,6 +35,12 @@ namespace MusicSceneNamespace
 
 		int lastResolutionHash = 0;
 		std::array<WeirdEngine::Entity, 10> uiPoints{};
+
+		bool selectionMode = false;
+		int cursorSongIndex = 0;
+		int confirmedSongIndex = -1;
+		WeirdEngine::Entity cursorDot = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Material2DHandle cursorMat{};
 	};
 
 	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);

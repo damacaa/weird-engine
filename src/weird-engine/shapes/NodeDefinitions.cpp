@@ -264,41 +264,41 @@ namespace WeirdEngine
 					[](const auto& in, const auto&)
 					{ return "SDF::sdRamp(" + in[0] + ", " + in[1] + ", " + in[2] + ", " + in[3] + ")"; }});
 
-		registerNode(NodeDef{
-			"star",
-			"Star",
-			NodeCategory::Primitives2D,
-			{{"p", PinType::Vec2},
-			 {"radius", PinType::Float, 25.0f},
-			 {"displacement", PinType::Float, 6.0f},
-			 {"points", PinType::Float, 5.0f},
-			 {"speed", PinType::Float, 0.5f}},
-			{{"d", PinType::Float}},
-			[](const auto& in, const auto&)
-			{
-				return NodeValue(
-					SDF::sdStar(asVec2(in[0]), asFloat(in[1]), asFloat(in[2]), asFloat(in[3]), asFloat(in[4])));
-			},
-			[](const auto& in, const auto&)
-			{ return "SDF::sdStar(" + in[0] + ", " + in[1] + ", " + in[2] + ", " + in[3] + ", " + in[4] + ")"; }});
+		registerNode(NodeDef{"star",
+							 "Star",
+							 NodeCategory::Primitives2D,
+							 {{"p", PinType::Vec2},
+							  {"radius", PinType::Float, 25.0f},
+							  {"displacement", PinType::Float, 6.0f},
+							  {"points", PinType::Float, 5.0f},
+							  {"speed", PinType::Float, 0.5f}},
+							 {{"d", PinType::Float}},
+							 [](const auto& in, const auto&) {
+								 return NodeValue(SDF::sdStar(asVec2(in[0]), asFloat(in[1]), asFloat(in[2]),
+															  asFloat(in[3]), asFloat(in[4])));
+							 },
+							 [](const auto& in, const auto&) {
+								 return "SDF::sdStar(" + in[0] + ", " + in[1] + ", " + in[2] + ", " + in[3] + ", " +
+										in[4] + ")";
+							 }});
 
-		registerNode(NodeDef{
-			"sine_wave",
-			"Sine Wave",
-			NodeCategory::Primitives2D,
-			{{"p", PinType::Vec2},
-			 {"amplitude", PinType::Float, 15.0f},
-			 {"frequency", PinType::Float, 0.05f},
-			 {"speed", PinType::Float, 1.0f},
-			 {"offset", PinType::Float, 0.0f}},
-			{{"d", PinType::Float}},
-			[](const auto& in, const auto&)
-			{
-				return NodeValue(
-					SDF::sdSineWave(asVec2(in[0]), asFloat(in[1]), asFloat(in[2]), asFloat(in[3]), asFloat(in[4])));
-			},
-			[](const auto& in, const auto&)
-			{ return "SDF::sdSineWave(" + in[0] + ", " + in[1] + ", " + in[2] + ", " + in[3] + ", " + in[4] + ")"; }});
+		registerNode(NodeDef{"sine_wave",
+							 "Sine Wave",
+							 NodeCategory::Primitives2D,
+							 {{"p", PinType::Vec2},
+							  {"amplitude", PinType::Float, 15.0f},
+							  {"frequency", PinType::Float, 0.05f},
+							  {"speed", PinType::Float, 1.0f},
+							  {"offset", PinType::Float, 0.0f}},
+							 {{"d", PinType::Float}},
+							 [](const auto& in, const auto&) {
+								 return NodeValue(SDF::sdSineWave(asVec2(in[0]), asFloat(in[1]), asFloat(in[2]),
+																  asFloat(in[3]), asFloat(in[4])));
+							 },
+							 [](const auto& in, const auto&) {
+								 return "SDF::sdSineWave(" + in[0] + ", " + in[1] + ", " + in[2] + ", " + in[3] + ", " +
+										in[4] + ")";
+							 }});
 
 		// =====================================================================
 		// 5. CSG & Modifiers

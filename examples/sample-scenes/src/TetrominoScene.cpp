@@ -1301,11 +1301,9 @@ namespace TetrominoSceneNamespace
 
 		bool rotateCW = input.getKeyDown(Input::Up) || input.getKeyDown(Input::W) || input.getKeyDown(Input::X) ||
 						input.getGamepadButtonDown(Input::GamepadButton::DpadUp) ||
-						input.getGamepadButtonDown(Input::GamepadButton::East) ||
-						rightTriggerDown || rightShoulderDown;
+						input.getGamepadButtonDown(Input::GamepadButton::East) || rightTriggerDown || rightShoulderDown;
 
-		bool rotateCCW = input.getKeyDown(Input::Z) ||
-						 input.getGamepadButtonDown(Input::GamepadButton::West) ||
+		bool rotateCCW = input.getKeyDown(Input::Z) || input.getGamepadButtonDown(Input::GamepadButton::West) ||
 						 leftTriggerDown || leftShoulderDown;
 
 		if (rotateCW)

@@ -1594,6 +1594,54 @@ namespace WeirdEngine
 			}
 		}
 
+		void SdfMusicEngine::setInstrumentWaveType(Instrument instrument, WaveType waveType)
+		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+			switch (instrument)
+			{
+				case Instrument::Lead:
+					m_rack.lead = waveType;
+					break;
+				case Instrument::Bass:
+					m_rack.bass = waveType;
+					break;
+				case Instrument::Pad:
+					m_rack.pad = waveType;
+					break;
+				default:
+					break;
+			}
+		}
+
+		WaveType SdfMusicEngine::getInstrumentWaveType(Instrument instrument) const
+		{
+			std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+			switch (instrument)
+			{
+				case Instrument::Lead:
+					return m_rack.lead;
+				case Instrument::Bass:
+					return m_rack.bass;
+				case Instrument::Pad:
+					return m_rack.pad;
+				default:
+					return WaveType::SoftSine;
+			}
+		}
+
+		void SdfMusicEngine::playNote(float freq, float amp, float durationSec, Instrument instrument, float pan,
+									  float filterCutoff)
+		{
+			playNote(freq, amp, durationSec, static_cast<int>(instrument), pan, filterCutoff);
+		}
+
+		void SdfMusicEngine::playNote(int midiNote, float amp, float durationSec, Instrument instrument, float pan,
+									  float filterCutoff)
+		{
+			float freq = midiToFrequency(midiNote);
+			playNote(freq, amp, durationSec, static_cast<int>(instrument), pan, filterCutoff);
+		}
+
 		void SdfMusicEngine::playNote(float freq, float amp, float durationSec, int instrument, float pan,
 									  float filterCutoff)
 		{
@@ -1606,13 +1654,15 @@ namespace WeirdEngine
 			float masterAmp = 0.0f;
 			if (instrument >= 8)
 			{
-				masterAmp = amp * m_volume;
+				masterAmp = amp * (m_volume > 0.01f ? m_volume : 0.65f);
 			}
 			else
 			{
 				float duckMult = (std::max)(0.65f, 1.0f - m_ducking * 0.22f);
 				float surgeAmpBoost = 1.0f + 0.15f * m_surgeLevel;
-				masterAmp = amp * m_volume * m_volumeFromFill * duckMult * surgeAmpBoost;
+				float fillMult = (m_volumeFromFill > 0.01f) ? m_volumeFromFill : 0.65f;
+				float vol = (m_volume > 0.01f) ? m_volume : 0.65f;
+				masterAmp = amp * vol * fillMult * duckMult * surgeAmpBoost;
 			}
 
 			if (masterAmp <= 0.001f)
@@ -1824,7 +1874,7 @@ namespace WeirdEngine
 							if (voice.drumKit == 1) // Punchy acoustic kick
 							{
 								float pitchDrop = 145.0f * expf(-voice.time / 0.032f);
-								currentFreq = 55.0f + pitchDrop;
+								currentFreq = (voice.frequency > 15.0f ? voice.frequency : 55.0f) + pitchDrop;
 								float s = sinf(p);
 								rawSample = 1.15f * s - 0.15f * s * s * s;
 								if (voice.time < 0.003f)
@@ -1835,7 +1885,7 @@ namespace WeirdEngine
 							else if (voice.drumKit == 2) // Industrial / Overdriven 909 kick
 							{
 								float pitchDrop = 120.0f * expf(-voice.time / 0.024f);
-								currentFreq = 44.0f + pitchDrop;
+								currentFreq = (voice.frequency > 15.0f ? voice.frequency : 44.0f) + pitchDrop;
 								float s = sinf(p);
 								rawSample = std::clamp(1.6f * s - 0.6f * s * s * s, -1.0f, 1.0f);
 								if (voice.time < 0.006f)
@@ -1846,7 +1896,7 @@ namespace WeirdEngine
 							else // Kit 0: Standard 808 deep kick
 							{
 								float pitchDrop = 95.0f * expf(-voice.time / 0.028f);
-								currentFreq = 48.0f + pitchDrop;
+								currentFreq = (voice.frequency > 15.0f ? voice.frequency : 48.0f) + pitchDrop;
 								float s = sinf(p);
 								rawSample = 1.25f * s - 0.25f * s * s * s;
 								if (voice.time < 0.004f)
@@ -1865,9 +1915,11 @@ namespace WeirdEngine
 						}
 						case 6: // Snare Drum (Variant influenced by drumKit)
 						{
+							float basePitch = (voice.frequency > 20.0f) ? voice.frequency : 120.0f;
 							if (voice.drumKit == 1) // Resonant wood/acoustic snare
 							{
-								float bodyPitch = 140.0f + 60.0f * expf(-voice.time / 0.018f);
+								float bodyPitch = (voice.frequency > 20.0f ? voice.frequency : 140.0f) +
+												  60.0f * expf(-voice.time / 0.018f);
 								currentFreq = bodyPitch;
 								float bodyTone = sinf(p);
 								float noise = fastNoise(voice.rngState);
@@ -1875,7 +1927,8 @@ namespace WeirdEngine
 							}
 							else if (voice.drumKit == 2) // Industrial metallic ring snare
 							{
-								float bodyPitch = 100.0f + 80.0f * expf(-voice.time / 0.025f);
+								float bodyPitch = (voice.frequency > 20.0f ? voice.frequency : 100.0f) +
+												  80.0f * expf(-voice.time / 0.025f);
 								currentFreq = bodyPitch;
 								float bodyTone = sinf(p);
 								float ring = sinf(p * 2.73f);
@@ -1884,7 +1937,7 @@ namespace WeirdEngine
 							}
 							else // Kit 0: Standard snappy snare
 							{
-								float bodyPitch = 120.0f + 65.0f * expf(-voice.time / 0.020f);
+								float bodyPitch = basePitch + 65.0f * expf(-voice.time / 0.020f);
 								currentFreq = bodyPitch;
 								float bodyTone = sinf(p);
 								float noise = fastNoise(voice.rngState);

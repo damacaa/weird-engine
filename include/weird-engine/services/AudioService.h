@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "weird-audio/AudioRingBuffer.h"
+#include "weird-audio/SdfMusicEngine.h"
 #include "weird-audio/SimpleAudioRequest.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/services/ShapeTypes.h"
@@ -14,7 +15,6 @@ namespace WeirdEngine
 {
 	namespace WeirdAudio
 	{
-		class SdfMusicEngine;
 		class SdfSong;
 	} // namespace WeirdAudio
 
@@ -72,6 +72,18 @@ namespace WeirdEngine
 
 		// Subsystems
 		WeirdAudio::SdfMusicEngine& music();
+
+		// Direct Note Playback with Song Instruments
+		void playNote(float freq, float amp = 0.8f, float durationSec = 0.4f,
+					  WeirdAudio::Instrument instrument = WeirdAudio::Instrument::Lead, float pan = 0.0f,
+					  float filterCutoff = 12000.0f);
+		void playNote(int midiNote, float amp = 0.8f, float durationSec = 0.4f,
+					  WeirdAudio::Instrument instrument = WeirdAudio::Instrument::Lead, float pan = 0.0f,
+					  float filterCutoff = 12000.0f);
+
+		// Instrument Rack Configuration
+		void setInstrumentRack(const WeirdAudio::InstrumentRack& rack);
+		WeirdAudio::InstrumentRack getInstrumentRack() const;
 
 		// Song Management (beat-synced)
 		void setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced = true);

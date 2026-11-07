@@ -33,6 +33,40 @@ namespace WeirdEngine
 			float foldDrive = 2.2f;
 		};
 
+		enum class Instrument : uint8_t
+		{
+			Lead = 0,
+			Bass = 1,
+			Pad = 4,
+			Kick = 5,
+			Snare = 6,
+			HiHat = 7
+		};
+
+		static constexpr std::array<Instrument, 6> SongInstruments = {
+			Instrument::Lead, Instrument::Bass, Instrument::Pad, Instrument::Kick, Instrument::Snare, Instrument::HiHat};
+
+		inline const char* getInstrumentName(Instrument inst)
+		{
+			switch (inst)
+			{
+				case Instrument::Lead:
+					return "Lead";
+				case Instrument::Bass:
+					return "Bass";
+				case Instrument::Pad:
+					return "Pad";
+				case Instrument::Kick:
+					return "Kick";
+				case Instrument::Snare:
+					return "Snare";
+				case Instrument::HiHat:
+					return "Hi-Hat";
+				default:
+					return "Unknown";
+			}
+		}
+
 		enum class MusicTrack : uint8_t
 		{
 			Lead = 0,
@@ -152,6 +186,15 @@ namespace WeirdEngine
 			// Play direct note event
 			void playNote(float freq, float amp, float durationSec, int instrument = 0, float pan = 0.0f,
 						  float filterCutoff = 12000.0f);
+			void playNote(float freq, float amp, float durationSec, Instrument instrument, float pan = 0.0f,
+						  float filterCutoff = 12000.0f);
+			void playNote(int midiNote, float amp = 0.8f, float durationSec = 0.4f,
+						  Instrument instrument = Instrument::Lead, float pan = 0.0f, float filterCutoff = 12000.0f);
+
+			static float midiToFrequency(int midiNote)
+			{
+				return SdfSong::midiToFrequency(midiNote);
+			}
 
 			// Re-sample the shape at the 8 compass points (call after modifying shape parameters in real time)
 			void resampleShape();
@@ -165,6 +208,57 @@ namespace WeirdEngine
 			{
 				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_rack;
+			}
+			void setInstrumentRack(const InstrumentRack& rack)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_rack = rack;
+			}
+			void setInstrumentWaveType(Instrument instrument, WaveType waveType);
+			WaveType getInstrumentWaveType(Instrument instrument) const;
+
+			void setDrumKit(int kit)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_rack.drumKit = std::clamp(kit, 0, 2);
+			}
+			int getDrumKit() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_rack.drumKit;
+			}
+
+			void setPulseWidth(float pw)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_rack.pulseWidth = std::clamp(pw, 0.05f, 0.50f);
+			}
+			float getPulseWidth() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_rack.pulseWidth;
+			}
+
+			void setFmModIndex(float idx)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_rack.fmModIndex = (std::max)(0.0f, idx);
+			}
+			float getFmModIndex() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_rack.fmModIndex;
+			}
+
+			void setFoldDrive(float drive)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_rack.foldDrive = (std::max)(0.0f, drive);
+			}
+			float getFoldDrive() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_rack.foldDrive;
 			}
 
 			static const char* getWaveTypeName(WaveType waveType);

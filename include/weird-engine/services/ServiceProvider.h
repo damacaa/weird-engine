@@ -70,6 +70,11 @@ namespace WeirdEngine
 			return m_audio;
 		}
 
+		WeirdAudio::SdfMusicEngine& music()
+		{
+			return m_audio.music();
+		}
+
 		TagService& tags()
 		{
 			return m_tags;

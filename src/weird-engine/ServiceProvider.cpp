@@ -99,6 +99,28 @@ namespace WeirdEngine
 		return WeirdAudio::AudioEngine::getInstance().getMusicEngine();
 	}
 
+	void AudioService::playNote(float freq, float amp, float durationSec, WeirdAudio::Instrument instrument, float pan,
+								float filterCutoff)
+	{
+		music().playNote(freq, amp, durationSec, instrument, pan, filterCutoff);
+	}
+
+	void AudioService::playNote(int midiNote, float amp, float durationSec, WeirdAudio::Instrument instrument,
+								float pan, float filterCutoff)
+	{
+		music().playNote(midiNote, amp, durationSec, instrument, pan, filterCutoff);
+	}
+
+	void AudioService::setInstrumentRack(const WeirdAudio::InstrumentRack& rack)
+	{
+		music().setInstrumentRack(rack);
+	}
+
+	WeirdAudio::InstrumentRack AudioService::getInstrumentRack() const
+	{
+		return WeirdAudio::AudioEngine::getInstance().getMusicEngine().getInstrumentRack();
+	}
+
 	void AudioService::setSong(std::shared_ptr<WeirdAudio::SdfSong> song, bool beatSynced)
 	{
 		SongVisualizationOptions defaultVisualOptions;

@@ -352,7 +352,7 @@ namespace WeirdEngine
 			m_fingerprint.branchCount = branchCount;
 		}
 
-		float SdfSong::midiToFrequency(int midiNote) const
+		float SdfSong::midiToFrequency(int midiNote)
 		{
 			return 440.0f * std::pow(2.0f, (static_cast<float>(midiNote) - 69.0f) / 12.0f);
 		}

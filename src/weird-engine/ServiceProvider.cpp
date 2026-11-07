@@ -3,7 +3,10 @@
 #include "weird-engine/math/SDF.h"
 #include "weird-engine/Scene.h"
 #include "weird-engine/SceneSerializer.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/RigidBody.h"
+#include "weird-physics/components/Spring.h"
 #include "weird-physics/Simulation2D.h"
 #include "weird-renderer/components/Shape.h"
 
@@ -11,6 +14,7 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -29,7 +33,9 @@ namespace WeirdEngine
 		, m_materials3D(scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId)
 		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,
 				  &scene.m_serializationBlacklist)
-		, m_tags(scene.m_tagToEntity, scene.m_entityToTag)
+		, m_names(scene.m_nameToEntity, scene.m_entityToName)
+		, m_tags(scene.m_tagToEntities, scene.m_entityToTags)
+		, m_clusters(scene, scene.m_clusters)
 		, m_serialization(scene, scene.m_serializationBlacklist, scene.m_sceneFilePath)
 		, m_sceneControl(scene.m_isSceneComplete, scene.m_nextScene)
 		, m_resources(scene.m_resourceManager, "")
@@ -54,22 +60,27 @@ namespace WeirdEngine
 		SceneSerializer::save(m_scene, filename);
 	}
 
-	TagMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities, bool restoreCamera)
+	NameMap SerializationService::loadWeirdFile(const std::string& path, bool blacklistEntities, bool restoreCamera)
 	{
-		TagMap loadedTags;
+		NameMap loadedNames;
 		Entity firstNewEntity = m_scene.m_registry.getEntityCount();
-		SceneSerializer::load(m_scene, path, &loadedTags, restoreCamera);
+		SceneSerializer::load(m_scene, path, &loadedNames, restoreCamera);
 		if (blacklistEntities)
 		{
 			Entity lastNewEntity = m_scene.m_registry.getEntityCount();
 			for (Entity entity = firstNewEntity; entity < lastNewEntity; ++entity)
 				m_scene.m_serializationBlacklist.insert(entity);
 		}
-		return loadedTags;
+		return loadedNames;
 	}
 
 	void SerializationService::deleteSceneFile()
 	{
+		if (!m_scene.m_snapshotFilePath.empty())
+		{
+			deleteSnapshotFile();
+		}
+
 		if (m_sceneFilePath.empty())
 			return;
 
@@ -82,6 +93,117 @@ namespace WeirdEngine
 		{
 			Logger::error("[SceneSerializer] Failed to delete scene file " + m_sceneFilePath + ": " + ec.message());
 		}
+	}
+
+	void SerializationService::deleteSnapshotFile()
+	{
+		if (m_scene.m_snapshotFilePath.empty())
+			return;
+
+		std::error_code ec;
+		if (std::filesystem::remove(m_scene.m_snapshotFilePath, ec))
+		{
+			Logger::log("[Snapshot] Deleted snapshot file " + m_scene.m_snapshotFilePath);
+		}
+		else if (ec)
+		{
+			Logger::error("[Snapshot] Failed to delete snapshot file " + m_scene.m_snapshotFilePath + ": " +
+						  ec.message());
+		}
+	}
+
+	void SerializationService::setSnapshotFilePath(const std::string& path)
+	{
+		m_scene.m_snapshotFilePath = path;
+	}
+
+	void SerializationService::saveSnapshot(const std::string& filename)
+	{
+		if (!m_scene.m_registry.canSerializeSnapshot())
+		{
+			Logger::error("[Snapshot] Scene contains unsupported component or state types.");
+			return;
+		}
+		m_scene.m_registry.freeRemovedComponents();
+		const auto physicsSettings = m_scene.m_simulation2D.captureSnapshotSettings();
+
+		std::filesystem::path filePath(filename);
+		if (filePath.has_parent_path())
+		{
+			std::filesystem::create_directories(filePath.parent_path());
+		}
+
+		std::ofstream outFile(filename, std::ios::binary);
+		if (!outFile.is_open())
+		{
+			Logger::error("[Snapshot] Failed to open file for writing: " + filename);
+			return;
+		}
+
+		double simTime = m_scene.m_simulation2D.getSimulationTime();
+		if (!m_scene.m_registry.serializeSnapshot(outFile, simTime))
+			return;
+		outFile.write(reinterpret_cast<const char*>(&physicsSettings), sizeof(physicsSettings));
+		Logger::log("[Snapshot] Saved snapshot to " + filename);
+	}
+
+	bool SerializationService::loadSnapshot(const std::string& filename)
+	{
+		if (!m_scene.m_registry.canSerializeSnapshot())
+		{
+			Logger::error("[Snapshot] Scene contains unsupported component or state types.");
+			return false;
+		}
+		std::ifstream inFile(filename, std::ios::binary);
+		if (!inFile.is_open())
+		{
+			Logger::error("[Snapshot] Failed to open snapshot file: " + filename);
+			return false;
+		}
+
+		const bool wasPaused = m_scene.m_simulation2D.isPaused();
+		m_scene.m_simulation2D.pause();
+		m_scene.m_simulation2D.resetBodiesAndShapes();
+
+		double simTime = 0.0;
+		if (!m_scene.m_registry.deserializeSnapshot(inFile, &simTime))
+		{
+			Logger::error("[Snapshot] Failed to deserialize snapshot: " + filename);
+			if (!wasPaused)
+				m_scene.m_simulation2D.resume();
+			return false;
+		}
+		Simulation2D::SnapshotSettings physicsSettings;
+		inFile.read(reinterpret_cast<char*>(&physicsSettings), sizeof(physicsSettings));
+
+		m_scene.m_simulation2D.setSimulationTime(simTime);
+		m_scene.m_bodyLastImpactTime.clear();
+
+		auto rbArray = m_scene.m_registry.getComponentArray<RigidBody2D>();
+		if (rbArray && rbArray->getSize() > 0)
+		{
+			size_t maxSimId = 0;
+			for (size_t i = 0; i < rbArray->getSize(); ++i)
+			{
+				auto& rb = rbArray->getDataAtIdx(i);
+				if (rb.simulationId.id > maxSimId)
+				{
+					maxSimId = rb.simulationId.id;
+				}
+			}
+			m_scene.m_simulation2D.allocateBodiesUpTo(maxSimId + 1);
+		}
+
+		m_scene.onSnapshotLoaded(m_scene.m_registry, m_scene.m_services);
+		ECS::PhysicsSystem2D::update(m_scene.m_registry, m_scene.m_simulation2D);
+		m_scene.m_simulation2D.restoreSnapshotSettings(physicsSettings);
+
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
+		m_scene.m_UIRenderContext.shapesNeedUpdate = true;
+		m_scene.m_3DWorldRenderContext.shapesNeedUpdate = true;
+
+		Logger::log("[Snapshot] Loaded snapshot from " + filename);
+		return true;
 	}
 
 	void AudioService::setSpatialAudioEnabled(bool enabled)
@@ -606,4 +728,483 @@ namespace WeirdEngine
 
 		return normal;
 	}
+
+	// =========================================================================
+	// ClusterService
+	// =========================================================================
+
+	ClusterService::ClusterService(Scene& scene, std::vector<ClusterInstance>& clusters)
+		: m_scene(scene)
+		, m_clusters(clusters)
+	{
+		syncNextClusterId();
+	}
+
+	ClusterInstance& ClusterService::instantiate(const std::string& assetPath, vec2 position, float rotation,
+												 const std::string& instanceName,
+												 const std::vector<std::string>& instanceTags)
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.id >= m_nextClusterId)
+				m_nextClusterId = c.id + 1;
+		}
+
+		ClusterInstance instance;
+		instance.id = m_nextClusterId++;
+		instance.assetPath = assetPath;
+		instance.position = position;
+		instance.rotation = rotation;
+		instance.tags = instanceTags;
+
+		std::filesystem::path p(assetPath);
+		instance.type = p.stem().string();
+
+		if (!instanceName.empty())
+			instance.name = instanceName;
+		else
+			instance.name = instance.type + "_" + std::to_string(instance.id);
+
+		SceneSerializer::load(m_scene, assetPath, &instance.localNames, false, &instance.entities);
+
+		for (Entity e : instance.entities)
+		{
+			for (const auto& tag : instanceTags)
+			{
+				m_scene.m_services.tags().addTag(e, tag);
+			}
+		}
+
+		if (position != vec2(0.0f) || rotation != 0.0f)
+		{
+			vec2 centroid(0.0f);
+			size_t count = 0;
+			for (Entity e : instance.entities)
+			{
+				if (m_scene.m_registry.hasComponent<Transform>(e))
+				{
+					centroid += vec2(m_scene.m_registry.getComponent<Transform>(e).position);
+					count++;
+				}
+			}
+			if (count > 0)
+				centroid /= static_cast<float>(count);
+
+			float cosR = std::cos(rotation);
+			float sinR = std::sin(rotation);
+
+			for (Entity e : instance.entities)
+			{
+				if (m_scene.m_registry.hasComponent<Transform>(e))
+				{
+					auto& t = m_scene.m_registry.getComponent<Transform>(e);
+					vec2 rel = vec2(t.position) - centroid;
+					vec2 rotated = vec2(rel.x * cosR - rel.y * sinR, rel.x * sinR + rel.y * cosR);
+					vec2 newWorld = centroid + rotated + position;
+					t.position.x = newWorld.x;
+					t.position.y = newWorld.y;
+					t.rotation.z += rotation;
+					m_scene.m_registry.getComponentArray<Transform>()->setEntityDirty(e, true);
+
+					if (m_scene.m_registry.hasComponent<RigidBody2D>(e))
+					{
+						auto& rb = m_scene.m_registry.getComponent<RigidBody2D>(e);
+						m_scene.m_simulation2D.setPosition(rb.simulationId, newWorld);
+					}
+				}
+			}
+		}
+
+		m_clusters.push_back(std::move(instance));
+		return m_clusters.back();
+	}
+
+	ClusterInstance* ClusterService::getById(uint32_t id)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.id == id)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getById(uint32_t id) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.id == id)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	ClusterInstance* ClusterService::getByName(const std::string& name)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.name == name)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getByName(const std::string& name) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.name == name)
+				return &c;
+		}
+		return nullptr;
+	}
+
+	std::vector<ClusterInstance*> ClusterService::getByType(const std::string& type)
+	{
+		std::vector<ClusterInstance*> result;
+		for (auto& c : m_clusters)
+		{
+			if (c.type == type)
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<const ClusterInstance*> ClusterService::getByType(const std::string& type) const
+	{
+		std::vector<const ClusterInstance*> result;
+		for (const auto& c : m_clusters)
+		{
+			if (c.type == type)
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<ClusterInstance*> ClusterService::getByTag(const std::string& tag)
+	{
+		std::vector<ClusterInstance*> result;
+		for (auto& c : m_clusters)
+		{
+			if (c.hasTag(tag))
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	std::vector<const ClusterInstance*> ClusterService::getByTag(const std::string& tag) const
+	{
+		std::vector<const ClusterInstance*> result;
+		for (const auto& c : m_clusters)
+		{
+			if (c.hasTag(tag))
+				result.push_back(&c);
+		}
+		return result;
+	}
+
+	ClusterInstance* ClusterService::getClusterForEntity(Entity entity)
+	{
+		for (auto& c : m_clusters)
+		{
+			if (c.hasEntity(entity))
+				return &c;
+		}
+		return nullptr;
+	}
+
+	const ClusterInstance* ClusterService::getClusterForEntity(Entity entity) const
+	{
+		for (const auto& c : m_clusters)
+		{
+			if (c.hasEntity(entity))
+				return &c;
+		}
+		return nullptr;
+	}
+
+	void ClusterService::destroyCluster(uint32_t id)
+	{
+		auto it =
+			std::find_if(m_clusters.begin(), m_clusters.end(), [id](const ClusterInstance& c) { return c.id == id; });
+		if (it == m_clusters.end())
+			return;
+
+		for (Entity e : it->entities)
+		{
+			m_scene.m_services.names().removeName(e);
+			m_scene.m_services.tags().removeAllTags(e);
+			m_scene.m_registry.destroyEntity(e);
+		}
+
+		m_scene.m_registry.freeRemovedComponents();
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
+
+		m_clusters.erase(it);
+	}
+
+	void ClusterService::destroyCluster(ClusterInstance* cluster)
+	{
+		if (cluster)
+			destroyCluster(cluster->id);
+	}
+
+	void ClusterService::destroyAll()
+	{
+		while (!m_clusters.empty())
+		{
+			destroyCluster(m_clusters.back().id);
+		}
+	}
+
+	void ClusterService::clear()
+	{
+		m_clusters.clear();
+		m_nextClusterId = 1;
+	}
+
+	void ClusterService::syncNextClusterId()
+	{
+		uint32_t maxId = 0;
+		for (const auto& c : m_clusters)
+		{
+			if (c.id > maxId)
+				maxId = c.id;
+		}
+		m_nextClusterId = maxId + 1;
+	}
+
+	bool ClusterService::reloadInstance(uint32_t id, const std::string& overrideAssetPath)
+	{
+		ClusterInstance* cluster = getById(id);
+		if (!cluster)
+		{
+			return false;
+		}
+
+		std::string path = !overrideAssetPath.empty() ? overrideAssetPath : cluster->assetPath;
+		if (path.empty())
+		{
+			return false;
+		}
+
+		std::filesystem::path resolvedPath(path);
+		if (!std::filesystem::exists(resolvedPath))
+		{
+			resolvedPath =
+				std::filesystem::path("examples/sample-scenes/assets") / std::filesystem::path(path).filename();
+			if (!std::filesystem::exists(resolvedPath))
+			{
+				return false;
+			}
+		}
+
+		// 1. Calculate current centroid and rotation of the cluster
+		vec2 centroid(0.0f);
+		size_t count = 0;
+		for (Entity e : cluster->entities)
+		{
+			if (m_scene.m_registry.hasComponent<Transform>(e))
+			{
+				centroid += vec2(m_scene.m_registry.getComponent<Transform>(e).position);
+				count++;
+			}
+		}
+		if (count > 0)
+		{
+			centroid /= static_cast<float>(count);
+		}
+		else
+		{
+			centroid = cluster->position;
+		}
+
+		float currentRot = cluster->rotation;
+		std::vector<std::string> tags = cluster->tags;
+
+		// 2. Destroy old member entities and constraints connecting them
+		std::unordered_set<Entity> oldEntitySet(cluster->entities.begin(), cluster->entities.end());
+
+		auto springArray = m_scene.m_registry.getComponentArray<Spring>();
+		if (springArray)
+		{
+			for (size_t i = 0; i < springArray->getSize(); ++i)
+			{
+				auto& sp = springArray->getDataAtIdx(i);
+				if (oldEntitySet.count(sp.entityA) || oldEntitySet.count(sp.entityB))
+				{
+					oldEntitySet.insert(springArray->getEntityAtIdx(i));
+				}
+			}
+		}
+
+		auto dcArray = m_scene.m_registry.getComponentArray<DistanceConstraint>();
+		if (dcArray)
+		{
+			for (size_t i = 0; i < dcArray->getSize(); ++i)
+			{
+				auto& dc = dcArray->getDataAtIdx(i);
+				if (oldEntitySet.count(dc.entityA) || oldEntitySet.count(dc.entityB))
+				{
+					oldEntitySet.insert(dcArray->getEntityAtIdx(i));
+				}
+			}
+		}
+
+		for (Entity e : oldEntitySet)
+		{
+			m_scene.m_services.names().removeName(e);
+			m_scene.m_services.tags().removeAllTags(e);
+			m_scene.m_registry.destroyEntity(e);
+		}
+		m_scene.m_registry.freeRemovedComponents();
+
+		// 3. Load newly modified cluster from asset file
+		std::vector<Entity> newEntities;
+		NameMap newLocalNames;
+		SceneSerializer::load(m_scene, resolvedPath.string(), &newLocalNames, false, &newEntities);
+
+		// 4. Apply tags
+		for (Entity e : newEntities)
+		{
+			for (const auto& tag : tags)
+			{
+				m_scene.m_services.tags().addTag(e, tag);
+			}
+		}
+
+		// 5. Offset and rotate new entities to (centroid, currentRot)
+		vec2 assetCentroid(0.0f);
+		size_t assetCount = 0;
+		for (Entity e : newEntities)
+		{
+			if (m_scene.m_registry.hasComponent<Transform>(e))
+			{
+				assetCentroid += vec2(m_scene.m_registry.getComponent<Transform>(e).position);
+				assetCount++;
+			}
+		}
+		if (assetCount > 0)
+		{
+			assetCentroid /= static_cast<float>(assetCount);
+		}
+
+		float cosR = std::cos(currentRot);
+		float sinR = std::sin(currentRot);
+
+		for (Entity e : newEntities)
+		{
+			if (m_scene.m_registry.hasComponent<Transform>(e))
+			{
+				auto& t = m_scene.m_registry.getComponent<Transform>(e);
+				vec2 rel = vec2(t.position) - assetCentroid;
+				vec2 rotated = vec2(rel.x * cosR - rel.y * sinR, rel.x * sinR + rel.y * cosR);
+				vec2 newWorld = centroid + rotated;
+				t.position.x = newWorld.x;
+				t.position.y = newWorld.y;
+				t.rotation.z += currentRot;
+				m_scene.m_registry.getComponentArray<Transform>()->setEntityDirty(e, true);
+
+				if (m_scene.m_registry.hasComponent<RigidBody2D>(e))
+				{
+					auto& rb = m_scene.m_registry.getComponent<RigidBody2D>(e);
+					m_scene.m_simulation2D.setPosition(rb.simulationId, newWorld);
+				}
+			}
+		}
+
+		// 6. Update cluster instance
+		cluster->assetPath = path;
+		cluster->position = centroid;
+		cluster->rotation = currentRot;
+		cluster->entities = std::move(newEntities);
+		cluster->localNames = std::move(newLocalNames);
+		cluster->tags = std::move(tags);
+
+		// 7. Ensure internal springs and constraints are included in cluster entities
+		auto newSpringArray = m_scene.m_registry.getComponentArray<Spring>();
+		if (newSpringArray)
+		{
+			for (size_t i = 0; i < newSpringArray->getSize(); ++i)
+			{
+				Entity spEnt = newSpringArray->getEntityAtIdx(i);
+				auto& sp = newSpringArray->getDataAtIdx(i);
+				if (cluster->hasEntity(sp.entityA) && cluster->hasEntity(sp.entityB))
+				{
+					if (!cluster->hasEntity(spEnt))
+					{
+						cluster->entities.push_back(spEnt);
+					}
+				}
+			}
+		}
+
+		auto newDcArray = m_scene.m_registry.getComponentArray<DistanceConstraint>();
+		if (newDcArray)
+		{
+			for (size_t i = 0; i < newDcArray->getSize(); ++i)
+			{
+				Entity dcEnt = newDcArray->getEntityAtIdx(i);
+				auto& dc = newDcArray->getDataAtIdx(i);
+				if (cluster->hasEntity(dc.entityA) && cluster->hasEntity(dc.entityB))
+				{
+					if (!cluster->hasEntity(dcEnt))
+					{
+						cluster->entities.push_back(dcEnt);
+					}
+				}
+			}
+		}
+
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
+		return true;
+	}
+
+	int ClusterService::reloadAllInstancesOf(const std::string& assetPath)
+	{
+		std::filesystem::path targetP(assetPath);
+		std::string targetStem = targetP.stem().string();
+		std::string targetFilename = targetP.filename().string();
+
+		int count = 0;
+		for (auto& c : m_clusters)
+		{
+			std::filesystem::path cp(c.assetPath);
+			if (cp == targetP || cp.filename().string() == targetFilename || c.type == targetStem)
+			{
+				if (reloadInstance(c.id, assetPath))
+				{
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+
+	std::vector<ClusterInstance*> ClusterService::getInstancesByAsset(const std::string& assetPath)
+	{
+		std::filesystem::path targetP(assetPath);
+		std::string targetFilename = targetP.filename().string();
+		std::string targetStem = targetP.stem().string();
+
+		std::vector<ClusterInstance*> result;
+		for (auto& c : m_clusters)
+		{
+			std::filesystem::path cp(c.assetPath);
+			if (cp == targetP || cp.filename().string() == targetFilename || c.type == targetStem)
+			{
+				result.push_back(&c);
+			}
+		}
+		return result;
+	}
+
+	ClusterInstance& ClusterService::addInstance(ClusterInstance instance)
+	{
+		if (instance.id >= m_nextClusterId)
+			m_nextClusterId = instance.id + 1;
+		m_clusters.push_back(std::move(instance));
+		return m_clusters.back();
+	}
+
 } // namespace WeirdEngine

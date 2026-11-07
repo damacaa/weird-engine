@@ -23,7 +23,6 @@ namespace WeirdEngine
 
 		json j;
 		j["version"] = 1;
-		j["simulationTime"] = scene.m_simulation2D.getSimulationTime();
 
 		// Save camera state
 		{
@@ -82,13 +81,18 @@ namespace WeirdEngine
 					continue;
 				auto& s = shapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
-				ej["shape"] = {{"distanceFieldId", s.distanceFieldId},
-							   {"combination", static_cast<int>(s.combination)},
-							   {"parameters", json(s.parameters)},
-							   {"hasCollisions", s.hasCollisions},
-							   {"groupIdx", s.groupIdx},
-							   {"material", s.material},
-							   {"smoothFactor", s.smoothFactor}};
+				json shapeJson = {{"distanceFieldId", s.distanceFieldId},
+								  {"combination", static_cast<int>(s.combination)},
+								  {"parameters", json(s.parameters)},
+								  {"hasCollisions", s.hasCollisions},
+								  {"groupIdx", s.groupIdx},
+								  {"material", s.material},
+								  {"smoothFactor", s.smoothFactor}};
+				if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
+				{
+					shapeJson["assetPath"] = customData->filePath;
+				}
+				ej["shape"] = std::move(shapeJson);
 			}
 
 			// UIShape
@@ -168,16 +172,67 @@ namespace WeirdEngine
 
 		j["entities"] = entitiesJson;
 
-		// Save entity tags
+		// Save entity names
 		{
-			json tagsJson = json::array();
-			for (const auto& [tagName, entity] : scene.m_tagToEntity)
+			json namesJson = json::array();
+			for (const auto& [name, entity] : scene.m_nameToEntity)
 			{
 				if (isBlacklisted(entity))
 					continue;
-				tagsJson.push_back({{"name", tagName}, {"entityId", entity}});
+				namesJson.push_back({{"name", name}, {"entityId", entity}});
 			}
-			j["tags"] = tagsJson;
+			j["names"] = namesJson;
+		}
+
+		// Save entity tags
+		{
+			json tagsJson = json::array();
+			for (const auto& [entity, tags] : scene.m_entityToTags)
+			{
+				if (isBlacklisted(entity) || tags.empty())
+					continue;
+				tagsJson.push_back({{"entityId", entity}, {"tags", tags}});
+			}
+			j["entityTags"] = tagsJson;
+		}
+
+		// Save clusters
+		{
+			json clustersJson = json::array();
+			for (const auto& cluster : scene.m_clusters)
+			{
+				json cj;
+				cj["id"] = cluster.id;
+				cj["name"] = cluster.name;
+				cj["type"] = cluster.type;
+				cj["assetPath"] = cluster.assetPath;
+				cj["position"] = {cluster.position.x, cluster.position.y};
+				cj["rotation"] = cluster.rotation;
+
+				json entitiesJson = json::array();
+				for (Entity e : cluster.entities)
+				{
+					if (!isBlacklisted(e))
+						entitiesJson.push_back(e);
+				}
+				cj["entities"] = entitiesJson;
+
+				json namesJson = json::object();
+				for (const auto& [localName, e] : cluster.localNames)
+				{
+					if (!isBlacklisted(e))
+						namesJson[localName] = e;
+				}
+				cj["names"] = namesJson;
+
+				json tagsJson = json::array();
+				for (const auto& t : cluster.tags)
+					tagsJson.push_back(t);
+				cj["tags"] = tagsJson;
+
+				clustersJson.push_back(cj);
+			}
+			j["clusters"] = clustersJson;
 		}
 
 		// Save physics constraints directly from ECS components
@@ -193,7 +248,7 @@ namespace WeirdEngine
 						continue;
 					auto& dc = distConstraintArray->getDataAtIdx(i);
 					distanceConstraintsJson.push_back(
-						{{"entityA", dc.entityA}, {"entityB", dc.entityB}, {"distance", dc.distance}});
+						{{"entity", e}, {"entityA", dc.entityA}, {"entityB", dc.entityB}, {"distance", dc.distance}});
 				}
 			}
 
@@ -207,7 +262,8 @@ namespace WeirdEngine
 					if (isBlacklisted(e))
 						continue;
 					auto& sp = springArray->getDataAtIdx(i);
-					springsJson.push_back({{"entityA", sp.entityA},
+					springsJson.push_back({{"entity", e},
+										   {"entityA", sp.entityA},
 										   {"entityB", sp.entityB},
 										   {"distance", sp.restDistance},
 										   {"k", sp.stiffness}});
@@ -215,6 +271,25 @@ namespace WeirdEngine
 			}
 
 			j["physics"] = {{"distanceConstraints", distanceConstraintsJson}, {"springs", springsJson}};
+		}
+
+		// Save 2D materials
+		{
+			json materialsJson = json::array();
+			for (int i = 0; i < 16; ++i)
+			{
+				const auto& mat = scene.m_materials2D[i];
+				json mj;
+				mj["id"] = mat.id;
+				mj["name"] = mat.name;
+				mj["color"] = {mat.color.r, mat.color.g, mat.color.b, mat.color.a};
+				mj["secondaryColor"] = {mat.secondaryColor.r, mat.secondaryColor.g, mat.secondaryColor.b,
+										mat.secondaryColor.a};
+				mj["pattern"] = static_cast<uint32_t>(mat.pattern);
+				mj["patternScale"] = mat.patternScale;
+				materialsJson.push_back(mj);
+			}
+			j["materials2D"] = materialsJson;
 		}
 
 		std::filesystem::path filePath(filename);
@@ -233,8 +308,8 @@ namespace WeirdEngine
 		WeirdEngine::Logger::log("[SceneSerializer] Scene saved to " + filename);
 	}
 
-	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::TagMap* outTags,
-							   bool restoreCamera)
+	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::NameMap* outNames,
+							   bool restoreCamera, std::vector<Entity>* outEntities)
 	{
 		using json = nlohmann::json;
 
@@ -244,7 +319,7 @@ namespace WeirdEngine
 			if (!std::filesystem::exists(path))
 				WeirdEngine::Logger::log("[SceneSerializer] No scene file at " + path + ", starting fresh");
 			else
-				WeirdEngine::Logger::error("[SceneSerializer] Failed to open .weird file: " + path);
+				WeirdEngine::Logger::error("[SceneSerializer] Failed to open file: " + path);
 			return;
 		}
 
@@ -257,12 +332,6 @@ namespace WeirdEngine
 		{
 			WeirdEngine::Logger::error("[SceneSerializer] JSON parse error in " + path + ": " + e.what());
 			return;
-		}
-
-		// Restore simulation time if present
-		if (j.contains("simulationTime"))
-		{
-			scene.m_simulation2D.setSimulationTime(j["simulationTime"].get<double>());
 		}
 
 		// Restore camera state
@@ -294,6 +363,8 @@ namespace WeirdEngine
 			for (const auto& ej : j["entities"])
 			{
 				Entity entity = scene.m_registry.createEntity();
+				if (outEntities)
+					outEntities->push_back(entity);
 				if (entity == INVALID_ENTITY)
 				{
 					Logger::error("[SceneSerializer] Maximum entity capacity reached while loading scene; stopping "
@@ -329,11 +400,24 @@ namespace WeirdEngine
 					s.groupIdx = static_cast<uint16_t>(sj.value("groupIdx", 0));
 					s.material = static_cast<uint16_t>(sj.value("material", 0));
 					s.smoothFactor = sj.value("smoothFactor", 1.0f);
+					if (sj.contains("assetPath") && sj["assetPath"].is_string())
+					{
+						std::string assetPath = sj["assetPath"].get<std::string>();
+						if (!assetPath.empty())
+						{
+							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(assetPath);
+						}
+					}
 					if (sj.contains("parameters"))
 					{
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] =
 								(sj["parameters"][pi].is_number() ? sj["parameters"][pi].get<float>() : 0.0f);
+					}
+					else if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
+					{
+						std::copy(customData->defaultParameters.begin(), customData->defaultParameters.end(),
+								  s.parameters);
 					}
 					scene.m_registry.getComponentArray<Shape>()->setEntityDirty(entity, true);
 					scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
@@ -430,30 +514,51 @@ namespace WeirdEngine
 			}
 		}
 
-		// Restore entity tags
-		if (j.contains("tags") && j["tags"].is_array())
+		// Restore entity names (with backwards-compatible "tags" fallback)
+		const char* namesKey = j.contains("names") ? "names" : (j.contains("tags") ? "tags" : nullptr);
+		if (namesKey && j[namesKey].is_array())
 		{
-			for (const auto& tagJ : j["tags"])
+			for (const auto& nameJ : j[namesKey])
 			{
-				if (!tagJ.contains("name") || !tagJ.contains("entityId"))
+				if (!nameJ.contains("name") || !nameJ.contains("entityId"))
 					continue;
-				std::string name = tagJ["name"].get<std::string>();
-				Entity savedId = tagJ["entityId"].get<Entity>();
+				std::string name = nameJ["name"].get<std::string>();
+				Entity savedId = nameJ["entityId"].get<Entity>();
 				if (name.empty())
 					continue;
 				auto it = entityIdMap.find(savedId);
 				if (it != entityIdMap.end())
 				{
 					Entity newEntity = it->second;
-					if (outTags)
+					if (outNames)
 					{
 						// Store in the caller-provided map instead of the scene
-						(*outTags)[name] = newEntity;
+						(*outNames)[name] = newEntity;
 					}
 					else
 					{
 						// Use service provider to keep both maps in sync
-						scene.m_services.tags().tag(newEntity, name);
+						scene.m_services.names().setName(newEntity, name);
+					}
+				}
+			}
+		}
+
+		// Restore entity tags
+		if (j.contains("entityTags") && j["entityTags"].is_array())
+		{
+			for (const auto& item : j["entityTags"])
+			{
+				if (!item.contains("entityId") || !item.contains("tags"))
+					continue;
+				Entity savedId = item["entityId"].get<Entity>();
+				auto it = entityIdMap.find(savedId);
+				if (it != entityIdMap.end())
+				{
+					Entity newEntity = it->second;
+					for (const auto& tagJ : item["tags"])
+					{
+						scene.m_services.tags().addTag(newEntity, tagJ.get<std::string>());
 					}
 				}
 			}
@@ -500,6 +605,12 @@ namespace WeirdEngine
 						if (k >= 1.0f)
 						{
 							Entity constraintEnt = scene.m_registry.createEntity();
+							if (dcj.contains("entity"))
+							{
+								entityIdMap[dcj.value("entity", INVALID_ENTITY)] = constraintEnt;
+							}
+							if (outEntities && constraintEnt != INVALID_ENTITY)
+								outEntities->push_back(constraintEnt);
 							auto& constraint =
 								scene.m_registry.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
 							constraint.entityA = entityA;
@@ -509,6 +620,12 @@ namespace WeirdEngine
 						else
 						{
 							Entity springEnt = scene.m_registry.createEntity();
+							if (dcj.contains("entity"))
+							{
+								entityIdMap[dcj.value("entity", INVALID_ENTITY)] = springEnt;
+							}
+							if (outEntities && springEnt != INVALID_ENTITY)
+								outEntities->push_back(springEnt);
 							auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 							spring.entityA = entityA;
 							spring.entityB = entityB;
@@ -529,6 +646,12 @@ namespace WeirdEngine
 					if (entityIdMap.find(savedA) != entityIdMap.end() && entityIdMap.find(savedB) != entityIdMap.end())
 					{
 						Entity springEnt = scene.m_registry.createEntity();
+						if (spj.contains("entity"))
+						{
+							entityIdMap[spj.value("entity", INVALID_ENTITY)] = springEnt;
+						}
+						if (outEntities && springEnt != INVALID_ENTITY)
+							outEntities->push_back(springEnt);
 						auto& spring = scene.m_registry.addComponent<WeirdEngine::Spring>(springEnt);
 						spring.entityA = entityIdMap[savedA];
 						spring.entityB = entityIdMap[savedB];
@@ -572,6 +695,145 @@ namespace WeirdEngine
 							scene.m_registry.getComponentArray<RigidBody2D>()->setEntityDirty(e, true);
 						}
 						// The actual fix will happen in PhysicsSystem2D::update thanks to isDirty=true
+					}
+				}
+			}
+		}
+
+		// Restore clusters (only when loading the root scene, not when loading a sub-cluster asset)
+		if (!outNames && j.contains("clusters") && j["clusters"].is_array())
+		{
+			std::unordered_set<uint32_t> usedClusterIds;
+			uint32_t maxClusterId = 0;
+			for (const auto& c : scene.m_clusters)
+			{
+				usedClusterIds.insert(c.id);
+				if (c.id > maxClusterId)
+					maxClusterId = c.id;
+			}
+
+			for (const auto& cj : j["clusters"])
+			{
+				ClusterInstance cluster;
+				cluster.id = cj.value("id", 0u);
+				if (cluster.id == 0 || usedClusterIds.count(cluster.id) > 0)
+				{
+					cluster.id = ++maxClusterId;
+				}
+				usedClusterIds.insert(cluster.id);
+				if (cluster.id > maxClusterId)
+					maxClusterId = cluster.id;
+				cluster.name = cj.value("name", "");
+				cluster.type = cj.value("type", "");
+				cluster.assetPath = cj.value("assetPath", "");
+				if (cj.contains("position") && cj["position"].is_array() && cj["position"].size() >= 2)
+				{
+					cluster.position = vec2(cj["position"][0].get<float>(), cj["position"][1].get<float>());
+				}
+				cluster.rotation = cj.value("rotation", 0.0f);
+
+				if (cj.contains("entities") && cj["entities"].is_array())
+				{
+					for (const auto& ej : cj["entities"])
+					{
+						Entity oldId = ej.get<Entity>();
+						auto it = entityIdMap.find(oldId);
+						if (it != entityIdMap.end())
+							cluster.entities.push_back(it->second);
+					}
+				}
+
+				if (cj.contains("names") && cj["names"].is_object())
+				{
+					for (auto it = cj["names"].begin(); it != cj["names"].end(); ++it)
+					{
+						Entity oldId = it.value().get<Entity>();
+						auto mapIt = entityIdMap.find(oldId);
+						if (mapIt != entityIdMap.end())
+							cluster.localNames[it.key()] = mapIt->second;
+					}
+				}
+
+				if (cj.contains("tags") && cj["tags"].is_array())
+				{
+					for (const auto& tj : cj["tags"])
+						cluster.tags.push_back(tj.get<std::string>());
+				}
+
+				scene.m_clusters.push_back(std::move(cluster));
+			}
+
+			scene.m_services.clusters().syncNextClusterId();
+
+			// Ensure any spring or constraint whose endpoints belong to the same cluster is in that cluster's entities
+			// list
+			auto springArray = scene.m_registry.getComponentArray<Spring>();
+			if (springArray)
+			{
+				for (size_t i = 0; i < springArray->getSize(); ++i)
+				{
+					Entity spEnt = springArray->getEntityAtIdx(i);
+					auto& sp = springArray->getDataAtIdx(i);
+					auto* clusterA = scene.m_services.clusters().getClusterForEntity(sp.entityA);
+					auto* clusterB = scene.m_services.clusters().getClusterForEntity(sp.entityB);
+					if (clusterA && clusterA == clusterB)
+					{
+						if (std::find(clusterA->entities.begin(), clusterA->entities.end(), spEnt) ==
+							clusterA->entities.end())
+						{
+							clusterA->entities.push_back(spEnt);
+						}
+					}
+				}
+			}
+
+			auto dcArray = scene.m_registry.getComponentArray<DistanceConstraint>();
+			if (dcArray)
+			{
+				for (size_t i = 0; i < dcArray->getSize(); ++i)
+				{
+					Entity dcEnt = dcArray->getEntityAtIdx(i);
+					auto& dc = dcArray->getDataAtIdx(i);
+					auto* clusterA = scene.m_services.clusters().getClusterForEntity(dc.entityA);
+					auto* clusterB = scene.m_services.clusters().getClusterForEntity(dc.entityB);
+					if (clusterA && clusterA == clusterB)
+					{
+						if (std::find(clusterA->entities.begin(), clusterA->entities.end(), dcEnt) ==
+							clusterA->entities.end())
+						{
+							clusterA->entities.push_back(dcEnt);
+						}
+					}
+				}
+			}
+		}
+
+		// Restore 2D materials (only when loading a full scene, not an asset cluster)
+		if (outEntities == nullptr && j.contains("materials2D") && j["materials2D"].is_array())
+		{
+			for (const auto& mj : j["materials2D"])
+			{
+				uint16_t id = static_cast<uint16_t>(mj.value("id", 0));
+				if (id < 16)
+				{
+					auto& mat = scene.m_materials2D[id];
+					mat.id = id;
+					mat.name = mj.value("name", "");
+					if (mj.contains("color") && mj["color"].is_array() && mj["color"].size() >= 4)
+					{
+						mat.color = vec4(mj["color"][0], mj["color"][1], mj["color"][2], mj["color"][3]);
+					}
+					if (mj.contains("secondaryColor") && mj["secondaryColor"].is_array() &&
+						mj["secondaryColor"].size() >= 4)
+					{
+						mat.secondaryColor = vec4(mj["secondaryColor"][0], mj["secondaryColor"][1],
+												  mj["secondaryColor"][2], mj["secondaryColor"][3]);
+					}
+					mat.pattern = static_cast<Pattern2D>(mj.value("pattern", 0));
+					mat.patternScale = mj.value("patternScale", 1.0f);
+					if (!mat.name.empty())
+					{
+						scene.m_material2DNameToId[mat.name] = id;
 					}
 				}
 			}

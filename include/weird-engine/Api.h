@@ -2,6 +2,8 @@
 
 #include "weird-audio/SdfSong.h"
 
+#include "weird-engine/FixedString.h"
+#include "weird-engine/FixedVector.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/math/Default3DSDFs.h"
 

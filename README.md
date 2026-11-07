@@ -204,7 +204,7 @@ Systems access engine subsystems through the `ServiceProvider` facade:
 - `services.materials2D()`: Create, share, and query 2D materials.
 - `services.materials3D()`: Create, share, and query 3D materials.
 - `services.audio()`: Play sounds and check friction audio levels.
-- `services.tags()`: Assign unique string tags to entities and look up entities by tag.
+- `services.names()`: Assign unique string names to entities and look up entities by name.
 - `services.serialization()`: Save or load `.weird` scene files and blacklist entities.
 - `services.time()`: Read frame delta time and total simulation time.
 - `services.resources()`: Resolve asset paths and file input/output.

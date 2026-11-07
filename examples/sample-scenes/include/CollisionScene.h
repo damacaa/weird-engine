@@ -16,8 +16,10 @@ namespace CollisionSceneNamespace
 	{
 		WeirdEngine::Entity cursorShape = WeirdEngine::INVALID_ENTITY;
 		WeirdEngine::Material2DHandle baseDotMat;
-		std::vector<WeirdEngine::Material2DHandle> hitMats;
+		std::array<WeirdEngine::Material2DHandle, 10> hitMats{};
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	State& getState(WeirdEngine::Registry& registry);
 

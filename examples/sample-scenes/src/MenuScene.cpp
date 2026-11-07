@@ -13,6 +13,8 @@ using namespace WeirdEngine::WeirdAudio;
 
 namespace MenuSceneNamespace
 {
+	static std::vector<MenuCategory> s_categories;
+	static std::vector<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>> s_songs;
 	namespace
 	{
 		bool s_menuPositionSaved = false;
@@ -65,7 +67,7 @@ namespace MenuSceneNamespace
 		auto& state = registry.emplaceState<State>();
 
 		// Initialize 3 Categories: SCENES, MUSIC, SETTINGS
-		state.categories = {
+		s_categories = {
 			MenuCategory{
 				"SCENES",
 				{
@@ -94,14 +96,14 @@ namespace MenuSceneNamespace
 
 		if (s_menuPositionSaved)
 		{
-			state.selectedCategory = std::clamp(s_savedCategory, 0, static_cast<int>(state.categories.size()) - 1);
-			for (size_t i = 0; i < state.categories.size() && i < State::CATEGORY_COUNT; ++i)
+			state.selectedCategory = std::clamp(s_savedCategory, 0, static_cast<int>(s_categories.size()) - 1);
+			for (size_t i = 0; i < s_categories.size() && i < State::CATEGORY_COUNT; ++i)
 			{
-				int maxItem = static_cast<int>(state.categories[i].items.size()) - 1;
-				state.categories[i].selectedItem = std::clamp(s_savedCategoryItems[i], 0, maxItem);
+				int maxItem = static_cast<int>(s_categories[i].items.size()) - 1;
+				s_categories[i].selectedItem = std::clamp(s_savedCategoryItems[i], 0, maxItem);
 			}
-			int curItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
-			state.selectedItem = std::clamp(state.categories[state.selectedCategory].selectedItem, 0, curItemsMax);
+			int curItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
+			state.selectedItem = std::clamp(s_categories[state.selectedCategory].selectedItem, 0, curItemsMax);
 			state.smoothCategory = static_cast<float>(state.selectedCategory);
 			state.smoothItem = static_cast<float>(state.selectedItem);
 			state.currentTheme = s_savedTheme;
@@ -119,7 +121,7 @@ namespace MenuSceneNamespace
 		glm::vec2 previewCenter = getClockPreviewCenter(registry);
 
 		// Instantiate procedural songs using shared MusicShapes definitions
-		state.songs = MusicShapes::createAllSongs(previewCenter);
+		s_songs = MusicShapes::createAllSongs(previewCenter);
 		state.currentPlayingSong = -1;
 	}
 
@@ -274,7 +276,7 @@ namespace MenuSceneNamespace
 			t.position = vec3(0.0f, 0.0f, 0.0f);
 
 			auto& tr = registry.addComponent<UITextRenderer>(state.activeCategoryLabel);
-			tr.text = state.categories[state.selectedCategory].name;
+			tr.text = s_categories[state.selectedCategory].name;
 			tr.material = uiWhite.id;
 			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
@@ -343,11 +345,11 @@ namespace MenuSceneNamespace
 		auto activeSong = services.audio().music().getCurrentSong();
 		if (activeSong && services.audio().music().getVolume() > 0.0f)
 		{
-			for (size_t i = 0; i < state.songs.size(); ++i)
+			for (size_t i = 0; i < s_songs.size(); ++i)
 			{
-				if (state.songs[i]->getName() == activeSong->getName())
+				if (s_songs[i]->getName() == activeSong->getName())
 				{
-					state.songs[i] = activeSong;
+					s_songs[i] = activeSong;
 					state.currentPlayingSong = static_cast<int>(i);
 					break;
 				}
@@ -356,11 +358,11 @@ namespace MenuSceneNamespace
 			if (state.currentPlayingSong >= 0)
 			{
 				glm::vec2 previewCenter = getClockPreviewCenter(registry);
-				state.songs[state.currentPlayingSong]->setCenter(previewCenter);
+				s_songs[state.currentPlayingSong]->setCenter(previewCenter);
 
 				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
-					state.songs[state.currentPlayingSong],
+					s_songs[state.currentPlayingSong],
 					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, false);
 			}
 		}
@@ -579,14 +581,14 @@ namespace MenuSceneNamespace
 		}
 		else if (item.actionId == "play_song")
 		{
-			if (item.songIndex >= 0 && item.songIndex < static_cast<int>(state.songs.size()))
+			if (item.songIndex >= 0 && item.songIndex < static_cast<int>(s_songs.size()))
 			{
 				glm::vec2 previewCenter = getClockPreviewCenter(registry);
-				state.songs[item.songIndex]->setCenter(previewCenter);
+				s_songs[item.songIndex]->setCenter(previewCenter);
 
 				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
-					state.songs[item.songIndex],
+					s_songs[item.songIndex],
 					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, true);
 				services.audio().music().setVolume(0.85f);
 				services.audio().music().setTrackToggles({true, true, true, true});
@@ -649,19 +651,19 @@ namespace MenuSceneNamespace
 		bool cancel = input.getKeyDown(Input::Esc) || input.getKeyDown(Input::Backspace) ||
 					  input.getGamepadButtonDown(Input::GamepadButton::East);
 
-		int curCatMax = static_cast<int>(state.categories.size()) - 1;
-		int curItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
+		int curCatMax = static_cast<int>(s_categories.size()) - 1;
+		int curItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
 
 		auto moveCategory = [&](int dir)
 		{
 			int nextCat = std::clamp(state.selectedCategory + dir, 0, curCatMax);
 			if (nextCat != state.selectedCategory)
 			{
-				state.categories[state.selectedCategory].selectedItem = state.selectedItem;
+				s_categories[state.selectedCategory].selectedItem = state.selectedItem;
 				state.selectedCategory = nextCat;
 				updateCategoryIconMaterials(registry, services);
-				int newItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
-				state.selectedItem = std::clamp(state.categories[state.selectedCategory].selectedItem, 0, newItemsMax);
+				int newItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
+				state.selectedItem = std::clamp(s_categories[state.selectedCategory].selectedItem, 0, newItemsMax);
 				state.smoothItem = static_cast<float>(state.selectedItem);
 				state.categoryTitleTimer = (state.selectedItem != 0) ? 1.0f : 0.0f;
 				playNavigationSound(services, 1340.0f, 0.38f);
@@ -678,7 +680,7 @@ namespace MenuSceneNamespace
 			if (nextItem != state.selectedItem)
 			{
 				state.selectedItem = nextItem;
-				state.categories[state.selectedCategory].selectedItem = nextItem;
+				s_categories[state.selectedCategory].selectedItem = nextItem;
 				state.categoryTitleTimer = 0.0f;
 				playNavigationSound(services, 1120.0f, 0.32f);
 			}
@@ -735,12 +737,11 @@ namespace MenuSceneNamespace
 				int clickedCat = static_cast<int>(std::round((mx - focusX) / categorySpacing + state.smoothCategory));
 				if (clickedCat >= 0 && clickedCat <= curCatMax && clickedCat != state.selectedCategory)
 				{
-					state.categories[state.selectedCategory].selectedItem = state.selectedItem;
+					s_categories[state.selectedCategory].selectedItem = state.selectedItem;
 					state.selectedCategory = clickedCat;
 					updateCategoryIconMaterials(registry, services);
-					int newItemsMax = static_cast<int>(state.categories[state.selectedCategory].items.size()) - 1;
-					state.selectedItem =
-						std::clamp(state.categories[state.selectedCategory].selectedItem, 0, newItemsMax);
+					int newItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
+					state.selectedItem = std::clamp(s_categories[state.selectedCategory].selectedItem, 0, newItemsMax);
 					state.smoothItem = static_cast<float>(state.selectedItem);
 					state.categoryTitleTimer = (state.selectedItem != 0) ? 1.0f : 0.0f;
 					playNavigationSound(services, 1340.0f, 0.38f);
@@ -772,7 +773,7 @@ namespace MenuSceneNamespace
 					else
 					{
 						state.selectedItem = clickedItem;
-						state.categories[state.selectedCategory].selectedItem = clickedItem;
+						s_categories[state.selectedCategory].selectedItem = clickedItem;
 						state.categoryTitleTimer = 0.0f;
 						playNavigationSound(services, 1120.0f, 0.32f);
 					}
@@ -824,7 +825,7 @@ namespace MenuSceneNamespace
 		// Action trigger
 		if (confirm)
 		{
-			const auto& curItem = state.categories[state.selectedCategory].items[state.selectedItem];
+			const auto& curItem = s_categories[state.selectedCategory].items[state.selectedItem];
 			executeMenuItem(registry, services, curItem);
 		}
 
@@ -834,7 +835,7 @@ namespace MenuSceneNamespace
 			if (state.selectedItem > 0)
 			{
 				state.selectedItem = 0;
-				state.categories[state.selectedCategory].selectedItem = 0;
+				s_categories[state.selectedCategory].selectedItem = 0;
 				playCancelSound(services);
 			}
 			state.toastTimer = 0.0f;
@@ -963,12 +964,12 @@ namespace MenuSceneNamespace
 
 			auto& tr = registry.getComponent<UITextRenderer>(state.activeCategoryLabel);
 			bool showTitle = (state.selectedItem == 0) || (state.categoryTitleTimer > 0.0f);
-			tr.text = showTitle ? state.categories[state.selectedCategory].name : "";
+			tr.text = showTitle ? s_categories[state.selectedCategory].name : "";
 			registry.setComponentDirty(tr);
 		}
 
 		// 4. Update Vertical Sub-Items Pool (9 slots: -4 to +4)
-		const auto& items = state.categories[state.selectedCategory].items;
+		const auto& items = s_categories[state.selectedCategory].items;
 		int itemCount = static_cast<int>(items.size());
 
 		const float maxVisibleY = screenH - 50.0f; // Screen top bounds
@@ -1132,7 +1133,7 @@ namespace MenuSceneNamespace
 
 			// Keep live preview centered right under the clock across window resizes
 			glm::vec2 previewCenter = getClockPreviewCenter(registry);
-			for (auto& song : state.songs)
+			for (auto& song : s_songs)
 			{
 				if (song)
 				{
@@ -1140,11 +1141,11 @@ namespace MenuSceneNamespace
 				}
 			}
 
-			if (state.currentPlayingSong >= 0 && state.currentPlayingSong < static_cast<int>(state.songs.size()))
+			if (state.currentPlayingSong >= 0 && state.currentPlayingSong < static_cast<int>(s_songs.size()))
 			{
 				auto& uiAccent = services.materials2D().get("ui_accent");
 				services.audio().setSong(
-					state.songs[state.currentPlayingSong],
+					s_songs[state.currentPlayingSong],
 					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, false);
 			}
 		}

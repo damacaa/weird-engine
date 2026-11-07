@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cmath>
 #include <weird-engine.h>
+#include <weird-engine/FixedVector.h>
 
 namespace TetrominoSceneNamespace
 {
@@ -12,7 +13,7 @@ namespace TetrominoSceneNamespace
 		// Game state fields can be added here
 		float timeSinceLastDrop = 0.0f;
 		float dropInterval = 0.5f; // Time between automatic drops in seconds
-		std::vector<WeirdEngine::Entity> activeDots;
+		WeirdEngine::FixedVector<WeirdEngine::Entity, 4> activeDots;
 		std::array<std::array<WeirdEngine::Entity, 20>, 10> grid{}; // 20 rows x 10 columns grid for the game
 		bool isGameOver = false;									// Flag to indicate if the game is over
 		bool isPaused = false;										// Flag to indicate if the game is paused
@@ -51,7 +52,7 @@ namespace TetrominoSceneNamespace
 		float prevRightTrigger = 0.0f;
 
 		// Tetromino pipe machine state
-		std::vector<WeirdEngine::Entity> pipeDots;
+		WeirdEngine::FixedVector<WeirdEngine::Entity, 32> pipeDots;
 		WeirdEngine::Entity pipePistonEntity = WeirdEngine::INVALID_ENTITY;
 		float pistonCurrentS = 10.0f;
 		float pistonTargetS = 10.0f;
@@ -63,6 +64,8 @@ namespace TetrominoSceneNamespace
 		float spawnAnimDuration = 0.25f;
 		WeirdEngine::Entity pipeNozzleShape = WeirdEngine::INVALID_ENTITY;
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	inline std::atomic<bool> g_isGameOverPhysics{false};
 
@@ -115,6 +118,12 @@ public:
 	}
 
 protected:
+	void onSnapshotLoaded(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override
+	{
+		const auto& state = TetrominoSceneNamespace::getState(registry);
+		TetrominoSceneNamespace::g_isGameOverPhysics.store(state.isGameOver, std::memory_order_relaxed);
+	}
+
 	void onPhysicsShapeCollision(WeirdEngine::Simulation2D& simulation,
 								 WeirdEngine::PhysicsShapeCollisionEvent& event) override
 	{

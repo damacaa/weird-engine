@@ -232,9 +232,35 @@ inline SceneState& getState(Registry& registry)
 - Type parameters are normalized with `std::remove_cvref_t`, so
   `getState<const SceneState>()` resolves to the same state as
   `getState<SceneState>()`.
-- Scene states are not entities, are never copied, and are not serialized.
-  Persistence is the game's job (e.g. a save file written by a system).
+- Scene states are not entities and are never copied between registries.
+  Binary snapshots include supported value types.
 - Like the rest of the registry, they are main-thread only.
+
+### Binary Snapshots
+
+Use `services.serialization().saveSnapshot(path)` and `loadSnapshot(path)` for a binary snapshot.
+Saving finishes deferred deletions before it writes the registry.
+Repeated destruction requests do not release an entity ID more than once.
+The format uses full type names to separate types from different namespaces.
+
+Raw snapshots accept trivially copyable value types by default.
+GLM vectors and matrices are trivially copyable, so components made of them need no extra declaration.
+Types that own memory, contain mutexes, or have virtual functions are unsupported.
+Audited value types with custom copies or destructors can declare `static constexpr bool snapshotRawCompatible = true`.
+This declaration promises that copying their bytes does not change resource ownership or object lifetimes.
+All fields must contain values without ownership or process-specific addresses.
+Specialize `WeirdEngine::is_snapshot_serializable_v<T>` to `false` for types that contain unmanaged runtime pointers.
+
+A scene with unsupported state or populated components cannot save or load snapshots.
+ImageScene disables the snapshot hotkeys because its state owns image buffers and a mutex.
+
+Snapshots restore pause, gravity, damping, friction, and simulation input flags.
+Override `onSnapshotLoaded(Registry&, ServiceProvider&)` to rebuild runtime data from restored components.
+Physics remains paused during this callback.
+RopeScene uses this callback to rebuild `BallData` from `RopeBall` components.
+TetrominoScene uses it to restore the flag read by its physics callback.
+
+The snapshot format is version 1.
 
 ---
 
@@ -297,7 +323,7 @@ directly instead of `ServiceProvider.h`.
 | Materials 2D | `services.materials2D()` | Create, share, and query 2D material definitions |
 | Materials 3D | `services.materials3D()` | Create, share, and query 3D material definitions |
 | Audio | `services.audio()` | Queue audio requests and read friction audio levels |
-| Tags | `services.tags()` | Assign and query unique string tags on entities |
+| Names | `services.names()` | Assign and query unique string names on entities |
 | Serialization | `services.serialization()` | Save and load `.weird` files and blacklist entities |
 | Time | `services.time()` | Read simulation time and frame delta time |
 | Resources | `services.resources()` | Resolve asset paths and file storage operations |

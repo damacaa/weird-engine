@@ -1,80 +1,136 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "weird-engine/ecs/Registry.h"
 
 namespace WeirdEngine
 {
-	/// Map from tag name (std::string) to the entity that owns it.
-	using TagMap = std::unordered_map<std::string, Entity>;
-
 	class TagService
 	{
 	public:
-		TagService(TagMap& tagToEntity, std::unordered_map<Entity, std::string>& entityToTag)
-			: m_tagToEntity(tagToEntity)
-			, m_entityToTag(entityToTag)
+		TagService(std::unordered_map<std::string, std::vector<Entity>>& tagToEntities,
+				   std::unordered_map<Entity, std::vector<std::string>>& entityToTags)
+			: m_tagToEntities(tagToEntities)
+			, m_entityToTags(entityToTags)
 		{
 		}
 
-		// Assign a unique tag to an entity. If the tag is already owned by
-		// another entity, it is moved to this one. An empty name is treated
-		// as a removal request (equivalent to calling removeTag).
-		void tag(Entity entity, const std::string& name)
+		void addTag(Entity entity, const std::string& tag)
 		{
-			if (name.empty())
-			{
-				removeTag(entity);
+			if (tag.empty() || entity == INVALID_ENTITY)
 				return;
-			}
 
-			// If the tag is already owned by another entity, remove it from that entity
-			auto existingOwner = m_tagToEntity.find(name);
-			if (existingOwner != m_tagToEntity.end() && existingOwner->second != entity)
+			auto& tags = m_entityToTags[entity];
+			if (std::find(tags.begin(), tags.end(), tag) == tags.end())
 			{
-				m_entityToTag.erase(existingOwner->second);
+				tags.push_back(tag);
 			}
 
-			// Remove any previous tag this entity had
-			auto existingTag = m_entityToTag.find(entity);
-			if (existingTag != m_entityToTag.end() && existingTag->second != name)
+			auto& entities = m_tagToEntities[tag];
+			if (std::find(entities.begin(), entities.end(), entity) == entities.end())
 			{
-				m_tagToEntity.erase(existingTag->second);
+				entities.push_back(entity);
 			}
-
-			m_tagToEntity[name] = entity;
-			m_entityToTag[entity] = name;
 		}
 
-		void removeTag(Entity entity)
+		void removeTag(Entity entity, const std::string& tag)
 		{
-			auto it = m_entityToTag.find(entity);
-			if (it == m_entityToTag.end())
+			auto itEntity = m_entityToTags.find(entity);
+			if (itEntity != m_entityToTags.end())
+			{
+				auto& tags = itEntity->second;
+				tags.erase(std::remove(tags.begin(), tags.end(), tag), tags.end());
+				if (tags.empty())
+					m_entityToTags.erase(itEntity);
+			}
+
+			auto itTag = m_tagToEntities.find(tag);
+			if (itTag != m_tagToEntities.end())
+			{
+				auto& entities = itTag->second;
+				entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
+				if (entities.empty())
+					m_tagToEntities.erase(itTag);
+			}
+		}
+
+		void removeAllTags(Entity entity)
+		{
+			auto itEntity = m_entityToTags.find(entity);
+			if (itEntity == m_entityToTags.end())
 				return;
-			m_tagToEntity.erase(it->second);
-			m_entityToTag.erase(it);
+
+			for (const auto& tag : itEntity->second)
+			{
+				auto itTag = m_tagToEntities.find(tag);
+				if (itTag != m_tagToEntities.end())
+				{
+					auto& entities = itTag->second;
+					entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
+					if (entities.empty())
+						m_tagToEntities.erase(itTag);
+				}
+			}
+
+			m_entityToTags.erase(itEntity);
 		}
 
-		std::string getEntityTag(Entity entity) const
+		bool hasTag(Entity entity, const std::string& tag) const
 		{
-			auto it = m_entityToTag.find(entity);
-			if (it == m_entityToTag.end())
-				return "";
-			return it->second;
+			auto it = m_entityToTags.find(entity);
+			if (it == m_entityToTags.end())
+				return false;
+			const auto& tags = it->second;
+			return std::find(tags.begin(), tags.end(), tag) != tags.end();
 		}
 
-		Entity getEntityByTag(const std::string& name) const
+		const std::vector<std::string>& getTags(Entity entity) const
 		{
-			auto it = m_tagToEntity.find(name);
-			if (it == m_tagToEntity.end())
-				return MAX_ENTITIES;
-			return it->second;
+			static const std::vector<std::string> emptyTags;
+			auto it = m_entityToTags.find(entity);
+			return (it != m_entityToTags.end()) ? it->second : emptyTags;
+		}
+
+		const std::vector<Entity>& getEntitiesWithTag(const std::string& tag) const
+		{
+			static const std::vector<Entity> emptyEntities;
+			auto it = m_tagToEntities.find(tag);
+			return (it != m_tagToEntities.end()) ? it->second : emptyEntities;
+		}
+
+		// Ergonomic aliases
+		void add(Entity entity, const std::string& tag)
+		{
+			addTag(entity, tag);
+		}
+
+		void remove(Entity entity, const std::string& tag)
+		{
+			removeTag(entity, tag);
+		}
+
+		bool has(Entity entity, const std::string& tag) const
+		{
+			return hasTag(entity, tag);
+		}
+
+		const std::vector<Entity>& getEntities(const std::string& tag) const
+		{
+			return getEntitiesWithTag(tag);
+		}
+
+		void clear()
+		{
+			m_tagToEntities.clear();
+			m_entityToTags.clear();
 		}
 
 	private:
-		TagMap& m_tagToEntity;
-		std::unordered_map<Entity, std::string>& m_entityToTag;
+		std::unordered_map<std::string, std::vector<Entity>>& m_tagToEntities;
+		std::unordered_map<Entity, std::vector<std::string>>& m_entityToTags;
 	};
 } // namespace WeirdEngine

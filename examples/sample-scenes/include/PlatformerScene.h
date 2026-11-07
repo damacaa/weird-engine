@@ -10,17 +10,17 @@ namespace PlatformerSceneNamespace
 		WeirdEngine::Entity player = WeirdEngine::INVALID_ENTITY;
 
 		// Materials for ground, wall, and air visual feedback
-		WeirdEngine::Material2D floorMaterial;
-		WeirdEngine::Material2D wallMaterial;
-		WeirdEngine::Material2D airMaterial;
+		WeirdEngine::Material2DHandle floorMaterial;
+		WeirdEngine::Material2DHandle wallMaterial;
+		WeirdEngine::Material2DHandle airMaterial;
 
 		// Platform creation with mouse
 		WeirdEngine::Entity previewBox = WeirdEngine::INVALID_ENTITY;
 		WeirdEngine::vec2 boxStart{0.0f, 0.0f};
 		bool isCreatingBox = false;
 		WeirdEngine::CombinationType boxCombination = WeirdEngine::CombinationType::Addition;
-		WeirdEngine::Material2D previewAddMaterial;
-		WeirdEngine::Material2D previewSubMaterial;
+		WeirdEngine::Material2DHandle previewAddMaterial;
+		WeirdEngine::Material2DHandle previewSubMaterial;
 
 		// Controller tuning
 		float moveSpeed = 9.0f;
@@ -54,6 +54,8 @@ namespace PlatformerSceneNamespace
 		bool isOnWall = false;
 		bool wasJumpHeld = false;
 	};
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>,
+				  "PlatformerScene State must contain only snapshot-compatible values");
 
 	State& getState(WeirdEngine::Registry& registry);
 

@@ -3,7 +3,7 @@
 
 using namespace WeirdEngine;
 
-WeirdEngine::vec3 g_cameraPositon = vec3(15.0f, 7.5f, 35.0f);
+WeirdEngine::vec3 g_cameraPositon = vec3(0.0f, 0.0f, 35.0f);
 
 int main(int argc, char* argv[])
 {
@@ -11,9 +11,10 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<SceneEditor>("scene-editor");
 
 	DisplaySettings displaySettings{};
-	displaySettings.width = 640;
-	displaySettings.height = 480;
+	displaySettings.width = 1280;
+	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
+	displaySettings.windowTitle = "Weird Engine - Scene Editor";
 
 	PhysicsSettings physicsSettings{};
 

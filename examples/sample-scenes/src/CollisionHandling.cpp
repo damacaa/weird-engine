@@ -16,14 +16,7 @@ namespace CollisionHandlingNamespace
 	void spawnLaneBalls(Registry& registry, ServiceProvider& services, State& state)
 	{
 		// Clean up previous balls
-		for (Entity e : state.activeBalls)
-		{
-			if (registry.isEntityValid(e))
-			{
-				registry.destroyEntity(e);
-			}
-		}
-		state.activeBalls.clear();
+		registry.forEach<LaneBall>([&](Entity e, LaneBall&) { registry.destroyEntity(e); });
 
 		// Lane 1: Main Thread ECS Events (x: -18 to -8)
 		constexpr int LANE1_BALLS = 12;
@@ -40,7 +33,7 @@ namespace CollisionHandlingNamespace
 			auto& rb = registry.addComponent<RigidBody2D>(e);
 			rb.isFixed = false;
 
-			state.activeBalls.push_back(e);
+			registry.addComponent<LaneBall>(e);
 		}
 
 		// Lane 2: Physics Thread Shape Collisions (Launch Pad) (x: 2 to 10)
@@ -57,7 +50,7 @@ namespace CollisionHandlingNamespace
 			auto& rb = registry.addComponent<RigidBody2D>(e);
 			rb.isFixed = false;
 
-			state.activeBalls.push_back(e);
+			registry.addComponent<LaneBall>(e);
 		}
 
 		// Lane 3: Physics Thread Body Collisions (Elastic Bouncers) (x: 20 to 32)
@@ -74,7 +67,7 @@ namespace CollisionHandlingNamespace
 			auto& rb = registry.addComponent<RigidBody2D>(e);
 			rb.isFixed = false;
 
-			state.activeBalls.push_back(e);
+			registry.addComponent<LaneBall>(e);
 		}
 	}
 

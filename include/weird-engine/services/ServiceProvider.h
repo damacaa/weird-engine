@@ -1,10 +1,12 @@
 #pragma once
 
 #include "weird-engine/services/AudioService.h"
+#include "weird-engine/services/ClusterService.h"
 #include "weird-engine/services/DebugService.h"
 #include "weird-engine/services/InputService.h"
 #include "weird-engine/services/Material2DService.h"
 #include "weird-engine/services/Material3DService.h"
+#include "weird-engine/services/NameService.h"
 #include "weird-engine/services/PhysicsService.h"
 #include "weird-engine/services/RandomService.h"
 #include "weird-engine/services/RenderService.h"
@@ -70,9 +72,19 @@ namespace WeirdEngine
 			return m_audio;
 		}
 
+		NameService& names()
+		{
+			return m_names;
+		}
+
 		TagService& tags()
 		{
 			return m_tags;
+		}
+
+		ClusterService& clusters()
+		{
+			return m_clusters;
 		}
 
 		SerializationService& serialization()
@@ -114,7 +126,9 @@ namespace WeirdEngine
 		Material2DService m_materials2D;
 		Material3DService m_materials3D;
 		AudioService m_audio;
+		NameService m_names;
 		TagService m_tags;
+		ClusterService m_clusters;
 		SerializationService m_serialization;
 		SceneControlService m_sceneControl;
 		ResourceService m_resources;

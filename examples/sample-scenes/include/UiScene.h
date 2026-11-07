@@ -27,6 +27,8 @@ namespace UiSceneNamespace
 		WeirdEngine::Entity hintText = WeirdEngine::INVALID_ENTITY;
 	};
 
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
+
 	State& getState(WeirdEngine::Registry& registry);
 
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);

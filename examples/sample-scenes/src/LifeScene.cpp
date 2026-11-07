@@ -66,7 +66,7 @@ namespace LifeSceneNamespace
 			std::vector<std::filesystem::path> organismFiles;
 			for (const auto& entry : std::filesystem::directory_iterator(organismsDir))
 			{
-				if (entry.is_regular_file() && entry.path().extension() == ".weird")
+				if (entry.is_regular_file() && entry.path().extension() == ".weirdcluster")
 				{
 					organismFiles.push_back(entry.path());
 				}

@@ -1,0 +1,331 @@
+{
+  "links": [
+    {
+      "endPinId": 301,
+      "id": 2,
+      "startPinId": 250
+    },
+    {
+      "endPinId": 1000,
+      "id": 17,
+      "startPinId": 750
+    },
+    {
+      "endPinId": 300,
+      "id": 18,
+      "startPinId": 1050
+    },
+    {
+      "endPinId": 500,
+      "id": 19,
+      "startPinId": 1050
+    },
+    {
+      "endPinId": 900,
+      "id": 20,
+      "startPinId": 150
+    },
+    {
+      "endPinId": 700,
+      "id": 21,
+      "startPinId": 950
+    },
+    {
+      "endPinId": 901,
+      "id": 22,
+      "startPinId": 1150
+    },
+    {
+      "endPinId": 1100,
+      "id": 23,
+      "startPinId": 1250
+    },
+    {
+      "endPinId": 1101,
+      "id": 24,
+      "startPinId": 1350
+    },
+    {
+      "endPinId": 400,
+      "id": 27,
+      "startPinId": 1450
+    },
+    {
+      "endPinId": 1400,
+      "id": 28,
+      "startPinId": 550
+    },
+    {
+      "endPinId": 1401,
+      "id": 29,
+      "startPinId": 350
+    }
+  ],
+  "nodes": [
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 9,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 114.1487045288086,
+      "posY": -53.69728088378906,
+      "typeId": "translate"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 1,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -131.51998901367188,
+      "posY": -94.72001647949219,
+      "typeId": "point"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 2,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 2,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 60.0,
+      "posY": 200.0,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 3,
+      "inputFloats": [
+        0.0,
+        20.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 334.10711669921875,
+      "posY": 79.10714721679688,
+      "typeId": "circle"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 4,
+      "inputFloats": [
+        1.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 1060.0,
+      "posY": 140.0,
+      "typeId": "sdf_output"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 5,
+      "inputFloats": [
+        0.0,
+        1.0,
+        18.0,
+        12.0,
+        3.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 560.0,
+      "posY": 291.7322082519531,
+      "typeId": "star"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 7,
+      "inputFloats": [
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 244.89285278320313,
+      "posY": 305.6428527832031,
+      "typeId": "mirror_x"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 10,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          24.0,
+          0.0
+        ]
+      ],
+      "posX": 371.74871826171875,
+      "posY": 310.302734375,
+      "typeId": "translate"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 11,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": -69.53129577636719,
+      "posY": -11.137280464172363,
+      "typeId": "make_vec2"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 12,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -238.6512908935547,
+      "posY": -5.537280559539795,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 1,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 13,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -219.61129760742188,
+      "posY": 140.06271362304688,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 14,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 889.3276977539063,
+      "posY": -43.251773834228516,
+      "typeId": "subtract"
+    }
+  ],
+  "parameterNames": [
+    "x",
+    "y",
+    "r",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "parameters": [
+    0.0,
+    0.0,
+    8.100000381469727,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

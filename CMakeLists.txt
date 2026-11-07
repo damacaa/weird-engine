@@ -9,6 +9,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Ensure strictly standard C++
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(MSVC)
+    add_compile_options(/FS)
+endif()
+
 option(WEIRD_ENGINE_ENABLE_ASAN "Enable AddressSanitizer for memory leak detection" OFF)
 if(WEIRD_ENGINE_ENABLE_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
@@ -175,6 +179,8 @@ target_include_directories(glad
 # Because you are linking to the TARGETS (glad and SDL3::SDL3), CMake automatically
 # handles their include paths and other properties for you.
     target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+    # GLM 1.x: keep zero-initialized vectors/matrices (old 0.9.x behavior) and allow gtx extensions.
+    target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_CTOR_INIT GLM_ENABLE_EXPERIMENTAL)
     target_link_libraries(${PROJECT_NAME} 
         PUBLIC 
             SDL3::SDL3
@@ -256,4 +262,10 @@ endif()
 option(WEIRD_ENGINE_BUILD_TOOLS "Build tool projects" OFF)
 if(WEIRD_ENGINE_BUILD_TOOLS)
     add_subdirectory(tools)
+endif()
+
+option(WEIRD_ENGINE_BUILD_TESTS "Build snapshot regression tests" OFF)
+if(WEIRD_ENGINE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

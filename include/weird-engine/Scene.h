@@ -80,6 +80,8 @@ namespace WeirdEngine
 		friend class SceneSerializer;
 		friend class ServiceProvider;
 		friend class SerializationService;
+		friend class ClusterService;
+		friend class SceneEditor;
 
 		friend class WeirdAudio::AudioEngine;
 		friend class WeirdRenderer::Renderer;
@@ -87,8 +89,8 @@ namespace WeirdEngine
 
 	public:
 		// ---- Types
-		/// Map from tag name (std::string) to the entity that owns it.
-		using TagMap = ::WeirdEngine::TagMap;
+		/// Map from entity name (std::string) to the entity that owns it.
+		using NameMap = ::WeirdEngine::NameMap;
 
 		using RenderMode = ::WeirdEngine::RenderMode;
 
@@ -131,6 +133,14 @@ namespace WeirdEngine
 		{
 			m_entityShapeCollisionSystems.push_back(std::move(system));
 		}
+		void setSnapshotHotkeysEnabled(bool enabled)
+		{
+			m_enableSnapshotHotkeys = enabled;
+		}
+		bool areSnapshotHotkeysEnabled() const
+		{
+			return m_enableSnapshotHotkeys;
+		}
 
 	protected:
 		// Internal constructors: sets the render mode for Scene2D/Scene3D/SceneBoth.
@@ -141,6 +151,8 @@ namespace WeirdEngine
 		virtual void onStart(Registry& registry, ServiceProvider& services) {}
 		virtual void onUpdate(Registry& registry, ServiceProvider& services) {};
 		virtual void onDestroy(Registry& registry, ServiceProvider& services) {};
+		// Rebuild runtime data after restoring the registry, while physics remains paused.
+		virtual void onSnapshotLoaded(Registry& registry, ServiceProvider& services) {};
 		virtual void onImGuiRender(Registry& registry, ServiceProvider& services) {};
 		virtual void onCustomUI(Registry& registry, ServiceProvider& services) {};
 		virtual void onRender(Registry& registry, ServiceProvider& services,
@@ -174,6 +186,10 @@ namespace WeirdEngine
 		void update(double delta, double time);
 		void destroy()
 		{
+			if (m_isSceneComplete && !m_snapshotFilePath.empty())
+			{
+				m_services.serialization().deleteSnapshotFile();
+			}
 			onDestroy(m_registry, m_services);
 			for (auto& sys : m_destroySystems)
 			{
@@ -269,23 +285,36 @@ namespace WeirdEngine
 			m_resetCameraReprojection = true;
 		}
 
-		// Set the path to a .weird file to load when the scene starts
+		// Set the path to a .weirdscene file to load when the scene starts
 		void setSceneFilePath(const std::string& path)
 		{
 			m_sceneFilePath = path;
+		}
+
+		// Set the path to a .weirdsnap binary snapshot to restore when the scene starts
+		void setSnapshotFilePath(const std::string& path)
+		{
+			m_snapshotFilePath = path;
+		}
+
+		void setName(const std::string& name)
+		{
+			m_name = name;
+		}
+		const std::string& getName() const
+		{
+			return m_name;
 		}
 
 		// ---- Internal helpers
 		static void handlePhysicsStep(void* userData);
 		static void handleCollision(PhysicsCollisionEvent& event, void* userData);
 		static void handleShapeCollision(PhysicsShapeCollisionEvent& event, void* userData);
-		// Load scene state from a .weird JSON file
+		// Load scene state from a .weirdscene JSON file
 		void loadFromWeirdFile(const std::string& path);
 		// Resolve a physics SimulationID to the owning entity.
 		Entity getEntityForSimulationId(SimulationID simulationId,
 										std::shared_ptr<ComponentArray<RigidBody2D>> rigidBodies);
-
-		ServiceProvider m_services;
 
 		// ---- Shared state (managed via ServiceProvider)
 		Entity m_mainCamera;
@@ -353,6 +382,9 @@ namespace WeirdEngine
 		// ---- Serialization & visuals
 		std::unordered_set<Entity> m_serializationBlacklist;
 		std::string m_sceneFilePath;
+		std::string m_snapshotFilePath;
+		std::string m_name;
+		bool m_enableSnapshotHotkeys = true;
 		BackgroundParams m_background;
 		Material2D m_materials2D[16];
 		uint16_t m_material2DCount = 0;
@@ -369,9 +401,16 @@ namespace WeirdEngine
 		std::string m_nextScene;
 		bool m_isSceneComplete = false;
 
-		// ---- Entity tag storage (bidirectional maps kept in sync)
-		TagMap m_tagToEntity;
-		std::unordered_map<Entity, std::string> m_entityToTag;
+		// ---- Entity name storage (bidirectional maps kept in sync)
+		NameMap m_nameToEntity;
+		std::unordered_map<Entity, std::string> m_entityToName;
+
+		// ---- Entity tag storage
+		std::unordered_map<std::string, std::vector<Entity>> m_tagToEntities;
+		std::unordered_map<Entity, std::vector<std::string>> m_entityToTags;
+
+		// ---- Cluster instances
+		std::vector<ClusterInstance> m_clusters;
 
 		// ---- Registered Systems
 		std::vector<CoreSystem> m_startSystems;
@@ -384,6 +423,8 @@ namespace WeirdEngine
 		float m_lastDelta = 0.0f;
 		uint64_t m_sceneInstanceId = 0;
 		bool m_resetCameraReprojection = true;
+
+		ServiceProvider m_services;
 	};
 	class Scene2D : public Scene
 	{

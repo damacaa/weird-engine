@@ -333,7 +333,14 @@ namespace WeirdEngine::Editor
 			}
 			else if (ImGui::IsKeyPressed(ImGuiKey_S))
 			{
-				fileManager.openSaveFileDialog();
+				if (ImGui::GetIO().KeyShift)
+				{
+					fileManager.openSaveFileDialog();
+				}
+				else
+				{
+					fileManager.saveGraph(graph);
+				}
 			}
 			else if (ImGui::IsKeyPressed(ImGuiKey_O))
 			{

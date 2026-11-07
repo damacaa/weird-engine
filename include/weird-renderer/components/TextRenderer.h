@@ -1,5 +1,6 @@
 #pragma once
-#include <string>
+#include "weird-engine/FixedString.h"
+#include <cstdint>
 
 namespace WeirdEngine
 {
@@ -19,7 +20,7 @@ namespace WeirdEngine
 			Bottom
 		};
 
-		std::string text;
+		FixedString<32> text;
 		uint32_t bufferedDotCount = 0;
 		uint16_t material = 0;
 		float width = 0;

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # ==============================================================================
 # 1. Project Configuration
 # ==============================================================================
-project(SceneEditorTool)
+project(WeirdEditor)
 
 # Path to the WeirdEngine directory. Change this depending on where your project is located.
 # Examples inside weird-engine use "../../"

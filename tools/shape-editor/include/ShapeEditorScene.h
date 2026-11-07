@@ -24,6 +24,8 @@
 
 namespace WeirdEngine::Editor
 {
+	inline std::string g_initialShapePath;
+
 	class ShapeEditorScene : public Scene2D
 	{
 	public:
@@ -34,7 +36,14 @@ namespace WeirdEngine::Editor
 		void onStart(Registry& registry, ServiceProvider& services) override
 		{
 			m_previewController.initMaterials(services);
-			NodeGraphPresets::loadStar(m_graph);
+			if (!g_initialShapePath.empty() && std::filesystem::exists(g_initialShapePath))
+			{
+				m_fileManager.loadGraphFromFile(m_graph, g_initialShapePath);
+			}
+			else
+			{
+				NodeGraphPresets::loadStar(m_graph);
+			}
 			m_dirty = true;
 
 			m_previewController.initCamera(registry, services);

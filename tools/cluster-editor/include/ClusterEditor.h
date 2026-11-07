@@ -22,6 +22,7 @@
 #include <glm/gtx/norm.hpp>
 
 extern WeirdEngine::vec3 g_cameraPositon;
+inline std::string g_initialClusterPath;
 
 using namespace WeirdEngine;
 
@@ -105,6 +106,7 @@ private:
 	// ImGui editor UI state
 	char m_fileNameBuf[128] = "cluster";
 	char m_tagBuf[128] = {};
+	char m_newTagBuf[128] = {};
 	Entity m_tagBufferEntity = static_cast<Entity>(-1);
 	float m_menuBarHeight = 0.0f;
 	bool m_cameraCentered = false;
@@ -182,6 +184,10 @@ private:
 
 			m_tempSvc->serialization().blacklistEntity(outside);
 			m_tempSvc->serialization().blacklistEntity(inside);
+		}
+		if (!g_initialClusterPath.empty() && std::filesystem::exists(g_initialClusterPath))
+		{
+			loadCluster(g_initialClusterPath);
 		}
 	}
 
@@ -533,7 +539,7 @@ private:
 							   "the new distance.");
 			ImGui::Separator();
 			ImGui::BulletText("Ctrl+N: new cluster");
-			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weird scene");
+			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weirdcluster file");
 			ImGui::BulletText("Ctrl+S: save (asks for a path the first time)");
 			ImGui::BulletText("Q: exit the tool");
 		}
@@ -711,7 +717,7 @@ private:
 
 	void renderTagSection()
 	{
-		if (!ImGui::CollapsingHeader("Tag Editor", ImGuiTreeNodeFlags_DefaultOpen))
+		if (!ImGui::CollapsingHeader("Name & Tags", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			return;
 		}
@@ -719,46 +725,87 @@ private:
 		if (m_tagSelectedEntity == static_cast<Entity>(-1) || !hasTransform(m_tagSelectedEntity))
 		{
 			m_tagSelectedEntity = static_cast<Entity>(-1);
-			ImGui::TextWrapped("No cluster selected. Pick the Tag tool and right-click a ball to select it.");
+			ImGui::TextWrapped("No ball selected. Pick the Tag tool and right-click a ball to select it.");
 			return;
 		}
 
 		if (m_tagBufferEntity != m_tagSelectedEntity)
 		{
 			m_tagBufferEntity = m_tagSelectedEntity;
-			const std::string currentTag = m_tempSvc->tags().getEntityTag(m_tagSelectedEntity);
-			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentTag.c_str());
+			const std::string currentName = m_tempSvc->names().getEntityName(m_tagSelectedEntity);
+			std::snprintf(m_tagBuf, sizeof(m_tagBuf), "%s", currentName.c_str());
+			m_newTagBuf[0] = '\0';
 		}
 
 		ImGui::Text("Ball: entity %u", static_cast<unsigned int>(m_tagSelectedEntity));
+
+		// --- Unique Local Name ---
+		ImGui::SeparatorText("Unique Name");
 		ImGui::SetNextItemWidth(-1.0f);
-		const bool submitted = ImGui::InputTextWithHint("##tag", "tag name", m_tagBuf, sizeof(m_tagBuf),
-														ImGuiInputTextFlags_EnterReturnsTrue);
+		const bool submittedName = ImGui::InputTextWithHint("##name", "name (e.g. head, hand)", m_tagBuf,
+															sizeof(m_tagBuf), ImGuiInputTextFlags_EnterReturnsTrue);
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-		const bool apply = ImGui::Button("Apply", ImVec2(buttonWidth, 0.0f)) || submitted;
+		const bool applyName = ImGui::Button("Apply Name", ImVec2(buttonWidth, 0.0f)) || submittedName;
 		ImGui::SameLine();
-		const bool remove = ImGui::Button("Remove", ImVec2(buttonWidth, 0.0f));
+		const bool removeName = ImGui::Button("Clear Name", ImVec2(buttonWidth, 0.0f));
 
-		if (apply)
+		if (applyName)
 		{
-			const std::string newTag(m_tagBuf);
-			if (newTag.empty())
+			const std::string newName(m_tagBuf);
+			if (newName.empty())
 			{
-				m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+				m_tempSvc->names().removeName(m_tagSelectedEntity);
 			}
 			else
 			{
-				m_tempSvc->tags().tag(m_tagSelectedEntity, newTag);
+				m_tempSvc->names().setName(m_tagSelectedEntity, newName);
 			}
 		}
 
-		if (remove)
+		if (removeName)
 		{
-			m_tempSvc->tags().removeTag(m_tagSelectedEntity);
+			m_tempSvc->names().removeName(m_tagSelectedEntity);
 			m_tagBuf[0] = '\0';
 		}
 
+		// --- Multi-Tags ---
+		ImGui::SeparatorText("Tags");
+		const auto& currentTags = m_tempSvc->tags().getTags(m_tagSelectedEntity);
+		if (currentTags.empty())
+		{
+			ImGui::TextDisabled("No tags attached");
+		}
+		else
+		{
+			std::string tagToRemove;
+			for (const auto& tag : currentTags)
+			{
+				ImGui::BulletText("%s", tag.c_str());
+				ImGui::SameLine();
+				std::string btnId = "X##" + tag;
+				if (ImGui::SmallButton(btnId.c_str()))
+				{
+					tagToRemove = tag;
+				}
+			}
+			if (!tagToRemove.empty())
+			{
+				m_tempSvc->tags().removeTag(m_tagSelectedEntity, tagToRemove);
+			}
+		}
+
+		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 70.0f);
+		const bool submittedTag = ImGui::InputTextWithHint("##newTag", "add tag...", m_newTagBuf, sizeof(m_newTagBuf),
+														   ImGuiInputTextFlags_EnterReturnsTrue);
+		ImGui::SameLine();
+		if ((ImGui::Button("Add Tag", ImVec2(-1.0f, 0.0f)) || submittedTag) && m_newTagBuf[0] != '\0')
+		{
+			m_tempSvc->tags().addTag(m_tagSelectedEntity, m_newTagBuf);
+			m_newTagBuf[0] = '\0';
+		}
+
+		ImGui::Spacing();
 		if (ImGui::Button("Deselect", ImVec2(-1.0f, 0.0f)))
 		{
 			m_tagSelectedEntity = static_cast<Entity>(-1);
@@ -822,7 +869,7 @@ private:
 
 		ImGui::TextDisabled("Saved under assets/Organisms/");
 		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::InputTextWithHint("##filename", "cluster.weird", m_fileNameBuf, sizeof(m_fileNameBuf));
+		ImGui::InputTextWithHint("##filename", "cluster.weirdcluster", m_fileNameBuf, sizeof(m_fileNameBuf));
 
 		const float buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
 		if (ImGui::Button("Save", ImVec2(buttonWidth, 0.0f)))
@@ -1402,8 +1449,9 @@ private:
 			}
 		}
 
-		// 2. Remove tag
-		m_tempSvc->tags().removeTag(e);
+		// 2. Remove name and tags
+		m_tempSvc->names().removeName(e);
+		m_tempSvc->tags().removeAllTags(e);
 
 		// 3. Remove from m_balls
 		m_balls.erase(std::remove_if(m_balls.begin(), m_balls.end(), [e](const BallInfo& b) { return b.entity == e; }),
@@ -1448,7 +1496,8 @@ private:
 
 		for (const BallInfo& ball : m_balls)
 		{
-			m_tempSvc->tags().removeTag(ball.entity);
+			m_tempSvc->names().removeName(ball.entity);
+			m_tempSvc->tags().removeAllTags(ball.entity);
 			m_tempRegistry->destroyEntity(ball.entity);
 		}
 		m_balls.clear();
@@ -1480,9 +1529,9 @@ private:
 	void saveClusterTo(const std::string& path)
 	{
 		std::string finalPath = path;
-		if (!finalPath.ends_with(".weird"))
+		if (!finalPath.ends_with(".weirdcluster"))
 		{
-			finalPath += ".weird";
+			finalPath += ".weirdcluster";
 		}
 
 		m_tempSvc->serialization().saveScene(finalPath);
@@ -1495,7 +1544,7 @@ private:
 #ifdef __EMSCRIPTEN__
 		loadClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weirdcluster)", "weirdcluster"}};
 		SDL_ShowOpenFileDialog(onOpenFileCallback, this, nullptr, filters, 1, nullptr, false);
 #endif
 	}
@@ -1505,8 +1554,8 @@ private:
 #ifdef __EMSCRIPTEN__
 		saveClusterFromName();
 #else
-		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weird)", "weird"}};
-		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "cluster.weird");
+		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weirdcluster)", "weirdcluster"}};
+		SDL_ShowSaveFileDialog(onSaveFileCallback, this, nullptr, filters, 1, "cluster.weirdcluster");
 #endif
 	}
 
@@ -1565,9 +1614,9 @@ private:
 		{
 			fileName = "cluster";
 		}
-		if (!fileName.ends_with(".weird"))
+		if (!fileName.ends_with(".weirdcluster"))
 		{
-			fileName += ".weird";
+			fileName += ".weirdcluster";
 		}
 		return fileName;
 	}
@@ -2452,16 +2501,17 @@ private:
 		m_relaxationVelocities.clear();
 
 		// Remember constraint count before loading so we can find new ones
+		m_currentFilePath = path;
 		size_t prevSpringCount = m_tempRegistry->getComponentArray<Spring>()->getSize();
 		size_t prevDistCount = m_tempRegistry->getComponentArray<DistanceConstraint>()->getSize();
 
 		// Load the file — creates new entities / rigid bodies / constraints
-		TagMap loadedTags = m_tempSvc->serialization().loadWeirdFile(path);
+		NameMap loadedTags = m_tempSvc->serialization().loadWeirdFile(path);
 
 		// Apply loaded tags to the scene
 		for (const auto& [name, entity] : loadedTags)
 		{
-			m_tempSvc->tags().tag(entity, name);
+			m_tempSvc->names().setName(entity, name);
 		}
 
 		// Collect new balls: find entities with both Dot and RigidBody2D

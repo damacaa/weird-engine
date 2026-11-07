@@ -104,7 +104,7 @@ namespace WeirdEngine::Editor
 
 			char nameBuf[64];
 			const std::string& currentName = graph.getParameterName(i);
-			strncpy(nameBuf, currentName.c_str(), sizeof(nameBuf) - 1);
+			snprintf(nameBuf, sizeof(nameBuf), "%s", currentName.c_str());
 			nameBuf[sizeof(nameBuf) - 1] = '\0';
 
 			ImGui::SetNextItemWidth(90.0f);

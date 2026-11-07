@@ -6,6 +6,7 @@
 #include <vector>
 #include <weird-audio/SdfSong.h>
 #include <weird-engine.h>
+#include <weird-engine/FixedString.h>
 
 namespace MenuSceneNamespace
 {
@@ -47,7 +48,7 @@ namespace MenuSceneNamespace
 		int currentTheme = 0; // 0: Midnight Grid, 1: Obsidian, 2: Crimson, 3: Emerald, 4: Amethyst, 5: Amber
 
 		// Interactive Notification Toast
-		std::string toastMessage = "";
+		WeirdEngine::FixedString<64> toastMessage;
 		float toastTimer = 0.0f;
 
 		// Category title timer when navigating horizontally to a non-zero item
@@ -58,7 +59,6 @@ namespace MenuSceneNamespace
 		float secondChimeFreq = 0.0f;
 
 		// Procedural Music Songs (SdfSong instances)
-		std::vector<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>> songs;
 		int currentPlayingSong = -1;
 
 		// UI Shapes: Category Bar (SCENES, MUSIC, SETTINGS)
@@ -77,10 +77,9 @@ namespace MenuSceneNamespace
 
 		// Top Clock
 		WeirdEngine::Entity clockLabel = WeirdEngine::INVALID_ENTITY;
-
-		// Menu Content
-		std::vector<MenuCategory> categories;
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	State& getState(WeirdEngine::Registry& registry);
 

@@ -82,6 +82,11 @@ namespace WeirdEngine
 			return m_simulation.isPaused();
 		}
 
+		void setPosition(SimulationID id, vec2 pos)
+		{
+			m_simulation.setPosition(id, pos);
+		}
+
 		Entity entityForSimulationId(SimulationID simulationId) const
 		{
 			auto rigidBodies = m_registry.getComponentArray<RigidBody2D>();

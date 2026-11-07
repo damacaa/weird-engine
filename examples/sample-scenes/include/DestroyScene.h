@@ -14,12 +14,11 @@ namespace DestroySceneNamespace
 
 	struct State
 	{
-		std::vector<WeirdEngine::Entity> testBalls;
-		std::vector<WeirdEngine::Entity> testConstraints;
-		std::vector<WeirdEngine::Entity> testShapes;
-		std::vector<WeirdEngine::Material2DHandle> materials;
+		std::array<WeirdEngine::Material2DHandle, 8> materials{};
 		float timer = 0.0f;
 	};
+
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
 
 	State& getState(WeirdEngine::Registry& registry);
 

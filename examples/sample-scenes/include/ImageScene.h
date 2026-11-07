@@ -67,6 +67,7 @@ class ImageScene : public WeirdEngine::Scene2D
 public:
 	ImageScene()
 	{
+		setSnapshotHotkeysEnabled(false);
 		addStartSystem(ImageSceneNamespace::stateInitSystem);
 		addStartSystem(ImageSceneNamespace::setupChamberSystem);
 		addStartSystem(ImageSceneNamespace::setupControlsSystem);

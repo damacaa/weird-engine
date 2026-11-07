@@ -34,7 +34,7 @@ namespace WeirdEngine::Editor
 
 	void PreviewController::initCamera(Registry& registry, ServiceProvider& services)
 	{
-		Entity mainCam = services.tags().getEntityByTag("mainCamera");
+		Entity mainCam = services.names().getEntityByName("mainCamera");
 		if (mainCam < MAX_ENTITIES && registry.hasComponent<Transform>(mainCam))
 		{
 			auto& t = registry.getComponent<Transform>(mainCam);
@@ -53,7 +53,7 @@ namespace WeirdEngine::Editor
 						  (static_cast<float>(winW) / static_cast<float>(winH));
 		float uvCenterY = (2.0f * targetCenter.y / static_cast<float>(winH)) - 1.0f;
 
-		Entity mainCam = services.tags().getEntityByTag("mainCamera");
+		Entity mainCam = services.names().getEntityByName("mainCamera");
 		if (mainCam < MAX_ENTITIES && services.registry().hasComponent<Transform>(mainCam))
 		{
 			auto& t = services.registry().getComponent<Transform>(mainCam);
@@ -166,7 +166,7 @@ namespace WeirdEngine::Editor
 		float gapMinY = menuH + inspectorHeight;
 		float gapMaxY = static_cast<float>(winH);
 
-		Entity mainCam = services.tags().getEntityByTag("mainCamera");
+		Entity mainCam = services.names().getEntityByName("mainCamera");
 		if (mainCam == INVALID_ENTITY || !registry.hasComponent<Transform>(mainCam))
 			return;
 

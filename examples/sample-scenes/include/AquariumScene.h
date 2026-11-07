@@ -30,29 +30,9 @@ namespace AquariumSceneNamespace
 		float wobblePhase = 0.0f;
 	};
 
-	struct JellyfishComponent
-	{
-		WeirdEngine::Entity bellShape = WeirdEngine::INVALID_ENTITY;
-		std::vector<WeirdEngine::Entity> tentacleSegments;
-		float pulsePhase = 0.0f;
-		float pulseSpeed = 0.0f;
-		WeirdEngine::vec2 direction = WeirdEngine::vec2(0.0f);
-		bool directionChanged = false;
-	};
-
 	struct Seaweed
 	{
 		float animationOffset = 0.0f;
-	};
-
-	struct EelComponent
-	{
-		std::vector<WeirdEngine::Entity> segments;
-		float phaseOffset = 0.0f;
-		float speed = 0.0f;
-		WeirdEngine::vec2 direction = WeirdEngine::vec2(0.0f);
-		float segmentSpacing = 0.0f;
-		int baseMaterial = 0;
 	};
 
 	constexpr float TANK_LEFT = -20.0f;
@@ -72,12 +52,14 @@ namespace AquariumSceneNamespace
 		WeirdEngine::Material2DHandle foodMat;
 	};
 
+	static_assert(WeirdEngine::is_snapshot_serializable_v<State>);
+	static_assert(WeirdEngine::is_snapshot_serializable_v<Fish>);
+	static_assert(WeirdEngine::is_snapshot_serializable_v<FishFood>);
+	static_assert(WeirdEngine::is_snapshot_serializable_v<Bubble>);
+	static_assert(WeirdEngine::is_snapshot_serializable_v<Seaweed>);
+
 	State& getState(WeirdEngine::Registry& registry);
 
-	void createJellyfish(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, float x, float y,
-						 WeirdEngine::Material2DHandle material, float scale, float phase);
-	void createEel(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, float startX, float startY,
-				   int segmentCount, float segmentSpacing, WeirdEngine::Material2DHandle material);
 	void spawnBubble(WeirdEngine::Registry& registry, State& state);
 	void spawnFood(WeirdEngine::Registry& registry, State& state, WeirdEngine::vec2 pos);
 
@@ -89,9 +71,7 @@ namespace AquariumSceneNamespace
 	void feedingInputSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void bubbleSpawnerSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void bubblePhysicsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void jellyfishSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void seaweedSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void eelSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void fishFlockingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void onEntityShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 									  WeirdEngine::EntityShapeCollisionEvent& event);
@@ -114,9 +94,7 @@ public:
 		addUpdateSystem(AquariumSceneNamespace::feedingInputSystem);
 		addUpdateSystem(AquariumSceneNamespace::bubbleSpawnerSystem);
 		addUpdateSystem(AquariumSceneNamespace::bubblePhysicsSystem);
-		addUpdateSystem(AquariumSceneNamespace::jellyfishSystem);
 		addUpdateSystem(AquariumSceneNamespace::seaweedSystem);
-		addUpdateSystem(AquariumSceneNamespace::eelSystem);
 		addUpdateSystem(AquariumSceneNamespace::fishFlockingSystem);
 
 		addEntityCollisionSystem(AquariumSceneNamespace::onEntityCollisionSystem);

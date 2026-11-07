@@ -4,10 +4,21 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
+#include <istream>
+#include <type_traits>
 
 namespace WeirdEngine
 {
+	inline bool readOrFail(std::istream& is, void* dest, size_t size)
+	{
+		if (size == 0)
+			return true;
+		is.read(reinterpret_cast<char*>(dest), static_cast<std::streamsize>(size));
+		return !is.fail() && !is.bad() && static_cast<size_t>(is.gcount()) == size;
+	}
+
 	struct SimulationID;
 
 	// Strong-type Entity struct
@@ -100,6 +111,21 @@ namespace WeirdEngine
 
 	constexpr Entity MAX_ENTITIES{10000};
 	constexpr Entity INVALID_ENTITY{MAX_ENTITIES};
+
+	// Raw snapshots require value-only data. Specialize this trait to false for types with runtime pointers.
+	// GLM types are trivially copyable, so components built from them need no annotation.
+	// Audited value types with custom copies or destructors can declare snapshotRawCompatible = true.
+	template <typename T>
+	inline constexpr bool is_snapshot_serializable_v = []
+	{
+		if constexpr (!std::is_copy_constructible_v<T> || std::is_polymorphic_v<T> || std::is_pointer_v<T> ||
+					  std::is_member_pointer_v<T>)
+			return false;
+		else if constexpr (requires { T::snapshotRawCompatible; })
+			return T::snapshotRawCompatible;
+		else
+			return std::is_trivially_copyable_v<T>;
+	}();
 } // namespace WeirdEngine
 
 template <> struct std::hash<WeirdEngine::Entity>

@@ -37,7 +37,7 @@ namespace DestroySceneNamespace
 		{
 			auto& mat = services.materials2D().createMaterial("mat_" + std::to_string(i));
 			mat.color = ColorPalette::Default[(4 + i) % ColorPalette::Default.size()];
-			state.materials.push_back(mat.id);
+			state.materials[i] = mat.id;
 		}
 	}
 
@@ -59,7 +59,8 @@ namespace DestroySceneNamespace
 				{
 					case 0:
 					{
-						if (state.testBalls.size() < 1000)
+						auto dotArray = registry.getComponentArray<Dot>();
+						if (!dotArray || dotArray->getSize() < 1000)
 						{
 							for (int j = 0; j < 10; ++j)
 							{
@@ -71,37 +72,42 @@ namespace DestroySceneNamespace
 								auto& ui = registry.addComponent<Dot>(e);
 								ui.materialId = state.materials[e % state.materials.size()].id;
 								registry.addComponent<RigidBody2D>(e);
-								state.testBalls.push_back(e);
 							}
 						}
 						break;
 					}
 					case 1:
 					{
-						if (state.testShapes.size() < 20)
+						auto shapeArray = registry.getComponentArray<Shape>();
+						if (!shapeArray || shapeArray->getSize() < 20)
 						{
 							float x = static_cast<float>(std::rand() % 200) - 100.0f;
 							float y = static_cast<float>(std::rand() % 100) - 50.0f;
 							float w = static_cast<float>(std::rand() % 4 + 1);
 							float h = static_cast<float>(std::rand() % 4 + 1);
 							auto material = state.materials[std::rand() % state.materials.size()];
-							Entity shape = services.shapes().addShape({.shapeId = DefaultShapes::Box,
-																	   .variables = {{DefaultShapes::Box::PosX, x},
-																					 {DefaultShapes::Box::PosY, y},
-																					 {DefaultShapes::Box::SizeX, w},
-																					 {DefaultShapes::Box::SizeY, h}},
-																	   .material = material,
-																	   .combination = CombinationType::Addition});
-							state.testShapes.push_back(shape);
+							services.shapes().addShape({.shapeId = DefaultShapes::Box,
+														.variables = {{DefaultShapes::Box::PosX, x},
+																	  {DefaultShapes::Box::PosY, y},
+																	  {DefaultShapes::Box::SizeX, w},
+																	  {DefaultShapes::Box::SizeY, h}},
+														.material = material,
+														.combination = CombinationType::Addition});
 						}
 						break;
 					}
 					case 2:
 					{
-						if (state.testBalls.size() >= 2 && state.testConstraints.size() < 50)
+						auto dotArray = registry.getComponentArray<Dot>();
+						auto distArray = registry.getComponentArray<DistanceConstraint>();
+						auto springArray = registry.getComponentArray<Spring>();
+						size_t totalConstraints =
+							(distArray ? distArray->getSize() : 0) + (springArray ? springArray->getSize() : 0);
+
+						if (dotArray && dotArray->getSize() >= 2 && totalConstraints < 50)
 						{
-							int idx1 = std::rand() % state.testBalls.size();
-							int idx2 = std::rand() % state.testBalls.size();
+							int idx1 = std::rand() % dotArray->getSize();
+							int idx2 = std::rand() % dotArray->getSize();
 							if (idx1 != idx2)
 							{
 								Entity constraintEnt = registry.createEntity();
@@ -109,83 +115,79 @@ namespace DestroySceneNamespace
 								{
 									auto& constraint =
 										registry.addComponent<WeirdEngine::DistanceConstraint>(constraintEnt);
-									constraint.entityA = state.testBalls[idx1];
-									constraint.entityB = state.testBalls[idx2];
+									constraint.entityA = dotArray->getEntityAtIdx(idx1);
+									constraint.entityB = dotArray->getEntityAtIdx(idx2);
 									constraint.distance = 3.0f + static_cast<float>(std::rand() % 5);
 								}
 								else
 								{
 									auto& spring = registry.addComponent<WeirdEngine::Spring>(constraintEnt);
-									spring.entityA = state.testBalls[idx1];
-									spring.entityB = state.testBalls[idx2];
+									spring.entityA = dotArray->getEntityAtIdx(idx1);
+									spring.entityB = dotArray->getEntityAtIdx(idx2);
 									spring.restDistance = 3.0f + static_cast<float>(std::rand() % 5);
 									spring.stiffness = 0.5f;
 								}
-								state.testConstraints.push_back(constraintEnt);
 							}
 						}
 						break;
 					}
 					case 3:
 					{
-						if (!state.testBalls.empty())
+						auto dotArray = registry.getComponentArray<Dot>();
+						if (dotArray && dotArray->getSize() > 0)
 						{
-							int toRemove = (std::min)(10, static_cast<int>(state.testBalls.size()));
-							for (int j = 0; j < toRemove; ++j)
+							int toRemove = (std::min)(10, static_cast<int>(dotArray->getSize()));
+							for (int j = 0; j < toRemove && dotArray->getSize() > 0; ++j)
 							{
-								int idx = std::rand() % state.testBalls.size();
-								Entity e = state.testBalls[idx];
+								int idx = std::rand() % dotArray->getSize();
+								Entity e = dotArray->getEntityAtIdx(idx);
 
-								for (auto it = state.testConstraints.begin(); it != state.testConstraints.end();)
-								{
-									bool shouldRemove = false;
-									if (registry.hasComponent<WeirdEngine::DistanceConstraint>(*it))
+								registry.forEach<DistanceConstraint>(
+									[&](Entity cEnt, DistanceConstraint& c)
 									{
-										auto& c = registry.getComponent<WeirdEngine::DistanceConstraint>(*it);
 										if (c.entityA == e || c.entityB == e)
-											shouldRemove = true;
-									}
-									else if (registry.hasComponent<WeirdEngine::Spring>(*it))
-									{
-										auto& s = registry.getComponent<WeirdEngine::Spring>(*it);
-										if (s.entityA == e || s.entityB == e)
-											shouldRemove = true;
-									}
+											registry.destroyEntity(cEnt);
+									});
 
-									if (shouldRemove)
+								registry.forEach<Spring>(
+									[&](Entity sEnt, Spring& s)
 									{
-										registry.destroyEntity(*it);
-										it = state.testConstraints.erase(it);
-									}
-									else
-									{
-										++it;
-									}
-								}
+										if (s.entityA == e || s.entityB == e)
+											registry.destroyEntity(sEnt);
+									});
 
 								registry.destroyEntity(e);
-								state.testBalls.erase(state.testBalls.begin() + idx);
 							}
 						}
 						break;
 					}
 					case 4:
 					{
-						if (!state.testShapes.empty())
+						auto shapeArray = registry.getComponentArray<Shape>();
+						if (shapeArray && shapeArray->getSize() > 0)
 						{
-							int idx = std::rand() % state.testShapes.size();
-							registry.destroyEntity(state.testShapes[idx]);
-							state.testShapes.erase(state.testShapes.begin() + idx);
+							int idx = std::rand() % shapeArray->getSize();
+							registry.destroyEntity(shapeArray->getEntityAtIdx(idx));
 						}
 						break;
 					}
 					case 5:
 					{
-						if (!state.testConstraints.empty())
+						auto distArray = registry.getComponentArray<DistanceConstraint>();
+						auto springArray = registry.getComponentArray<Spring>();
+						size_t distCount = distArray ? distArray->getSize() : 0;
+						size_t springCount = springArray ? springArray->getSize() : 0;
+						if (distCount + springCount > 0)
 						{
-							int idx = std::rand() % state.testConstraints.size();
-							registry.destroyEntity(state.testConstraints[idx]);
-							state.testConstraints.erase(state.testConstraints.begin() + idx);
+							size_t pick = std::rand() % (distCount + springCount);
+							if (pick < distCount)
+							{
+								registry.destroyEntity(distArray->getEntityAtIdx(pick));
+							}
+							else
+							{
+								registry.destroyEntity(springArray->getEntityAtIdx(pick - distCount));
+							}
 						}
 						break;
 					}
@@ -193,5 +195,4 @@ namespace DestroySceneNamespace
 			}
 		}
 	}
-
 } // namespace DestroySceneNamespace

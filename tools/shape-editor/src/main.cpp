@@ -8,6 +8,16 @@ using namespace WeirdEngine::Editor;
 
 int main(int argc, char* argv[])
 {
+	for (int i = 1; i < argc; ++i)
+	{
+		std::string_view arg(argv[i]);
+		if (!arg.starts_with("-"))
+		{
+			g_initialShapePath = argv[i];
+			break;
+		}
+	}
+
 	SceneManager& sceneManager = SceneManager::getInstance();
 	sceneManager.registerScene<ShapeEditorScene>("shape-editor");
 

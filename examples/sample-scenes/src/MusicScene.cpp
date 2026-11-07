@@ -1,7 +1,11 @@
 #include "MusicScene.h"
 #include "MusicShapes.h"
 
+#include <cmath>
 #include <cstdio>
+#ifndef WEIRD_DISABLE_IMGUI
+#include <imgui.h>
+#endif
 
 using namespace WeirdEngine;
 
@@ -667,3 +671,285 @@ namespace MusicSceneNamespace
 	}
 
 } // namespace MusicSceneNamespace
+
+void MusicScene::onImGuiRender(Registry& registry, ServiceProvider& services)
+{
+#ifndef WEIRD_DISABLE_IMGUI
+	auto* pState = registry.getState<MusicSceneNamespace::State>();
+	if (!pState)
+		return;
+	auto& state = *pState;
+	auto& musicEngine = services.audio().music();
+	auto currentSong = musicEngine.getCurrentSong();
+
+	if (ImGui::CollapsingHeader("Procedural Song Director & Explorer", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::Indent();
+
+		// 1. Song Picker & Shape Parameters
+		ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Song & Shape Parameters:");
+		const auto& defs = MusicShapes::getSongDefinitions();
+		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_SONGS; ++i)
+		{
+			if (i > 0)
+				ImGui::SameLine();
+			bool isCurrent = (state.currentLoadedSongIndex == static_cast<int>(i) && state.isPlaying);
+			if (isCurrent)
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.65f, 0.35f, 1.0f));
+			if (ImGui::Button(defs[i].title.c_str()))
+			{
+				state.selectedSongIndex = static_cast<int>(i);
+				state.confirmedSongIndex = static_cast<int>(i);
+				state.cursorSongIndex = static_cast<int>(i);
+				state.currentLoadedSongIndex = static_cast<int>(i);
+				state.isPlaying = true;
+
+				float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+				float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+				glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
+
+				MusicSceneNamespace::s_songs[i]->setCenter(previewCenter);
+				state.paramSize = MusicSceneNamespace::s_songs[i]->getParameter(0);
+				state.paramSpeed = MusicSceneNamespace::s_songs[i]->getParameter(1);
+
+				services.audio().setSong(MusicSceneNamespace::s_songs[i],
+										 {.mode = SongVisualizationMode::UI, .material = state.songMats[i]}, false);
+				services.audio().resampleShape();
+				musicEngine.setTrackToggles({true, true, true, true});
+				if (musicEngine.getVolume() < 0.1f)
+					musicEngine.setVolume(0.65f);
+			}
+			if (isCurrent)
+				ImGui::PopStyleColor();
+		}
+
+		bool paramChanged = false;
+		if (ImGui::SliderFloat("Shape Size (Param 0 -> Fill/Volume)", &state.paramSize, 12.0f, 44.0f, "%.1f"))
+		{
+			paramChanged = true;
+		}
+		if (ImGui::SliderFloat("Shape Speed (Param 1 -> Motion/Tempo)", &state.paramSpeed, 0.2f, 3.5f, "%.2f"))
+		{
+			paramChanged = true;
+		}
+		if (paramChanged && state.isPlaying && state.currentLoadedSongIndex >= 0)
+		{
+			services.audio().setSongParameter(0, state.paramSize);
+			services.audio().setSongParameter(1, state.paramSpeed);
+			services.audio().resampleShape();
+		}
+
+		if (currentSong)
+		{
+			// 2. Live Sequencer Timeline (32-Bar Evolving A/B Soundtrack Form)
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Live Sequencer & 32-Bar Evolving Arrangement:");
+
+			float playheadBeat = musicEngine.getPlayheadBeat();
+			int currentStep = static_cast<int>(playheadBeat * 4.0f) % 512;
+			int stepInBar = currentStep % 16;
+			int barInSong = (currentStep / 16) % 32;
+			int phraseInSong = barInSong / 4;
+			int barInPhrase = barInSong % 4;
+			int loopCycle = musicEngine.getLoopCycle();
+
+			uint32_t arch = currentSong->getFingerprint().structuralHash % 3;
+			const char* archNames[] = {"Groove-First (32-Bar A/B Story)",
+									   "Ambient-First (Floating Intro -> Groove -> Bridge -> Breakdown)",
+									   "Driving Minimalist (Persistent Groove, Alternating Layers)"};
+			const char* phraseNames[8] = {"1: Intro Groove (No Lead)",
+										  "2: Section A1 (Main Theme)",
+										  "3: Section A2 (Theme Answer)",
+										  "4: Groove Breather (Lead Rests)",
+										  "5: Section B Bridge (vi-IV-I-V Lift)",
+										  "6: Atmospheric Breakdown (No Drums)",
+										  "7: Section A3 (Evolved Theme Return)",
+										  "8: Outro / Cool-Down (No Lead)"};
+
+			ImGui::Text("Arrangement Style: %s | Loop Cycle: #%d", archNames[arch], loopCycle + 1);
+			ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.5f, 1.0f),
+							   "Current Section: %s | Bar %d/32 (Phrase Bar %d/4) | Step %d/16",
+							   phraseNames[phraseInSong], barInSong + 1, barInPhrase + 1, stepInBar + 1);
+
+			// Visual 16-step beat grid
+			for (int s = 0; s < 16; ++s)
+			{
+				if (s > 0)
+					ImGui::SameLine();
+				bool activeStep = (s == stepInBar && state.isPlaying);
+				bool downbeat = (s % 4 == 0);
+				if (activeStep)
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.95f, 0.4f, 1.0f));
+				else if (downbeat)
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.28f, 0.32f, 0.42f, 1.0f));
+				else
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.16f, 0.20f, 1.0f));
+
+				char stepLbl[16];
+				std::snprintf(stepLbl, sizeof(stepLbl), "%d##step_%d", s + 1, s);
+				ImGui::Button(stepLbl, ImVec2(22.0f, 20.0f));
+				ImGui::PopStyleColor();
+			}
+
+			// 3. Musical Scale & Key Override (Experiment how different scales change the song's mood!)
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::TextColored(ImVec4(0.7f, 0.85f, 1.0f, 1.0f), "Scale, Root Key & Tempo Overrides:");
+
+			const char* scaleNames[] = {"Pentatonic Major (Happy/Open)", "Pentatonic Minor (Cool/Synthwave)",
+										"Major (Bright/Do-Re-Mi)",		 "Natural Minor (Sad/Serious)",
+										"Dorian (Jazzy/Groovy)",		 "Lydian (Dreamy/Sci-Fi)",
+										"Chromatic (All 12 Notes)"};
+			int scaleIdx = static_cast<int>(currentSong->getScale());
+			if (ImGui::Combo("Musical Scale", &scaleIdx, scaleNames, IM_ARRAYSIZE(scaleNames)))
+			{
+				currentSong->setScale(static_cast<WeirdAudio::MusicalScale>(scaleIdx));
+			}
+
+			int rootMidi = currentSong->getRootMidi();
+			std::string rootStr = WeirdAudio::SdfSong::midiToNoteString(rootMidi);
+			if (ImGui::SliderInt("Root Note (Key)", &rootMidi, 48, 72, rootStr.c_str()))
+			{
+				currentSong->setRootMidi(rootMidi);
+			}
+
+			float baseTempo = currentSong->getTempo();
+			if (ImGui::SliderFloat("Base Tempo (BPM)", &baseTempo, 50.0f, 180.0f, "%.1f BPM"))
+			{
+				currentSong->setTempo(baseTempo);
+			}
+			ImGui::Text("Effective Dynamic Tempo: %.1f BPM", musicEngine.getTempo());
+
+			// 4. Track Mixer & Live Instrument Rack Override
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.85f, 1.0f), "Track Mixer & Live Instrument Timbre Override:");
+
+			auto toggles = musicEngine.getTrackToggles();
+			bool togglesChanged = false;
+			if (ImGui::Checkbox("Lead (Melody)", &toggles.lead))
+				togglesChanged = true;
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Bass (Groove)", &toggles.bass))
+				togglesChanged = true;
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Pad (Chords)", &toggles.pad))
+				togglesChanged = true;
+			ImGui::SameLine();
+			if (ImGui::Checkbox("Drums (Beat)", &toggles.drums))
+				togglesChanged = true;
+			if (togglesChanged)
+			{
+				musicEngine.setTrackToggles(toggles);
+			}
+
+			auto rack = musicEngine.getInstrumentRack();
+			bool rackChanged = false;
+			const char* waveNames[] = {"Soft Sine", "Bandlimited Saw", "Pulse / Square", "FM Pluck", "Wavefolder"};
+			int leadW = static_cast<int>(rack.lead);
+			if (ImGui::Combo("Lead Wave", &leadW, waveNames, 5))
+			{
+				rack.lead = static_cast<WeirdAudio::WaveType>(leadW);
+				rackChanged = true;
+			}
+			int bassW = static_cast<int>(rack.bass);
+			if (ImGui::Combo("Bass Wave", &bassW, waveNames, 5))
+			{
+				rack.bass = static_cast<WeirdAudio::WaveType>(bassW);
+				rackChanged = true;
+			}
+			int padW = static_cast<int>(rack.pad);
+			if (ImGui::Combo("Pad Wave", &padW, waveNames, 5))
+			{
+				rack.pad = static_cast<WeirdAudio::WaveType>(padW);
+				rackChanged = true;
+			}
+			const char* kitNames[] = {"808 Electronic", "Acoustic Punch", "Industrial 909"};
+			if (ImGui::Combo("Drum Kit", &rack.drumKit, kitNames, 3))
+			{
+				rackChanged = true;
+			}
+			if (rackChanged)
+			{
+				musicEngine.setInstrumentRack(rack);
+			}
+
+			// 5. Dynamic Game Events (Surge, Duck, Feedback)
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "Test Dynamic Game Events:");
+			if (ImGui::Button("Trigger Surge (+Energy/Climax)"))
+			{
+				services.audio().surge(0.6f);
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Forces all paused tracks ON, adds 4-on-the-floor kick, opens filters, and boosts "
+								  "tempo!");
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Trigger Duck (+Danger/Stealth)"))
+			{
+				services.audio().duck(0.6f);
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Mutes Lead melody, slows tempo, darkens filters, and switches drums to a tense "
+								  "heartbeat!");
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Reset Dynamics"))
+			{
+				services.audio().resetDynamicEffects();
+			}
+
+			ImGui::ProgressBar(musicEngine.getSurgeLevel(), ImVec2(180.0f, 0.0f), "Surge");
+			ImGui::SameLine();
+			ImGui::ProgressBar(musicEngine.getDuckingLevel(), ImVec2(180.0f, 0.0f), "Ducking");
+
+			if (ImGui::Button("Positive UI Click (In-Key)"))
+			{
+				services.audio().triggerPositiveFeedback(1.0f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Negative Error Buzz"))
+			{
+				services.audio().triggerNegativeFeedback(1.0f);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Trigger Sequential Death"))
+			{
+				services.audio().triggerDeath();
+			}
+
+			// 6. Shape-to-Music Visual Traits Inspector
+			ImGui::Spacing();
+			ImGui::Separator();
+			if (ImGui::TreeNodeEx("How the SDF Shape Drives This Song (4 Visual Traits)",
+								  ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				const auto& sp = musicEngine.getShapeParameters();
+				const auto traits = musicEngine.getVisualTraits();
+				ImGui::BulletText("1. Size / Mass (%.2f)      -> Bass Weight (%.2f) & Harmony Richness (%.2f)",
+								  traits.mass, sp.bassWeight, sp.harmonyRichness);
+				ImGui::BulletText("2. Motion Speed (%.2f)     -> Tempo Factor (%.2fx) & Percussion Energy (%.2f)",
+								  traits.motion, sp.tempoFactor, sp.percEnergy);
+				ImGui::BulletText(
+					"3. Spikiness / Sharp (%.2f)-> Brightness (%.2f), Melody Density (%.2f) & Synth Timbre",
+					traits.spikiness, sp.brightness, sp.melodyDensity);
+				ImGui::BulletText("4. Hollow (%.2f)/Asym (%.2f)-> Syncopation (%.2f), Variation (%.2f) & Scale Mood",
+								  traits.hollowness, traits.asymmetry, sp.syncopation, sp.variation);
+				ImGui::TreePop();
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Select one of the 4 songs above (or press 1-4 then Space) to inspect & tweak it live!");
+		}
+
+		ImGui::Unindent();
+	}
+#endif
+}

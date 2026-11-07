@@ -1316,7 +1316,7 @@ namespace TetrominoSceneNamespace
 		}
 
 		// Hard drop: immediately drop piece to ghost position, lock, and award bonus score
-		bool hardDrop = input.getKeyDown(Input::Space);
+		bool hardDrop = input.getKeyDown(Input::Space) || input.getGamepadButtonDown(Input::GamepadButton::South);
 		if (hardDrop && !state.isSpawningPiece && state.activeDots.size() == 4)
 		{
 			int dropDistance = 0;
@@ -1398,8 +1398,8 @@ namespace TetrominoSceneNamespace
 		}
 
 		float stickY = input.getGamepadAxis(Input::GamepadAxis::LeftY);
-		bool downHeld = input.getKey(Input::Down) || input.getGamepadButton(Input::GamepadButton::DpadDown) ||
-						input.getGamepadButton(Input::GamepadButton::South) || (stickY > 0.5f);
+		bool downHeld =
+			input.getKey(Input::Down) || input.getGamepadButton(Input::GamepadButton::DpadDown) || (stickY > 0.5f);
 
 		float speed = 1.0f;
 		if (downHeld)

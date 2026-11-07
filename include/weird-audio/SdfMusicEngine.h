@@ -22,6 +22,14 @@ namespace WeirdEngine
 			Wavefolder		// Buchla-style continuous sine fold - rich, evolving
 		};
 
+		enum class LeadStyle : uint8_t
+		{
+			Auto = 0,	   // Chosen automatically from shape & motion
+			RepeatingHook, // Catchy 1-bar Call & Response motif
+			ChordArpeggio, // Rhythmic chord-tone arpeggiator
+			LyricalSinging // Slow, spacious, sustained chord-tone melody
+		};
+
 		struct InstrumentRack
 		{
 			WaveType lead = WaveType::SoftSine;
@@ -43,8 +51,9 @@ namespace WeirdEngine
 			HiHat = 7
 		};
 
-		static constexpr std::array<Instrument, 6> SongInstruments = {
-			Instrument::Lead, Instrument::Bass, Instrument::Pad, Instrument::Kick, Instrument::Snare, Instrument::HiHat};
+		static constexpr std::array<Instrument, 6> SongInstruments = {Instrument::Lead,	 Instrument::Bass,
+																	  Instrument::Pad,	 Instrument::Kick,
+																	  Instrument::Snare, Instrument::HiHat};
 
 		inline const char* getInstrumentName(Instrument inst)
 		{
@@ -81,6 +90,14 @@ namespace WeirdEngine
 			bool bass = true;
 			bool pad = true;
 			bool drums = true;
+		};
+
+		struct MusicTrackVolumes
+		{
+			float lead = 1.0f;
+			float bass = 1.0f;
+			float pad = 1.0f;
+			float drums = 1.0f;
 		};
 
 		enum class TrackPlayState : uint8_t
@@ -128,16 +145,25 @@ namespace WeirdEngine
 			uint32_t rngState = 123456789u; // Per-voice fast lock-free XorShift32 RNG
 		};
 
+		struct ShapeVisualTraits
+		{
+			float mass = 0.5f;		 // [0.0, 1.0] - Area fill & radial reach (how big / heavy)
+			float motion = 0.0f;	 // [0.0, 1.0] - Boundary movement speed (how fast it moves)
+			float spikiness = 0.0f;	 // [0.0, 1.0] - Perimeter lobes & curvature (smooth vs spiky)
+			float hollowness = 0.0f; // [0.0, 1.0] - Center cutout / ring vs solid core
+			float asymmetry = 0.0f;	 // [0.0, 1.0] - 180-degree opposite-side imbalance
+		};
+
 		struct ShapeMusicalParams
 		{
-			float tempoFactor = 1.0f;	  // [0.7, 1.4] - center distance
-			float melodyDensity = 0.5f;	  // [0.0, 1.0] - East distance
-			float harmonyRichness = 0.5f; // [0.0, 1.0] - North distance
-			float bassWeight = 0.5f;	  // [0.0, 1.0] - South distance
-			float percEnergy = 0.5f;	  // [0.0, 1.0] - North-East distance
-			float brightness = 0.5f;	  // [0.0, 1.0] - North-West distance
-			float syncopation = 0.3f;	  // [0.0, 1.0] - South-East distance
-			float variation = 0.5f;		  // [0.0, 1.0] - South-West distance
+			float tempoFactor = 1.0f;	  // [0.7, 1.4] - Driven by Motion Speed
+			float melodyDensity = 0.5f;	  // [0.0, 1.0] - Driven by Spikiness & Motion
+			float harmonyRichness = 0.5f; // [0.0, 1.0] - Driven by Size / Mass
+			float bassWeight = 0.5f;	  // [0.0, 1.0] - Driven by Size & Core Solidity
+			float percEnergy = 0.5f;	  // [0.0, 1.0] - Driven by Motion Speed & Spikiness
+			float brightness = 0.5f;	  // [0.0, 1.0] - Driven by Spikiness / Sharpness
+			float syncopation = 0.3f;	  // [0.0, 1.0] - Driven by Asymmetry & Hollowness
+			float variation = 0.5f;		  // [0.0, 1.0] - Driven by Spikiness & Hollowness
 		};
 
 		class SdfMusicEngine
@@ -183,25 +209,64 @@ namespace WeirdEngine
 			// Render music frames into buffer (adds to buffer)
 			void render(float* buffer, uint32_t frameCount, uint32_t channels);
 
-			// Play direct note event
+			// Play direct note event (filterQ < 0.0f uses instrument default resonance)
 			void playNote(float freq, float amp, float durationSec, int instrument = 0, float pan = 0.0f,
-						  float filterCutoff = 12000.0f);
+						  float filterCutoff = 12000.0f, float filterQ = -1.0f);
 			void playNote(float freq, float amp, float durationSec, Instrument instrument, float pan = 0.0f,
-						  float filterCutoff = 12000.0f);
+						  float filterCutoff = 12000.0f, float filterQ = -1.0f);
 			void playNote(int midiNote, float amp = 0.8f, float durationSec = 0.4f,
-						  Instrument instrument = Instrument::Lead, float pan = 0.0f, float filterCutoff = 12000.0f);
+						  Instrument instrument = Instrument::Lead, float pan = 0.0f, float filterCutoff = 12000.0f,
+						  float filterQ = -1.0f);
 
 			static float midiToFrequency(int midiNote)
 			{
 				return SdfSong::midiToFrequency(midiNote);
 			}
 
-			// Re-sample the shape at the 8 compass points (call after modifying shape parameters in real time)
+			// Re-sample the shape's rotation-invariant visual traits (call after modifying shape parameters)
 			void resampleShape();
+			ShapeVisualTraits getVisualTraits() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_visualTraits;
+			}
 			ShapeMusicalParams getShapeParameters() const
 			{
 				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_shapeParams;
+			}
+			void setShapeParameters(const ShapeMusicalParams& params)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_shapeParams = params;
+			}
+			bool isShapeParamsOverridden() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_overrideShapeParams;
+			}
+			void setShapeParamsOverridden(bool overridden)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_overrideShapeParams = overridden;
+				if (!overridden)
+				{
+					initDomainSamples();
+					sampleShapeParameters();
+				}
+			}
+			void setTensionOverride(float tension)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_tensionFromComplexity = std::clamp(tension, 0.0f, 1.0f);
+			}
+			void resetInstrumentRackToShape()
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				if (m_currentSong)
+				{
+					selectInstrumentRack(m_currentSong->getFingerprint());
+				}
 			}
 
 			InstrumentRack getInstrumentRack() const
@@ -263,6 +328,19 @@ namespace WeirdEngine
 
 			static const char* getWaveTypeName(WaveType waveType);
 			static const char* getDrumKitName(int kit);
+			static const char* getLeadStyleName(LeadStyle style);
+
+			void setLeadStyle(LeadStyle style)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_leadStyle = style;
+			}
+			LeadStyle getLeadStyle() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_leadStyle;
+			}
+			LeadStyle getEffectiveLeadStyle() const;
 
 			// Track Isolation & Muting
 			void setTrackEnabled(MusicTrack track, bool enabled);
@@ -277,6 +355,17 @@ namespace WeirdEngine
 			{
 				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_tracks;
+			}
+
+			void setTrackVolumes(const MusicTrackVolumes& volumes)
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				m_trackVolumes = volumes;
+			}
+			MusicTrackVolumes getTrackVolumes() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_trackVolumes;
 			}
 
 			TrackPlayState getTrackPlayState(MusicTrack track) const;
@@ -359,6 +448,11 @@ namespace WeirdEngine
 				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
 				return m_currentBeat;
 			}
+			int getLoopCycle() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_loopCycle;
+			}
 
 			bool isPlaying() const
 			{
@@ -384,13 +478,23 @@ namespace WeirdEngine
 			// Sequencer time tracking
 			float m_currentBeat = 0.0f;
 			float m_stepAccumulator = 0.0f;
-			int m_currentStep = 0; // 16th note step counter
+			int m_currentStep = 0; // 16th note step counter (0..511 across 32-bar form)
+			int m_loopCycle = 0;   // Increments every 32 bars to evolve melodies & patterns across loops
 			double m_sceneTime = 0.0;
 
 			// Shape-driven parameter extraction & procedural state
+			ShapeVisualTraits m_visualTraits;
 			ShapeMusicalParams m_shapeParams;
+			bool m_overrideShapeParams = false;
+			LeadStyle m_leadStyle = LeadStyle::Auto;
 			int m_melodyDegree = 0;
 			int m_melodyLastInterval = 0; // Last scale-degree interval (Narmour gap-fill memory)
+			int m_lastLeadStep = -99;
+			float m_lastLeadFreq = 0.0f;
+			float m_lastLeadVel = 0.0f;
+			float m_lastLeadDur = 0.0f;
+			float m_lastLeadPan = 0.0f;
+			float m_lastLeadCutoff = 2000.0f;
 
 			// Dynamic motion & domain fill evaluation
 			static constexpr size_t NUM_DOMAIN_SAMPLES = 32;
@@ -440,11 +544,13 @@ namespace WeirdEngine
 			// AST-driven instrument rack
 			InstrumentRack m_rack;
 
-			// Track isolation toggles
+			// Track isolation toggles & per-track volume trims
 			MusicTrackToggles m_tracks;
+			MusicTrackVolumes m_trackVolumes;
 
 			void selectInstrumentRack(const ASTFingerprint& fp);
 			void sampleShapeParameters();
+			void updateShapeParamsFromTraits();
 			void initDomainSamples();
 			void sampleDomainMotionAndFill(double sceneTime, double deltaTime = 0.016);
 			float estimateSurfaceCurvature(const std::shared_ptr<IMathExpression>& shape, float* params,

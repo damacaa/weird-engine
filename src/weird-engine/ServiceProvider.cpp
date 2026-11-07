@@ -222,15 +222,15 @@ namespace WeirdEngine
 	}
 
 	void AudioService::playNote(float freq, float amp, float durationSec, WeirdAudio::Instrument instrument, float pan,
-								float filterCutoff)
+								float filterCutoff, float filterQ)
 	{
-		music().playNote(freq, amp, durationSec, instrument, pan, filterCutoff);
+		music().playNote(freq, amp, durationSec, instrument, pan, filterCutoff, filterQ);
 	}
 
 	void AudioService::playNote(int midiNote, float amp, float durationSec, WeirdAudio::Instrument instrument,
-								float pan, float filterCutoff)
+								float pan, float filterCutoff, float filterQ)
 	{
-		music().playNote(midiNote, amp, durationSec, instrument, pan, filterCutoff);
+		music().playNote(midiNote, amp, durationSec, instrument, pan, filterCutoff, filterQ);
 	}
 
 	void AudioService::setInstrumentRack(const WeirdAudio::InstrumentRack& rack)

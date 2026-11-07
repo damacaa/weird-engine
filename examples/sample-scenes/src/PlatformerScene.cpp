@@ -186,6 +186,7 @@ namespace PlatformerSceneNamespace
 				previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 2.0f;
 				previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 2.0f;
 				registry.setComponentDirty(previewUi);
+				services.render().forceShaderRefreshUI();
 			}
 		}
 

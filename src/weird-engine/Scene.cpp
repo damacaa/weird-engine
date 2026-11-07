@@ -1127,40 +1127,114 @@ namespace WeirdEngine
 				if (currentSong)
 				{
 					ImGui::Text("Active Song: %s", currentSong->getName().c_str());
-					if (ImGui::Button("Resample Shape"))
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Resample Shape"))
 					{
+						m_services.audio().resampleShape();
+					}
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Recalculate from Shape"))
+					{
+						musicEngine.setShapeParamsOverridden(false);
+						currentSong->calculateMusicalPropertiesFromShape();
+						musicEngine.resetInstrumentRackToShape();
 						m_services.audio().resampleShape();
 					}
 
 					ImGui::Spacing();
-					if (ImGui::TreeNodeEx("Musical Properties", ImGuiTreeNodeFlags_DefaultOpen))
+					if (ImGui::TreeNodeEx("Musical Properties & Shape Mapping", ImGuiTreeNodeFlags_DefaultOpen))
 					{
-						ImGui::Text("Scale:  %s", WeirdAudio::SdfSong::getScaleName(currentSong->getScale()));
-						ImGui::Text("Tempo:  %.1f BPM", currentSong->getTempo());
-						ImGui::Text("Root:   %s (MIDI %d)",
-									WeirdAudio::SdfSong::midiToNoteString(currentSong->getRootMidi()).c_str(),
-									currentSong->getRootMidi());
+						const char* scaleNames[] = {
+							"Pentatonic Major (Happy/Open)", "Pentatonic Minor (Cool/Synthwave)",
+							"Major (Bright/Do-Re-Mi)",		 "Natural Minor (Sad/Serious)",
+							"Dorian (Jazzy/Groovy)",		 "Lydian (Dreamy/Sci-Fi)",
+							"Chromatic (All 12 Notes)"};
+						int scaleIdx = static_cast<int>(currentSong->getScale());
+						if (ImGui::Combo("Scale", &scaleIdx, scaleNames, IM_ARRAYSIZE(scaleNames)))
+						{
+							currentSong->setScale(static_cast<WeirdAudio::MusicalScale>(scaleIdx));
+						}
 
-						const auto& p = musicEngine.getShapeParameters();
-						ImGui::Spacing();
-						ImGui::Text("Melody Density:  %.2f", p.melodyDensity);
-						ImGui::Text("Harmony Richness:%.2f", p.harmonyRichness);
-						ImGui::Text("Bass Weight:     %.2f", p.bassWeight);
-						ImGui::Text("Brightness:      %.2f", p.brightness);
-						ImGui::Text("Syncopation:     %.2f", p.syncopation);
+						float baseTempo = currentSong->getTempo();
+						if (ImGui::SliderFloat("Base Tempo", &baseTempo, 40.0f, 180.0f, "%.1f BPM"))
+						{
+							currentSong->setTempo(baseTempo);
+						}
+						ImGui::TextDisabled("Effective Dynamic Tempo: %.1f BPM (Motion x%.2f)", musicEngine.getTempo(),
+											musicEngine.getTempoFromMotion());
+
+						int rootMidi = currentSong->getRootMidi();
+						std::string rootLabel = WeirdAudio::SdfSong::midiToNoteString(rootMidi) + " (MIDI " +
+												std::to_string(rootMidi) + ")";
+						if (ImGui::SliderInt("Root Key", &rootMidi, 48, 72, rootLabel.c_str()))
+						{
+							currentSong->setRootMidi(rootMidi);
+						}
 
 						ImGui::Spacing();
-						ImGui::ProgressBar(musicEngine.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
-						ImGui::ProgressBar(musicEngine.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
-						ImGui::ProgressBar(musicEngine.getComplexityNorm(), ImVec2(-1.0f, 0.0f), "Surface Complexity");
+						bool overrideParams = musicEngine.isShapeParamsOverridden();
+						if (ImGui::Checkbox("Manual Override Shape Parameters (Tune by Ear)", &overrideParams))
+						{
+							musicEngine.setShapeParamsOverridden(overrideParams);
+						}
+
+						auto p = musicEngine.getShapeParameters();
+						if (!overrideParams)
+						{
+							ImGui::BeginDisabled();
+						}
+						bool paramsEdited = false;
+						paramsEdited |=
+							ImGui::SliderFloat("Tempo Factor (Motion)", &p.tempoFactor, 0.70f, 1.40f, "%.2fx");
+						paramsEdited |= ImGui::SliderFloat("Melody Density (Spikiness+Motion)", &p.melodyDensity, 0.0f,
+														   1.0f, "%.2f");
+						paramsEdited |=
+							ImGui::SliderFloat("Harmony Richness (Mass)", &p.harmonyRichness, 0.0f, 1.0f, "%.2f");
+						paramsEdited |=
+							ImGui::SliderFloat("Bass Weight (Mass+Solid Core)", &p.bassWeight, 0.0f, 1.0f, "%.2f");
+						paramsEdited |=
+							ImGui::SliderFloat("Percussion Energy (Motion+Spikes)", &p.percEnergy, 0.0f, 1.0f, "%.2f");
+						paramsEdited |= ImGui::SliderFloat("Brightness (Spikiness)", &p.brightness, 0.0f, 1.0f, "%.2f");
+						paramsEdited |=
+							ImGui::SliderFloat("Syncopation (Asymmetry+Hollow)", &p.syncopation, 0.0f, 1.0f, "%.2f");
+						paramsEdited |=
+							ImGui::SliderFloat("Variation (Spikiness+Hollow)", &p.variation, 0.0f, 1.0f, "%.2f");
+						if (paramsEdited && overrideParams)
+						{
+							musicEngine.setShapeParameters(p);
+						}
+						if (!overrideParams)
+						{
+							ImGui::EndDisabled();
+						}
+
+						ImGui::Spacing();
+						const auto traits = musicEngine.getVisualTraits();
+						ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.75f, 1.0f),
+										   "Measured Visual Shape Traits (Rotation-Invariant):");
+						ImGui::ProgressBar(traits.mass, ImVec2(-1.0f, 0.0f), "1. Size / Mass (Fill & Reach)");
+						ImGui::ProgressBar(traits.motion, ImVec2(-1.0f, 0.0f), "2. Motion Speed");
+						ImGui::ProgressBar(traits.spikiness, ImVec2(-1.0f, 0.0f), "3. Spikiness / Sharpness");
+						ImGui::ProgressBar(std::clamp(0.5f * traits.hollowness + 0.5f * traits.asymmetry, 0.0f, 1.0f),
+										   ImVec2(-1.0f, 0.0f), "4. Hollowness & Asymmetry");
 						ImGui::TreePop();
 					}
 
 					ImGui::Spacing();
-					if (ImGui::TreeNodeEx("Instrument Rack (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
+					if (ImGui::TreeNodeEx("Instrument Rack & Track Mixer (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
 					{
-						const auto& rack = musicEngine.getInstrumentRack();
-						ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
+						auto rack = musicEngine.getInstrumentRack();
+						auto vols = musicEngine.getTrackVolumes();
+						bool rackChanged = false;
+						bool volsChanged = false;
+
+						ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms, Kit & Mix:");
+						ImGui::SameLine();
+						if (ImGui::SmallButton("Reset Rack to AST"))
+						{
+							musicEngine.resetInstrumentRackToShape();
+							rack = musicEngine.getInstrumentRack();
+						}
 
 						auto renderTrackStatusBadge = [&](WeirdAudio::MusicTrack track)
 						{
@@ -1201,11 +1275,16 @@ namespace WeirdEngine
 							ImGui::SameLine(startX + badgeColWidth);
 						};
 
-						float trackNameColWidth =
-							(std::max)({ImGui::CalcTextSize("Lead Wave:").x, ImGui::CalcTextSize("Bass Wave:").x,
-										ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
-							8.0f;
+						const char* waveNames[] = {"Soft Sine (Warm)", "Bandlimited Saw (Bright)",
+												   "Pulse Square (Reedy)", "FM Pluck (Bell)", "Wavefolder (Buchla)"};
+						const char* kitNames[] = {"Deep 808 Electronic", "Acoustic Punch", "Industrial / 909"};
 
+						float trackNameColWidth =
+							(std::max)({ImGui::CalcTextSize("Lead:").x, ImGui::CalcTextSize("Bass:").x,
+										ImGui::CalcTextSize("Pad:").x, ImGui::CalcTextSize("Drums:").x}) +
+							6.0f;
+
+						// Lead Row
 						bool leadEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Lead);
 						if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
 						{
@@ -1213,11 +1292,37 @@ namespace WeirdEngine
 						}
 						ImGui::SameLine();
 						float startXLead = ImGui::GetCursorPosX();
-						ImGui::Text("Lead Wave:");
+						ImGui::Text("Lead:");
 						ImGui::SameLine(startXLead + trackNameColWidth);
 						renderTrackStatusBadge(WeirdAudio::MusicTrack::Lead);
-						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.lead));
+						ImGui::SetNextItemWidth(165.0f);
+						int leadW = static_cast<int>(rack.lead);
+						if (ImGui::Combo("##lead_wave", &leadW, waveNames, IM_ARRAYSIZE(waveNames)))
+						{
+							rack.lead = static_cast<WeirdAudio::WaveType>(leadW);
+							rackChanged = true;
+						}
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(80.0f);
+						volsChanged |= ImGui::SliderFloat("Vol##lead_vol", &vols.lead, 0.0f, 1.5f, "%.2f");
 
+						// Lead Style Row
+						const char* leadStyleNames[] = {"Auto (From Shape)", "Repeating Hook (Call & Response)",
+														"Chord Arpeggio (Synthwave)", "Lyrical Singing (Slow/Ambient)"};
+						int leadStyleIdx = static_cast<int>(musicEngine.getLeadStyle());
+						ImGui::SetNextItemWidth(235.0f);
+						if (ImGui::Combo("Lead Style", &leadStyleIdx, leadStyleNames, IM_ARRAYSIZE(leadStyleNames)))
+						{
+							musicEngine.setLeadStyle(static_cast<WeirdAudio::LeadStyle>(leadStyleIdx));
+						}
+						if (musicEngine.getLeadStyle() == WeirdAudio::LeadStyle::Auto)
+						{
+							ImGui::SameLine();
+							ImGui::TextDisabled("-> %s", WeirdAudio::SdfMusicEngine::getLeadStyleName(
+															 musicEngine.getEffectiveLeadStyle()));
+						}
+
+						// Bass Row
 						bool bassEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Bass);
 						if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
 						{
@@ -1225,11 +1330,21 @@ namespace WeirdEngine
 						}
 						ImGui::SameLine();
 						float startXBass = ImGui::GetCursorPosX();
-						ImGui::Text("Bass Wave:");
+						ImGui::Text("Bass:");
 						ImGui::SameLine(startXBass + trackNameColWidth);
 						renderTrackStatusBadge(WeirdAudio::MusicTrack::Bass);
-						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.bass));
+						ImGui::SetNextItemWidth(165.0f);
+						int bassW = static_cast<int>(rack.bass);
+						if (ImGui::Combo("##bass_wave", &bassW, waveNames, IM_ARRAYSIZE(waveNames)))
+						{
+							rack.bass = static_cast<WeirdAudio::WaveType>(bassW);
+							rackChanged = true;
+						}
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(80.0f);
+						volsChanged |= ImGui::SliderFloat("Vol##bass_vol", &vols.bass, 0.0f, 1.5f, "%.2f");
 
+						// Pad Row
 						bool padEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Pad);
 						if (ImGui::Checkbox("##pad_toggle", &padEnabled))
 						{
@@ -1237,11 +1352,21 @@ namespace WeirdEngine
 						}
 						ImGui::SameLine();
 						float startXPad = ImGui::GetCursorPosX();
-						ImGui::Text("Pad Wave:");
+						ImGui::Text("Pad:");
 						ImGui::SameLine(startXPad + trackNameColWidth);
 						renderTrackStatusBadge(WeirdAudio::MusicTrack::Pad);
-						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getWaveTypeName(rack.pad));
+						ImGui::SetNextItemWidth(165.0f);
+						int padW = static_cast<int>(rack.pad);
+						if (ImGui::Combo("##pad_wave", &padW, waveNames, IM_ARRAYSIZE(waveNames)))
+						{
+							rack.pad = static_cast<WeirdAudio::WaveType>(padW);
+							rackChanged = true;
+						}
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(80.0f);
+						volsChanged |= ImGui::SliderFloat("Vol##pad_vol", &vols.pad, 0.0f, 1.5f, "%.2f");
 
+						// Drums Row
 						bool drumsEnabled = musicEngine.isTrackEnabled(WeirdAudio::MusicTrack::Drums);
 						if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
 						{
@@ -1249,21 +1374,70 @@ namespace WeirdEngine
 						}
 						ImGui::SameLine();
 						float startXDrums = ImGui::GetCursorPosX();
-						ImGui::Text("Drum Kit:");
+						ImGui::Text("Drums:");
 						ImGui::SameLine(startXDrums + trackNameColWidth);
 						renderTrackStatusBadge(WeirdAudio::MusicTrack::Drums);
-						ImGui::Text("%s", WeirdAudio::SdfMusicEngine::getDrumKitName(rack.drumKit));
+						ImGui::SetNextItemWidth(165.0f);
+						if (ImGui::Combo("##drum_kit", &rack.drumKit, kitNames, IM_ARRAYSIZE(kitNames)))
+						{
+							rackChanged = true;
+						}
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(80.0f);
+						volsChanged |= ImGui::SliderFloat("Vol##drums_vol", &vols.drums, 0.0f, 1.5f, "%.2f");
 
 						ImGui::Spacing();
-						ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
-						ImGui::Text("Pulse Width: %.2f", rack.pulseWidth);
-						ImGui::Text("FM Mod Index:%.2f", rack.fmModIndex);
-						ImGui::Text("Fold Drive:  %.2f", rack.foldDrive);
+						ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Modulation:");
+						rackChanged |= ImGui::SliderFloat("Pulse Width", &rack.pulseWidth, 0.05f, 0.50f, "%.2f");
+						rackChanged |= ImGui::SliderFloat("FM Mod Index", &rack.fmModIndex, 0.0f, 8.0f, "%.2f");
+						rackChanged |= ImGui::SliderFloat("Fold Drive", &rack.foldDrive, 0.0f, 6.0f, "%.2f");
+
+						if (rackChanged)
+						{
+							musicEngine.setInstrumentRack(rack);
+						}
+						if (volsChanged)
+						{
+							musicEngine.setTrackVolumes(vols);
+						}
 						ImGui::TreePop();
 					}
 
 					ImGui::Spacing();
-					if (ImGui::TreeNodeEx("AST Topology Fingerprint", ImGuiTreeNodeFlags_DefaultOpen))
+					if (ImGui::TreeNodeEx("Arrangement & Dynamic Events", ImGuiTreeNodeFlags_DefaultOpen))
+					{
+						float playheadBeat = musicEngine.getPlayheadBeat();
+						int currentStep = static_cast<int>(playheadBeat * 4.0f) % 256;
+						int stepInBar = currentStep % 16;
+						int barInSong = (currentStep / 16) % 16;
+						int phraseInSong = barInSong / 4;
+						uint32_t arch = currentSong->getFingerprint().structuralHash % 3;
+						const char* phraseNames[3][4] = {
+							{"Intro (No Lead)", "Full Hook", "Breakdown (Chords+Lead)", "Full Drop"},
+							{"Atmosphere (No Drums/Bass)", "Rhythm Build", "Full Climax", "Breather"},
+							{"Intro Groove", "Full Groove", "Minimal (No Pad)", "Full Groove"}};
+						ImGui::Text("Section: %s | Bar %d/16 | Step %d/16", phraseNames[arch][phraseInSong],
+									barInSong + 1, stepInBar + 1);
+
+						if (ImGui::SmallButton("Surge (+Climax)"))
+						{
+							m_services.audio().surge(0.6f);
+						}
+						ImGui::SameLine();
+						if (ImGui::SmallButton("Duck (+Stealth/Danger)"))
+						{
+							m_services.audio().duck(0.6f);
+						}
+						ImGui::SameLine();
+						if (ImGui::SmallButton("Reset Dynamics"))
+						{
+							m_services.audio().resetDynamicEffects();
+						}
+						ImGui::TreePop();
+					}
+
+					ImGui::Spacing();
+					if (ImGui::TreeNode("AST Topology Fingerprint"))
 					{
 						const auto& fp = currentSong->getFingerprint();
 						ImGui::Text("Structural Seed: 0x%08X", fp.structuralHash);

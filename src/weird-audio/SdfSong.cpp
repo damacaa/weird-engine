@@ -196,69 +196,78 @@ namespace WeirdEngine
 			float motionNorm = std::clamp(avgMotion / 30.0f, 0.0f, 1.0f);
 			m_tempo = std::clamp(45.0f + 85.0f * std::pow(motionNorm, 0.7f), 40.0f, 150.0f);
 
-			// 2. Sample 8 compass points at universal SAMPLE_RADIUS to compute symmetry, variance, and base note
+			// 2. Rotation-invariant 24-angle perimeter profiling to compute spikiness, asymmetry, and hollowness
 			float dCenter = evalRaw(0.0f, 0.0f, paramsT0);
 			float r = SAMPLE_RADIUS;
-			float k = 0.70710678f;
-			float dE = evalRaw(r, 0.0f, paramsT0);
-			float dW = evalRaw(-r, 0.0f, paramsT0);
-			float dN = evalRaw(0.0f, r, paramsT0);
-			float dS = evalRaw(0.0f, -r, paramsT0);
-			float dNE = evalRaw(r * k, r * k, paramsT0);
-			float dNW = evalRaw(-r * k, r * k, paramsT0);
-			float dSE = evalRaw(r * k, -r * k, paramsT0);
-			float dSW = evalRaw(-r * k, -r * k, paramsT0);
-
-			float dSamples[8] = {dE, dNE, dN, dNW, dW, dSW, dS, dSE};
+			constexpr int NUM_RING_ANGLES = 24;
+			constexpr float PI = 3.14159265358979323846f;
+			float dSamples[NUM_RING_ANGLES]{};
 			float meanD = 0.0f;
-			for (float d : dSamples)
+
+			for (int i = 0; i < NUM_RING_ANGLES; ++i)
 			{
-				meanD += d;
+				float angle = static_cast<float>(i) * (2.0f * PI / static_cast<float>(NUM_RING_ANGLES));
+				dSamples[i] = evalRaw(r * std::cos(angle), r * std::sin(angle), paramsT0);
+				meanD += dSamples[i];
 			}
-			meanD /= 8.0f;
+			meanD /= static_cast<float>(NUM_RING_ANGLES);
 
 			float variance = 0.0f;
-			for (float d : dSamples)
+			float stepDiffSum = 0.0f;
+			for (int i = 0; i < NUM_RING_ANGLES; ++i)
 			{
-				float diff = d - meanD;
+				float diff = dSamples[i] - meanD;
 				variance += diff * diff;
+				int nextIdx = (i + 1) % NUM_RING_ANGLES;
+				stepDiffSum += std::abs(dSamples[i] - dSamples[nextIdx]);
 			}
-			variance /= 8.0f;
+			variance /= static_cast<float>(NUM_RING_ANGLES);
+			float avgStepDiff = stepDiffSum / static_cast<float>(NUM_RING_ANGLES);
 
-			float asymmetry = std::abs(dE - dW) + std::abs(dN - dS) + std::abs(dNE - dSW) + std::abs(dNW - dSE);
-			float radialAlternation = std::abs((dE + dW + dN + dS) - (dNE + dNW + dSE + dSW));
+			float asymSum = 0.0f;
+			constexpr int HALF_RING = NUM_RING_ANGLES / 2;
+			for (int i = 0; i < HALF_RING; ++i)
+			{
+				asymSum += std::abs(dSamples[i] - dSamples[i + HALF_RING]);
+			}
+			float meanAsym = asymSum / static_cast<float>(HALF_RING);
 
-			// 3. Base note (root MIDI): calculated based on center distance, fill ratio, and mean distance
-			// Maps to a solid, grounded key around Middle C (MIDI 55 [G3] to 67 [G4])
-			// Distance is normalized by 0.1f to maintain exact resulting note with 10x shape scale
+			// 3. Base note (root MIDI): calculated from rotation-invariant center depth, fill ratio, and mean distance
+			// Maps to a solid, grounded key around Middle C (MIDI 55 [G3] to 66 [F#4])
 			float rootMetric = std::abs((dCenter * 0.1f) * 2.3f + (meanD * 0.1f) * 1.7f + fillRatio * 7.0f);
 			int semitone = static_cast<int>(std::floor(rootMetric)) % 12;
 			m_rootMidi = 55 + semitone;
 
-			// 4. Musical Scale: normalized geometric thresholds maintain exact musical scale selection
+			// 4. Musical Scale: driven by rotation-invariant visual traits (Smooth vs Spiky, Solid vs Hollow, Symmetric
+			// vs Asymmetric)
 			float normVariance = variance / 100.0f;
-			float normAsymmetry = asymmetry / 10.0f;
-			float normAlternation = radialAlternation / 10.0f;
-			float normCenter = dCenter / 10.0f;
+			float normAsymmetry = meanAsym / 3.5f;
+			float normSpikiness = avgStepDiff / 3.2f;
+			bool isHollowCenter = (dCenter > 0.0f);
 
-			if (normVariance < 0.15f && normAsymmetry < 0.25f)
+			if (normVariance < 0.15f && normAsymmetry < 0.25f && !isHollowCenter)
 			{
+				// Smooth, solid, symmetric shape (e.g. circle, soft rounded blob) -> warm, happy Pentatonic Major
 				m_scale = MusicalScale::PentatonicMajor;
 			}
-			else if (normAlternation > 0.8f)
+			else if (normSpikiness > 0.75f && !isHollowCenter)
 			{
+				// Spiky star or gear with solid core -> cool, driving Pentatonic Minor
 				m_scale = MusicalScale::PentatonicMinor;
 			}
-			else if (normAsymmetry < 0.6f && normCenter < 0.0f)
+			else if (normAsymmetry < 0.55f && !isHollowCenter)
 			{
+				// Balanced solid shape -> bright Major
 				m_scale = MusicalScale::Major;
 			}
-			else if (normCenter > 0.0f && normVariance > 0.5f)
+			else if (isHollowCenter && normVariance > 0.45f)
 			{
-				m_scale = MusicalScale::Lydian;
+				// Hollow ring/cutout with varied contour -> dreamy Sci-Fi Lydian or groovy Dorian
+				m_scale = (normSpikiness > 0.65f) ? MusicalScale::Dorian : MusicalScale::Lydian;
 			}
-			else if (normAsymmetry > 1.2f)
+			else if (normAsymmetry > 1.1f || (isHollowCenter && normAsymmetry > 0.6f))
 			{
+				// Strongly off-center / eclipsed shape -> atmospheric Natural Minor
 				m_scale = MusicalScale::NaturalMinor;
 			}
 			else

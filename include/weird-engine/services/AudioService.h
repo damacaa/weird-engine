@@ -76,10 +76,10 @@ namespace WeirdEngine
 		// Direct Note Playback with Song Instruments
 		void playNote(float freq, float amp = 0.8f, float durationSec = 0.4f,
 					  WeirdAudio::Instrument instrument = WeirdAudio::Instrument::Lead, float pan = 0.0f,
-					  float filterCutoff = 12000.0f);
+					  float filterCutoff = 12000.0f, float filterQ = -1.0f);
 		void playNote(int midiNote, float amp = 0.8f, float durationSec = 0.4f,
 					  WeirdAudio::Instrument instrument = WeirdAudio::Instrument::Lead, float pan = 0.0f,
-					  float filterCutoff = 12000.0f);
+					  float filterCutoff = 12000.0f, float filterQ = -1.0f);
 
 		// Instrument Rack Configuration
 		void setInstrumentRack(const WeirdAudio::InstrumentRack& rack);

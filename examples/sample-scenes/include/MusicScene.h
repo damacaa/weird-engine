@@ -84,4 +84,6 @@ public:
 		addUpdateSystem(MusicSceneNamespace::uiDotsSystem);
 		addUpdateSystem(MusicSceneNamespace::updateWorldVisualsSystem);
 	}
+
+	void onImGuiRender(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override;
 };

@@ -77,6 +77,7 @@ namespace MenuSceneNamespace
 					{"COLLISIONS", "Interactive particle collision dynamics", "launch_scene", "collisions"},
 					{"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},
 					{"MUSIC", "Original Music Scene visualizer", "launch_scene", "music"},
+					{"INSTRUMENTS", "Interactive synthesizer & instrument playground", "launch_scene", "instruments"},
 				}},
 			MenuCategory{"MUSIC",
 						 {

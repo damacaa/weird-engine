@@ -5,6 +5,7 @@
 #include "CollisionScene.h"
 #include "DestroyScene.h"
 #include "ImageScene.h"
+#include "InstrumentScene.h"
 #include "LifeScene.h"
 #include "MenuScene.h"
 #include "MusicScene.h"
@@ -26,6 +27,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<ShapeCombinationsScene>("shapes");
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MusicScene>("music");
+	sceneManager.registerScene<InstrumentScene>("instruments");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<PlatformerScene>("platformer");
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop

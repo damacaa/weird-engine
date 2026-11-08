@@ -27,9 +27,10 @@ jobs:
       # Build the Web (Emscripten / WASM) version
       # ------------------------------------------------------------------------
       - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
         with:
           version: latest
+          actions-cache-folder: emsdk-cache
 
       - name: Build WeirdSamples for Web
         run: |

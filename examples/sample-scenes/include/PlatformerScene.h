@@ -31,8 +31,8 @@ namespace PlatformerSceneNamespace
 		float gravity = 32.0f;
 		float jumpCutMultiplier = 0.5f;
 		float terminalFallVelocity = -25.0f;
-		float coyoteTime = 0.12f;
-		float jumpBufferTime = 0.10f;
+		float coyoteTime = 0.10f;
+		float jumpBufferTime = 0.05f;
 
 		// Surface jump tuning (normal-directed push + upward lift)
 		float jumpNormalPush = 11.0f;
@@ -45,14 +45,24 @@ namespace PlatformerSceneNamespace
 		float wallSlideSpeed = 4.0f;
 		float wallJumpLockout = 0.18f;
 
+		// Slope tuning
+		float minGroundNormalY = 0.40f;	   // Surfaces with normal.y >= this count as ground or slope
+		float maxWalkableNormalY = 0.68f;  // Slopes steeper than this (normal.y < 0.68) will slide down
+		float slopeSlideMultiplier = 1.1f; // Slide acceleration multiplier on steep slopes
+		float maxSlideSpeed = 16.0f;	   // Max terminal slide speed on steep slopes
+
 		// Runtime state
 		float coyoteTimer = 0.0f;
 		float jumpBufferTimer = 0.0f;
+		float jumpGraceTimer = 0.0f;
 		float wallJumpLockoutTimer = 0.0f;
 		WeirdEngine::vec2 lastContactNormal{0.0f, 1.0f};
+		WeirdEngine::vec2 lastAirborneVelocity{0.0f, 0.0f};
 		bool isGrounded = false;
+		bool isSliding = false;
 		bool isOnWall = false;
 		bool wasJumpHeld = false;
+		bool playedImpactThisFrame = false;
 	};
 	static_assert(WeirdEngine::is_snapshot_serializable_v<State>,
 				  "PlatformerScene State must contain only snapshot-compatible values");
@@ -63,6 +73,8 @@ namespace PlatformerSceneNamespace
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void loadCharacterSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupGroundSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void onShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
+								WeirdEngine::EntityShapeCollisionEvent& event);
 	void platformBuilderSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void walkingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void cameraFollowSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -77,6 +89,8 @@ public:
 		addStartSystem(PlatformerSceneNamespace::setupEnvironmentSystem);
 		addStartSystem(PlatformerSceneNamespace::loadCharacterSystem);
 		addStartSystem(PlatformerSceneNamespace::setupGroundSystem);
+
+		addEntityShapeCollisionSystem(PlatformerSceneNamespace::onShapeCollisionSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(PlatformerSceneNamespace::platformBuilderSystem);

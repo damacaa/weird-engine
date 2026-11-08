@@ -48,9 +48,10 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Setup Emscripten (Web)
         if: matrix.target == 'web'
-        uses: mymindstorm/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
         with:
           version: latest
+          actions-cache-folder: emsdk-cache
 
       # ------------------------------------------------------------------------
       # Desktop Builds (Windows & Linux)

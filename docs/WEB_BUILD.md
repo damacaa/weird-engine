@@ -211,7 +211,7 @@ keep in mind:
 
 - Use `ubuntu-22.04` (both repos do). It is a known-good runner for this
   toolchain.
-- Use `mymindstorm/setup-emsdk@v14` with `actions-cache-folder` so the SDK is
+- Use `emscripten-core/setup-emsdk@v16` with `actions-cache-folder` so the SDK is
   cached between runs.
 - Host packages (`libgl-dev`, `libwayland-dev`, ...) are **not** needed for the
   web target — Emscripten provides its own sysroot. The extra `apt-get` step in
@@ -252,7 +252,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
         with:
           version: latest
           # Cache the SDK so later runs skip the download

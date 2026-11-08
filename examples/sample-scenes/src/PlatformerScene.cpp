@@ -30,12 +30,6 @@ namespace PlatformerSceneNamespace
 		background.secondaryColor = vec4(0.4f, 0.75f, 0.85f, 1.0f);
 		background.scale = 0.2f;
 
-		for (size_t i = 0; i < ColorPalette::Default.size() && i < 16; ++i)
-		{
-			auto& m = services.materials2D().get(static_cast<uint16_t>(i));
-			m.color = ColorPalette::Default[i];
-		}
-
 		services.physics().setGravity(-25.0f);
 		services.physics().setDamping(0.0f);
 		services.physics().setFriction(0.0f);
@@ -49,16 +43,13 @@ namespace PlatformerSceneNamespace
 	{
 		State& state = getState(registry);
 
-		auto& floorMat = services.materials2D().createMaterial("player_floor");
-		floorMat.color = ColorPalette::Yellow; // Yellow on floor
+		const auto& floorMat = services.materials2D().getHandle("player_floor");
 		state.floorMaterial = floorMat;
 
-		auto& wallMat = services.materials2D().createMaterial("player_wall");
-		wallMat.color = ColorPalette::Orange; // Orange on wall
+		const auto& wallMat = services.materials2D().getHandle("player_wall");
 		state.wallMaterial = wallMat;
 
-		auto& airMat = services.materials2D().createMaterial("player_air");
-		airMat.color = ColorPalette::Magenta; // Magenta in air
+		const auto& airMat = services.materials2D().getHandle("player_air");
 		state.airMaterial = airMat;
 
 		Entity player = registry.createEntity();
@@ -80,62 +71,11 @@ namespace PlatformerSceneNamespace
 	{
 		State& state = getState(registry);
 
-		auto& groundMat = services.materials2D().createMaterial("ground");
-		groundMat.color = ColorPalette::LightGreen;
-
-		auto& platformMat = services.materials2D().createMaterial("platform");
-		platformMat.color = ColorPalette::Cyan;
-
-		auto& addMat = services.materials2D().createMaterial("ui_box_preview_add");
-		addMat.color = ColorPalette::White;
+		const auto& addMat = services.materials2D().getHandle("ui_box_preview_add");
 		state.previewAddMaterial = addMat;
 
-		auto& subMat = services.materials2D().createMaterial("ui_box_preview_sub");
-		subMat.color = ColorPalette::Red;
+		const auto& subMat = services.materials2D().getHandle("ui_box_preview_sub");
 		state.previewSubMaterial = subMat;
-
-		// Main floor: flat ground at y = 0
-		services.shapes().addShape({.shapeId = DefaultShapes::SineWave,
-									.variables = {{DefaultShapes::SineWave::Amplitude, 0.0f},
-												  {DefaultShapes::SineWave::Period, 0.0f},
-												  {DefaultShapes::SineWave::Speed, 0.0f},
-												  {DefaultShapes::SineWave::Offset, 0.0f}},
-									.material = groundMat,
-									.combination = CombinationType::Addition});
-
-		// Floating platforms to jump on and walk over
-		services.shapes().addShape({.shapeId = DefaultShapes::Box,
-									.variables = {{DefaultShapes::Box::PosX, 7.0f},
-												  {DefaultShapes::Box::PosY, 2.5f},
-												  {DefaultShapes::Box::SizeX, 3.0f},
-												  {DefaultShapes::Box::SizeY, 0.3f}},
-									.material = platformMat,
-									.combination = CombinationType::Addition});
-
-		services.shapes().addShape({.shapeId = DefaultShapes::Box,
-									.variables = {{DefaultShapes::Box::PosX, 15.0f},
-												  {DefaultShapes::Box::PosY, 5.0f},
-												  {DefaultShapes::Box::SizeX, 3.0f},
-												  {DefaultShapes::Box::SizeY, 0.3f}},
-									.material = platformMat,
-									.combination = CombinationType::Addition});
-
-		services.shapes().addShape({.shapeId = DefaultShapes::Box,
-									.variables = {{DefaultShapes::Box::PosX, -7.0f},
-												  {DefaultShapes::Box::PosY, 3.0f},
-												  {DefaultShapes::Box::SizeX, 3.0f},
-												  {DefaultShapes::Box::SizeY, 0.3f}},
-									.material = platformMat,
-									.combination = CombinationType::Addition});
-
-		// Vertical pillar to test wall jumping
-		services.shapes().addShape({.shapeId = DefaultShapes::Box,
-									.variables = {{DefaultShapes::Box::PosX, -11.0f},
-												  {DefaultShapes::Box::PosY, 5.0f},
-												  {DefaultShapes::Box::SizeX, 0.8f},
-												  {DefaultShapes::Box::SizeY, 5.0f}},
-									.material = platformMat,
-									.combination = CombinationType::Addition});
 
 		// UI preview box line cursor for platform creation (initially offscreen)
 		state.previewBox = services.shapes().addUIShape({.shapeId = DefaultShapes::BoxLine,
@@ -145,6 +85,19 @@ namespace PlatformerSceneNamespace
 																	   {DefaultShapes::BoxLine::SizeY, 0.0f},
 																	   {DefaultShapes::BoxLine::Thickness, 2.0f}},
 														 .material = state.previewAddMaterial});
+	}
+
+	void onShapeCollisionSystem(Registry& registry, ServiceProvider& services, EntityShapeCollisionEvent& event)
+	{
+		State& state = getState(registry);
+		if (event.entity == state.player && event.raw.state == CollisionState::START)
+		{
+			float normalSpeed = std::abs(glm::dot(event.raw.normal, event.raw.velocity));
+			if (normalSpeed > 0.25f)
+			{
+				state.playedImpactThisFrame = true;
+			}
+		}
 	}
 
 	void platformBuilderSystem(Registry& registry, ServiceProvider& services)
@@ -327,47 +280,91 @@ namespace PlatformerSceneNamespace
 
 		// 3. Sample SDF distance and unit normal at player position
 		vec2 playerPos = vec2(transform.position.x, transform.position.y);
-		constexpr float RADIUS = 0.5f;
-		constexpr float CONTACT_TOLERANCE = 0.16f;
+		// Note: Simulation2D::map() subtracts 0.05f from raw SDF distances, so the physics collision
+		// boundary rests at raw sampleDistance == 0.55f (0.50f radius + 0.05f physics margin).
+		constexpr float PHYSICS_SURFACE_DIST = 0.55f;
+		constexpr float LANDING_TOLERANCE = 0.03f;
+		constexpr float GROUND_STICK_TOLERANCE = 0.11f;
+		constexpr float WALL_TOLERANCE = 0.04f;
+
+		if (state.jumpGraceTimer > 0.0f)
+		{
+			state.jumpGraceTimer -= delta;
+		}
 
 		// Distance query from SDF (excluding dynamic rigidbodies)
 		float distance = services.physics().sampleDistance(playerPos, false);
 
-		bool inContact = (distance <= (RADIUS + CONTACT_TOLERANCE));
+		// Require actual physics surface contact to land from the air or grab a wall,
+		// while using stick tolerance once grounded so walking downhill stays attached
+		float groundTolerance = state.isGrounded ? GROUND_STICK_TOLERANCE : LANDING_TOLERANCE;
 		bool groundedThisFrame = false;
+		bool slidingThisFrame = false;
 		bool wallThisFrame = false;
 
-		if (inContact)
+		if (state.jumpGraceTimer <= 0.0f && distance <= (PHYSICS_SURFACE_DIST + GROUND_STICK_TOLERANCE))
 		{
 			// Gradient query from SDF (corresponds to outward unit normal at the surface)
 			glm::vec2 normal = services.physics().sampleGradient(playerPos, false);
-			state.lastContactNormal = normal;
 
 			// Surface with predominantly upward normal counts as ground/slope
-			if (normal.y >= 0.45f)
+			if (normal.y >= state.minGroundNormalY)
 			{
-				groundedThisFrame = (rb.velocity.y <= 0.5f);
+				if (distance <= (PHYSICS_SURFACE_DIST + groundTolerance))
+				{
+					state.lastContactNormal = normal;
+					// Check normal-relative velocity so walking uphill (positive velocity.y) stays grounded
+					float normalVel = glm::dot(rb.velocity, normal);
+					groundedThisFrame = (normalVel <= 0.5f);
+					if (groundedThisFrame && normal.y < state.maxWalkableNormalY)
+					{
+						slidingThisFrame = true;
+					}
+				}
 			}
-			// Steep vertical surface counts as wall
-			else if (std::abs(normal.x) >= 0.35f)
+			// Steep vertical surface counts as wall (tight tolerance so player must touch the wall)
+			else if (std::abs(normal.x) >= 0.35f && distance <= (PHYSICS_SURFACE_DIST + WALL_TOLERANCE))
 			{
+				state.lastContactNormal = normal;
 				wallThisFrame = true;
 			}
 		}
 
-		// 4. Update Coyote Time & Ground State
+		// 4. Ground state & landing impact audio
+		bool justLanded = !state.isGrounded && groundedThisFrame;
 		if (groundedThisFrame)
 		{
+			// Consistent landing audio: play if landing with downward velocity and not already triggered by physics
+			if (justLanded)
+			{
+				vec2 impactVel = (glm::length2(state.lastAirborneVelocity) > glm::length2(rb.velocity))
+									 ? state.lastAirborneVelocity
+									 : rb.velocity;
+				float impactSpeed = -glm::dot(impactVel, state.lastContactNormal);
+				if (impactSpeed > 1.2f && !state.playedImpactThisFrame)
+				{
+					float penetrationFactor =
+						std::sqrt((std::min)(2.0f * std::max(0.0f, PHYSICS_SURFACE_DIST - distance), 1.0f));
+					float intensity = std::clamp(impactSpeed * 0.12f + penetrationFactor * 0.3f, 0.05f, 1.0f);
+					services.audio().playCollisionSound(transform.position, intensity,
+														WeirdAudio::SimpleAudioRequest::ImpactType::Shape);
+				}
+			}
+
 			state.coyoteTimer = state.coyoteTime;
 			state.isGrounded = true;
+			state.isSliding = slidingThisFrame;
 			state.isOnWall = false;
 		}
 		else
 		{
 			state.coyoteTimer -= delta;
 			state.isGrounded = false;
+			state.isSliding = false;
 			state.isOnWall = wallThisFrame;
 		}
+
+		state.playedImpactThisFrame = false;
 
 		if (jumpPressed)
 		{
@@ -414,10 +411,12 @@ namespace PlatformerSceneNamespace
 
 			rb.velocity = jumpVel;
 
-			// Reset timers
+			// Reset timers and activate jump grace period so async physics readback cannot re-ground the jump
 			state.jumpBufferTimer = 0.0f;
 			state.coyoteTimer = 0.0f;
+			state.jumpGraceTimer = 0.08f;
 			state.isGrounded = false;
+			state.isSliding = false;
 			state.isOnWall = false;
 
 			// If leaping off a steep wall, activate brief directional lockout
@@ -432,38 +431,97 @@ namespace PlatformerSceneNamespace
 			rb.velocity.y *= state.jumpCutMultiplier;
 		}
 
-		// 6. Horizontal movement (applied directly to kinematic velocity)
-		float targetVx = inputX * state.moveSpeed;
-		float accel = 0.0f;
+		// 6. Surface movement (ground & slopes) or airborne control
 		if (state.isGrounded)
 		{
-			accel = (std::abs(targetVx) > 0.01f) ? state.groundAccel : state.groundDecel;
-		}
-		else
-		{
-			accel = (std::abs(targetVx) > 0.01f) ? state.airAccel : state.airDecel;
-		}
+			vec2 normal = state.lastContactNormal;
+			// Unit surface tangent pointing rightward: (normal.y, -normal.x)
+			vec2 tangent = vec2(normal.y, -normal.x);
+			if (tangent.x < 0.0f)
+			{
+				tangent = -tangent;
+			}
 
-		float maxDeltaVx = accel * delta;
-		float deltaVx = std::clamp(targetVx - rb.velocity.x, -maxDeltaVx, maxDeltaVx);
-		rb.velocity.x += deltaVx;
+			if (state.isSliding)
+			{
+				// --- STEEP SLOPE SLIDING ---
+				// Gravitational acceleration projected along surface tangent
+				// normal.x > 0 means slope falls to the right; normal.x < 0 means slope falls to the left
+				float downhillAccel = state.gravity * normal.x * state.slopeSlideMultiplier;
 
-		// 7. Vertical movement (kinematic gravity & wall slide)
-		if (state.isGrounded)
+				// Allow player to steer slightly or accelerate downhill, but heavily penalize running uphill
+				float steer = inputX;
+				if ((normal.x > 0.0f && steer < 0.0f) || (normal.x < 0.0f && steer > 0.0f))
+				{
+					steer *= 0.15f; // Hard to run up a steep slope
+				}
+
+				float currentTangentSpeed = glm::dot(rb.velocity, tangent);
+				currentTangentSpeed += (downhillAccel + steer * state.groundAccel * 0.35f) * delta;
+				currentTangentSpeed = std::clamp(currentTangentSpeed, -state.maxSlideSpeed, state.maxSlideSpeed);
+
+				rb.velocity = tangent * currentTangentSpeed;
+			}
+			else
+			{
+				// --- WALKABLE GROUND & SLOPES ---
+				float targetSpeed = inputX * state.moveSpeed;
+				float currentSpeed = glm::dot(rb.velocity, tangent);
+
+				float accel = 0.0f;
+				if (std::abs(targetSpeed) > 0.01f)
+				{
+					accel = state.groundAccel;
+
+					// Add subtle downhill boost / uphill resistance for a weighted, physical feel
+					if ((inputX > 0.0f && normal.x > 0.0f) || (inputX < 0.0f && normal.x < 0.0f))
+					{
+						targetSpeed += std::copysign(1.5f, inputX);
+					}
+				}
+				else
+				{
+					accel = state.groundDecel;
+				}
+
+				float maxDeltaSpeed = accel * delta;
+				float deltaSpeed = std::clamp(targetSpeed - currentSpeed, -maxDeltaSpeed, maxDeltaSpeed);
+				float newSpeed = currentSpeed + deltaSpeed;
+
+				rb.velocity = tangent * newSpeed;
+			}
+
+			// Eliminate any floor gap without overriding physics transform:
+			// gently pull into the surface until flush at PHYSICS_SURFACE_DIST, where Simulation2D PBD depenetration
+			// holds it
+			float gap = distance - PHYSICS_SURFACE_DIST;
+			if (gap > 0.002f)
+			{
+				float pullSpeed = std::min(gap * 25.0f + 0.5f, 6.0f);
+				rb.velocity -= normal * pullSpeed;
+			}
+
+			state.lastAirborneVelocity = vec2(0.0f, 0.0f);
+		}
+		else if (state.jumpGraceTimer <= 0.0f)
 		{
-			// When grounded on a surface, zero out downward vertical velocity so the
-			// kinematic body rests cleanly without pushing into the floor.
+			// --- AIRBORNE MOVEMENT ---
+			// Horizontal air steering
+			float targetVx = inputX * state.moveSpeed;
+			float accel = (std::abs(targetVx) > 0.01f) ? state.airAccel : state.airDecel;
+			float maxDeltaVx = accel * delta;
+			float deltaVx = std::clamp(targetVx - rb.velocity.x, -maxDeltaVx, maxDeltaVx);
+			rb.velocity.x += deltaVx;
+
+			// Asymmetric gravity: fall faster than rise for crisp, weighty platformer arcs
+			float currentGravity = state.gravity;
 			if (rb.velocity.y < 0.0f)
 			{
-				rb.velocity.y = 0.0f;
+				currentGravity *= 1.35f;
 			}
-		}
-		else
-		{
-			// Kinematic bodies do not receive world physics gravity, so apply custom platformer gravity
-			rb.velocity.y -= state.gravity * delta;
+			rb.velocity.y -= currentGravity * delta;
 
-			// Wall slide: limit downward sliding speed
+			// Wall slide: limit downward sliding speed when hugging a wall
 			if (state.isOnWall && rb.velocity.y < -state.wallSlideSpeed)
 			{
 				rb.velocity.y = -state.wallSlideSpeed;
@@ -474,6 +532,12 @@ namespace PlatformerSceneNamespace
 			{
 				rb.velocity.y = state.terminalFallVelocity;
 			}
+
+			state.lastAirborneVelocity = rb.velocity;
+		}
+		else
+		{
+			state.lastAirborneVelocity = rb.velocity;
 		}
 
 		if (rb.velocity.y > state.maxUpwardVelocity)
@@ -484,10 +548,10 @@ namespace PlatformerSceneNamespace
 		// Synchronize kinematic velocity to the physics thread
 		registry.setComponentDirty(rb);
 
-		// 8. Update visual feedback material: Yellow on floor, Orange on wall, Magenta in air
+		// 8. Update visual feedback material: Yellow on floor, Orange on wall/slope slide, Magenta in air
 		if (state.isGrounded)
 		{
-			dot.materialId = state.floorMaterial.id;
+			dot.materialId = state.isSliding ? state.wallMaterial.id : state.floorMaterial.id;
 		}
 		else if (state.isOnWall)
 		{

@@ -52,5 +52,16 @@ int main(int argc, char* argv[])
 	WeirdAudio::AudioSettings audioSettings{};
 	audioSettings.mute = false;
 
+#if defined(ANBERNIC) || defined(WEIRD_USE_FBDEV_EGL) || defined(__aarch64__) || defined(__arm__)
+
+	displaySettings.width = 640;
+	displaySettings.height = 480;
+	displaySettings.fullscreen = true;
+	displaySettings.distanceSampleScale = 1.0f;
+	displaySettings.internalResolutionScale = 0.5f;
+	displaySettings.enableMaterialBlending = false;
+
+#endif
+
 	start(sceneManager, displaySettings, physicsSettings, audioSettings, argc, argv);
 }

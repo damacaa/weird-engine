@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<RopeScene>("rope");
 	sceneManager.registerScene<MusicScene>("music");
 	sceneManager.registerScene<LifeScene>("life");
-	sceneManager.registerScene<PlatformerScene>("platformer");
+	sceneManager.registerScene<PlatformerScene>("platformer", ASSETS_PATH "platformer_world.weirdscene");
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop
 	sceneManager.registerScene<CollisionScene>("collisions");
 	sceneManager.registerScene<ImageScene>("image");

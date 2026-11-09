@@ -187,7 +187,8 @@ namespace
 			require(source.serializeSnapshot(fullSaved), "Valid snapshot serialization must succeed.");
 			const std::string validBytes = fullSaved.str();
 
-			for (size_t len : {0UL, 4UL, 8UL, 16UL, 24UL, validBytes.size() / 2, validBytes.size() - 1})
+			const size_t lengths[] = {0, 4, 8, 16, 24, validBytes.size() / 2, validBytes.size() - 1};
+			for (size_t len : lengths)
 			{
 				Registry target;
 				const Entity liveEnt = target.createEntity();

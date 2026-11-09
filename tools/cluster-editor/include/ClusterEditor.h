@@ -97,6 +97,23 @@ private:
 	bool m_rightWasDown = false;
 	bool m_middleWasDown = false;
 	bool m_gravityEnabled = false;
+	bool m_isSimulating = false;
+	float m_playGravity = -10.0f;
+	float m_playDamping = 0.01f;
+
+	struct ClusterSnapshotState
+	{
+		std::vector<BallInfo> balls;
+		std::vector<DistanceLink> links;
+		Entity tagSelectedEntity = static_cast<Entity>(-1);
+		std::unordered_map<Entity, std::string> names;
+		std::unordered_map<Entity, std::vector<std::string>> tags;
+	};
+
+	ClusterSnapshotState m_playSnapshot;
+	bool m_hasPlaySnapshot = false;
+	ClusterSnapshotState m_manualSnapshot;
+	bool m_hasManualSnapshot = false;
 	GridMode m_grid = GridMode::Off;
 	DragMode m_dragMode = DragMode::None;
 	int m_selectedMaterial = 1;
@@ -200,8 +217,17 @@ private:
 		if (m_tempSvc->input().getKeyDown(Input::Q) ||
 			m_tempSvc->input().getGamepadButtonDown(Input::GamepadButton::North))
 		{
+			if (m_isSimulating)
+			{
+				setSimulation(false);
+			}
 			m_tempSvc->sceneControl().goToNextScene();
 			return;
+		}
+
+		if (!ImGui::GetIO().WantTextInput && m_tempSvc->input().getKeyDown(Input::Space))
+		{
+			toggleSimulation();
 		}
 
 		if (m_tempSvc->input().getKey(Input::LeftCtrl) && m_tempSvc->input().getKeyDown(Input::S))
@@ -297,6 +323,10 @@ private:
 				ImGui::Separator();
 				if (ImGui::MenuItem("Exit Tool", "Q"))
 				{
+					if (m_isSimulating)
+					{
+						setSimulation(false);
+					}
 					m_tempSvc->sceneControl().goToNextScene();
 				}
 				ImGui::EndMenu();
@@ -307,6 +337,26 @@ private:
 				if (ImGui::MenuItem("Reset Camera"))
 				{
 					centerCameraOnSceneView();
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Simulation"))
+			{
+				if (ImGui::MenuItem(m_isSimulating ? "Stop Simulation" : "Play Simulation", "Space"))
+				{
+					toggleSimulation();
+				}
+				ImGui::Separator();
+				ImGui::DragFloat("Play Gravity", &m_playGravity, 0.1f, -50.0f, 50.0f, "%.1f");
+				ImGui::DragFloat("Play Damping", &m_playDamping, 0.001f, 0.0f, 1.0f, "%.3f");
+				if (ImGui::MenuItem("Take Snapshot"))
+				{
+					takeManualSnapshot();
+				}
+				if (ImGui::MenuItem("Restore Snapshot", nullptr, false, m_hasManualSnapshot))
+				{
+					restoreManualSnapshot();
 				}
 				ImGui::EndMenu();
 			}
@@ -371,9 +421,29 @@ private:
 			return;
 		}
 
+		const float buttonWidth = ImGui::GetContentRegionAvail().x;
+		if (m_isSimulating)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.3f, 0.2f, 1.0f));
+			if (ImGui::Button("Pause (Space)", ImVec2(buttonWidth, 26.0f)))
+			{
+				toggleSimulation();
+			}
+			ImGui::PopStyleColor();
+		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.3f, 1.0f));
+			if (ImGui::Button("Play (Space)", ImVec2(buttonWidth, 26.0f)))
+			{
+				toggleSimulation();
+			}
+			ImGui::PopStyleColor();
+		}
+
 		if (ImGui::Checkbox("Gravity", &m_gravityEnabled))
 		{
-			applyGravitySettings();
+			setSimulation(m_gravityEnabled);
 		}
 
 		const char* gridItems[] = {"Off", "Square", "Hex"};
@@ -541,6 +611,7 @@ private:
 			ImGui::BulletText("Ctrl+N: new cluster");
 			ImGui::BulletText("Ctrl+O / Ctrl+L: open a .weirdcluster file");
 			ImGui::BulletText("Ctrl+S: save (asks for a path the first time)");
+			ImGui::BulletText("Space: play / pause physics simulation");
 			ImGui::BulletText("Q: exit the tool");
 		}
 		ImGui::End();
@@ -987,6 +1058,11 @@ private:
 
 	void startRelaxation()
 	{
+		if (m_isSimulating)
+		{
+			setSimulation(false);
+		}
+
 		if (m_balls.empty())
 		{
 			return;
@@ -1341,23 +1417,139 @@ private:
 		}
 	}
 
-	void applyGravitySettings()
+	ClusterSnapshotState captureClusterState() const
 	{
+		ClusterSnapshotState s;
+		s.balls = m_balls;
+		s.links = m_links;
+		s.tagSelectedEntity = m_tagSelectedEntity;
+		if (m_tempSvc)
+		{
+			for (const auto& ball : m_balls)
+			{
+				if (m_tempSvc->names().hasName(ball.entity))
+				{
+					s.names[ball.entity] = m_tempSvc->names().getEntityName(ball.entity);
+				}
+				const auto& tags = m_tempSvc->tags().getTags(ball.entity);
+				if (!tags.empty())
+				{
+					s.tags[ball.entity] = tags;
+				}
+			}
+		}
+		return s;
+	}
+
+	void applyClusterState(const ClusterSnapshotState& s)
+	{
+		m_balls = s.balls;
+		m_links = s.links;
+		m_tagSelectedEntity = s.tagSelectedEntity;
+		if (m_tempSvc)
+		{
+			for (const auto& [entity, name] : s.names)
+			{
+				m_tempSvc->names().setName(entity, name);
+			}
+			for (const auto& [entity, tags] : s.tags)
+			{
+				m_tempSvc->tags().removeAllTags(entity);
+				for (const auto& tag : tags)
+				{
+					m_tempSvc->tags().addTag(entity, tag);
+				}
+			}
+		}
+
+		m_draggedBall = static_cast<Entity>(-1);
+		m_draggedSimulationId = INVALID_SIMULATION_ID;
+		m_constraintStartBall = static_cast<Entity>(-1);
+		m_draggedLinkConstraint = static_cast<Entity>(-1);
+
+		updateConstraintLines();
+	}
+
+	void toggleSimulation()
+	{
+		setSimulation(!m_isSimulating);
+	}
+
+	void setSimulation(bool enable)
+	{
+		if (m_isSimulating == enable)
+		{
+			return;
+		}
+
+		m_isSimulating = enable;
+		m_gravityEnabled = enable;
+
 		if (m_tempSvc == nullptr)
 		{
 			return;
 		}
 
-		if (m_gravityEnabled)
+		if (m_isSimulating)
 		{
-			m_tempSvc->physics().setGravity(-10.0f);
-			m_tempSvc->physics().setDamping(0.01f);
+			if (m_isRelaxing)
+			{
+				m_isRelaxing = false;
+				m_relaxationVelocities.clear();
+			}
+
+			// Take temporary snapshot before physics simulation
+			m_playSnapshot = captureClusterState();
+			m_tempSvc->serialization().saveSnapshot("temp_cluster_editor.weirdsnap");
+			m_hasPlaySnapshot = true;
+
+			m_tempSvc->physics().setGravity(m_playGravity);
+			m_tempSvc->physics().setDamping(m_playDamping);
+			Logger::log("[ClusterEditor] Simulation started (play mode).");
 		}
 		else
 		{
 			m_tempSvc->physics().setGravity(0.0f);
 			m_tempSvc->physics().setDamping(1.0f);
+
+			// Revert to snapshot on pause
+			if (m_hasPlaySnapshot)
+			{
+				if (m_tempSvc->serialization().loadSnapshot("temp_cluster_editor.weirdsnap"))
+				{
+					applyClusterState(m_playSnapshot);
+					Logger::log("[ClusterEditor] Simulation paused (design mode, reverted to snapshot).");
+				}
+			}
 		}
+	}
+
+	void takeManualSnapshot()
+	{
+		if (m_tempSvc == nullptr)
+		{
+			return;
+		}
+		m_manualSnapshot = captureClusterState();
+		m_tempSvc->serialization().saveSnapshot("dev.weirdsnap");
+		m_hasManualSnapshot = true;
+	}
+
+	void restoreManualSnapshot()
+	{
+		if (m_tempSvc == nullptr || !m_hasManualSnapshot)
+		{
+			return;
+		}
+		if (m_tempSvc->serialization().loadSnapshot("dev.weirdsnap"))
+		{
+			applyClusterState(m_manualSnapshot);
+		}
+	}
+
+	void applyGravitySettings()
+	{
+		setSimulation(m_gravityEnabled);
 	}
 
 	void applyLinkDistance(DistanceLink& link)
@@ -1487,6 +1679,13 @@ private:
 
 	void clearCluster()
 	{
+		if (m_isSimulating)
+		{
+			setSimulation(false);
+		}
+		m_hasPlaySnapshot = false;
+		m_hasManualSnapshot = false;
+
 		for (DistanceLink& link : m_links)
 		{
 			m_tempRegistry->destroyEntity(link.constraintEntity);
@@ -1518,6 +1717,11 @@ private:
 
 	void saveCluster()
 	{
+		if (m_isSimulating)
+		{
+			setSimulation(false);
+		}
+
 		if (m_currentFilePath.empty())
 		{
 			openSaveFileDialog();
@@ -1528,6 +1732,11 @@ private:
 
 	void saveClusterTo(const std::string& path)
 	{
+		if (m_isSimulating)
+		{
+			setSimulation(false);
+		}
+
 		std::string finalPath = path;
 		if (!finalPath.ends_with(".weirdcluster"))
 		{
@@ -1637,6 +1846,11 @@ private:
 
 	void removeFallenBalls()
 	{
+		if (m_isSimulating)
+		{
+			return;
+		}
+
 		std::vector<Entity> toDelete;
 		toDelete.reserve(m_balls.size());
 
@@ -2496,6 +2710,13 @@ private:
 
 	void loadCluster(const std::string& path)
 	{
+		if (m_isSimulating)
+		{
+			setSimulation(false);
+		}
+		m_hasPlaySnapshot = false;
+		m_hasManualSnapshot = false;
+
 		m_isRelaxing = false;
 		m_relaxationStable = false;
 		m_relaxationVelocities.clear();

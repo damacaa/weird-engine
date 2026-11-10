@@ -8,6 +8,7 @@ namespace PlatformerSceneNamespace
 	struct State
 	{
 		WeirdEngine::Entity player = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity playerHead = WeirdEngine::INVALID_ENTITY;
 
 		// Materials for ground, wall, and air visual feedback
 		WeirdEngine::Material2DHandle floorMaterial;

@@ -52,19 +52,43 @@ namespace PlatformerSceneNamespace
 		const auto& airMat = services.materials2D().getHandle("player_air");
 		state.airMaterial = airMat;
 
-		Entity player = registry.createEntity();
-		auto& t = registry.addComponent<Transform>(player);
-		t.position = vec3(0.0f, 4.0f, 0.0f);
+		{
+			Entity player = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(player);
+			t.position = vec3(0.0f, 4.0f, 0.0f);
 
-		auto& dot = registry.addComponent<Dot>(player);
-		dot.materialId = state.airMaterial.id;
+			auto& dot = registry.addComponent<Dot>(player);
+			dot.materialId = state.airMaterial.id;
 
-		auto& rb = registry.addComponent<RigidBody2D>(player);
-		rb.mass = 1.0f;
-		rb.type = BodyType::Kinematic;
-		rb.enableCollision = true;
+			auto& rb = registry.addComponent<RigidBody2D>(player);
+			rb.mass = 1.0f;
+			rb.type = BodyType::Kinematic;
+			rb.enableCollision = true;
 
-		state.player = player;
+			state.player = player;
+		}
+
+		{
+			Entity player = registry.createEntity();
+			auto& t = registry.addComponent<Transform>(player);
+			t.position = vec3(0.0f, 5.0f, 0.0f);
+
+			auto& dot = registry.addComponent<Dot>(player);
+			dot.materialId = state.floorMaterial.id;
+
+			auto& rb = registry.addComponent<RigidBody2D>(player);
+			rb.mass = 1.0f;
+			rb.type = BodyType::Dynamic;
+			rb.enableCollision = true;
+
+			state.playerHead = player;
+
+			Entity neck = registry.createEntity();
+			auto& distanceConstraint = registry.addComponent<DistanceConstraint>(neck);
+			distanceConstraint.distance = 1.0f;
+			distanceConstraint.entityA = state.player;
+			distanceConstraint.entityB = state.playerHead;
+		}
 	}
 
 	void setupGroundSystem(Registry& registry, ServiceProvider& services)
@@ -227,6 +251,19 @@ namespace PlatformerSceneNamespace
 			rb.velocity = vec2(0.0f, 0.0f);
 			registry.setComponentDirty(transform);
 			registry.setComponentDirty(rb);
+
+			if (registry.isEntityValid(state.playerHead) && registry.hasComponent<Transform>(state.playerHead))
+			{
+				auto& headT = registry.getComponent<Transform>(state.playerHead);
+				headT.position = vec3(0.0f, 5.0f, 0.0f);
+				registry.setComponentDirty(headT);
+				if (registry.hasComponent<RigidBody2D>(state.playerHead))
+				{
+					auto& headRb = registry.getComponent<RigidBody2D>(state.playerHead);
+					headRb.velocity = vec2(0.0f, 0.0f);
+					registry.setComponentDirty(headRb);
+				}
+			}
 			return;
 		}
 
@@ -256,6 +293,18 @@ namespace PlatformerSceneNamespace
 		}
 
 		inputX = std::clamp(inputX, -1.0f, 1.0f);
+
+		if (registry.isEntityValid(state.playerHead) && registry.hasComponent<Transform>(state.playerHead) &&
+			registry.hasComponent<RigidBody2D>(state.playerHead))
+		{
+			auto& headTransform = registry.getComponent<Transform>(state.playerHead);
+			auto& footTransform = registry.getComponent<Transform>(state.player);
+			auto distanceX = headTransform.position.x - footTransform.position.x;
+
+			auto& headRb = registry.getComponent<RigidBody2D>(state.playerHead);
+			headRb.pendingContinuousForce = vec2(inputX * 1000.0f, 500.0f + std::abs(inputX) * 800.0f);
+			// registry.setComponentDirty(headRb);
+		}
 
 		// Apply wall jump lockout: prevent immediately canceling outward jump velocity
 		if (state.wallJumpLockoutTimer > 0.0f)

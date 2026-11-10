@@ -13,6 +13,7 @@
 #include "RopeScene.h"
 #include "ShapesCombinations.h"
 #include "TetrominoScene.h"
+#include "ThrustScene.h"
 #include "UiScene.h"
 
 #include "weird-renderer/core/Display.h"
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<InstrumentScene>("instruments");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<PlatformerScene>("platformer", ASSETS_PATH "platformer_world.weirdscene");
+	sceneManager.registerScene<ThrustScene>("thrust", ASSETS_PATH "platformer_world.weirdscene");
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop
 	sceneManager.registerScene<CollisionScene>("collisions");
 	sceneManager.registerScene<ImageScene>("image");

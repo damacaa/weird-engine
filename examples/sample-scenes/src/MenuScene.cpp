@@ -75,6 +75,7 @@ namespace MenuSceneNamespace
 					{"SHAPES", "2D Signed Distance Field shapes showcase", "launch_scene", "shapes"},
 					{"ROPE", "Verlet physics rope simulation", "launch_scene", "rope"},
 					{"PLATFORMER", "2D character platformer with terrain collision", "launch_scene", "platformer"},
+					{"THRUST", "Classic cave thrust spaceship clone", "launch_scene", "thrust"},
 					{"LIFE", "Game of Life cellular automata", "launch_scene", "life"},
 					{"COLLISIONS", "Interactive particle collision dynamics", "launch_scene", "collisions"},
 					{"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},

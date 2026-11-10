@@ -1134,9 +1134,21 @@ namespace WeirdEngine
 			vec2 vel_t = vel - (v_n * collisionEvent.normal);
 			float speed_t = length(vel_t);
 
+			// Direct position depenetration for dynamic bodies against static shapes
+			if (collisionEvent.penetration > 0.0f)
+			{
+				m_positions[collisionEvent.body] += collisionEvent.penetration * collisionEvent.normal;
+			}
+
+			// Clip velocity into the surface (slide along tangent, prevent tunneling)
+			if (v_n < 0.0f)
+			{
+				m_velocities[collisionEvent.body] -= v_n * collisionEvent.normal;
+				v_n = 0.0f;
+			}
+
 			// Penalty normal acceleration
-			float penSq = collisionEvent.penetration * collisionEvent.penetration;
-			float normalAcceleration = m_push * penSq;
+			float normalAcceleration = m_push * collisionEvent.penetration;
 
 			// Safety clamp to prevent explosive catapult forces from SDF corner / union distortion
 			constexpr float MAX_PENALTY_ACCELERATION = 500.0f;

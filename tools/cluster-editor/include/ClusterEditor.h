@@ -1681,6 +1681,7 @@ private:
 	{
 		if (m_isSimulating)
 		{
+			m_hasPlaySnapshot = false;
 			setSimulation(false);
 		}
 		m_hasPlaySnapshot = false;
@@ -1709,10 +1710,20 @@ private:
 		m_dragMode = DragMode::None;
 		m_rightWasDown = false;
 		m_tagSelectedEntity = static_cast<Entity>(-1);
+		m_tagBufferEntity = static_cast<Entity>(-1);
+		m_tagBuf[0] = '\0';
+		m_newTagBuf[0] = '\0';
+		if (m_tagCircleOuter != static_cast<Entity>(-1))
+		{
+			m_tempRegistry->getComponent<UIShape>(m_tagCircleOuter).parameters[2] = 0.0f;
+			m_tempRegistry->getComponent<UIShape>(m_tagCircleInner).parameters[2] = 0.0f;
+		}
 		m_currentFilePath.clear();
+		std::snprintf(m_fileNameBuf, sizeof(m_fileNameBuf), "cluster");
 		m_isRelaxing = false;
 		m_relaxationStable = false;
 		m_relaxationVelocities.clear();
+		m_tempRegistry->freeRemovedComponents();
 	}
 
 	void saveCluster()
@@ -2710,19 +2721,22 @@ private:
 
 	void loadCluster(const std::string& path)
 	{
-		if (m_isSimulating)
+		if (!std::filesystem::exists(path))
 		{
-			setSimulation(false);
+			WeirdEngine::Logger::error("[ClusterEditor] Cannot load cluster: file does not exist: " + path);
+			return;
 		}
-		m_hasPlaySnapshot = false;
-		m_hasManualSnapshot = false;
 
-		m_isRelaxing = false;
-		m_relaxationStable = false;
-		m_relaxationVelocities.clear();
+		clearCluster();
+
+		m_currentFilePath = path;
+		std::string stem = std::filesystem::path(path).stem().string();
+		if (!stem.empty())
+		{
+			std::snprintf(m_fileNameBuf, sizeof(m_fileNameBuf), "%s", stem.c_str());
+		}
 
 		// Remember constraint count before loading so we can find new ones
-		m_currentFilePath = path;
 		size_t prevSpringCount = m_tempRegistry->getComponentArray<Spring>()->getSize();
 		size_t prevDistCount = m_tempRegistry->getComponentArray<DistanceConstraint>()->getSize();
 

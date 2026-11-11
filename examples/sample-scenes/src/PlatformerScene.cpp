@@ -31,8 +31,8 @@ namespace PlatformerSceneNamespace
 		background.scale = 0.2f;
 
 		services.physics().setGravity(-25.0f);
-		services.physics().setDamping(0.0f);
-		services.physics().setFriction(0.0f);
+		services.physics().setDamping(0.02f);
+		services.physics().setFriction(0.5f);
 
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		cameraTransform.position = vec3(0.0f, 4.0f, 25.0f);
@@ -43,22 +43,21 @@ namespace PlatformerSceneNamespace
 	{
 		State& state = getState(registry);
 
-		const auto& floorMat = services.materials2D().getHandle("player_floor");
-		state.floorMaterial = floorMat;
+		const auto& playerMat = services.materials2D().getHandle("player");
+		state.playerMaterial = playerMat;
 
-		const auto& wallMat = services.materials2D().getHandle("player_wall");
-		state.wallMaterial = wallMat;
-
-		const auto& airMat = services.materials2D().getHandle("player_air");
-		state.airMaterial = airMat;
+		constexpr bool PLAYER_SHAPE = false;
 
 		{
 			Entity player = registry.createEntity();
 			auto& t = registry.addComponent<Transform>(player);
 			t.position = vec3(0.0f, 4.0f, 0.0f);
 
-			auto& dot = registry.addComponent<Dot>(player);
-			dot.materialId = state.airMaterial.id;
+			if (!PLAYER_SHAPE)
+			{
+				auto& dot = registry.addComponent<Dot>(player);
+				dot.materialId = state.playerMaterial.id;
+			}
 
 			auto& rb = registry.addComponent<RigidBody2D>(player);
 			rb.mass = 1.0f;
@@ -73,8 +72,11 @@ namespace PlatformerSceneNamespace
 			auto& t = registry.addComponent<Transform>(player);
 			t.position = vec3(0.0f, 5.0f, 0.0f);
 
-			auto& dot = registry.addComponent<Dot>(player);
-			dot.materialId = state.floorMaterial.id;
+			if (!PLAYER_SHAPE)
+			{
+				auto& dot = registry.addComponent<Dot>(player);
+				dot.materialId = state.playerMaterial.id;
+			}
 
 			auto& rb = registry.addComponent<RigidBody2D>(player);
 			rb.mass = 1.0f;
@@ -85,9 +87,24 @@ namespace PlatformerSceneNamespace
 
 			Entity neck = registry.createEntity();
 			auto& distanceConstraint = registry.addComponent<DistanceConstraint>(neck);
-			distanceConstraint.distance = 1.0f;
+			distanceConstraint.distance = 1.05f;
 			distanceConstraint.entityA = state.player;
 			distanceConstraint.entityB = state.playerHead;
+
+			if (PLAYER_SHAPE)
+			{
+				state.playerShape = services.shapes().addShape({.shapeId = DefaultShapes::Star,
+																.variables = {{DefaultShapes::Box::PosX, -1000.0f},
+																			  {DefaultShapes::Box::PosY, -1000.0f},
+																			  {DefaultShapes::Box::SizeX, 0.9f},
+																			  {DefaultShapes::Box::SizeY, 0.1f},
+																			  {4, 12.0f},
+																			  {5, 0.0f}},
+																.material = state.playerMaterial,
+																.combination = WeirdEngine::CombinationType::Addition,
+																.hasCollision = false,
+																.group = 2});
+			}
 		}
 	}
 
@@ -171,49 +188,13 @@ namespace PlatformerSceneNamespace
 		{
 			Input::MouseButton activeBtn =
 				(state.boxCombination == CombinationType::Addition) ? Input::LeftClick : Input::RightClick;
+			Input::MouseButton cancelBtn =
+				(state.boxCombination == CombinationType::Addition) ? Input::RightClick : Input::LeftClick;
 
-			if (services.input().getMouseButton(activeBtn))
-			{
-				vec2 currentScreen = {services.input().getMouseX(), services.input().getMouseY()};
-				vec2 startScreen = ECS::Camera::worldPosition2DToScreenPosition(cam, state.boxStart);
-				vec2 pos = (currentScreen + startScreen) / 2.0f;
-				vec2 size = 0.5f * glm::abs(currentScreen - startScreen);
-
-				previewUi.parameters[DefaultShapes::BoxLine::PosX] = pos.x;
-				previewUi.parameters[DefaultShapes::BoxLine::PosY] = pos.y;
-				previewUi.parameters[DefaultShapes::BoxLine::SizeX] = std::max(size.x, 2.0f);
-				previewUi.parameters[DefaultShapes::BoxLine::SizeY] = std::max(size.y, 2.0f);
-				previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 2.0f;
-				registry.setComponentDirty(previewUi);
-			}
-
-			if (services.input().getMouseButtonUp(activeBtn))
+			// Cancel box creation if the opposite mouse button is clicked while dragging
+			if (services.input().getMouseButtonDown(cancelBtn))
 			{
 				state.isCreatingBox = false;
-
-				vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
-				vec2 worldEnd = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
-
-				vec2 pos = (worldEnd + state.boxStart) / 2.0f;
-				vec2 size = 0.5f * glm::abs(worldEnd - state.boxStart);
-
-				// If clicked without significant drag, spawn a handy default platform
-				if (size.x < 0.4f && size.y < 0.4f)
-				{
-					size = vec2(2.5f, 0.35f);
-				}
-				else
-				{
-					size = glm::max(size, vec2(0.5f, 0.2f));
-				}
-
-				services.shapes().addShape({.shapeId = DefaultShapes::Box,
-											.variables = {{DefaultShapes::Box::PosX, pos.x},
-														  {DefaultShapes::Box::PosY, pos.y},
-														  {DefaultShapes::Box::SizeX, size.x},
-														  {DefaultShapes::Box::SizeY, size.y}},
-											.material = services.materials2D().getHandle("platform"),
-											.combination = state.boxCombination});
 
 				// Hide preview box offscreen
 				previewUi.parameters[DefaultShapes::BoxLine::PosX] = -1000.0f;
@@ -222,6 +203,60 @@ namespace PlatformerSceneNamespace
 				previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 0.0f;
 				previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 0.0f;
 				registry.setComponentDirty(previewUi);
+			}
+			else
+			{
+				if (services.input().getMouseButton(activeBtn))
+				{
+					vec2 currentScreen = {services.input().getMouseX(), services.input().getMouseY()};
+					vec2 startScreen = ECS::Camera::worldPosition2DToScreenPosition(cam, state.boxStart);
+					vec2 pos = (currentScreen + startScreen) / 2.0f;
+					vec2 size = 0.5f * glm::abs(currentScreen - startScreen);
+
+					previewUi.parameters[DefaultShapes::BoxLine::PosX] = pos.x;
+					previewUi.parameters[DefaultShapes::BoxLine::PosY] = pos.y;
+					previewUi.parameters[DefaultShapes::BoxLine::SizeX] = std::max(size.x, 2.0f);
+					previewUi.parameters[DefaultShapes::BoxLine::SizeY] = std::max(size.y, 2.0f);
+					previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 2.0f;
+					registry.setComponentDirty(previewUi);
+				}
+
+				if (services.input().getMouseButtonUp(activeBtn))
+				{
+					state.isCreatingBox = false;
+
+					vec2 screen = {services.input().getMouseX(), services.input().getMouseY()};
+					vec2 worldEnd = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
+
+					vec2 pos = (worldEnd + state.boxStart) / 2.0f;
+					vec2 size = 0.5f * glm::abs(worldEnd - state.boxStart);
+
+					// If clicked without significant drag, spawn a handy default platform
+					if (size.x < 0.4f && size.y < 0.4f)
+					{
+						size = vec2(2.5f, 0.35f);
+					}
+					else
+					{
+						size = glm::max(size, vec2(0.5f, 0.2f));
+					}
+
+					services.shapes().addShape({.shapeId = DefaultShapes::Box,
+												.variables = {{DefaultShapes::Box::PosX, pos.x},
+															  {DefaultShapes::Box::PosY, pos.y},
+															  {DefaultShapes::Box::SizeX, size.x},
+															  {DefaultShapes::Box::SizeY, size.y}},
+												.material = services.materials2D().getHandle("platform"),
+												.combination = state.boxCombination});
+
+					// Hide preview box offscreen
+					previewUi.parameters[DefaultShapes::BoxLine::PosX] = -1000.0f;
+					previewUi.parameters[DefaultShapes::BoxLine::PosY] = -1000.0f;
+					previewUi.parameters[DefaultShapes::BoxLine::SizeX] = 0.0f;
+					previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 0.0f;
+					previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 0.0f;
+					registry.setComponentDirty(previewUi);
+				}
 			}
 		}
 	}
@@ -242,7 +277,6 @@ namespace PlatformerSceneNamespace
 
 		auto& transform = registry.getComponent<Transform>(state.player);
 		auto& rb = registry.getComponent<RigidBody2D>(state.player);
-		auto& dot = registry.getComponent<Dot>(state.player);
 
 		// Respawn if fallen into the void
 		if (transform.position.y < -20.0f)
@@ -294,6 +328,7 @@ namespace PlatformerSceneNamespace
 
 		inputX = std::clamp(inputX, -1.0f, 1.0f);
 
+		// Keep head up
 		if (registry.isEntityValid(state.playerHead) && registry.hasComponent<Transform>(state.playerHead) &&
 			registry.hasComponent<RigidBody2D>(state.playerHead))
 		{
@@ -302,8 +337,21 @@ namespace PlatformerSceneNamespace
 			auto distanceX = headTransform.position.x - footTransform.position.x;
 
 			auto& headRb = registry.getComponent<RigidBody2D>(state.playerHead);
-			headRb.pendingContinuousForce = vec2(inputX * 1000.0f, 500.0f + std::abs(inputX) * 800.0f);
-			// registry.setComponentDirty(headRb);
+			float forceX = inputX * 1000.0f;
+			float gravityCompensation = 500.0f;
+			float forceY = std::abs(inputX) * 800.0f;
+
+			headRb.pendingContinuousForce = 0.25f * vec2(forceX, gravityCompensation + forceY);
+
+			if (registry.isEntityValid(state.playerShape) && registry.hasComponent<Shape>(state.playerShape))
+			{
+				auto& playerShape = registry.getComponent<Shape>(state.playerShape);
+				playerShape.parameters[DefaultShapes::Box::PosX] =
+					(footTransform.position.x + headTransform.position.x) * 0.5f;
+				playerShape.parameters[DefaultShapes::Box::PosY] =
+					(footTransform.position.y + headTransform.position.y) * 0.5f;
+				playerShape.parameters[5] = -inputX * 100.0f;
+			}
 		}
 
 		// Apply wall jump lockout: prevent immediately canceling outward jump velocity
@@ -424,17 +472,18 @@ namespace PlatformerSceneNamespace
 			state.jumpBufferTimer -= delta;
 		}
 
-		// 5. Jump Execution (unified for ground, slopes, and walls)
+		// 5. Jump Execution (normal jumps use up vector; wall jumps use gradient normal)
 		if (state.jumpBufferTimer > 0.0f && (state.coyoteTimer > 0.0f || state.isOnWall))
 		{
-			vec2 n = state.lastContactNormal;
+			bool isWallJump = state.isOnWall;
+			vec2 n = isWallJump ? state.lastContactNormal : vec2(0.0f, 1.0f);
 
 			// Normal-directed push + constant upward lift
 			vec2 normalPush = n * state.jumpNormalPush;
 			vec2 upwardLift = vec2(0.0f, state.jumpUpwardLift);
 
 			vec2 jumpVel;
-			if (state.isOnWall)
+			if (isWallJump)
 			{
 				// Wall jump: kick away from the wall along the surface normal
 				jumpVel.x = normalPush.x;
@@ -469,7 +518,7 @@ namespace PlatformerSceneNamespace
 			state.isOnWall = false;
 
 			// If leaping off a steep wall, activate brief directional lockout
-			if (std::abs(n.x) > 0.4f && n.y < 0.6f)
+			if (isWallJump && std::abs(n.x) > 0.4f && n.y < 0.6f)
 			{
 				state.wallJumpLockoutTimer = state.wallJumpLockout;
 			}
@@ -596,20 +645,6 @@ namespace PlatformerSceneNamespace
 
 		// Synchronize kinematic velocity to the physics thread
 		registry.setComponentDirty(rb);
-
-		// 8. Update visual feedback material: Yellow on floor, Orange on wall/slope slide, Magenta in air
-		if (state.isGrounded)
-		{
-			dot.materialId = state.isSliding ? state.wallMaterial.id : state.floorMaterial.id;
-		}
-		else if (state.isOnWall)
-		{
-			dot.materialId = state.wallMaterial.id;
-		}
-		else
-		{
-			dot.materialId = state.airMaterial.id;
-		}
 	}
 
 	void cameraFollowSystem(Registry& registry, ServiceProvider& services)

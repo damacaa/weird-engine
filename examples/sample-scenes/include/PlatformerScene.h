@@ -9,11 +9,9 @@ namespace PlatformerSceneNamespace
 	{
 		WeirdEngine::Entity player = WeirdEngine::INVALID_ENTITY;
 		WeirdEngine::Entity playerHead = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity playerShape = WeirdEngine::INVALID_ENTITY;
 
-		// Materials for ground, wall, and air visual feedback
-		WeirdEngine::Material2DHandle floorMaterial;
-		WeirdEngine::Material2DHandle wallMaterial;
-		WeirdEngine::Material2DHandle airMaterial;
+		WeirdEngine::Material2DHandle playerMaterial;
 
 		// Platform creation with mouse
 		WeirdEngine::Entity previewBox = WeirdEngine::INVALID_ENTITY;

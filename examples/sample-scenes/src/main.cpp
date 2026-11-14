@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 	sceneManager.registerScene<InstrumentScene>("instruments");
 	sceneManager.registerScene<LifeScene>("life");
 	sceneManager.registerScene<PlatformerScene>("platformer", ASSETS_PATH "platformer_world.weirdscene");
-	sceneManager.registerScene<ThrustScene>("thrust", ASSETS_PATH "platformer_world.weirdscene");
+	sceneManager.registerScene<ThrustScene>("thrust", ASSETS_PATH "space.weirdscene");
 	// sceneManager.registerScene<UiScene>("ui"); // TODO: fix AI slop
 	sceneManager.registerScene<CollisionScene>("collisions");
 	sceneManager.registerScene<ImageScene>("image");
@@ -41,8 +41,7 @@ int main(int argc, char* argv[])
 	// Stress tests / benchmarks (commented out due to runtime shader rebuild overhead)
 	// sceneManager.registerScene<DestroyScene>("destroy-test");
 
-	// AI slop
-	// sceneManager.registerScene<AquariumScene>("aquarium");
+	sceneManager.registerScene<AquariumScene>("aquarium", ASSETS_PATH "aquarium.weirdscene");
 
 	DisplaySettings displaySettings{};
 	displaySettings.width = 800;

@@ -9,6 +9,9 @@ namespace ThrustSceneNamespace
 	constexpr size_t MAX_SHIP_DOTS = 32;
 	constexpr size_t MAX_EXHAUST_PARTICLES = 2560;
 	constexpr size_t MAX_RECENT_EXHAUST_SPAWNS = 32;
+	constexpr float DEFAULT_CAMERA_ZOOM = 30.0f;
+	constexpr float MIN_CAMERA_ZOOM = 8.0f;
+	constexpr float MAX_CAMERA_ZOOM = 400.0f;
 
 	struct ShipDot
 	{
@@ -55,12 +58,14 @@ namespace ThrustSceneNamespace
 		float thrustPower = 32.0f;
 		float rotationSpeed = 2.3f;
 		float gravity = 14.0f;
-		float linearDrag = 0.24f;
+		float linearDrag = 0.01f;
 
 		// Fuel
 		float maxFuel = 100.0f;
 		float fuel = 100.0f;
-		float fuelBurnRate = 12.0f; // ~8.3 seconds of continuous burn
+		float fuelBurnRate = 12.0f;			  // ~8.3 seconds of continuous burn
+		float fuelRecoveryRate = 4.0f;		  // Slow passive recovery when not thrusting
+		float landedFuelRecoveryRate = 20.0f; // Faster recharge while resting on a planet
 
 		// Exhaust particle ring buffer & smooth emitter state
 		std::array<ExhaustParticle, MAX_EXHAUST_PARTICLES> exhaustParticles{};
@@ -72,6 +77,10 @@ namespace ThrustSceneNamespace
 
 		// Runtime status
 		bool isThrusting = false;
+
+		// Camera zoom
+		float cameraZoom = DEFAULT_CAMERA_ZOOM;
+		float targetCameraZoom = DEFAULT_CAMERA_ZOOM;
 	};
 
 	static_assert(WeirdEngine::is_snapshot_serializable_v<State>,
@@ -86,6 +95,11 @@ namespace ThrustSceneNamespace
 	void emitExhaustParticles(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 							  const WeirdEngine::vec2& prevShipPos, float prevShipAngle, bool wasThrusting,
 							  float delta);
+	void recoverFuel(State& state, bool thrustHeld, bool landed, float delta);
+	float applyStickDeadzone(float value, float deadzone = 0.2f);
+	float resolveRotationInput(float keyboardDir, float stickX, bool dpadLeft, bool dpadRight);
+	float resolveCameraZoomAxis(float rightStickY, float leftTrigger, bool leftShoulder);
+	void updateCameraZoom(State& state, bool wheelUp, bool wheelDown, float zoomAxis, bool resetZoom, float delta);
 	void shipPhysicsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void exhaustParticleSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void uiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);

@@ -34,13 +34,14 @@ namespace ThrustSceneNamespace
 		background.secondaryColor = vec4(0.07f, 0.11f, 0.18f, 1.0f);
 		background.scale = 0.15f;
 
-		// Gravity in physics simulation for exhaust particles bouncing off cave terrain
-		services.physics().setGravity(-3.0f);
-		services.physics().setDamping(0.003f);
-		services.physics().setFriction(0.2f);
+		// Zero global physics gravity and very low friction/damping for space environment
+		services.physics().setGravity(0.0f);
+		services.physics().setDamping(0.0005f);
+		services.physics().setFriction(0.01f);
 
+		const State& state = getState(registry);
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
-		cameraTransform.position = vec3(0.0f, 6.0f, 30.0f);
+		cameraTransform.position = vec3(0.0f, 6.0f, state.cameraZoom);
 		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 	}
 
@@ -48,22 +49,22 @@ namespace ThrustSceneNamespace
 	{
 		State& state = getState(registry);
 
-		// Random materials from palette (no createMaterial calls)
+		// Fixed palette indices for HUD legibility (all 16 slots are owned by the scene)
 		uint16_t matCount = services.materials2D().getMaterialCount();
 		if (matCount == 0)
 		{
 			matCount = 16;
 		}
 
-		auto getRandomMat = [&](uint16_t fallbackMin = 0) -> Material2DHandle
+		auto getPaletteMat = [&](uint16_t preferredIdx) -> Material2DHandle
 		{
-			uint16_t idx = static_cast<uint16_t>(services.random().range<int>(5, matCount - 1));
+			uint16_t idx = static_cast<uint16_t>(std::min<int>(preferredIdx, static_cast<int>(matCount) - 1));
 			return services.materials2D().get(idx);
 		};
 
-		state.fuelLabelMaterial = getRandomMat();
-		state.fuelMaterial = getRandomMat();
-		state.fuelBgMaterial = getRandomMat();
+		state.fuelLabelMaterial = getPaletteMat(1); // White
+		state.fuelMaterial = getPaletteMat(5);		// Green
+		state.fuelBgMaterial = getPaletteMat(2);	// Steel gray track
 
 		// Load spaceship cluster asset and drive its dots kinematically
 		auto& cluster = services.clusters().instantiate(services.resources().assetPath("spaceship.weirdcluster"),
@@ -122,54 +123,131 @@ namespace ThrustSceneNamespace
 		state.thrusterLocalY = minLocalY - 0.36f;
 	}
 
+	namespace
+	{
+		struct FuelUiLayout
+		{
+			float labelX = 28.0f;
+			float labelTopY = 0.0f;
+			float barStartX = 0.0f;
+			float barY = 0.0f;
+			float barLength = 185.0f;
+			float trackRadius = 7.5f;
+			float fillRadius = 4.5f;
+		};
+
+		/// Computes non-overlapping top-left positions for the native 40px HUD text and pill fuel gauge.
+		FuelUiLayout computeFuelUiLayout()
+		{
+			constexpr float MARGIN_X = 28.0f;
+			constexpr float TOP_MARGIN = 22.0f;
+			constexpr float LABEL_HEIGHT = 40.0f; // 4-row glyph height at default UI dotRadius=5.0
+			constexpr float LABEL_TO_BAR_GAP = 14.0f;
+
+			FuelUiLayout layout;
+			const float screenH = static_cast<float>(Display::height > 0 ? Display::height : 720);
+			layout.labelX = MARGIN_X;
+			layout.labelTopY = screenH - TOP_MARGIN;
+			layout.barStartX = MARGIN_X + layout.trackRadius;
+			layout.barY = layout.labelTopY - LABEL_HEIGHT - LABEL_TO_BAR_GAP - layout.trackRadius;
+			return layout;
+		}
+
+		/// Synchronizes the fuel gauge track, active fill bar, and label transform to current state and window size.
+		void applyFuelUiLayout(const State& state, Registry& registry, const FuelUiLayout& layout)
+		{
+			const float fuelRatio = state.maxFuel > 0.0f ? std::clamp(state.fuel / state.maxFuel, 0.0f, 1.0f) : 0.0f;
+
+			if (registry.isEntityValid(state.fuelBgLineEntity) &&
+				registry.hasComponent<UIShape>(state.fuelBgLineEntity))
+			{
+				auto& bgUi = registry.getComponent<UIShape>(state.fuelBgLineEntity);
+				bgUi.parameters[DefaultShapes::Line::StartX] = layout.barStartX;
+				bgUi.parameters[DefaultShapes::Line::StartY] = layout.barY;
+				bgUi.parameters[DefaultShapes::Line::EndX] = layout.barStartX + layout.barLength;
+				bgUi.parameters[DefaultShapes::Line::EndY] = layout.barY;
+				bgUi.parameters[DefaultShapes::Line::Width] = layout.trackRadius;
+			}
+
+			if (registry.isEntityValid(state.fuelLineEntity) && registry.hasComponent<UIShape>(state.fuelLineEntity))
+			{
+				auto& fuelUi = registry.getComponent<UIShape>(state.fuelLineEntity);
+				if (fuelRatio > 0.001f)
+				{
+					fuelUi.parameters[DefaultShapes::Line::StartX] = layout.barStartX;
+					fuelUi.parameters[DefaultShapes::Line::StartY] = layout.barY;
+					fuelUi.parameters[DefaultShapes::Line::EndX] = layout.barStartX + layout.barLength * fuelRatio;
+					fuelUi.parameters[DefaultShapes::Line::EndY] = layout.barY;
+					fuelUi.parameters[DefaultShapes::Line::Width] = layout.fillRadius;
+				}
+				else
+				{
+					fuelUi.parameters[DefaultShapes::Line::StartX] = -1000.0f;
+					fuelUi.parameters[DefaultShapes::Line::StartY] = -1000.0f;
+					fuelUi.parameters[DefaultShapes::Line::EndX] = -1000.0f;
+					fuelUi.parameters[DefaultShapes::Line::EndY] = -1000.0f;
+					fuelUi.parameters[DefaultShapes::Line::Width] = 0.0f;
+				}
+			}
+
+			if (registry.isEntityValid(state.fuelLabelEntity) &&
+				registry.hasComponent<Transform>(state.fuelLabelEntity))
+			{
+				auto& t = registry.getComponent<Transform>(state.fuelLabelEntity);
+				t.position = vec3(layout.labelX, layout.labelTopY, 0.0f);
+			}
+		}
+	} // namespace
+
 	void setupUiSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
+		const FuelUiLayout layout = computeFuelUiLayout();
 
-		float screenH = static_cast<float>(Display::height);
-		float startX = 60.0f;
-		float startY = screenH - 45.0f;
-		float barWidth = 200.0f;
+		// Fuel bar track (background line in group 0)
+		state.fuelBgLineEntity = services.shapes().addUIShape(
+			{.shapeId = DefaultShapes::Line,
+			 .variables = {{DefaultShapes::Line::StartX, layout.barStartX},
+						   {DefaultShapes::Line::StartY, layout.barY},
+						   {DefaultShapes::Line::EndX, layout.barStartX + layout.barLength},
+						   {DefaultShapes::Line::EndY, layout.barY},
+						   {DefaultShapes::Line::Width, layout.trackRadius}},
+			 .material = state.fuelBgMaterial,
+			 .group = 0});
 
-		// Fuel bar track (background line)
-		state.fuelBgLineEntity =
-			services.shapes().addUIShape({.shapeId = DefaultShapes::Line,
-										  .variables = {{DefaultShapes::Line::StartX, startX},
-														{DefaultShapes::Line::StartY, startY},
-														{DefaultShapes::Line::EndX, startX + barWidth},
-														{DefaultShapes::Line::EndY, startY},
-														{DefaultShapes::Line::Width, 4.5f}},
-										  .material = state.fuelBgMaterial});
+		// Active fuel fill rendered above track (higher group avoids track SDF shadowing fill)
+		state.fuelLineEntity = services.shapes().addUIShape(
+			{.shapeId = DefaultShapes::Line,
+			 .variables = {{DefaultShapes::Line::StartX, layout.barStartX},
+						   {DefaultShapes::Line::StartY, layout.barY},
+						   {DefaultShapes::Line::EndX, layout.barStartX + layout.barLength},
+						   {DefaultShapes::Line::EndY, layout.barY},
+						   {DefaultShapes::Line::Width, layout.fillRadius}},
+			 .material = state.fuelMaterial,
+			 .group = 1});
 
-		// Active fuel line
-		state.fuelLineEntity =
-			services.shapes().addUIShape({.shapeId = DefaultShapes::Line,
-										  .variables = {{DefaultShapes::Line::StartX, startX},
-														{DefaultShapes::Line::StartY, startY},
-														{DefaultShapes::Line::EndX, startX + barWidth},
-														{DefaultShapes::Line::EndY, startY},
-														{DefaultShapes::Line::Width, 3.0f}},
-										  .material = state.fuelMaterial});
-
-		// Fuel text label
+		// Fuel text label anchored strictly above the bar
 		state.fuelLabelEntity = registry.createEntity();
 		auto& t = registry.addComponent<Transform>(state.fuelLabelEntity);
-		t.position = vec3(startX, startY + 16.0f, 0.0f);
+		t.position = vec3(layout.labelX, layout.labelTopY, 0.0f);
 		auto& tr = registry.addComponent<UITextRenderer>(state.fuelLabelEntity);
 		tr.text = "FUEL";
 		tr.material = state.fuelLabelMaterial.id;
 		tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
-		tr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+		tr.verticalAlignment = TextRenderer::VerticalAlignment::Top;
+
+		applyFuelUiLayout(state, registry, layout);
 	}
 
 	namespace
 	{
-		void resolveShipTerrainCollisions(State& state, ServiceProvider& services, const vec2& forward,
+		bool resolveShipTerrainCollisions(State& state, ServiceProvider& services, const vec2& forward,
 										  const vec2& right)
 		{
 			constexpr float PROBE_RADIUS = 0.50f;
 			constexpr float BOUNCE_SPEED_THRESHOLD = 1.5f;
 			constexpr float RESTITUTION = 0.45f;
+			bool collided = false;
 
 			for (size_t i = 0; i < state.shipDotCount; ++i)
 			{
@@ -180,6 +258,7 @@ namespace ThrustSceneNamespace
 				if (dist >= PROBE_RADIUS)
 					continue;
 
+				collided = true;
 				vec2 normal = services.physics().sampleGradient(worldProbe, false);
 				if (glm::length2(normal) <= 0.0001f)
 					continue;
@@ -194,6 +273,8 @@ namespace ThrustSceneNamespace
 					state.shipVelocity -= (1.0f + restitution) * vn * normal;
 				}
 			}
+
+			return collided;
 		}
 
 		struct ExhaustLane
@@ -221,7 +302,7 @@ namespace ThrustSceneNamespace
 		};
 
 		constexpr float RECENT_SPAWN_TRACK_WINDOW = 0.25f;
-		constexpr float PHYSICS_DAMPING_APPROX = 0.3f; // Matches 0.003f damping at 100 Hz
+		constexpr float PHYSICS_DAMPING_APPROX = 0.05f; // Matches 0.0005f damping at 100 Hz
 
 		void advanceRecentExhaustSpawns(State& state, float delta)
 		{
@@ -405,6 +486,94 @@ namespace ThrustSceneNamespace
 		}
 	}
 
+	/// Applies a linear deadzone and rescales remaining travel smoothly to [-1, 1].
+	float applyStickDeadzone(float value, float deadzone)
+	{
+		const float absValue = std::abs(value);
+		if (absValue <= deadzone || deadzone >= 1.0f)
+		{
+			return 0.0f;
+		}
+		const float sign = value > 0.0f ? 1.0f : -1.0f;
+		return sign * std::clamp((absValue - deadzone) / (1.0f - deadzone), 0.0f, 1.0f);
+	}
+
+	/// Resolves ship rotation rate in [-1, 1] from keyboard, deadzoned left stick, and D-pad.
+	float resolveRotationInput(float keyboardDir, float stickX, bool dpadLeft, bool dpadRight)
+	{
+		float rotateInput = std::clamp(keyboardDir, -1.0f, 1.0f);
+		const float stickInput = applyStickDeadzone(stickX);
+		if (stickInput != 0.0f)
+		{
+			rotateInput = stickInput;
+		}
+		const int dpadDir = (dpadRight ? 1 : 0) - (dpadLeft ? 1 : 0);
+		if (dpadDir != 0)
+		{
+			rotateInput = static_cast<float>(dpadDir);
+		}
+		return std::clamp(rotateInput, -1.0f, 1.0f);
+	}
+
+	/// Resolves signed camera zoom rate in [-1, 1] (negative zooms in, positive zooms out).
+	float resolveCameraZoomAxis(float rightStickY, float leftTrigger, bool leftShoulder)
+	{
+		float zoomAxis = applyStickDeadzone(rightStickY);
+		if (leftShoulder)
+		{
+			zoomAxis -= 1.0f;
+		}
+		if (leftTrigger > 0.0f)
+		{
+			zoomAxis += applyStickDeadzone(leftTrigger);
+		}
+		return std::clamp(zoomAxis, -1.0f, 1.0f);
+	}
+
+	/// Advances smoothed camera zoom from mouse wheel steps and continuous/reset gamepad inputs.
+	void updateCameraZoom(State& state, bool wheelUp, bool wheelDown, float zoomAxis, bool resetZoom, float delta)
+	{
+		constexpr float ZOOM_STEP_FACTOR = 1.15f;
+		constexpr float GAMEPAD_ZOOM_RATE = 1.5f;
+		constexpr float ZOOM_SPEED = 10.0f;
+
+		if (resetZoom)
+		{
+			state.targetCameraZoom = DEFAULT_CAMERA_ZOOM;
+		}
+		if (wheelUp)
+		{
+			state.targetCameraZoom /= ZOOM_STEP_FACTOR;
+		}
+		if (wheelDown)
+		{
+			state.targetCameraZoom *= ZOOM_STEP_FACTOR;
+		}
+		if (zoomAxis != 0.0f && delta > 0.0f)
+		{
+			state.targetCameraZoom *= std::exp(zoomAxis * GAMEPAD_ZOOM_RATE * delta);
+		}
+
+		state.targetCameraZoom = std::clamp(state.targetCameraZoom, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM);
+		if (delta > 0.0f)
+		{
+			state.cameraZoom = glm::mix(state.cameraZoom, state.targetCameraZoom, std::min(1.0f, ZOOM_SPEED * delta));
+		}
+	}
+
+	/// Recharges fuel slowly in flight and faster while resting on terrain when thrust is released.
+	void recoverFuel(State& state, bool thrustHeld, bool landed, float delta)
+	{
+		if (delta <= 0.0f || thrustHeld || state.isThrusting || state.fuel >= state.maxFuel)
+		{
+			return;
+		}
+
+		const bool restingOnPlanet = landed && glm::length(state.shipVelocity) < 1.0f;
+		const float recoveryRate = restingOnPlanet ? state.landedFuelRecoveryRate : state.fuelRecoveryRate;
+		state.fuel = std::min(state.maxFuel, state.fuel + recoveryRate * delta);
+	}
+
 	void shipPhysicsSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
@@ -418,28 +587,19 @@ namespace ThrustSceneNamespace
 		const float prevShipAngle = state.shipAngle;
 
 		// 1. Rotation input (A/D, Left/Right arrow, gamepad LeftStick / Dpad)
-		float rotateInput = 0.0f;
+		float keyboardRotate = 0.0f;
 		if (services.input().getKey(Input::KeyCode::A) || services.input().getKey(Input::KeyCode::Left))
 		{
-			rotateInput -= 1.0f;
+			keyboardRotate -= 1.0f;
 		}
 		if (services.input().getKey(Input::KeyCode::D) || services.input().getKey(Input::KeyCode::Right))
 		{
-			rotateInput += 1.0f;
+			keyboardRotate += 1.0f;
 		}
-		float stickX = services.input().getGamepadAxis(Input::GamepadAxis::LeftX);
-		if (std::abs(stickX) > 0.2f)
-		{
-			rotateInput = stickX;
-		}
-		if (services.input().getGamepadButton(Input::GamepadButton::DpadLeft))
-		{
-			rotateInput = -1.0f;
-		}
-		if (services.input().getGamepadButton(Input::GamepadButton::DpadRight))
-		{
-			rotateInput = 1.0f;
-		}
+		const float rotateInput =
+			resolveRotationInput(keyboardRotate, services.input().getGamepadAxis(Input::GamepadAxis::LeftX),
+								 services.input().getGamepadButton(Input::GamepadButton::DpadLeft),
+								 services.input().getGamepadButton(Input::GamepadButton::DpadRight));
 
 		state.shipAngle += rotateInput * state.rotationSpeed * delta;
 		while (state.shipAngle > glm::pi<float>())
@@ -451,11 +611,12 @@ namespace ThrustSceneNamespace
 			state.shipAngle += glm::two_pi<float>();
 		}
 
-		// 2. Thrust input (W, Up, Space, gamepad South / RightTrigger)
+		// 2. Thrust input (W, Up, Space, gamepad South / RightShoulder / RightTrigger)
 		bool thrustHeld = services.input().getKey(Input::KeyCode::W) || services.input().getKey(Input::KeyCode::Up) ||
 						  services.input().getKey(Input::KeyCode::Space) ||
 						  services.input().getGamepadButton(Input::GamepadButton::South) ||
-						  services.input().getGamepadAxis(Input::GamepadAxis::RightTrigger) > 0.3f;
+						  services.input().getGamepadButton(Input::GamepadButton::RightShoulder) ||
+						  services.input().getGamepadAxis(Input::GamepadAxis::RightTrigger) > 0.2f;
 
 		const bool wasThrusting = state.isThrusting;
 		state.isThrusting = thrustHeld && (state.fuel > 0.0f);
@@ -470,19 +631,25 @@ namespace ThrustSceneNamespace
 			state.fuel = std::max(0.0f, state.fuel - state.fuelBurnRate * delta);
 		}
 
-		// 3. Gravity & linear drag
-		state.shipVelocity.y -= state.gravity * delta;
+		// 3. Gravity (toward nearest shape via SDF gradient) & linear drag
+		const RaymarchResult nearestSurface = services.physics().sampleAt(state.shipPos, false);
+		if (nearestSurface.entity != INVALID_ENTITY)
+		{
+			const vec2 gravityDir = -services.physics().sampleGradient(state.shipPos, false);
+			state.shipVelocity += gravityDir * (state.gravity * delta);
+		}
 		state.shipVelocity *= std::clamp(1.0f - state.linearDrag * delta, 0.0f, 1.0f);
 
 		// 4. Integrate position & depenetrate against terrain SDF
 		state.shipPos += state.shipVelocity * delta;
-		resolveShipTerrainCollisions(state, services, forward, right);
+		const bool landed = resolveShipTerrainCollisions(state, services, forward, right);
 
-		// 5. Respawn / Refuel on 'R' key, gamepad North (Y button), or void fall
+		// 5. Respawn / Refuel on 'R' key or gamepad North (Y) / Start
 		vec2 emitStartShipPos = prevShipPos;
 		float emitStartShipAngle = prevShipAngle;
 		if (services.input().getKeyDown(Input::KeyCode::R) ||
-			services.input().getGamepadButtonDown(Input::GamepadButton::North) || state.shipPos.y < -30.0f)
+			services.input().getGamepadButtonDown(Input::GamepadButton::North) ||
+			services.input().getGamepadButtonDown(Input::GamepadButton::Start))
 		{
 			state.shipPos = vec2(0.0f, 6.0f);
 			state.shipVelocity = vec2(0.0f, 0.0f);
@@ -499,11 +666,8 @@ namespace ThrustSceneNamespace
 			right = vec2(1.0f, 0.0f);
 		}
 
-		// Refuel slowly when resting stably near the start area
-		if (std::abs(state.shipPos.x) < 5.0f && state.shipPos.y < 7.0f && glm::length(state.shipVelocity) < 1.0f)
-		{
-			state.fuel = std::min(state.maxFuel, state.fuel + 20.0f * delta);
-		}
+		// Recover fuel passively while coasting, or faster when resting stably on a planet surface
+		recoverFuel(state, thrustHeld, landed, delta);
 
 		// 6. Emit exhaust rigidbodies and update ship cluster transforms/velocities
 		emitExhaustParticles(registry, services, emitStartShipPos, emitStartShipAngle, wasThrusting, delta);
@@ -542,50 +706,28 @@ namespace ThrustSceneNamespace
 
 	void uiSystem(Registry& registry, ServiceProvider& services)
 	{
-		State& state = getState(registry);
-
-		float screenH = static_cast<float>(Display::height);
-		float startX = 60.0f;
-		float startY = screenH - 45.0f;
-		float totalWidth = 200.0f;
-		float fuelRatio = std::clamp(state.fuel / state.maxFuel, 0.0f, 1.0f);
-
-		if (registry.isEntityValid(state.fuelBgLineEntity) && registry.hasComponent<UIShape>(state.fuelBgLineEntity))
-		{
-			auto& bgUi = registry.getComponent<UIShape>(state.fuelBgLineEntity);
-			bgUi.parameters[DefaultShapes::Line::StartX] = startX;
-			bgUi.parameters[DefaultShapes::Line::StartY] = startY;
-			bgUi.parameters[DefaultShapes::Line::EndX] = startX + totalWidth;
-			bgUi.parameters[DefaultShapes::Line::EndY] = startY;
-			bgUi.parameters[DefaultShapes::Line::Width] = 4.5f;
-		}
-
-		if (registry.isEntityValid(state.fuelLineEntity) && registry.hasComponent<UIShape>(state.fuelLineEntity))
-		{
-			auto& fuelUi = registry.getComponent<UIShape>(state.fuelLineEntity);
-			fuelUi.parameters[DefaultShapes::Line::StartX] = startX;
-			fuelUi.parameters[DefaultShapes::Line::StartY] = startY;
-			fuelUi.parameters[DefaultShapes::Line::EndX] = startX + totalWidth * fuelRatio;
-			fuelUi.parameters[DefaultShapes::Line::EndY] = startY;
-			fuelUi.parameters[DefaultShapes::Line::Width] = fuelRatio > 0.001f ? 3.0f : 0.0f;
-		}
-
-		if (registry.isEntityValid(state.fuelLabelEntity) && registry.hasComponent<Transform>(state.fuelLabelEntity))
-		{
-			auto& t = registry.getComponent<Transform>(state.fuelLabelEntity);
-			t.position = vec3(startX, startY + 16.0f, 0.0f);
-		}
+		applyFuelUiLayout(getState(registry), registry, computeFuelUiLayout());
 	}
 
 	void cameraFollowSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
-		float delta = services.time().deltaTime();
+		const float delta = std::min(services.time().deltaTime(), 0.05f);
+
+		const float zoomAxis =
+			resolveCameraZoomAxis(services.input().getGamepadAxis(Input::GamepadAxis::RightY),
+								  services.input().getGamepadAxis(Input::GamepadAxis::LeftTrigger),
+								  services.input().getGamepadButton(Input::GamepadButton::LeftShoulder));
+
+		updateCameraZoom(state, services.input().getMouseButton(Input::MouseButton::WheelUp),
+						 services.input().getMouseButton(Input::MouseButton::WheelDown), zoomAxis,
+						 services.input().getGamepadButtonDown(Input::GamepadButton::RightStick), delta);
 
 		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
 		constexpr float FOLLOW_SPEED = 5.0f;
-		cameraTransform.position.x = glm::mix(cameraTransform.position.x, state.shipPos.x, FOLLOW_SPEED * delta);
-		cameraTransform.position.y = glm::mix(cameraTransform.position.y, state.shipPos.y + 1.8f, FOLLOW_SPEED * delta);
-		cameraTransform.position.z = 30.0f;
+		const float followAlpha = std::min(1.0f, FOLLOW_SPEED * delta);
+		cameraTransform.position.x = glm::mix(cameraTransform.position.x, state.shipPos.x, followAlpha);
+		cameraTransform.position.y = glm::mix(cameraTransform.position.y, state.shipPos.y, followAlpha);
+		cameraTransform.position.z = state.cameraZoom;
 	}
 } // namespace ThrustSceneNamespace

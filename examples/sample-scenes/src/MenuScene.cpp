@@ -76,6 +76,7 @@ namespace MenuSceneNamespace
 					{"ROPE", "Verlet physics rope simulation", "launch_scene", "rope"},
 					{"PLATFORMER", "2D character platformer with terrain collision", "launch_scene", "platformer"},
 					{"THRUST", "Classic cave thrust spaceship clone", "launch_scene", "thrust"},
+					{"AQUARIUM", "Living coral reef with schooling boids", "launch_scene", "aquarium"},
 					{"LIFE", "Game of Life cellular automata", "launch_scene", "life"},
 					{"COLLISIONS", "Interactive particle collision dynamics", "launch_scene", "collisions"},
 					{"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},
@@ -635,9 +636,11 @@ namespace MenuSceneNamespace
 		bool rightDown = input.getKeyDown(Input::Right) || input.getKeyDown(Input::D) ||
 						 input.getGamepadButtonDown(Input::GamepadButton::DpadRight);
 		bool upDown = input.getKeyDown(Input::Up) || input.getKeyDown(Input::W) ||
-					  input.getGamepadButtonDown(Input::GamepadButton::DpadUp);
+					  input.getGamepadButtonDown(Input::GamepadButton::DpadUp) ||
+					  input.getMouseButtonDown(Input::MouseButton::WheelUp);
 		bool downDown = input.getKeyDown(Input::Down) || input.getKeyDown(Input::S) ||
-						input.getGamepadButtonDown(Input::GamepadButton::DpadDown);
+						input.getGamepadButtonDown(Input::GamepadButton::DpadDown) ||
+						input.getMouseButtonDown(Input::MouseButton::WheelDown);
 
 		bool leftHeld = input.getKey(Input::Left) || input.getKey(Input::A) ||
 						input.getGamepadButton(Input::GamepadButton::DpadLeft);

@@ -1,6 +1,9 @@
 #include "ImageScene.h"
 #include "RopeScene.h"
 #include "TetrominoScene.h"
+#include "ThrustScene.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-physics/components/RigidBodyManager.h"
 
 #include <chrono>
 #include <cstring>
@@ -10,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "weird-physics/components/Spring.h"
@@ -557,6 +561,218 @@ namespace
 				"TetrominoScene must load its paused state.");
 		require(state.isPaused && services.physics().isPaused(), "Paused saves must keep physics paused.");
 	}
+
+	void testThrustScene(SceneManager& manager, const std::string& name)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<ThrustScene>>(name, ASSETS_PATH "platformer_world.weirdscene");
+		manager.loadScene(name);
+
+		auto& scene = *static_cast<InspectableScene<ThrustScene>*>(manager.getCurrentScene());
+		auto& registry = *scene.registry;
+		auto& services = *scene.services;
+		auto& state = ThrustSceneNamespace::getState(registry);
+
+		require(state.shipDotCount == 17, "ThrustScene must instantiate all 17 spaceship cluster dots.");
+		require(glm::length(state.shipPos - vec2(0.0f, 6.0f)) < 0.001f,
+				"ThrustScene ship must initialize at spawn position (0, 6).");
+
+		vec2 dotCentroid(0.0f);
+		for (size_t i = 0; i < state.shipDotCount; ++i)
+		{
+			const Entity e = state.shipDots[i].entity;
+			require(registry.isEntityValid(e) && registry.hasComponent<Transform>(e) && registry.hasComponent<Dot>(e) &&
+						registry.hasComponent<RigidBody2D>(e),
+					"Every spaceship cluster dot must retain Transform, Dot, and RigidBody2D.");
+
+			dotCentroid += vec2(registry.getComponent<Transform>(e).position);
+			const auto& rb = registry.getComponent<RigidBody2D>(e);
+			require(rb.type == BodyType::Kinematic, "Ship cluster rigidbodies must be Kinematic.");
+			require(!rb.enableCollision, "Ship cluster rigidbodies must disable body-body collision.");
+			require(rb.enableShapeCollision, "Ship cluster rigidbodies must enable terrain shape collision.");
+		}
+		dotCentroid /= static_cast<float>(state.shipDotCount);
+		require(glm::length(dotCentroid - state.shipPos) < 0.01f,
+				"Spaceship cluster dots must remain centered on shipPos.");
+
+		// Verify ThrustScene snapshot save & reload round-trip.
+		const vec2 savedShipPos = state.shipPos;
+		SnapshotFile saved;
+		services.serialization().saveSnapshot(saved.path.string());
+		require(std::filesystem::exists(saved.path), "ThrustScene must support snapshots.");
+		state.shipPos = vec2(-50.0f, 50.0f);
+		state.shipDotCount = 0;
+		require(services.serialization().loadSnapshot(saved.path.string()), "ThrustScene must restore its snapshot.");
+		require(state.shipDotCount == 17, "Restored ThrustScene snapshot must keep all 17 ship cluster dots.");
+		require(glm::length(state.shipPos - savedShipPos) < 0.001f, "Restored ThrustScene snapshot must keep shipPos.");
+
+		// Verify high-throughput non-overlapping exhaust rigidbody spawning at low and high speeds.
+		auto runExhaustFrames = [&](const vec2& velocity, float angularRate, int frames) -> size_t
+		{
+			constexpr float STEP_DT = 1.0f / 60.0f;
+			state.shipPos = vec2(0.0f, 30.0f);
+			state.shipVelocity = velocity;
+			state.shipAngle = 0.0f;
+			state.exhaustSpawnAccumulator = 0.0f;
+			state.isThrusting = true;
+			for (auto& recent : state.recentExhaustSpawns)
+			{
+				recent.age = 1.0f;
+			}
+
+			const size_t startHead = state.exhaustHead;
+			for (int f = 0; f < frames; ++f)
+			{
+				const vec2 prevPos = state.shipPos;
+				const float prevAngle = state.shipAngle;
+				state.shipPos += velocity * STEP_DT;
+				state.shipAngle += angularRate * STEP_DT;
+
+				ThrustSceneNamespace::emitExhaustParticles(registry, services, prevPos, prevAngle, f > 0, STEP_DT);
+
+				for (size_t i = 0; i < ThrustSceneNamespace::MAX_RECENT_EXHAUST_SPAWNS; ++i)
+				{
+					const auto& a = state.recentExhaustSpawns[i];
+					if (a.age >= 0.25f)
+						continue;
+					for (size_t j = i + 1; j < ThrustSceneNamespace::MAX_RECENT_EXHAUST_SPAWNS; ++j)
+					{
+						const auto& b = state.recentExhaustSpawns[j];
+						if (b.age >= 0.25f)
+							continue;
+						const vec2 d = a.pos - b.pos;
+						const float distSq = d.x * d.x + d.y * d.y;
+						require(distSq >= 0.99f, "Newly emitted exhaust rigidbodies must not overlap.");
+					}
+				}
+			}
+
+			return (state.exhaustHead + ThrustSceneNamespace::MAX_EXHAUST_PARTICLES - startHead) %
+				   ThrustSceneNamespace::MAX_EXHAUST_PARTICLES;
+		};
+
+		const size_t lowSpeedCount = runExhaustFrames(vec2(0.0f, 0.0f), 0.0f, 30);
+		const size_t highSpeedCount = runExhaustFrames(vec2(30.0f, 65.0f), 1.5f, 30);
+		require(lowSpeedCount >= 45, "Low-speed thrust must push dense exhaust rigidbodies.");
+		require(highSpeedCount > lowSpeedCount * 2,
+				"High-speed flight must push significantly more exhaust rigidbodies.");
+
+		// Verify snapshot serialization with active pooled exhaust rigidbodies in flight.
+		require(services.serialization().loadSnapshot(saved.path.string()),
+				"ThrustScene must recover baseline snapshot after high-speed exhaust bursts.");
+	}
+
+	struct FloorPlaneSdf : public IMathExpression
+	{
+		float getValue(const float* parameters) const override
+		{
+			return parameters[10];
+		}
+
+		std::string print() const override
+		{
+			return "y";
+		}
+	};
+
+	void testSimulation2DPendingAndCollisionFlags(bool threaded)
+	{
+		PhysicsSettings settings{};
+		settings.runSimulationInThread = threaded;
+
+		Simulation2D sim(64, settings);
+		Registry reg;
+		reg.registerComponent<RigidBody2D>(std::make_shared<RigidBodyManager>(sim));
+		ECS::PhysicsSystem2D::init(reg, sim);
+
+		std::vector<std::shared_ptr<IMathExpression>> sdfs{std::make_shared<FloorPlaneSdf>()};
+		sim.setSDFs(sdfs);
+
+		const Entity floorEntity = reg.createEntity();
+		Shape floorShape{};
+		floorShape.distanceFieldId = 0;
+		floorShape.hasCollisions = true;
+		sim.updateShape(floorEntity, floorShape);
+
+		struct CallbackState
+		{
+			std::atomic<size_t> kinematicShapeHits{0};
+			SimulationID kinematicId = INVALID_SIMULATION_ID;
+		} cbState;
+
+		const Entity shipProbe = reg.createEntity();
+		auto& probeT = reg.addComponent<Transform>(shipProbe);
+		probeT.position = vec3(0.0f, 0.25f, 0.0f);
+		reg.setEntityDirty<Transform>(shipProbe, true);
+		auto& probeRb = reg.addComponent<RigidBody2D>(shipProbe);
+		probeRb.type = BodyType::Kinematic;
+		probeRb.mass = 1.0f;
+		probeRb.enableCollision = false;
+		probeRb.enableShapeCollision = true;
+		reg.setEntityDirty<RigidBody2D>(shipProbe, true);
+		cbState.kinematicId = probeRb.simulationId;
+
+		sim.setShapeCollisionCallback(
+			[](PhysicsShapeCollisionEvent& ev, void* userData)
+			{
+				auto* st = static_cast<CallbackState*>(userData);
+				if (ev.body == st->kinematicId)
+				{
+					st->kinematicShapeHits.fetch_add(1, std::memory_order_relaxed);
+				}
+			},
+			&cbState);
+
+		if (threaded)
+		{
+			sim.startSimulationThread();
+		}
+
+		std::vector<Entity> spawnedDots;
+		for (int frame = 0; frame < 30; ++frame)
+		{
+			ECS::PhysicsSystem2D::update(reg, sim);
+
+			for (Entity d : spawnedDots)
+			{
+				const vec2 pos = vec2(reg.getComponent<Transform>(d).position);
+				require(pos.x > 10.0f && glm::length(pos) > 4.0f,
+						"Newly spawned rigidbodies must never reset to (0, 0) across physics buffer swaps.");
+			}
+
+			sim.update(1.0 / 60.0);
+			if (threaded)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(4));
+			}
+
+			if (frame < 25)
+			{
+				const Entity dot = reg.createEntity();
+				auto& t = reg.addComponent<Transform>(dot);
+				t.position = vec3(12.0f, 10.0f, 0.0f);
+				reg.setEntityDirty<Transform>(dot, true);
+				auto& rb = reg.addComponent<RigidBody2D>(dot);
+				rb.type = BodyType::Dynamic;
+				rb.mass = 0.05f;
+				rb.velocity = vec2(3.0f, -24.0f);
+				rb.enableCollision = false;
+				rb.enableShapeCollision = true;
+				reg.setEntityDirty<RigidBody2D>(dot, true);
+				spawnedDots.push_back(dot);
+			}
+		}
+
+		if (threaded)
+		{
+			sim.stopSimulationThread();
+		}
+
+		require(cbState.kinematicShapeHits.load(std::memory_order_relaxed) > 0,
+				"Bodies with enableCollision=false and enableShapeCollision=true must emit shape collisions.");
+	}
 } // namespace
 
 int main()
@@ -585,10 +801,14 @@ int main()
 			settings.runSimulationInThread = threaded;
 			manager.setPhysicsSettings(settings);
 			const std::string suffix = threaded ? "-threaded" : "-single";
+			std::cout << "Checking Simulation2D" << suffix << ".\n" << std::flush;
+			testSimulation2DPendingAndCollisionFlags(threaded);
 			std::cout << "Checking RopeScene" << suffix << ".\n" << std::flush;
 			testRopeScene(manager, "test-rope" + suffix);
 			std::cout << "Checking TetrominoScene" << suffix << ".\n" << std::flush;
 			testTetrominoScene(manager, "test-tetromino" + suffix);
+			std::cout << "Checking ThrustScene" << suffix << ".\n" << std::flush;
+			testThrustScene(manager, "test-thrust" + suffix);
 		}
 		std::cout << "Snapshot regression tests passed.\n";
 		return 0;

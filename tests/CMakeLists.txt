@@ -2,6 +2,7 @@ add_executable(WeirdSnapshotTests
     SnapshotTests.cpp
     ../examples/sample-scenes/src/RopeScene.cpp
     ../examples/sample-scenes/src/TetrominoScene.cpp
+    ../examples/sample-scenes/src/ThrustScene.cpp
 )
 target_link_libraries(WeirdSnapshotTests PRIVATE WeirdEngine)
 target_include_directories(WeirdSnapshotTests PRIVATE ../examples/sample-scenes/include)

@@ -101,6 +101,10 @@ namespace WeirdEngine
 		std::vector<PinDef> outputs;
 		std::function<NodeValue(const std::vector<NodeValue>& in, const NodeInstance& node)> evaluate;
 		std::function<std::string(const std::vector<std::string>& in, const NodeInstance& node)> toCppCode;
+		std::function<NodeValue(const std::vector<NodeValue>& in, const NodeInstance& node, int outputPinIdx)>
+			evaluatePin;
+		std::function<std::string(const std::vector<std::string>& in, const NodeInstance& node, int outputPinIdx)>
+			toCppCodePin;
 	};
 
 	// Custom data for nodes that need editable instance properties (e.g. constant value, var index)

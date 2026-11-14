@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -15,8 +16,12 @@ namespace WeirdEngine
 		static std::string generateCppCode(const NodeGraph& graph);
 
 	private:
-		static NodeValue evaluateNode(NodeGraph& graph, int nodeId, std::unordered_set<int>& visited);
-		static std::string generateNodeCpp(const NodeGraph& graph, int nodeId, std::unordered_set<int>& visited,
+		static NodeValue evaluateNode(const NodeGraph& graph, int nodeId, int outputPinIdx,
+									  std::unordered_set<int>& activeNodes, std::unordered_map<int, NodeValue>& cache);
+		static std::string generateNodeCpp(const NodeGraph& graph, int nodeId, int outputPinIdx,
+										   std::unordered_set<int>& activeNodes,
+										   std::unordered_map<int, std::string>& cache,
+										   const std::unordered_map<int, int>& pinUseCounts,
 										   std::vector<std::string>& lines);
 	};
 } // namespace WeirdEngine

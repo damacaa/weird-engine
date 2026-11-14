@@ -98,12 +98,15 @@ namespace WeirdEngine
 							 NodeCategory::Vector,
 							 {{"vec2", PinType::Vec2}},
 							 {{"x", PinType::Float}, {"y", PinType::Float}},
-							 [](const auto& in, const auto&)
+							 [](const auto& in, const auto&) { return NodeValue(asVec2(in[0]).x); },
+							 [](const auto& in, const auto&) { return in[0] + ".x"; },
+							 [](const auto& in, const auto&, int outPinIdx)
 							 {
 								 Vec2Expr p = asVec2(in[0]);
-								 return NodeValue(p.x);
+								 return NodeValue(outPinIdx == 1 ? p.y : p.x);
 							 },
-							 [](const auto& in, const auto&) { return in[0] + ".x"; }});
+							 [](const auto& in, const auto&, int outPinIdx)
+							 { return outPinIdx == 1 ? (in[0] + ".y") : (in[0] + ".x"); }});
 
 		registerNode(NodeDef{"vec2_add",
 							 "Vec2 Add",

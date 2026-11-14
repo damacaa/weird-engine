@@ -1,0 +1,1689 @@
+{
+    "camera": {
+        "position": [
+            0.8842697143554688,
+            -9.332283020019531,
+            80.14389038085938
+        ],
+        "rotation": [
+            0.0,
+            0.0,
+            -1.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "clusters": [],
+    "editorGroups": [],
+    "entities": [
+        {
+            "id": 1,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 5,
+                "groupIdx": 1,
+                "hasCollisions": true,
+                "material": 2,
+                "parameters": [
+                    0.0,
+                    0.0,
+                    54.5,
+                    35.5,
+                    2.200000047683716,
+                    1.100000023841858,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.4000000059604645
+            },
+            "transform": {
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 4,
+                "groupIdx": 1,
+                "hasCollisions": true,
+                "material": 3,
+                "parameters": [
+                    0.0,
+                    36.79999923706055,
+                    56.20000076293945,
+                    1.0,
+                    0.44999998807907104,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.4000000059604645
+            },
+            "transform": {
+                "position": [
+                    0.0,
+                    36.79999923706055,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 4,
+                "groupIdx": 1,
+                "hasCollisions": true,
+                "material": 3,
+                "parameters": [
+                    0.0,
+                    -37.20000076293945,
+                    57.599998474121094,
+                    1.4500000476837158,
+                    0.550000011920929,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.4000000059604645
+            },
+            "transform": {
+                "position": [
+                    0.0,
+                    -37.20000076293945,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 4,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 4,
+                "groupIdx": 1,
+                "hasCollisions": false,
+                "material": 3,
+                "parameters": [
+                    -42.0,
+                    -39.79999923706055,
+                    4.199999809265137,
+                    1.600000023841858,
+                    0.44999998807907104,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.5
+            },
+            "transform": {
+                "position": [
+                    -42.0,
+                    -39.79999923706055,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 5,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 4,
+                "groupIdx": 1,
+                "hasCollisions": false,
+                "material": 3,
+                "parameters": [
+                    42.0,
+                    -39.79999923706055,
+                    4.199999809265137,
+                    1.600000023841858,
+                    0.44999998807907104,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.5
+            },
+            "transform": {
+                "position": [
+                    42.0,
+                    -39.79999923706055,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 6,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 2,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    0.0,
+                    -32.599998474121094,
+                    53.29999923706055,
+                    1.7000000476837158,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 1.0
+            },
+            "transform": {
+                "position": [
+                    0.0,
+                    -32.599998474121094,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 7,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    -40.0,
+                    -34.0,
+                    7.599999904632568,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 5.5
+            },
+            "transform": {
+                "position": [
+                    -40.0,
+                    -34.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 8,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    -9.0,
+                    -35.20000076293945,
+                    6.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 5.0
+            },
+            "transform": {
+                "position": [
+                    -9.0,
+                    -35.20000076293945,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 9,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    15.0,
+                    -34.20000076293945,
+                    7.800000190734863,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 6.0
+            },
+            "transform": {
+                "position": [
+                    15.0,
+                    -34.20000076293945,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 10,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    42.0,
+                    -33.5,
+                    8.199999809265137,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 5.5
+            },
+            "transform": {
+                "position": [
+                    42.0,
+                    -33.5,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 11,
+            "shape": {
+                "combination": 2,
+                "distanceFieldId": 2,
+                "groupIdx": 2,
+                "hasCollisions": true,
+                "material": 0,
+                "parameters": [
+                    0.0,
+                    -16.799999237060547,
+                    53.29999923706055,
+                    17.5,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.5
+            },
+            "transform": {
+                "position": [
+                    0.0,
+                    -16.799999237060547,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 12,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 14,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -33.79999923706055,
+                    -25.200000762939453,
+                    5.199999809265137,
+                    5.800000190734863,
+                    0.11999999731779099,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.4000000953674316
+            },
+            "transform": {
+                "position": [
+                    -33.79999923706055,
+                    -25.200000762939453,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 13,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -31.5,
+                    -17.799999237060547,
+                    4.400000095367432,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.799999952316284
+            },
+            "transform": {
+                "position": [
+                    -31.5,
+                    -17.799999237060547,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 14,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 14,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -12.800000190734863,
+                    -26.200000762939453,
+                    4.599999904632568,
+                    5.199999809265137,
+                    -0.11999999731779099,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.5999999046325684
+            },
+            "transform": {
+                "position": [
+                    -12.800000190734863,
+                    -26.200000762939453,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 15,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -14.23196029663086,
+                    -19.990690231323242,
+                    4.199999809265137,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.799999952316284
+            },
+            "transform": {
+                "position": [
+                    -14.23196029663086,
+                    -19.990690231323242,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 16,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 14,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -23.200000762939453,
+                    -13.199999809265137,
+                    10.600000381469727,
+                    2.700000047683716,
+                    -0.05000000074505806,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 3.0
+            },
+            "transform": {
+                "position": [
+                    -23.200000762939453,
+                    -13.199999809265137,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 17,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 0,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -23.5,
+                    -10.300000190734863,
+                    3.5999999046325684,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.5999999046325684
+            },
+            "transform": {
+                "position": [
+                    -23.5,
+                    -10.300000190734863,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 18,
+            "shape": {
+                "combination": 4,
+                "distanceFieldId": 0,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -23.200000762939453,
+                    -22.5,
+                    6.199999809265137,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.200000047683716
+            },
+            "transform": {
+                "position": [
+                    -23.200000762939453,
+                    -22.5,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 19,
+            "shape": {
+                "combination": 4,
+                "distanceFieldId": 2,
+                "groupIdx": 3,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    -23.200000762939453,
+                    -26.799999237060547,
+                    5.0,
+                    4.199999809265137,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 1.7999999523162842
+            },
+            "transform": {
+                "position": [
+                    -23.200000762939453,
+                    -26.799999237060547,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 20,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 14,
+                "groupIdx": 4,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    36.94191360473633,
+                    -24.36116600036621,
+                    7.449999809265137,
+                    5.599999904632568,
+                    -0.15000000596046448,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.4000000953674316
+            },
+            "transform": {
+                "position": [
+                    36.94191360473633,
+                    -24.36116600036621,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 21,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 14,
+                "groupIdx": 4,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    43.0,
+                    -16.200000762939453,
+                    4.800000190734863,
+                    3.5999999046325684,
+                    0.18000000715255737,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.799999952316284
+            },
+            "transform": {
+                "position": [
+                    43.0,
+                    -16.200000762939453,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 22,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 14,
+                "groupIdx": 4,
+                "hasCollisions": true,
+                "material": 1,
+                "parameters": [
+                    30.200000762939453,
+                    -20.799999237060547,
+                    4.800000190734863,
+                    1.899999976158142,
+                    0.2199999988079071,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 2.4000000953674316
+            },
+            "transform": {
+                "position": [
+                    30.200000762939453,
+                    -20.799999237060547,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 23,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 10,
+                "groupIdx": 5,
+                "hasCollisions": false,
+                "material": 4,
+                "parameters": [
+                    -24.028322219848633,
+                    -7.5971598625183105,
+                    -27.028322219848633,
+                    -1.4971599578857422,
+                    0.6399999856948853,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.8999999761581421
+            },
+            "transform": {
+                "position": [
+                    -25.528322219848633,
+                    -4.547159671783447,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 24,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 5,
+                "hasCollisions": false,
+                "material": 4,
+                "parameters": [
+                    -23.382938385009766,
+                    -7.37801456451416,
+                    -21.08293914794922,
+                    -0.7780148983001709,
+                    0.5799999833106995,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.8999999761581421
+            },
+            "transform": {
+                "position": [
+                    -22.232938766479492,
+                    -4.078014850616455,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 25,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 5,
+                "hasCollisions": false,
+                "material": 4,
+                "parameters": [
+                    -21.554244995117188,
+                    -3.6435751914978027,
+                    -18.354246139526367,
+                    -2.0435750484466553,
+                    0.46000000834465027,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.800000011920929
+            },
+            "transform": {
+                "position": [
+                    -19.954246520996094,
+                    -2.8435750007629395,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 26,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 5,
+                "hasCollisions": false,
+                "material": 4,
+                "parameters": [
+                    -25.723413467407227,
+                    -4.394359111785889,
+                    -29.123414993286133,
+                    -3.3943591117858887,
+                    0.46000000834465027,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.800000011920929
+            },
+            "transform": {
+                "position": [
+                    -27.42341423034668,
+                    -3.8943591117858887,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 27,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 10,
+                "groupIdx": 6,
+                "hasCollisions": false,
+                "material": 5,
+                "parameters": [
+                    42.95462417602539,
+                    -12.849299430847168,
+                    39.85462188720703,
+                    -6.149056911468506,
+                    0.7200000286102295,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.8999999761581421
+            },
+            "transform": {
+                "position": [
+                    41.40462112426758,
+                    -9.499177932739258,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 28,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 6,
+                "hasCollisions": false,
+                "material": 5,
+                "parameters": [
+                    43.27983856201172,
+                    -13.29304027557373,
+                    43.679840087890625,
+                    -4.0930399894714355,
+                    0.7799999713897705,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.8999999761581421
+            },
+            "transform": {
+                "position": [
+                    43.47983932495117,
+                    -8.693039894104004,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 29,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 6,
+                "hasCollisions": false,
+                "material": 5,
+                "parameters": [
+                    44.69853591918945,
+                    -12.832127571105957,
+                    46.64899826049805,
+                    -7.381999969482422,
+                    0.6800000071525574,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.8999999761581421
+            },
+            "transform": {
+                "position": [
+                    45.49853515625,
+                    -9.332127571105957,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 30,
+            "shape": {
+                "assetPath": "clam.weirdshape",
+                "combination": 0,
+                "distanceFieldId": 25,
+                "groupIdx": 7,
+                "hasCollisions": false,
+                "material": 5,
+                "parameters": [
+                    -3.450000047683716,
+                    -28.850000381469727,
+                    4.550000190734863,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 1.0
+            },
+            "transform": {
+                "position": [
+                    -3.450000047683716,
+                    -28.850000381469727,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 31,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 10,
+                "groupIdx": 7,
+                "hasCollisions": false,
+                "material": 6,
+                "parameters": [
+                    29.325965881347656,
+                    -19.30945587158203,
+                    27.525964736938477,
+                    -13.509454727172852,
+                    0.46000000834465027,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.6499999761581421
+            },
+            "transform": {
+                "position": [
+                    28.425966262817383,
+                    -16.409456253051758,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 32,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 7,
+                "hasCollisions": false,
+                "material": 6,
+                "parameters": [
+                    29.937360763549805,
+                    -19.23635482788086,
+                    30.137359619140625,
+                    -13.036356925964355,
+                    0.46000000834465027,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.6499999761581421
+            },
+            "transform": {
+                "position": [
+                    30.03736114501953,
+                    -16.136356353759766,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 33,
+            "shape": {
+                "combination": 3,
+                "distanceFieldId": 10,
+                "groupIdx": 7,
+                "hasCollisions": false,
+                "material": 6,
+                "parameters": [
+                    30.030332565307617,
+                    -19.34243392944336,
+                    31.830331802368164,
+                    -14.042434692382813,
+                    0.41999998688697815,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.6499999761581421
+            },
+            "transform": {
+                "position": [
+                    30.93033218383789,
+                    -16.692434310913086,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 34,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 0,
+                "groupIdx": 8,
+                "hasCollisions": false,
+                "material": 15,
+                "parameters": [
+                    0.47749102115631104,
+                    -28.649999618530273,
+                    1.149999976158142,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.4000000059604645
+            },
+            "transform": {
+                "position": [
+                    0.47749102115631104,
+                    -28.649999618530273,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 35,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 13,
+                "groupIdx": 9,
+                "hasCollisions": false,
+                "material": 4,
+                "parameters": [
+                    28.158000946044922,
+                    -29.211999893188477,
+                    1.5499999523162842,
+                    0.6399999856948853,
+                    5.0,
+                    0.18000000715255737,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 0.4000000059604645
+            },
+            "transform": {
+                "position": [
+                    28.158000946044922,
+                    -29.211999893188477,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 36,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 13,
+                "groupIdx": 0,
+                "hasCollisions": true,
+                "material": 6,
+                "parameters": [
+                    -24.89699935913086,
+                    -26.941999435424805,
+                    3.0999999046325684,
+                    1.399999976158142,
+                    5.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 1.0
+            },
+            "transform": {
+                "position": [
+                    -24.89699935913086,
+                    -26.941999435424805,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "entityTags": [],
+    "materials2D": [
+        {
+            "color": [
+                0.9200000166893005,
+                0.7799999713897705,
+                0.5400000214576721,
+                1.0
+            ],
+            "id": 0,
+            "name": "sand_bed",
+            "pattern": 2,
+            "patternScale": 0.75,
+            "secondaryColor": [
+                0.7599999904632568,
+                0.5899999737739563,
+                0.36000001430511475,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.25,
+                0.3400000035762787,
+                0.4300000071525574,
+                1.0
+            ],
+            "id": 1,
+            "name": "reef_rock",
+            "pattern": 2,
+            "patternScale": 0.550000011920929,
+            "secondaryColor": [
+                0.15000000596046448,
+                0.2199999988079071,
+                0.30000001192092896,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.44999998807907104,
+                0.8600000143051147,
+                0.9800000190734863,
+                0.2800000011920929
+            ],
+            "id": 2,
+            "name": "tank_glass",
+            "pattern": 4,
+            "patternScale": 0.15000000596046448,
+            "secondaryColor": [
+                0.8199999928474426,
+                0.9800000190734863,
+                1.0,
+                0.44999998807907104
+            ]
+        },
+        {
+            "color": [
+                0.3955923616886139,
+                0.5147476196289063,
+                0.530386745929718,
+                1.0
+            ],
+            "id": 3,
+            "name": "tank_stand",
+            "pattern": 0,
+            "patternScale": 0.2199999988079071,
+            "secondaryColor": [
+                0.1899999976158142,
+                0.23999999463558197,
+                0.33000001311302185,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                1.0,
+                0.3400000035762787,
+                0.47999998927116394,
+                1.0
+            ],
+            "id": 4,
+            "name": "coral_pink",
+            "pattern": 3,
+            "patternScale": 0.8500000238418579,
+            "secondaryColor": [
+                0.800000011920929,
+                0.1599999964237213,
+                0.3400000035762787,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.6600000262260437,
+                0.4000000059604645,
+                0.9599999785423279,
+                1.0
+            ],
+            "id": 5,
+            "name": "coral_violet",
+            "pattern": 2,
+            "patternScale": 0.8999999761581421,
+            "secondaryColor": [
+                0.41999998688697815,
+                0.18000000715255737,
+                0.7200000286102295,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                1.0,
+                0.7400000095367432,
+                0.23999999463558197,
+                1.0
+            ],
+            "id": 6,
+            "name": "coral_amber",
+            "pattern": 4,
+            "patternScale": 0.5,
+            "secondaryColor": [
+                0.9200000166893005,
+                0.41999998688697815,
+                0.11999999731779099,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.11999999731779099,
+                0.6499999761581421,
+                0.4399999976158142,
+                1.0
+            ],
+            "id": 7,
+            "name": "kelp_deep",
+            "pattern": 3,
+            "patternScale": 0.44999998807907104,
+            "secondaryColor": [
+                0.05999999865889549,
+                0.4000000059604645,
+                0.27000001072883606,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.3799999952316284,
+                0.8799999952316284,
+                0.47999998927116394,
+                1.0
+            ],
+            "id": 8,
+            "name": "kelp_bright",
+            "pattern": 3,
+            "patternScale": 0.550000011920929,
+            "secondaryColor": [
+                0.1599999964237213,
+                0.5799999833106995,
+                0.3400000035762787,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                1.0,
+                0.46000000834465027,
+                0.14000000059604645,
+                1.0
+            ],
+            "id": 9,
+            "name": "fish_clown",
+            "pattern": 3,
+            "patternScale": 1.600000023841858,
+            "secondaryColor": [
+                1.0,
+                0.949999988079071,
+                0.8600000143051147,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.2199999988079071,
+                0.6600000262260437,
+                1.0,
+                1.0
+            ],
+            "id": 10,
+            "name": "fish_tang",
+            "pattern": 3,
+            "patternScale": 1.7999999523162842,
+            "secondaryColor": [
+                0.6499999761581421,
+                0.9599999785423279,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.3199999928474426,
+                0.9800000190734863,
+                0.8600000143051147,
+                1.0
+            ],
+            "id": 11,
+            "name": "fish_tetra",
+            "pattern": 3,
+            "patternScale": 2.0,
+            "secondaryColor": [
+                0.1599999964237213,
+                0.7200000286102295,
+                0.8799999952316284,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                1.0,
+                0.8799999952316284,
+                0.23999999463558197,
+                1.0
+            ],
+            "id": 12,
+            "name": "fish_gold",
+            "pattern": 3,
+            "patternScale": 1.600000023841858,
+            "secondaryColor": [
+                1.0,
+                0.5799999833106995,
+                0.11999999731779099,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.800000011920929,
+                0.9700000286102295,
+                1.0,
+                0.2199999988079071
+            ],
+            "id": 13,
+            "name": "bubble",
+            "pattern": 0,
+            "patternScale": 1.0,
+            "secondaryColor": [
+                1.0,
+                1.0,
+                1.0,
+                0.3400000035762787
+            ]
+        },
+        {
+            "color": [
+                0.9200000166893005,
+                0.5400000214576721,
+                0.2199999988079071,
+                1.0
+            ],
+            "id": 14,
+            "name": "food_flake",
+            "pattern": 2,
+            "patternScale": 1.399999976158142,
+            "secondaryColor": [
+                0.6800000071525574,
+                0.30000001192092896,
+                0.11999999731779099,
+                1.0
+            ]
+        },
+        {
+            "color": [
+                0.949999988079071,
+                0.9900000095367432,
+                1.0,
+                1.0
+            ],
+            "id": 15,
+            "name": "pearl_ui",
+            "pattern": 4,
+            "patternScale": 0.6499999761581421,
+            "secondaryColor": [
+                0.6200000047683716,
+                0.9399999976158142,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "names": [],
+    "physics": {
+        "distanceConstraints": [],
+        "springs": []
+    },
+    "version": 1
+}

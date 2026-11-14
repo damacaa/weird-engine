@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
 	displaySettings.height = 800;
 	displaySettings.fullscreen = false;
 	displaySettings.windowTitle = "Weird Engine - Cluster Editor";
+	displaySettings.worldSmoothFactor = 0.05f;
 
 	PhysicsSettings physicsSettings{};
 

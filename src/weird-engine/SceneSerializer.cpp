@@ -90,7 +90,8 @@ namespace WeirdEngine
 								  {"smoothFactor", s.smoothFactor}};
 				if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
 				{
-					shapeJson["assetPath"] = customData->filePath;
+					shapeJson["assetPath"] =
+						scene.m_services.resources().makePortableAssetPath(customData->filePath, filename);
 				}
 				ej["shape"] = std::move(shapeJson);
 			}
@@ -205,7 +206,7 @@ namespace WeirdEngine
 				cj["id"] = cluster.id;
 				cj["name"] = cluster.name;
 				cj["type"] = cluster.type;
-				cj["assetPath"] = cluster.assetPath;
+				cj["assetPath"] = scene.m_services.resources().makePortableAssetPath(cluster.assetPath, filename);
 				cj["position"] = {cluster.position.x, cluster.position.y};
 				cj["rotation"] = cluster.rotation;
 
@@ -405,7 +406,8 @@ namespace WeirdEngine
 						std::string assetPath = sj["assetPath"].get<std::string>();
 						if (!assetPath.empty())
 						{
-							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(assetPath);
+							std::string resolvedPath = scene.m_services.resources().resolveAssetPath(assetPath, path);
+							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(resolvedPath);
 						}
 					}
 					if (sj.contains("parameters"))
@@ -817,6 +819,8 @@ namespace WeirdEngine
 				if (id < 16)
 				{
 					auto& mat = scene.m_materials2D[id];
+					scene.m_material2DCount =
+						std::max<uint16_t>(scene.m_material2DCount, static_cast<uint16_t>(id + 1));
 					mat.id = id;
 					mat.name = mj.value("name", "");
 					if (mj.contains("color") && mj["color"].is_array() && mj["color"].size() >= 4)

@@ -43,6 +43,7 @@ namespace WeirdEngine
 		, m_input()
 		, m_random()
 	{
+		m_shapes.setResourceService(&m_resources);
 	}
 
 	ShapeId ShapeService::registerDefaultSDF(const Expr& sdf)
@@ -772,14 +773,16 @@ namespace WeirdEngine
 				m_nextClusterId = c.id + 1;
 		}
 
+		const std::string resolvedPath = m_scene.m_services.resources().resolveAssetPath(assetPath);
+
 		ClusterInstance instance;
 		instance.id = m_nextClusterId++;
-		instance.assetPath = assetPath;
+		instance.assetPath = resolvedPath;
 		instance.position = position;
 		instance.rotation = rotation;
 		instance.tags = instanceTags;
 
-		std::filesystem::path p(assetPath);
+		std::filesystem::path p(resolvedPath);
 		instance.type = p.stem().string();
 
 		if (!instanceName.empty())
@@ -787,7 +790,7 @@ namespace WeirdEngine
 		else
 			instance.name = instance.type + "_" + std::to_string(instance.id);
 
-		SceneSerializer::load(m_scene, assetPath, &instance.localNames, false, &instance.entities);
+		SceneSerializer::load(m_scene, resolvedPath, &instance.localNames, false, &instance.entities);
 
 		for (Entity e : instance.entities)
 		{
@@ -1010,15 +1013,10 @@ namespace WeirdEngine
 			return false;
 		}
 
-		std::filesystem::path resolvedPath(path);
+		std::filesystem::path resolvedPath(m_scene.m_services.resources().resolveAssetPath(path));
 		if (!std::filesystem::exists(resolvedPath))
 		{
-			resolvedPath =
-				std::filesystem::path("examples/sample-scenes/assets") / std::filesystem::path(path).filename();
-			if (!std::filesystem::exists(resolvedPath))
-			{
-				return false;
-			}
+			return false;
 		}
 
 		// 1. Calculate current centroid and rotation of the cluster

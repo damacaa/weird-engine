@@ -411,6 +411,18 @@ namespace WeirdEngine
 		{
 			case SDL_EVENT_GAMEPAD_ADDED:
 			{
+				bool alreadyAdded = false;
+				for (auto* existing : m_gamepads)
+				{
+					if (existing && SDL_GetGamepadID(existing) == event.gdevice.which)
+					{
+						alreadyAdded = true;
+						break;
+					}
+				}
+				if (alreadyAdded)
+					break;
+
 				SDL_Gamepad* pad = SDL_OpenGamepad(event.gdevice.which);
 				if (pad)
 				{

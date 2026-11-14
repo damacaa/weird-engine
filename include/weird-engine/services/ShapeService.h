@@ -12,6 +12,7 @@
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/Logger.h"
 #include "weird-engine/math/SDF.h"
+#include "weird-engine/services/ResourceService.h"
 #include "weird-engine/services/ShapeTypes.h"
 #include "weird-engine/shapes/NodeGraph.h"
 #include "weird-engine/shapes/NodeGraphCompiler.h"
@@ -33,11 +34,18 @@ namespace WeirdEngine
 	class ShapeService
 	{
 	public:
-		ShapeService(Registry& registry, Simulation2D& simulation, std::vector<std::shared_ptr<IMathExpression>>& sdfs)
+		ShapeService(Registry& registry, Simulation2D& simulation, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
+					 const ResourceService* resources = nullptr)
 			: m_registry(registry)
 			, m_simulation(simulation)
 			, m_sdfs(sdfs)
+			, m_resources(resources)
 		{
+		}
+
+		void setResourceService(const ResourceService* resources)
+		{
+			m_resources = resources;
 		}
 
 		static std::string normalizePath(const std::string& path)
@@ -73,16 +81,13 @@ namespace WeirdEngine
 
 		ShapeId loadCustomShape(const std::string& filePath)
 		{
-			std::string normPath = normalizePath(filePath);
-			auto it = m_customShapeCache.find(normPath);
-			if (it == m_customShapeCache.end())
-			{
-				it = m_customShapeCache.find(filePath);
-			}
+			const std::string resolvedPath = resolveShapePath(filePath);
+			std::string normPath = normalizePath(resolvedPath);
+			auto it = findCachedShapeIt(normPath, resolvedPath, filePath);
 			if (it != m_customShapeCache.end())
 			{
 				std::error_code ec;
-				std::string checkPath = !it->second.filePath.empty() ? it->second.filePath : filePath;
+				std::string checkPath = !it->second.filePath.empty() ? it->second.filePath : resolvedPath;
 				auto currentWriteTime = std::filesystem::last_write_time(checkPath, ec);
 				if (!ec && currentWriteTime > it->second.lastWriteTime)
 				{
@@ -91,7 +96,7 @@ namespace WeirdEngine
 				return it->second.id;
 			}
 
-			std::ifstream file(filePath);
+			std::ifstream file(resolvedPath);
 			if (!file.is_open())
 			{
 				Logger::error("[ShapeService] Failed to open custom shape file: " + filePath);
@@ -112,7 +117,7 @@ namespace WeirdEngine
 			NodeGraph graph;
 			if (!NodeGraphSerializer::deserialize(graph, j))
 			{
-				Logger::error("[ShapeService] Failed to deserialize shape graph: " + filePath);
+				Logger::error("[ShapeService] Failed to deserialize shape graph: " + resolvedPath);
 				return 0;
 			}
 
@@ -121,12 +126,12 @@ namespace WeirdEngine
 
 			CustomShapeData data;
 			data.id = id;
-			data.filePath = filePath;
+			data.filePath = resolvedPath;
 			data.defaultParameters = graph.getParameters();
 			data.parameterNames = graph.getParameterNames();
 
 			std::error_code ec;
-			auto writeTime = std::filesystem::last_write_time(filePath, ec);
+			auto writeTime = std::filesystem::last_write_time(resolvedPath, ec);
 			if (!ec)
 			{
 				data.lastWriteTime = writeTime;
@@ -135,28 +140,26 @@ namespace WeirdEngine
 			m_customShapeCache[normPath] = data;
 			m_shapeIdToCustomPath[id] = normPath;
 
-			Logger::log("[ShapeService] Loaded custom shape from " + filePath + " as shape ID " + std::to_string(id));
+			Logger::log("[ShapeService] Loaded custom shape from " + resolvedPath + " as shape ID " +
+						std::to_string(id));
 			return id;
 		}
 
 		bool reloadCustomShape(const std::string& filePath)
 		{
-			std::string normPath = normalizePath(filePath);
-			auto it = m_customShapeCache.find(normPath);
+			const std::string resolvedPath = resolveShapePath(filePath);
+			std::string normPath = normalizePath(resolvedPath);
+			auto it = findCachedShapeIt(normPath, resolvedPath, filePath);
 			if (it == m_customShapeCache.end())
 			{
-				it = m_customShapeCache.find(filePath);
-			}
-			if (it == m_customShapeCache.end())
-			{
-				return loadCustomShape(filePath) != 0;
+				return loadCustomShape(resolvedPath) != 0;
 			}
 
 			std::string pathToOpen = it->second.filePath;
 			std::ifstream file(pathToOpen);
 			if (!file.is_open())
 			{
-				pathToOpen = filePath;
+				pathToOpen = resolvedPath;
 				file.open(pathToOpen);
 				if (!file.is_open())
 				{
@@ -277,16 +280,20 @@ namespace WeirdEngine
 
 		const CustomShapeData* getCustomShapeData(const std::string& filePath) const
 		{
-			std::string normPath = normalizePath(filePath);
-			auto it = m_customShapeCache.find(normPath);
-			if (it != m_customShapeCache.end())
+			const std::string resolvedPath = resolveShapePath(filePath);
+			const std::string normResolved = normalizePath(resolvedPath);
+			const std::string normRaw = normalizePath(filePath);
+			for (const std::string& key : {normResolved, resolvedPath, normRaw, filePath})
 			{
-				return &it->second;
-			}
-			it = m_customShapeCache.find(filePath);
-			if (it != m_customShapeCache.end())
-			{
-				return &it->second;
+				if (key.empty())
+				{
+					continue;
+				}
+				auto it = m_customShapeCache.find(key);
+				if (it != m_customShapeCache.end())
+				{
+					return &it->second;
+				}
 			}
 			return nullptr;
 		}
@@ -339,9 +346,35 @@ namespace WeirdEngine
 		}
 
 	private:
+		std::string resolveShapePath(const std::string& filePath) const
+		{
+			return m_resources ? m_resources->resolveAssetPath(filePath) : filePath;
+		}
+
+		std::unordered_map<std::string, CustomShapeData>::iterator findCachedShapeIt(const std::string& normResolved,
+																					 const std::string& resolvedPath,
+																					 const std::string& rawPath)
+		{
+			const std::string normRaw = normalizePath(rawPath);
+			for (const std::string& key : {normResolved, resolvedPath, normRaw, rawPath})
+			{
+				if (key.empty())
+				{
+					continue;
+				}
+				auto it = m_customShapeCache.find(key);
+				if (it != m_customShapeCache.end())
+				{
+					return it;
+				}
+			}
+			return m_customShapeCache.end();
+		}
+
 		Registry& m_registry;
 		Simulation2D& m_simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& m_sdfs;
+		const ResourceService* m_resources = nullptr;
 		std::unordered_map<std::string, CustomShapeData> m_customShapeCache;
 		std::unordered_map<ShapeId, std::string> m_shapeIdToCustomPath;
 	};

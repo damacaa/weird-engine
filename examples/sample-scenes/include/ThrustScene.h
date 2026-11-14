@@ -6,8 +6,15 @@
 
 namespace ThrustSceneNamespace
 {
-	constexpr size_t NUM_KINEMATIC_BODIES = 7;
-	constexpr size_t MAX_EXHAUST_PARTICLES = 1024;
+	constexpr size_t MAX_SHIP_DOTS = 32;
+	constexpr size_t MAX_EXHAUST_PARTICLES = 2560;
+	constexpr size_t MAX_RECENT_EXHAUST_SPAWNS = 32;
+
+	struct ShipDot
+	{
+		WeirdEngine::Entity entity = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::vec2 localOffset{0.0f, 0.0f};
+	};
 
 	struct ExhaustParticle
 	{
@@ -15,23 +22,19 @@ namespace ThrustSceneNamespace
 		float lifetime = 0.0f;
 	};
 
+	struct RecentExhaustSpawn
+	{
+		WeirdEngine::vec2 pos{0.0f, 0.0f};
+		WeirdEngine::vec2 vel{0.0f, 0.0f};
+		float age = 1.0f;
+	};
+
 	struct State
 	{
-		// Ship visuals & physics entities
-		WeirdEngine::Entity shipShapeEntity = WeirdEngine::INVALID_ENTITY;
-		std::array<WeirdEngine::Entity, NUM_KINEMATIC_BODIES> shipKinematicBodies = {
-			WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
-			WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
-			WeirdEngine::INVALID_ENTITY};
-		std::array<WeirdEngine::vec2, NUM_KINEMATIC_BODIES> shipKinematicOffsets = {
-			WeirdEngine::vec2(0.0f, 3.0f),	   // Nose / apex (scaled 3x)
-			WeirdEngine::vec2(-1.75f, -1.45f), // Left rear wing tip
-			WeirdEngine::vec2(1.75f, -1.45f),  // Right rear wing tip
-			WeirdEngine::vec2(-0.9f, 0.8f),	   // Left mid hull
-			WeirdEngine::vec2(0.9f, 0.8f),	   // Right mid hull
-			WeirdEngine::vec2(0.0f, -1.45f),   // Rear thruster base
-			WeirdEngine::vec2(0.0f, 0.0f)	   // Ship center
-		};
+		// Ship cluster entities (driven kinematically from shipPos/shipAngle)
+		std::array<ShipDot, MAX_SHIP_DOTS> shipDots{};
+		size_t shipDotCount = 0;
+		float thrusterLocalY = -2.45f;
 
 		// UI entities
 		WeirdEngine::Entity fuelLineEntity = WeirdEngine::INVALID_ENTITY;
@@ -39,8 +42,7 @@ namespace ThrustSceneNamespace
 		WeirdEngine::Entity fuelLabelEntity = WeirdEngine::INVALID_ENTITY;
 
 		// Materials
-		WeirdEngine::Material2DHandle shipMaterial;
-		WeirdEngine::Material2DHandle exhaustMaterial;
+		WeirdEngine::Material2DHandle fuelLabelMaterial;
 		WeirdEngine::Material2DHandle fuelMaterial;
 		WeirdEngine::Material2DHandle fuelBgMaterial;
 
@@ -50,8 +52,6 @@ namespace ThrustSceneNamespace
 		float shipAngle = 0.0f; // 0 radians = pointing UP (+Y)
 
 		// Ship specs & tuning
-		float shipWidth = 3.9f;
-		float shipHeight = 5.1f;
 		float thrustPower = 32.0f;
 		float rotationSpeed = 2.3f;
 		float gravity = 14.0f;
@@ -62,9 +62,13 @@ namespace ThrustSceneNamespace
 		float fuel = 100.0f;
 		float fuelBurnRate = 12.0f; // ~8.3 seconds of continuous burn
 
-		// Exhaust particle ring buffer
+		// Exhaust particle ring buffer & smooth emitter state
 		std::array<ExhaustParticle, MAX_EXHAUST_PARTICLES> exhaustParticles{};
 		size_t exhaustHead = 0;
+		std::array<RecentExhaustSpawn, MAX_RECENT_EXHAUST_SPAWNS> recentExhaustSpawns{};
+		size_t recentExhaustHead = 0;
+		float exhaustSpawnAccumulator = 0.0f;
+		float exhaustStaggerSign = 1.0f;
 
 		// Runtime status
 		bool isThrusting = false;
@@ -79,8 +83,9 @@ namespace ThrustSceneNamespace
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void loadShipSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupUiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
-	void onShapeCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
-								WeirdEngine::EntityShapeCollisionEvent& event);
+	void emitExhaustParticles(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
+							  const WeirdEngine::vec2& prevShipPos, float prevShipAngle, bool wasThrusting,
+							  float delta);
 	void shipPhysicsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void exhaustParticleSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void uiSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
@@ -96,8 +101,6 @@ public:
 		addStartSystem(ThrustSceneNamespace::setupEnvironmentSystem);
 		addStartSystem(ThrustSceneNamespace::loadShipSystem);
 		addStartSystem(ThrustSceneNamespace::setupUiSystem);
-
-		addEntityShapeCollisionSystem(ThrustSceneNamespace::onShapeCollisionSystem);
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(ThrustSceneNamespace::shipPhysicsSystem);

@@ -2,6 +2,9 @@
 #include "RopeScene.h"
 #include "TetrominoScene.h"
 #include "ThrustScene.h"
+#include "weird-engine/services/ShapeService.h"
+#include "weird-engine/shapes/NodeGraphCompiler.h"
+#include "weird-engine/shapes/NodeGraphSerializer.h"
 #include "weird-engine/systems/PhysicsSystem2D.h"
 #include "weird-physics/components/RigidBodyManager.h"
 
@@ -597,6 +600,63 @@ namespace
 		require(glm::length(dotCentroid - state.shipPos) < 0.01f,
 				"Spaceship cluster dots must remain centered on shipPos.");
 
+		// Verify Fuel UI groups are separated (active fill draws over track) and label clears the bar vertically.
+		require(registry.isEntityValid(state.fuelBgLineEntity) && registry.isEntityValid(state.fuelLineEntity) &&
+					registry.isEntityValid(state.fuelLabelEntity),
+				"ThrustScene fuel UI entities must all be created.");
+		const auto& bgUi = registry.getComponent<UIShape>(state.fuelBgLineEntity);
+		const auto& fuelUi = registry.getComponent<UIShape>(state.fuelLineEntity);
+		const auto& labelTransform = registry.getComponent<Transform>(state.fuelLabelEntity);
+		const float trackTop =
+			bgUi.parameters[DefaultShapes::Line::StartY] + bgUi.parameters[DefaultShapes::Line::Width];
+		const float labelBottom = labelTransform.position.y - 40.0f;
+		require(bgUi.groupIdx < fuelUi.groupIdx,
+				"Fuel bar fill must use a higher SDF group than its track so it is not masked.");
+		require(labelBottom > trackTop + 4.0f, "FUEL label must sit cleanly above the fuel bar without overlap.");
+		require(bgUi.material != fuelUi.material, "Fuel fill and background track must use distinct materials.");
+
+		// Verify slow passive fuel recovery in flight, pause under held thrust, and faster landed recharge.
+		state.isThrusting = false;
+		state.fuel = 40.0f;
+		ThrustSceneNamespace::recoverFuel(state, true, false, 1.0f);
+		require(std::abs(state.fuel - 40.0f) < 0.001f, "Fuel must not recover while thrust input is held.");
+		ThrustSceneNamespace::recoverFuel(state, false, false, 1.0f);
+		require(state.fuel > 40.5f && state.fuel < 50.0f,
+				"Fuel must recover slowly during coasting flight when thrust is released.");
+		const float midairRecovered = state.fuel;
+		state.shipVelocity = vec2(0.0f, 0.0f);
+		ThrustSceneNamespace::recoverFuel(state, false, true, 1.0f);
+		require(state.fuel - midairRecovered > state.fuelRecoveryRate + 5.0f,
+				"Landed resting fuel recovery must remain faster than mid-air passive recovery.");
+		state.fuel = state.maxFuel;
+
+		// Verify gamepad deadzone smoothing, D-pad override/cancellation, and camera zoom controls.
+		require(ThrustSceneNamespace::applyStickDeadzone(0.15f) == 0.0f,
+				"Stick deflection within deadzone must zero out.");
+		require(std::abs(ThrustSceneNamespace::applyStickDeadzone(0.6f) - 0.5f) < 0.001f,
+				"Stick deflection past deadzone must rescale smoothly.");
+		require(ThrustSceneNamespace::resolveRotationInput(0.0f, 0.6f, true, false) == -1.0f,
+				"Gamepad D-pad must override stick rotation input.");
+		require(std::abs(ThrustSceneNamespace::resolveRotationInput(0.0f, 0.6f, true, true) - 0.5f) < 0.001f,
+				"Simultaneous DpadLeft and DpadRight must cancel and fall back cleanly.");
+
+		state.targetCameraZoom = ThrustSceneNamespace::DEFAULT_CAMERA_ZOOM;
+		const float zoomInAxis = ThrustSceneNamespace::resolveCameraZoomAxis(-1.0f, 0.0f, false);
+		require(zoomInAxis < -0.9f, "Right stick up must zoom camera in.");
+		ThrustSceneNamespace::updateCameraZoom(state, false, false, zoomInAxis, false, 0.05f);
+		require(state.targetCameraZoom < ThrustSceneNamespace::DEFAULT_CAMERA_ZOOM,
+				"Negative zoom axis must decrease targetCameraZoom.");
+
+		const float zoomOutAxis = ThrustSceneNamespace::resolveCameraZoomAxis(0.0f, 1.0f, false);
+		require(zoomOutAxis > 0.9f, "Left trigger must zoom camera out.");
+		ThrustSceneNamespace::updateCameraZoom(state, false, false, zoomOutAxis, false, 0.1f);
+		require(state.targetCameraZoom > ThrustSceneNamespace::DEFAULT_CAMERA_ZOOM,
+				"Positive zoom axis must increase targetCameraZoom.");
+
+		ThrustSceneNamespace::updateCameraZoom(state, false, false, 0.0f, true, 0.05f);
+		require(std::abs(state.targetCameraZoom - ThrustSceneNamespace::DEFAULT_CAMERA_ZOOM) < 0.001f,
+				"Gamepad zoom reset must restore default camera zoom.");
+
 		// Verify ThrustScene snapshot save & reload round-trip.
 		const vec2 savedShipPos = state.shipPos;
 		SnapshotFile saved;
@@ -773,6 +833,82 @@ namespace
 		require(cbState.kinematicShapeHits.load(std::memory_order_relaxed) > 0,
 				"Bodies with enableCollision=false and enableShapeCollision=true must emit shape collisions.");
 	}
+
+	void testNodeGraphMultiOutputAndMemoization()
+	{
+		NodeGraph bvGraph;
+		int p = bvGraph.addNode("point");
+		int bv = bvGraph.addNode("break_vec2");
+		int sub = bvGraph.addNode("sub");
+		int out = bvGraph.addNode("sdf_output");
+		bvGraph.addLink(makePinId(p, false, 0), makePinId(bv, true, 0));
+		bvGraph.addLink(makePinId(bv, false, 0), makePinId(sub, true, 0));
+		bvGraph.addLink(makePinId(bv, false, 1), makePinId(sub, true, 1));
+		bvGraph.addLink(makePinId(sub, false, 0), makePinId(out, true, 0));
+
+		Expr bvExpr = NodeGraphCompiler::evaluate(bvGraph);
+		float params[12] = {0.0f};
+		params[SystemParams::POINT_X] = 7.5f;
+		params[SystemParams::POINT_Y] = -3.25f;
+		require(bvExpr.node != nullptr && std::abs(bvExpr.node->getValue(params) - 10.75f) < 1e-5f,
+				"break_vec2 must evaluate distinct x (pin 0) and y (pin 1) outputs.");
+
+		std::string bvCpp = NodeGraphCompiler::generateCppCode(bvGraph);
+		require(bvCpp.find(".x") != std::string::npos && bvCpp.find(".y") != std::string::npos,
+				"break_vec2 C++ code generation must preserve both .x and .y.");
+
+		NodeGraph diamondGraph;
+		int prev = diamondGraph.addNode("param_var");
+		diamondGraph.getNode(prev)->data.customInt = 0;
+		for (int i = 0; i < 32; ++i)
+		{
+			int next = diamondGraph.addNode("add");
+			diamondGraph.addLink(makePinId(prev, false, 0), makePinId(next, true, 0));
+			diamondGraph.addLink(makePinId(prev, false, 0), makePinId(next, true, 1));
+			prev = next;
+		}
+		int dOut = diamondGraph.addNode("sdf_output");
+		diamondGraph.addLink(makePinId(prev, false, 0), makePinId(dOut, true, 0));
+
+		Expr dExpr = NodeGraphCompiler::evaluate(diamondGraph);
+		std::string dCpp = NodeGraphCompiler::generateCppCode(diamondGraph);
+		params[0] = 1.0f;
+		require(dExpr.node != nullptr && std::abs(dExpr.node->getValue(params) - 4294967296.0f) < 1.0f,
+				"Memoized NodeGraphCompiler must evaluate deep diamond DAGs accurately without blowup.");
+		require(dCpp.find("auto node") != std::string::npos && dCpp.size() < 8192,
+				"Memoized generateCppCode must hoist shared DAG intermediate nodes.");
+	}
+
+	void testResourceAndShapeAssetPathResolution()
+	{
+		ResourceManager resourceMgr;
+		ResourceService resources(resourceMgr, ASSETS_PATH);
+
+		const std::string sceneCtx = std::string(ASSETS_PATH) + "aquarium.weirdscene";
+		const std::string resolvedRel = resources.resolveAssetPath("clam.weirdshape");
+		const std::string resolvedSibling = resources.resolveAssetPath("clam.weirdshape", sceneCtx);
+		const std::string resolvedWinLegacy =
+			resources.resolveAssetPath("D:\\Projects\\weird-engine\\examples\\sample-scenes\\assets\\Fan.weirdshape");
+
+		require(std::filesystem::exists(resolvedRel) && resolvedRel == resolvedSibling,
+				"Relative shape asset paths must resolve cleanly against asset root and scene directory.");
+		require(std::filesystem::exists(resolvedWinLegacy) &&
+					std::filesystem::path(resolvedWinLegacy).filename() == "Fan.weirdshape",
+				"Legacy cross-machine asset paths must resolve via assets/ suffix fallback.");
+		require(resources.makePortableAssetPath(resolvedRel, sceneCtx) == "clam.weirdshape",
+				"Portable asset path helper must strip local asset base directory.");
+
+		Registry reg;
+		PhysicsSettings settings{};
+		Simulation2D sim(64, settings);
+		std::vector<std::shared_ptr<IMathExpression>> sdfs{std::make_shared<FloorPlaneSdf>()};
+		ShapeService shapes(reg, sim, sdfs, &resources);
+		ShapeId clamId = shapes.loadCustomShape("clam.weirdshape");
+		require(clamId != 0 && shapes.reloadCustomShape("clam.weirdshape"),
+				"ShapeService must load and reload custom shapes from relative asset paths.");
+		require(shapes.getCustomShapeData("clam.weirdshape") != nullptr,
+				"ShapeService cache lookup must match relative and resolved paths consistently.");
+	}
 } // namespace
 
 int main()
@@ -794,6 +930,10 @@ int main()
 		testDamagedSnapshots();
 		std::cout << "Checking snapshot determinism.\n" << std::flush;
 		testDeterministicSnapshots();
+		std::cout << "Checking NodeGraph multi-output and memoization.\n" << std::flush;
+		testNodeGraphMultiOutputAndMemoization();
+		std::cout << "Checking resource and shape asset path resolution.\n" << std::flush;
+		testResourceAndShapeAssetPathResolution();
 		auto& manager = SceneManager::getInstance();
 		for (bool threaded : {false, true})
 		{

@@ -240,6 +240,11 @@ namespace WeirdEngine
 						break;
 					case PhysicsCommandType::SetVelocity:
 						m_velocities[cmd.id] = cmd.vectorData;
+						if (!m_bodyActive[cmd.id])
+						{
+							std::lock_guard<std::mutex> rLock(m_readMutex);
+							m_velocitiesRead[cmd.id] = cmd.vectorData;
+						}
 						break;
 					case PhysicsCommandType::SetPosition:
 						m_positions[cmd.id] = cmd.vectorData;
@@ -346,7 +351,6 @@ namespace WeirdEngine
 						if (cmd.id < m_allocated)
 						{
 							m_collisionEnabled[cmd.id] = 0;
-							m_collisionMap[cmd.id] = false;
 						}
 						break;
 					}
@@ -662,7 +666,7 @@ namespace WeirdEngine
 		// Shape collisions
 		for (size_t i = 0; i < m_size; i++)
 		{
-			if (!m_bodyActive[i] || !m_collisionEnabled[i] || !m_shapeCollisionEnabled[i])
+			if (!m_bodyActive[i] || !m_shapeCollisionEnabled[i])
 				continue;
 			if (m_bodyType[i] == BodyType::Fixed)
 				continue;
@@ -1092,7 +1096,7 @@ namespace WeirdEngine
 		// Shape collisions
 		for (auto& collisionEvent : m_collisionQueue)
 		{
-			if (!m_collisionEnabled[collisionEvent.body] || !m_shapeCollisionEnabled[collisionEvent.body])
+			if (!m_shapeCollisionEnabled[collisionEvent.body])
 				continue;
 
 			// Send event
@@ -1307,9 +1311,12 @@ namespace WeirdEngine
 						 "integrateVelocity resulted in NaN velocity");
 		}
 
-		// Publish pending slots too: their initialized transforms must survive buffer swaps.
+		// Publish active slots' simulated state; pending/unactivated slots preserve their
+		// initialized read-buffer transforms and velocities across buffer swaps below.
 		for (size_t i = 0; i < m_size; i++)
 		{
+			if (!m_bodyActive[i])
+				continue;
 			m_positionsAux[i] = m_positions[i];
 			m_velocitiesAux[i] = m_velocities[i];
 		}
@@ -1317,6 +1324,16 @@ namespace WeirdEngine
 		// swap buffers
 		{
 			std::lock_guard<std::mutex> lock(m_readMutex);
+			const size_t totalAllocated = m_allocated.load();
+			for (size_t i = 0; i < totalAllocated; ++i)
+			{
+				if (i >= m_size || !m_bodyActive[i])
+				{
+					m_positionsAux[i] = m_positionsRead[i];
+					m_velocitiesAux[i] = m_velocitiesRead[i];
+				}
+			}
+
 			vec2* aux = m_positionsAux;
 			m_positionsAux = m_positionsRead;
 			m_positionsRead = aux;

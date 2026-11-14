@@ -21,9 +21,35 @@ namespace WeirdEngine
 
 			inline void update(Registry& registry, Simulation2D& simulation)
 			{
+				// Pass 1: physics -> ECS readback for components not locally dirtied since the
+				// last sync. Running readback before queueing the next command batch prevents
+				// an in-flight physics buffer swap from snapping freshly pushed kinematic/spawned
+				// transforms back to pre-command positions.
+				static Simulation2D::ReadBufferSnapshot readSnapshot;
+				simulation.copyReadBuffers(readSnapshot);
+
+				registry.forEach<RigidBody2D, Transform>(
+					[&](Entity entity, RigidBody2D& rb, Transform& transform)
+					{
+						if (rb.simulationId.id >= readSnapshot.positions.size())
+							return;
+
+						if (!registry.isComponentDirty(transform))
+						{
+							vec2 position = readSnapshot.positions[rb.simulationId];
+							transform.position.x = position.x;
+							transform.position.y = position.y;
+						}
+
+						if (!registry.isComponentDirty(rb))
+						{
+							rb.velocity = readSnapshot.velocities[rb.simulationId];
+						}
+					});
+
 				simulation.beginCommandBatch();
 
-				// Pass 1: ECS -> physics. Writes are queued as commands and the
+				// Pass 2: ECS -> physics. Writes are queued as commands and the
 				// physics thread applies them on its next step.
 				registry.forEach<RigidBody2D, Transform>(
 					[&](Entity entity, RigidBody2D& rb, Transform& transform)
@@ -124,24 +150,6 @@ namespace WeirdEngine
 				simulation.activatePendingBodies();
 
 				simulation.endCommandBatch();
-
-				// Pass 2: physics -> ECS readback. The published buffers are
-				// copied into a reusable snapshot under a short lock; the ECS
-				// iteration then runs without holding the simulation mutex, so
-				// the physics thread can keep stepping meanwhile.
-				static Simulation2D::ReadBufferSnapshot readSnapshot;
-
-				simulation.copyReadBuffers(readSnapshot);
-
-				registry.forEach<RigidBody2D, Transform>(
-					[&](Entity entity, RigidBody2D& rb, Transform& transform)
-					{
-						vec2 position = readSnapshot.positions[rb.simulationId];
-						transform.position.x = position.x;
-						transform.position.y = position.y;
-
-						rb.velocity = readSnapshot.velocities[rb.simulationId];
-					});
 			}
 		} // namespace PhysicsSystem2D
 	} // namespace ECS

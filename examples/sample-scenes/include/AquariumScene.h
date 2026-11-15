@@ -22,7 +22,7 @@ namespace WeirdEngine
 		constexpr float SWIM_MIN_Y = -26.5f;
 		constexpr float SWIM_MAX_Y = 26.2f;
 
-		constexpr float DEFAULT_CAMERA_ZOOM = 49.0f;
+		constexpr float DEFAULT_CAMERA_ZOOM = 80.0f;
 
 		constexpr size_t HERO_FISH_COUNT = 16;
 		constexpr size_t MINNOW_COUNT = 14;

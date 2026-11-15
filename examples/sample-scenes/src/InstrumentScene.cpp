@@ -7,6 +7,7 @@
 #include <imgui.h>
 #endif
 
+#include "weird-renderer/components/Camera.h"
 #include "weird-renderer/core/Display.h"
 
 using namespace WeirdEngine;
@@ -43,22 +44,55 @@ namespace InstrumentSceneNamespace
 			state.highlightRootNote = ((activeSong->getRootMidi() % 12) + 12) % 12;
 		}
 
-		// Create 2D materials for piano keys only
+		// Create 2D materials for world chassis, piano keys, HUD text, and native UI buttons (12 custom + 1 default =
+		// 13 of 16 slots)
+		auto& worldWall = services.materials2D().createMaterial("inst_world_wall");
+		worldWall.color = vec4(0.16f, 0.19f, 0.25f, 1.0f);
+		state.worldWallMat = worldWall.id;
+
 		auto& whiteMat = services.materials2D().createMaterial("inst_key_white");
-		whiteMat.color = vec4(0.92f, 0.94f, 0.97f, 1.0f);
+		whiteMat.color = vec4(0.95f, 0.96f, 0.98f, 1.0f);
 		state.whiteKeyMat = whiteMat.id;
 
 		auto& blackMat = services.materials2D().createMaterial("inst_key_black");
-		blackMat.color = vec4(0.12f, 0.14f, 0.18f, 1.0f);
+		blackMat.color = vec4(0.10f, 0.12f, 0.16f, 1.0f);
 		state.blackKeyMat = blackMat.id;
 
 		auto& whiteScale = services.materials2D().createMaterial("inst_key_white_scale");
-		whiteScale.color = vec4(0.84f, 0.96f, 0.86f, 1.0f);
+		whiteScale.color = vec4(0.75f, 0.93f, 0.98f, 1.0f);
 		state.whiteScaleMat = whiteScale.id;
 
 		auto& blackScale = services.materials2D().createMaterial("inst_key_black_scale");
-		blackScale.color = vec4(0.18f, 0.36f, 0.24f, 1.0f);
+		blackScale.color = vec4(0.13f, 0.42f, 0.54f, 1.0f);
 		state.blackScaleMat = blackScale.id;
+
+		auto& textWhite = services.materials2D().createMaterial("inst_text_white");
+		textWhite.color = ColorPalette::White;
+		state.textWhiteMat = textWhite.id;
+
+		auto& accentCyan = services.materials2D().createMaterial("inst_accent_cyan");
+		accentCyan.color = vec4(0.18f, 0.90f, 1.0f, 1.0f);
+		state.accentCyanMat = accentCyan.id;
+
+		auto& accentAmber = services.materials2D().createMaterial("inst_accent_amber");
+		accentAmber.color = vec4(1.0f, 0.65f, 0.20f, 1.0f);
+		state.accentAmberMat = accentAmber.id;
+
+		auto& accentGreen = services.materials2D().createMaterial("inst_accent_green");
+		accentGreen.color = vec4(0.25f, 0.95f, 0.45f, 1.0f);
+		state.accentGreenMat = accentGreen.id;
+
+		auto& drumRed = services.materials2D().createMaterial("inst_drum_red");
+		drumRed.color = vec4(0.95f, 0.30f, 0.35f, 1.0f);
+		state.drumRedMat = drumRed.id;
+
+		auto& btnSlate = services.materials2D().createMaterial("inst_btn_slate");
+		btnSlate.color = vec4(0.28f, 0.33f, 0.42f, 1.0f);
+		state.btnSlateMat = btnSlate.id;
+
+		auto& textDim = services.materials2D().createMaterial("inst_text_dim");
+		textDim.color = vec4(0.68f, 0.76f, 0.88f, 1.0f);
+		state.textDimMat = textDim.id;
 	}
 
 	static bool isNoteInSelectedScale(int midiNote, int scaleIdx, int rootNote)
@@ -106,96 +140,794 @@ namespace InstrumentSceneNamespace
 	{
 		static const char* solf[] = {"Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"};
 		if (midiNote < 0 || midiNote > 127)
-			return "--";
+			return "-";
 		return solf[midiNote % 12];
+	}
+
+	struct InstrumentUiLayout
+	{
+		float winW = 800.0f;
+		float winH = 800.0f;
+		float startX = 30.0f;
+		float startY = 260.0f;
+		float whiteW = 50.0f;
+		float whiteH = 210.0f;
+		float blackW = 30.0f;
+		float blackH = 130.0f;
+		float cutLeft = 14.0f;
+		float cutRight = 786.0f;
+		float cutBottom = 246.0f;
+		float cutTop = 504.0f;
+		float scopeY = 580.0f;
+		float scopeAmp = 34.0f;
+		float scopeLeftX = 220.0f;
+		float scopeRightX = 580.0f;
+		float charSpacing = 5.0f;
+		std::array<float, 3> rowY{466.0f, 118.0f, 44.0f};
+		std::array<float, State::NUM_ACTION_BTNS> btnX{};
+		std::array<float, State::NUM_ACTION_BTNS> btnY{};
+		float arpX = 0.0f;
+		float arpY = 0.0f;
+		float hudNoteX = 760.0f;
+		float hudNoteY = 782.0f;
+	};
+
+	static const int WHITE_OFFSETS[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23};
+	static constexpr size_t NUM_WHITE_KEYS = sizeof(WHITE_OFFSETS) / sizeof(WHITE_OFFSETS[0]);
+
+	struct BlackKeyDef
+	{
+		int semitone;
+		int afterWhiteIdx;
+	};
+
+	static const BlackKeyDef BLACK_DEFS[] = {
+		{1, 0},	  // C#
+		{3, 1},	  // D#
+		{6, 3},	  // F#
+		{8, 4},	  // G#
+		{10, 5},  // A#
+		{13, 7},  // C#+1
+		{15, 8},  // D#+1
+		{18, 10}, // F#+1
+		{20, 11}, // G#+1
+		{22, 12}  // A#+1
+	};
+	static constexpr size_t NUM_BLACK_KEYS = sizeof(BLACK_DEFS) / sizeof(BLACK_DEFS[0]);
+
+	static std::string formatUiNoteName(int midiNote)
+	{
+		if (midiNote < 0 || midiNote > 127)
+			return "-";
+		// Engine bitmap font lacks '#', so display chromatic pitches cleanly as flats
+		static const char* flatNames[12] = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
+		int octave = (midiNote / 12) - 1;
+		return std::string(flatNames[midiNote % 12]) + std::to_string(octave);
+	}
+
+	static const char* waveShortName(WaveType w)
+	{
+		switch (w)
+		{
+			case WaveType::SoftSine:
+				return "SIN";
+			case WaveType::BandlimitedSaw:
+				return "SAW";
+			case WaveType::PulseSquare:
+				return "SQR";
+			case WaveType::FMPluck:
+				return "FM";
+			case WaveType::Wavefolder:
+				return "FLD";
+			default:
+				return "WAV";
+		}
+	}
+
+	static const char* instrumentHudTag(Instrument inst)
+	{
+		switch (inst)
+		{
+			case Instrument::Lead:
+				return "LD";
+			case Instrument::Bass:
+				return "BS";
+			case Instrument::Pad:
+				return "PD";
+			case Instrument::Kick:
+				return "KK";
+			case Instrument::Snare:
+				return "SN";
+			case Instrument::HiHat:
+				return "HT";
+			default:
+				return "IN";
+		}
+	}
+
+	static const char* instrumentShortName(Instrument inst)
+	{
+		switch (inst)
+		{
+			case Instrument::Lead:
+				return "LEAD";
+			case Instrument::Bass:
+				return "BASS";
+			case Instrument::Pad:
+				return "PAD";
+			case Instrument::Kick:
+				return "KICK";
+			case Instrument::Snare:
+				return "SNR";
+			case Instrument::HiHat:
+				return "HAT";
+			default:
+				return "INST";
+		}
+	}
+
+	static const char* scaleShortName(int scaleIdx)
+	{
+		static const char* names[7] = {"PMJ", "PMN", "MAJ", "MIN", "DOR", "LYD", "CHR"};
+		if (scaleIdx >= 0 && scaleIdx < 7)
+			return names[scaleIdx];
+		return "OFF";
+	}
+
+	static const char* rootShortName(int rootNote)
+	{
+		static const char* names[12] = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
+		return names[((rootNote % 12) + 12) % 12];
+	}
+
+	static const char* drumKitShortName(int drumKit)
+	{
+		switch (drumKit)
+		{
+			case 1:
+				return "WOD";
+			case 2:
+				return "IND";
+			default:
+				return "808";
+		}
+	}
+
+	static bool isMelodicInstrument(Instrument inst)
+	{
+		return inst == Instrument::Lead || inst == Instrument::Bass || inst == Instrument::Pad;
+	}
+
+	struct VoiceTonePreset
+	{
+		const char* shortName;
+		float cutoff;
+		float q;
+		float duration;
+		float amp;
+	};
+
+	static constexpr std::array<VoiceTonePreset, 4> VOICE_PRESETS = {{
+		{"BRT", 12000.0f, 1.4f, 0.50f, 0.85f},
+		{"PLK", 1800.0f, 1.2f, 0.25f, 0.85f},
+		{"ACD", 950.0f, 3.6f, 0.30f, 0.95f},
+		{"PAD", 1400.0f, 0.7f, 1.80f, 0.65f},
+	}};
+
+	struct CutoffPreset
+	{
+		const char* label;
+		float hz;
+	};
+
+	static constexpr std::array<CutoffPreset, 5> CUTOFF_PRESETS = {{
+		{"12K", 12000.0f},
+		{"4.0K", 4000.0f},
+		{"1.8K", 1800.0f},
+		{"950", 950.0f},
+		{"450", 450.0f},
+	}};
+
+	static constexpr std::array<float, 4> PULSE_STEPS = {0.50f, 0.35f, 0.20f, 0.10f};
+	static constexpr std::array<float, 5> FM_STEPS = {0.5f, 2.0f, 4.0f, 6.0f, 8.0f};
+	static constexpr std::array<float, 4> FOLD_STEPS = {1.0f, 2.2f, 3.8f, 5.5f};
+
+	template <size_t N> static int nearestFloatIdx(const std::array<float, N>& values, float target)
+	{
+		int bestIdx = 0;
+		float bestDist = std::abs(values[0] - target);
+		for (size_t i = 1; i < N; ++i)
+		{
+			float d = std::abs(values[i] - target);
+			if (d < bestDist)
+			{
+				bestDist = d;
+				bestIdx = static_cast<int>(i);
+			}
+		}
+		return bestIdx;
+	}
+
+	static int matchingTonePresetIdx(const State& state)
+	{
+		for (size_t i = 0; i < VOICE_PRESETS.size(); ++i)
+		{
+			const auto& p = VOICE_PRESETS[i];
+			if (std::abs(state.filterCutoff - p.cutoff) < 20.0f && std::abs(state.filterQ - p.q) < 0.08f &&
+				std::abs(state.noteDuration - p.duration) < 0.03f && std::abs(state.noteAmp - p.amp) < 0.03f)
+			{
+				return static_cast<int>(i);
+			}
+		}
+		return -1;
+	}
+
+	static void applyTonePreset(State& state, int idx)
+	{
+		int n = static_cast<int>(VOICE_PRESETS.size());
+		const auto& p = VOICE_PRESETS[((idx % n) + n) % n];
+		state.filterCutoff = p.cutoff;
+		state.filterQ = p.q;
+		state.noteDuration = p.duration;
+		state.noteAmp = p.amp;
+	}
+
+	static int matchingCutoffIdx(float cutoffHz)
+	{
+		int best = 0;
+		float bestRatio = std::abs(std::log2((std::max)(cutoffHz, 20.0f) / CUTOFF_PRESETS[0].hz));
+		for (size_t i = 1; i < CUTOFF_PRESETS.size(); ++i)
+		{
+			float r = std::abs(std::log2((std::max)(cutoffHz, 20.0f) / CUTOFF_PRESETS[i].hz));
+			if (r < bestRatio)
+			{
+				bestRatio = r;
+				best = static_cast<int>(i);
+			}
+		}
+		return best;
+	}
+
+	static void triggerInstrumentMidi(State& state, ServiceProvider& services, int midiNote, Instrument inst)
+	{
+		if (midiNote < 0 || midiNote > 127)
+			return;
+		services.audio().playNote(midiNote, state.noteAmp, state.noteDuration, inst, state.pan, state.filterCutoff,
+								  state.filterQ);
+		state.keyFlashTimers[midiNote] = 0.25f;
+		state.lastPlayedMidi = midiNote;
+		state.lastPlayedNoteName = SdfSong::midiToNoteString(midiNote);
+		state.lastPlayedFreq = SdfSong::midiToFrequency(midiNote);
+	}
+
+	static void cycleActiveInstrument(State& state, int delta)
+	{
+		int cur = 0;
+		for (size_t i = 0; i < SongInstruments.size(); ++i)
+		{
+			if (SongInstruments[i] == state.selectedInstrument)
+			{
+				cur = static_cast<int>(i);
+				break;
+			}
+		}
+		int n = static_cast<int>(SongInstruments.size());
+		state.selectedInstrument = SongInstruments[((cur + delta) % n + n) % n];
+	}
+
+	static void cycleTimbreInInstrument(State& state, ServiceProvider& services, int delta)
+	{
+		auto& music = services.audio().music();
+		if (isMelodicInstrument(state.selectedInstrument))
+		{
+			int cur = static_cast<int>(music.getInstrumentWaveType(state.selectedInstrument));
+			constexpr int numWaves = 5;
+			int next = ((cur + delta) % numWaves + numWaves) % numWaves;
+			music.setInstrumentWaveType(state.selectedInstrument, static_cast<WaveType>(next));
+		}
+		else
+		{
+			auto rack = music.getInstrumentRack();
+			constexpr int numKits = 3;
+			rack.drumKit = ((rack.drumKit + delta) % numKits + numKits) % numKits;
+			music.setInstrumentRack(rack);
+		}
+	}
+
+	static bool isModControlEnabled(const State& state, const SdfMusicEngine& music)
+	{
+		if (!isMelodicInstrument(state.selectedInstrument))
+		{
+			return true; // HIT button previews active drum
+		}
+		const WaveType w = music.getInstrumentWaveType(state.selectedInstrument);
+		return w == WaveType::PulseSquare || w == WaveType::FMPluck || w == WaveType::Wavefolder;
+	}
+
+	static void stepModControl(State& state, ServiceProvider& services, int delta)
+	{
+		if (!isMelodicInstrument(state.selectedInstrument))
+		{
+			int midi = (state.selectedInstrument == Instrument::Snare)	 ? 38
+					   : (state.selectedInstrument == Instrument::HiHat) ? 42
+																		 : 36;
+			triggerInstrumentMidi(state, services, midi, state.selectedInstrument);
+			return;
+		}
+		auto& music = services.audio().music();
+		auto rack = music.getInstrumentRack();
+		const WaveType w = music.getInstrumentWaveType(state.selectedInstrument);
+		if (w == WaveType::PulseSquare)
+		{
+			int n = static_cast<int>(PULSE_STEPS.size());
+			int idx = nearestFloatIdx(PULSE_STEPS, rack.pulseWidth);
+			rack.pulseWidth = PULSE_STEPS[((idx + delta) % n + n) % n];
+			music.setInstrumentRack(rack);
+		}
+		else if (w == WaveType::FMPluck)
+		{
+			int n = static_cast<int>(FM_STEPS.size());
+			int idx = nearestFloatIdx(FM_STEPS, rack.fmModIndex);
+			rack.fmModIndex = FM_STEPS[((idx + delta) % n + n) % n];
+			music.setInstrumentRack(rack);
+		}
+		else if (w == WaveType::Wavefolder)
+		{
+			int n = static_cast<int>(FOLD_STEPS.size());
+			int idx = nearestFloatIdx(FOLD_STEPS, rack.foldDrive);
+			rack.foldDrive = FOLD_STEPS[((idx + delta) % n + n) % n];
+			music.setInstrumentRack(rack);
+		}
+	}
+
+	static std::string buildActionLabel(const State& state, const SdfMusicEngine& music, size_t btnIdx)
+	{
+		const auto rack = music.getInstrumentRack();
+		char buf[16];
+		switch (btnIdx)
+		{
+			case State::ACT_INST:
+				return instrumentHudTag(state.selectedInstrument);
+			case State::ACT_TIMBRE:
+				if (isMelodicInstrument(state.selectedInstrument))
+					return waveShortName(music.getInstrumentWaveType(state.selectedInstrument));
+				return drumKitShortName(rack.drumKit);
+			case State::ACT_OCT:
+				return std::string("O") + std::to_string(state.currentOctave);
+			case State::ACT_ROOT:
+				return rootShortName(state.highlightRootNote);
+			case State::ACT_SCALE:
+				return scaleShortName(state.highlightScaleIdx);
+			case State::ACT_MOD:
+				if (!isMelodicInstrument(state.selectedInstrument))
+					return std::string("H:") + instrumentHudTag(state.selectedInstrument);
+				switch (music.getInstrumentWaveType(state.selectedInstrument))
+				{
+					case WaveType::PulseSquare:
+						std::snprintf(buf, sizeof(buf), "PW%d", static_cast<int>(std::round(rack.pulseWidth * 100.0f)));
+						return buf;
+					case WaveType::FMPluck:
+						std::snprintf(buf, sizeof(buf), "FM:%d", static_cast<int>(std::round(rack.fmModIndex)));
+						return buf;
+					case WaveType::Wavefolder:
+						std::snprintf(buf, sizeof(buf), "FL:%d", static_cast<int>(std::round(rack.foldDrive)));
+						return buf;
+					default:
+						return "-";
+				}
+			case State::ACT_TONE:
+			{
+				int presetIdx = matchingTonePresetIdx(state);
+				return std::string("T:") + (presetIdx >= 0 ? VOICE_PRESETS[presetIdx].shortName : "CST");
+			}
+			case State::ACT_FLT:
+				return std::string("F:") + CUTOFF_PRESETS[matchingCutoffIdx(state.filterCutoff)].label;
+			case State::ACT_CHORD:
+				return "CHRD";
+			case State::ACT_KICK:
+				return "KICK";
+			case State::ACT_SNARE:
+				return "SNR";
+			default:
+				return "";
+		}
+	}
+
+	static void triggerDefaultChord(State& state)
+	{
+		int rootMidi = (state.currentOctave + 1) * 12 + state.highlightRootNote;
+		bool minorThird =
+			(state.highlightScaleIdx == 1 || state.highlightScaleIdx == 3 || state.highlightScaleIdx == 4);
+		int third = minorThird ? 3 : 4;
+		const int offsets[4] = {0, third, 7, 12};
+		for (size_t i = 0; i < 4; ++i)
+		{
+			state.scheduledNotes.push_back(
+				{static_cast<float>(i) * 0.045f, rootMidi + offsets[i], state.selectedInstrument});
+		}
+	}
+
+	static void triggerAction(State& state, ServiceProvider& services, size_t act, int delta, bool playFeedbackSound,
+							  bool clampOctave = false)
+	{
+		if (act >= State::NUM_ACTION_BTNS)
+			return;
+		state.actionFlashTimers[act] = 0.22f;
+		switch (act)
+		{
+			case State::ACT_INST:
+				cycleActiveInstrument(state, delta);
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 680.0f, false, vec3(0.0f), 1});
+				break;
+			case State::ACT_TIMBRE:
+				cycleTimbreInInstrument(state, services, delta);
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 640.0f, false, vec3(0.0f), 1});
+				break;
+			case State::ACT_OCT:
+				state.currentOctave = clampOctave ? std::clamp(state.currentOctave + delta, 1, 7)
+												  : (((state.currentOctave - 1 + delta) % 7 + 7) % 7 + 1);
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 520.0f, false, vec3(0.0f), 1});
+				break;
+			case State::ACT_ROOT:
+				state.highlightRootNote = ((state.highlightRootNote + delta) % 12 + 12) % 12;
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 660.0f, false, vec3(0.0f), 1});
+				break;
+			case State::ACT_SCALE:
+			{
+				// Cycle OFF (-1) and MusicalScales (0..6) = 8 states total
+				int mapped = state.highlightScaleIdx + 1;
+				mapped = ((mapped + delta) % 8 + 8) % 8;
+				state.highlightScaleIdx = mapped - 1;
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 620.0f, false, vec3(0.0f), 1});
+				break;
+			}
+			case State::ACT_MOD:
+				stepModControl(state, services, delta);
+				break;
+			case State::ACT_TONE:
+			{
+				int cur = matchingTonePresetIdx(state);
+				int next = (cur < 0) ? 0 : (cur + delta);
+				applyTonePreset(state, next);
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 600.0f, false, vec3(0.0f), 1});
+				break;
+			}
+			case State::ACT_FLT:
+			{
+				int n = static_cast<int>(CUTOFF_PRESETS.size());
+				int cur = matchingCutoffIdx(state.filterCutoff);
+				int next = ((cur + delta) % n + n) % n;
+				state.filterCutoff = CUTOFF_PRESETS[next].hz;
+				if (playFeedbackSound)
+					services.audio().playSound({0.02f, 520.0f, false, vec3(0.0f), 1});
+				break;
+			}
+			case State::ACT_CHORD:
+				triggerDefaultChord(state);
+				break;
+			case State::ACT_KICK:
+				triggerInstrumentMidi(state, services, 36, Instrument::Kick);
+				break;
+			case State::ACT_SNARE:
+				triggerInstrumentMidi(state, services, 38, Instrument::Snare);
+				break;
+			default:
+				break;
+		}
+	}
+
+	static InstrumentUiLayout computeInstrumentLayout()
+	{
+		InstrumentUiLayout l;
+		l.winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+		l.winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+		l.charSpacing = (l.winW >= 720.0f) ? 5.0f : 3.5f;
+
+		float keyboardW = (std::min)(l.winW - 44.0f, 740.0f);
+		l.whiteW = keyboardW / static_cast<float>(NUM_WHITE_KEYS);
+		l.whiteH = (l.winH < 560.0f) ? (std::min)(176.0f, l.winH * 0.36f) : (std::min)(210.0f, l.winH * 0.39f);
+		l.blackW = l.whiteW * 0.60f;
+		l.blackH = l.whiteH * 0.62f;
+		l.startX = (l.winW - keyboardW) * 0.5f;
+		l.startY = (l.winH < 560.0f) ? 172.0f : (l.winH * 0.43f - l.whiteH * 0.5f);
+
+		const float cutPadX = (l.winW >= 760.0f) ? 18.0f : 12.0f;
+		const float cutPadY = (l.winH >= 560.0f) ? 16.0f : 10.0f;
+		l.cutLeft = l.startX - cutPadX;
+		l.cutRight = l.startX + keyboardW + cutPadX;
+		l.cutBottom = l.startY - cutPadY;
+		l.cutTop = l.startY + l.whiteH + cutPadY;
+
+		float topHudFloor = l.winH - 58.0f;
+		float pianoTop = l.startY + l.whiteH;
+		l.scopeY = pianoTop + (topHudFloor - pianoTop) * 0.50f;
+		l.scopeAmp = (std::min)(36.0f, (std::max)(16.0f, (topHudFloor - pianoTop) * 0.28f));
+		const float scopeW = (std::min)(l.winW * 0.48f, 360.0f);
+		l.scopeLeftX = (l.winW - scopeW) * 0.5f;
+		l.scopeRightX = l.scopeLeftX + scopeW;
+
+		const float topY = (l.winH < 560.0f) ? (l.winH - 14.0f) : (l.winH - 16.0f);
+		if (l.winH < 560.0f)
+		{
+			l.rowY = {topY, 118.0f, 44.0f};
+		}
+		else
+		{
+			l.rowY = {topY, l.startY - 62.0f, l.startY - 126.0f};
+		}
+
+		// Row 0 (Top HUD bar): reuse top-left (INST, TIMBRE, OCT) and top-right (ROOT, SCALE, Note) cleanly
+		const float charStep = 30.0f + l.charSpacing;
+		const float leftEdge = 16.0f;
+		const float rightEdge = l.winW - 16.0f;
+		l.btnX[State::ACT_INST] = leftEdge + 1.0f * charStep;
+		l.btnY[State::ACT_INST] = topY;
+		l.btnX[State::ACT_TIMBRE] = leftEdge + 4.1f * charStep;
+		l.btnY[State::ACT_TIMBRE] = topY;
+		l.btnX[State::ACT_OCT] = leftEdge + 7.2f * charStep;
+		l.btnY[State::ACT_OCT] = topY;
+
+		l.hudNoteX = rightEdge - 1.5f * charStep;
+		l.hudNoteY = topY;
+		l.btnX[State::ACT_SCALE] = rightEdge - 5.1f * charStep;
+		l.btnY[State::ACT_SCALE] = topY;
+		l.btnX[State::ACT_ROOT] = rightEdge - 8.1f * charStep;
+		l.btnY[State::ACT_ROOT] = topY;
+
+		// Rows 1 & 2 (Below piano): clamped container width centered directly under the piano
+		const float minMarginX = (l.winW >= 760.0f) ? 40.0f : 14.0f;
+		const float maxControlsW = (l.winW >= 760.0f) ? (std::min)(keyboardW, 660.0f) : (l.winW - minMarginX * 2.0f);
+		const float usableW = (std::min)(l.winW - minMarginX * 2.0f, maxControlsW);
+		const float marginX = (l.winW - usableW) * 0.5f;
+
+		auto placeCenteredRow = [&](int row, std::initializer_list<int> slots)
+		{
+			int count = static_cast<int>(slots.size());
+			int c = 0;
+			for (int act : slots)
+			{
+				float x = marginX + ((static_cast<float>(c) + 0.5f) / static_cast<float>(count)) * usableW;
+				if (act < 0)
+				{
+					l.arpX = x;
+					l.arpY = l.rowY[row];
+				}
+				else
+				{
+					l.btnX[act] = x;
+					l.btnY[act] = l.rowY[row];
+				}
+				++c;
+			}
+		};
+
+		placeCenteredRow(1, {State::ACT_MOD, State::ACT_TONE, State::ACT_FLT});
+		placeCenteredRow(2, {State::ACT_CHORD, -1, State::ACT_KICK, State::ACT_SNARE});
+		return l;
+	}
+
+	static Material2DHandle scopeAccentMaterial(const State& state, Instrument inst)
+	{
+		switch (inst)
+		{
+			case Instrument::Bass:
+				return state.accentAmberMat;
+			case Instrument::Pad:
+				return state.accentGreenMat;
+			case Instrument::Kick:
+			case Instrument::Snare:
+			case Instrument::HiHat:
+				return state.drumRedMat;
+			default:
+				return state.accentCyanMat;
+		}
+	}
+
+	static void updateWorldCutout(Registry& registry, const State& state, ServiceProvider& services,
+								  const InstrumentUiLayout& l)
+	{
+		if (!registry.isEntityValid(state.worldCutout) || !registry.hasComponent<Shape>(state.worldCutout))
+		{
+			return;
+		}
+
+		const auto& camTf = registry.getComponent<Transform>(services.render().getCameraEntity());
+		// UI and Camera::screenPositionToWorldPosition2D both use Y-up coordinates (0 at bottom)
+		const vec2 worldA = ECS::Camera::screenPositionToWorldPosition2D(camTf, vec2(l.cutLeft, l.cutBottom));
+		const vec2 worldB = ECS::Camera::screenPositionToWorldPosition2D(camTf, vec2(l.cutRight, l.cutTop));
+		const float sizeX = 0.5f * std::abs(worldB.x - worldA.x);
+		const float sizeY = 0.5f * std::abs(worldB.y - worldA.y);
+
+		auto& cut = registry.getComponent<Shape>(state.worldCutout);
+		cut.parameters[DefaultShapes::RoundedBox::PosX] = 0.5f * (worldA.x + worldB.x);
+		cut.parameters[DefaultShapes::RoundedBox::PosY] = 0.5f * (worldA.y + worldB.y);
+		cut.parameters[DefaultShapes::RoundedBox::SizeX] = sizeX;
+		cut.parameters[DefaultShapes::RoundedBox::SizeY] = sizeY;
+		cut.parameters[DefaultShapes::RoundedBox::Radius] = (std::min)(0.45f, 0.08f * (std::min)(sizeX, sizeY));
+		registry.setComponentDirty(cut);
+	}
+
+	static void relayoutScene(Registry& registry, State& state, ServiceProvider& services)
+	{
+		const InstrumentUiLayout l = computeInstrumentLayout();
+
+		auto& uiCtx = services.render().getContextUI();
+		if (std::abs(uiCtx.charSpacing - l.charSpacing) > 0.01f)
+		{
+			uiCtx.charSpacing = l.charSpacing;
+			auto markDirtyIfValid = [&](Entity e)
+			{
+				if (registry.isEntityValid(e) && registry.hasComponent<UITextRenderer>(e))
+				{
+					registry.setComponentDirty(registry.getComponent<UITextRenderer>(e));
+				}
+			};
+			markDirtyIfValid(state.hudNoteText);
+			markDirtyIfValid(state.arpToggleLabel);
+			for (size_t i = 0; i < State::NUM_ACTION_BTNS; ++i)
+			{
+				markDirtyIfValid(state.actionLabels[i]);
+			}
+		}
+
+		updateWorldCutout(registry, state, services, l);
+
+		for (size_t i = 0; i < state.keys.size(); ++i)
+		{
+			auto& kv = state.keys[i];
+			if (!kv.isBlack)
+			{
+				size_t wIdx = i;
+				kv.basePosX = l.startX + static_cast<float>(wIdx) * l.whiteW + l.whiteW * 0.5f;
+				kv.basePosY = l.startY + l.whiteH * 0.5f;
+				kv.sizeX = (l.whiteW - 3.0f) * 0.5f;
+				kv.sizeY = (l.whiteH - 3.0f) * 0.5f;
+			}
+			else
+			{
+				size_t bIdx = i - NUM_WHITE_KEYS;
+				const auto& bd = BLACK_DEFS[bIdx];
+				kv.basePosX = l.startX + static_cast<float>(bd.afterWhiteIdx + 1) * l.whiteW;
+				kv.basePosY = l.startY + l.whiteH - l.blackH * 0.5f;
+				kv.sizeX = l.blackW * 0.5f;
+				kv.sizeY = l.blackH * 0.5f;
+			}
+
+			if (registry.isEntityValid(kv.entity) && registry.hasComponent<UIShape>(kv.entity))
+			{
+				auto& s = registry.getComponent<UIShape>(kv.entity);
+				s.parameters[DefaultShapes::RoundBox::PosX] = kv.basePosX;
+				s.parameters[DefaultShapes::RoundBox::PosY] = kv.basePosY;
+				s.parameters[DefaultShapes::RoundBox::SizeX] = kv.sizeX;
+				s.parameters[DefaultShapes::RoundBox::SizeY] = kv.sizeY;
+			}
+		}
+
+		if (registry.isEntityValid(state.hudNoteText) && registry.hasComponent<Transform>(state.hudNoteText))
+		{
+			registry.getComponent<Transform>(state.hudNoteText).position = vec3(l.hudNoteX, l.hudNoteY, 0.0f);
+		}
+
+		for (size_t i = 0; i < State::NUM_ACTION_BTNS; ++i)
+		{
+			if (registry.isEntityValid(state.actionLabels[i]) &&
+				registry.hasComponent<Transform>(state.actionLabels[i]))
+			{
+				registry.getComponent<Transform>(state.actionLabels[i]).position = vec3(l.btnX[i], l.btnY[i], 0.0f);
+			}
+		}
+
+		if (registry.isEntityValid(state.arpToggleLabel) && registry.hasComponent<Transform>(state.arpToggleLabel))
+		{
+			registry.getComponent<Transform>(state.arpToggleLabel).position = vec3(l.arpX, l.arpY, 0.0f);
+		}
 	}
 
 	void setupSceneSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
 
-		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
-		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+		services.render().getContextUI().charSpacing = 7.5f;
 		state.lastWidth = Display::width;
 		state.lastHeight = Display::height;
 
-		// Visual Piano Keyboard (2 Octaves: 14 White Keys + 10 Black Keys)
-		// White key offsets in semitones: C(0), D(2), E(4), F(5), G(7), A(9), B(11), C(12), D(14), E(16), F(17), G(19),
-		// A(21), B(23)
-		static const int whiteOffsets[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23};
-		static const size_t numWhite = sizeof(whiteOffsets) / sizeof(whiteOffsets[0]);
+		auto& cameraTransform = registry.getComponent<Transform>(services.render().getCameraEntity());
+		cameraTransform.position = vec3(0.0f, 0.0f, 25.0f);
+		cameraTransform.rotation = vec3(0.0f, 0.0f, -1.0f);
 
-		// Black key offsets and the white key index they sit between
-		struct BlackDef
-		{
-			int semitone;
-			int afterWhiteIdx;
-		};
-		static const BlackDef blackDefs[] = {
-			{1, 0},	  // C#
-			{3, 1},	  // D#
-			{6, 3},	  // F#
-			{8, 4},	  // G#
-			{10, 5},  // A#
-			{13, 7},  // C#+1
-			{15, 8},  // D#+1
-			{18, 10}, // F#+1
-			{20, 11}, // G#+1
-			{22, 12}  // A#+1
-		};
-		static const size_t numBlack = sizeof(blackDefs) / sizeof(blackDefs[0]);
+		auto& background = services.render().getBackground();
+		background.type = BackgroundType::Grid;
+		background.primaryColor = vec4(0.06f, 0.08f, 0.13f, 1.0f);
+		background.secondaryColor = vec4(0.14f, 0.21f, 0.31f, 1.0f);
+		background.scale = 2.5f;
+		background.intensity = 1.0f;
+		background.parallax = 0.0f;
 
-		float keyboardW = (std::min)(winW - 60.0f, 740.0f);
-		float whiteW = keyboardW / static_cast<float>(numWhite);
-		float whiteH = 200.0f;
-		float blackW = whiteW * 0.60f;
-		float blackH = whiteH * 0.62f;
-		float startX = (winW - keyboardW) * 0.5f;
-		float startY = (winH - whiteH) * 0.5f; // Centered vertically
+		const InstrumentUiLayout l = computeInstrumentLayout();
+
+		// Large 2D chassis plate with a rounded cutout framing the piano + padding
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 0.0f},
+												  {DefaultShapes::Box::PosY, -100.0f},
+												  {DefaultShapes::Box::SizeX, 150.0f},
+												  {DefaultShapes::Box::SizeY, 100.0f}},
+									.material = state.worldWallMat,
+									.combination = CombinationType::Addition,
+									.hasCollision = false});
+
+		state.worldCutout = services.shapes().addShape({.shapeId = DefaultShapes::RoundedBox,
+														.variables = {{DefaultShapes::RoundedBox::PosX, 0.0f},
+																	  {DefaultShapes::RoundedBox::PosY, 0.0f},
+																	  {DefaultShapes::RoundedBox::SizeX, 10.0f},
+																	  {DefaultShapes::RoundedBox::SizeY, 4.0f},
+																	  {DefaultShapes::RoundedBox::Radius, 0.35f}},
+														.material = state.worldWallMat,
+														.combination = CombinationType::Subtraction,
+														.hasCollision = false});
 
 		state.keys.clear();
-		state.keys.reserve(numWhite + numBlack);
+		state.keys.reserve(NUM_WHITE_KEYS + NUM_BLACK_KEYS);
 
-		// First create white keys
-		for (size_t i = 0; i < numWhite; ++i)
+		auto createKeyDot = [&]()
 		{
-			float kx = startX + static_cast<float>(i) * whiteW + whiteW * 0.5f;
-			float ky = startY + whiteH * 0.5f;
+			Entity dot = registry.createEntity();
+			registry.addComponent<Transform>(dot).position = vec3(-1000.0f, -1000.0f, 0.0f);
+			auto& uiDot = registry.addComponent<UIDot>(dot);
+			uiDot.materialId = state.accentCyanMat.id;
+			return dot;
+		};
+
+		// First create white keys (group 0)
+		for (size_t i = 0; i < NUM_WHITE_KEYS; ++i)
+		{
+			float kx = l.startX + static_cast<float>(i) * l.whiteW + l.whiteW * 0.5f;
+			float ky = l.startY + l.whiteH * 0.5f;
 
 			auto entity =
-				services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
-											  .variables = {{DefaultShapes::Box::PosX, kx},
-															{DefaultShapes::Box::PosY, ky},
-															{DefaultShapes::Box::SizeX, (whiteW - 3.0f) * 0.5f},
-															{DefaultShapes::Box::SizeY, (whiteH - 3.0f) * 0.5f}},
-											  .material = services.materials2D().get("inst_key_white")});
+				services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
+											  .variables = {{DefaultShapes::RoundBox::PosX, kx},
+															{DefaultShapes::RoundBox::PosY, ky},
+															{DefaultShapes::RoundBox::SizeX, (l.whiteW - 3.0f) * 0.5f},
+															{DefaultShapes::RoundBox::SizeY, (l.whiteH - 3.0f) * 0.5f},
+															{DefaultShapes::RoundBox::Radius, 4.0f}},
+											  .material = state.whiteKeyMat,
+											  .group = 0});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
 
 			KeyVisual kv;
-			kv.midiNote = 60 + whiteOffsets[i]; // Octave 4 base (Middle C = 60) + offset
+			kv.midiNote = 60 + WHITE_OFFSETS[i];
 			kv.isBlack = false;
 			kv.entity = entity;
+			kv.glowDot = createKeyDot();
 			kv.basePosX = kx;
 			kv.basePosY = ky;
-			kv.sizeX = (whiteW - 3.0f) * 0.5f;
-			kv.sizeY = (whiteH - 3.0f) * 0.5f;
+			kv.sizeX = (l.whiteW - 3.0f) * 0.5f;
+			kv.sizeY = (l.whiteH - 3.0f) * 0.5f;
 			state.keys.push_back(kv);
 		}
 
-		// Then create black keys (rendered on top of white keys)
-		for (size_t i = 0; i < numBlack; ++i)
+		// Then create black keys along the top edge (group 1 renders cleanly above white keys)
+		for (size_t i = 0; i < NUM_BLACK_KEYS; ++i)
 		{
-			const auto& bd = blackDefs[i];
-			float kx = startX + static_cast<float>(bd.afterWhiteIdx + 1) * whiteW;
-			float ky = startY + blackH * 0.5f;
+			const auto& bd = BLACK_DEFS[i];
+			float kx = l.startX + static_cast<float>(bd.afterWhiteIdx + 1) * l.whiteW;
+			float ky = l.startY + l.whiteH - l.blackH * 0.5f;
 
-			auto entity = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
-														.variables = {{DefaultShapes::Box::PosX, kx},
-																	  {DefaultShapes::Box::PosY, ky},
-																	  {DefaultShapes::Box::SizeX, blackW * 0.5f},
-																	  {DefaultShapes::Box::SizeY, blackH * 0.5f}},
-														.material = services.materials2D().get("inst_key_black")});
+			auto entity = services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
+														.variables = {{DefaultShapes::RoundBox::PosX, kx},
+																	  {DefaultShapes::RoundBox::PosY, ky},
+																	  {DefaultShapes::RoundBox::SizeX, l.blackW * 0.5f},
+																	  {DefaultShapes::RoundBox::SizeY, l.blackH * 0.5f},
+																	  {DefaultShapes::RoundBox::Radius, 3.0f}},
+														.material = state.blackKeyMat,
+														.group = 1});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
 
@@ -203,18 +935,126 @@ namespace InstrumentSceneNamespace
 			kv.midiNote = 60 + bd.semitone;
 			kv.isBlack = true;
 			kv.entity = entity;
+			kv.glowDot = createKeyDot();
 			kv.basePosX = kx;
 			kv.basePosY = ky;
-			kv.sizeX = blackW * 0.5f;
-			kv.sizeY = blackH * 0.5f;
+			kv.sizeX = l.blackW * 0.5f;
+			kv.sizeY = l.blackH * 0.5f;
 			state.keys.push_back(kv);
 		}
+
+		// Top-right last played note readout
+		{
+			state.hudNoteText = registry.createEntity();
+			registry.addComponent<Transform>(state.hudNoteText).position = vec3(l.hudNoteX, l.hudNoteY, 0.0f);
+			auto& rtr = registry.addComponent<UITextRenderer>(state.hudNoteText);
+			rtr.text = "-";
+			rtr.material = state.accentCyanMat.id;
+			rtr.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			rtr.verticalAlignment = TextRenderer::VerticalAlignment::Top;
+			state.cachedHudNote = "-";
+		}
+
+		// Live audio oscilloscope dot ribbon (tight spacing for smooth SDF continuity)
+		{
+			for (size_t i = 0; i < State::SCOPE_DOTS; ++i)
+			{
+				Entity dot = registry.createEntity();
+				float frac = static_cast<float>(i) / static_cast<float>(State::SCOPE_DOTS - 1);
+				float x = l.scopeLeftX + (l.scopeRightX - l.scopeLeftX) * frac;
+				registry.addComponent<Transform>(dot).position = vec3(x, l.scopeY, 0.0f);
+				registry.addComponent<UIDot>(dot).materialId = state.accentCyanMat.id;
+				state.scopeDots[i] = dot;
+			}
+		}
+
+		// Interactive text controls across 3 logical rows:
+		// Row 0 (Top HUD): Instrument, Wave/Kit, Octave, Scale Root, Scale Mode
+		// Row 1 (Below Piano - Sound Shaping): Mod/Hit, Tone Preset, Filter Cutoff
+		// Row 2 (Below Piano - Performance): Chord, Arp, Kick, Snare
+		const auto& music = services.audio().music();
+		state.cachedModEnabled = isModControlEnabled(state, music);
+		const Material2DHandle actionMats[State::NUM_ACTION_BTNS] = {
+			scopeAccentMaterial(state, state.selectedInstrument),
+			state.accentAmberMat,
+			state.textWhiteMat,
+			state.accentGreenMat,
+			state.accentGreenMat,
+			state.cachedModEnabled ? state.accentAmberMat : state.textDimMat,
+			state.accentAmberMat,
+			state.accentAmberMat,
+			state.accentCyanMat,
+			state.drumRedMat,
+			state.drumRedMat};
+
+		for (size_t i = 0; i < State::NUM_ACTION_BTNS; ++i)
+		{
+			std::string initialLabel = buildActionLabel(state, music, i);
+			state.cachedActionLabels[i] = initialLabel;
+			const bool isTopRow = (i <= State::ACT_SCALE);
+
+			state.actionLabels[i] = registry.createEntity();
+			registry.addComponent<Transform>(state.actionLabels[i]).position = vec3(l.btnX[i], l.btnY[i], 0.0f);
+			auto& tr = registry.addComponent<UITextRenderer>(state.actionLabels[i]);
+			tr.text = initialLabel;
+			tr.material = actionMats[i].id;
+			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			tr.verticalAlignment =
+				isTopRow ? TextRenderer::VerticalAlignment::Top : TextRenderer::VerticalAlignment::Center;
+			auto& txtBtn = registry.addComponent<TextButton>(state.actionLabels[i]);
+			txtBtn.clickPadding = 8.0f;
+			txtBtn.hoverMaterial = state.textWhiteMat.id;
+		}
+
+		// Arpeggiator TextToggle (Row 2 col 1)
+		{
+			state.prevArpVisual = state.arpEnabled;
+			state.arpToggleLabel = registry.createEntity();
+			registry.addComponent<Transform>(state.arpToggleLabel).position = vec3(l.arpX, l.arpY, 0.0f);
+			auto& tr = registry.addComponent<UITextRenderer>(state.arpToggleLabel);
+			tr.text = "ARP";
+			tr.material = state.arpEnabled ? state.accentGreenMat.id : state.textDimMat.id;
+			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+			tr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+			auto& txtTgl = registry.addComponent<TextToggle>(state.arpToggleLabel);
+			txtTgl.active = state.arpEnabled;
+			txtTgl.clickPadding = 8.0f;
+			txtTgl.activeMaterial = state.accentGreenMat.id;
+			txtTgl.inactiveMaterial = state.textDimMat.id;
+		}
+
+		relayoutScene(registry, state, services);
+	}
+
+	int getStickOctant(float x, float y, int prevDir, float deadzone)
+	{
+		const float engageR = std::clamp(deadzone, 0.15f, 0.90f);
+		const float releaseR = (std::max)(0.12f, engageR - 0.12f);
+		const float rSq = x * x + y * y;
+		if (rSq < releaseR * releaseR)
+		{
+			return -1;
+		}
+		constexpr float PI = 3.14159265358979323846f;
+		float angle = std::atan2(x, -y); // 0 = Up, clockwise
+		if (angle < 0.0f)
+		{
+			angle += 2.0f * PI;
+		}
+		int octant = static_cast<int>(std::floor((angle + PI * 0.125f) / (PI * 0.25f))) & 7;
+		if (rSq < engageR * engageR)
+		{
+			// Inside deadzone hysteresis band: keep same note, reject snapback into another octant
+			return (prevDir >= 0 && octant == prevDir) ? prevDir : -1;
+		}
+		return octant;
 	}
 
 	void inputHandlingSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
 		auto& input = services.input();
+		auto& music = services.audio().music();
 
 		// Read gamepad axes
 		float stickX = input.getGamepadAxis(Input::GamepadAxis::LeftX);
@@ -224,27 +1064,7 @@ namespace InstrumentSceneNamespace
 		float leftTrigger = input.getGamepadAxis(Input::GamepadAxis::LeftTrigger);
 		float rightTrigger = input.getGamepadAxis(Input::GamepadAxis::RightTrigger);
 
-		bool stickLeftDown = (stickX < -0.5f && state.prevStickX >= -0.5f);
-		bool stickRightDown = (stickX > 0.5f && state.prevStickX <= 0.5f);
-		bool stickUpDown = (stickY < -0.5f && state.prevStickY >= -0.5f);
-		bool stickDownDown = (stickY > 0.5f && state.prevStickY <= 0.5f);
-
-		bool rStickLeftDown = (rStickX < -0.5f && state.prevRightStickX >= -0.5f);
-		bool rStickRightDown = (rStickX > 0.5f && state.prevRightStickX <= 0.5f);
-		bool rStickUpDown = (rStickY < -0.5f && state.prevRightStickY >= -0.5f);
-		bool rStickDownDown = (rStickY > 0.5f && state.prevRightStickY <= 0.5f);
-
-		bool leftTriggerDown = (leftTrigger > 0.5f && state.prevLeftTrigger <= 0.5f);
-		bool rightTriggerDown = (rightTrigger > 0.5f && state.prevRightTrigger <= 0.5f);
-
-		state.prevStickX = stickX;
-		state.prevStickY = stickY;
-		state.prevRightStickX = rStickX;
-		state.prevRightStickY = rStickY;
-		state.prevLeftTrigger = leftTrigger;
-		state.prevRightTrigger = rightTrigger;
-
-		// 1. Instrument Selection with number keys 1-6, TAB, Start button, or Right Stick Left/Right
+		// 1. Instrument Selection (1-6, TAB, L1/R1) & Timbre Shortcut (Start)
 		if (input.getKeyDown(Input::Num1))
 			state.selectedInstrument = Instrument::Lead;
 		if (input.getKeyDown(Input::Num2))
@@ -258,54 +1078,62 @@ namespace InstrumentSceneNamespace
 		if (input.getKeyDown(Input::Num6))
 			state.selectedInstrument = Instrument::HiHat;
 
-		if (input.getKeyDown(Input::Tab) || input.getGamepadButtonDown(Input::GamepadButton::Start) || rStickRightDown)
+		if (input.getKeyDown(Input::Tab))
 		{
-			int cur = 0;
-			for (size_t i = 0; i < SongInstruments.size(); ++i)
-			{
-				if (SongInstruments[i] == state.selectedInstrument)
-				{
-					cur = static_cast<int>(i);
-					break;
-				}
-			}
-			state.selectedInstrument = SongInstruments[(cur + 1) % SongInstruments.size()];
-		}
-		else if (rStickLeftDown)
-		{
-			int cur = 0;
-			for (size_t i = 0; i < SongInstruments.size(); ++i)
-			{
-				if (SongInstruments[i] == state.selectedInstrument)
-				{
-					cur = static_cast<int>(i);
-					break;
-				}
-			}
-			state.selectedInstrument = SongInstruments[(cur - 1 + SongInstruments.size()) % SongInstruments.size()];
+			triggerAction(state, services, State::ACT_INST, 1, false);
 		}
 
-		// 2. Octave Shift with Z / X, Up / Down, Triggers, or Right Stick Up/Down
-		if (input.getKeyDown(Input::Z) || input.getKeyDown(Input::Down) || leftTriggerDown || rStickDownDown)
+		// Gamepad direct 1-button-per-function controls (no D-pad menu cursor):
+		// L1 / R1: Cycle Active Instrument / Wave-Kit
+		if (input.getGamepadButtonDown(Input::GamepadButton::LeftShoulder))
+		{
+			triggerAction(state, services, State::ACT_INST, 1, true);
+		}
+		if (input.getGamepadButtonDown(Input::GamepadButton::RightShoulder))
+		{
+			triggerAction(state, services, State::ACT_TIMBRE, 1, true);
+		}
+
+		// D-Pad Left / Right: Octave -1 / +1 (clamped 1..7)
+		if (input.getGamepadButtonDown(Input::GamepadButton::DpadLeft))
+		{
+			triggerAction(state, services, State::ACT_OCT, -1, true, true);
+		}
+		if (input.getGamepadButtonDown(Input::GamepadButton::DpadRight))
+		{
+			triggerAction(state, services, State::ACT_OCT, 1, true, true);
+		}
+
+		// D-Pad Up / Down: Cycle Tone Preset / Filter Cutoff
+		if (input.getGamepadButtonDown(Input::GamepadButton::DpadUp))
+		{
+			triggerAction(state, services, State::ACT_TONE, 1, true);
+		}
+		if (input.getGamepadButtonDown(Input::GamepadButton::DpadDown))
+		{
+			triggerAction(state, services, State::ACT_FLT, 1, true);
+		}
+
+		// Start: Cycle Mod / Trigger Drum Hit
+		if (input.getGamepadButtonDown(Input::GamepadButton::Start))
+		{
+			triggerAction(state, services, State::ACT_MOD, 1, true);
+		}
+
+		// 2. Keyboard Octave Shift (Z / X or Up / Down)
+		if (input.getKeyDown(Input::Z) || input.getKeyDown(Input::Down))
 		{
 			state.currentOctave = (std::max)(1, state.currentOctave - 1);
+			state.actionFlashTimers[State::ACT_OCT] = 0.22f;
 		}
-		if (input.getKeyDown(Input::X) || input.getKeyDown(Input::Up) || rightTriggerDown || rStickUpDown)
+		if (input.getKeyDown(Input::X) || input.getKeyDown(Input::Up))
 		{
 			state.currentOctave = (std::min)(7, state.currentOctave + 1);
+			state.actionFlashTimers[State::ACT_OCT] = 0.22f;
 		}
 
 		auto playNoteMidi = [&](int midiNote, Instrument inst)
-		{
-			if (midiNote < 0 || midiNote > 127)
-				return;
-			services.audio().playNote(midiNote, state.noteAmp, state.noteDuration, inst, state.pan, state.filterCutoff,
-									  state.filterQ);
-			state.keyFlashTimers[midiNote] = 0.25f;
-			state.lastPlayedMidi = midiNote;
-			state.lastPlayedNoteName = SdfSong::midiToNoteString(midiNote);
-			state.lastPlayedFreq = SdfSong::midiToFrequency(midiNote);
-		};
+		{ triggerInstrumentMidi(state, services, midiNote, inst); };
 
 		int baseMidi = (state.currentOctave + 1) * 12; // C of current octave (MIDI 60 = C4 when currentOctave = 4)
 
@@ -348,37 +1176,63 @@ namespace InstrumentSceneNamespace
 		if (input.getKeyDown(Input::P))
 			playNoteMidi(baseMidi + 15, state.selectedInstrument); // D# (+1)
 
-		// 4. Gamepad Musical Performance
-		// Modifiers: Left Shoulder = Black Keys (Accidentals), Right Shoulder = Upper Octave
-		bool blackKeyMod = input.getGamepadButton(Input::GamepadButton::LeftShoulder);
-		bool octaveUpMod = input.getGamepadButton(Input::GamepadButton::RightShoulder);
+		// 4. Gamepad Dual-Stick Note Performance & Face Button Editing
+		// Modifiers: L2 = Sharps / Black Keys, R2 = Octave +1 Shift
+		bool blackKeyMod = (leftTrigger > 0.5f);
+		bool octaveUpMod = (rightTrigger > 0.5f);
 		int octaveOffset = octaveUpMod ? 12 : 0;
 
-		// D-Pad / Left Stick: Notes 1 to 4 (Do, Re, Mi, Fa)
-		if (input.getGamepadButtonDown(Input::GamepadButton::DpadLeft) || stickLeftDown)
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 1 : 0), state.selectedInstrument); // C or C#
-		if (input.getGamepadButtonDown(Input::GamepadButton::DpadDown) || stickDownDown)
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 3 : 2), state.selectedInstrument); // D or D#
-		if (input.getGamepadButtonDown(Input::GamepadButton::DpadRight) || stickRightDown)
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 3 : 4), state.selectedInstrument); // E or Eb (D#)
-		if (input.getGamepadButtonDown(Input::GamepadButton::DpadUp) || stickUpDown)
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 6 : 5), state.selectedInstrument); // F or F#
+		static constexpr int NATURAL_OFFSETS[8] = {0, 2, 4, 5, 7, 9, 11, 12};
+		static constexpr int SHARP_OFFSETS[8] = {1, 3, 3, 6, 8, 10, 10, 13};
+		const int* stickNotes = blackKeyMod ? SHARP_OFFSETS : NATURAL_OFFSETS;
 
-		// Face Buttons: Notes 5 to 8 (Sol, La, Si, High Do)
+		// Left Stick (8-way clockwise from Up): Lower Octave (Do..High Do)
+		int leftDir = getStickOctant(stickX, stickY, state.prevLeftStickDir, state.stickDeadzone);
+		if (leftDir >= 0 && leftDir != state.prevLeftStickDir)
+		{
+			playNoteMidi(baseMidi + octaveOffset + stickNotes[leftDir], state.selectedInstrument);
+		}
+		state.prevLeftStickDir = leftDir;
+
+		// Right Stick (8-way clockwise from Up): Upper Octave (+12 semitones)
+		int rightDir = getStickOctant(rStickX, rStickY, state.prevRightStickDir, state.stickDeadzone);
+		if (rightDir >= 0 && rightDir != state.prevRightStickDir)
+		{
+			playNoteMidi(baseMidi + 12 + octaveOffset + stickNotes[rightDir], state.selectedInstrument);
+		}
+		state.prevRightStickDir = rightDir;
+
+		// Face Buttons: West (Square) = Loop Scale, East (Circle) = Loop Root Key,
+		//               South (Cross) = Chord, North (Triangle) = Toggle Arp
 		if (input.getGamepadButtonDown(Input::GamepadButton::West))
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 8 : 7), state.selectedInstrument); // G or G#
-		if (input.getGamepadButtonDown(Input::GamepadButton::South))
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 10 : 9), state.selectedInstrument); // A or A#
+		{
+			triggerAction(state, services, State::ACT_SCALE, 1, true);
+		}
 		if (input.getGamepadButtonDown(Input::GamepadButton::East))
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 10 : 11), state.selectedInstrument); // B or Bb (A#)
+		{
+			triggerAction(state, services, State::ACT_ROOT, 1, true);
+		}
+		if (input.getGamepadButtonDown(Input::GamepadButton::South))
+		{
+			triggerAction(state, services, State::ACT_CHORD, 1, false);
+		}
 		if (input.getGamepadButtonDown(Input::GamepadButton::North))
-			playNoteMidi(baseMidi + octaveOffset + (blackKeyMod ? 13 : 12), state.selectedInstrument); // High C or C#
+		{
+			state.arpEnabled = !state.arpEnabled;
+			state.arpTimer = 0.0f;
+			state.arpStep = 0;
+			services.audio().playSound({0.02f, state.arpEnabled ? 740.0f : 420.0f, false, vec3(0.0f), 1});
+		}
 
-		// Quick Percussion via Stick Clicks
+		// Quick Percussion via Stick Clicks (L3 / R3)
 		if (input.getGamepadButtonDown(Input::GamepadButton::LeftStick))
-			playNoteMidi(36, Instrument::Kick);
+		{
+			triggerAction(state, services, State::ACT_KICK, 1, false);
+		}
 		if (input.getGamepadButtonDown(Input::GamepadButton::RightStick))
-			playNoteMidi(38, Instrument::Snare);
+		{
+			triggerAction(state, services, State::ACT_SNARE, 1, false);
+		}
 
 		// 5. Quick Percussion Key Bindings
 		if (input.getKeyDown(Input::B))
@@ -390,17 +1244,76 @@ namespace InstrumentSceneNamespace
 		if (input.getKeyDown(Input::Space))
 			playNoteMidi(baseMidi + 0, state.selectedInstrument);
 
-		// 6. Mouse Clicks on On-Screen Piano Keys
+		// 6. Mouse Clicks on On-Screen Piano Keys (black keys take click priority where they overlap white keys)
+		bool blackKeyPressed = false;
 		for (auto& k : state.keys)
 		{
-			if (!registry.isEntityValid(k.entity) || !registry.hasComponent<ShapeButton>(k.entity))
+			if (!k.isBlack || !registry.isEntityValid(k.entity) || !registry.hasComponent<ShapeButton>(k.entity))
 				continue;
 
 			auto& btn = registry.getComponent<ShapeButton>(k.entity);
 			if (btn.state == ButtonState::Down)
 			{
+				blackKeyPressed = true;
 				int playedMidi = k.midiNote + (state.currentOctave - 4) * 12;
 				playNoteMidi(playedMidi, state.selectedInstrument);
+			}
+		}
+		if (!blackKeyPressed)
+		{
+			for (auto& k : state.keys)
+			{
+				if (k.isBlack || !registry.isEntityValid(k.entity) || !registry.hasComponent<ShapeButton>(k.entity))
+					continue;
+
+				auto& btn = registry.getComponent<ShapeButton>(k.entity);
+				if (btn.state == ButtonState::Down)
+				{
+					int playedMidi = k.midiNote + (state.currentOctave - 4) * 12;
+					playNoteMidi(playedMidi, state.selectedInstrument);
+				}
+			}
+		}
+
+		// 7. Interactive UI TextButtons (top HUD bar + bottom rows)
+		for (size_t i = 0; i < State::NUM_ACTION_BTNS; ++i)
+		{
+			if (i == State::ACT_MOD && !isModControlEnabled(state, music))
+				continue;
+
+			Entity lblEntity = state.actionLabels[i];
+			if (registry.isEntityValid(lblEntity) && registry.hasComponent<TextButton>(lblEntity) &&
+				registry.getComponent<TextButton>(lblEntity).state == ButtonState::Down)
+			{
+				triggerAction(state, services, i, 1, true);
+			}
+		}
+
+		// Sync Arpeggiator TextToggle
+		if (registry.isEntityValid(state.arpToggleLabel) && registry.hasComponent<TextToggle>(state.arpToggleLabel))
+		{
+			auto& tgl = registry.getComponent<TextToggle>(state.arpToggleLabel);
+			bool desired = state.prevArpVisual;
+			bool userToggled = false;
+			if (tgl.active != state.prevArpVisual)
+			{
+				desired = tgl.active;
+				userToggled = true;
+			}
+			else if (state.arpEnabled != state.prevArpVisual)
+			{
+				desired = state.arpEnabled;
+			}
+
+			tgl.active = desired;
+			state.arpEnabled = desired;
+			state.prevArpVisual = desired;
+
+			if (userToggled)
+			{
+				state.arpStep = 0;
+				state.arpTimer = 0.0f;
+				services.audio().playSound({0.02f, desired ? 740.0f : 420.0f, false, vec3(0.0f), 1});
 			}
 		}
 	}
@@ -411,16 +1324,7 @@ namespace InstrumentSceneNamespace
 		float dt = services.time().deltaTime();
 
 		auto triggerMidi = [&](int midiNote, Instrument inst)
-		{
-			if (midiNote < 0 || midiNote > 127)
-				return;
-			services.audio().playNote(midiNote, state.noteAmp, state.noteDuration, inst, state.pan, state.filterCutoff,
-									  state.filterQ);
-			state.keyFlashTimers[midiNote] = 0.25f;
-			state.lastPlayedMidi = midiNote;
-			state.lastPlayedNoteName = SdfSong::midiToNoteString(midiNote);
-			state.lastPlayedFreq = SdfSong::midiToFrequency(midiNote);
-		};
+		{ triggerInstrumentMidi(state, services, midiNote, inst); };
 
 		// 1. Process scheduled notes (strummed chords)
 		for (auto it = state.scheduledNotes.begin(); it != state.scheduledNotes.end();)
@@ -506,7 +1410,17 @@ namespace InstrumentSceneNamespace
 		State& state = getState(registry);
 		float dt = services.time().deltaTime();
 
-		// Decrement key flash timers
+		// Responsive relayout when window size changes (800x800 desktop vs 640x480 handheld)
+		if (Display::width != state.lastWidth || Display::height != state.lastHeight)
+		{
+			state.lastWidth = Display::width;
+			state.lastHeight = Display::height;
+			relayoutScene(registry, state, services);
+		}
+
+		const InstrumentUiLayout l = computeInstrumentLayout();
+
+		// Decrement key & action flash timers
 		for (size_t i = 0; i < 128; ++i)
 		{
 			if (state.keyFlashTimers[i] > 0.0f)
@@ -514,9 +1428,65 @@ namespace InstrumentSceneNamespace
 				state.keyFlashTimers[i] = (std::max)(0.0f, state.keyFlashTimers[i] - dt);
 			}
 		}
+		const auto& music = services.audio().music();
+		const Material2DHandle instAccent = scopeAccentMaterial(state, state.selectedInstrument);
 
-		// Update key press displacement & scale highlighting
+		for (size_t i = 0; i < State::NUM_ACTION_BTNS; ++i)
+		{
+			state.actionFlashTimers[i] = (std::max)(0.0f, state.actionFlashTimers[i] - dt);
+			if (registry.isEntityValid(state.actionLabels[i]) &&
+				registry.hasComponent<UITextRenderer>(state.actionLabels[i]))
+			{
+				std::string desiredLbl = buildActionLabel(state, music, i);
+				if (desiredLbl != state.cachedActionLabels[i])
+				{
+					state.cachedActionLabels[i] = desiredLbl;
+					auto& tr = registry.getComponent<UITextRenderer>(state.actionLabels[i]);
+					tr.text = desiredLbl;
+					registry.setComponentDirty(tr);
+				}
+			}
+		}
+
+		// Sync active instrument badge color in Row 0 top bar
+		if (registry.isEntityValid(state.actionLabels[State::ACT_INST]) &&
+			registry.hasComponent<UITextRenderer>(state.actionLabels[State::ACT_INST]))
+		{
+			auto& instLbl = registry.getComponent<UITextRenderer>(state.actionLabels[State::ACT_INST]);
+			if (registry.hasComponent<TextButton>(state.actionLabels[State::ACT_INST]))
+			{
+				auto& instBtn = registry.getComponent<TextButton>(state.actionLabels[State::ACT_INST]);
+				if (instBtn.baseMaterial != instAccent.id)
+				{
+					instBtn.baseMaterial = instAccent.id;
+					instLbl.material = instAccent.id;
+					registry.setComponentDirty(instLbl);
+				}
+			}
+		}
+
+		// Update key downward press displacement, glowing press dot, & scale highlighting
 		bool materialChanged = false;
+		const bool modEnabled = isModControlEnabled(state, music);
+		if (modEnabled != state.cachedModEnabled)
+		{
+			state.cachedModEnabled = modEnabled;
+			if (registry.isEntityValid(state.actionLabels[State::ACT_MOD]) &&
+				registry.hasComponent<UITextRenderer>(state.actionLabels[State::ACT_MOD]))
+			{
+				auto& modLbl = registry.getComponent<UITextRenderer>(state.actionLabels[State::ACT_MOD]);
+				uint16_t targetMat = modEnabled ? state.accentAmberMat.id : state.textDimMat.id;
+				modLbl.material = targetMat;
+				if (registry.hasComponent<TextButton>(state.actionLabels[State::ACT_MOD]))
+				{
+					auto& modBtn = registry.getComponent<TextButton>(state.actionLabels[State::ACT_MOD]);
+					modBtn.baseMaterial = targetMat;
+					modBtn.hoverMaterial = modEnabled ? state.textWhiteMat.id : state.textDimMat.id;
+				}
+				registry.setComponentDirty(modLbl);
+			}
+		}
+
 		for (auto& k : state.keys)
 		{
 			if (!registry.isEntityValid(k.entity) || !registry.hasComponent<UIShape>(k.entity))
@@ -528,19 +1498,32 @@ namespace InstrumentSceneNamespace
 
 			auto& shape = registry.getComponent<UIShape>(k.entity);
 
-			// Physical press effect via position & size parameters (no shader recompile needed!)
-			float targetPosY = k.basePosY + (k.isBlack ? 5.0f : 7.0f) * pressRatio;
-			float targetSizeX = k.sizeX * (1.0f - 0.07f * pressRatio);
-			float targetSizeY = k.sizeY * (1.0f - 0.06f * pressRatio);
+			// Physical downward press effect via position & size parameters (no shader recompile needed!)
+			float targetPosY = k.basePosY - (k.isBlack ? 5.0f : 7.0f) * pressRatio;
+			float targetSizeX = k.sizeX * (1.0f - 0.06f * pressRatio);
+			float targetSizeY = k.sizeY * (1.0f - 0.05f * pressRatio);
 
-			if (std::abs(shape.parameters[DefaultShapes::Box::PosY] - targetPosY) > 0.01f ||
-				std::abs(shape.parameters[DefaultShapes::Box::SizeX] - targetSizeX) > 0.01f ||
-				std::abs(shape.parameters[DefaultShapes::Box::SizeY] - targetSizeY) > 0.01f)
+			if (std::abs(shape.parameters[DefaultShapes::RoundBox::PosY] - targetPosY) > 0.01f ||
+				std::abs(shape.parameters[DefaultShapes::RoundBox::SizeX] - targetSizeX) > 0.01f ||
+				std::abs(shape.parameters[DefaultShapes::RoundBox::SizeY] - targetSizeY) > 0.01f)
 			{
-				shape.parameters[DefaultShapes::Box::PosY] = targetPosY;
-				shape.parameters[DefaultShapes::Box::SizeX] = targetSizeX;
-				shape.parameters[DefaultShapes::Box::SizeY] = targetSizeY;
+				shape.parameters[DefaultShapes::RoundBox::PosY] = targetPosY;
+				shape.parameters[DefaultShapes::RoundBox::SizeX] = targetSizeX;
+				shape.parameters[DefaultShapes::RoundBox::SizeY] = targetSizeY;
 				registry.setComponentDirty(shape);
+			}
+
+			if (registry.isEntityValid(k.glowDot) && registry.hasComponent<Transform>(k.glowDot))
+			{
+				auto& dtPos = registry.getComponent<Transform>(k.glowDot).position;
+				if (pressRatio > 0.05f)
+				{
+					dtPos = vec3(k.basePosX, targetPosY - targetSizeY + 12.0f, 0.0f);
+				}
+				else
+				{
+					dtPos = vec3(-1000.0f, -1000.0f, 0.0f);
+				}
 			}
 
 			// Material only changes when the user changes the scale/root/octave in the UI
@@ -556,9 +1539,71 @@ namespace InstrumentSceneNamespace
 			}
 		}
 
+		// Sync ARP toggle label color
+		if (registry.isEntityValid(state.arpToggleLabel) && registry.hasComponent<UITextRenderer>(state.arpToggleLabel))
+		{
+			auto& arpLbl = registry.getComponent<UITextRenderer>(state.arpToggleLabel);
+			uint16_t targetMat = state.arpEnabled ? state.accentGreenMat.id : state.textDimMat.id;
+			if (arpLbl.material != targetMat)
+			{
+				arpLbl.material = targetMat;
+				registry.setComponentDirty(arpLbl);
+			}
+		}
+
 		if (materialChanged)
 		{
 			services.render().forceShaderRefreshUI();
+		}
+
+		// Update live oscilloscope dot ribbon (dense overlapping points with tapered amplitude and instrument accent)
+		const auto audioData = WeirdAudio::AudioEngine::getInstance().getAudioData();
+		const auto& waveform = audioData.waveform;
+		const float timeSec = services.time().time();
+
+		float waveformPeak = 0.0f;
+		for (float sVal : waveform)
+		{
+			waveformPeak = (std::max)(waveformPeak, std::abs(sVal));
+		}
+		const float idleBlend = 1.0f - std::clamp(waveformPeak * 12.0f, 0.0f, 1.0f);
+
+		for (size_t i = 0; i < State::SCOPE_DOTS; ++i)
+		{
+			if (!registry.isEntityValid(state.scopeDots[i]) || !registry.hasComponent<Transform>(state.scopeDots[i]))
+				continue;
+
+			const float frac = static_cast<float>(i) / static_cast<float>(State::SCOPE_DOTS - 1);
+			const float x = l.scopeLeftX + (l.scopeRightX - l.scopeLeftX) * frac;
+			const float taper = 0.15f + 0.85f * std::sin(frac * 3.14159265f);
+
+			float sample = 0.0f;
+			if (!waveform.empty())
+			{
+				const size_t idx = (i * waveform.size()) / State::SCOPE_DOTS;
+				sample = std::clamp(waveform[idx] * 1.45f, -1.0f, 1.0f);
+			}
+			const float idleWave = 0.08f * std::sin(timeSec * 2.4f + frac * 6.2831853f);
+			const float displaced = (sample + idleWave * idleBlend) * taper;
+
+			registry.getComponent<Transform>(state.scopeDots[i]).position =
+				vec3(x, l.scopeY + displaced * l.scopeAmp, 0.0f);
+
+			if (registry.hasComponent<UIDot>(state.scopeDots[i]))
+			{
+				registry.getComponent<UIDot>(state.scopeDots[i]).materialId = instAccent.id;
+			}
+		}
+
+		// Update last played note readout in top-right corner
+		std::string noteStr = formatUiNoteName(state.lastPlayedMidi);
+		if (noteStr != state.cachedHudNote && registry.isEntityValid(state.hudNoteText) &&
+			registry.hasComponent<UITextRenderer>(state.hudNoteText))
+		{
+			state.cachedHudNote = noteStr;
+			auto& tr = registry.getComponent<UITextRenderer>(state.hudNoteText);
+			tr.text = noteStr;
+			registry.setComponentDirty(tr);
 		}
 	}
 } // namespace InstrumentSceneNamespace
@@ -633,8 +1678,14 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		}
 		ImGui::Text("Timbre: %s", subType);
 
-		// Octave Selector
+		// Octave & Joystick Deadzone
 		ImGui::SliderInt("Octave", &state.currentOctave, 1, 7);
+		ImGui::SliderFloat("Joystick Deadzone", &state.stickDeadzone, 0.20f, 0.85f, "%.2f");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Radial deadzone for Left/Right note joysticks. Higher values prevent center drift and snapback.");
+		}
 
 		// Last Note Display
 		if (state.lastPlayedMidi >= 0)
@@ -726,9 +1777,8 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		ImGui::Spacing();
 		ImGui::TextDisabled("Synthesis Modulation (Affects specific Waveforms):");
 
-		bool usesPulse =
-			(state.selectedInstrument == Instrument::Lead || state.selectedInstrument == Instrument::Bass) &&
-			(activeWave == WaveType::PulseSquare);
+		const bool melodic = InstrumentSceneNamespace::isMelodicInstrument(state.selectedInstrument);
+		bool usesPulse = melodic && (activeWave == WaveType::PulseSquare);
 		if (!usesPulse)
 			ImGui::BeginDisabled();
 		if (ImGui::SliderFloat("Pulse Width (Pulse/Square)", &rack.pulseWidth, 0.05f, 0.50f, "%.2f"))
@@ -739,11 +1789,11 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 			ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		{
-			ImGui::SetTooltip("Controls duty cycle of Pulse/Square wave (Lead/Bass). 0.50 = hollow square, 0.10 = thin "
-							  "nasal reed.");
+			ImGui::SetTooltip("Controls duty cycle of Pulse/Square wave (Lead/Bass/Pad). 0.50 = hollow square, 0.10 = "
+							  "thin nasal reed.");
 		}
 
-		bool usesFM = (state.selectedInstrument == Instrument::Lead) && (activeWave == WaveType::FMPluck);
+		bool usesFM = melodic && (activeWave == WaveType::FMPluck);
 		if (!usesFM)
 			ImGui::BeginDisabled();
 		if (ImGui::SliderFloat("FM Mod Index (FM Pluck)", &rack.fmModIndex, 0.0f, 8.0f, "%.2f"))
@@ -754,11 +1804,10 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 			ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		{
-			ImGui::SetTooltip("Controls metallic bell strike intensity on FM Pluck waveform (Lead).");
+			ImGui::SetTooltip("Controls metallic bell strike intensity on FM Pluck waveform (Lead/Bass/Pad).");
 		}
 
-		bool usesFold = (state.selectedInstrument == Instrument::Lead || state.selectedInstrument == Instrument::Pad) &&
-						(activeWave == WaveType::Wavefolder);
+		bool usesFold = melodic && (activeWave == WaveType::Wavefolder);
 		if (!usesFold)
 			ImGui::BeginDisabled();
 		if (ImGui::SliderFloat("Wavefold Drive (Wavefolder)", &rack.foldDrive, 0.0f, 6.0f, "%.2f"))
@@ -770,7 +1819,7 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		{
 			ImGui::SetTooltip(
-				"Folds the sine wave back on itself to create rich organ/harmonium overtones (Lead/Pad).");
+				"Folds the sine wave back on itself to create rich organ/harmonium overtones (Lead/Bass/Pad).");
 		}
 
 		if (rackChanged)
@@ -903,14 +1952,7 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.8f, 1.0f), "Note & Chord Audition Buttons:");
 
 		auto playMidi = [&](int midi)
-		{
-			services.audio().playNote(midi, state.noteAmp, state.noteDuration, state.selectedInstrument, state.pan,
-									  state.filterCutoff, state.filterQ);
-			state.keyFlashTimers[midi] = 0.25f;
-			state.lastPlayedMidi = midi;
-			state.lastPlayedNoteName = SdfSong::midiToNoteString(midi);
-			state.lastPlayedFreq = SdfSong::midiToFrequency(midi);
-		};
+		{ InstrumentSceneNamespace::triggerInstrumentMidi(state, services, midi, state.selectedInstrument); };
 
 		auto strumChord = [&](std::initializer_list<int> offsets, bool arpeggiate)
 		{
@@ -1024,26 +2066,16 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		if (ImGui::TreeNode("Controls & Shortcuts Reference"))
 		{
 			ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Gamepad Performance:");
-			ImGui::BulletText("D-Pad (or Left Stick): Do (C), Re (D), Mi (E), Fa (F)");
-			ImGui::BulletText(
-				"Face Buttons (X, A, B, Y / West, South, East, North): Sol (G), La (A), Si (B), High Do (C+1)");
-			ImGui::BulletText("Left Shoulder (LB): Hold for Sharps / Black Keys (C#, D#, F#, G#, A#)");
-			ImGui::BulletText("Right Shoulder (RB): Hold for Octave +1 (Play 2nd Octave on Piano)");
-			ImGui::BulletText("Left / Right Trigger (LT / RT) or Right Stick Up/Down: Octave Shift (- / +)");
-			ImGui::BulletText("Start or Right Stick Left/Right: Cycle Instrument");
-			ImGui::BulletText("L3 / R3 (Stick Clicks): Kick / Snare Drums");
-			ImGui::BulletText("Select / Back: Return to Main Menu");
-
-			ImGui::Spacing();
-			ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Keyboard Shortcuts:");
-			ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Gamepad Performance:");
-			ImGui::BulletText("D-Pad (or Left Stick): Do (C), Re (D), Mi (E), Fa (F)");
-			ImGui::BulletText(
-				"Face Buttons (X, A, B, Y / West, South, East, North): Sol (G), La (A), Si (B), High Do (C+1)");
-			ImGui::BulletText("Left Shoulder (LB): Hold for Sharps / Black Keys (C#, D#, F#, G#, A#)");
-			ImGui::BulletText("Right Shoulder (RB): Hold for Octave +1 (Play 2nd Octave on Piano)");
-			ImGui::BulletText("Left / Right Trigger (LT / RT) or Right Stick Up/Down: Octave Shift (- / +)");
-			ImGui::BulletText("Start or Right Stick Left/Right: Cycle Instrument");
+			ImGui::BulletText("Left Stick (8-way, clockwise from Up): Lower Octave (C, D, E, F, G, A, B, C+1)");
+			ImGui::BulletText("Right Stick (8-way, clockwise from Up): Upper Octave (+12 semitones)");
+			ImGui::BulletText("Left Trigger (L2 / LT): Hold for Sharps / Black Keys (C#, D#, F#, G#, A#)");
+			ImGui::BulletText("Right Trigger (R2 / RT): Hold for +1 Octave Shift");
+			ImGui::BulletText("L1 / R1 (Shoulders): Cycle Instrument (Lead..Hat) / Cycle Wave or Kit");
+			ImGui::BulletText("D-Pad Left / Right: Octave Down / Up (O1..O7)");
+			ImGui::BulletText("D-Pad Up / Down: Cycle Tone Preset (BRT/PLK/ACD/PAD) / Filter Cutoff");
+			ImGui::BulletText("West (Square / X) / East (Circle / B): Loop Scale Mode / Loop Root Key");
+			ImGui::BulletText("South (Cross / A): Play Chord | North (Triangle / Y): Toggle Arp");
+			ImGui::BulletText("Start: Cycle Mod (PW/FM/Fold) or Preview Drum Hit");
 			ImGui::BulletText("L3 / R3 (Stick Clicks): Kick / Snare Drums");
 			ImGui::BulletText("Select / Back: Return to Main Menu");
 

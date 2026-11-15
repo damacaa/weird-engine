@@ -36,7 +36,7 @@ namespace MusicSceneNamespace
 		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
 		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
 		glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
-		state.lastResolutionHash = Display::width + Display::height;
+		state.lastResolutionHash = (Display::width * 73856093) ^ Display::height;
 
 		for (size_t i = 0; i < State::NUM_SONGS; ++i)
 		{
@@ -92,6 +92,138 @@ namespace MusicSceneNamespace
 		}
 	}
 
+	struct MusicUiLayout
+	{
+		float winW = 800.0f;
+		float winH = 800.0f;
+		float edgePad = 32.0f;
+		float rightEdgePad = 24.0f;
+		float leftPillX = 32.0f;
+		float leftLabelX = 55.0f;
+		float rightLabelX = 776.0f;
+		float gaugeLeftX = 595.5f;
+		float gaugePitchX = 42.0f;
+		float gaugeHalfW = 12.5f;
+		float gaugeMaxH = 34.0f;
+		float toggleY = 745.0f;
+		float botY = 48.0f;
+		float pillHalfSize = 13.0f;
+		std::array<float, State::NUM_DYNAMICS> dynamicY{};
+		std::array<float, State::NUM_DYNAMICS> gaugeBaseY{};
+		std::array<float, State::NUM_TRACKS> trackY{};
+	};
+
+	static MusicUiLayout computeMusicUiLayout()
+	{
+		MusicUiLayout l;
+		l.winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+		l.winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+
+		const float t = std::clamp((l.winH - 480.0f) / 320.0f, 0.0f, 1.0f);
+		l.edgePad = (l.winW >= 760.0f) ? 32.0f : 22.0f;
+		l.rightEdgePad = (l.winW >= 760.0f) ? 24.0f : 16.0f;
+		l.pillHalfSize = (l.winW >= 760.0f) ? 13.0f : 11.0f;
+
+		l.leftPillX = l.edgePad;
+		l.leftLabelX = l.leftPillX + l.pillHalfSize + 10.0f;
+
+		l.rightLabelX = l.winW - l.rightEdgePad;
+		l.gaugePitchX = 36.0f + 6.0f * t;
+		l.gaugeHalfW = 10.0f + 2.5f * t;
+		const float gaugeRightX = l.rightLabelX - l.gaugeHalfW;
+		l.gaugeLeftX = gaugeRightX - static_cast<float>(State::NUM_GAUGE_BARS - 1) * l.gaugePitchX;
+		l.gaugeMaxH = 24.0f + 10.0f * t;
+
+		l.toggleY = l.winH - ((l.winH < 540.0f) ? 44.0f : 55.0f);
+		l.botY = (l.winH < 540.0f) ? 38.0f : 48.0f;
+
+		const float leftPitch = 53.0f + 15.0f * t;
+		const float leftTopY = l.winH * 0.5f + 1.5f * leftPitch;
+		for (size_t i = 0; i < State::NUM_TRACKS; ++i)
+		{
+			l.trackY[i] = leftTopY - static_cast<float>(i) * leftPitch;
+		}
+
+		l.dynamicY[State::DYN_SURGE] = l.winH * 0.5f + 75.0f + 40.0f * t;
+		l.dynamicY[State::DYN_DUCK] = l.dynamicY[State::DYN_SURGE] - (140.0f + 30.0f * t);
+		const float gaugeOffset = 68.0f + 14.0f * t;
+		l.gaugeBaseY[State::DYN_SURGE] = l.dynamicY[State::DYN_SURGE] - gaugeOffset;
+		l.gaugeBaseY[State::DYN_DUCK] = l.dynamicY[State::DYN_DUCK] - gaugeOffset;
+
+		return l;
+	}
+
+	static void updateEqualizerGauge(Registry& registry, const std::array<Entity, State::NUM_GAUGE_BARS>& trackBars,
+									 const std::array<Entity, State::NUM_GAUGE_BARS>& fillBars, const MusicUiLayout& l,
+									 float baseY, float level, float audioVol, float timeSec, bool ascending)
+	{
+		const float clamped = std::clamp(level, 0.0f, 1.0f);
+		for (size_t i = 0; i < State::NUM_GAUGE_BARS; ++i)
+		{
+			const float stepNorm = static_cast<float>(i) / static_cast<float>(State::NUM_GAUGE_BARS - 1);
+			const float profile = ascending ? (0.42f + 0.58f * stepNorm) : (1.0f - 0.58f * stepNorm);
+			const float bx = l.gaugeLeftX + static_cast<float>(i) * l.gaugePitchX;
+
+			if (registry.isEntityValid(trackBars[i]) && registry.hasComponent<UIShape>(trackBars[i]))
+			{
+				const float trackHalfH = 3.5f + profile * 4.5f;
+				auto& tr = registry.getComponent<UIShape>(trackBars[i]);
+				tr.parameters[DefaultShapes::RoundBox::PosX] = bx;
+				tr.parameters[DefaultShapes::RoundBox::PosY] = baseY + trackHalfH;
+				tr.parameters[DefaultShapes::RoundBox::SizeX] = l.gaugeHalfW;
+				tr.parameters[DefaultShapes::RoundBox::SizeY] = trackHalfH;
+				tr.parameters[DefaultShapes::RoundBox::Radius] = 3.0f;
+			}
+
+			if (registry.isEntityValid(fillBars[i]) && registry.hasComponent<UIShape>(fillBars[i]))
+			{
+				auto& fill = registry.getComponent<UIShape>(fillBars[i]);
+				const float threshold = static_cast<float>(i) * 0.17f;
+				const float activeFrac = std::clamp((clamped - threshold) / 0.28f, 0.0f, 1.0f);
+				if (activeFrac <= 0.01f)
+				{
+					fill.parameters[DefaultShapes::RoundBox::PosX] = -1000.0f;
+					fill.parameters[DefaultShapes::RoundBox::PosY] = -1000.0f;
+					fill.parameters[DefaultShapes::RoundBox::SizeX] = 4.0f;
+					fill.parameters[DefaultShapes::RoundBox::SizeY] = 4.0f;
+					fill.parameters[DefaultShapes::RoundBox::Radius] = 2.0f;
+				}
+				else
+				{
+					const float wave = 0.88f + 0.18f * (0.4f + audioVol) *
+												   std::sin(timeSec * (7.5f + static_cast<float>(i) * 1.7f) +
+															static_cast<float>(i) * 1.15f);
+					const float fullH = (l.gaugeMaxH * profile) * (0.28f + 0.72f * activeFrac) * wave;
+					const float halfH = (std::max)(4.0f, 0.5f * fullH);
+					fill.parameters[DefaultShapes::RoundBox::PosX] = bx;
+					fill.parameters[DefaultShapes::RoundBox::PosY] = baseY + halfH;
+					fill.parameters[DefaultShapes::RoundBox::SizeX] = l.gaugeHalfW;
+					fill.parameters[DefaultShapes::RoundBox::SizeY] = halfH;
+					fill.parameters[DefaultShapes::RoundBox::Radius] = 3.5f;
+				}
+			}
+		}
+	}
+
+	static void setPillLayout(Registry& registry, Entity pillEntity, Entity labelEntity, float px, float lx, float y,
+							  float halfSize)
+	{
+		if (registry.isEntityValid(pillEntity) && registry.hasComponent<UIShape>(pillEntity))
+		{
+			auto& shape = registry.getComponent<UIShape>(pillEntity);
+			shape.parameters[DefaultShapes::RoundBox::PosX] = px;
+			shape.parameters[DefaultShapes::RoundBox::PosY] = y;
+			shape.parameters[DefaultShapes::RoundBox::SizeX] = halfSize;
+			shape.parameters[DefaultShapes::RoundBox::SizeY] = halfSize;
+		}
+
+		if (registry.isEntityValid(labelEntity) && registry.hasComponent<Transform>(labelEntity))
+		{
+			auto& t = registry.getComponent<Transform>(labelEntity);
+			t.position = vec3(lx, y, 0.0f);
+		}
+	}
+
 	static void updateCursorDot(Registry& registry, State& state)
 	{
 		if (!registry.isEntityValid(state.cursorDot) || !registry.hasComponent<Transform>(state.cursorDot))
@@ -103,14 +235,12 @@ namespace MusicSceneNamespace
 		if (state.selectionMode && state.cursorSongIndex >= 0 &&
 			state.cursorSongIndex < static_cast<int>(State::NUM_SONGS))
 		{
-			float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
-			float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+			const MusicUiLayout l = computeMusicUiLayout();
 			const float spacingX = 60.0f;
 			const float totalWidth = spacingX * 3;
-			const float startX = (winW * 0.5f) - (totalWidth * 0.5f);
-			const float toggleY = winH - 55.0f;
+			const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 
-			t.position = vec3(startX + static_cast<float>(state.cursorSongIndex) * spacingX, toggleY - 38.0f, 0.0f);
+			t.position = vec3(startX + static_cast<float>(state.cursorSongIndex) * spacingX, l.toggleY - 36.0f, 0.0f);
 		}
 		else
 		{
@@ -118,16 +248,117 @@ namespace MusicSceneNamespace
 		}
 	}
 
+	static void applyMusicUiLayout(Registry& registry, State& state, ServiceProvider& services)
+	{
+		const MusicUiLayout l = computeMusicUiLayout();
+
+		if (registry.isEntityValid(state.playButton) && registry.hasComponent<UIShape>(state.playButton))
+		{
+			auto& s = registry.getComponent<UIShape>(state.playButton);
+			s.parameters[DefaultShapes::TriangleRotated::PosX] = 44.0f;
+			s.parameters[DefaultShapes::TriangleRotated::PosY] = l.botY;
+		}
+		if (registry.isEntityValid(state.pauseButton) && registry.hasComponent<UIShape>(state.pauseButton))
+		{
+			auto& s = registry.getComponent<UIShape>(state.pauseButton);
+			s.parameters[DefaultShapes::Box::PosX] = 92.0f;
+			s.parameters[DefaultShapes::Box::PosY] = l.botY;
+		}
+		if (registry.isEntityValid(state.statusText) && registry.hasComponent<Transform>(state.statusText))
+		{
+			registry.getComponent<Transform>(state.statusText).position = vec3(136.0f, l.botY, 0.0f);
+		}
+
+		for (size_t i = 0; i < State::NUM_DYNAMICS; ++i)
+		{
+			if (registry.isEntityValid(state.dynamicLabels[i]) &&
+				registry.hasComponent<Transform>(state.dynamicLabels[i]))
+			{
+				registry.getComponent<Transform>(state.dynamicLabels[i]).position =
+					vec3(l.rightLabelX, l.dynamicY[i], 0.0f);
+			}
+		}
+		for (size_t i = 0; i < State::NUM_TRACKS; ++i)
+		{
+			setPillLayout(registry, state.trackToggles[i], state.trackLabels[i], l.leftPillX, l.leftLabelX, l.trackY[i],
+						  l.pillHalfSize);
+		}
+
+		const auto& musicEngine = services.audio().music();
+		const float audioVol = state.isPlaying ? services.audio().getAudioVolume() : 0.0f;
+		const float timeSec = services.time().time();
+		updateEqualizerGauge(registry, state.surgeTrackBars, state.surgeFillBars, l, l.gaugeBaseY[State::DYN_SURGE],
+							 musicEngine.getSurgeLevel(), audioVol, timeSec, true);
+		updateEqualizerGauge(registry, state.duckTrackBars, state.duckFillBars, l, l.gaugeBaseY[State::DYN_DUCK],
+							 musicEngine.getDuckingLevel(), audioVol, timeSec, false);
+	}
+
+	static void loadAndPlaySong(Registry& registry, ServiceProvider& services, State& state, int idx)
+	{
+		if (idx < 0 || idx >= static_cast<int>(State::NUM_SONGS) || !s_songs[idx])
+			return;
+
+		state.selectedSongIndex = idx;
+		state.confirmedSongIndex = idx;
+		state.cursorSongIndex = idx;
+		state.currentLoadedSongIndex = idx;
+		state.isPlaying = true;
+
+		for (size_t i = 0; i < State::NUM_SONGS; ++i)
+		{
+			if (registry.isEntityValid(state.songToggles[i]) &&
+				registry.hasComponent<ShapeToggle>(state.songToggles[i]))
+			{
+				registry.getComponent<ShapeToggle>(state.songToggles[i]).active = (static_cast<int>(i) == idx);
+			}
+		}
+
+		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
+		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+		glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
+
+		s_songs[idx]->setCenter(previewCenter);
+		s_songs[idx]->setParameter(0, state.paramSize);
+		s_songs[idx]->setParameter(1, state.paramSpeed);
+
+		services.audio().setSong(s_songs[idx], {.mode = SongVisualizationMode::UI, .material = state.songMats[idx]},
+								 false);
+		services.audio().setSongParameter(0, state.paramSize);
+		services.audio().setSongParameter(1, state.paramSpeed);
+		services.audio().resampleShape();
+
+		services.audio().music().setTrackToggles({true, true, true, true});
+		services.audio().music().setVolume(0.65f);
+		updateCursorDot(registry, state);
+	}
+
+	static bool isButtonEntityDown(Registry& registry, Entity entity)
+	{
+		if (!registry.isEntityValid(entity))
+			return false;
+		if (registry.hasComponent<ShapeButton>(entity) &&
+			registry.getComponent<ShapeButton>(entity).state == ButtonState::Down)
+			return true;
+		if (registry.hasComponent<ShapeToggle>(entity) &&
+			registry.getComponent<ShapeToggle>(entity).state == ButtonState::Down)
+			return true;
+		if (registry.hasComponent<TextButton>(entity) &&
+			registry.getComponent<TextButton>(entity).state == ButtonState::Down)
+			return true;
+		if (registry.hasComponent<TextToggle>(entity) &&
+			registry.getComponent<TextToggle>(entity).state == ButtonState::Down)
+			return true;
+		return false;
+	}
+
 	void setupTogglesSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
 
-		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
-		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
+		const MusicUiLayout l = computeMusicUiLayout();
 		const float spacingX = 60.0f;
 		const float totalWidth = spacingX * 3;
-		const float startX = (winW * 0.5f) - (totalWidth * 0.5f);
-		const float toggleY = winH - 55.0f;
+		const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 
 		auto boundToggle = [](Expr shape, Vec2Expr p)
 		{
@@ -141,7 +372,7 @@ namespace MusicSceneNamespace
 			ShapeId id = services.shapes().registerSDF(boundToggle(MusicShapes::getSongShape(i, p), p));
 			state.songToggles[i] = services.shapes().addUIShape(
 				{.shapeId = id,
-				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + static_cast<float>(i) * spacingX}, {3, toggleY}},
+				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + static_cast<float>(i) * spacingX}, {3, l.toggleY}},
 				 .material = state.songMats[i]});
 			auto& toggle = registry.addComponent<ShapeToggle>(state.songToggles[i]);
 			toggle.active = (state.selectedSongIndex == static_cast<int>(i));
@@ -164,22 +395,48 @@ namespace MusicSceneNamespace
 	void setupControlsSystem(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
+		services.audio().resetDynamicEffects();
 
 		Material2D& playMat = services.materials2D().createMaterial("music_play_mat");
 		playMat.color = vec4(0.2f, 0.95f, 0.3f, 0.95f);
+		state.playMat = playMat.id;
 
 		Material2D& pauseMat = services.materials2D().createMaterial("music_pause_mat");
 		pauseMat.color = vec4(0.95f, 0.2f, 0.25f, 0.95f);
+		state.pauseMat = pauseMat.id;
 
 		Material2D& textMat = services.materials2D().createMaterial("music_text_mat");
 		textMat.color = ColorPalette::White;
+		state.textMat = textMat.id;
 
-		// 1. Play Button: Triangle ▶
+		Material2D& surgeMat = services.materials2D().createMaterial("music_surge_mat");
+		surgeMat.color = vec4(0.15f, 0.92f, 1.0f, 0.98f);
+		state.surgeMat = surgeMat.id;
+
+		Material2D& duckMat = services.materials2D().createMaterial("music_duck_mat");
+		duckMat.color = vec4(1.0f, 0.56f, 0.14f, 0.98f);
+		state.duckMat = duckMat.id;
+
+		Material2D& trackOnMat = services.materials2D().createMaterial("music_track_on_mat");
+		trackOnMat.color = vec4(0.24f, 0.94f, 0.68f, 0.96f);
+		state.trackOnMat = trackOnMat.id;
+
+		Material2D& trackOffMat = services.materials2D().createMaterial("music_track_off_mat");
+		trackOffMat.color = vec4(0.14f, 0.17f, 0.22f, 0.96f);
+		state.trackOffMat = trackOffMat.id;
+
+		Material2D& dimTextMat = services.materials2D().createMaterial("music_dim_text_mat");
+		dimTextMat.color = vec4(0.18f, 0.21f, 0.27f, 1.0f);
+		state.dimTextMat = dimTextMat.id;
+
+		const MusicUiLayout l = computeMusicUiLayout();
+
+		// 1. Play Button: Triangle
 		{
 			state.playButton =
 				services.shapes().addUIShape({.shapeId = DefaultShapes::TriangleRotated,
-											  .variables = {{DefaultShapes::TriangleRotated::PosX, 55.0f},
-															{DefaultShapes::TriangleRotated::PosY, 55.0f},
+											  .variables = {{DefaultShapes::TriangleRotated::PosX, 44.0f},
+															{DefaultShapes::TriangleRotated::PosY, l.botY},
 															{DefaultShapes::TriangleRotated::Width, 26.0f},
 															{DefaultShapes::TriangleRotated::Height, 26.0f},
 															{DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
@@ -191,11 +448,11 @@ namespace MusicSceneNamespace
 			btn.parameterModifierMask.set(DefaultShapes::TriangleRotated::Height);
 		}
 
-		// 2. Square Pause Button: Box ⏹
+		// 2. Square Pause Button: Box
 		{
 			state.pauseButton = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
-															  .variables = {{DefaultShapes::Box::PosX, 105.0f},
-																			{DefaultShapes::Box::PosY, 55.0f},
+															  .variables = {{DefaultShapes::Box::PosX, 92.0f},
+																			{DefaultShapes::Box::PosY, l.botY},
 																			{DefaultShapes::Box::SizeX, 13.0f},
 																			{DefaultShapes::Box::SizeY, 13.0f}},
 															  .material = pauseMat});
@@ -206,17 +463,111 @@ namespace MusicSceneNamespace
 			btn.parameterModifierMask.set(DefaultShapes::Box::SizeY);
 		}
 
-		// 3. UI Texts
+		// 3. Status Text
 		{
 			state.statusText = registry.createEntity();
 			auto& t = registry.addComponent<Transform>(state.statusText);
-			t.position = vec3(160.0f, 55.0f, 0.0f);
+			t.position = vec3(136.0f, l.botY, 0.0f);
 			auto& tr = registry.addComponent<UITextRenderer>(state.statusText);
 			tr.text = "PAUSED";
 			tr.material = textMat.id;
 			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
 		}
+
+		// 4. Right Column: Clickable Surge & Duck TextButtons + 5-Bar Equalizers
+		{
+			const char* dynNames[State::NUM_DYNAMICS] = {"SURGE", "DUCK"};
+			const Material2DHandle dynMats[State::NUM_DYNAMICS] = {state.surgeMat, state.duckMat};
+
+			for (size_t i = 0; i < State::NUM_DYNAMICS; ++i)
+			{
+				state.dynamicLabels[i] = registry.createEntity();
+				auto& lt = registry.addComponent<Transform>(state.dynamicLabels[i]);
+				lt.position = vec3(l.rightLabelX, l.dynamicY[i], 0.0f);
+				auto& ltr = registry.addComponent<UITextRenderer>(state.dynamicLabels[i]);
+				ltr.text = dynNames[i];
+				ltr.material = dynMats[i].id;
+				ltr.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
+				ltr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+				auto& txtBtn = registry.addComponent<TextButton>(state.dynamicLabels[i]);
+				txtBtn.clickPadding = 10.0f;
+				txtBtn.baseMaterial = dynMats[i].id;
+				txtBtn.hoverMaterial = state.textMat.id;
+				txtBtn.pressedMaterial = state.textMat.id;
+			}
+		}
+
+		// Surge & Duck 5-Bar Equalizer Gauges (track group 0, active fill group 1)
+		auto createGaugeBars = [&](std::array<Entity, State::NUM_GAUGE_BARS>& trackBars,
+								   std::array<Entity, State::NUM_GAUGE_BARS>& fillBars, Material2DHandle fillMat)
+		{
+			for (size_t i = 0; i < State::NUM_GAUGE_BARS; ++i)
+			{
+				trackBars[i] =
+					services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
+												  .variables = {{DefaultShapes::RoundBox::PosX, -1000.0f},
+																{DefaultShapes::RoundBox::PosY, -1000.0f},
+																{DefaultShapes::RoundBox::SizeX, l.gaugeHalfW},
+																{DefaultShapes::RoundBox::SizeY, 5.0f},
+																{DefaultShapes::RoundBox::Radius, 3.0f}},
+												  .material = state.trackOffMat,
+												  .group = 0});
+				fillBars[i] = services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
+															.variables = {{DefaultShapes::RoundBox::PosX, -1000.0f},
+																		  {DefaultShapes::RoundBox::PosY, -1000.0f},
+																		  {DefaultShapes::RoundBox::SizeX, 4.0f},
+																		  {DefaultShapes::RoundBox::SizeY, 4.0f},
+																		  {DefaultShapes::RoundBox::Radius, 2.0f}},
+															.material = fillMat,
+															.group = 1});
+			}
+		};
+		createGaugeBars(state.surgeTrackBars, state.surgeFillBars, state.surgeMat);
+		createGaugeBars(state.duckTrackBars, state.duckFillBars, state.duckMat);
+
+		// 5. Left Column: Track Mixer Toggles (LEAD, BASS, PAD, DRUM)
+		const char* trackNames[State::NUM_TRACKS] = {"LEAD", "BASS", "PAD", "DRUM"};
+		const auto currentToggles = services.audio().music().getTrackToggles();
+		const bool initStates[State::NUM_TRACKS] = {currentToggles.lead, currentToggles.bass, currentToggles.pad,
+													currentToggles.drums};
+
+		for (size_t i = 0; i < State::NUM_TRACKS; ++i)
+		{
+			state.trackVisualActive[i] = initStates[i] ? 1 : 0;
+			Material2DHandle mat = initStates[i] ? state.trackOnMat : state.trackOffMat;
+			state.trackToggles[i] =
+				services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
+											  .variables = {{DefaultShapes::RoundBox::PosX, l.leftPillX},
+															{DefaultShapes::RoundBox::PosY, l.trackY[i]},
+															{DefaultShapes::RoundBox::SizeX, l.pillHalfSize},
+															{DefaultShapes::RoundBox::SizeY, l.pillHalfSize},
+															{DefaultShapes::RoundBox::Radius, 4.0f}},
+											  .material = mat});
+			auto& tgl = registry.addComponent<ShapeToggle>(state.trackToggles[i]);
+			tgl.active = initStates[i];
+			tgl.clickPadding = 6.0f;
+			tgl.modifierAmount = 2.5f;
+			tgl.parameterModifierMask.set(DefaultShapes::RoundBox::SizeX);
+			tgl.parameterModifierMask.set(DefaultShapes::RoundBox::SizeY);
+
+			state.trackLabels[i] = registry.createEntity();
+			auto& lt = registry.addComponent<Transform>(state.trackLabels[i]);
+			lt.position = vec3(l.leftLabelX, l.trackY[i], 0.0f);
+			auto& ltr = registry.addComponent<UITextRenderer>(state.trackLabels[i]);
+			ltr.text = trackNames[i];
+			ltr.material = initStates[i] ? state.textMat.id : state.dimTextMat.id;
+			ltr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
+			ltr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+			auto& txtTgl = registry.addComponent<TextToggle>(state.trackLabels[i]);
+			txtTgl.active = initStates[i];
+			txtTgl.clickPadding = 8.0f;
+			txtTgl.activeMaterial = state.textMat.id;
+			txtTgl.inactiveMaterial = state.dimTextMat.id;
+			txtTgl.hoverMaterial = state.trackOnMat.id;
+		}
+
+		applyMusicUiLayout(registry, state, services);
 	}
 
 	void setupVisualizerDotsSystem(Registry& registry, ServiceProvider& services)
@@ -264,8 +615,15 @@ namespace MusicSceneNamespace
 
 	void updateWorldVisualsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services)
 	{
-		// Shape& shape = registry.getComponent<Shape>(getState(registry).backgroundShape);
-		// registry.setComponentDirty(shape);
+		State& state = getState(registry);
+		if (registry.isEntityValid(state.backgroundShape) && registry.hasComponent<Shape>(state.backgroundShape))
+		{
+			const auto& musicEngine = services.audio().music();
+			const float surgeLvl = musicEngine.getSurgeLevel();
+			const float duckLvl = musicEngine.getDuckingLevel();
+			auto& shape = registry.getComponent<Shape>(state.backgroundShape);
+			shape.parameters[2] = (std::max)(2.0f, 5.0f + surgeLvl * 2.8f - duckLvl * 2.2f);
+		}
 	}
 
 	void toggleSelectionSystem(Registry& registry, ServiceProvider& services)
@@ -479,26 +837,7 @@ namespace MusicSceneNamespace
 		{
 			if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
 			{
-				int idx = state.selectedSongIndex;
-				state.currentLoadedSongIndex = idx;
-				state.isPlaying = true;
-
-				float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
-				float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
-				glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
-
-				s_songs[idx]->setCenter(previewCenter);
-				s_songs[idx]->setParameter(0, state.paramSize);
-				s_songs[idx]->setParameter(1, state.paramSpeed);
-
-				services.audio().setSong(s_songs[idx],
-										 {.mode = SongVisualizationMode::UI, .material = state.songMats[idx]}, false);
-				services.audio().setSongParameter(0, state.paramSize);
-				services.audio().setSongParameter(1, state.paramSpeed);
-				services.audio().resampleShape();
-
-				services.audio().music().setTrackToggles({true, true, true, true});
-				services.audio().music().setVolume(0.65f);
+				loadAndPlaySong(registry, services, state, state.selectedSongIndex);
 				services.audio().playSound({0.03f, 750.0f, false, vec3(0.0f), 1});
 			}
 			else
@@ -531,6 +870,152 @@ namespace MusicSceneNamespace
 			state.isPlaying = false;
 			services.audio().playSound({0.03f, 320.0f, false, vec3(0.0f), 1});
 			updateCursorDot(registry, state);
+		}
+	}
+
+	void dynamicControlsSystem(Registry& registry, ServiceProvider& services)
+	{
+		State& state = getState(registry);
+		const float dt = services.time().deltaTime();
+		const MusicUiLayout l = computeMusicUiLayout();
+		auto& musicEngine = services.audio().music();
+		auto currentSong = musicEngine.getCurrentSong();
+
+		auto ensureSongPlaying = [&]()
+		{
+			if (!state.isPlaying || !currentSong)
+			{
+				int targetIdx =
+					(state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
+						? state.selectedSongIndex
+						: 0;
+				loadAndPlaySong(registry, services, state, targetIdx);
+				currentSong = musicEngine.getCurrentSong();
+			}
+		};
+
+		const float surgeLvl = musicEngine.getSurgeLevel();
+		const float duckLvl = musicEngine.getDuckingLevel();
+
+		// 1. Right Column: Surge & Duck TextButton Labels + Gauge Click (+ Gamepad R1=Surge, L1=Duck)
+		const bool gamepadTriggers[State::NUM_DYNAMICS] = {
+			services.input().getGamepadButtonDown(Input::GamepadButton::RightShoulder),
+			services.input().getGamepadButtonDown(Input::GamepadButton::LeftShoulder)};
+
+		const bool blockClickAvailable = !services.input().isUIClick() && Input::GetMouseButtonDown(Input::LeftClick);
+		const float clickX = Input::GetMouseX();
+		const float clickY = Input::GetMouseY();
+
+		for (size_t i = 0; i < State::NUM_DYNAMICS; ++i)
+		{
+			state.dynamicFlashTimers[i] = (std::max)(0.0f, state.dynamicFlashTimers[i] - dt);
+
+			bool triggered = isButtonEntityDown(registry, state.dynamicLabels[i]) || gamepadTriggers[i];
+
+			if (!triggered && blockClickAvailable && clickX >= (l.gaugeLeftX - l.gaugeHalfW - 8.0f) &&
+				clickX <= (l.rightLabelX + 8.0f) && clickY >= (l.gaugeBaseY[i] - 8.0f) &&
+				clickY <= (l.gaugeBaseY[i] + l.gaugeMaxH + 6.0f))
+			{
+				Input::flagUIClick();
+				triggered = true;
+			}
+
+			if (triggered)
+			{
+				state.dynamicFlashTimers[i] = 0.22f;
+				ensureSongPlaying();
+				if (i == State::DYN_SURGE)
+				{
+					services.audio().surge(0.6f);
+				}
+				else
+				{
+					services.audio().duck(0.6f);
+				}
+			}
+		}
+
+		// 2. Surge & Duck 5-Bar Equalizer Gauges
+		const float audioVol = state.isPlaying ? services.audio().getAudioVolume() : 0.0f;
+		const float timeSec = services.time().time();
+		updateEqualizerGauge(registry, state.surgeTrackBars, state.surgeFillBars, l, l.gaugeBaseY[State::DYN_SURGE],
+							 surgeLvl, audioVol, timeSec, true);
+		updateEqualizerGauge(registry, state.duckTrackBars, state.duckFillBars, l, l.gaugeBaseY[State::DYN_DUCK],
+							 duckLvl, audioVol, timeSec, false);
+
+		// 3. Left Column: Bidirectional Track Mixer Toggles (LEAD, BASS, PAD, DRUM)
+		auto toggles = musicEngine.getTrackToggles();
+		bool* engineFields[State::NUM_TRACKS] = {&toggles.lead, &toggles.bass, &toggles.pad, &toggles.drums};
+		bool userChangedTracks = false;
+		bool visualMatChanged = false;
+
+		for (size_t i = 0; i < State::NUM_TRACKS; ++i)
+		{
+			if (!registry.isEntityValid(state.trackToggles[i]) ||
+				!registry.hasComponent<ShapeToggle>(state.trackToggles[i]))
+				continue;
+
+			auto& tgl = registry.getComponent<ShapeToggle>(state.trackToggles[i]);
+			const bool hasTextToggle =
+				registry.isEntityValid(state.trackLabels[i]) && registry.hasComponent<TextToggle>(state.trackLabels[i]);
+
+			const bool prevVisual = (state.trackVisualActive[i] != 0);
+			bool desired = prevVisual;
+			if (tgl.active != prevVisual)
+			{
+				desired = tgl.active;
+				userChangedTracks = true;
+			}
+			else if (hasTextToggle && registry.getComponent<TextToggle>(state.trackLabels[i]).active != prevVisual)
+			{
+				desired = registry.getComponent<TextToggle>(state.trackLabels[i]).active;
+				userChangedTracks = true;
+			}
+			else if (*engineFields[i] != prevVisual)
+			{
+				desired = *engineFields[i];
+			}
+
+			tgl.active = desired;
+			if (hasTextToggle)
+			{
+				registry.getComponent<TextToggle>(state.trackLabels[i]).active = desired;
+			}
+			*engineFields[i] = desired;
+			state.trackVisualActive[i] = desired ? 1 : 0;
+
+			if (registry.hasComponent<UIShape>(state.trackToggles[i]))
+			{
+				auto& s = registry.getComponent<UIShape>(state.trackToggles[i]);
+				uint16_t targetMat = desired ? state.trackOnMat.id : state.trackOffMat.id;
+				if (s.material != targetMat)
+				{
+					s.material = targetMat;
+					registry.setComponentDirty(s);
+					visualMatChanged = true;
+				}
+			}
+			if (registry.isEntityValid(state.trackLabels[i]) &&
+				registry.hasComponent<UITextRenderer>(state.trackLabels[i]))
+			{
+				auto& ltr = registry.getComponent<UITextRenderer>(state.trackLabels[i]);
+				uint16_t targetMat = desired ? state.textMat.id : state.dimTextMat.id;
+				if (ltr.material != targetMat)
+				{
+					ltr.material = targetMat;
+					registry.setComponentDirty(ltr);
+				}
+			}
+		}
+
+		if (userChangedTracks)
+		{
+			musicEngine.setTrackToggles(toggles);
+			services.audio().playSound({0.02f, 620.0f, false, vec3(0.0f), 1});
+		}
+		if (visualMatChanged)
+		{
+			services.render().forceShaderRefreshUI();
 		}
 	}
 
@@ -576,22 +1061,48 @@ namespace MusicSceneNamespace
 	{
 		State& state = getState(registry);
 
-		// 1. Status Text
-		if (registry.isEntityValid(state.statusText) && registry.hasComponent<UITextRenderer>(state.statusText))
+		if (!registry.isEntityValid(state.statusText) || !registry.hasComponent<UITextRenderer>(state.statusText))
 		{
-			auto& tr = registry.getComponent<UITextRenderer>(state.statusText);
-			if (state.isPlaying && state.currentLoadedSongIndex >= 0)
+			return;
+		}
+
+		const auto& musicEngine = services.audio().music();
+		int code = 0;
+		const char* label = "SELECT SHAPE";
+		if (state.isPlaying && state.currentLoadedSongIndex >= 0)
+		{
+			if (musicEngine.getTrackPlayState(WeirdAudio::MusicTrack::Lead) == WeirdAudio::TrackPlayState::Dead)
 			{
-				tr.text = "PLAYING";
+				code = 4;
+				label = "FADING OUT";
 			}
-			else if (state.selectedSongIndex >= 0)
+			else if (musicEngine.getSurgeLevel() > 0.15f)
 			{
-				tr.text = "PRESS PLAY";
+				code = 2;
+				label = "SURGE ACTIVE";
+			}
+			else if (musicEngine.getDuckingLevel() > 0.15f)
+			{
+				code = 3;
+				label = "DUCK ACTIVE";
 			}
 			else
 			{
-				tr.text = "SELECT SHAPE";
+				code = 1;
+				label = "PLAYING";
 			}
+		}
+		else if (state.selectedSongIndex >= 0)
+		{
+			code = 5;
+			label = "PRESS PLAY";
+		}
+
+		if (code != state.lastStatusCode)
+		{
+			state.lastStatusCode = code;
+			auto& tr = registry.getComponent<UITextRenderer>(state.statusText);
+			tr.text = label;
 			registry.setComponentDirty(tr);
 		}
 	}
@@ -600,13 +1111,12 @@ namespace MusicSceneNamespace
 	{
 		State& state = getState(registry);
 
-		int hash = Display::width + Display::height;
+		int hash = (Display::width * 73856093) ^ Display::height;
 		if (hash != state.lastResolutionHash)
 		{
 			state.lastResolutionHash = hash;
-			float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
-			float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
-			glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
+			const MusicUiLayout l = computeMusicUiLayout();
+			glm::vec2 previewCenter(l.winW * 0.5f, l.winH * 0.5f);
 
 			for (size_t i = 0; i < State::NUM_SONGS; ++i)
 			{
@@ -618,16 +1128,17 @@ namespace MusicSceneNamespace
 				// Re-center toggles
 				const float spacingX = 60.0f;
 				const float totalWidth = spacingX * 3;
-				const float startX = (winW * 0.5f) - (totalWidth * 0.5f);
-				const float toggleY = winH - 55.0f;
+				const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 				if (registry.isEntityValid(state.songToggles[i]) &&
 					registry.hasComponent<UIShape>(state.songToggles[i]))
 				{
 					auto& shape = registry.getComponent<UIShape>(state.songToggles[i]);
 					shape.parameters[2] = startX + i * spacingX;
-					shape.parameters[3] = toggleY;
+					shape.parameters[3] = l.toggleY;
 				}
 			}
+
+			applyMusicUiLayout(registry, state, services);
 
 			if (state.isPlaying && state.currentLoadedSongIndex >= 0)
 			{
@@ -647,12 +1158,16 @@ namespace MusicSceneNamespace
 	{
 		State& state = getState(registry);
 
+		const auto& musicEngine = services.audio().music();
+		float surgeLvl = musicEngine.getSurgeLevel();
+		float duckLvl = musicEngine.getDuckingLevel();
 		float volume = state.isPlaying ? services.audio().getAudioVolume() : 0.05f;
 		float winW = static_cast<float>(Display::width > 0 ? Display::width : 800);
 		float winH = static_cast<float>(Display::height > 0 ? Display::height : 800);
 		glm::vec2 center(winW * 0.5f, winH * 0.5f);
-		float radius = 60.0f + (volume * 40.0f);
-		float speed = state.isPlaying ? (0.8f * state.paramSpeed) : 0.3f;
+		float scaleFactor = (std::min)(winW, winH) / 800.0f;
+		float radius = (62.0f + (volume * 34.0f) + (surgeLvl * 26.0f) - (duckLvl * 18.0f)) * scaleFactor;
+		float speed = state.isPlaying ? (0.8f * state.paramSpeed * (1.0f + surgeLvl * 1.15f - duckLvl * 0.55f)) : 0.3f;
 		float spacing = 2.0f * 3.14159f / static_cast<float>(state.uiPoints.size());
 
 		for (size_t i = 0; i < state.uiPoints.size(); i++)
@@ -875,10 +1390,10 @@ void MusicScene::onImGuiRender(Registry& registry, ServiceProvider& services)
 				musicEngine.setInstrumentRack(rack);
 			}
 
-			// 5. Dynamic Game Events (Surge, Duck, Feedback)
+			// 5. Dynamic Song Controls (Surge & Duck)
 			ImGui::Spacing();
 			ImGui::Separator();
-			ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "Test Dynamic Game Events:");
+			ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "Dynamic Song Controls:");
 			if (ImGui::Button("Trigger Surge (+Energy/Climax)"))
 			{
 				services.audio().surge(0.6f);
@@ -898,30 +1413,10 @@ void MusicScene::onImGuiRender(Registry& registry, ServiceProvider& services)
 				ImGui::SetTooltip("Mutes Lead melody, slows tempo, darkens filters, and switches drums to a tense "
 								  "heartbeat!");
 			}
-			ImGui::SameLine();
-			if (ImGui::Button("Reset Dynamics"))
-			{
-				services.audio().resetDynamicEffects();
-			}
 
 			ImGui::ProgressBar(musicEngine.getSurgeLevel(), ImVec2(180.0f, 0.0f), "Surge");
 			ImGui::SameLine();
 			ImGui::ProgressBar(musicEngine.getDuckingLevel(), ImVec2(180.0f, 0.0f), "Ducking");
-
-			if (ImGui::Button("Positive UI Click (In-Key)"))
-			{
-				services.audio().triggerPositiveFeedback(1.0f);
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Negative Error Buzz"))
-			{
-				services.audio().triggerNegativeFeedback(1.0f);
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Trigger Sequential Death"))
-			{
-				services.audio().triggerDeath();
-			}
 
 			// 6. Shape-to-Music Visual Traits Inspector
 			ImGui::Spacing();

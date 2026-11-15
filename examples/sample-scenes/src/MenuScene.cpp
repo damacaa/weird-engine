@@ -256,6 +256,8 @@ namespace MenuSceneNamespace
 				.variables = {0.0f, 0.0f, 32.0f, 0.0f},
 				.material = (static_cast<int>(i) == state.selectedCategory ? uiWhite.id : uiDimmed.id),
 			});
+			auto& btn = registry.addComponent<ShapeButton>(state.categoryIcons[i]);
+			btn.clickPadding = 16.0f;
 		}
 		state.lastRenderedCategory = state.selectedCategory;
 
@@ -292,6 +294,7 @@ namespace MenuSceneNamespace
 
 		auto& uiWhite = services.materials2D().get("ui_white");
 		auto& uiDimmed = services.materials2D().get("ui_dimmed");
+		auto& uiAccent = services.materials2D().get("ui_accent");
 		auto& uiToast = services.materials2D().get("ui_toast");
 
 		// Pool of vertical item slots (-4 to +4 relative to active slot)
@@ -302,11 +305,18 @@ namespace MenuSceneNamespace
 			auto& t = registry.addComponent<Transform>(state.itemLabels[i]);
 			t.position = vec3(-1000.0f, -1000.0f, 0.0f);
 
+			const uint16_t restMat = (i == 4) ? uiWhite.id : uiDimmed.id;
 			auto& tr = registry.addComponent<UITextRenderer>(state.itemLabels[i]);
 			tr.text = "";
-			tr.material = (i == 4) ? uiWhite.id : uiDimmed.id;
+			tr.material = restMat;
 			tr.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
 			tr.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+
+			auto& txtBtn = registry.addComponent<TextButton>(state.itemLabels[i]);
+			txtBtn.clickPadding = 6.0f;
+			txtBtn.baseMaterial = restMat;
+			txtBtn.hoverMaterial = uiAccent.id;
+			txtBtn.pressedMaterial = uiAccent.id;
 		}
 
 		// Notification Toast
@@ -369,6 +379,9 @@ namespace MenuSceneNamespace
 					SongVisualizationOptions{.mode = SongVisualizationMode::UI, .material = uiAccent.id}, false);
 			}
 		}
+
+		// Sync category icons and item slots immediately so frame 1 UI hit-testing and snapshots start aligned
+		menuAnimationSystem(registry, services);
 	}
 
 	void setupBackgroundSystem(Registry& registry, ServiceProvider& services)
@@ -659,10 +672,9 @@ namespace MenuSceneNamespace
 		int curCatMax = static_cast<int>(s_categories.size()) - 1;
 		int curItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
 
-		auto moveCategory = [&](int dir)
+		auto selectCategory = [&](int nextCat)
 		{
-			int nextCat = std::clamp(state.selectedCategory + dir, 0, curCatMax);
-			if (nextCat != state.selectedCategory)
+			if (nextCat >= 0 && nextCat <= curCatMax && nextCat != state.selectedCategory)
 			{
 				s_categories[state.selectedCategory].selectedItem = state.selectedItem;
 				state.selectedCategory = nextCat;
@@ -672,8 +684,15 @@ namespace MenuSceneNamespace
 				state.smoothItem = static_cast<float>(state.selectedItem);
 				state.categoryTitleTimer = (state.selectedItem != 0) ? 1.0f : 0.0f;
 				playNavigationSound(services, 1340.0f, 0.38f);
+				return true;
 			}
-			else
+			return false;
+		};
+
+		auto moveCategory = [&](int dir)
+		{
+			int nextCat = std::clamp(state.selectedCategory + dir, 0, curCatMax);
+			if (!selectCategory(nextCat))
 			{
 				playNavigationSound(services, 420.0f, 0.20f);
 			}
@@ -694,6 +713,8 @@ namespace MenuSceneNamespace
 				playNavigationSound(services, 420.0f, 0.20f);
 			}
 		};
+
+		const int preKeySelectedItem = state.selectedItem;
 
 		// Instant press triggers
 		if (leftDown)
@@ -721,67 +742,51 @@ namespace MenuSceneNamespace
 			state.keyHoldTimer = 0.0f;
 		}
 
-		// Mouse Navigation Support (Click on categories or items)
-		if (input.getMouseButtonDown(Input::LeftClick))
+		// Mouse Navigation Support via ShapeButton (category icons) and TextButton (visible item labels)
+		int clickedCat = -1;
+		for (size_t i = 0; i < State::CATEGORY_COUNT; ++i)
 		{
-			float mx = input.getMouseX();
-			float my = input.getMouseY();
-
-			float screenW = static_cast<float>(Display::width);
-			float screenH = static_cast<float>(Display::height);
-			float focusX = screenW * 0.28f;
-			float categoryY = screenH * 0.62f;
-			float categorySpacing = 92.0f;
-			float itemSpacingY = 56.0f;
-			float iconGapY = 68.0f;
-			float focusItemY = categoryY - iconGapY;
-
-			// Check category row click
-			if (std::abs(my - categoryY) < 28.0f)
+			if (registry.isEntityValid(state.categoryIcons[i]) &&
+				registry.hasComponent<ShapeButton>(state.categoryIcons[i]) &&
+				registry.getComponent<ShapeButton>(state.categoryIcons[i]).state == ButtonState::Down)
 			{
-				int clickedCat = static_cast<int>(std::round((mx - focusX) / categorySpacing + state.smoothCategory));
-				if (clickedCat >= 0 && clickedCat <= curCatMax && clickedCat != state.selectedCategory)
-				{
-					s_categories[state.selectedCategory].selectedItem = state.selectedItem;
-					state.selectedCategory = clickedCat;
-					updateCategoryIconMaterials(registry, services);
-					int newItemsMax = static_cast<int>(s_categories[state.selectedCategory].items.size()) - 1;
-					state.selectedItem = std::clamp(s_categories[state.selectedCategory].selectedItem, 0, newItemsMax);
-					state.smoothItem = static_cast<float>(state.selectedItem);
-					state.categoryTitleTimer = (state.selectedItem != 0) ? 1.0f : 0.0f;
-					playNavigationSound(services, 1340.0f, 0.38f);
-				}
+				clickedCat = static_cast<int>(i);
+				break;
 			}
-			// Check vertical item list click (both under and over the menu icon)
-			else if (mx >= focusX - 25.0f && mx <= focusX + 320.0f)
-			{
-				int clickedItem = -1;
-				if (my <= categoryY - 35.0f && my >= 150.0f)
-				{
-					// Clicked below the category icon
-					float offset = (focusItemY - my) / itemSpacingY;
-					clickedItem = static_cast<int>(std::round(state.smoothItem + offset));
-				}
-				else if (my >= categoryY + 35.0f && my <= screenH - 50.0f)
-				{
-					// Clicked above the category icon
-					float offset = -1.0f - (my - (categoryY + iconGapY)) / itemSpacingY;
-					clickedItem = static_cast<int>(std::round(state.smoothItem + offset));
-				}
+		}
 
-				if (clickedItem >= 0 && clickedItem <= curItemsMax)
+		if (clickedCat >= 0)
+		{
+			if (selectCategory(clickedCat))
+			{
+				input.suppressMouseInput();
+			}
+		}
+		else
+		{
+			for (int slot = 0; slot < State::VISIBLE_ITEM_SLOTS; ++slot)
+			{
+				if (registry.isEntityValid(state.itemLabels[slot]) &&
+					registry.hasComponent<TextButton>(state.itemLabels[slot]) &&
+					registry.getComponent<TextButton>(state.itemLabels[slot]).state == ButtonState::Down)
 				{
-					if (clickedItem == state.selectedItem)
+					const int clickedItem = preKeySelectedItem + (slot - 4);
+					if (clickedItem >= 0 && clickedItem <= curItemsMax)
 					{
-						confirm = true;
+						if (clickedItem == preKeySelectedItem)
+						{
+							confirm = true;
+						}
+						else
+						{
+							state.selectedItem = clickedItem;
+							s_categories[state.selectedCategory].selectedItem = clickedItem;
+							state.categoryTitleTimer = 0.0f;
+							playNavigationSound(services, 1120.0f, 0.32f);
+						}
+						input.suppressMouseInput();
 					}
-					else
-					{
-						state.selectedItem = clickedItem;
-						s_categories[state.selectedCategory].selectedItem = clickedItem;
-						state.categoryTitleTimer = 0.0f;
-						playNavigationSound(services, 1120.0f, 0.32f);
-					}
+					break;
 				}
 			}
 		}
@@ -919,8 +924,11 @@ namespace MenuSceneNamespace
 			float distToFocus = std::abs(catOffset);
 			float focusWeight = std::clamp(1.0f - distToFocus, 0.0f, 1.0f);
 
-			// Scale icon smoothly: 32px unfocused, 42px focused
-			float iconScale = 32.0f + 10.0f * focusWeight;
+			// Scale icon smoothly: 32px unfocused, 42px focused, +4px hover pulse
+			const bool catHovered = registry.isEntityValid(state.categoryIcons[i]) &&
+									registry.hasComponent<ShapeButton>(state.categoryIcons[i]) &&
+									registry.getComponent<ShapeButton>(state.categoryIcons[i]).hovered;
+			float iconScale = 32.0f + 10.0f * focusWeight + (catHovered ? 4.0f : 0.0f);
 
 			if (registry.isEntityValid(state.categoryIcons[i]))
 			{
@@ -979,6 +987,8 @@ namespace MenuSceneNamespace
 
 		const float maxVisibleY = screenH - 50.0f; // Screen top bounds
 		const float minVisibleY = 150.0f;		   // Screen bottom bounds
+		const uint16_t uiWhiteId = services.materials2D().get("ui_white").id;
+		const uint16_t uiDimmedId = services.materials2D().get("ui_dimmed").id;
 
 		for (int slot = 0; slot < State::VISIBLE_ITEM_SLOTS; ++slot)
 		{
@@ -1030,8 +1040,20 @@ namespace MenuSceneNamespace
 
 					auto& tr = registry.getComponent<UITextRenderer>(state.itemLabels[slot]);
 					tr.text = items[itemIndex].title;
-					tr.material = (relIndex == 0) ? services.materials2D().get("ui_white").id
-												  : services.materials2D().get("ui_dimmed").id;
+					const uint16_t restMat = (relIndex == 0) ? uiWhiteId : uiDimmedId;
+					if (registry.hasComponent<TextButton>(state.itemLabels[slot]))
+					{
+						auto& txtBtn = registry.getComponent<TextButton>(state.itemLabels[slot]);
+						txtBtn.baseMaterial = restMat;
+						if (!txtBtn.hovered && txtBtn.state != ButtonState::Down && txtBtn.state != ButtonState::Hold)
+						{
+							tr.material = restMat;
+						}
+					}
+					else
+					{
+						tr.material = restMat;
+					}
 					registry.setComponentDirty(tr);
 				}
 			}
@@ -1048,6 +1070,13 @@ namespace MenuSceneNamespace
 					auto& tr = registry.getComponent<UITextRenderer>(state.itemLabels[slot]);
 					tr.text = "";
 					registry.setComponentDirty(tr);
+
+					if (registry.hasComponent<TextButton>(state.itemLabels[slot]))
+					{
+						auto& txtBtn = registry.getComponent<TextButton>(state.itemLabels[slot]);
+						txtBtn.hovered = false;
+						txtBtn.state = ButtonState::Off;
+					}
 				}
 			}
 		}

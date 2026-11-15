@@ -14,6 +14,7 @@ namespace InstrumentSceneNamespace
 		int midiNote = 60;
 		bool isBlack = false;
 		WeirdEngine::Entity entity = WeirdEngine::INVALID_ENTITY;
+		WeirdEngine::Entity glowDot = WeirdEngine::INVALID_ENTITY;
 		float basePosX = 0.0f;
 		float basePosY = 0.0f;
 		float sizeX = 0.0f;
@@ -22,12 +23,33 @@ namespace InstrumentSceneNamespace
 
 	struct State
 	{
+		static constexpr size_t SCOPE_DOTS = 64;
+		static constexpr size_t NUM_ACTION_BTNS = 11;
+
+		enum ActionBtn : size_t
+		{
+			// Row 0 (Top HUD bar): Instrument, Sound/Wave/Kit, Octave, Scale Root, Scale Mode
+			ACT_INST = 0,
+			ACT_TIMBRE = 1,
+			ACT_OCT = 2,
+			ACT_ROOT = 3,
+			ACT_SCALE = 4,
+			// Row 1 (Below piano - Sound Shaping, adapts dynamically to Row 0)
+			ACT_MOD = 5,
+			ACT_TONE = 6,
+			ACT_FLT = 7,
+			// Row 2 (Below piano - Performance & Drums, with ARP toggle at col 1)
+			ACT_CHORD = 8,
+			ACT_KICK = 9,
+			ACT_SNARE = 10
+		};
+
 		WeirdEngine::WeirdAudio::Instrument selectedInstrument = WeirdEngine::WeirdAudio::Instrument::Lead;
 		int currentOctave = 4; // 1 to 7, default 4 (Middle C is C4 = MIDI 60)
-		float noteDuration = 0.45f;
+		float noteDuration = 0.50f;
 		float noteAmp = 0.85f;
 		float filterCutoff = 12000.0f;
-		float filterQ = 1.0f;
+		float filterQ = 1.4f;
 		float pan = 0.0f;
 
 		// Interactive visual keys
@@ -36,12 +58,34 @@ namespace InstrumentSceneNamespace
 		WeirdEngine::Material2DHandle blackKeyMat;
 		WeirdEngine::Material2DHandle whiteScaleMat;
 		WeirdEngine::Material2DHandle blackScaleMat;
+		WeirdEngine::Material2DHandle textWhiteMat;
+		WeirdEngine::Material2DHandle accentCyanMat;
+		WeirdEngine::Material2DHandle accentAmberMat;
+		WeirdEngine::Material2DHandle accentGreenMat;
+		WeirdEngine::Material2DHandle drumRedMat;
+		WeirdEngine::Material2DHandle btnSlateMat;
+		WeirdEngine::Material2DHandle textDimMat;
+		WeirdEngine::Material2DHandle worldWallMat;
 
 		// Visual press timers per MIDI note (0 to 127)
 		float keyFlashTimers[128] = {0.0f};
 		int lastPlayedMidi = -1;
 		std::string lastPlayedNoteName = "--";
 		float lastPlayedFreq = 0.0f;
+
+		// On-screen HUD, oscilloscope, and interactive text controls
+		WeirdEngine::Entity hudNoteText = WeirdEngine::INVALID_ENTITY;
+		std::string cachedHudNote;
+
+		std::array<WeirdEngine::Entity, NUM_ACTION_BTNS> actionLabels{};
+		std::array<float, NUM_ACTION_BTNS> actionFlashTimers{};
+		std::array<std::string, NUM_ACTION_BTNS> cachedActionLabels{};
+		bool cachedModEnabled = false;
+		WeirdEngine::Entity arpToggleLabel = WeirdEngine::INVALID_ENTITY;
+		bool prevArpVisual = false;
+
+		std::array<WeirdEngine::Entity, SCOPE_DOTS> scopeDots{};
+		WeirdEngine::Entity worldCutout = WeirdEngine::INVALID_ENTITY;
 
 		// Interactive Music Theory & Arpeggiator Tools
 		bool showSolfeggio = true;
@@ -66,16 +110,14 @@ namespace InstrumentSceneNamespace
 		int lastWidth = 0;
 		int lastHeight = 0;
 
-		// Gamepad axis tracking
-		float prevStickX = 0.0f;
-		float prevStickY = 0.0f;
-		float prevRightStickX = 0.0f;
-		float prevRightStickY = 0.0f;
-		float prevLeftTrigger = 0.0f;
-		float prevRightTrigger = 0.0f;
+		// Gamepad stick octant tracking (-1 = neutral, 0..7 = clockwise from Up)
+		float stickDeadzone = 0.62f;
+		int prevLeftStickDir = -1;
+		int prevRightStickDir = -1;
 	};
 
 	State& getState(WeirdEngine::Registry& registry);
+	int getStickOctant(float x, float y, int prevDir, float deadzone = 0.62f);
 
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupSceneSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);

@@ -66,61 +66,7 @@ namespace ThrustSceneNamespace
 		state.fuelMaterial = getPaletteMat(5);		// Green
 		state.fuelBgMaterial = getPaletteMat(2);	// Steel gray track
 
-		// Load spaceship cluster asset and drive its dots kinematically
-		auto& cluster = services.clusters().instantiate(services.resources().assetPath("spaceship.weirdcluster"),
-														state.shipPos, 0.0f, "spaceship", {"ship"});
-
-		vec2 centroid(0.0f);
-		size_t dotCount = 0;
-		for (Entity e : cluster.entities)
-		{
-			if (registry.hasComponent<Transform>(e) && registry.hasComponent<RigidBody2D>(e))
-			{
-				centroid += vec2(registry.getComponent<Transform>(e).position);
-				++dotCount;
-			}
-		}
-		if (dotCount > 0)
-		{
-			centroid /= static_cast<float>(dotCount);
-		}
-		else
-		{
-			centroid = state.shipPos;
-		}
-
-		float minLocalY = 0.0f;
-		state.shipDotCount = 0;
-		for (Entity e : cluster.entities)
-		{
-			if (!registry.hasComponent<Transform>(e) || !registry.hasComponent<RigidBody2D>(e))
-				continue;
-
-			if (state.shipDotCount >= MAX_SHIP_DOTS)
-			{
-				WEIRD_ASSERT(false, "spaceship.weirdcluster dot count exceeds MAX_SHIP_DOTS");
-				break;
-			}
-
-			auto& t = registry.getComponent<Transform>(e);
-			vec2 localOffset = vec2(t.position) - centroid;
-			minLocalY = std::min(minLocalY, localOffset.y);
-
-			t.position = vec3(state.shipPos + localOffset, 0.0f);
-			registry.setEntityDirty<Transform>(e, true);
-
-			auto& rb = registry.getComponent<RigidBody2D>(e);
-			rb.type = BodyType::Kinematic;
-			rb.mass = 1.0f;
-			rb.enableCollision = false;		// Prevent cluster dot-to-dot collisions and nozzle snagging
-			rb.enableShapeCollision = true; // Enable collisions with map terrain shapes
-			registry.setEntityDirty<RigidBody2D>(e, true);
-
-			state.shipDots[state.shipDotCount++] = {e, localOffset};
-		}
-
-		// Place exhaust emission point just behind the rear thruster pods
-		state.thrusterLocalY = minLocalY - 0.36f;
+		spawnShipCluster(state, registry, services);
 	}
 
 	namespace
@@ -195,6 +141,17 @@ namespace ThrustSceneNamespace
 			{
 				auto& t = registry.getComponent<Transform>(state.fuelLabelEntity);
 				t.position = vec3(layout.labelX, layout.labelTopY, 0.0f);
+
+				if (registry.hasComponent<UITextRenderer>(state.fuelLabelEntity))
+				{
+					auto& tr = registry.getComponent<UITextRenderer>(state.fuelLabelEntity);
+					const char* expectedLabel = state.shipBroken ? "CRASHED - R" : "FUEL";
+					if (tr.text != expectedLabel)
+					{
+						tr.text = expectedLabel;
+						registry.setComponentDirty(tr);
+					}
+				}
 			}
 		}
 	} // namespace
@@ -241,32 +198,61 @@ namespace ThrustSceneNamespace
 
 	namespace
 	{
-		bool resolveShipTerrainCollisions(State& state, ServiceProvider& services, const vec2& forward,
-										  const vec2& right)
+		struct TerrainCollisionResult
+		{
+			bool collided = false;
+			bool hardImpact = false;
+			bool hitStar = false;
+			Entity hitEntity = INVALID_ENTITY;
+			vec2 impactPoint = vec2(0.0f);
+			vec2 impactNormal = vec2(0.0f, 1.0f);
+		};
+
+		TerrainCollisionResult resolveShipTerrainCollisions(State& state, ServiceProvider& services,
+															const vec2& forward, const vec2& right)
 		{
 			constexpr float PROBE_RADIUS = 0.50f;
 			constexpr float BOUNCE_SPEED_THRESHOLD = 1.5f;
 			constexpr float RESTITUTION = 0.45f;
-			bool collided = false;
+			TerrainCollisionResult result;
 
 			for (size_t i = 0; i < state.shipDotCount; ++i)
 			{
 				const vec2 local = state.shipDots[i].localOffset;
 				const vec2 worldProbe = state.shipPos + right * local.x + forward * local.y;
 
-				const float dist = services.physics().sampleDistance(worldProbe, false);
-				if (dist >= PROBE_RADIUS)
+				const RaymarchResult hit = services.physics().sampleAt(worldProbe, false);
+				if (hit.entity == INVALID_ENTITY || hit.distance >= PROBE_RADIUS)
 					continue;
 
-				collided = true;
+				result.collided = true;
 				vec2 normal = services.physics().sampleGradient(worldProbe, false);
 				if (glm::length2(normal) <= 0.0001f)
 					continue;
 
 				normal = glm::normalize(normal);
-				state.shipPos += normal * (PROBE_RADIUS - dist);
+				state.shipPos += normal * (PROBE_RADIUS - hit.distance);
 
 				const float vn = glm::dot(state.shipVelocity, normal);
+				const bool isStar = services.tags().hasTag(hit.entity, "star");
+				if (isStar)
+				{
+					if (!result.hitStar)
+					{
+						result.hitStar = true;
+						result.hitEntity = hit.entity;
+						result.impactPoint = worldProbe - normal * hit.distance;
+						result.impactNormal = normal;
+					}
+				}
+				else if (!result.hitStar && vn < 0.0f && -vn >= state.crashSpeedThreshold)
+				{
+					result.hardImpact = true;
+					result.hitEntity = hit.entity;
+					result.impactPoint = worldProbe - normal * hit.distance;
+					result.impactNormal = normal;
+				}
+
 				if (vn < 0.0f)
 				{
 					const float restitution = (-vn > BOUNCE_SPEED_THRESHOLD) ? RESTITUTION : 0.0f;
@@ -274,7 +260,7 @@ namespace ThrustSceneNamespace
 				}
 			}
 
-			return collided;
+			return result;
 		}
 
 		struct ExhaustLane
@@ -338,8 +324,8 @@ namespace ThrustSceneNamespace
 			state.recentExhaustHead = (state.recentExhaustHead + 1) % MAX_RECENT_EXHAUST_SPAWNS;
 		}
 
-		void spawnExhaustDot(State& state, Registry& registry, ServiceProvider& services, const vec2& spawnPos,
-							 const vec2& worldVel, uint16_t matCount, float subAge)
+		void spawnPooledDot(State& state, Registry& registry, const vec2& spawnPos, const vec2& worldVel,
+							uint16_t materialId, float lifetime, float mass = 0.05f)
 		{
 			auto& slot = state.exhaustParticles[state.exhaustHead];
 			const bool reuse = registry.isEntityValid(slot.entity);
@@ -350,23 +336,131 @@ namespace ThrustSceneNamespace
 			registry.setEntityDirty<Transform>(dotEntity, true);
 
 			auto& dot = reuse ? registry.getComponent<Dot>(dotEntity) : registry.addComponent<Dot>(dotEntity);
-			dot.materialId =
-				services.materials2D().get(static_cast<uint16_t>(services.random().range<int>(1, matCount - 1))).id;
+			dot.materialId = materialId;
 
 			auto& rb =
 				reuse ? registry.getComponent<RigidBody2D>(dotEntity) : registry.addComponent<RigidBody2D>(dotEntity);
 			rb.type = BodyType::Dynamic;
-			rb.mass = 0.05f;
+			rb.mass = mass;
 			rb.velocity = worldVel;
 			rb.enableCollision = true;
 			rb.enableShapeCollision = true;
 			registry.setEntityDirty<RigidBody2D>(dotEntity, true);
 
 			slot.entity = dotEntity;
-			slot.lifetime = services.random().range(2.6f, 4.0f);
+			slot.lifetime = lifetime;
 			state.exhaustHead = (state.exhaustHead + 1) % MAX_EXHAUST_PARTICLES;
+		}
+
+		void spawnExhaustDot(State& state, Registry& registry, ServiceProvider& services, const vec2& spawnPos,
+							 const vec2& worldVel, uint16_t matCount, float subAge)
+		{
+			const uint16_t materialId =
+				services.materials2D().get(static_cast<uint16_t>(services.random().range<int>(1, matCount - 1))).id;
+			const float lifetime = services.random().range(2.6f, 4.0f);
+			spawnPooledDot(state, registry, spawnPos, worldVel, materialId, lifetime);
 
 			recordRecentExhaustSpawn(state, spawnPos, worldVel, subAge);
+		}
+
+		void spawnStarExplosion(State& state, Registry& registry, ServiceProvider& services, Entity starEntity,
+								const vec2& surfacePoint, const vec2& outwardNormal)
+		{
+			constexpr size_t EXPLOSION_DOT_COUNT = 28;
+			uint16_t starMaterial = 1;
+			if (registry.isEntityValid(starEntity) && registry.hasComponent<Shape>(starEntity))
+			{
+				starMaterial = registry.getComponent<Shape>(starEntity).material;
+			}
+
+			const float baseAngle = std::atan2(outwardNormal.y, outwardNormal.x);
+			for (size_t i = 0; i < EXPLOSION_DOT_COUNT; ++i)
+			{
+				const float spread = services.random().range(-1.15f, 1.15f);
+				const float speed = services.random().range(18.0f, 46.0f);
+				const float angle = baseAngle + spread;
+				const vec2 dir(std::cos(angle), std::sin(angle));
+
+				const vec2 lateral(-outwardNormal.y, outwardNormal.x);
+				const float lateralJitter = services.random().range(-0.45f, 0.45f);
+				const float outwardOffset = services.random().range(0.55f, 1.15f);
+				const vec2 spawnPos = surfacePoint + outwardNormal * outwardOffset + lateral * lateralJitter;
+				const vec2 worldVel = dir * speed;
+
+				spawnPooledDot(state, registry, spawnPos, worldVel, starMaterial, services.random().range(2.2f, 3.8f),
+							   0.12f);
+			}
+		}
+
+		void breakShip(State& state, Registry& registry, ServiceProvider& services, const vec2& impactNormal)
+		{
+			if (state.shipBroken)
+				return;
+
+			state.shipBroken = true;
+			state.isThrusting = false;
+
+			auto isShipDot = [&](Entity entity)
+			{
+				for (size_t i = 0; i < state.shipDotCount; ++i)
+				{
+					if (state.shipDots[i].entity == entity)
+						return true;
+				}
+				return false;
+			};
+
+			std::vector<Entity> constraintsToDestroy;
+			registry.forEach<DistanceConstraint>(
+				[&](Entity constraintEntity, const DistanceConstraint& c)
+				{
+					if (isShipDot(c.entityA) || isShipDot(c.entityB))
+					{
+						constraintsToDestroy.push_back(constraintEntity);
+					}
+				});
+
+			registry.forEach<Spring>(
+				[&](Entity springEntity, const Spring& s)
+				{
+					if (isShipDot(s.entityA) || isShipDot(s.entityB))
+					{
+						constraintsToDestroy.push_back(springEntity);
+					}
+				});
+
+			ClusterInstance* cluster = services.clusters().getByName("spaceship");
+			for (Entity ce : constraintsToDestroy)
+			{
+				if (cluster)
+				{
+					auto& ents = cluster->entities;
+					ents.erase(std::remove(ents.begin(), ents.end(), ce), ents.end());
+				}
+				if (registry.isEntityValid(ce))
+				{
+					registry.destroyEntity(ce);
+				}
+			}
+
+			const float baseAngle = std::atan2(impactNormal.y, impactNormal.x);
+			for (size_t i = 0; i < state.shipDotCount; ++i)
+			{
+				const Entity e = state.shipDots[i].entity;
+				if (!registry.isEntityValid(e) || !registry.hasComponent<RigidBody2D>(e))
+					continue;
+
+				auto& rb = registry.getComponent<RigidBody2D>(e);
+				rb.type = BodyType::Dynamic;
+				rb.enableCollision = true;
+				rb.enableShapeCollision = true;
+
+				const float jitterAngle = baseAngle + services.random().range(-1.2f, 1.2f);
+				const vec2 scatterDir(std::cos(jitterAngle), std::sin(jitterAngle));
+				const float scatterSpeed = services.random().range(4.0f, 14.0f);
+				rb.velocity = state.shipVelocity * 0.45f + scatterDir * scatterSpeed;
+				registry.setEntityDirty<RigidBody2D>(e, true);
+			}
 		}
 
 		void syncShipClusterBodies(const State& state, Registry& registry, const vec2& forward, const vec2& right)
@@ -574,10 +668,99 @@ namespace ThrustSceneNamespace
 		state.fuel = std::min(state.maxFuel, state.fuel + recoveryRate * delta);
 	}
 
-	void shipPhysicsSystem(Registry& registry, ServiceProvider& services)
+	void spawnShipCluster(State& state, Registry& registry, ServiceProvider& services)
+	{
+		// Load spaceship cluster asset and drive its dots kinematically
+		auto& cluster = services.clusters().instantiate(services.resources().assetPath("spaceship.weirdcluster"),
+														state.shipPos, 0.0f, "spaceship", {"ship"});
+
+		vec2 centroid(0.0f);
+		size_t dotCount = 0;
+		for (Entity e : cluster.entities)
+		{
+			if (registry.hasComponent<Transform>(e) && registry.hasComponent<RigidBody2D>(e))
+			{
+				centroid += vec2(registry.getComponent<Transform>(e).position);
+				++dotCount;
+			}
+		}
+		if (dotCount > 0)
+		{
+			centroid /= static_cast<float>(dotCount);
+		}
+		else
+		{
+			centroid = state.shipPos;
+		}
+
+		float minLocalY = 0.0f;
+		state.shipDotCount = 0;
+		for (Entity e : cluster.entities)
+		{
+			if (!registry.hasComponent<Transform>(e) || !registry.hasComponent<RigidBody2D>(e))
+				continue;
+
+			if (state.shipDotCount >= MAX_SHIP_DOTS)
+			{
+				WEIRD_ASSERT(false, "spaceship.weirdcluster dot count exceeds MAX_SHIP_DOTS");
+				break;
+			}
+
+			auto& t = registry.getComponent<Transform>(e);
+			vec2 localOffset = vec2(t.position) - centroid;
+			minLocalY = std::min(minLocalY, localOffset.y);
+
+			t.position = vec3(state.shipPos + localOffset, 0.0f);
+			registry.setEntityDirty<Transform>(e, true);
+
+			auto& rb = registry.getComponent<RigidBody2D>(e);
+			rb.type = BodyType::Kinematic;
+			rb.mass = 1.0f;
+			rb.velocity = vec2(0.0f);
+			rb.enableCollision = false;		// Prevent cluster dot-to-dot collisions and nozzle snagging
+			rb.enableShapeCollision = true; // Enable collisions with map terrain shapes
+			registry.setEntityDirty<RigidBody2D>(e, true);
+
+			state.shipDots[state.shipDotCount++] = {e, localOffset};
+		}
+
+		// Place exhaust emission point just behind the rear thruster pods
+		state.thrusterLocalY = minLocalY - 0.36f;
+	}
+
+	void resetShip(Registry& registry, ServiceProvider& services)
 	{
 		State& state = getState(registry);
-		float delta = std::min(services.time().deltaTime(), 0.05f);
+		state.shipPos = vec2(0.0f, 6.0f);
+		state.shipVelocity = vec2(0.0f, 0.0f);
+		state.shipAngle = 0.0f;
+		state.fuel = state.maxFuel;
+		state.isThrusting = false;
+		state.exhaustSpawnAccumulator = 0.0f;
+		for (auto& recent : state.recentExhaustSpawns)
+		{
+			recent.age = 1.0f;
+		}
+
+		if (state.shipBroken)
+		{
+			if (ClusterInstance* cluster = services.clusters().getByName("spaceship"))
+			{
+				services.clusters().destroyCluster(cluster);
+			}
+			spawnShipCluster(state, registry, services);
+			state.shipBroken = false;
+		}
+		else
+		{
+			syncShipClusterBodies(state, registry, vec2(0.0f, 1.0f), vec2(1.0f, 0.0f));
+		}
+	}
+
+	void stepShipPhysics(Registry& registry, ServiceProvider& services, float delta)
+	{
+		State& state = getState(registry);
+		delta = std::min(delta, 0.05f);
 		if (delta <= 0.0f)
 		{
 			return;
@@ -585,6 +768,36 @@ namespace ThrustSceneNamespace
 
 		const vec2 prevShipPos = state.shipPos;
 		const float prevShipAngle = state.shipAngle;
+
+		const bool resetRequested = services.input().getKeyDown(Input::KeyCode::R) ||
+									services.input().getGamepadButtonDown(Input::GamepadButton::North) ||
+									services.input().getGamepadButtonDown(Input::GamepadButton::Start);
+		if (resetRequested)
+		{
+			resetShip(registry, services);
+			return;
+		}
+
+		if (state.shipBroken)
+		{
+			state.isThrusting = false;
+			vec2 avgPos(0.0f);
+			size_t activeDots = 0;
+			for (size_t i = 0; i < state.shipDotCount; ++i)
+			{
+				const Entity e = state.shipDots[i].entity;
+				if (!registry.isEntityValid(e) || !registry.hasComponent<Transform>(e))
+					continue;
+
+				avgPos += vec2(registry.getComponent<Transform>(e).position);
+				++activeDots;
+			}
+			if (activeDots > 0)
+			{
+				state.shipPos = avgPos / static_cast<float>(activeDots);
+			}
+			return;
+		}
 
 		// 1. Rotation input (A/D, Left/Right arrow, gamepad LeftStick / Dpad)
 		float keyboardRotate = 0.0f;
@@ -642,36 +855,31 @@ namespace ThrustSceneNamespace
 
 		// 4. Integrate position & depenetrate against terrain SDF
 		state.shipPos += state.shipVelocity * delta;
-		const bool landed = resolveShipTerrainCollisions(state, services, forward, right);
+		const TerrainCollisionResult collision = resolveShipTerrainCollisions(state, services, forward, right);
 
-		// 5. Respawn / Refuel on 'R' key or gamepad North (Y) / Start
-		vec2 emitStartShipPos = prevShipPos;
-		float emitStartShipAngle = prevShipAngle;
-		if (services.input().getKeyDown(Input::KeyCode::R) ||
-			services.input().getGamepadButtonDown(Input::GamepadButton::North) ||
-			services.input().getGamepadButtonDown(Input::GamepadButton::Start))
+		if (collision.hitStar || collision.hardImpact)
 		{
-			state.shipPos = vec2(0.0f, 6.0f);
-			state.shipVelocity = vec2(0.0f, 0.0f);
-			state.shipAngle = 0.0f;
-			state.fuel = state.maxFuel;
-			state.exhaustSpawnAccumulator = 0.0f;
-			for (auto& recent : state.recentExhaustSpawns)
+			syncShipClusterBodies(state, registry, forward, right);
+			if (collision.hitStar)
 			{
-				recent.age = 1.0f;
+				spawnStarExplosion(state, registry, services, collision.hitEntity, collision.impactPoint,
+								   collision.impactNormal);
 			}
-			emitStartShipPos = state.shipPos;
-			emitStartShipAngle = state.shipAngle;
-			forward = vec2(0.0f, 1.0f);
-			right = vec2(1.0f, 0.0f);
+			breakShip(state, registry, services, collision.impactNormal);
+			return;
 		}
 
-		// Recover fuel passively while coasting, or faster when resting stably on a planet surface
-		recoverFuel(state, thrustHeld, landed, delta);
+		// 5. Recover fuel passively while coasting, or faster when resting stably on a planet surface
+		recoverFuel(state, thrustHeld, collision.collided, delta);
 
 		// 6. Emit exhaust rigidbodies and update ship cluster transforms/velocities
-		emitExhaustParticles(registry, services, emitStartShipPos, emitStartShipAngle, wasThrusting, delta);
+		emitExhaustParticles(registry, services, prevShipPos, prevShipAngle, wasThrusting, delta);
 		syncShipClusterBodies(state, registry, forward, right);
+	}
+
+	void shipPhysicsSystem(Registry& registry, ServiceProvider& services)
+	{
+		stepShipPhysics(registry, services, services.time().deltaTime());
 	}
 
 	void exhaustParticleSystem(Registry& registry, ServiceProvider& services)

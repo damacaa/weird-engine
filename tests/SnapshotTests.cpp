@@ -726,6 +726,148 @@ namespace
 		// Verify snapshot serialization with active pooled exhaust rigidbodies in flight.
 		require(services.serialization().loadSnapshot(saved.path.string()),
 				"ThrustScene must recover baseline snapshot after high-speed exhaust bursts.");
+
+		// Load ThrustScene with space.weirdscene to exercise terrain/star SDF crash and reset physics
+		const std::string spaceSceneName = name + "-space";
+		manager.registerScene<InspectableScene<ThrustScene>>(spaceSceneName, ASSETS_PATH "space.weirdscene");
+		manager.loadScene(spaceSceneName);
+		auto& spaceScene = *static_cast<InspectableScene<ThrustScene>*>(manager.getCurrentScene());
+		Registry& spaceRegistry = *spaceScene.registry;
+		ServiceProvider& spaceServices = *spaceScene.services;
+		auto& spaceState = ThrustSceneNamespace::getState(spaceRegistry);
+
+		auto countShipConstraints = [&]()
+		{
+			size_t count = 0;
+			auto isShipDot = [&](Entity e)
+			{
+				for (size_t i = 0; i < spaceState.shipDotCount; ++i)
+				{
+					if (spaceState.shipDots[i].entity == e)
+						return true;
+				}
+				return false;
+			};
+			spaceRegistry.forEach<DistanceConstraint>(
+				[&](Entity, const DistanceConstraint& c)
+				{
+					if (isShipDot(c.entityA) || isShipDot(c.entityB))
+					{
+						++count;
+					}
+				});
+			return count;
+		};
+
+		require(!spaceState.shipBroken, "Ship must start intact.");
+		const size_t initialConstraints = countShipConstraints();
+		require(initialConstraints > 0, "Intact spaceship cluster must own DistanceConstraints.");
+
+		// Find lowest local dot offset so we can position the ship right above a surface cleanly
+		float lowestLocalY = 0.0f;
+		for (size_t i = 0; i < spaceState.shipDotCount; ++i)
+		{
+			lowestLocalY = std::min(lowestLocalY, spaceState.shipDots[i].localOffset.y);
+		}
+		const float topPlanetSurfaceY = 0.0f; // space.weirdscene planet 1: center (0, -30), radius 30
+
+		// Soft landing below crashSpeedThreshold must keep ship intact
+		spaceState.shipPos = vec2(0.0f, topPlanetSurfaceY - lowestLocalY + 0.35f);
+		spaceState.shipVelocity = vec2(0.0f, -5.0f);
+		ThrustSceneNamespace::stepShipPhysics(spaceRegistry, spaceServices, 0.016f);
+		ThrustSceneNamespace::uiSystem(spaceRegistry, spaceServices);
+		require(!spaceState.shipBroken && countShipConstraints() == initialConstraints,
+				"Soft planet contact must keep ship constraints intact.");
+
+		// Hard planet impact must destroy ship constraints, convert dots to Dynamic, and require reset
+		spaceState.shipPos = vec2(0.0f, topPlanetSurfaceY - lowestLocalY + 0.35f);
+		spaceState.shipVelocity = vec2(0.0f, -30.0f);
+		ThrustSceneNamespace::stepShipPhysics(spaceRegistry, spaceServices, 0.016f);
+		spaceRegistry.freeRemovedComponents();
+		ThrustSceneNamespace::uiSystem(spaceRegistry, spaceServices);
+		require(spaceState.shipBroken, "Hard planet impact must mark ship as broken.");
+		require(countShipConstraints() == 0, "Hard planet impact must remove all ship DistanceConstraints.");
+		ThrustSceneNamespace::stepShipPhysics(spaceRegistry, spaceServices, 0.016f);
+		for (size_t i = 0; i < spaceState.shipDotCount; ++i)
+		{
+			const auto& rb = spaceRegistry.getComponent<RigidBody2D>(spaceState.shipDots[i].entity);
+			require(rb.type == BodyType::Dynamic && rb.enableCollision,
+					"Broken ship dots must become Dynamic colliding bodies.");
+			require(glm::length2(rb.pendingContinuousForce) == 0.0f,
+					"Broken ship dots must not receive gravity forces.");
+		}
+		require(spaceRegistry.getComponent<UITextRenderer>(spaceState.fuelLabelEntity).text == "CRASHED - R",
+				"Fuel label must prompt player to reset when ship is broken.");
+
+		// Resetting rebuilds the intact ship cluster
+		ThrustSceneNamespace::resetShip(spaceRegistry, spaceServices);
+		spaceRegistry.freeRemovedComponents();
+		ThrustSceneNamespace::uiSystem(spaceRegistry, spaceServices);
+		require(!spaceState.shipBroken && countShipConstraints() == initialConstraints,
+				"Resetting a broken ship must restore intact cluster and constraints.");
+		require(spaceRegistry.getComponent<UITextRenderer>(spaceState.fuelLabelEntity).text == "FUEL",
+				"Fuel label must revert to FUEL after reset.");
+
+		// Locate the star shape in space.weirdscene, tag it "star", and verify star-hit explosion
+		Entity starEntity = INVALID_ENTITY;
+		uint16_t starMaterial = 0;
+		vec2 starCenter(0.0f);
+		float starRadius = 0.0f;
+		spaceRegistry.forEach<Shape>(
+			[&](Entity e, const Shape& s)
+			{
+				if (s.distanceFieldId == static_cast<ShapeId>(DefaultShapes::Star))
+				{
+					starEntity = e;
+					starMaterial = s.material;
+					starCenter = vec2(s.parameters[0], s.parameters[1]);
+					starRadius = s.parameters[2];
+				}
+			});
+		require(starEntity != INVALID_ENTITY, "space.weirdscene must contain a Star shape.");
+		spaceServices.tags().addTag(starEntity, "star");
+
+		// Locate a point just outside the top of the star SDF via sampleAt
+		vec2 probePt = starCenter + vec2(0.0f, starRadius + 40.0f);
+		for (int s = 0; s < 400; ++s)
+		{
+			const RaymarchResult hit = spaceServices.physics().sampleAt(probePt, false);
+			if (hit.entity == starEntity && hit.distance < 0.35f)
+			{
+				break;
+			}
+			probePt.y -= 0.5f;
+		}
+		require(spaceServices.physics().sampleAt(probePt, false).entity == starEntity,
+				"Must locate Star surface point for star-collision check.");
+
+		const size_t headBeforeStar = spaceState.exhaustHead;
+		spaceState.shipPos = vec2(probePt.x, probePt.y - lowestLocalY);
+		spaceState.shipVelocity = vec2(0.0f, -3.0f); // Low speed: star hit breaks regardless of speed
+		ThrustSceneNamespace::stepShipPhysics(spaceRegistry, spaceServices, 0.016f);
+		spaceRegistry.freeRemovedComponents();
+		require(spaceState.shipBroken, "Touching a 'star'-tagged shape must break the ship even at low speed.");
+		require(countShipConstraints() == 0, "Star impact must remove all ship DistanceConstraints.");
+
+		size_t starExplosionCount = 0;
+		const size_t spawnedDelta =
+			(spaceState.exhaustHead + ThrustSceneNamespace::MAX_EXHAUST_PARTICLES - headBeforeStar) %
+			ThrustSceneNamespace::MAX_EXHAUST_PARTICLES;
+		for (size_t k = 0; k < spawnedDelta; ++k)
+		{
+			const size_t idx = (headBeforeStar + k) % ThrustSceneNamespace::MAX_EXHAUST_PARTICLES;
+			const Entity dotEnt = spaceState.exhaustParticles[idx].entity;
+			if (!spaceRegistry.isEntityValid(dotEnt) || !spaceRegistry.hasComponent<Dot>(dotEnt) ||
+				!spaceRegistry.hasComponent<RigidBody2D>(dotEnt))
+				continue;
+			if (spaceRegistry.getComponent<Dot>(dotEnt).materialId == starMaterial &&
+				glm::length(spaceRegistry.getComponent<RigidBody2D>(dotEnt).velocity) > 5.0f)
+			{
+				++starExplosionCount;
+			}
+		}
+		require(starExplosionCount >= 20,
+				"Star impact must spawn explosion Dot particles using the star shape's material.");
 	}
 
 	void testMusicScene(SceneManager& manager, const std::string& name)
@@ -1048,6 +1190,67 @@ namespace
 				"Held octant inside release hysteresis band must not flicker off.");
 		require(InstrumentSceneNamespace::getStickOctant(0.0f, 0.54f, 0, state.stickDeadzone) == -1,
 				"Opposite-direction snapback inside deadzone must return neutral instead of firing a ghost note.");
+
+		// Verify Left Stick scale-filtered selection, L1 black keys, R1 right-side octave, and dot above key
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		state.currentOctave = 4;
+		state.highlightScaleIdx = 2; // C Major (C, D, E, F, G, A, B)
+		state.highlightRootNote = 0;
+		state.lastPlayedMidi = -1;
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, 0.0f, false, false);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == -1 &&
+					registry.getComponent<UIShape>(state.selectionDot).parameters[DefaultShapes::Circle::Radius] ==
+						0.0f,
+				"Selection dot must be hidden when no stick note is selected.");
+
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, -0.85f, false, false);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == 60 && state.lastPlayedMidi == -1,
+				"Moving left stick Up must select MIDI 60 without immediately playing it.");
+		{
+			const auto& dot = registry.getComponent<UIShape>(state.selectionDot);
+			const auto& key0 = state.keys[0];
+			require(dot.parameters[DefaultShapes::Circle::Radius] > 0.0f &&
+						std::abs(dot.parameters[DefaultShapes::Circle::PosX] - key0.basePosX) < 1.0f &&
+						dot.parameters[DefaultShapes::Circle::PosY] > key0.basePosY + key0.sizeY,
+					"Selection dot must appear above white key C4.");
+		}
+
+		// C Major has no black keys, so L1 black-key mode must clear selection and hide the dot
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, -0.85f, true, false);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == -1 &&
+					registry.getComponent<UIShape>(state.selectionDot).parameters[DefaultShapes::Circle::Radius] ==
+						0.0f,
+				"Black-key selection in C Major must yield no note and hide the dot.");
+
+		// G Major (F#) has 1 black key (MIDI 66 = F#4, keys[16])
+		state.highlightRootNote = 7;
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, -0.85f, true, false);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == 66, "G Major black-key selection must select F#4 (MIDI 66).");
+		{
+			const auto& dot = registry.getComponent<UIShape>(state.selectionDot);
+			const auto& key16 = state.keys[16];
+			require(dot.parameters[DefaultShapes::Circle::Radius] > 0.0f &&
+						std::abs(dot.parameters[DefaultShapes::Circle::PosX] - key16.basePosX) < 1.0f &&
+						dot.parameters[DefaultShapes::Circle::PosY] > key16.basePosY + key16.sizeY,
+					"Selection dot must appear above black key F#4.");
+		}
+
+		// R1 shifts to right side of piano (+12 semitones -> F#5 = 78)
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, -0.85f, true, true);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == 78, "R1 modifier must shift selection to right-side octave (MIDI 78).");
+
+		InstrumentSceneNamespace::updateGamepadStickSelection(state, 0.0f, 0.0f, false, false);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.selectedStickMidi == -1 &&
+					registry.getComponent<UIShape>(state.selectionDot).parameters[DefaultShapes::Circle::Radius] ==
+						0.0f,
+				"Releasing left stick must clear selection and hide the selection dot.");
 
 		WeirdRenderer::Display::width = 800;
 		WeirdRenderer::Display::height = 800;

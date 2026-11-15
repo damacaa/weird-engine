@@ -2,7 +2,7 @@
     "camera": {
         "position": [
             27.71624755859375,
-            103.83613586425781,
+            103.83612823486328,
             249.99998474121094
         ],
         "rotation": [
@@ -21,6 +21,44 @@
     "entities": [
         {
             "id": 1,
+            "shape": {
+                "combination": 0,
+                "distanceFieldId": 0,
+                "groupIdx": 0,
+                "hasCollisions": true,
+                "material": 15,
+                "parameters": [
+                    171.78758239746094,
+                    127.05140686035156,
+                    120.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 1.0
+            },
+            "transform": {
+                "position": [
+                    171.78758239746094,
+                    127.05140686035156,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "id": 2,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 0,
@@ -58,7 +96,7 @@
             }
         },
         {
-            "id": 2,
+            "id": 3,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 13,
@@ -94,47 +132,16 @@
                     1.0
                 ]
             }
-        },
-        {
-            "id": 3,
-            "shape": {
-                "combination": 0,
-                "distanceFieldId": 0,
-                "groupIdx": 0,
-                "hasCollisions": true,
-                "material": 15,
-                "parameters": [
-                    171.78758239746094,
-                    127.05140686035156,
-                    120.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "smoothFactor": 1.0
-            },
-            "transform": {
-                "position": [
-                    171.78758239746094,
-                    127.05140686035156,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
         }
     ],
-    "entityTags": [],
+    "entityTags": [
+        {
+            "entityId": 3,
+            "tags": [
+                "star"
+            ]
+        }
+    ],
     "materials2D": [
         {
             "color": [

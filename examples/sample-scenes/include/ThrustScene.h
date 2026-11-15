@@ -59,6 +59,7 @@ namespace ThrustSceneNamespace
 		float rotationSpeed = 2.3f;
 		float gravity = 14.0f;
 		float linearDrag = 0.01f;
+		float crashSpeedThreshold = 15.0f;
 
 		// Fuel
 		float maxFuel = 100.0f;
@@ -77,6 +78,7 @@ namespace ThrustSceneNamespace
 
 		// Runtime status
 		bool isThrusting = false;
+		bool shipBroken = false;
 
 		// Camera zoom
 		float cameraZoom = DEFAULT_CAMERA_ZOOM;
@@ -85,6 +87,10 @@ namespace ThrustSceneNamespace
 
 	static_assert(WeirdEngine::is_snapshot_serializable_v<State>,
 				  "ThrustScene State must contain only snapshot-compatible values");
+
+	void spawnShipCluster(State& state, WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void resetShip(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void stepShipPhysics(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services, float delta);
 
 	State& getState(WeirdEngine::Registry& registry);
 

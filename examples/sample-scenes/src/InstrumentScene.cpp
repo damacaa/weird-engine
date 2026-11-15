@@ -943,6 +943,14 @@ namespace InstrumentSceneNamespace
 			state.keys.push_back(kv);
 		}
 
+		// Selection dot rendered above both white (group 0) and black (group 1) piano keys
+		state.selectionDot = services.shapes().addUIShape({.shapeId = DefaultShapes::Circle,
+														   .variables = {{DefaultShapes::Circle::PosX, -10000.0f},
+																		 {DefaultShapes::Circle::PosY, -10000.0f},
+																		 {DefaultShapes::Circle::Radius, 0.0f}},
+														   .material = state.accentAmberMat,
+														   .group = 2});
+
 		// Top-right last played note readout
 		{
 			state.hudNoteText = registry.createEntity();
@@ -1026,8 +1034,12 @@ namespace InstrumentSceneNamespace
 		relayoutScene(registry, state, services);
 	}
 
-	int getStickOctant(float x, float y, int prevDir, float deadzone)
+	int getStickSector(float x, float y, int prevDir, int numSectors, float deadzone)
 	{
+		if (numSectors <= 0)
+		{
+			return -1;
+		}
 		const float engageR = std::clamp(deadzone, 0.15f, 0.90f);
 		const float releaseR = (std::max)(0.12f, engageR - 0.12f);
 		const float rSq = x * x + y * y;
@@ -1035,19 +1047,65 @@ namespace InstrumentSceneNamespace
 		{
 			return -1;
 		}
-		constexpr float PI = 3.14159265358979323846f;
+		constexpr float TWO_PI = 6.28318530717958647692f;
 		float angle = std::atan2(x, -y); // 0 = Up, clockwise
 		if (angle < 0.0f)
 		{
-			angle += 2.0f * PI;
+			angle += TWO_PI;
 		}
-		int octant = static_cast<int>(std::floor((angle + PI * 0.125f) / (PI * 0.25f))) & 7;
+		const float sectorAngle = TWO_PI / static_cast<float>(numSectors);
+		int sector = static_cast<int>(std::floor((angle + sectorAngle * 0.5f) / sectorAngle)) % numSectors;
 		if (rSq < engageR * engageR)
 		{
-			// Inside deadzone hysteresis band: keep same note, reject snapback into another octant
-			return (prevDir >= 0 && octant == prevDir) ? prevDir : -1;
+			// Inside deadzone hysteresis band: keep same note, reject snapback into another sector
+			return (prevDir >= 0 && sector == prevDir) ? prevDir : -1;
 		}
-		return octant;
+		return sector;
+	}
+
+	int getStickOctant(float x, float y, int prevDir, float deadzone)
+	{
+		return getStickSector(x, y, prevDir, 8, deadzone);
+	}
+
+	void updateGamepadStickSelection(State& state, float leftX, float leftY, bool blackKeyMod, bool rightSideMod)
+	{
+		const int baseMidi = (state.currentOctave + 1) * 12;
+		const int octaveShift = rightSideMod ? 12 : 0;
+
+		std::array<int, 8> candidates{};
+		int count = 0;
+
+		auto tryAddOffset = [&](int offset)
+		{
+			if (count >= static_cast<int>(candidates.size()))
+				return;
+			const int midi = baseMidi + octaveShift + offset;
+			if (state.highlightScaleIdx < 0 ||
+				isNoteInSelectedScale(midi, state.highlightScaleIdx, state.highlightRootNote))
+			{
+				candidates[count++] = midi;
+			}
+		};
+
+		if (blackKeyMod)
+		{
+			for (size_t i = 0; i < 5; ++i)
+			{
+				tryAddOffset(BLACK_DEFS[i].semitone);
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < 7; ++i)
+			{
+				tryAddOffset(WHITE_OFFSETS[i]);
+			}
+		}
+
+		int dir = getStickSector(leftX, leftY, state.prevLeftStickDir, count, state.stickDeadzone);
+		state.prevLeftStickDir = dir;
+		state.selectedStickMidi = (dir >= 0 && dir < count) ? candidates[dir] : -1;
 	}
 
 	void inputHandlingSystem(Registry& registry, ServiceProvider& services)
@@ -1056,15 +1114,13 @@ namespace InstrumentSceneNamespace
 		auto& input = services.input();
 		auto& music = services.audio().music();
 
-		// Read gamepad axes
+		// Read gamepad axes (Right Stick unused)
 		float stickX = input.getGamepadAxis(Input::GamepadAxis::LeftX);
 		float stickY = input.getGamepadAxis(Input::GamepadAxis::LeftY);
-		float rStickX = input.getGamepadAxis(Input::GamepadAxis::RightX);
-		float rStickY = input.getGamepadAxis(Input::GamepadAxis::RightY);
 		float leftTrigger = input.getGamepadAxis(Input::GamepadAxis::LeftTrigger);
 		float rightTrigger = input.getGamepadAxis(Input::GamepadAxis::RightTrigger);
 
-		// 1. Instrument Selection (1-6, TAB, L1/R1) & Timbre Shortcut (Start)
+		// 1. Instrument Selection (1-6, TAB, L2/R2) & Timbre Shortcut (Start)
 		if (input.getKeyDown(Input::Num1))
 			state.selectedInstrument = Instrument::Lead;
 		if (input.getKeyDown(Input::Num2))
@@ -1084,15 +1140,20 @@ namespace InstrumentSceneNamespace
 		}
 
 		// Gamepad direct 1-button-per-function controls (no D-pad menu cursor):
-		// L1 / R1: Cycle Active Instrument / Wave-Kit
-		if (input.getGamepadButtonDown(Input::GamepadButton::LeftShoulder))
+		// L2 / R2: Cycle Active Instrument / Wave-Kit
+		bool leftTriggerDown = state.prevLeftTriggerDown ? (leftTrigger > 0.35f) : (leftTrigger > 0.5f);
+		if (leftTriggerDown && !state.prevLeftTriggerDown)
 		{
 			triggerAction(state, services, State::ACT_INST, 1, true);
 		}
-		if (input.getGamepadButtonDown(Input::GamepadButton::RightShoulder))
+		state.prevLeftTriggerDown = leftTriggerDown;
+
+		bool rightTriggerDown = state.prevRightTriggerDown ? (rightTrigger > 0.35f) : (rightTrigger > 0.5f);
+		if (rightTriggerDown && !state.prevRightTriggerDown)
 		{
 			triggerAction(state, services, State::ACT_TIMBRE, 1, true);
 		}
+		state.prevRightTriggerDown = rightTriggerDown;
 
 		// D-Pad Left / Right: Octave -1 / +1 (clamped 1..7)
 		if (input.getGamepadButtonDown(Input::GamepadButton::DpadLeft))
@@ -1176,34 +1237,14 @@ namespace InstrumentSceneNamespace
 		if (input.getKeyDown(Input::P))
 			playNoteMidi(baseMidi + 15, state.selectedInstrument); // D# (+1)
 
-		// 4. Gamepad Dual-Stick Note Performance & Face Button Editing
-		// Modifiers: L2 = Sharps / Black Keys, R2 = Octave +1 Shift
-		bool blackKeyMod = (leftTrigger > 0.5f);
-		bool octaveUpMod = (rightTrigger > 0.5f);
-		int octaveOffset = octaveUpMod ? 12 : 0;
-
-		static constexpr int NATURAL_OFFSETS[8] = {0, 2, 4, 5, 7, 9, 11, 12};
-		static constexpr int SHARP_OFFSETS[8] = {1, 3, 3, 6, 8, 10, 10, 13};
-		const int* stickNotes = blackKeyMod ? SHARP_OFFSETS : NATURAL_OFFSETS;
-
-		// Left Stick (8-way clockwise from Up): Lower Octave (Do..High Do)
-		int leftDir = getStickOctant(stickX, stickY, state.prevLeftStickDir, state.stickDeadzone);
-		if (leftDir >= 0 && leftDir != state.prevLeftStickDir)
-		{
-			playNoteMidi(baseMidi + octaveOffset + stickNotes[leftDir], state.selectedInstrument);
-		}
-		state.prevLeftStickDir = leftDir;
-
-		// Right Stick (8-way clockwise from Up): Upper Octave (+12 semitones)
-		int rightDir = getStickOctant(rStickX, rStickY, state.prevRightStickDir, state.stickDeadzone);
-		if (rightDir >= 0 && rightDir != state.prevRightStickDir)
-		{
-			playNoteMidi(baseMidi + 12 + octaveOffset + stickNotes[rightDir], state.selectedInstrument);
-		}
-		state.prevRightStickDir = rightDir;
+		// 4. Gamepad Left-Stick Scale Note Selection & Face Button Performance
+		// Modifiers: L1 = Black Keys in Scale, R1 = Right Side of Piano (+1 Octave)
+		bool blackKeyMod = input.getGamepadButton(Input::GamepadButton::LeftShoulder);
+		bool rightSideMod = input.getGamepadButton(Input::GamepadButton::RightShoulder);
+		updateGamepadStickSelection(state, stickX, stickY, blackKeyMod, rightSideMod);
 
 		// Face Buttons: West (Square) = Loop Scale, East (Circle) = Loop Root Key,
-		//               South (Cross) = Chord, North (Triangle) = Toggle Arp
+		//               South (Cross) = Play Selected Note, North (Triangle) = Toggle Arp
 		if (input.getGamepadButtonDown(Input::GamepadButton::West))
 		{
 			triggerAction(state, services, State::ACT_SCALE, 1, true);
@@ -1214,7 +1255,10 @@ namespace InstrumentSceneNamespace
 		}
 		if (input.getGamepadButtonDown(Input::GamepadButton::South))
 		{
-			triggerAction(state, services, State::ACT_CHORD, 1, false);
+			if (state.selectedStickMidi >= 0)
+			{
+				playNoteMidi(state.selectedStickMidi, state.selectedInstrument);
+			}
 		}
 		if (input.getGamepadButtonDown(Input::GamepadButton::North))
 		{
@@ -1487,6 +1531,10 @@ namespace InstrumentSceneNamespace
 			}
 		}
 
+		float selDotX = -10000.0f;
+		float selDotY = -10000.0f;
+		float selDotR = 0.0f;
+
 		for (auto& k : state.keys)
 		{
 			if (!registry.isEntityValid(k.entity) || !registry.hasComponent<UIShape>(k.entity))
@@ -1513,6 +1561,13 @@ namespace InstrumentSceneNamespace
 				registry.setComponentDirty(shape);
 			}
 
+			if (state.selectedStickMidi >= 0 && actualMidi == state.selectedStickMidi)
+			{
+				selDotX = k.basePosX;
+				selDotR = (std::min)(6.0f, targetSizeX * 0.45f);
+				selDotY = (l.startY + l.whiteH) + selDotR + 4.0f;
+			}
+
 			if (registry.isEntityValid(k.glowDot) && registry.hasComponent<Transform>(k.glowDot))
 			{
 				auto& dtPos = registry.getComponent<Transform>(k.glowDot).position;
@@ -1536,6 +1591,20 @@ namespace InstrumentSceneNamespace
 				shape.material = targetMat.id;
 				registry.setComponentDirty(shape);
 				materialChanged = true;
+			}
+		}
+
+		if (registry.isEntityValid(state.selectionDot) && registry.hasComponent<UIShape>(state.selectionDot))
+		{
+			auto& dotShape = registry.getComponent<UIShape>(state.selectionDot);
+			if (std::abs(dotShape.parameters[DefaultShapes::Circle::PosX] - selDotX) > 0.01f ||
+				std::abs(dotShape.parameters[DefaultShapes::Circle::PosY] - selDotY) > 0.01f ||
+				std::abs(dotShape.parameters[DefaultShapes::Circle::Radius] - selDotR) > 0.01f)
+			{
+				dotShape.parameters[DefaultShapes::Circle::PosX] = selDotX;
+				dotShape.parameters[DefaultShapes::Circle::PosY] = selDotY;
+				dotShape.parameters[DefaultShapes::Circle::Radius] = selDotR;
+				registry.setComponentDirty(dotShape);
 			}
 		}
 
@@ -2066,15 +2135,13 @@ void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& service
 		if (ImGui::TreeNode("Controls & Shortcuts Reference"))
 		{
 			ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Gamepad Performance:");
-			ImGui::BulletText("Left Stick (8-way, clockwise from Up): Lower Octave (C, D, E, F, G, A, B, C+1)");
-			ImGui::BulletText("Right Stick (8-way, clockwise from Up): Upper Octave (+12 semitones)");
-			ImGui::BulletText("Left Trigger (L2 / LT): Hold for Sharps / Black Keys (C#, D#, F#, G#, A#)");
-			ImGui::BulletText("Right Trigger (R2 / RT): Hold for +1 Octave Shift");
-			ImGui::BulletText("L1 / R1 (Shoulders): Cycle Instrument (Lead..Hat) / Cycle Wave or Kit");
+			ImGui::BulletText("Left Stick (clockwise from Up): Select Note in Selected Scale (white keys by default)");
+			ImGui::BulletText("L1 (Hold): Switch to Black Keys in Scale | R1 (Hold): Right Side of Piano (+1 Octave)");
+			ImGui::BulletText("South (Cross / A): Play Selected Note | North (Triangle / Y): Toggle Arp");
+			ImGui::BulletText("West (Square / X) / East (Circle / B): Loop Scale Mode / Loop Root Key");
+			ImGui::BulletText("L2 / R2 (Triggers): Cycle Instrument (Lead..Hat) / Cycle Wave or Kit");
 			ImGui::BulletText("D-Pad Left / Right: Octave Down / Up (O1..O7)");
 			ImGui::BulletText("D-Pad Up / Down: Cycle Tone Preset (BRT/PLK/ACD/PAD) / Filter Cutoff");
-			ImGui::BulletText("West (Square / X) / East (Circle / B): Loop Scale Mode / Loop Root Key");
-			ImGui::BulletText("South (Cross / A): Play Chord | North (Triangle / Y): Toggle Arp");
 			ImGui::BulletText("Start: Cycle Mod (PW/FM/Fold) or Preview Drum Hit");
 			ImGui::BulletText("L3 / R3 (Stick Clicks): Kick / Snare Drums");
 			ImGui::BulletText("Select / Back: Return to Main Menu");

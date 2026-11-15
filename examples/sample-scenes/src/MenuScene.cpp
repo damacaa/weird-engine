@@ -700,7 +700,14 @@ namespace MenuSceneNamespace
 
 		auto moveItem = [&](int dir)
 		{
-			int nextItem = std::clamp(state.selectedItem + dir, 0, curItemsMax);
+			if (curItemsMax < 0)
+			{
+				return;
+			}
+
+			const int itemCount = curItemsMax + 1;
+			// Wrap around when moving past the first or last item.
+			int nextItem = ((state.selectedItem + dir) % itemCount + itemCount) % itemCount;
 			if (nextItem != state.selectedItem)
 			{
 				state.selectedItem = nextItem;

@@ -110,14 +110,19 @@ namespace InstrumentSceneNamespace
 		int lastWidth = 0;
 		int lastHeight = 0;
 
-		// Gamepad stick octant tracking (-1 = neutral, 0..7 = clockwise from Up)
+		// Gamepad stick selection tracking (-1 = neutral, 0..N-1 = clockwise from Up within scale)
 		float stickDeadzone = 0.62f;
 		int prevLeftStickDir = -1;
-		int prevRightStickDir = -1;
+		int selectedStickMidi = -1;
+		bool prevLeftTriggerDown = false;
+		bool prevRightTriggerDown = false;
+		WeirdEngine::Entity selectionDot = WeirdEngine::INVALID_ENTITY;
 	};
 
 	State& getState(WeirdEngine::Registry& registry);
 	int getStickOctant(float x, float y, int prevDir, float deadzone = 0.62f);
+	int getStickSector(float x, float y, int prevDir, int numSectors, float deadzone = 0.62f);
+	void updateGamepadStickSelection(State& state, float leftX, float leftY, bool blackKeyMod, bool rightSideMod);
 
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupSceneSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);

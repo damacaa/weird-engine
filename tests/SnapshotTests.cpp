@@ -1,10 +1,14 @@
 #include "ImageScene.h"
+#include "InstrumentScene.h"
+#include "MenuScene.h"
+#include "MusicScene.h"
 #include "RopeScene.h"
 #include "TetrominoScene.h"
 #include "ThrustScene.h"
 #include "weird-engine/services/ShapeService.h"
 #include "weird-engine/shapes/NodeGraphCompiler.h"
 #include "weird-engine/shapes/NodeGraphSerializer.h"
+#include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/PhysicsSystem2D.h"
 #include "weird-physics/components/RigidBodyManager.h"
 
@@ -724,6 +728,436 @@ namespace
 				"ThrustScene must recover baseline snapshot after high-speed exhaust bursts.");
 	}
 
+	void testMusicScene(SceneManager& manager, const std::string& name)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<MusicScene>>(name);
+		manager.loadScene(name);
+
+		auto& scene = *static_cast<InspectableScene<MusicScene>*>(manager.getCurrentScene());
+		auto& registry = *scene.registry;
+		auto& services = *scene.services;
+		auto& state = MusicSceneNamespace::getState(registry);
+
+		require(state.dimTextMat.id <= 15 && state.surgeMat.id <= 15 && state.duckMat.id <= 15 &&
+					state.trackOnMat.id <= 15,
+				"MusicScene material IDs must stay within the 16-slot GPU material limit.");
+		require(services.render().getContextUI().charSpacing >= 9.5f,
+				"MusicScene must keep default UI charSpacing so bitmap glyphs never fuse together.");
+		static_assert(MusicSceneNamespace::State::NUM_DYNAMICS == 2,
+					  "MusicScene must only keep SURGE and DUCK dynamic buttons.");
+
+		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_GAUGE_BARS; ++i)
+		{
+			require(registry.isEntityValid(state.surgeTrackBars[i]) && registry.isEntityValid(state.surgeFillBars[i]) &&
+						registry.isEntityValid(state.duckTrackBars[i]) && registry.isEntityValid(state.duckFillBars[i]),
+					"MusicScene 5-bar surge and duck equalizer entities must all be created.");
+
+			const auto& surgeTrack = registry.getComponent<UIShape>(state.surgeTrackBars[i]);
+			const auto& surgeFill = registry.getComponent<UIShape>(state.surgeFillBars[i]);
+			const auto& duckTrack = registry.getComponent<UIShape>(state.duckTrackBars[i]);
+			const auto& duckFill = registry.getComponent<UIShape>(state.duckFillBars[i]);
+			require(surgeTrack.groupIdx < surgeFill.groupIdx && duckTrack.groupIdx < duckFill.groupIdx,
+					"Surge and duck equalizer fills must draw in a higher SDF group than their tracks.");
+			require(surgeFill.parameters[DefaultShapes::RoundBox::PosY] < 0.0f &&
+						duckFill.parameters[DefaultShapes::RoundBox::PosY] < 0.0f,
+					"Idle equalizer fill bars must park off-screen.");
+		}
+
+		// Snapshot save & reload check
+		SnapshotFile saved;
+		services.serialization().saveSnapshot(saved.path.string());
+		require(std::filesystem::exists(saved.path), "MusicScene must save snapshots.");
+		require(services.serialization().loadSnapshot(saved.path.string()), "MusicScene must restore snapshots.");
+
+		// Verify TextButton/TextToggle attachment on right/left MusicScene labels
+		require(registry.hasComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_SURGE]) &&
+					registry.hasComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_DUCK]) &&
+					registry.hasComponent<TextToggle>(state.trackLabels[0]),
+				"MusicScene labels must attach TextButton and TextToggle engine components.");
+
+		// Trigger SURGE via TextButton label and verify song auto-starts + background/bars activate
+		registry.getComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_SURGE]).state =
+			ButtonState::Down;
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		registry.getComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_SURGE]).state =
+			ButtonState::Off;
+		services.audio().music().update(0.25, 0.25);
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		MusicSceneNamespace::updateWorldVisualsSystem(registry, services);
+		MusicSceneNamespace::statusTextSystem(registry, services);
+		require(state.isPlaying && services.audio().music().getSurgeLevel() > 0.15f,
+				"Clicking MusicScene SURGE TextButton must play and activate surge.");
+		require(registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] > 0.0f,
+				"Active surge level must position equalizer fill bars visibly on screen.");
+		require(registry.getComponent<Shape>(state.backgroundShape).parameters[2] > 5.2f,
+				"Active surge must expand background grid visual energy.");
+		require(registry.getComponent<UITextRenderer>(state.statusText).text == "SURGE ACTIVE",
+				"Status HUD must reflect active surge state.");
+
+		// Trigger DUCK via TextButton label and verify equalizer activates
+		registry.getComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_DUCK]).state =
+			ButtonState::Down;
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		registry.getComponent<TextButton>(state.dynamicLabels[MusicSceneNamespace::State::DYN_DUCK]).state =
+			ButtonState::Off;
+		services.audio().music().update(0.25, 0.50);
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		require(services.audio().music().getDuckingLevel() > 0.15f,
+				"Clicking MusicScene DUCK TextButton must raise ducking level.");
+		require(registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] > 0.0f,
+				"Active duck level must position duck equalizer fill bars visibly on screen.");
+
+		// Verify clearing engine dynamic effects parks equalizer fill bars cleanly off-screen
+		services.audio().resetDynamicEffects();
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		require(
+			registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] < 0.0f &&
+				registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] < 0.0f,
+			"Zeroed surge/duck effects must park equalizer fill bars off-screen.");
+
+		// Verify track toggle mutation propagates both from ShapeToggle pill and TextToggle label
+		registry.getComponent<ShapeToggle>(state.trackToggles[0]).active = false;
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		require(!services.audio().music().getTrackToggles().lead &&
+					!registry.getComponent<TextToggle>(state.trackLabels[0]).active,
+				"Toggling LEAD pill off must mute Lead track and sync TextToggle.");
+		registry.getComponent<TextToggle>(state.trackLabels[0]).active = true;
+		MusicSceneNamespace::dynamicControlsSystem(registry, services);
+		require(services.audio().music().getTrackToggles().lead &&
+					registry.getComponent<ShapeToggle>(state.trackToggles[0]).active,
+				"Toggling LEAD TextToggle back on must unmute Lead track and sync ShapeToggle.");
+
+		// Verify responsive relayout on 640x480 viewport keeps both labels & gauges in bounds without text bleed
+		WeirdRenderer::Display::width = 640;
+		WeirdRenderer::Display::height = 480;
+		MusicSceneNamespace::songLayoutSystem(registry, services);
+		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_DYNAMICS; ++i)
+		{
+			const auto& lblTf = registry.getComponent<Transform>(state.dynamicLabels[i]);
+			require(lblTf.position.x > 500.0f && lblTf.position.x < 640.0f && lblTf.position.y > 60.0f &&
+						lblTf.position.y < 430.0f,
+					"MusicScene SURGE and DUCK labels must stay cleanly within 640x480 safe bounds.");
+		}
+		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_GAUGE_BARS; ++i)
+		{
+			const auto& bar = registry.getComponent<UIShape>(state.surgeTrackBars[i]);
+			require(bar.parameters[DefaultShapes::RoundBox::PosX] > 420.0f &&
+						bar.parameters[DefaultShapes::RoundBox::PosX] < 635.0f,
+					"MusicScene equalizer gauges must stay within 640x480 right panel bounds.");
+		}
+		services.audio().resetDynamicEffects();
+		services.audio().setSong(nullptr, false);
+		services.audio().music().setVolume(0.0f);
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+	}
+
+	void testInstrumentScene(SceneManager& manager, const std::string& name)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<InstrumentScene>>(name);
+		manager.loadScene(name);
+
+		auto& scene = *static_cast<InspectableScene<InstrumentScene>*>(manager.getCurrentScene());
+		auto& registry = *scene.registry;
+		auto& services = *scene.services;
+		auto& state = InstrumentSceneNamespace::getState(registry);
+
+		require(state.keys.size() == 24, "InstrumentScene must instantiate all 14 white + 10 black keys.");
+		const auto& firstWhite = registry.getComponent<UIShape>(state.keys[0].entity);
+		const auto& firstBlack = registry.getComponent<UIShape>(state.keys[14].entity);
+		require(firstWhite.groupIdx == 0 && firstBlack.groupIdx == 1,
+				"Black piano keys must use a higher SDF group so they render cleanly above white keys.");
+
+		const float whiteTop = firstWhite.parameters[DefaultShapes::RoundBox::PosY] +
+							   firstWhite.parameters[DefaultShapes::RoundBox::SizeY];
+		const float blackTop = firstBlack.parameters[DefaultShapes::RoundBox::PosY] +
+							   firstBlack.parameters[DefaultShapes::RoundBox::SizeY];
+		require(std::abs(blackTop - whiteTop) < 3.0f && firstBlack.parameters[DefaultShapes::RoundBox::PosY] >
+															firstWhite.parameters[DefaultShapes::RoundBox::PosY],
+				"Black piano keys must anchor along the top edge of the white keys.");
+
+		// Verify 2D world chassis cutout framing the piano + tight centered oscilloscope dot ribbon
+		require(registry.isEntityValid(state.worldCutout) && registry.hasComponent<Shape>(state.worldCutout),
+				"InstrumentScene must create a 2D world cutout framing the piano bay.");
+		const auto& cut800 = registry.getComponent<Shape>(state.worldCutout);
+		const float cutSizeX800 = cut800.parameters[DefaultShapes::RoundedBox::SizeX];
+		const float cutSizeY800 = cut800.parameters[DefaultShapes::RoundedBox::SizeY];
+		const float cutPosY800 = cut800.parameters[DefaultShapes::RoundedBox::PosY];
+		const float camPosY800 = registry.getComponent<Transform>(services.render().getCameraEntity()).position.y;
+		require(cut800.distanceFieldId == DefaultShapes::RoundedBox &&
+					cut800.combination == CombinationType::Subtraction && cutSizeX800 > cutSizeY800 &&
+					cutSizeY800 > 1.0f && cutPosY800 < camPosY800,
+				"Piano bay world cutout must be a wide landscape Subtraction RoundedBox aligned in Y-up space.");
+
+		const float scopeFirstX = registry.getComponent<Transform>(state.scopeDots.front()).position.x;
+		const float scopeSecondX = registry.getComponent<Transform>(state.scopeDots[1]).position.x;
+		const float scopeLastX = registry.getComponent<Transform>(state.scopeDots.back()).position.x;
+		const float scopeCenterX = 0.5f * (scopeFirstX + scopeLastX);
+		require(std::abs(scopeCenterX - 400.0f) < 1.0f && (scopeSecondX - scopeFirstX) < 8.0f &&
+					(scopeLastX - scopeFirstX) < 400.0f,
+				"Oscilloscope dots must form a tight centered ribbon without wide gaps.");
+
+		// Verify black key click takes priority when both white and black buttons report Down
+		registry.getComponent<ShapeButton>(state.keys[0].entity).state = ButtonState::Down;
+		registry.getComponent<ShapeButton>(state.keys[14].entity).state = ButtonState::Down;
+		InstrumentSceneNamespace::inputHandlingSystem(registry, services);
+		registry.getComponent<ShapeButton>(state.keys[0].entity).state = ButtonState::Off;
+		registry.getComponent<ShapeButton>(state.keys[14].entity).state = ButtonState::Off;
+		require(state.lastPlayedMidi == 61,
+				"Clicking an overlapping black key (C#4=61) must not double-trigger underlying white key C4.");
+
+		// Verify downward key press motion and glow dot activation
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		const auto& pressedBlack = registry.getComponent<UIShape>(state.keys[14].entity);
+		require(pressedBlack.parameters[DefaultShapes::RoundBox::PosY] < state.keys[14].basePosY,
+				"Pressed piano keys must depress downward in screen Y-up space.");
+		require(registry.getComponent<Transform>(state.keys[14].glowDot).position.y > 0.0f,
+				"Active key press must reveal the key indicator glow dot.");
+
+		// Verify 3-row UI hierarchy: Row 0 Top HUD buttons > Row 1 Sound & Timbre > Row 2 Chord/Arp/Drums
+		const float row0Y =
+			registry.getComponent<Transform>(state.actionLabels[InstrumentSceneNamespace::State::ACT_INST]).position.y;
+		const float row1Y =
+			registry.getComponent<Transform>(state.actionLabels[InstrumentSceneNamespace::State::ACT_TONE]).position.y;
+		const float row2Y =
+			registry.getComponent<Transform>(state.actionLabels[InstrumentSceneNamespace::State::ACT_CHORD]).position.y;
+		require(row0Y > 700.0f && row0Y > row1Y && row1Y > row2Y,
+				"Native UI must place Top HUD buttons above Row 1 (Sound/Timbre) and Row 2 (Chord/Arp/Drums).");
+
+		// Verify dynamic Sound & Timbre controls based on active instrument and waveform
+		require(state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_TIMBRE] == "SIN" &&
+					state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_MOD] == "--",
+				"Lead SoftSine must show SIN and disabled -- in Sound & Timbre slots.");
+
+		auto clickActionLabel = [&](InstrumentSceneNamespace::State::ActionBtn btn)
+		{
+			registry.getComponent<TextButton>(state.actionLabels[btn]).state = ButtonState::Down;
+			InstrumentSceneNamespace::inputHandlingSystem(registry, services);
+			registry.getComponent<TextButton>(state.actionLabels[btn]).state = ButtonState::Off;
+		};
+
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_TIMBRE);
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_TIMBRE);
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_TIMBRE);
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_TIMBRE] == "FM" &&
+					state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_MOD].rfind("FM:", 0) == 0,
+				"Switching to FMPluck waveform must dynamically switch MOD slot to FM index.");
+
+		state.selectedInstrument = WeirdEngine::WeirdAudio::Instrument::Kick;
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_TIMBRE] == "808" &&
+					state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_MOD] == "H:KK",
+				"Switching Active Instrument to Kick must dynamically switch Row 1 to Drum Kit & HIT trigger.");
+		state.selectedInstrument = WeirdEngine::WeirdAudio::Instrument::Lead;
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+
+		// Verify top HUD TextButtons (ACT_OCT, ACT_ROOT, ACT_SCALE) and bottom TextToggle (ARP)
+		const int prevOct = state.currentOctave;
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_OCT);
+		require(state.currentOctave == prevOct + 1, "Clicking top HUD octave text button must advance octave.");
+
+		const int prevRoot = state.highlightRootNote;
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_ROOT);
+		require(state.highlightRootNote == (prevRoot + 1) % 12,
+				"Clicking top HUD root key text button must cycle scale root key.");
+
+		const int prevScale = state.highlightScaleIdx;
+		clickActionLabel(InstrumentSceneNamespace::State::ACT_SCALE);
+		require(state.highlightScaleIdx == (prevScale + 1) % 8,
+				"Clicking top HUD scale text button must cycle active scale.");
+
+		require(registry.hasComponent<TextToggle>(state.arpToggleLabel),
+				"InstrumentScene ARP label must attach TextToggle.");
+		registry.getComponent<TextToggle>(state.arpToggleLabel).active = true;
+		InstrumentSceneNamespace::inputHandlingSystem(registry, services);
+		require(state.arpEnabled, "ARP TextToggle label must enable arpeggiator.");
+
+		// Verify responsive 640x480 resize reflow + font-safe note HUD + non-overlapping text label bounds
+		WeirdRenderer::Display::width = 640;
+		WeirdRenderer::Display::height = 480;
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		require(state.lastWidth == 640 && state.lastHeight == 480,
+				"InstrumentScene must detect viewport resize and reflow layout.");
+		const auto& cut640 = registry.getComponent<Shape>(state.worldCutout);
+		require(std::abs(cut640.parameters[DefaultShapes::RoundedBox::SizeX] - cutSizeX800) > 0.1f,
+				"Piano bay world cutout must recompute world bounds cleanly on viewport resize.");
+		require(state.cachedHudNote.find('#') == std::string::npos,
+				"On-screen note HUD must avoid '#' characters missing from the bitmap font.");
+
+		auto checkNoHorizontalOverlap = [&](std::initializer_list<Entity> entities, const char* msg)
+		{
+			std::vector<Entity> list(entities);
+			for (size_t i = 0; i + 1 < list.size(); ++i)
+			{
+				float x0 = registry.getComponent<Transform>(list[i]).position.x;
+				float x1 = registry.getComponent<Transform>(list[i + 1]).position.x;
+				float halfW0 = 0.5f * registry.getComponent<TextRenderer>(list[i]).text.size() * 30.0f;
+				float halfW1 = 0.5f * registry.getComponent<TextRenderer>(list[i + 1]).text.size() * 30.0f;
+				require((x1 - halfW1) - (x0 + halfW0) > 4.0f, msg);
+			}
+		};
+
+		checkNoHorizontalOverlap({state.actionLabels[InstrumentSceneNamespace::State::ACT_INST],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_TIMBRE],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_OCT]},
+								 "Top-left HUD text buttons must not overlap at 640x480.");
+		checkNoHorizontalOverlap({state.actionLabels[InstrumentSceneNamespace::State::ACT_ROOT],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_SCALE], state.hudNoteText},
+								 "Top-right HUD text buttons and note readout must not overlap at 640x480.");
+		checkNoHorizontalOverlap({state.actionLabels[InstrumentSceneNamespace::State::ACT_MOD],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_TONE],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_FLT]},
+								 "Bottom Row 1 text buttons must not overlap at 640x480.");
+		checkNoHorizontalOverlap({state.actionLabels[InstrumentSceneNamespace::State::ACT_CHORD], state.arpToggleLabel,
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_KICK],
+								  state.actionLabels[InstrumentSceneNamespace::State::ACT_SNARE]},
+								 "Bottom Row 2 text buttons must not overlap at 640x480.");
+
+		for (size_t i = InstrumentSceneNamespace::State::ACT_MOD; i < InstrumentSceneNamespace::State::NUM_ACTION_BTNS;
+			 ++i)
+		{
+			const auto& pos = registry.getComponent<Transform>(state.actionLabels[i]).position;
+			require(pos.x > 0.0f && pos.x < 640.0f && pos.y > 20.0f && pos.y < 140.0f,
+					"InstrumentScene bottom UI labels must fit cleanly below keyboard at 640x480.");
+		}
+
+		// Verify wide desktop window (1600x900) clamps control container width cleanly under the piano
+		WeirdRenderer::Display::width = 1600;
+		WeirdRenderer::Display::height = 900;
+		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
+		const float chordX1600 =
+			registry.getComponent<Transform>(state.actionLabels[InstrumentSceneNamespace::State::ACT_CHORD]).position.x;
+		const float snrX1600 =
+			registry.getComponent<Transform>(state.actionLabels[InstrumentSceneNamespace::State::ACT_SNARE]).position.x;
+		require(chordX1600 > 430.0f && (snrX1600 - chordX1600) < 620.0f,
+				"InstrumentScene bottom control container must stay clamped beneath the piano on wide windows.");
+
+		// Verify joystick radial deadzone, same-octant hysteresis hold, and opposite-side snapback rejection
+		require(InstrumentSceneNamespace::getStickOctant(0.0f, -0.50f, -1, state.stickDeadzone) == -1,
+				"Stick magnitude inside radial deadzone must remain neutral.");
+		require(InstrumentSceneNamespace::getStickOctant(0.0f, -0.80f, -1, state.stickDeadzone) == 0,
+				"Stick pushed past deadzone straight Up must select octant 0.");
+		require(InstrumentSceneNamespace::getStickOctant(0.0f, -0.54f, 0, state.stickDeadzone) == 0,
+				"Held octant inside release hysteresis band must not flicker off.");
+		require(InstrumentSceneNamespace::getStickOctant(0.0f, 0.54f, 0, state.stickDeadzone) == -1,
+				"Opposite-direction snapback inside deadzone must return neutral instead of firing a ghost note.");
+
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+	}
+
+	void testMenuScene(SceneManager& manager, const std::string& name)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<MenuScene>>(name);
+		manager.loadScene(name);
+
+		auto& scene = *static_cast<InspectableScene<MenuScene>*>(manager.getCurrentScene());
+		auto& registry = *scene.registry;
+		auto& services = *scene.services;
+		auto& state = MenuSceneNamespace::getState(registry);
+
+		for (size_t i = 0; i < MenuSceneNamespace::State::CATEGORY_COUNT; ++i)
+		{
+			require(registry.isEntityValid(state.categoryIcons[i]) &&
+						registry.hasComponent<ShapeButton>(state.categoryIcons[i]),
+					"MenuScene category icons must attach ShapeButton components.");
+		}
+		for (int slot = 0; slot < MenuSceneNamespace::State::VISIBLE_ITEM_SLOTS; ++slot)
+		{
+			require(registry.isEntityValid(state.itemLabels[slot]) &&
+						registry.hasComponent<TextButton>(state.itemLabels[slot]),
+					"MenuScene item label slots must attach TextButton components.");
+		}
+
+		const auto& uiWhite = services.materials2D().get("ui_white");
+		const auto& uiDimmed = services.materials2D().get("ui_dimmed");
+		const auto& uiAccent = services.materials2D().get("ui_accent");
+
+		require(state.selectedCategory == 0 && state.selectedItem == 0 &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[4]).text == "TETROMINOES" &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[5]).text == "SHAPES" &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[5]).material == uiDimmed.id,
+				"MenuScene must populate aligned initial item slots on startup.");
+
+		// Snapshot save & reload check
+		SnapshotFile saved;
+		services.serialization().saveSnapshot(saved.path.string());
+		require(std::filesystem::exists(saved.path), "MenuScene must save snapshots.");
+		require(services.serialization().loadSnapshot(saved.path.string()), "MenuScene must restore snapshots.");
+
+		// Verify hovering an item slot TextButton highlights with ui_accent even across menuAnimationSystem updates
+		SDFRenderSystemContext uiCtx{};
+		const auto& slot5Tf = registry.getComponent<Transform>(state.itemLabels[5]);
+		Input::SetMousePosition(slot5Tf.position.x + 25.0f, 800.0f - slot5Tf.position.y);
+		ButtonSystem::updateTextButtons(registry, uiCtx);
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		require(registry.getComponent<TextButton>(state.itemLabels[5]).hovered &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[5]).material == uiAccent.id,
+				"Hovering MenuScene item label must preserve accent hover material.");
+
+		Input::SetMousePosition(0.0f, 0.0f);
+		ButtonSystem::updateTextButtons(registry, uiCtx);
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		require(!registry.getComponent<TextButton>(state.itemLabels[5]).hovered &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[5]).material == uiDimmed.id,
+				"Leaving MenuScene item label must restore base dimmed material.");
+
+		// Click unselected item slot 6 ("ROPE") via TextButton -> selects item 2
+		registry.getComponent<TextButton>(state.itemLabels[6]).state = ButtonState::Down;
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		registry.getComponent<TextButton>(state.itemLabels[6]).state = ButtonState::Off;
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		require(state.selectedItem == 2 && registry.getComponent<UITextRenderer>(state.itemLabels[4]).text == "ROPE" &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[4]).material == uiWhite.id,
+				"Clicking MenuScene item TextButton must select that item and place it in active slot 4.");
+
+		// Verify ShapeButton hover pulse & category switch on SETTINGS icon (index 2)
+		const float baseIconScale = registry.getComponent<UIShape>(state.categoryIcons[2]).parameters[2];
+		registry.getComponent<ShapeButton>(state.categoryIcons[2]).hovered = true;
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		require(registry.getComponent<UIShape>(state.categoryIcons[2]).parameters[2] > baseIconScale + 2.0f,
+				"Hovering MenuScene category ShapeButton must enlarge the category icon.");
+		registry.getComponent<ShapeButton>(state.categoryIcons[2]).hovered = false;
+
+		registry.getComponent<ShapeButton>(state.categoryIcons[2]).state = ButtonState::Down;
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		registry.getComponent<ShapeButton>(state.categoryIcons[2]).state = ButtonState::Off;
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		require(state.selectedCategory == 2 &&
+					registry.getComponent<UITextRenderer>(state.itemLabels[4]).text == "THEME",
+				"Clicking MenuScene category ShapeButton must switch to SETTINGS category.");
+
+		// Click active THEME TextButton (slot 4) -> cycles theme without keyboard/manual box math
+		const int prevTheme = state.currentTheme;
+		registry.getComponent<TextButton>(state.itemLabels[4]).state = ButtonState::Down;
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		registry.getComponent<TextButton>(state.itemLabels[4]).state = ButtonState::Off;
+		require(state.currentTheme != prevTheme,
+				"Clicking active THEME MenuScene TextButton must trigger confirm and cycle theme.");
+
+		// Restore default menu category & item so subsequent single/threaded passes start cleanly
+		registry.getComponent<ShapeButton>(state.categoryIcons[0]).state = ButtonState::Down;
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		registry.getComponent<ShapeButton>(state.categoryIcons[0]).state = ButtonState::Off;
+		state.selectedItem = 0;
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		Input::suppressMouseInput();
+		Input::SetMousePosition(0.0f, 0.0f);
+		services.audio().resetDynamicEffects();
+		services.audio().setSong(nullptr, false);
+		services.audio().music().setVolume(0.0f);
+	}
+
 	struct FloorPlaneSdf : public IMathExpression
 	{
 		float getValue(const float* parameters) const override
@@ -909,6 +1343,130 @@ namespace
 		require(shapes.getCustomShapeData("clam.weirdshape") != nullptr,
 				"ShapeService cache lookup must match relative and resolved paths consistently.");
 	}
+
+	void testTextButtonAndToggleComponents()
+	{
+		static_assert(WeirdEngine::is_snapshot_serializable_v<TextButton>,
+					  "TextButton must remain snapshot-serializable.");
+		static_assert(WeirdEngine::is_snapshot_serializable_v<TextToggle>,
+					  "TextToggle must remain snapshot-serializable.");
+
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+
+		SDFRenderSystemContext uiCtx;
+		uiCtx.dotRadious = 5.0f;
+		uiCtx.charSpacing = 10.0f;
+
+		// 4 chars ("TEST"): 4 * (3 * 2 * 5) + 3 * 10 = 150px wide, 4 * 2 * 5 = 40px tall
+		UITextRenderer leftBottom{};
+		leftBottom.text = "TEST";
+		leftBottom.horizontalAlignment = TextRenderer::HorizontalAlignment::Left;
+		leftBottom.verticalAlignment = TextRenderer::VerticalAlignment::Bottom;
+		Transform tf{};
+		tf.position = vec3(100.0f, 200.0f, 0.0f);
+
+		ButtonSystem::TextBounds bounds{};
+		require(ButtonSystem::computeTextBounds(leftBottom, tf, uiCtx, bounds),
+				"Non-empty UITextRenderer must produce valid bounds.");
+		require(std::abs(bounds.minX - 100.0f) < 0.01f && std::abs(bounds.maxX - 250.0f) < 0.01f &&
+					std::abs(bounds.minY - 200.0f) < 0.01f && std::abs(bounds.maxY - 240.0f) < 0.01f,
+				"Left-bottom text bounds must match glyph width and height.");
+		require(ButtonSystem::isPointInsideText(leftBottom, tf, uiCtx, 255.0f, 245.0f, 8.0f),
+				"clickPadding must expand clickable text hit-box.");
+		require(!ButtonSystem::isPointInsideText(leftBottom, tf, uiCtx, 260.0f, 220.0f, 8.0f),
+				"Points outside clickPadding must not hit text.");
+
+		// Center & Right/Top alignments
+		UITextRenderer rightTop = leftBottom;
+		rightTop.horizontalAlignment = TextRenderer::HorizontalAlignment::Right;
+		rightTop.verticalAlignment = TextRenderer::VerticalAlignment::Top;
+		require(ButtonSystem::computeTextBounds(rightTop, tf, uiCtx, bounds) &&
+					std::abs(bounds.minX - (-50.0f)) < 0.01f && std::abs(bounds.maxX - 100.0f) < 0.01f &&
+					std::abs(bounds.minY - 160.0f) < 0.01f && std::abs(bounds.maxY - 200.0f) < 0.01f,
+				"Right-top aligned text bounds must anchor relative to top-right edge.");
+
+		UITextRenderer centerAligned = leftBottom;
+		centerAligned.horizontalAlignment = TextRenderer::HorizontalAlignment::Center;
+		centerAligned.verticalAlignment = TextRenderer::VerticalAlignment::Center;
+		require(ButtonSystem::computeTextBounds(centerAligned, tf, uiCtx, bounds) &&
+					std::abs(bounds.minX - 25.0f) < 0.01f && std::abs(bounds.maxX - 175.0f) < 0.01f &&
+					std::abs(bounds.minY - 180.0f) < 0.01f && std::abs(bounds.maxY - 220.0f) < 0.01f,
+				"Center aligned text bounds must center around Transform::position.");
+
+		// Verify momentary and toggle state transitions + UI click claiming
+		Input::suppressMouseInput();
+		ButtonState mState = ButtonState::Off;
+		ButtonSystem::stepMomentaryButton(mState, true, true, true);
+		require(mState == ButtonState::Down && Input::isUIClick(),
+				"Hovered press must enter Down and claim Input::isUIClick().");
+		ButtonState blockedState = ButtonState::Off;
+		ButtonSystem::stepMomentaryButton(blockedState, true, true, true);
+		require(blockedState == ButtonState::Off,
+				"Overlapping TextButton must respect an already-claimed Input::isUIClick().");
+		ButtonSystem::stepMomentaryButton(mState, true, true, true);
+		require(mState == ButtonState::Hold, "Continued press must transition Down -> Hold.");
+		ButtonSystem::stepMomentaryButton(mState, true, false, true);
+		require(mState == ButtonState::Up, "Releasing mouse must transition Hold -> Up.");
+		ButtonSystem::stepMomentaryButton(mState, true, false, true);
+		require(mState == ButtonState::Off, "Subsequent frame must settle Up -> Off.");
+
+		ButtonState tState = ButtonState::Off;
+		bool tActive = false;
+		Input::suppressMouseInput();
+		Input::clearUIClick();
+		ButtonSystem::stepToggleState(tState, tActive, true, true, false);
+		require(tActive && tState == ButtonState::Down, "Toggle click must activate and enter Down.");
+		ButtonSystem::stepToggleState(tState, tActive, true, false, false);
+		require(tActive && tState == ButtonState::Hold, "Active toggle must advance Down -> Hold.");
+		ButtonSystem::stepToggleState(tState, tActive, true, true, false);
+		require(!tActive && tState == ButtonState::Up, "Second click must deactivate toggle to Up.");
+		ButtonSystem::stepToggleState(tState, tActive, true, false, false);
+		require(!tActive && tState == ButtonState::Off, "Deactivated toggle must settle Up -> Off.");
+		Input::clearUIClick();
+
+		// Verify Registry updateTextButtons + updateTextToggles hover detection and material updates
+		Registry reg;
+		reg.registerComponent<Transform>();
+		reg.registerComponent<UITextRenderer>();
+		reg.registerComponent<TextButton>();
+		reg.registerComponent<TextToggle>();
+
+		const Entity btnEntity = reg.createEntity();
+		reg.addComponent<Transform>(btnEntity).position = vec3(100.0f, 300.0f, 0.0f);
+		auto& btnText = reg.addComponent<UITextRenderer>(btnEntity);
+		btnText.text = "PLAY";
+		btnText.material = 2;
+		auto& txtBtn = reg.addComponent<TextButton>(btnEntity);
+		txtBtn.clickPadding = 6.0f;
+		txtBtn.hoverMaterial = 5;
+
+		const Entity tglEntity = reg.createEntity();
+		reg.addComponent<Transform>(tglEntity).position = vec3(500.0f, 300.0f, 0.0f);
+		auto& tglText = reg.addComponent<UITextRenderer>(tglEntity);
+		tglText.text = "MUTE";
+		tglText.material = 3;
+		auto& txtTgl = reg.addComponent<TextToggle>(tglEntity);
+		txtTgl.active = false;
+		txtTgl.activeMaterial = 7;
+		txtTgl.inactiveMaterial = 3;
+		txtTgl.hoverMaterial = 8;
+
+		// Input::GetMouseY() = Display::height - m_mouseY, so screen UI Y=310 maps to SDL Y=490 at 800px tall
+		Input::SetMousePosition(140.0f, 490.0f);
+		ButtonSystem::updateTextButtons(reg, uiCtx);
+		ButtonSystem::updateTextToggles(reg, uiCtx);
+		require(txtBtn.hovered && btnText.material == 5 && !txtTgl.hovered && tglText.material == 3,
+				"Hovering TextButton must swap to hoverMaterial while leaving unhovered TextToggle inactiveMaterial.");
+
+		Input::SetMousePosition(540.0f, 490.0f);
+		ButtonSystem::updateTextButtons(reg, uiCtx);
+		ButtonSystem::updateTextToggles(reg, uiCtx);
+		require(!txtBtn.hovered && btnText.material == 2 && txtTgl.hovered && tglText.material == 8,
+				"Leaving TextButton must restore baseMaterial and hovering TextToggle must apply hoverMaterial.");
+
+		Input::SetMousePosition(0.0f, 0.0f);
+	}
 } // namespace
 
 int main()
@@ -934,6 +1492,8 @@ int main()
 		testNodeGraphMultiOutputAndMemoization();
 		std::cout << "Checking resource and shape asset path resolution.\n" << std::flush;
 		testResourceAndShapeAssetPathResolution();
+		std::cout << "Checking TextButton and TextToggle engine components.\n" << std::flush;
+		testTextButtonAndToggleComponents();
 		auto& manager = SceneManager::getInstance();
 		for (bool threaded : {false, true})
 		{
@@ -949,6 +1509,12 @@ int main()
 			testTetrominoScene(manager, "test-tetromino" + suffix);
 			std::cout << "Checking ThrustScene" << suffix << ".\n" << std::flush;
 			testThrustScene(manager, "test-thrust" + suffix);
+			std::cout << "Checking MusicScene" << suffix << ".\n" << std::flush;
+			testMusicScene(manager, "test-music" + suffix);
+			std::cout << "Checking InstrumentScene" << suffix << ".\n" << std::flush;
+			testInstrumentScene(manager, "test-instrument" + suffix);
+			std::cout << "Checking MenuScene" << suffix << ".\n" << std::flush;
+			testMenuScene(manager, "test-menu" + suffix);
 		}
 		std::cout << "Snapshot regression tests passed.\n";
 		return 0;

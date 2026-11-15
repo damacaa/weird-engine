@@ -97,11 +97,11 @@ namespace WeirdEngine::WeirdRenderer
 			return m_charData[charIndex];
 		}
 
-		int getCharWidth()
+		int getCharWidth() const
 		{
 			return m_charWidth;
 		}
-		int getCharHeight()
+		int getCharHeight() const
 		{
 			return m_charHeight;
 		}

@@ -178,6 +178,11 @@ namespace WeirdEngine
 			getInstance().m_uiFlag = true;
 		}
 
+		static void clearUIClick()
+		{
+			getInstance().m_uiFlag = false;
+		}
+
 		static bool isUIClick()
 		{
 			return getInstance().m_uiFlag;

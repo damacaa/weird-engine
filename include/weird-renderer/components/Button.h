@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bitset>
+#include <cstdint>
 
 namespace WeirdEngine
 {
@@ -29,6 +30,32 @@ namespace WeirdEngine
 		bool active = false;
 		float clickPadding = 10.0f;
 		bool hovered = false;
+	};
+
+	struct TextButton
+	{
+		static constexpr uint16_t UNSET_MATERIAL = 0xFFFF;
+
+		ButtonState state = ButtonState::Off;
+		float clickPadding = 10.0f;
+		bool hovered = false;
+		uint16_t baseMaterial = UNSET_MATERIAL;
+		uint16_t hoverMaterial = UNSET_MATERIAL;
+		uint16_t pressedMaterial = UNSET_MATERIAL;
+	};
+
+	struct TextToggle
+	{
+		static constexpr uint16_t UNSET_MATERIAL = 0xFFFF;
+
+		ButtonState state = ButtonState::Off;
+		bool active = false;
+		float clickPadding = 10.0f;
+		bool hovered = false;
+		uint16_t baseMaterial = UNSET_MATERIAL;
+		uint16_t activeMaterial = UNSET_MATERIAL;
+		uint16_t inactiveMaterial = UNSET_MATERIAL;
+		uint16_t hoverMaterial = UNSET_MATERIAL;
 	};
 
 } // namespace WeirdEngine

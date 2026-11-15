@@ -232,6 +232,8 @@ namespace WeirdEngine
 		m_registry.registerComponent<UITextRenderer>();
 		m_registry.registerComponent<ShapeButton>();
 		m_registry.registerComponent<ShapeToggle>();
+		m_registry.registerComponent<TextButton>();
+		m_registry.registerComponent<TextToggle>();
 		m_registry.registerComponent<FlyMovement>();
 		m_registry.registerComponent<FlyMovement2D>();
 
@@ -333,7 +335,7 @@ namespace WeirdEngine
 			CameraSystem::update(m_registry);
 		}
 
-		ButtonSystem::update(m_registry, m_sdfs, getTime());
+		ButtonSystem::update(m_registry, m_sdfs, m_UIRenderContext, getTime());
 
 		{
 			PROFILE_SCOPE("Physics synchronization");

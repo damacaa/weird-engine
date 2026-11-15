@@ -70,9 +70,9 @@ echo "GAMEDIR=\"/\$directory/ports/$PROJECT_ID\"" >> "$LAUNCHER_SCRIPT"
 cat << 'EOF' >> "$LAUNCHER_SCRIPT"
 cd "$GAMEDIR"
 export LD_LIBRARY_PATH="$GAMEDIR:$LD_LIBRARY_PATH"
-export SDL_GAMECONTROLLERCONFIG="19004ca6010000000100000000010000,Deeplay-keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,"
+export SDL_GAMECONTROLLERCONFIG="19004ca6010000000100000000010000,Deeplay-keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b6,start:b7,guide:b8,leftshoulder:b4,rightshoulder:b5,lefttrigger:b10,righttrigger:b11,leftstick:b9,rightstick:b12,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,"
 export SDL_GAMECONTROLLERCONFIG="${SDL_GAMECONTROLLERCONFIG}
-19004ca6010000000100000000010000,muOS-Keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b10,start:b11,leftshoulder:b4,rightshoulder:b5,lefttrigger:a2,righttrigger:a3,leftstick:b8,rightstick:b9,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a4,righty:a5,"
+19004ca6010000000100000000010000,muOS-Keys,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b6,start:b7,guide:b8,leftshoulder:b4,rightshoulder:b5,lefttrigger:b10,righttrigger:b11,leftstick:b9,rightstick:b12,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,"
 export SDL_JOYSTICK_LINUX_CLASSIC=0
 echo "SDL_GAMECONTROLLERCONFIG: $SDL_GAMECONTROLLERCONFIG" >> "$GAMEDIR/log.txt"
 EOF

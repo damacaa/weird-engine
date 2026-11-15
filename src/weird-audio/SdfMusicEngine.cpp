@@ -1907,29 +1907,24 @@ namespace WeirdEngine
 			newVoice.drumKit = m_rack.drumKit;
 
 			// Assign waveform & per-voice parameter based on channel role
-			if (instrument == 0) // Lead
+			auto setMelodicWave = [&](WaveType w)
 			{
-				newVoice.waveType = m_rack.lead;
-				if (m_rack.lead == WaveType::FMPluck)
+				newVoice.waveType = w;
+				if (w == WaveType::FMPluck)
 					newVoice.waveParam = m_rack.fmModIndex;
-				else if (m_rack.lead == WaveType::PulseSquare)
+				else if (w == WaveType::PulseSquare)
 					newVoice.waveParam = std::clamp(m_rack.pulseWidth, 0.05f, 0.50f);
-				else if (m_rack.lead == WaveType::Wavefolder)
+				else if (w == WaveType::Wavefolder)
 					newVoice.waveParam = m_rack.foldDrive;
 				else
 					newVoice.waveParam = 0.0f;
-			}
+			};
+			if (instrument == 0) // Lead
+				setMelodicWave(m_rack.lead);
 			else if (instrument == 1) // Bass
-			{
-				newVoice.waveType = m_rack.bass;
-				newVoice.waveParam =
-					(m_rack.bass == WaveType::PulseSquare) ? std::clamp(m_rack.pulseWidth, 0.05f, 0.50f) : 0.0f;
-			}
+				setMelodicWave(m_rack.bass);
 			else if (instrument == 4) // Pad
-			{
-				newVoice.waveType = m_rack.pad;
-				newVoice.waveParam = (m_rack.pad == WaveType::Wavefolder) ? m_rack.foldDrive : 0.0f;
-			}
+				setMelodicWave(m_rack.pad);
 			else
 			{
 				newVoice.waveType = WaveType::SoftSine;

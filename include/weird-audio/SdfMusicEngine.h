@@ -225,6 +225,15 @@ namespace WeirdEngine
 
 			// Re-sample the shape's rotation-invariant visual traits (call after modifying shape parameters)
 			void resampleShape();
+			static constexpr size_t NUM_DOMAIN_SAMPLES = 32;
+			static constexpr size_t NUM_RING_SAMPLES = 24;
+			static const std::array<glm::vec2, NUM_DOMAIN_SAMPLES>& getDomainSampleOffsets();
+			static std::array<glm::vec2, NUM_RING_SAMPLES> getRingSampleOffsets(float radius = SdfSong::SAMPLE_RADIUS);
+			double getSceneTime() const
+			{
+				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
+				return m_sceneTime;
+			}
 			ShapeVisualTraits getVisualTraits() const
 			{
 				std::lock_guard<std::recursive_mutex> lock(m_songMutex);
@@ -497,7 +506,6 @@ namespace WeirdEngine
 			float m_lastLeadCutoff = 2000.0f;
 
 			// Dynamic motion & domain fill evaluation
-			static constexpr size_t NUM_DOMAIN_SAMPLES = 32;
 			float m_motionLevel = 0.0f;
 			float m_motionNorm = 0.0f;
 			float m_fillRatio = 0.5f;

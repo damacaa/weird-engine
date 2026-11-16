@@ -14,8 +14,7 @@ namespace WeirdEngine
 	{
 		namespace
 		{
-			constexpr int NUM_DOMAIN_SAMPLES = 32;
-			constexpr float DOMAIN_RADIUS = 50.0f;
+			constexpr float DOMAIN_RADIUS = SdfSong::DOMAIN_RADIUS;
 
 			// Surface complexity estimation: finite-difference stencil and convergence guards
 			constexpr float CURVATURE_STENCIL = 1.0f;
@@ -67,21 +66,37 @@ namespace WeirdEngine
 				return std::clamp(v, 0.0f, 1.0f);
 			}
 
-			std::vector<glm::vec2> createDomainSamples()
+		} // namespace
+
+		const std::array<glm::vec2, SdfMusicEngine::NUM_DOMAIN_SAMPLES>& SdfMusicEngine::getDomainSampleOffsets()
+		{
+			static const std::array<glm::vec2, NUM_DOMAIN_SAMPLES> s_offsets = []()
 			{
-				std::vector<glm::vec2> pts;
-				pts.reserve(NUM_DOMAIN_SAMPLES);
+				std::array<glm::vec2, NUM_DOMAIN_SAMPLES> pts{};
 				constexpr float goldenAngle = 2.39996323f;
-				for (int i = 0; i < NUM_DOMAIN_SAMPLES; ++i)
+				for (size_t i = 0; i < NUM_DOMAIN_SAMPLES; ++i)
 				{
 					float r = DOMAIN_RADIUS *
 							  std::sqrt((static_cast<float>(i) + 0.5f) / static_cast<float>(NUM_DOMAIN_SAMPLES));
 					float theta = static_cast<float>(i) * goldenAngle;
-					pts.push_back({r * std::cos(theta), r * std::sin(theta)});
+					pts[i] = {r * std::cos(theta), r * std::sin(theta)};
 				}
 				return pts;
+			}();
+			return s_offsets;
+		}
+
+		std::array<glm::vec2, SdfMusicEngine::NUM_RING_SAMPLES> SdfMusicEngine::getRingSampleOffsets(float radius)
+		{
+			std::array<glm::vec2, NUM_RING_SAMPLES> pts{};
+			constexpr float PI = 3.14159265358979323846f;
+			for (size_t i = 0; i < NUM_RING_SAMPLES; ++i)
+			{
+				float angle = static_cast<float>(i) * (2.0f * PI / static_cast<float>(NUM_RING_SAMPLES));
+				pts[i] = {radius * std::cos(angle), radius * std::sin(angle)};
 			}
-		} // namespace
+			return pts;
+		}
 
 		SdfMusicEngine::SdfMusicEngine()
 		{
@@ -207,7 +222,6 @@ namespace WeirdEngine
 			// 1. Center & Inner-Core Hollowness Analysis (Rotation-Invariant)
 			// dCenter < 0 means solid interior; dCenter > 0 means hollow cutout / ring / eclipse
 			float dCenter = evalAt(0.0f, 0.0f);
-			constexpr float PI = 3.14159265358979323846f;
 			float innerHoleScore = (dCenter > 0.0f) ? std::clamp((dCenter + 2.0f) / 14.0f, 0.0f, 1.0f) : 0.0f;
 			if (dCenter <= 0.0f)
 			{
@@ -217,36 +231,35 @@ namespace WeirdEngine
 
 			// 2. 24-Angle Full-Circle Perimeter Profiling (Rotation-Invariant)
 			// Evaluates the entire 360-degree silhouette so rotating a shape never changes its musical parameters
-			constexpr int NUM_RING_ANGLES = 24;
-			float R[NUM_RING_ANGLES]{};
+			const auto ringOffsets = getRingSampleOffsets(r);
+			float R[NUM_RING_SAMPLES]{};
 			float meanR = 0.0f;
 
-			for (int i = 0; i < NUM_RING_ANGLES; ++i)
+			for (size_t i = 0; i < NUM_RING_SAMPLES; ++i)
 			{
-				float angle = static_cast<float>(i) * (2.0f * PI / static_cast<float>(NUM_RING_ANGLES));
-				float d = evalAt(r * std::cos(angle), r * std::sin(angle));
+				float d = evalAt(ringOffsets[i].x, ringOffsets[i].y);
 				R[i] = (std::max)(0.0f, r - d);
 				meanR += R[i];
 			}
-			meanR /= static_cast<float>(NUM_RING_ANGLES);
+			meanR /= static_cast<float>(NUM_RING_SAMPLES);
 
 			// Radial variance & step-to-step angular roughness (0 for any smooth circle, high for stars/spikes)
 			float varSum = 0.0f;
 			float stepDiffSum = 0.0f;
-			for (int i = 0; i < NUM_RING_ANGLES; ++i)
+			for (size_t i = 0; i < NUM_RING_SAMPLES; ++i)
 			{
 				float diff = R[i] - meanR;
 				varSum += diff * diff;
-				int nextIdx = (i + 1) % NUM_RING_ANGLES;
+				size_t nextIdx = (i + 1) % NUM_RING_SAMPLES;
 				stepDiffSum += std::abs(R[i] - R[nextIdx]);
 			}
-			float stdDevR = std::sqrt(varSum / static_cast<float>(NUM_RING_ANGLES));
-			float avgStepDiff = stepDiffSum / static_cast<float>(NUM_RING_ANGLES);
+			float stdDevR = std::sqrt(varSum / static_cast<float>(NUM_RING_SAMPLES));
+			float avgStepDiff = stepDiffSum / static_cast<float>(NUM_RING_SAMPLES);
 
 			// 180-degree opposite-pair rotational asymmetry across all 12 opposite pairs
 			float asymSum = 0.0f;
-			constexpr int HALF_RING = NUM_RING_ANGLES / 2;
-			for (int i = 0; i < HALF_RING; ++i)
+			constexpr size_t HALF_RING = NUM_RING_SAMPLES / 2;
+			for (size_t i = 0; i < HALF_RING; ++i)
 			{
 				float a = R[i];
 				float b = R[i + HALF_RING];
@@ -331,7 +344,7 @@ namespace WeirdEngine
 				return;
 
 			auto shape = m_currentSong->getRawShapeExpression();
-			static const auto sampleOffsets = createDomainSamples();
+			const auto& sampleOffsets = getDomainSampleOffsets();
 
 			constexpr float probeDt = 0.08f;
 			float params[12]{};
@@ -399,7 +412,7 @@ namespace WeirdEngine
 
 			auto shape = m_currentSong->getRawShapeExpression();
 
-			static const auto sampleOffsets = createDomainSamples();
+			const auto& sampleOffsets = getDomainSampleOffsets();
 			if (sampleOffsets.empty())
 				return;
 

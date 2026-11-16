@@ -9,7 +9,10 @@
 #include <filesystem>
 
 #ifndef WEIRD_DISABLE_IMGUI
+#include "weird-renderer/core/WeirdFBDevEGL.h"
+#include <glad/glad.h>
 #include <imgui.h>
+#include <SDL3/SDL.h>
 #endif
 
 #include "weird-engine/Assert.h"
@@ -166,6 +169,16 @@ namespace WeirdEngine
 	Scene::~Scene()
 	{
 		m_simulation2D.stopSimulationThread();
+
+#ifndef WEIRD_DISABLE_IMGUI
+		if (m_songShapePreview.textureId != 0 && glDeleteTextures != nullptr &&
+			(SDL_GL_GetCurrentContext() != nullptr || WeirdRenderer::IsFBDevEGLActive()))
+		{
+			GLuint tex = static_cast<GLuint>(m_songShapePreview.textureId);
+			glDeleteTextures(1, &tex);
+			m_songShapePreview.textureId = 0;
+		}
+#endif
 
 		// TODO: Free resources from all entities
 		m_resourceManager.freeResources(0);
@@ -1143,6 +1156,29 @@ namespace WeirdEngine
 						m_services.audio().resampleShape();
 					}
 
+					const bool hasShapeExpr = (currentSong->getRawShapeExpression() != nullptr);
+					if (!hasShapeExpr)
+					{
+						ImGui::BeginDisabled();
+					}
+					if (ImGui::SmallButton("CPU Render Shape"))
+					{
+						cpuRenderSongShapePreview(*currentSong, musicEngine);
+					}
+					if (!hasShapeExpr)
+					{
+						ImGui::EndDisabled();
+					}
+					if (m_songShapePreview.hasRender)
+					{
+						ImGui::SameLine();
+						if (ImGui::SmallButton("Clear Render"))
+						{
+							m_songShapePreview.hasRender = false;
+						}
+						drawSongShapePreview();
+					}
+
 					ImGui::Spacing();
 					if (ImGui::TreeNodeEx("Musical Properties & Shape Mapping", ImGuiTreeNodeFlags_DefaultOpen))
 					{
@@ -1525,6 +1561,212 @@ namespace WeirdEngine
 		}
 #endif
 	}
+
+#ifndef WEIRD_DISABLE_IMGUI
+	void Scene::cpuRenderSongShapePreview(const WeirdAudio::SdfSong& song,
+										  const WeirdAudio::SdfMusicEngine& musicEngine)
+	{
+		const auto shape = song.getRawShapeExpression();
+		if (!shape)
+		{
+			m_songShapePreview.hasRender = false;
+			return;
+		}
+
+		constexpr int kRes = SongShapePreview::RESOLUTION;
+		constexpr float kDomainRadius = WeirdAudio::SdfSong::DOMAIN_RADIUS;
+		float sampleRadius = song.getSampleRadius();
+		if (sampleRadius <= 0.01f)
+		{
+			sampleRadius = WeirdAudio::SdfSong::SAMPLE_RADIUS;
+		}
+		const double sceneTime = musicEngine.getSceneTime();
+
+		float evalParams[12]{};
+		packSdfParameterPrefix(evalParams, song.getParameters(), static_cast<float>(sceneTime));
+
+		auto evalAt = [&](float px, float py) -> float
+		{
+			evalParams[9] = px;
+			evalParams[10] = py;
+			return shape->getValue(evalParams);
+		};
+
+		std::vector<uint8_t> pixels(static_cast<size_t>(kRes) * static_cast<size_t>(kRes) * 4u, 255u);
+		const float cellSize = (2.0f * kDomainRadius) / static_cast<float>(kRes);
+		int insidePixels = 0;
+
+		for (int iy = 0; iy < kRes; ++iy)
+		{
+			const float py = kDomainRadius - (static_cast<float>(iy) + 0.5f) * cellSize;
+			for (int ix = 0; ix < kRes; ++ix)
+			{
+				const float px = -kDomainRadius + (static_cast<float>(ix) + 0.5f) * cellSize;
+				const float d = evalAt(px, py);
+				const bool inside = std::isfinite(d) && (d <= 0.0f);
+				if (inside)
+				{
+					++insidePixels;
+				}
+
+				const size_t idx = (static_cast<size_t>(iy) * static_cast<size_t>(kRes) + static_cast<size_t>(ix)) * 4u;
+				if (inside)
+				{
+					pixels[idx + 0] = 215u;
+					pixels[idx + 1] = 240u;
+					pixels[idx + 2] = 250u;
+					pixels[idx + 3] = 255u;
+				}
+				else
+				{
+					pixels[idx + 0] = 20u;
+					pixels[idx + 1] = 24u;
+					pixels[idx + 2] = 32u;
+					pixels[idx + 3] = 255u;
+				}
+			}
+		}
+
+		const float dCenter = evalAt(0.0f, 0.0f);
+		m_songShapePreview.centerInside = std::isfinite(dCenter) && (dCenter <= 0.0f);
+
+		auto evaluateSamples = [&](const auto& offsets, std::vector<SongShapePreviewSample>& out) -> int
+		{
+			out.clear();
+			out.reserve(offsets.size());
+			int insideCount = 0;
+			for (const glm::vec2& pt : offsets)
+			{
+				const float d = evalAt(pt.x, pt.y);
+				const bool inside = std::isfinite(d) && (d <= 0.0f);
+				if (inside)
+				{
+					++insideCount;
+				}
+				out.push_back({pt.x, pt.y, inside});
+			}
+			return insideCount;
+		};
+
+		m_songShapePreview.insideDomainSamples =
+			evaluateSamples(WeirdAudio::SdfMusicEngine::getDomainSampleOffsets(), m_songShapePreview.domainSamples);
+		m_songShapePreview.insideRingSamples = evaluateSamples(
+			WeirdAudio::SdfMusicEngine::getRingSampleOffsets(sampleRadius), m_songShapePreview.ringSamples);
+
+		GLuint tex = static_cast<GLuint>(m_songShapePreview.textureId);
+		glActiveTexture(GL_TEXTURE0);
+		if (tex == 0)
+		{
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kRes, kRes, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+			m_songShapePreview.textureId = static_cast<uint32_t>(tex);
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, tex);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kRes, kRes, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		m_songShapePreview.songName = song.getName();
+		m_songShapePreview.domainRadius = kDomainRadius;
+		m_songShapePreview.sampleRadius = sampleRadius;
+		m_songShapePreview.sceneTime = sceneTime;
+		m_songShapePreview.insidePixelCount = insidePixels;
+		m_songShapePreview.hasRender = true;
+	}
+
+	void Scene::drawSongShapePreview()
+	{
+		if (!m_songShapePreview.hasRender || m_songShapePreview.textureId == 0)
+		{
+			return;
+		}
+
+		constexpr int kRes = SongShapePreview::RESOLUTION;
+		const float availWidth = ImGui::GetContentRegionAvail().x;
+		const float zoom = (availWidth >= static_cast<float>(kRes) * 2.0f) ? 2.0f : 1.0f;
+		const float displaySize = static_cast<float>(kRes) * zoom;
+
+		ImGui::Image(ImTextureRef(static_cast<ImTextureID>(m_songShapePreview.textureId)),
+					 ImVec2(displaySize, displaySize), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+
+		const ImVec2 imgMin = ImGui::GetItemRectMin();
+		const ImVec2 imgMax = ImGui::GetItemRectMax();
+		const float domainRadius = m_songShapePreview.domainRadius;
+		const float invDiameter = (domainRadius > 0.0f) ? (1.0f / (2.0f * domainRadius)) : 0.01f;
+		const float pxPerUnit = displaySize * invDiameter;
+
+		auto toImgPos = [&](float sx, float sy) -> ImVec2
+		{
+			const float u = (sx + domainRadius) * invDiameter;
+			const float v = (domainRadius - sy) * invDiameter;
+			return ImVec2(imgMin.x + u * displaySize, imgMin.y + v * displaySize);
+		};
+
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		drawList->AddRect(imgMin, imgMax, IM_COL32(110, 120, 140, 180));
+		drawList->AddLine(toImgPos(-domainRadius, 0.0f), toImgPos(domainRadius, 0.0f), IM_COL32(140, 150, 170, 55));
+		drawList->AddLine(toImgPos(0.0f, -domainRadius), toImgPos(0.0f, domainRadius), IM_COL32(140, 150, 170, 55));
+
+		const ImVec2 centerPos = toImgPos(0.0f, 0.0f);
+		drawList->AddCircle(centerPos, domainRadius * pxPerUnit, IM_COL32(170, 185, 210, 110), 64, 1.0f);
+		drawList->AddCircle(centerPos, m_songShapePreview.sampleRadius * pxPerUnit, IM_COL32(255, 205, 70, 110), 48,
+							1.0f);
+
+		const float dotRadius = (zoom > 1.0f) ? 3.0f : 2.0f;
+		for (const auto& sample : m_songShapePreview.domainSamples)
+		{
+			const ImVec2 pos = toImgPos(sample.x, sample.y);
+			const ImU32 fill = sample.inside ? IM_COL32(60, 235, 115, 235) : IM_COL32(235, 75, 75, 220);
+			drawList->AddCircleFilled(pos, dotRadius, fill);
+			drawList->AddCircle(pos, dotRadius, IM_COL32(10, 12, 16, 220));
+		}
+
+		auto drawRingMarker = [&](float sx, float sy, bool inside, float halfSize)
+		{
+			const ImVec2 pos = toImgPos(sx, sy);
+			const ImVec2 a(pos.x - halfSize, pos.y - halfSize);
+			const ImVec2 b(pos.x + halfSize, pos.y + halfSize);
+			const ImU32 fill = inside ? IM_COL32(255, 215, 50, 240) : IM_COL32(90, 165, 255, 220);
+			drawList->AddRectFilled(a, b, fill);
+			drawList->AddRect(a, b, IM_COL32(10, 12, 16, 220));
+		};
+
+		const float ringHalf = (zoom > 1.0f) ? 2.2f : 1.6f;
+		for (const auto& sample : m_songShapePreview.ringSamples)
+		{
+			drawRingMarker(sample.x, sample.y, sample.inside, ringHalf);
+		}
+		drawRingMarker(0.0f, 0.0f, m_songShapePreview.centerInside, (zoom > 1.0f) ? 3.0f : 2.0f);
+
+		if (availWidth >= displaySize + 190.0f)
+		{
+			ImGui::SameLine();
+		}
+		ImGui::BeginGroup();
+		const int totalPixels = kRes * kRes;
+		const float fillPct =
+			100.0f * static_cast<float>(m_songShapePreview.insidePixelCount) / static_cast<float>(totalPixels);
+		ImGui::Text("%s (t=%.2fs)", m_songShapePreview.songName.c_str(), m_songShapePreview.sceneTime);
+		ImGui::TextDisabled("Grid: %dx%d ([-%.0f, %.0f], 1 u/px)", kRes, kRes, domainRadius, domainRadius);
+		ImGui::Text("Inside (d <= 0): %d / %d (%.1f%%)", m_songShapePreview.insidePixelCount, totalPixels, fillPct);
+		ImGui::TextColored(ImVec4(0.35f, 0.92f, 0.50f, 1.0f), "Domain (%zu spiral): %d / %zu inside",
+						   m_songShapePreview.domainSamples.size(), m_songShapePreview.insideDomainSamples,
+						   m_songShapePreview.domainSamples.size());
+		ImGui::TextColored(ImVec4(1.00f, 0.84f, 0.25f, 1.0f), "Ring (%zu @ r=%.0f): %d / %zu inside",
+						   m_songShapePreview.ringSamples.size(), m_songShapePreview.sampleRadius,
+						   m_songShapePreview.insideRingSamples, m_songShapePreview.ringSamples.size());
+		ImGui::Text("Center (0, 0): %s", m_songShapePreview.centerInside ? "inside" : "outside");
+		ImGui::TextDisabled("Dot=Domain (G=in/R=out), Sq=Ring (Y=in/B=out)");
+		ImGui::EndGroup();
+	}
+#endif
 
 	void Scene::renderHierarchyTab()
 	{

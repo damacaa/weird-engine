@@ -57,7 +57,9 @@ namespace WeirdEngine
 	namespace WeirdAudio
 	{
 		class AudioEngine;
-	}
+		class SdfMusicEngine;
+		class SdfSong;
+	} // namespace WeirdAudio
 
 	namespace WeirdRenderer
 	{
@@ -210,6 +212,10 @@ namespace WeirdEngine
 		void renderHierarchyTab();
 		void renderPhysicsTab();
 		void renderAudioTab();
+#ifndef WEIRD_DISABLE_IMGUI
+		void cpuRenderSongShapePreview(const WeirdAudio::SdfSong& song, const WeirdAudio::SdfMusicEngine& musicEngine);
+		void drawSongShapePreview();
+#endif
 		void renderCustomUI();
 		void renderPhysicsStatsUI();
 		void renderConstraintsDebug();
@@ -375,6 +381,33 @@ namespace WeirdEngine
 		bool m_waveformAutoScale{true};
 		float m_waveformAutoScaleRange{0.05f};
 		float m_waveformManualScale{1.0f};
+#ifndef WEIRD_DISABLE_IMGUI
+		struct SongShapePreviewSample
+		{
+			float x = 0.0f;
+			float y = 0.0f;
+			bool inside = false;
+		};
+
+		struct SongShapePreview
+		{
+			static constexpr int RESOLUTION = 100; // 1 unit/px across [-DOMAIN_RADIUS, +DOMAIN_RADIUS]
+
+			uint32_t textureId = 0;
+			bool hasRender = false;
+			std::string songName;
+			float domainRadius = 50.0f;
+			float sampleRadius = 20.0f;
+			double sceneTime = 0.0;
+			int insidePixelCount = 0;
+			int insideDomainSamples = 0;
+			int insideRingSamples = 0;
+			bool centerInside = false;
+			std::vector<SongShapePreviewSample> domainSamples;
+			std::vector<SongShapePreviewSample> ringSamples;
+		};
+		SongShapePreview m_songShapePreview;
+#endif
 		std::vector<WeirdRenderer::DrawCommand> m_drawQueue;
 		std::vector<WeirdRenderer::Light2D> m_lights2D;
 		std::vector<WeirdRenderer::Light3D> m_lights3D;

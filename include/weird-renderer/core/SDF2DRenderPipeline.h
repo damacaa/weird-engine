@@ -156,6 +156,7 @@ namespace WeirdEngine
 			struct GridInfo
 			{
 				float minX, minY, stepX, stepY;
+				float fadeStart, fadeSpan;
 				int gridCols, gridRows, indexTexWidth, indexTexHeight;
 			};
 			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,

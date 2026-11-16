@@ -47,6 +47,7 @@ uniform highp sampler2D t_gridIndices;
 
 uniform vec2 u_gridBoundsMin;
 uniform vec2 u_gridStep;
+uniform vec2 u_dotFadeRange;
 uniform int u_gridCols;
 uniform int u_gridRows;
 
@@ -112,7 +113,7 @@ void main()
 
 	float inv_k = 1.0 / u_k;
 
-	ivec2 cellCoord = ivec2((pos - u_gridBoundsMin) / u_gridStep);
+	ivec2 cellCoord = ivec2(floor((pos - u_gridBoundsMin) / u_gridStep));
 	cellCoord = clamp(cellCoord, ivec2(0), ivec2(u_gridCols - 1, u_gridRows - 1));
 
 	vec2 cellData = texelFetch(t_gridHeader, cellCoord, 0).xy;
@@ -137,7 +138,7 @@ void main()
 		float objectDist = shape_circle(pos - positionSizeMaterial.xy);
 #endif
 
-		mask = max(mask, -objectDist * 4.0);
+		mask = max(mask, clamp(-objectDist * 4.0, 0.0, 1.0));
 
 #ifdef BLEND_SHAPES
 		finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
@@ -150,8 +151,24 @@ void main()
 #endif
 	}
 
-	minDist = min(minDist, minDotDist);
+#ifndef UI_PIPELINE
+	float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
+	distanceBonus = min(distanceBonus, 1.0 * abs(zoom) / u_resolution.y); // Cap distance bonus to prevent artifacts
+#else
+	float distanceBonus = 0.0;
+#endif
 
+	// Smoothly saturate dot distance with a C2 Hermite curve (derivative in [0, 1]) so empty cells
+	// and populated cells meet identically before cell boundaries without steep distance gradients.
+	float fadeStart = u_dotFadeRange.x;
+	float fadeSpan = max(u_dotFadeRange.y, 1e-4);
+	float dotDist = minDotDist - distanceBonus;
+	float t = clamp((dotDist - fadeStart) / fadeSpan, 0.0, 1.0);
+	float t2 = t * t;
+	float effectiveDotDist =
+		(dotDist <= fadeStart) ? dotDist : fadeStart + fadeSpan * (t - t2 * t + 0.5 * t2 * t2);
+
+	minDist = min(minDist, effectiveDotDist);
 #ifdef UI_PIPELINE
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode
 #endif
@@ -162,14 +179,9 @@ void main()
 
 	float d = minDist;
 
-#ifndef UI_PIPELINE
-	float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
-	distanceBonus = min(distanceBonus, 1.0 * zoom / u_resolution.y); // Cap distance bonus to prevent artifacts
-	d -= distanceBonus;
-#endif
-
 	float finalDistance = d / zoom;
 	finalDistance *= 0.5 / aspectRatio;
+	finalDistance = min(finalDistance, 1000.0);
 
 	float material = float(finalMaterialId);
 
@@ -177,29 +189,34 @@ void main()
 	// Compensating for both camera translation and zoom change
 	float oldZoom = max(-u_oldCamMatrix[3].z, 0.001);
 	float zoomRatio = zoom / oldZoom;
+#ifdef UI_PIPELINE
+	float overscanScale = 1.0;
+#else
+	float overscanScale = 1.0 + u_overscan;
+#endif
 	vec2 prevTexCoord;
-	prevTexCoord.x = zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
-	prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
+	prevTexCoord.x =
+		zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio * overscanScale);
+	prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / (oldZoom * overscanScale);
 
 	// Sample previous texture with bilinear filtering
 	vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
 	float previousDistance = previousData.x;
 
 	vec4 previousDataExact = texture(t_colorTexture, prevTexCoord);
-	float previousDistanceExact = previousDataExact.x;
 	float previousMaterial = previousDataExact.y;
 
 	material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
-	float distanceChange = finalDistance - previousDistanceExact;
+	float distanceChange = finalDistance - previousDistance;
 	float blendDistance;
 
 #ifdef MOTION_BLUR_FILL_OVERRIDE
 	float fadeStep = u_deltaTime * u_motionBlurBlendSpeed * 0.1;
 	blendDistance = min(previousDistance + fadeStep, finalDistance);
 #else
-	blendDistance = previousDistance + (distanceChange * min(1.0, u_deltaTime * u_motionBlurBlendSpeed) *
-										(distanceChange < 0.0 ? 5.0 : 1.0));
+	float blendRate = u_deltaTime * u_motionBlurBlendSpeed * (distanceChange < 0.0 ? 5.0 : 1.0);
+	blendDistance = previousDistance + (distanceChange * clamp(blendRate, 0.0, 1.0));
 #endif
 
 	blendDistance = clamp(blendDistance, -0.1, 0.1);

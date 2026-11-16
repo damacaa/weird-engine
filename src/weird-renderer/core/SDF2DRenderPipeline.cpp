@@ -416,11 +416,9 @@ namespace WeirdEngine
 
 			int objectCount = static_cast<int>(dataSize) - (2 * static_cast<int>(shapeCount));
 
-			float objectRadius = m_config.isUI ? 5.0f : 1.0f;
-			float cellPad = m_config.ballK + objectRadius;
-
 			// Derive the visible world-space rectangle from the camera matrix
 			float zoom = -camera.view[3].z;
+			float absZoom = std::abs(zoom);
 			float camX = camera.view[3].x;
 			float camY = camera.view[3].y;
 			float aspectRatio = static_cast<float>(m_distanceSampleWidth) / static_cast<float>(m_distanceSampleHeight);
@@ -451,15 +449,60 @@ namespace WeirdEngine
 			if (viewMinY > viewMaxY)
 				std::swap(viewMinY, viewMaxY);
 
+			// Compute world-space texel, AA smoothing, AO, and zoom distance bonus bounds so grid
+			// cell boundaries never clip dots and the distance field saturates C2-smoothly before cell edges.
+			float worldTexelX = (viewMaxX - viewMinX) / static_cast<float>(std::max(1u, m_distanceSampleWidth));
+			float worldTexelY = (viewMaxY - viewMinY) / static_cast<float>(std::max(1u, m_distanceSampleHeight));
+			float worldTexel = std::max(worldTexelX, worldTexelY);
+
+			float distanceBonus = 0.0f;
+			float worldSmoothing = 0.0f;
+			if (!m_config.isUI)
+			{
+				if (m_distanceSampleHeight > 0)
+				{
+					distanceBonus =
+						std::min(0.00002f * zoom * zoom, 1.0f * absZoom / static_cast<float>(m_distanceSampleHeight));
+				}
+				if (m_config.renderHeight > 0)
+				{
+					float maxSmoothingNorm = 2.0f * (1.0f + overscan) / static_cast<float>(m_config.renderHeight);
+					float aoWorld =
+						!m_config.enableShadows ? (absZoom * m_config.ambienOcclusionRadius * 0.001f) : 0.0f;
+					worldSmoothing = std::max(maxSmoothingNorm * 2.0f * absZoom * aspectRatio, aoWorld);
+				}
+			}
+
+			float dotRadius = m_config.isUI ? 5.0f : 0.5f;
+			float safetyMargin = m_config.isUI ? 1.0f : 0.5f;
+			float fadeStart = 0.0f;
+			float fadeReach = 0.0f;
+			if (m_config.isUI)
+			{
+				fadeStart = std::min(6.0f, std::max(2.0f, worldTexel * 2.0f + safetyMargin));
+				fadeReach = 10.0f;
+			}
+			else
+			{
+				fadeStart = worldSmoothing + 2.0f * worldTexel + safetyMargin;
+				float minSpan = std::max(1.5f, 4.0f * worldTexel);
+				fadeReach = std::max({2.5f, fadeStart + 0.5f * minSpan, 0.06f * absZoom});
+			}
+			// Integral of 1 - smoothstep(0, 1, t) reaches plateau at t = 1 with height 0.5 * fadeSpan.
+			float fadeSpan = 2.0f * (fadeReach - fadeStart);
+			float smoothReach = std::max(0.0f, m_config.ballK);
+			float cellPad = dotRadius + fadeStart + fadeSpan + distanceBonus + smoothReach + safetyMargin;
+
 			// Expand frustum by cellPad so circles that straddle the view edge are included
 			float minX = viewMinX - cellPad;
 			float minY = viewMinY - cellPad;
 			float maxX = viewMaxX + cellPad;
 			float maxY = viewMaxY + cellPad;
 
-			// Cell size is the object diameter so a circle fits in ~1 cell (2x2 worst-case).
-			// ballK only affects the insertion radius, not the cell size.
-			float idealCellSize = 2.0f * objectRadius;
+			// Base cell size keeps a dot in ~2x2 cells at close zoom while scaling with world texel
+			// size and cellPad when zoomed far out so header memory and per-dot cell counts stay bounded.
+			float baseCellSize = m_config.isUI ? 10.0f : 2.0f;
+			float idealCellSize = std::max({baseCellSize, worldTexel, cellPad * 0.5f});
 			if (idealCellSize < 0.5f)
 				idealCellSize = 0.5f;
 			int gridCols = static_cast<int>(std::ceil((maxX - minX) / idealCellSize));
@@ -491,10 +534,10 @@ namespace WeirdEngine
 			{
 				float cx = shapeData[i].x;
 				float cy = shapeData[i].y;
-				int minCellX = static_cast<int>((cx - cellPad - minX) / stepX);
-				int minCellY = static_cast<int>((cy - cellPad - minY) / stepY);
-				int maxCellX = static_cast<int>((cx + cellPad - minX) / stepX);
-				int maxCellY = static_cast<int>((cy + cellPad - minY) / stepY);
+				int minCellX = static_cast<int>(std::floor((cx - cellPad - minX) / stepX));
+				int minCellY = static_cast<int>(std::floor((cy - cellPad - minY) / stepY));
+				int maxCellX = static_cast<int>(std::floor((cx + cellPad - minX) / stepX));
+				int maxCellY = static_cast<int>(std::floor((cy + cellPad - minY) / stepY));
 
 				// Cull objects entirely outside the frustum-aligned grid
 				if (maxCellX < 0 || maxCellY < 0 || minCellX >= gridCols || minCellY >= gridRows)
@@ -558,7 +601,7 @@ namespace WeirdEngine
 				writePos += m_gridCellCounts[i];
 			}
 
-			return {minX, minY, stepX, stepY, gridCols, gridRows, indexTexWidth, indexTexHeight};
+			return {minX, minY, stepX, stepY, fadeStart, fadeSpan, gridCols, gridRows, indexTexWidth, indexTexHeight};
 		}
 
 		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
@@ -577,7 +620,8 @@ namespace WeirdEngine
 
 				if (shapeCount == 0)
 				{
-					glClearColor(100000.0f, 0.0f, 0.0f, 1.0f);
+					// Stay within GL_RGBA16F finite range (max 65504.0) to avoid +Inf during linear sampling
+					glClearColor(50000.0f, 0.0f, 0.0f, 1.0f);
 					glClear(GL_COLOR_BUFFER_BIT);
 				}
 				else
@@ -658,6 +702,7 @@ namespace WeirdEngine
 				// Slot 3 & 4: Acceleration grid
 				m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
 				m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
+				m_distanceShader.setUniform("u_dotFadeRange", glm::vec2(grid.fadeStart, grid.fadeSpan));
 				m_distanceShader.setUniform("u_gridCols", grid.gridCols);
 				m_distanceShader.setUniform("u_gridRows", grid.gridRows);
 

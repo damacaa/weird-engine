@@ -148,7 +148,7 @@ float modifyDistanceBasedOnMaterial(float dist, int materialId, int objectId)
 
 vec2 getShapeDistanceMaterial(vec2 p)
 {
-	float minDist = 100000.0;
+	float minDist = 50000.0;
 	int finalMaterialId = 0;
 	float globalBlend = 0.0;
 

@@ -910,9 +910,8 @@ namespace WeirdEngine
 				ImGui::Separator();
 
 				// Material properties
-				if (is3D)
+				auto renderCommonHeader = [&](auto& mat, const char* pickerId)
 				{
-					auto& mat = m_materials3D[selectedMaterial];
 					if (!mat.name.empty())
 					{
 						ImGui::TextDisabled("Slot %d: %s", selectedMaterial, mat.name.c_str());
@@ -923,42 +922,47 @@ namespace WeirdEngine
 					ImGui::Checkbox("Picker Wheel", &showColorWheel);
 					if (showColorWheel)
 					{
-						ImGui::ColorPicker4("##Picker3D", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
+						ImGui::ColorPicker4(pickerId, &mat.color[0], ImGuiColorEditFlags_AlphaBar);
 					}
+				};
 
-					ImGui::SliderFloat("Metallic", &mat.metallic, 0.0f, 1.0f);
-					ImGui::SliderFloat("Roughness", &mat.roughness, 0.0f, 1.0f);
-
-					const char* pattern3DNames[] = {"None", "Checkers", "Perlin Noise", "Waves"};
-					int currentPattern = static_cast<int>(mat.pattern);
-					if (ImGui::Combo("Pattern", &currentPattern, pattern3DNames, 4))
+				auto renderPatternControls = [](auto& mat, const char* const* patternNames, int patternCount)
+				{
+					using PatternEnum = std::decay_t<decltype(mat.pattern)>;
+					int currentPattern = std::clamp(static_cast<int>(mat.pattern), 0, patternCount - 1);
+					if (ImGui::Combo("Pattern", &currentPattern, patternNames, patternCount))
 					{
-						mat.pattern = static_cast<MaterialPattern>(currentPattern);
+						mat.pattern = static_cast<PatternEnum>(currentPattern);
 					}
 
-					if (mat.pattern != MaterialPattern::None)
+					if (currentPattern != 0)
 					{
 						ImGui::ColorEdit4("Secondary Color", &mat.secondaryColor[0], ImGuiColorEditFlags_AlphaBar);
 						ImGui::DragFloat("Pattern Scale", &mat.patternScale, 0.05f, 0.01f, 100.0f);
 					}
+				};
+
+				if (is3D)
+				{
+					auto& mat = m_materials3D[selectedMaterial];
+					renderCommonHeader(mat, "##Picker3D");
+
+					ImGui::SliderFloat("Metallic", &mat.metallic, 0.0f, 1.0f);
+					ImGui::SliderFloat("Roughness", &mat.roughness, 0.0f, 1.0f);
+
+					static constexpr const char* pattern3DNames[] = {"None", "Checkers", "Perlin Noise", "Waves"};
+					renderPatternControls(mat, pattern3DNames, static_cast<int>(std::size(pattern3DNames)));
 
 					ImGui::DragFloat("Emission", &mat.emission, 0.05f, 0.0f, 10.0f);
 				}
 				else
 				{
 					auto& mat = m_materials2D[selectedMaterial];
-					if (!mat.name.empty())
-					{
-						ImGui::TextDisabled("Slot %d: %s", selectedMaterial, mat.name.c_str());
-					}
+					renderCommonHeader(mat, "##Picker2D");
 
-					ImGui::ColorEdit4("Color", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
-					ImGui::SameLine();
-					ImGui::Checkbox("Picker Wheel", &showColorWheel);
-					if (showColorWheel)
-					{
-						ImGui::ColorPicker4("##Picker2D", &mat.color[0], ImGuiColorEditFlags_AlphaBar);
-					}
+					static constexpr const char* pattern2DNames[] = {"None", "Checkers", "Perlin Noise", "Waves",
+																	 "Gradient"};
+					renderPatternControls(mat, pattern2DNames, static_cast<int>(std::size(pattern2DNames)));
 				}
 
 				ImGui::Unindent();

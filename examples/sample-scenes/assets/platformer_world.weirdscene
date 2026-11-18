@@ -1,9 +1,9 @@
 {
     "camera": {
         "position": [
-            28.244844436645508,
-            17.76557159423828,
-            21.838430404663086
+            15.706092834472656,
+            19.73511505126953,
+            30.226192474365234
         ],
         "rotation": [
             0.0,
@@ -18,35 +18,41 @@
     },
     "clusters": [
         {
-            "assetPath": "/run/media/damaca/data/projects/weird-engine/examples/sample-scenes/assets/Organisms/ameba.weirdcluster",
+            "assetPath": "Organisms/ameba.weirdcluster",
             "entities": [
-                6,
-                7,
-                8,
-                9,
-                63,
-                64,
-                65,
-                66
+                50,
+                12,
+                51,
+                13,
+                94,
+                95,
+                96,
+                97
             ],
+            "hasOverrideMetadata": true,
             "id": 1,
             "name": "ameba_1",
             "names": {},
+            "overrides": {
+                "50": 1
+            },
             "position": [
-                -13.299992561340332,
-                19.67232322692871
+                -19.137962341308594,
+                2.219252347946167
             ],
             "rotation": 0.0,
+            "sourceEntityIds": {
+                "12": 9,
+                "13": 12,
+                "50": 6,
+                "51": 11
+            },
             "tags": [],
             "type": "ameba"
         },
         {
-            "assetPath": "/run/media/damaca/data/projects/weird-engine/examples/sample-scenes/assets/Organisms/man.weirdcluster",
+            "assetPath": "Organisms/man.weirdcluster",
             "entities": [
-                10,
-                11,
-                12,
-                13,
                 14,
                 15,
                 16,
@@ -60,6 +66,21 @@
                 24,
                 25,
                 26,
+                27,
+                28,
+                29,
+                30,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
                 67,
                 68,
                 69,
@@ -73,6 +94,69 @@
                 77,
                 78,
                 79,
+                98,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105
+            ],
+            "hasOverrideMetadata": false,
+            "id": 2,
+            "name": "man_2",
+            "names": {
+                "head": 21
+            },
+            "position": [
+                -6.332685470581055,
+                6.637430191040039
+            ],
+            "rotation": 0.0,
+            "tags": [],
+            "type": "man"
+        },
+        {
+            "assetPath": "Organisms/ball2.weirdcluster",
+            "entities": [
+                37,
+                43,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                38,
+                39,
+                40,
+                47,
+                44,
+                41,
+                48,
+                45,
+                42,
+                49,
+                46,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
                 80,
                 81,
                 82,
@@ -84,93 +168,21 @@
                 88,
                 89,
                 90,
-                125,
-                126,
-                127,
-                128,
-                129,
-                130,
-                131,
-                132
-            ],
-            "id": 2,
-            "name": "man_2",
-            "names": {
-                "head": 17
-            },
-            "position": [
-                -6.332685470581055,
-                6.637430191040039
-            ],
-            "rotation": 0.0,
-            "tags": [],
-            "type": "man"
-        },
-        {
-            "assetPath": "D:\\Projects\\weird-engine\\examples\\sample-scenes\\assets\\Organisms\\ball2.weirdcluster",
-            "entities": [
-                33,
-                39,
-                27,
-                28,
-                29,
-                30,
-                31,
-                32,
-                34,
-                35,
-                36,
-                60,
-                40,
-                37,
-                61,
-                41,
-                38,
-                62,
-                42,
-                133,
-                134,
-                135,
-                136,
-                137,
-                138,
-                139,
-                140,
-                141,
-                142,
-                143,
-                144,
-                145,
-                146,
-                147,
-                148,
-                149,
-                150,
                 91,
                 92,
                 93,
-                94,
-                95,
-                96,
-                97,
-                98,
-                99,
-                100,
-                101,
-                102,
-                103,
-                104,
-                105,
-                106,
-                107,
-                108
+                55,
+                54,
+                53,
+                52
             ],
+            "hasOverrideMetadata": false,
             "id": 4,
             "name": "ball2_4",
             "names": {},
             "position": [
-                29.678916931152344,
-                14.980831146240234
+                26.882993698120117,
+                14.603004455566406
             ],
             "rotation": 0.0,
             "tags": [],
@@ -180,7 +192,7 @@
     "editorGroups": [],
     "entities": [
         {
-            "id": 1,
+            "id": 7,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 2,
@@ -218,7 +230,7 @@
             }
         },
         {
-            "id": 2,
+            "id": 8,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 0,
@@ -256,7 +268,7 @@
             }
         },
         {
-            "id": 3,
+            "id": 9,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 8,
@@ -294,7 +306,7 @@
             }
         },
         {
-            "id": 4,
+            "id": 10,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 2,
@@ -332,7 +344,7 @@
             }
         },
         {
-            "id": 5,
+            "id": 11,
             "shape": {
                 "combination": 0,
                 "distanceFieldId": 2,
@@ -374,15 +386,15 @@
                 "isStatic": false,
                 "materialId": 5
             },
-            "id": 6,
+            "id": 12,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    -19.404037475585938,
-                    1.7901240587234497
+                    -19.387962341308594,
+                    1.7862396240234375
                 ],
                 "simulationId": 0,
                 "velocity": [
@@ -392,8 +404,8 @@
             },
             "transform": {
                 "position": [
-                    -19.404037475585938,
-                    1.7901240587234497,
+                    -19.387962341308594,
+                    1.7862396240234375,
                     0.0
                 ],
                 "rotation": [
@@ -413,15 +425,15 @@
                 "isStatic": false,
                 "materialId": 5
             },
-            "id": 7,
+            "id": 13,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    -18.388687133789063,
-                    1.7706376314163208
+                    -18.887962341308594,
+                    2.6522650718688965
                 ],
                 "simulationId": 1,
                 "velocity": [
@@ -431,86 +443,8 @@
             },
             "transform": {
                 "position": [
-                    -18.388687133789063,
-                    1.7706376314163208,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 5
-            },
-            "id": 8,
-            "rigidBody2D": {
-                "bodyType": 2,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    -19.879295349121094,
-                    2.674532413482666
-                ],
-                "simulationId": 2,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    -19.879295349121094,
-                    2.674532413482666,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 5
-            },
-            "id": 9,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    -18.879833221435547,
-                    2.6417150497436523
-                ],
-                "simulationId": 3,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    -18.879833221435547,
-                    2.6417150497436523,
+                    -18.887962341308594,
+                    2.6522650718688965,
                     0.0
                 ],
                 "rotation": [
@@ -530,7 +464,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 10,
+            "id": 14,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -540,7 +474,7 @@
                     -6.259122848510742,
                     6.3240766525268555
                 ],
-                "simulationId": 4,
+                "simulationId": 2,
                 "velocity": [
                     0.0,
                     0.0
@@ -569,7 +503,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 11,
+            "id": 15,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -579,7 +513,7 @@
                     -7.251709938049316,
                     6.296006202697754
                 ],
-                "simulationId": 5,
+                "simulationId": 3,
                 "velocity": [
                     0.0,
                     0.0
@@ -608,7 +542,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 12,
+            "id": 16,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -618,7 +552,7 @@
                     -7.079992771148682,
                     5.310858726501465
                 ],
-                "simulationId": 6,
+                "simulationId": 4,
                 "velocity": [
                     0.0,
                     0.0
@@ -647,7 +581,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 13,
+            "id": 17,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -657,7 +591,7 @@
                     -7.332685470581055,
                     4.3433122634887695
                 ],
-                "simulationId": 7,
+                "simulationId": 5,
                 "velocity": [
                     0.0,
                     0.0
@@ -686,7 +620,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 14,
+            "id": 18,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -696,7 +630,7 @@
                     -5.256857395172119,
                     6.321802616119385
                 ],
-                "simulationId": 8,
+                "simulationId": 6,
                 "velocity": [
                     0.0,
                     0.0
@@ -725,7 +659,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 15,
+            "id": 19,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -735,7 +669,7 @@
                     -5.101419448852539,
                     5.3050537109375
                 ],
-                "simulationId": 9,
+                "simulationId": 7,
                 "velocity": [
                     0.0,
                     0.0
@@ -764,7 +698,7 @@
                 "isStatic": false,
                 "materialId": 15
             },
-            "id": 16,
+            "id": 20,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -774,7 +708,7 @@
                     -4.950295925140381,
                     4.3165388107299805
                 ],
-                "simulationId": 10,
+                "simulationId": 8,
                 "velocity": [
                     0.0,
                     0.0
@@ -803,7 +737,7 @@
                 "isStatic": false,
                 "materialId": 11
             },
-            "id": 17,
+            "id": 21,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -813,7 +747,7 @@
                     -6.332685470581055,
                     8.343311309814453
                 ],
-                "simulationId": 11,
+                "simulationId": 9,
                 "velocity": [
                     0.0,
                     0.0
@@ -842,7 +776,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 18,
+            "id": 22,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -852,7 +786,7 @@
                     -7.271974086761475,
                     7.289040565490723
                 ],
-                "simulationId": 12,
+                "simulationId": 10,
                 "velocity": [
                     0.0,
                     0.0
@@ -881,7 +815,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 19,
+            "id": 23,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -891,7 +825,7 @@
                     -5.30673360824585,
                     7.369935512542725
                 ],
-                "simulationId": 13,
+                "simulationId": 11,
                 "velocity": [
                     0.0,
                     0.0
@@ -920,7 +854,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 20,
+            "id": 24,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -930,7 +864,7 @@
                     -6.2837300300598145,
                     7.326958656311035
                 ],
-                "simulationId": 14,
+                "simulationId": 12,
                 "velocity": [
                     0.0,
                     0.0
@@ -959,7 +893,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 21,
+            "id": 25,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -969,7 +903,7 @@
                     -4.307770729064941,
                     7.41585636138916
                 ],
-                "simulationId": 15,
+                "simulationId": 13,
                 "velocity": [
                     0.0,
                     0.0
@@ -998,7 +932,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 22,
+            "id": 26,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -1008,7 +942,7 @@
                     -3.3131279945373535,
                     7.5193772315979
                 ],
-                "simulationId": 16,
+                "simulationId": 14,
                 "velocity": [
                     0.0,
                     0.0
@@ -1037,7 +971,7 @@
                 "isStatic": false,
                 "materialId": 11
             },
-            "id": 23,
+            "id": 27,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
@@ -1047,7 +981,7 @@
                     -2.3186116218566895,
                     7.62395715713501
                 ],
-                "simulationId": 17,
+                "simulationId": 15,
                 "velocity": [
                     0.0,
                     0.0
@@ -1076,7 +1010,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 24,
+            "id": 28,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -1086,7 +1020,7 @@
                     -8.10270881652832,
                     7.845709323883057
                 ],
-                "simulationId": 18,
+                "simulationId": 16,
                 "velocity": [
                     0.0,
                     0.0
@@ -1115,7 +1049,7 @@
                 "isStatic": false,
                 "materialId": 8
             },
-            "id": 25,
+            "id": 29,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -1125,7 +1059,7 @@
                     -8.277851104736328,
                     8.762036323547363
                 ],
-                "simulationId": 19,
+                "simulationId": 17,
                 "velocity": [
                     0.0,
                     0.0
@@ -1154,7 +1088,7 @@
                 "isStatic": false,
                 "materialId": 11
             },
-            "id": 26,
+            "id": 30,
             "rigidBody2D": {
                 "bodyType": 2,
                 "enableCollision": true,
@@ -1164,7 +1098,7 @@
                     -8.028885841369629,
                     9.659311294555664
                 ],
-                "simulationId": 20,
+                "simulationId": 18,
                 "velocity": [
                     0.0,
                     0.0
@@ -1193,162 +1127,6 @@
                 "isStatic": false,
                 "materialId": 11
             },
-            "id": 27,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    30.70496368408203,
-                    17.799911499023438
-                ],
-                "simulationId": 21,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    30.70496368408203,
-                    17.799911499023438,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
-            "id": 28,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    31.60726547241211,
-                    17.278968811035156
-                ],
-                "simulationId": 22,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    31.60726547241211,
-                    17.278968811035156,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
-            "id": 29,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    32.27698516845703,
-                    16.4808349609375
-                ],
-                "simulationId": 23,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    32.27698516845703,
-                    16.4808349609375,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
-            "id": 30,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    32.633331298828125,
-                    15.501776695251465
-                ],
-                "simulationId": 24,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    32.633331298828125,
-                    15.501776695251465,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
             "id": 31,
             "rigidBody2D": {
                 "bodyType": 0,
@@ -1356,10 +1134,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    32.633331298828125,
-                    14.459885597229004
+                    27.909040451049805,
+                    17.42208480834961
                 ],
-                "simulationId": 25,
+                "simulationId": 19,
                 "velocity": [
                     0.0,
                     0.0
@@ -1367,8 +1145,8 @@
             },
             "transform": {
                 "position": [
-                    32.633331298828125,
-                    14.459885597229004,
+                    27.909040451049805,
+                    17.42208480834961,
                     0.0
                 ],
                 "rotation": [
@@ -1395,10 +1173,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    32.276981353759766,
-                    13.480827331542969
+                    28.811342239379883,
+                    16.901142120361328
                 ],
-                "simulationId": 26,
+                "simulationId": 20,
                 "velocity": [
                     0.0,
                     0.0
@@ -1406,8 +1184,8 @@
             },
             "transform": {
                 "position": [
-                    32.276981353759766,
-                    13.480827331542969,
+                    28.811342239379883,
+                    16.901142120361328,
                     0.0
                 ],
                 "rotation": [
@@ -1425,7 +1203,7 @@
         {
             "dot": {
                 "isStatic": false,
-                "materialId": 13
+                "materialId": 11
             },
             "id": 33,
             "rigidBody2D": {
@@ -1434,10 +1212,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    29.678909301757813,
-                    14.980831146240234
+                    29.481061935424805,
+                    16.103008270263672
                 ],
-                "simulationId": 27,
+                "simulationId": 21,
                 "velocity": [
                     0.0,
                     0.0
@@ -1445,8 +1223,8 @@
             },
             "transform": {
                 "position": [
-                    29.678909301757813,
-                    14.980831146240234,
+                    29.481061935424805,
+                    16.103008270263672,
                     0.0
                 ],
                 "rotation": [
@@ -1473,10 +1251,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    31.60726547241211,
-                    12.682693481445313
+                    29.8374080657959,
+                    15.123950004577637
                 ],
-                "simulationId": 28,
+                "simulationId": 22,
                 "velocity": [
                     0.0,
                     0.0
@@ -1484,8 +1262,8 @@
             },
             "transform": {
                 "position": [
-                    31.60726547241211,
-                    12.682693481445313,
+                    29.8374080657959,
+                    15.123950004577637,
                     0.0
                 ],
                 "rotation": [
@@ -1512,10 +1290,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    30.70496368408203,
-                    12.161751747131348
+                    29.8374080657959,
+                    14.082058906555176
                 ],
-                "simulationId": 29,
+                "simulationId": 23,
                 "velocity": [
                     0.0,
                     0.0
@@ -1523,8 +1301,8 @@
             },
             "transform": {
                 "position": [
-                    30.70496368408203,
-                    12.161751747131348,
+                    29.8374080657959,
+                    14.082058906555176,
                     0.0
                 ],
                 "rotation": [
@@ -1551,10 +1329,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    29.678909301757813,
-                    11.980831146240234
+                    29.48105812072754,
+                    13.10300064086914
                 ],
-                "simulationId": 30,
+                "simulationId": 24,
                 "velocity": [
                     0.0,
                     0.0
@@ -1562,8 +1340,8 @@
             },
             "transform": {
                 "position": [
-                    29.678909301757813,
-                    11.980831146240234,
+                    29.48105812072754,
+                    13.10300064086914,
                     0.0
                 ],
                 "rotation": [
@@ -1581,7 +1359,7 @@
         {
             "dot": {
                 "isStatic": false,
-                "materialId": 11
+                "materialId": 13
             },
             "id": 37,
             "rigidBody2D": {
@@ -1590,10 +1368,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    27.080833435058594,
-                    13.480829238891602
+                    26.882986068725586,
+                    14.603004455566406
                 ],
-                "simulationId": 31,
+                "simulationId": 25,
                 "velocity": [
                     0.0,
                     0.0
@@ -1601,8 +1379,8 @@
             },
             "transform": {
                 "position": [
-                    27.080833435058594,
-                    13.480829238891602,
+                    26.882986068725586,
+                    14.603004455566406,
                     0.0
                 ],
                 "rotation": [
@@ -1629,10 +1407,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    27.080833435058594,
-                    16.4808349609375
+                    28.811342239379883,
+                    12.304866790771484
                 ],
-                "simulationId": 32,
+                "simulationId": 26,
                 "velocity": [
                     0.0,
                     0.0
@@ -1640,8 +1418,8 @@
             },
             "transform": {
                 "position": [
-                    27.080833435058594,
-                    16.4808349609375,
+                    28.811342239379883,
+                    12.304866790771484,
                     0.0
                 ],
                 "rotation": [
@@ -1668,10 +1446,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    29.678909301757813,
-                    17.980831146240234
+                    27.909040451049805,
+                    11.78392505645752
                 ],
-                "simulationId": 33,
+                "simulationId": 27,
                 "velocity": [
                     0.0,
                     0.0
@@ -1679,8 +1457,8 @@
             },
             "transform": {
                 "position": [
-                    29.678909301757813,
-                    17.980831146240234,
+                    27.909040451049805,
+                    11.78392505645752,
                     0.0
                 ],
                 "rotation": [
@@ -1707,10 +1485,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    27.75054931640625,
-                    12.682696342468262
+                    26.882986068725586,
+                    11.603004455566406
                 ],
-                "simulationId": 34,
+                "simulationId": 28,
                 "velocity": [
                     0.0,
                     0.0
@@ -1718,8 +1496,8 @@
             },
             "transform": {
                 "position": [
-                    27.75054931640625,
-                    12.682696342468262,
+                    26.882986068725586,
+                    11.603004455566406,
                     0.0
                 ],
                 "rotation": [
@@ -1746,10 +1524,10 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    26.724485397338867,
-                    15.501775741577148
+                    24.284910202026367,
+                    13.103002548217773
                 ],
-                "simulationId": 35,
+                "simulationId": 29,
                 "velocity": [
                     0.0,
                     0.0
@@ -1757,8 +1535,8 @@
             },
             "transform": {
                 "position": [
-                    26.724485397338867,
-                    15.501775741577148,
+                    24.284910202026367,
+                    13.103002548217773,
                     0.0
                 ],
                 "rotation": [
@@ -1785,8 +1563,242 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    28.652847290039063,
-                    17.799909591674805
+                    24.284910202026367,
+                    16.103008270263672
+                ],
+                "simulationId": 30,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    24.284910202026367,
+                    16.103008270263672,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 43,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    26.882986068725586,
+                    17.603004455566406
+                ],
+                "simulationId": 31,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    26.882986068725586,
+                    17.603004455566406,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 44,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    24.954626083374023,
+                    12.304869651794434
+                ],
+                "simulationId": 32,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    24.954626083374023,
+                    12.304869651794434,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 45,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    23.92856216430664,
+                    15.12394905090332
+                ],
+                "simulationId": 33,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    23.92856216430664,
+                    15.12394905090332,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 46,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    25.856924057006836,
+                    17.422082901000977
+                ],
+                "simulationId": 34,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    25.856924057006836,
+                    17.422082901000977,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 47,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    25.856924057006836,
+                    11.783927917480469
+                ],
+                "simulationId": 35,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    25.856924057006836,
+                    11.783927917480469,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 11
+            },
+            "id": 48,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    23.92856216430664,
+                    14.082058906555176
                 ],
                 "simulationId": 36,
                 "velocity": [
@@ -1796,8 +1808,8 @@
             },
             "transform": {
                 "position": [
-                    28.652847290039063,
-                    17.799909591674805,
+                    23.92856216430664,
+                    14.082058906555176,
                     0.0
                 ],
                 "rotation": [
@@ -1817,93 +1829,15 @@
                 "isStatic": false,
                 "materialId": 11
             },
-            "id": 60,
+            "id": 49,
             "rigidBody2D": {
                 "bodyType": 0,
                 "enableCollision": true,
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    28.652847290039063,
-                    12.161754608154297
-                ],
-                "simulationId": 39,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    28.652847290039063,
-                    12.161754608154297,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
-            "id": 61,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    26.724485397338867,
-                    14.459885597229004
-                ],
-                "simulationId": 38,
-                "velocity": [
-                    0.0,
-                    0.0
-                ]
-            },
-            "transform": {
-                "position": [
-                    26.724485397338867,
-                    14.459885597229004,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ]
-            }
-        },
-        {
-            "dot": {
-                "isStatic": false,
-                "materialId": 11
-            },
-            "id": 62,
-            "rigidBody2D": {
-                "bodyType": 0,
-                "enableCollision": true,
-                "enableShapeCollision": true,
-                "mass": 1.0,
-                "physicsPosition": [
-                    27.75054931640625,
-                    17.278968811035156
+                    24.954626083374023,
+                    16.901142120361328
                 ],
                 "simulationId": 37,
                 "velocity": [
@@ -1913,8 +1847,86 @@
             },
             "transform": {
                 "position": [
-                    27.75054931640625,
-                    17.278968811035156,
+                    24.954626083374023,
+                    16.901142120361328,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 5
+            },
+            "id": 50,
+            "rigidBody2D": {
+                "bodyType": 2,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    -19.887962341308594,
+                    2.6522650718688965
+                ],
+                "simulationId": 38,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    -19.887962341308594,
+                    2.6522650718688965,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "dot": {
+                "isStatic": false,
+                "materialId": 5
+            },
+            "id": 51,
+            "rigidBody2D": {
+                "bodyType": 0,
+                "enableCollision": true,
+                "enableShapeCollision": true,
+                "mass": 1.0,
+                "physicsPosition": [
+                    -18.387962341308594,
+                    1.7862396240234375
+                ],
+                "simulationId": 39,
+                "velocity": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "position": [
+                    -18.387962341308594,
+                    1.7862396240234375,
                     0.0
                 ],
                 "rotation": [
@@ -2225,463 +2237,463 @@
     "physics": {
         "distanceConstraints": [
             {
-                "distance": 1.0,
-                "entity": 63,
-                "entityA": 7,
-                "entityB": 9
+                "distance": 3.0,
+                "entity": 52,
+                "entityA": 37,
+                "entityB": 42
+            },
+            {
+                "distance": 3.0,
+                "entity": 53,
+                "entityA": 45,
+                "entityB": 37
+            },
+            {
+                "distance": 3.0,
+                "entity": 54,
+                "entityA": 37,
+                "entityB": 48
+            },
+            {
+                "distance": 3.0,
+                "entity": 55,
+                "entityA": 41,
+                "entityB": 37
             },
             {
                 "distance": 1.0,
-                "entity": 64,
-                "entityA": 9,
-                "entityB": 8
-            },
-            {
-                "distance": 1.0040160417556763,
-                "entity": 65,
-                "entityA": 8,
-                "entityB": 6
-            },
-            {
-                "distance": 1.0155376195907593,
-                "entity": 66,
-                "entityA": 6,
-                "entityB": 7
-            },
-            {
-                "distance": 1.0,
-                "entity": 67,
-                "entityA": 11,
-                "entityB": 10
-            },
-            {
-                "distance": 1.0,
-                "entity": 68,
-                "entityA": 10,
+                "entity": 56,
+                "entityA": 15,
                 "entityB": 14
             },
             {
                 "distance": 1.0,
-                "entity": 69,
+                "entity": 57,
                 "entityA": 14,
-                "entityB": 19
-            },
-            {
-                "distance": 1.0,
-                "entity": 70,
-                "entityA": 19,
-                "entityB": 20
-            },
-            {
-                "distance": 1.0,
-                "entity": 71,
-                "entityA": 20,
-                "entityB": 17
-            },
-            {
-                "distance": 1.0,
-                "entity": 72,
-                "entityA": 20,
                 "entityB": 18
             },
             {
                 "distance": 1.0,
-                "entity": 73,
+                "entity": 58,
                 "entityA": 18,
-                "entityB": 11
-            },
-            {
-                "distance": 1.0,
-                "entity": 74,
-                "entityA": 20,
-                "entityB": 10
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 75,
-                "entityA": 11,
-                "entityB": 20
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 76,
-                "entityA": 18,
-                "entityB": 10
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 77,
-                "entityA": 10,
-                "entityB": 19
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 78,
-                "entityA": 20,
-                "entityB": 14
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 79,
-                "entityA": 17,
-                "entityB": 18
-            },
-            {
-                "distance": 1.4142135381698608,
-                "entity": 80,
-                "entityA": 17,
-                "entityB": 19
-            },
-            {
-                "distance": 1.0,
-                "entity": 81,
-                "entityA": 19,
-                "entityB": 21
-            },
-            {
-                "distance": 1.0,
-                "entity": 82,
-                "entityA": 21,
-                "entityB": 22
-            },
-            {
-                "distance": 1.0,
-                "entity": 83,
-                "entityA": 22,
                 "entityB": 23
             },
             {
                 "distance": 1.0,
-                "entity": 84,
-                "entityA": 18,
+                "entity": 59,
+                "entityA": 23,
                 "entityB": 24
             },
             {
                 "distance": 1.0,
-                "entity": 85,
+                "entity": 60,
                 "entityA": 24,
+                "entityB": 21
+            },
+            {
+                "distance": 1.0,
+                "entity": 61,
+                "entityA": 24,
+                "entityB": 22
+            },
+            {
+                "distance": 1.0,
+                "entity": 62,
+                "entityA": 22,
+                "entityB": 15
+            },
+            {
+                "distance": 1.0,
+                "entity": 63,
+                "entityA": 24,
+                "entityB": 14
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 64,
+                "entityA": 15,
+                "entityB": 24
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 65,
+                "entityA": 22,
+                "entityB": 14
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 66,
+                "entityA": 14,
+                "entityB": 23
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 67,
+                "entityA": 24,
+                "entityB": 18
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 68,
+                "entityA": 21,
+                "entityB": 22
+            },
+            {
+                "distance": 1.4142135381698608,
+                "entity": 69,
+                "entityA": 21,
+                "entityB": 23
+            },
+            {
+                "distance": 1.0,
+                "entity": 70,
+                "entityA": 23,
                 "entityB": 25
             },
             {
                 "distance": 1.0,
-                "entity": 86,
+                "entity": 71,
                 "entityA": 25,
                 "entityB": 26
             },
             {
                 "distance": 1.0,
-                "entity": 87,
-                "entityA": 11,
-                "entityB": 12
+                "entity": 72,
+                "entityA": 26,
+                "entityB": 27
             },
             {
                 "distance": 1.0,
-                "entity": 88,
-                "entityA": 12,
-                "entityB": 13
+                "entity": 73,
+                "entityA": 22,
+                "entityB": 28
             },
             {
                 "distance": 1.0,
-                "entity": 89,
-                "entityA": 14,
-                "entityB": 15
+                "entity": 74,
+                "entityA": 28,
+                "entityB": 29
             },
             {
                 "distance": 1.0,
-                "entity": 90,
+                "entity": 75,
+                "entityA": 29,
+                "entityB": 30
+            },
+            {
+                "distance": 1.0,
+                "entity": 76,
                 "entityA": 15,
                 "entityB": 16
             },
             {
-                "distance": 3.0,
-                "entity": 91,
-                "entityA": 62,
-                "entityB": 33
+                "distance": 1.0,
+                "entity": 77,
+                "entityA": 16,
+                "entityB": 17
+            },
+            {
+                "distance": 1.0,
+                "entity": 78,
+                "entityA": 18,
+                "entityB": 19
+            },
+            {
+                "distance": 1.0,
+                "entity": 79,
+                "entityA": 19,
+                "entityB": 20
             },
             {
                 "distance": 3.0,
-                "entity": 92,
-                "entityA": 33,
-                "entityB": 42
+                "entity": 80,
+                "entityA": 49,
+                "entityB": 37
             },
             {
                 "distance": 3.0,
-                "entity": 93,
-                "entityA": 39,
-                "entityB": 33
+                "entity": 81,
+                "entityA": 37,
+                "entityB": 46
             },
             {
                 "distance": 3.0,
-                "entity": 94,
-                "entityA": 33,
-                "entityB": 27
+                "entity": 82,
+                "entityA": 43,
+                "entityB": 37
             },
             {
                 "distance": 3.0,
-                "entity": 95,
-                "entityA": 28,
-                "entityB": 33
-            },
-            {
-                "distance": 3.0,
-                "entity": 96,
-                "entityA": 33,
-                "entityB": 29
-            },
-            {
-                "distance": 3.0,
-                "entity": 97,
-                "entityA": 30,
-                "entityB": 33
-            },
-            {
-                "distance": 3.0,
-                "entity": 98,
-                "entityA": 33,
+                "entity": 83,
+                "entityA": 37,
                 "entityB": 31
             },
             {
                 "distance": 3.0,
-                "entity": 99,
+                "entity": 84,
                 "entityA": 32,
-                "entityB": 33
+                "entityB": 37
             },
             {
                 "distance": 3.0,
-                "entity": 100,
-                "entityA": 33,
-                "entityB": 34
-            },
-            {
-                "distance": 3.0,
-                "entity": 101,
-                "entityA": 35,
-                "entityB": 33
-            },
-            {
-                "distance": 3.0,
-                "entity": 102,
-                "entityA": 33,
-                "entityB": 36
-            },
-            {
-                "distance": 3.0,
-                "entity": 103,
-                "entityA": 60,
-                "entityB": 33
-            },
-            {
-                "distance": 3.0,
-                "entity": 104,
-                "entityA": 33,
-                "entityB": 40
-            },
-            {
-                "distance": 3.0,
-                "entity": 105,
+                "entity": 85,
                 "entityA": 37,
                 "entityB": 33
             },
             {
                 "distance": 3.0,
-                "entity": 106,
-                "entityA": 33,
-                "entityB": 61
+                "entity": 86,
+                "entityA": 34,
+                "entityB": 37
             },
             {
                 "distance": 3.0,
-                "entity": 107,
-                "entityA": 41,
-                "entityB": 33
+                "entity": 87,
+                "entityA": 37,
+                "entityB": 35
             },
             {
                 "distance": 3.0,
-                "entity": 108,
-                "entityA": 33,
+                "entity": 88,
+                "entityA": 36,
+                "entityB": 37
+            },
+            {
+                "distance": 3.0,
+                "entity": 89,
+                "entityA": 37,
                 "entityB": 38
+            },
+            {
+                "distance": 3.0,
+                "entity": 90,
+                "entityA": 39,
+                "entityB": 37
+            },
+            {
+                "distance": 3.0,
+                "entity": 91,
+                "entityA": 37,
+                "entityB": 40
+            },
+            {
+                "distance": 3.0,
+                "entity": 92,
+                "entityA": 47,
+                "entityB": 37
+            },
+            {
+                "distance": 3.0,
+                "entity": 93,
+                "entityA": 37,
+                "entityB": 44
+            },
+            {
+                "distance": 1.0,
+                "entity": 94,
+                "entityA": 50,
+                "entityB": 12
+            },
+            {
+                "distance": 1.0,
+                "entity": 95,
+                "entityA": 12,
+                "entityB": 51
+            },
+            {
+                "distance": 1.0,
+                "entity": 96,
+                "entityA": 51,
+                "entityB": 13
+            },
+            {
+                "distance": 1.0,
+                "entity": 97,
+                "entityA": 13,
+                "entityB": 50
             }
         ],
         "springs": [
             {
                 "distance": 4.123105525970459,
-                "entity": 125,
-                "entityA": 26,
-                "entityB": 17,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 4.123105525970459,
-                "entity": 126,
-                "entityA": 17,
-                "entityB": 23,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 3.1622776985168457,
-                "entity": 127,
-                "entityA": 13,
-                "entityB": 24,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 2.2360680103302,
-                "entity": 128,
-                "entityA": 13,
-                "entityB": 10,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 2.2360680103302,
-                "entity": 129,
-                "entityA": 10,
-                "entityB": 16,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 4.242640495300293,
-                "entity": 130,
-                "entityA": 16,
-                "entityB": 23,
-                "k": 0.0024806864093989134
-            },
-            {
-                "distance": 3.1622776985168457,
-                "entity": 131,
-                "entityA": 16,
+                "entity": 98,
+                "entityA": 30,
                 "entityB": 21,
                 "k": 0.0024806864093989134
             },
             {
+                "distance": 4.123105525970459,
+                "entity": 99,
+                "entityA": 21,
+                "entityB": 27,
+                "k": 0.0024806864093989134
+            },
+            {
+                "distance": 3.1622776985168457,
+                "entity": 100,
+                "entityA": 17,
+                "entityB": 28,
+                "k": 0.0024806864093989134
+            },
+            {
+                "distance": 2.2360680103302,
+                "entity": 101,
+                "entityA": 17,
+                "entityB": 14,
+                "k": 0.0024806864093989134
+            },
+            {
+                "distance": 2.2360680103302,
+                "entity": 102,
+                "entityA": 14,
+                "entityB": 20,
+                "k": 0.0024806864093989134
+            },
+            {
                 "distance": 4.242640495300293,
-                "entity": 132,
-                "entityA": 13,
-                "entityB": 26,
+                "entity": 103,
+                "entityA": 20,
+                "entityB": 27,
+                "k": 0.0024806864093989134
+            },
+            {
+                "distance": 3.1622776985168457,
+                "entity": 104,
+                "entityA": 20,
+                "entityB": 25,
+                "k": 0.0024806864093989134
+            },
+            {
+                "distance": 4.242640495300293,
+                "entity": 105,
+                "entityA": 17,
+                "entityB": 30,
                 "k": 0.0024806864093989134
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 133,
-                "entityA": 62,
-                "entityB": 38,
+                "entity": 106,
+                "entityA": 49,
+                "entityB": 42,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 134,
-                "entityA": 38,
+                "entity": 107,
+                "entityA": 42,
+                "entityB": 45,
+                "k": 0.5
+            },
+            {
+                "distance": 1.0418890714645386,
+                "entity": 108,
+                "entityA": 45,
+                "entityB": 48,
+                "k": 0.5
+            },
+            {
+                "distance": 1.0418890714645386,
+                "entity": 109,
+                "entityA": 48,
                 "entityB": 41,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 135,
+                "entity": 110,
                 "entityA": 41,
-                "entityB": 61,
+                "entityB": 44,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 136,
-                "entityA": 61,
-                "entityB": 37,
+                "entity": 111,
+                "entityA": 44,
+                "entityB": 47,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 137,
-                "entityA": 37,
+                "entity": 112,
+                "entityA": 47,
                 "entityB": 40,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 138,
+                "entity": 113,
                 "entityA": 40,
-                "entityB": 60,
+                "entityB": 39,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 139,
-                "entityA": 60,
+                "entity": 114,
+                "entityA": 39,
+                "entityB": 38,
+                "k": 0.5
+            },
+            {
+                "distance": 1.0418890714645386,
+                "entity": 115,
+                "entityA": 38,
                 "entityB": 36,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 140,
+                "entity": 116,
                 "entityA": 36,
                 "entityB": 35,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 141,
+                "entity": 117,
                 "entityA": 35,
                 "entityB": 34,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 142,
+                "entity": 1,
                 "entityA": 34,
+                "entityB": 33,
+                "k": 0.5
+            },
+            {
+                "distance": 1.0418890714645386,
+                "entity": 2,
+                "entityA": 33,
                 "entityB": 32,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 143,
+                "entity": 3,
                 "entityA": 32,
                 "entityB": 31,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 144,
+                "entity": 4,
                 "entityA": 31,
-                "entityB": 30,
+                "entityB": 43,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 145,
-                "entityA": 30,
-                "entityB": 29,
+                "entity": 5,
+                "entityA": 43,
+                "entityB": 46,
                 "k": 0.5
             },
             {
                 "distance": 1.0418890714645386,
-                "entity": 146,
-                "entityA": 29,
-                "entityB": 28,
-                "k": 0.5
-            },
-            {
-                "distance": 1.0418890714645386,
-                "entity": 147,
-                "entityA": 28,
-                "entityB": 27,
-                "k": 0.5
-            },
-            {
-                "distance": 1.0418890714645386,
-                "entity": 148,
-                "entityA": 27,
-                "entityB": 39,
-                "k": 0.5
-            },
-            {
-                "distance": 1.0418890714645386,
-                "entity": 149,
-                "entityA": 39,
-                "entityB": 42,
-                "k": 0.5
-            },
-            {
-                "distance": 1.0418890714645386,
-                "entity": 150,
-                "entityA": 42,
-                "entityB": 62,
+                "entity": 6,
+                "entityA": 46,
+                "entityB": 49,
                 "k": 0.5
             }
         ]

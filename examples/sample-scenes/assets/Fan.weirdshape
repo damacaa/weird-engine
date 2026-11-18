@@ -67,6 +67,18 @@
       "customInt": 0,
       "customVec2X": 0.0,
       "customVec2Y": 0.0,
+      "id": 1,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": -131.51998901367188,
+      "posY": -94.72001647949219,
+      "typeId": "point"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
       "id": 9,
       "inputFloats": [
         0.0,
@@ -91,12 +103,24 @@
       "customInt": 0,
       "customVec2X": 0.0,
       "customVec2Y": 0.0,
-      "id": 1,
-      "inputFloats": [],
-      "inputVec2s": [],
-      "posX": -131.51998901367188,
-      "posY": -94.72001647949219,
-      "typeId": "point"
+      "id": 10,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          24.0,
+          0.0
+        ]
+      ],
+      "posX": 371.74871826171875,
+      "posY": 310.302734375,
+      "typeId": "translate"
     },
     {
       "customFloat": 1.0,
@@ -161,7 +185,7 @@
       "id": 5,
       "inputFloats": [
         0.0,
-        1.0,
+        2.0,
         18.0,
         12.0,
         3.0
@@ -210,30 +234,6 @@
       "posX": 244.89285278320313,
       "posY": 305.6428527832031,
       "typeId": "mirror_x"
-    },
-    {
-      "customFloat": 1.0,
-      "customInt": 0,
-      "customVec2X": 0.0,
-      "customVec2Y": 0.0,
-      "id": 10,
-      "inputFloats": [
-        0.0,
-        0.0
-      ],
-      "inputVec2s": [
-        [
-          0.0,
-          0.0
-        ],
-        [
-          24.0,
-          0.0
-        ]
-      ],
-      "posX": 371.74871826171875,
-      "posY": 310.302734375,
-      "typeId": "translate"
     },
     {
       "customFloat": 1.0,

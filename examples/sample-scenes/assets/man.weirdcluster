@@ -1,9 +1,9 @@
 {
   "camera": {
     "position": [
-      6.894794940948486,
-      1.7946341037750244,
-      18.470617294311523
+      2.214045524597168,
+      1.6151986122131348,
+      13.90300178527832
     ],
     "rotation": [
       0.0,
@@ -680,201 +680,6 @@
           1.0
         ]
       }
-    },
-    {
-      "dot": {
-        "isStatic": false,
-        "materialId": 1
-      },
-      "id": 20,
-      "rigidBody2D": {
-        "bodyType": 0,
-        "enableCollision": true,
-        "enableShapeCollision": true,
-        "mass": 1.0,
-        "physicsPosition": [
-          8.0,
-          7.0
-        ],
-        "simulationId": 17,
-        "velocity": [
-          0.0,
-          0.0
-        ]
-      },
-      "transform": {
-        "position": [
-          8.0,
-          7.0,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "dot": {
-        "isStatic": false,
-        "materialId": 4
-      },
-      "id": 113,
-      "rigidBody2D": {
-        "bodyType": 0,
-        "enableCollision": true,
-        "enableShapeCollision": true,
-        "mass": 1.0,
-        "physicsPosition": [
-          8.0,
-          6.0
-        ],
-        "simulationId": 18,
-        "velocity": [
-          0.0,
-          0.0
-        ]
-      },
-      "transform": {
-        "position": [
-          8.0,
-          6.0,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "dot": {
-        "isStatic": false,
-        "materialId": 4
-      },
-      "id": 114,
-      "rigidBody2D": {
-        "bodyType": 0,
-        "enableCollision": true,
-        "enableShapeCollision": true,
-        "mass": 1.0,
-        "physicsPosition": [
-          6.999795436859131,
-          6.999772548675537
-        ],
-        "simulationId": 19,
-        "velocity": [
-          0.0,
-          0.0
-        ]
-      },
-      "transform": {
-        "position": [
-          6.999795436859131,
-          6.999772548675537,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "dot": {
-        "isStatic": false,
-        "materialId": 4
-      },
-      "id": 115,
-      "rigidBody2D": {
-        "bodyType": 0,
-        "enableCollision": true,
-        "enableShapeCollision": true,
-        "mass": 1.0,
-        "physicsPosition": [
-          9.0,
-          7.0
-        ],
-        "simulationId": 20,
-        "velocity": [
-          0.0,
-          0.0
-        ]
-      },
-      "transform": {
-        "position": [
-          9.0,
-          7.0,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "dot": {
-        "isStatic": false,
-        "materialId": 4
-      },
-      "id": 116,
-      "rigidBody2D": {
-        "bodyType": 0,
-        "enableCollision": true,
-        "enableShapeCollision": true,
-        "mass": 1.0,
-        "physicsPosition": [
-          8.0,
-          8.0
-        ],
-        "simulationId": 21,
-        "velocity": [
-          0.0,
-          0.0
-        ]
-      },
-      "transform": {
-        "position": [
-          8.0,
-          8.0,
-          0.0
-        ],
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
     }
   ],
   "entityTags": [],
@@ -1186,133 +991,133 @@
     "distanceConstraints": [
       {
         "distance": 1.0,
-        "entity": 21,
+        "entity": 25,
         "entityA": 6,
         "entityB": 5
       },
       {
         "distance": 1.0,
-        "entity": 22,
+        "entity": 26,
         "entityA": 5,
         "entityB": 4
       },
       {
         "distance": 1.0,
-        "entity": 23,
+        "entity": 27,
         "entityA": 4,
         "entityB": 3
       },
       {
         "distance": 1.0,
-        "entity": 24,
+        "entity": 28,
         "entityA": 3,
         "entityB": 7
       },
       {
         "distance": 1.0,
-        "entity": 25,
+        "entity": 29,
         "entityA": 7,
         "entityB": 8
       },
       {
         "distance": 1.0,
-        "entity": 26,
+        "entity": 30,
         "entityA": 8,
         "entityB": 9
       },
       {
         "distance": 1.0,
-        "entity": 27,
+        "entity": 31,
         "entityA": 7,
         "entityB": 12
       },
       {
         "distance": 1.0,
-        "entity": 28,
+        "entity": 32,
         "entityA": 3,
         "entityB": 13
       },
       {
         "distance": 1.0,
-        "entity": 29,
+        "entity": 33,
         "entityA": 4,
         "entityB": 11
       },
       {
         "distance": 1.0,
-        "entity": 30,
+        "entity": 34,
         "entityA": 11,
         "entityB": 13
       },
       {
         "distance": 1.0,
-        "entity": 31,
+        "entity": 35,
         "entityA": 13,
         "entityB": 12
       },
       {
         "distance": 1.0,
-        "entity": 32,
+        "entity": 36,
         "entityA": 13,
         "entityB": 10
       },
       {
         "distance": 1.0,
-        "entity": 33,
+        "entity": 37,
         "entityA": 12,
         "entityB": 14
       },
       {
         "distance": 1.0,
-        "entity": 34,
+        "entity": 38,
         "entityA": 14,
         "entityB": 15
       },
       {
         "distance": 1.0,
-        "entity": 35,
+        "entity": 39,
         "entityA": 15,
         "entityB": 16
       },
       {
         "distance": 1.0,
-        "entity": 36,
+        "entity": 40,
         "entityA": 11,
         "entityB": 17
       },
       {
         "distance": 1.0,
-        "entity": 37,
+        "entity": 41,
         "entityA": 17,
         "entityB": 18
       },
       {
         "distance": 1.0,
-        "entity": 38,
+        "entity": 42,
         "entityA": 18,
         "entityB": 19
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 39,
+        "entity": 43,
         "entityA": 4,
         "entityB": 13
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 40,
+        "entity": 44,
         "entityA": 3,
         "entityB": 11
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 41,
+        "entity": 45,
         "entityA": 3,
         "entityB": 12
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 42,
+        "entity": 46,
         "entityA": 13,
         "entityB": 7
       }
@@ -1320,168 +1125,168 @@
     "springs": [
       {
         "distance": 4.123105525970459,
-        "entity": 43,
+        "entity": 47,
         "entityA": 19,
         "entityB": 10,
         "k": 0.0024806864093989134
       },
       {
         "distance": 4.123105525970459,
-        "entity": 44,
+        "entity": 48,
         "entityA": 10,
         "entityB": 16,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.0,
-        "entity": 45,
+        "entity": 49,
         "entityA": 6,
         "entityB": 4,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.2360680103302,
-        "entity": 46,
+        "entity": 50,
         "entityA": 6,
         "entityB": 3,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.2360680103302,
-        "entity": 47,
+        "entity": 51,
         "entityA": 9,
         "entityB": 3,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.0,
-        "entity": 48,
+        "entity": 52,
         "entityA": 9,
         "entityB": 7,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 49,
+        "entity": 53,
         "entityA": 5,
         "entityB": 3,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 50,
+        "entity": 54,
         "entityA": 3,
         "entityB": 8,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 51,
+        "entity": 55,
         "entityA": 4,
         "entityB": 17,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 52,
+        "entity": 56,
         "entityA": 7,
         "entityB": 14,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 53,
+        "entity": 57,
         "entityA": 11,
         "entityB": 10,
         "k": 0.0024806864093989134
       },
       {
         "distance": 1.4142135381698608,
-        "entity": 54,
+        "entity": 58,
         "entityA": 10,
         "entityB": 12,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.2360680103302,
-        "entity": 55,
+        "entity": 59,
         "entityA": 17,
         "entityB": 5,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.1622776985168457,
-        "entity": 56,
+        "entity": 60,
         "entityA": 17,
         "entityB": 6,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.2360680103302,
-        "entity": 57,
+        "entity": 61,
         "entityA": 8,
         "entityB": 14,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.1622776985168457,
-        "entity": 58,
+        "entity": 62,
         "entityA": 9,
         "entityB": 14,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.0,
-        "entity": 59,
+        "entity": 63,
         "entityA": 8,
         "entityB": 12,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.0,
-        "entity": 60,
+        "entity": 64,
         "entityA": 9,
         "entityB": 12,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.0,
-        "entity": 61,
+        "entity": 65,
         "entityA": 5,
         "entityB": 11,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.0,
-        "entity": 62,
+        "entity": 66,
         "entityA": 6,
         "entityB": 11,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.1622776985168457,
-        "entity": 63,
+        "entity": 67,
         "entityA": 19,
         "entityB": 4,
         "k": 0.0024806864093989134
       },
       {
         "distance": 3.1622776985168457,
-        "entity": 64,
+        "entity": 68,
         "entityA": 7,
         "entityB": 16,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.8284270763397217,
-        "entity": 65,
+        "entity": 69,
         "entityA": 4,
         "entityB": 9,
         "k": 0.0024806864093989134
       },
       {
         "distance": 2.8284270763397217,
-        "entity": 66,
+        "entity": 70,
         "entityA": 6,
         "entityB": 7,
         "k": 0.0024806864093989134

@@ -11,6 +11,7 @@
 #include "weird-renderer/resources/Texture.h"
 #include "weird-renderer/scene/Camera.h"
 #include "weird-renderer/scene/Light.h"
+#include <algorithm>
 #include <vector>
 
 namespace WeirdEngine
@@ -58,6 +59,24 @@ namespace WeirdEngine
 			void resetCameraReprojection()
 			{
 				m_resetCameraReprojection = true;
+			}
+			void setBallK(float k)
+			{
+				float clamped = std::max(0.0f, k);
+				bool wasEnabled = m_config.ballK > 0.0f;
+				bool nowEnabled = clamped > 0.0f;
+				if (nowEnabled != wasEnabled)
+				{
+					if (nowEnabled)
+						m_distanceShader.addDefine("BLEND_SHAPES");
+					else
+						m_distanceShader.removeDefine("BLEND_SHAPES");
+				}
+				m_config.ballK = clamped;
+			}
+			float getBallK() const
+			{
+				return m_config.ballK;
 			}
 			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light2D>& lights,
 							const Material2D* materials, const Camera& camera, double time, double delta,

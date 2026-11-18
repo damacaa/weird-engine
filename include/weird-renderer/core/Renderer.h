@@ -53,6 +53,7 @@ namespace WeirdEngine
 			bool m_surfaceBlurEnabled;
 			float m_surfaceBlurRadius;
 			float m_surfaceBlurSigmaColor;
+			float m_defaultWorldSmoothFactor;
 
 			// Render pipelines
 			SDF2DRenderPipeline* m_worldPipeline;

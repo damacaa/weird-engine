@@ -34,6 +34,7 @@ namespace WeirdEngine
 			, m_vSyncEnabled(settings.vSyncEnabled)
 			, m_ditheringSpread(std::max(0.0f, settings.ditheringSpread))
 			, m_ditheringColorCount(std::max(2, settings.ditheringColorCount))
+			, m_defaultWorldSmoothFactor(std::max(0.0f, settings.worldSmoothFactor))
 			, m_uiPipeline(nullptr)
 			, m_worldPipeline(nullptr)
 			, m_3DWorldPipeline(nullptr)
@@ -165,11 +166,21 @@ namespace WeirdEngine
 			double clampedDelta = std::clamp(delta, 0.0, 1.0 / m_targetRefreshRate);
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
-			if (scene.shouldResetCameraReprojection() || scene.getSceneInstanceId() != m_lastSceneInstanceId)
+			const bool sceneChanged = (scene.getSceneInstanceId() != m_lastSceneInstanceId);
+			if (scene.shouldResetCameraReprojection() || sceneChanged)
 			{
 				m_lastSceneInstanceId = scene.getSceneInstanceId();
 				scene.clearResetCameraReprojection();
 				resetCameraReprojection();
+			}
+
+			if (sceneChanged || scene.consumeWorldSmoothFactorDirty())
+			{
+				const float overrideK = scene.getWorldSmoothFactorOverride();
+				if (m_worldPipeline)
+				{
+					m_worldPipeline->setBallK(overrideK >= 0.0f ? overrideK : m_defaultWorldSmoothFactor);
+				}
 			}
 
 			auto& result = renderScene(scene, time, clampedDelta);

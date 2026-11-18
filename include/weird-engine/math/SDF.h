@@ -725,6 +725,24 @@ namespace WeirdEngine
 			return -sqrt(dx) * sign(dy);
 		}
 
+		inline Expr sdRoundTriangle(const Vec2Expr& p, const Expr& w, const Expr& h, const Expr& radius)
+		{
+			Expr aw = max(abs(w), 1e-4f);
+			Expr ah = max(abs(h), 1e-4f);
+			Expr sy = step(0.0f, h) * 2.0f - 1.0f;
+
+			Expr halfW = aw * 0.5f;
+			Expr leg = length({halfW, ah});
+			Expr inradius = (halfW * ah) / (halfW + leg);
+
+			Expr r = min(max(radius, 0.0f), inradius * 0.998f);
+			Expr scale = 1.0f - r / inradius;
+			Expr shiftY = (1.0f - scale) * (inradius - ah / 3.0f);
+
+			Vec2Expr q = {p.x, p.y * sy - shiftY};
+			return sdTriangle(q, aw * scale, ah * scale) - r;
+		}
+
 		inline Expr sdRamp(const Vec2Expr& pIn, const Expr& wi, const Expr& he, const Expr& sk)
 		{
 			Vec2Expr e = {wi, sk};

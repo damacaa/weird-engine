@@ -55,7 +55,9 @@ namespace WeirdEngine
 	X(SineWave, (Amplitude, Period, Speed, Offset),                                                                    \
 	  sdSineWave(point(), var(SineWave::Amplitude), var(SineWave::Period), var(SineWave::Speed),                       \
 				 var(SineWave::Offset)))                                                                               \
-	X(Star, (), getStarShape())                                                                                        \
+	X(Star, (PosX, PosY, Radius, Displacement, Points, Speed),                                                         \
+	  sdStar(translate(point(), {var(Star::PosX), var(Star::PosY)}), var(Star::Radius), var(Star::Displacement),       \
+			 var(Star::Points), var(Star::Speed)))                                                                     \
 	X(BoxRotated, (PosX, PosY, SizeX, SizeY, Angle),                                                                   \
 	  sdBox(rotate(translate(point(), {var(BoxRotated::PosX), var(BoxRotated::PosY)}), var(BoxRotated::Angle)),        \
 			{var(BoxRotated::SizeX), var(BoxRotated::SizeY)}))                                                         \
@@ -75,7 +77,19 @@ namespace WeirdEngine
 			   var(TriangleLineRotated::Thickness)))                                                                   \
 	X(RampRotated, (PosX, PosY, Width, Height, Skew, Angle),                                                           \
 	  sdRamp(rotate(translate(point(), {var(RampRotated::PosX), var(RampRotated::PosY)}), var(RampRotated::Angle)),    \
-			 var(RampRotated::Width), var(RampRotated::Height), var(RampRotated::Skew)))
+			 var(RampRotated::Width), var(RampRotated::Height), var(RampRotated::Skew)))                               \
+	X(RoundTriangle, (PosX, PosY, Width, Height, Radius),                                                              \
+	  sdRoundTriangle(translate(point(), {var(RoundTriangle::PosX), var(RoundTriangle::PosY)}),                        \
+					  var(RoundTriangle::Width), var(RoundTriangle::Height), var(RoundTriangle::Radius)))              \
+	X(RoundTriangleRotated, (PosX, PosY, Width, Height, Radius, Angle),                                                \
+	  sdRoundTriangle(rotate(translate(point(), {var(RoundTriangleRotated::PosX), var(RoundTriangleRotated::PosY)}),   \
+							 var(RoundTriangleRotated::Angle)),                                                        \
+					  var(RoundTriangleRotated::Width), var(RoundTriangleRotated::Height),                             \
+					  var(RoundTriangleRotated::Radius)))                                                              \
+	X(RoundBoxRotated, (PosX, PosY, SizeX, SizeY, Radius, Angle),                                                      \
+	  sdRoundBox(rotate(translate(point(), {var(RoundBoxRotated::PosX), var(RoundBoxRotated::PosY)}),                  \
+						var(RoundBoxRotated::Angle)),                                                                  \
+				 {var(RoundBoxRotated::SizeX), var(RoundBoxRotated::SizeY)}, var(RoundBoxRotated::Radius)))
 
 #define WEIRD_UNPACK_PARAMS_2D(...) __VA_ARGS__
 #define WEIRD_GEN_PARAM_STRUCT_2D(Name, params, expr)                                                                  \

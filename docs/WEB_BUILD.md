@@ -103,8 +103,7 @@ Output: `build-web/examples/sample-scenes/index.{html,js,wasm,data}`.
 
 The bundled editors in `tools/` build the same way. Use
 `-DWEIRD_ENGINE_BUILD_TOOLS=ON` instead of `WEIRD_ENGINE_BUILD_EXAMPLES`, add
-the tool's `assets/` directory to the preload flags, and build its target. For
-example, the SDF node editor:
+the shared `tools/assets/` directory to the preload flags, and build `WeirdEditor` (or add `-DWEIRD_TOOLS_SHAPE_EDITOR_ONLY=ON` and build `WeirdShapeEditor` for a Shape-Editor-only build):
 
 ```bash
 mkdir -p build-web && cd build-web
@@ -112,16 +111,17 @@ mkdir -p build-web && cd build-web
 emcmake cmake .. \
   -DCMAKE_BUILD_TYPE=Release \
   -DWEIRD_ENGINE_BUILD_TOOLS=ON \
+  -DWEIRD_TOOLS_SHAPE_EDITOR_ONLY=ON \
   -DBUILD_WEB=ON \
   -DCMAKE_C_FLAGS="-pthread" \
   -DCMAKE_CXX_FLAGS="-pthread" \
   -DCMAKE_EXECUTABLE_SUFFIX=".html" \
-  -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file $PWD/../tools/shape-editor/assets@/assets --preload-file $PWD/../src/weird-renderer/fonts@/fonts --preload-file $PWD/../src/weird-renderer/shaders@/shaders"
+  -DCMAKE_EXE_LINKER_FLAGS="-pthread -sPTHREAD_POOL_SIZE=4 -sINITIAL_MEMORY=33554432 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=2 --preload-file $PWD/../tools/assets@/assets --preload-file $PWD/../src/weird-renderer/fonts@/fonts --preload-file $PWD/../src/weird-renderer/shaders@/shaders"
 
 emmake make WeirdShapeEditor -j"$(nproc)"
 ```
 
-Output: `build-web/tools/shape-editor/index.{html,js,wasm,data}`.
+Output: `build-web/tools/bin/index.{html,js,wasm,data}` (or omit `-DWEIRD_TOOLS_SHAPE_EDITOR_ONLY=ON` and run `emmake make WeirdEditor -j"$(nproc)"` for the full suite).
 
 ---
 

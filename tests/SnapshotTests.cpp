@@ -5,6 +5,8 @@
 #include "RopeScene.h"
 #include "TetrominoScene.h"
 #include "ThrustScene.h"
+#include "weird-engine/math/Default2DSDFs.h"
+#include "weird-engine/SceneSerializer.h"
 #include "weird-engine/services/ShapeService.h"
 #include "weird-engine/shapes/NodeGraphCompiler.h"
 #include "weird-engine/shapes/NodeGraphSerializer.h"
@@ -13,8 +15,10 @@
 #include "weird-physics/components/RigidBodyManager.h"
 
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -1670,6 +1674,427 @@ namespace
 
 		Input::SetMousePosition(0.0f, 0.0f);
 	}
+
+	void testBuiltinRotatedAndRoundedShapes()
+	{
+		Scene::registerBuiltinSDFs();
+		auto builtins = Scene::getBuiltinSDFs();
+		require(builtins.size() >= DefaultShapes::COUNT_2D, "Builtin SDF table must cover all 2D DefaultShapes.");
+
+		auto evalBuiltin = [&](ShapeId id, const float (&shapeVars)[8], vec2 p) -> float
+		{
+			const auto& expr = builtins[id];
+			require(expr != nullptr, "Builtin shape AST must not be null.");
+			float params[12]{};
+			packSdfParameters(params, shapeVars, 0.0f, p, 0.0f);
+			float val = expr->getValue(params);
+			require(std::isfinite(val), "Builtin shape distance must be finite.");
+			return val;
+		};
+
+		// BoxRotated: halfSize=(2, 1), angle=pi/4 around origin -> (sqrt(2), 0) has distance < 0, (2.2, 0) > 0
+		constexpr float kPiOver4 = 0.78539816339f;
+		constexpr float kPiOver2 = 1.57079632679f;
+		const float rotBoxVars[8] = {0.0f, 0.0f, 2.0f, 1.0f, kPiOver2, 0.0f, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::BoxRotated, rotBoxVars, {0.5f, 1.5f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::BoxRotated, rotBoxVars, {1.5f, 0.5f}) > 0.0f,
+				"BoxRotated at 90deg must swap X/Y extents.");
+
+		// TriangleRotated: 90deg rotation places apex along X instead of +Y
+		const float rotTriVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, kPiOver4, 0.0f, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::TriangleRotated, rotTriVars, {0.0f, 0.0f}) < 0.0f,
+				"TriangleRotated must contain its local origin.");
+
+		// RoundTriangle: unrounded (r=0) matches Triangle; rounded (r=0.25) preserves flat bottom & rounds apex
+		const float triVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+		const float roundTriVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 0.25f, 0.0f, 0.0f, 0.0f};
+		const float sharpApex = evalBuiltin(DefaultShapes::Triangle, triVars, {0.0f, 4.0f / 3.0f});
+		const float zeroRadApex = evalBuiltin(DefaultShapes::RoundTriangle, triVars, {0.0f, 4.0f / 3.0f});
+		require(std::abs(sharpApex) < 1e-4f && std::abs(zeroRadApex) < 1e-4f,
+				"RoundTriangle with radius=0 must match Triangle.");
+
+		const float roundedBottomMid = evalBuiltin(DefaultShapes::RoundTriangle, roundTriVars, {0.0f, -2.0f / 3.0f});
+		const float roundedApex = evalBuiltin(DefaultShapes::RoundTriangle, roundTriVars, {0.0f, 4.0f / 3.0f});
+		require(std::abs(roundedBottomMid) < 1e-3f && roundedApex > 0.25f,
+				"RoundTriangle must keep the bottom midpoint on the boundary and pull back the sharp apex.");
+
+		// Excessive radius must clamp cleanly without NaN and remain inside/tangent to the triangle
+		const float clampedVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 50.0f, 0.0f, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::RoundTriangle, clampedVars, {0.0f, -2.0f / 3.0f + 0.618f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::RoundTriangle, clampedVars, {0.0f, 1.3f}) > 0.0f,
+				"RoundTriangle must clamp oversized radius to inscribed circle without NaN.");
+
+		// RoundTriangleRotated: verify GLSL print and rotation
+		const float rotRoundTriVars[8] = {1.0f, -2.0f, 2.0f, 2.0f, 0.25f, kPiOver2, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::RoundTriangleRotated, rotRoundTriVars, {1.0f, -2.0f}) < 0.0f,
+				"RoundTriangleRotated must contain its translated center.");
+		std::string glsl = builtins[DefaultShapes::RoundTriangle]->print();
+		require(!glsl.empty() && glsl.find("nan") == std::string::npos,
+				"RoundTriangle GLSL expression generation must succeed.");
+
+		// RoundBoxRotated: 90deg rotation swaps SizeX/SizeY and rounds corners
+		const float rotRoundBoxVars[8] = {1.0f, -2.0f, 2.0f, 1.0f, 0.3f, kPiOver2, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {1.5f, -0.5f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {2.5f, -1.5f}) > 0.0f &&
+					evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {2.0f, 0.0f}) > 0.0f,
+				"RoundBoxRotated must rotate extents and round sharp corners.");
+
+		// Verify DefaultShapes::Star exposes its named parameter indices
+		static_assert(DefaultShapes::Star::PosX == 0 && DefaultShapes::Star::PosY == 1 &&
+					  DefaultShapes::Star::Radius == 2 && DefaultShapes::Star::Displacement == 3 &&
+					  DefaultShapes::Star::Points == 4 && DefaultShapes::Star::Speed == 5);
+
+		// Verify round_triangle NodeGraph node compiles cleanly
+		NodeGraph graph;
+		int pNode = graph.addNode("point", {0.0f, 0.0f});
+		int triNode = graph.addNode("round_triangle", {120.0f, 0.0f});
+		int outNode = graph.addNode("sdf_output", {260.0f, 0.0f});
+		graph.addLink(makePinId(pNode, false, 0), makePinId(triNode, true, 0));
+		graph.addLink(makePinId(triNode, false, 0), makePinId(outNode, true, 0));
+		Expr compiled = NodeGraphCompiler::evaluate(graph);
+		require(compiled.node != nullptr && !compiled.node->print().empty(),
+				"NodeGraph round_triangle node must evaluate and print GLSL.");
+	}
+
+	void testPlatformerWorldClusterFixedBody(SceneManager& manager, const std::string& name)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<Scene>>(name, ASSETS_PATH "platformer_world.weirdscene");
+		manager.loadScene(name);
+
+		auto& scene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+		auto& registry = *scene.registry;
+		auto& services = *scene.services;
+
+		ClusterInstance* ameba = services.clusters().getByName("ameba_1");
+		ClusterInstance* man = services.clusters().getByName("man_2");
+		require(ameba != nullptr && man != nullptr,
+				"platformer_world.weirdscene must load clusters ameba_1 and man_2.");
+
+		const uint32_t amebaId = ameba->id;
+		const uint32_t manId = man->id;
+
+		auto countFixedInCluster = [&](const ClusterInstance& cluster, Entity& outSampleEntity, vec3& outSamplePos)
+		{
+			size_t count = 0;
+			outSampleEntity = INVALID_ENTITY;
+			for (Entity e : cluster.entities)
+			{
+				if (!registry.hasComponent<RigidBody2D>(e))
+					continue;
+				const auto& rb = registry.getComponent<RigidBody2D>(e);
+				if (rb.type == BodyType::Fixed || rb.isFixed)
+				{
+					++count;
+					outSampleEntity = e;
+					outSamplePos = registry.getComponent<Transform>(e).position;
+				}
+			}
+			return count;
+		};
+
+		Entity fixedAmebaEnt = INVALID_ENTITY;
+		vec3 amebaFixedPosBefore(0.0f);
+		require(countFixedInCluster(*ameba, fixedAmebaEnt, amebaFixedPosBefore) == 1,
+				"ameba_1 in platformer_world.weirdscene must start with 1 Fixed anchor.");
+
+		Entity fixedManSample = INVALID_ENTITY;
+		vec3 manFixedSamplePos(0.0f);
+		require(countFixedInCluster(*man, fixedManSample, manFixedSamplePos) == 6,
+				"man_2 in platformer_world.weirdscene must start with 6 Fixed vertices.");
+
+		// Reload both clusters directly from their .weirdcluster assets (whose bodies are all Dynamic):
+		// scene overrides must survive cluster reloads even when template entity ordering differs.
+		require(services.clusters().reloadInstance(amebaId, ASSETS_PATH "Organisms/ameba.weirdcluster"),
+				"ameba_1 must reload from ameba.weirdcluster.");
+		require(services.clusters().reloadInstance(manId, ASSETS_PATH "Organisms/man.weirdcluster"),
+				"man_2 must reload from man.weirdcluster.");
+
+		ameba = services.clusters().getById(amebaId);
+		man = services.clusters().getById(manId);
+		require(ameba != nullptr && man != nullptr, "Reloaded clusters must remain registered.");
+
+		Entity fixedAmebaAfter = INVALID_ENTITY;
+		vec3 amebaFixedPosAfter(0.0f);
+		require(countFixedInCluster(*ameba, fixedAmebaAfter, amebaFixedPosAfter) == 1,
+				"ameba_1 must keep its Fixed anchor after reloading from ameba.weirdcluster.");
+		require(glm::distance(vec2(amebaFixedPosAfter), vec2(amebaFixedPosBefore)) < 0.1f,
+				"ameba_1 Fixed anchor must map back to the same corner vertex after scrambled reload.");
+		require(ameba->hasOverrideMetadata &&
+					(ameba->getOverrides(fixedAmebaAfter) & ClusterOverrideFlag::BodyType) != 0,
+				"ameba_1 reload must promote inferred Fixed override into explicit override metadata.");
+
+		Entity fixedManAfter = INVALID_ENTITY;
+		require(countFixedInCluster(*man, fixedManAfter, manFixedSamplePos) == 6,
+				"man_2 must keep all 6 Fixed vertices after reloading from man.weirdcluster.");
+		const Entity manHeadAfter = man->getEntity("head");
+		require(manHeadAfter != INVALID_ENTITY && registry.hasComponent<RigidBody2D>(manHeadAfter) &&
+					registry.getComponent<RigidBody2D>(manHeadAfter).type == BodyType::Fixed,
+				"man_2 local-named 'head' must remain BodyType::Fixed after cluster reload.");
+
+		// Second reload + snapshot roundtrip must preserve the Fixed anchor idempotently.
+		require(services.clusters().reloadInstance(amebaId, ASSETS_PATH "Organisms/ameba.weirdcluster"),
+				"ameba_1 second reload must succeed.");
+		ameba = services.clusters().getById(amebaId);
+		require(countFixedInCluster(*ameba, fixedAmebaAfter, amebaFixedPosAfter) == 1,
+				"ameba_1 must retain Fixed anchor across repeated reloads.");
+
+		SnapshotFile saved;
+		services.serialization().saveSnapshot(saved.path.string());
+		require(std::filesystem::exists(saved.path), "platformer_world snapshot must save.");
+
+		auto& mutRb = registry.getComponent<RigidBody2D>(fixedAmebaAfter);
+		mutRb.type = BodyType::Dynamic;
+		mutRb.isFixed = false;
+		require(services.serialization().loadSnapshot(saved.path.string()),
+				"platformer_world snapshot must restore cleanly.");
+
+		const auto& restoredRb = registry.getComponent<RigidBody2D>(fixedAmebaAfter);
+		const auto& restoredPos = registry.getComponent<Transform>(fixedAmebaAfter).position;
+		require(restoredRb.type == BodyType::Fixed && restoredRb.isFixed,
+				"ameba_1 anchor rigidbody must remain BodyType::Fixed after snapshot restore.");
+		require(glm::length(restoredPos - amebaFixedPosAfter) < 1e-4f,
+				"ameba_1 Fixed anchor position must remain unchanged.");
+	}
+
+	void testClusterReloadPreservesSceneOverrides(SceneManager& manager, const std::string& namePrefix)
+	{
+		struct TempAssetFile
+		{
+			std::filesystem::path path;
+			explicit TempAssetFile(const std::string& ext)
+			{
+				static size_t seq = 0;
+				const auto tick = std::chrono::steady_clock::now().time_since_epoch().count();
+				path = std::filesystem::temp_directory_path() /
+					   ("weird-cluster-override-" + std::to_string(tick) + "-" + std::to_string(seq++) + ext);
+			}
+			~TempAssetFile()
+			{
+				std::error_code ec;
+				std::filesystem::remove(path, ec);
+			}
+		};
+
+		TempAssetFile clusterFile(".weirdcluster");
+		TempAssetFile sceneFile(".weirdscene");
+
+		// v1 cluster asset: two dots ("anchor" at (0,0) and free dot at (2,0)), all Dynamic, material 1, mass 1.0
+		{
+			nlohmann::json cj = {
+				{"version", 1},
+				{"clusters", nlohmann::json::array()},
+				{"entities",
+				 {{{"id", 10},
+				   {"dot", {{"isStatic", false}, {"materialId", 1}}},
+				   {"rigidBody2D",
+					{{"bodyType", 0},
+					 {"enableCollision", true},
+					 {"enableShapeCollision", true},
+					 {"mass", 1.0f},
+					 {"physicsPosition", {0.0f, 0.0f}},
+					 {"simulationId", 0},
+					 {"velocity", {0.0f, 0.0f}}}},
+				   {"transform",
+					{{"position", {0.0f, 0.0f, 0.0f}},
+					 {"rotation", {0.0f, 0.0f, 0.0f}},
+					 {"scale", {1.0f, 1.0f, 1.0f}}}}},
+				  {{"id", 20},
+				   {"dot", {{"isStatic", false}, {"materialId", 1}}},
+				   {"rigidBody2D",
+					{{"bodyType", 0},
+					 {"enableCollision", true},
+					 {"enableShapeCollision", true},
+					 {"mass", 1.0f},
+					 {"physicsPosition", {2.0f, 0.0f}},
+					 {"simulationId", 1},
+					 {"velocity", {0.0f, 0.0f}}}},
+				   {"transform",
+					{{"position", {2.0f, 0.0f, 0.0f}},
+					 {"rotation", {0.0f, 0.0f, 0.0f}},
+					 {"scale", {1.0f, 1.0f, 1.0f}}}}}}},
+				{"names", {{{"name", "anchor"}, {"entityId", 10}}}},
+				{"entityTags", nlohmann::json::array()},
+				{"physics",
+				 {{"distanceConstraints", nlohmann::json::array()},
+				  {"springs", {{{"entity", 30}, {"entityA", 10}, {"entityB", 20}, {"distance", 2.0f}, {"k", 0.5f}}}}}},
+				{"materials2D", nlohmann::json::array()}};
+			std::ofstream out(clusterFile.path);
+			out << cj.dump(2);
+		}
+
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-a");
+		manager.loadScene(namePrefix + "-a");
+
+		{
+			auto& scene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *scene.registry;
+			auto& services = *scene.services;
+
+			ClusterInstance& cluster = services.clusters().instantiate(clusterFile.path.string(), vec2(5.0f, 1.0f));
+			const uint32_t clusterId = cluster.id;
+			const Entity anchor = cluster.getEntity("anchor");
+			require(anchor != INVALID_ENTITY, "Cluster must resolve local name 'anchor'.");
+
+			// Add an external scene entity attached to 'anchor' via a Spring
+			const Entity extAnchor = registry.createEntity();
+			registry.addComponent<Transform>(extAnchor).position = vec3(5.0f, 4.0f, 0.0f);
+			registry.addComponent<RigidBody2D>(extAnchor).type = BodyType::Fixed;
+			const Entity extSpringEnt = registry.createEntity();
+			auto& extSpring = registry.addComponent<Spring>(extSpringEnt);
+			extSpring.entityA = extAnchor;
+			extSpring.entityB = anchor;
+			extSpring.restDistance = 2.5f;
+			extSpring.stiffness = 0.75f;
+
+			// Override multiple properties on 'anchor' in the scene
+			auto& rb = registry.getComponent<RigidBody2D>(anchor);
+			rb.type = BodyType::Fixed;
+			rb.isFixed = true;
+			rb.mass = 4.5f;
+			rb.enableCollision = false;
+			registry.getComponent<Dot>(anchor).materialId = 9;
+			registry.getComponent<Transform>(anchor).position = vec3(5.0f, 2.5f, 0.0f);
+			services.names().setName(anchor, "PinnedBridgeAnchor");
+			services.tags().addTag(anchor, "bridge_pin");
+			services.clusters().markEntityOverride(
+				anchor, ClusterOverrideFlag::BodyType | ClusterOverrideFlag::Mass |
+							ClusterOverrideFlag::EnableCollision | ClusterOverrideFlag::DotMaterial |
+							ClusterOverrideFlag::Position | ClusterOverrideFlag::GlobalName |
+							ClusterOverrideFlag::CustomTags);
+
+			SceneSerializer::save(scene, sceneFile.path.string());
+
+			// Verify reload inside the current scene updates un-overridden fields and keeps all overrides
+			// First write v2 cluster asset: reversed entity order, dot 20 material->7 & mass->3.0, plus new dot 25
+			{
+				nlohmann::json cj2 = {
+					{"version", 1},
+					{"clusters", nlohmann::json::array()},
+					{"entities",
+					 {{{"id", 20},
+					   {"dot", {{"isStatic", false}, {"materialId", 7}}},
+					   {"rigidBody2D",
+						{{"bodyType", 0},
+						 {"enableCollision", true},
+						 {"enableShapeCollision", true},
+						 {"mass", 3.0f},
+						 {"physicsPosition", {2.0f, 0.0f}},
+						 {"simulationId", 0},
+						 {"velocity", {0.0f, 0.0f}}}},
+					   {"transform",
+						{{"position", {2.0f, 0.0f, 0.0f}},
+						 {"rotation", {0.0f, 0.0f, 0.0f}},
+						 {"scale", {1.0f, 1.0f, 1.0f}}}}},
+					  {{"id", 25},
+					   {"dot", {{"isStatic", false}, {"materialId", 6}}},
+					   {"rigidBody2D",
+						{{"bodyType", 0},
+						 {"enableCollision", true},
+						 {"enableShapeCollision", true},
+						 {"mass", 1.0f},
+						 {"physicsPosition", {4.0f, 0.0f}},
+						 {"simulationId", 1},
+						 {"velocity", {0.0f, 0.0f}}}},
+					   {"transform",
+						{{"position", {4.0f, 0.0f, 0.0f}},
+						 {"rotation", {0.0f, 0.0f, 0.0f}},
+						 {"scale", {1.0f, 1.0f, 1.0f}}}}},
+					  {{"id", 10},
+					   {"dot", {{"isStatic", false}, {"materialId", 1}}},
+					   {"rigidBody2D",
+						{{"bodyType", 0},
+						 {"enableCollision", true},
+						 {"enableShapeCollision", true},
+						 {"mass", 1.0f},
+						 {"physicsPosition", {0.0f, 0.0f}},
+						 {"simulationId", 2},
+						 {"velocity", {0.0f, 0.0f}}}},
+					   {"transform",
+						{{"position", {0.0f, 0.0f, 0.0f}},
+						 {"rotation", {0.0f, 0.0f, 0.0f}},
+						 {"scale", {1.0f, 1.0f, 1.0f}}}}}}},
+					{"names", {{{"name", "anchor"}, {"entityId", 10}}}},
+					{"entityTags", nlohmann::json::array()},
+					{"physics",
+					 {{"distanceConstraints", nlohmann::json::array()},
+					  {"springs",
+					   {{{"entity", 30}, {"entityA", 10}, {"entityB", 20}, {"distance", 2.0f}, {"k", 0.5f}}}}}},
+					{"materials2D", nlohmann::json::array()}};
+				std::ofstream out(clusterFile.path);
+				out << cj2.dump(2);
+			}
+
+			require(services.clusters().reloadInstance(clusterId, clusterFile.path.string()),
+					"Cluster reload from v2 asset must succeed.");
+			require(registry.isEntityAlive(extSpringEnt) && registry.hasComponent<Spring>(extSpringEnt),
+					"External spring attached to cluster member must survive cluster reload.");
+			const Entity newAnchor = cluster.getEntity("anchor");
+			require(registry.getComponent<Spring>(extSpringEnt).entityB == newAnchor,
+					"Surviving external spring must rebind to the reloaded cluster member.");
+		}
+
+		// Now load the previously saved .weirdscene (with persisted overrides & sourceEntityIds) into a fresh Scene,
+		// then reload its cluster against v2 asset and verify everything survives save/load + reload.
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-b", sceneFile.path.string());
+		manager.loadScene(namePrefix + "-b");
+		{
+			auto& scene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *scene.registry;
+			auto& services = *scene.services;
+
+			require(services.clusters().getAll().size() == 1, "Saved scene must restore cluster instance.");
+			const uint32_t clusterId = services.clusters().getAll().front().id;
+			require(services.clusters().reloadInstance(clusterId, clusterFile.path.string()),
+					"Cluster reload after scene save/load must succeed.");
+
+			ClusterInstance* cluster = services.clusters().getById(clusterId);
+			require(cluster != nullptr, "Reloaded cluster must exist.");
+			const Entity anchor = cluster->getEntity("anchor");
+			require(anchor != INVALID_ENTITY, "Reloaded cluster must retain 'anchor' localName.");
+
+			const auto& rbAnchor = registry.getComponent<RigidBody2D>(anchor);
+			require(rbAnchor.type == BodyType::Fixed && rbAnchor.isFixed,
+					"BodyType override on cluster member must survive save/load + reload.");
+			require(std::abs(rbAnchor.mass - 4.5f) < 1e-4f, "Mass override must survive reload.");
+			require(!rbAnchor.enableCollision && rbAnchor.enableShapeCollision,
+					"Collision flag override must survive reload.");
+			require(registry.getComponent<Dot>(anchor).materialId == 9, "Dot material override must survive reload.");
+			require(std::abs(registry.getComponent<Transform>(anchor).position.y - 2.5f) < 1e-3f,
+					"Relative position override must survive reload.");
+			require(services.names().getEntityByName("PinnedBridgeAnchor") == anchor,
+					"Global entity name override must survive reload.");
+			require(services.tags().hasTag(anchor, "bridge_pin"), "Custom entity tag override must survive reload.");
+
+			int dotMat7Count = 0;
+			int dotMat6Count = 0;
+			bool updatedUnoverriddenMass = false;
+			for (Entity e : cluster->entities)
+			{
+				if (!registry.hasComponent<Dot>(e) || e == anchor)
+					continue;
+				const auto& d = registry.getComponent<Dot>(e);
+				if (d.materialId == 7)
+				{
+					++dotMat7Count;
+					if (std::abs(registry.getComponent<RigidBody2D>(e).mass - 3.0f) < 1e-4f)
+						updatedUnoverriddenMass = true;
+				}
+				else if (d.materialId == 6)
+				{
+					++dotMat6Count;
+				}
+			}
+			require(dotMat7Count == 1 && updatedUnoverriddenMass,
+					"Un-overridden cluster member must pull updated material & mass from reloaded asset.");
+			require(dotMat6Count == 1, "Newly added entity in reloaded cluster asset must appear in scene.");
+		}
+	}
 } // namespace
 
 int main()
@@ -1697,6 +2122,8 @@ int main()
 		testResourceAndShapeAssetPathResolution();
 		std::cout << "Checking TextButton and TextToggle engine components.\n" << std::flush;
 		testTextButtonAndToggleComponents();
+		std::cout << "Checking builtin rotated and rounded shapes.\n" << std::flush;
+		testBuiltinRotatedAndRoundedShapes();
 		auto& manager = SceneManager::getInstance();
 		for (bool threaded : {false, true})
 		{
@@ -1712,6 +2139,10 @@ int main()
 			testTetrominoScene(manager, "test-tetromino" + suffix);
 			std::cout << "Checking ThrustScene" << suffix << ".\n" << std::flush;
 			testThrustScene(manager, "test-thrust" + suffix);
+			std::cout << "Checking PlatformerWorld" << suffix << ".\n" << std::flush;
+			testPlatformerWorldClusterFixedBody(manager, "test-platformer" + suffix);
+			std::cout << "Checking ClusterOverrides" << suffix << ".\n" << std::flush;
+			testClusterReloadPreservesSceneOverrides(manager, "test-cluster-ov" + suffix);
 			std::cout << "Checking MusicScene" << suffix << ".\n" << std::flush;
 			testMusicScene(manager, "test-music" + suffix);
 			std::cout << "Checking InstrumentScene" << suffix << ".\n" << std::flush;

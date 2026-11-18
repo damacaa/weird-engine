@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,17 +14,45 @@ namespace WeirdEngine
 {
 	class Scene;
 
+	namespace ClusterOverrideFlag
+	{
+		constexpr uint32_t None = 0;
+		constexpr uint32_t BodyType = 1u << 0;
+		constexpr uint32_t Mass = 1u << 1;
+		constexpr uint32_t EnableCollision = 1u << 2;
+		constexpr uint32_t EnableShapeCollision = 1u << 3;
+		constexpr uint32_t DotIsStatic = 1u << 4;
+		constexpr uint32_t DotMaterial = 1u << 5;
+		constexpr uint32_t ShapeMaterial = 1u << 6;
+		constexpr uint32_t ShapeHasCollisions = 1u << 7;
+		constexpr uint32_t ShapeCombination = 1u << 8;
+		constexpr uint32_t ShapeSmoothFactor = 1u << 9;
+		constexpr uint32_t ShapeGroupIdx = 1u << 10;
+		constexpr uint32_t ShapeParameters = 1u << 11;
+		constexpr uint32_t Position = 1u << 12;
+		constexpr uint32_t Rotation = 1u << 13;
+		constexpr uint32_t Scale = 1u << 14;
+		constexpr uint32_t GlobalName = 1u << 15;
+		constexpr uint32_t CustomTags = 1u << 16;
+		constexpr uint32_t TextMaterial = 1u << 17;
+		constexpr uint32_t TextContent = 1u << 18;
+		constexpr uint32_t TextSize = 1u << 19;
+	} // namespace ClusterOverrideFlag
+
 	struct ClusterInstance
 	{
 		uint32_t id = 0;
-		std::string name;			   // Unique instance name (e.g. "boss", "guard_left")
-		std::string type;			   // Cluster type (e.g. "man", derived from asset name)
-		std::string assetPath;		   // e.g. "clusters/man.weirdcluster"
-		vec2 position{0.0f, 0.0f};	   // Spawn or reference position
-		float rotation{0.0f};		   // Spawn or reference rotation
-		std::vector<Entity> entities;  // Member entities
-		NameMap localNames;			   // Local names: "head" -> Entity, "hand" -> Entity
-		std::vector<std::string> tags; // Instance tags (e.g. "enemy", "boss")
+		std::string name;									  // Unique instance name (e.g. "boss", "guard_left")
+		std::string type;									  // Cluster type (e.g. "man", derived from asset name)
+		std::string assetPath;								  // e.g. "clusters/man.weirdcluster"
+		vec2 position{0.0f, 0.0f};							  // Spawn or reference position
+		float rotation{0.0f};								  // Spawn or reference rotation
+		std::vector<Entity> entities;						  // Member entities
+		NameMap localNames;									  // Local names: "head" -> Entity, "hand" -> Entity
+		std::vector<std::string> tags;						  // Instance tags (e.g. "enemy", "boss")
+		std::unordered_map<Entity, Entity> sourceEntityIds;	  // Runtime entity -> template entity ID in .weirdcluster
+		std::unordered_map<Entity, uint32_t> entityOverrides; // Runtime entity -> ClusterOverrideFlag bitmask
+		bool hasOverrideMetadata = false;
 
 		Entity getEntity(const std::string& localName) const
 		{
@@ -44,6 +73,40 @@ namespace WeirdEngine
 		bool hasTag(const std::string& tag) const
 		{
 			return std::find(tags.begin(), tags.end(), tag) != tags.end();
+		}
+
+		void markOverride(Entity entity, uint32_t flags)
+		{
+			if (entity != INVALID_ENTITY && flags != ClusterOverrideFlag::None)
+			{
+				entityOverrides[entity] |= flags;
+			}
+		}
+
+		void clearOverride(Entity entity, uint32_t flags)
+		{
+			auto it = entityOverrides.find(entity);
+			if (it == entityOverrides.end())
+			{
+				return;
+			}
+			it->second &= ~flags;
+			if (it->second == ClusterOverrideFlag::None)
+			{
+				entityOverrides.erase(it);
+			}
+		}
+
+		uint32_t getOverrides(Entity entity) const
+		{
+			auto it = entityOverrides.find(entity);
+			return (it != entityOverrides.end()) ? it->second : ClusterOverrideFlag::None;
+		}
+
+		Entity getSourceEntityId(Entity entity) const
+		{
+			auto it = sourceEntityIds.find(entity);
+			return (it != sourceEntityIds.end()) ? it->second : INVALID_ENTITY;
 		}
 	};
 
@@ -96,7 +159,10 @@ namespace WeirdEngine
 		void syncNextClusterId();
 
 		// Reloading / Updating
-		bool reloadInstance(uint32_t id, const std::string& overrideAssetPath = "");
+		bool reloadInstance(uint32_t id, const std::string& overrideAssetPath = "",
+							std::unordered_map<Entity, Entity>* outOldToNewEntities = nullptr);
+		void markEntityOverride(Entity entity, uint32_t flags);
+		void clearEntityOverride(Entity entity, uint32_t flags);
 		int reloadAllInstancesOf(const std::string& assetPath);
 		std::vector<ClusterInstance*> getInstancesByAsset(const std::string& assetPath);
 

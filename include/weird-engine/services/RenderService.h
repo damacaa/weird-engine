@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "weird-engine/Background.h"
@@ -23,7 +24,8 @@ namespace WeirdEngine
 		RenderService(Registry& registry, Entity& cameraEntity, SDFRenderSystemContext& context2D,
 					  SDFRenderSystemContext& context3D, SDFRenderSystemContext& contextUI,
 					  std::vector<WeirdRenderer::Light2D>& lights2D, std::vector<WeirdRenderer::Light3D>& lights3D,
-					  BackgroundParams& background, RenderMode& renderMode, bool& resetCameraReprojection)
+					  BackgroundParams& background, RenderMode& renderMode, bool& resetCameraReprojection,
+					  float& worldSmoothFactorOverride, bool& worldSmoothFactorDirty)
 			: m_registry(registry)
 			, m_cameraEntity(cameraEntity)
 			, m_context2D(context2D)
@@ -34,6 +36,8 @@ namespace WeirdEngine
 			, m_background(background)
 			, m_renderMode(renderMode)
 			, m_resetCameraReprojection(resetCameraReprojection)
+			, m_worldSmoothFactorOverride(worldSmoothFactorOverride)
+			, m_worldSmoothFactorDirty(worldSmoothFactorDirty)
 		{
 		}
 
@@ -114,6 +118,23 @@ namespace WeirdEngine
 			m_resetCameraReprojection = true;
 		}
 
+		void setWorldSmoothFactor(float smoothFactor)
+		{
+			m_worldSmoothFactorOverride = std::max(0.0f, smoothFactor);
+			m_worldSmoothFactorDirty = true;
+		}
+
+		void resetWorldSmoothFactor()
+		{
+			m_worldSmoothFactorOverride = -1.0f;
+			m_worldSmoothFactorDirty = true;
+		}
+
+		float getWorldSmoothFactorOverride() const
+		{
+			return m_worldSmoothFactorOverride;
+		}
+
 	private:
 		Registry& m_registry;
 		Entity& m_cameraEntity;
@@ -125,5 +146,7 @@ namespace WeirdEngine
 		BackgroundParams& m_background;
 		RenderMode& m_renderMode;
 		bool& m_resetCameraReprojection;
+		float& m_worldSmoothFactorOverride;
+		bool& m_worldSmoothFactorDirty;
 	};
 } // namespace WeirdEngine

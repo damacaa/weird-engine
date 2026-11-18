@@ -1,4 +1,5 @@
 #include "weird-audio/AudioEngine.h"
+#include "weird-engine/components/Transform.h"
 #include "weird-engine/Logger.h"
 #include "weird-engine/math/SDF.h"
 #include "weird-engine/Scene.h"
@@ -8,14 +9,18 @@
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
 #include "weird-physics/Simulation2D.h"
+#include "weird-renderer/components/SDFRenderer.h"
 #include "weird-renderer/components/Shape.h"
+#include "weird-renderer/components/TextRenderer.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -28,7 +33,7 @@ namespace WeirdEngine
 		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
 		, m_render(scene.m_registry, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode,
-				   scene.m_resetCameraReprojection)
+				   scene.m_resetCameraReprojection, scene.m_worldSmoothFactorOverride, scene.m_worldSmoothFactorDirty)
 		, m_materials2D(scene.m_materials2D, scene.m_material2DCount, scene.m_material2DNameToId)
 		, m_materials3D(scene.m_materials3D, scene.m_material3DCount, scene.m_material3DNameToId)
 		, m_audio(scene.m_audioQueue, scene.m_collisionSoundVolume, &m_shapes, &scene.m_registry,
@@ -781,6 +786,7 @@ namespace WeirdEngine
 		instance.position = position;
 		instance.rotation = rotation;
 		instance.tags = instanceTags;
+		instance.hasOverrideMetadata = true;
 
 		std::filesystem::path p(resolvedPath);
 		instance.type = p.stem().string();
@@ -790,7 +796,8 @@ namespace WeirdEngine
 		else
 			instance.name = instance.type + "_" + std::to_string(instance.id);
 
-		SceneSerializer::load(m_scene, resolvedPath, &instance.localNames, false, &instance.entities);
+		SceneSerializer::load(m_scene, resolvedPath, &instance.localNames, false, &instance.entities,
+							  &instance.sourceEntityIds);
 
 		for (Entity e : instance.entities)
 		{
@@ -999,7 +1006,593 @@ namespace WeirdEngine
 		m_nextClusterId = maxId + 1;
 	}
 
-	bool ClusterService::reloadInstance(uint32_t id, const std::string& overrideAssetPath)
+	namespace
+	{
+		struct OldClusterEntitySnapshot
+		{
+			Entity oldEntity = INVALID_ENTITY;
+			Entity sourceEntityId = INVALID_ENTITY;
+			std::string localName;
+			std::string globalName;
+			std::vector<std::string> customTags;
+			uint32_t overrideMask = ClusterOverrideFlag::None;
+			bool hasTransform = false;
+			Transform transform{};
+			vec2 localPosUnrotated{0.0f};
+			bool hasRigidBody = false;
+			RigidBody2D rigidBody{};
+			bool hasDot = false;
+			Dot dot{};
+			bool hasShape = false;
+			Shape shape{};
+			bool hasText = false;
+			TextRenderer text{};
+		};
+
+		struct ExternalConstraintRef
+		{
+			Entity constraintEntity = INVALID_ENTITY;
+			bool isSpring = true;
+			bool clusterOnA = true;
+			Entity oldClusterEntity = INVALID_ENTITY;
+		};
+
+		vec2 rotate2D(vec2 v, float angleRad)
+		{
+			float c = std::cos(angleRad);
+			float s = std::sin(angleRad);
+			return vec2(v.x * c - v.y * s, v.x * s + v.y * c);
+		}
+
+		// Minimum-cost rectangular Hungarian solver (rows <= cols).
+		std::vector<int> solveMinCostAssignment(const std::vector<std::vector<double>>& cost)
+		{
+			const int n = static_cast<int>(cost.size());
+			if (n == 0)
+				return {};
+			const int m = static_cast<int>(cost[0].size());
+
+			constexpr double kInf = std::numeric_limits<double>::infinity();
+			std::vector<double> u(n + 1, 0.0);
+			std::vector<double> v(m + 1, 0.0);
+			std::vector<int> p(m + 1, 0);
+			std::vector<int> way(m + 1, 0);
+
+			for (int i = 1; i <= n; ++i)
+			{
+				p[0] = i;
+				int j0 = 0;
+				std::vector<double> minv(m + 1, kInf);
+				std::vector<bool> used(m + 1, false);
+				do
+				{
+					used[j0] = true;
+					int i0 = p[j0];
+					double delta = kInf;
+					int j1 = 0;
+					for (int j = 1; j <= m; ++j)
+					{
+						if (used[j])
+							continue;
+						double cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+						if (cur < minv[j])
+						{
+							minv[j] = cur;
+							way[j] = j0;
+						}
+						if (minv[j] < delta)
+						{
+							delta = minv[j];
+							j1 = j;
+						}
+					}
+					for (int j = 0; j <= m; ++j)
+					{
+						if (used[j])
+						{
+							u[p[j]] += delta;
+							v[j] -= delta;
+						}
+						else
+						{
+							minv[j] -= delta;
+						}
+					}
+					j0 = j1;
+				} while (p[j0] != 0);
+
+				do
+				{
+					int j1 = way[j0];
+					p[j0] = p[j1];
+					j0 = j1;
+				} while (j0 != 0);
+			}
+
+			std::vector<int> assignment(n, -1);
+			for (int j = 1; j <= m; ++j)
+			{
+				if (p[j] > 0)
+					assignment[p[j] - 1] = j - 1;
+			}
+			return assignment;
+		}
+
+		std::vector<OldClusterEntitySnapshot> captureClusterSnapshots(const ClusterInstance& cluster,
+																	  Registry& registry, ServiceProvider& services,
+																	  vec2 centroid, float currentRot,
+																	  float& outMaxRadius)
+		{
+			std::unordered_map<Entity, std::string> localNameByEntity;
+			for (const auto& [name, ent] : cluster.localNames)
+			{
+				localNameByEntity[ent] = name;
+			}
+
+			std::vector<OldClusterEntitySnapshot> snapshots;
+			outMaxRadius = 0.0f;
+
+			for (Entity e : cluster.entities)
+			{
+				const bool hasTransform = registry.hasComponent<Transform>(e);
+				const bool hasRigidBody = registry.hasComponent<RigidBody2D>(e);
+				const bool hasDot = registry.hasComponent<Dot>(e);
+				const bool hasShape = registry.hasComponent<Shape>(e);
+				const bool hasText = registry.hasComponent<TextRenderer>(e);
+				if (!hasTransform && !hasRigidBody && !hasDot && !hasShape && !hasText)
+					continue;
+
+				OldClusterEntitySnapshot snap;
+				snap.oldEntity = e;
+				snap.sourceEntityId = cluster.getSourceEntityId(e);
+				if (auto it = localNameByEntity.find(e); it != localNameByEntity.end())
+					snap.localName = it->second;
+				snap.globalName = services.names().getName(e);
+				for (const auto& tag : services.tags().getTags(e))
+				{
+					if (!cluster.hasTag(tag))
+						snap.customTags.push_back(tag);
+				}
+				snap.overrideMask = cluster.getOverrides(e);
+
+				if (hasTransform)
+				{
+					snap.hasTransform = true;
+					snap.transform = registry.getComponent<Transform>(e);
+					vec2 relWorld = vec2(snap.transform.position) - centroid;
+					outMaxRadius = std::max(outMaxRadius, glm::length(relWorld));
+					snap.localPosUnrotated = rotate2D(relWorld, -currentRot);
+				}
+				if (hasRigidBody)
+				{
+					snap.hasRigidBody = true;
+					snap.rigidBody = registry.getComponent<RigidBody2D>(e);
+				}
+				if (hasDot)
+				{
+					snap.hasDot = true;
+					snap.dot = registry.getComponent<Dot>(e);
+				}
+				if (hasShape)
+				{
+					snap.hasShape = true;
+					snap.shape = registry.getComponent<Shape>(e);
+				}
+				if (hasText)
+				{
+					snap.hasText = true;
+					snap.text = registry.getComponent<TextRenderer>(e);
+				}
+
+				snapshots.push_back(std::move(snap));
+			}
+			return snapshots;
+		}
+
+		std::unordered_map<Entity, Entity> matchReloadedClusterMembers(
+			const std::vector<OldClusterEntitySnapshot>& oldSnaps, const std::vector<Entity>& newEntities,
+			const std::unordered_map<Entity, Entity>& newSourceIds, const NameMap& newLocalNames, Registry& registry,
+			float oldMaxRadius)
+		{
+			std::unordered_map<Entity, Entity> oldToNew;
+
+			std::vector<Entity> newMembers;
+			newMembers.reserve(newEntities.size());
+			std::unordered_map<Entity, size_t> newIdxByEntity;
+			float newMaxRadius = 0.0f;
+			vec2 newCentroid(0.0f);
+			size_t newPosCount = 0;
+
+			for (Entity e : newEntities)
+			{
+				const bool isMember = registry.hasComponent<Transform>(e) || registry.hasComponent<RigidBody2D>(e) ||
+									  registry.hasComponent<Dot>(e) || registry.hasComponent<Shape>(e) ||
+									  registry.hasComponent<TextRenderer>(e);
+				if (!isMember)
+					continue;
+				newIdxByEntity[e] = newMembers.size();
+				newMembers.push_back(e);
+				if (registry.hasComponent<Transform>(e))
+				{
+					newCentroid += vec2(registry.getComponent<Transform>(e).position);
+					++newPosCount;
+				}
+			}
+			if (newPosCount > 0)
+				newCentroid /= static_cast<float>(newPosCount);
+			for (Entity e : newMembers)
+			{
+				if (registry.hasComponent<Transform>(e))
+				{
+					newMaxRadius = std::max(
+						newMaxRadius, glm::length(vec2(registry.getComponent<Transform>(e).position) - newCentroid));
+				}
+			}
+
+			std::vector<bool> oldMatched(oldSnaps.size(), false);
+			std::vector<bool> newMatched(newMembers.size(), false);
+
+			// 1. Exact template entity ID match (when available)
+			std::unordered_map<Entity, Entity> newBySourceId;
+			for (const auto& [newEnt, srcId] : newSourceIds)
+			{
+				if (srcId != INVALID_ENTITY && newIdxByEntity.count(newEnt))
+					newBySourceId[srcId] = newEnt;
+			}
+			for (size_t i = 0; i < oldSnaps.size(); ++i)
+			{
+				if (oldSnaps[i].sourceEntityId == INVALID_ENTITY)
+					continue;
+				auto it = newBySourceId.find(oldSnaps[i].sourceEntityId);
+				if (it != newBySourceId.end())
+				{
+					size_t j = newIdxByEntity[it->second];
+					if (!newMatched[j])
+					{
+						oldMatched[i] = true;
+						newMatched[j] = true;
+						oldToNew[oldSnaps[i].oldEntity] = it->second;
+					}
+				}
+			}
+
+			// 2. Local name match ("head", "hand", etc.)
+			for (size_t i = 0; i < oldSnaps.size(); ++i)
+			{
+				if (oldMatched[i] || oldSnaps[i].localName.empty())
+					continue;
+				auto it = newLocalNames.find(oldSnaps[i].localName);
+				if (it == newLocalNames.end())
+					continue;
+				auto idxIt = newIdxByEntity.find(it->second);
+				if (idxIt != newIdxByEntity.end() && !newMatched[idxIt->second])
+				{
+					oldMatched[i] = true;
+					newMatched[idxIt->second] = true;
+					oldToNew[oldSnaps[i].oldEntity] = it->second;
+				}
+			}
+
+			// 3. Optimal bipartite matching by spatial proximity + component signature for remaining members
+			std::vector<size_t> unmatchedOld;
+			std::vector<size_t> unmatchedNew;
+			for (size_t i = 0; i < oldSnaps.size(); ++i)
+			{
+				if (!oldMatched[i])
+					unmatchedOld.push_back(i);
+			}
+			for (size_t j = 0; j < newMembers.size(); ++j)
+			{
+				if (!newMatched[j])
+					unmatchedNew.push_back(j);
+			}
+
+			if (!unmatchedOld.empty() && !unmatchedNew.empty())
+			{
+				const float clusterDiameter = 2.0f * std::max(oldMaxRadius, newMaxRadius);
+				const float maxMatchDist = std::max(6.0f, clusterDiameter * 2.0f);
+				const double rejectThreshold = static_cast<double>(maxMatchDist) + 200.0;
+				const int rows = static_cast<int>(unmatchedOld.size());
+				const int realCols = static_cast<int>(unmatchedNew.size());
+				const int totalCols = realCols + rows; // Extra dummy columns allow leaving deleted entities unmatched
+
+				std::vector<std::vector<double>> cost(rows, std::vector<double>(totalCols, rejectThreshold));
+				for (int r = 0; r < rows; ++r)
+				{
+					const auto& oldSnap = oldSnaps[unmatchedOld[r]];
+					for (int c = 0; c < realCols; ++c)
+					{
+						Entity newEnt = newMembers[unmatchedNew[c]];
+						double spatialDist = 0.0;
+						if (oldSnap.hasTransform && registry.hasComponent<Transform>(newEnt))
+						{
+							spatialDist = glm::distance(vec2(oldSnap.transform.position),
+														vec2(registry.getComponent<Transform>(newEnt).position));
+						}
+						if (spatialDist > static_cast<double>(maxMatchDist))
+						{
+							cost[r][c] = rejectThreshold + 1000.0;
+							continue;
+						}
+
+						double penalty = 0.0;
+						if (oldSnap.hasRigidBody != registry.hasComponent<RigidBody2D>(newEnt))
+							penalty += 100.0;
+						if (oldSnap.hasDot != registry.hasComponent<Dot>(newEnt))
+							penalty += 100.0;
+						if (oldSnap.hasShape != registry.hasComponent<Shape>(newEnt))
+							penalty += 100.0;
+						if (oldSnap.hasText != registry.hasComponent<TextRenderer>(newEnt))
+							penalty += 100.0;
+						if (oldSnap.hasDot && registry.hasComponent<Dot>(newEnt) &&
+							oldSnap.dot.materialId != registry.getComponent<Dot>(newEnt).materialId)
+						{
+							penalty += 1.5;
+						}
+
+						cost[r][c] = std::min(rejectThreshold - 1.0, spatialDist + penalty);
+					}
+				}
+
+				const std::vector<int> assignment = solveMinCostAssignment(cost);
+				for (int r = 0; r < rows; ++r)
+				{
+					const int c = assignment[r];
+					if (c >= 0 && c < realCols && cost[r][c] < rejectThreshold)
+					{
+						oldToNew[oldSnaps[unmatchedOld[r]].oldEntity] = newMembers[unmatchedNew[c]];
+					}
+				}
+			}
+
+			return oldToNew;
+		}
+
+		uint32_t inferLegacyOverrides(const OldClusterEntitySnapshot& oldSnap, Entity newEnt, Registry& registry)
+		{
+			uint32_t mask = ClusterOverrideFlag::None;
+
+			if (oldSnap.hasRigidBody && registry.hasComponent<RigidBody2D>(newEnt))
+			{
+				const auto& newRb = registry.getComponent<RigidBody2D>(newEnt);
+				const BodyType oldEffType = oldSnap.rigidBody.isFixed ? BodyType::Fixed : oldSnap.rigidBody.type;
+				const BodyType newEffType = newRb.isFixed ? BodyType::Fixed : newRb.type;
+
+				if (oldEffType != BodyType::Dynamic && oldEffType != newEffType)
+					mask |= ClusterOverrideFlag::BodyType;
+				if (std::abs(oldSnap.rigidBody.mass - 1.0f) > 1e-4f &&
+					std::abs(oldSnap.rigidBody.mass - newRb.mass) > 1e-4f)
+					mask |= ClusterOverrideFlag::Mass;
+				if (!oldSnap.rigidBody.enableCollision && newRb.enableCollision)
+					mask |= ClusterOverrideFlag::EnableCollision;
+				if (!oldSnap.rigidBody.enableShapeCollision && newRb.enableShapeCollision)
+					mask |= ClusterOverrideFlag::EnableShapeCollision;
+			}
+
+			if (oldSnap.hasDot && registry.hasComponent<Dot>(newEnt))
+			{
+				const auto& newDot = registry.getComponent<Dot>(newEnt);
+				if (oldSnap.dot.isStatic && !newDot.isStatic)
+					mask |= ClusterOverrideFlag::DotIsStatic;
+			}
+
+			if (!oldSnap.globalName.empty())
+				mask |= ClusterOverrideFlag::GlobalName;
+			if (!oldSnap.customTags.empty())
+				mask |= ClusterOverrideFlag::CustomTags;
+
+			// Legacy scenes with manually posed Fixed/Kinematic vertices (such as posed arms) preserve their offset
+			if ((mask & ClusterOverrideFlag::BodyType) != 0 && oldSnap.hasTransform &&
+				registry.hasComponent<Transform>(newEnt))
+			{
+				const vec2 oldPos(oldSnap.transform.position);
+				const vec2 newPos(registry.getComponent<Transform>(newEnt).position);
+				if (glm::distance(oldPos, newPos) > 0.25f)
+					mask |= ClusterOverrideFlag::Position;
+			}
+
+			return mask;
+		}
+
+		void applyEntityOverrides(const OldClusterEntitySnapshot& oldSnap, Entity newEnt, uint32_t mask, vec2 centroid,
+								  float currentRot, Registry& registry, Simulation2D& simulation2D,
+								  ServiceProvider& services, bool& outShapesNeedUpdate)
+		{
+			if (mask == ClusterOverrideFlag::None)
+				return;
+
+			if (oldSnap.hasTransform && registry.hasComponent<Transform>(newEnt))
+			{
+				auto& t = registry.getComponent<Transform>(newEnt);
+				bool dirtyTransform = false;
+				if (mask & ClusterOverrideFlag::Position)
+				{
+					vec2 worldPos = centroid + rotate2D(oldSnap.localPosUnrotated, currentRot);
+					t.position = vec3(worldPos.x, worldPos.y, oldSnap.transform.position.z);
+					if (registry.hasComponent<RigidBody2D>(newEnt))
+					{
+						simulation2D.setPosition(registry.getComponent<RigidBody2D>(newEnt).simulationId, worldPos);
+					}
+					dirtyTransform = true;
+				}
+				if (mask & ClusterOverrideFlag::Rotation)
+				{
+					t.rotation = oldSnap.transform.rotation;
+					dirtyTransform = true;
+				}
+				if (mask & ClusterOverrideFlag::Scale)
+				{
+					t.scale = oldSnap.transform.scale;
+					dirtyTransform = true;
+				}
+				if (dirtyTransform)
+				{
+					registry.getComponentArray<Transform>()->setEntityDirty(newEnt, true);
+				}
+			}
+
+			if (oldSnap.hasRigidBody && registry.hasComponent<RigidBody2D>(newEnt))
+			{
+				auto& rb = registry.getComponent<RigidBody2D>(newEnt);
+				bool dirtyRb = false;
+				if (mask & ClusterOverrideFlag::BodyType)
+				{
+					rb.type = oldSnap.rigidBody.isFixed ? BodyType::Fixed : oldSnap.rigidBody.type;
+					rb.isFixed = (rb.type == BodyType::Fixed);
+					simulation2D.setBodyType(rb.simulationId, rb.type);
+					dirtyRb = true;
+				}
+				if (mask & ClusterOverrideFlag::Mass)
+				{
+					rb.mass = oldSnap.rigidBody.mass;
+					simulation2D.setMass(rb.simulationId, rb.mass);
+					dirtyRb = true;
+				}
+				if (mask & ClusterOverrideFlag::EnableCollision)
+				{
+					rb.enableCollision = oldSnap.rigidBody.enableCollision;
+					simulation2D.setCollisionEnabled(rb.simulationId, rb.enableCollision);
+					dirtyRb = true;
+				}
+				if (mask & ClusterOverrideFlag::EnableShapeCollision)
+				{
+					rb.enableShapeCollision = oldSnap.rigidBody.enableShapeCollision;
+					simulation2D.setShapeCollisionEnabled(rb.simulationId, rb.enableShapeCollision);
+					dirtyRb = true;
+				}
+				if (dirtyRb)
+				{
+					registry.getComponentArray<RigidBody2D>()->setEntityDirty(newEnt, true);
+				}
+			}
+
+			if (oldSnap.hasDot && registry.hasComponent<Dot>(newEnt))
+			{
+				auto& dot = registry.getComponent<Dot>(newEnt);
+				bool dirtyDot = false;
+				if (mask & ClusterOverrideFlag::DotIsStatic)
+				{
+					dot.isStatic = oldSnap.dot.isStatic;
+					dirtyDot = true;
+				}
+				if (mask & ClusterOverrideFlag::DotMaterial)
+				{
+					dot.materialId = oldSnap.dot.materialId;
+					dirtyDot = true;
+				}
+				if (dirtyDot)
+				{
+					registry.getComponentArray<Dot>()->setEntityDirty(newEnt, true);
+					outShapesNeedUpdate = true;
+				}
+			}
+
+			if (oldSnap.hasShape && registry.hasComponent<Shape>(newEnt))
+			{
+				auto& s = registry.getComponent<Shape>(newEnt);
+				bool dirtyShape = false;
+				if (mask & ClusterOverrideFlag::ShapeMaterial)
+				{
+					s.material = oldSnap.shape.material;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeHasCollisions)
+				{
+					s.hasCollisions = oldSnap.shape.hasCollisions;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeCombination)
+				{
+					s.combination = oldSnap.shape.combination;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeSmoothFactor)
+				{
+					s.smoothFactor = oldSnap.shape.smoothFactor;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeGroupIdx)
+				{
+					s.groupIdx = oldSnap.shape.groupIdx;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeParameters)
+				{
+					std::copy(std::begin(oldSnap.shape.parameters), std::end(oldSnap.shape.parameters),
+							  std::begin(s.parameters));
+					dirtyShape = true;
+				}
+				if (dirtyShape)
+				{
+					registry.getComponentArray<Shape>()->setEntityDirty(newEnt, true);
+					outShapesNeedUpdate = true;
+				}
+			}
+
+			if (oldSnap.hasText && registry.hasComponent<TextRenderer>(newEnt))
+			{
+				auto& tr = registry.getComponent<TextRenderer>(newEnt);
+				bool dirtyText = false;
+				if (mask & ClusterOverrideFlag::TextMaterial)
+				{
+					tr.material = oldSnap.text.material;
+					dirtyText = true;
+				}
+				if (mask & ClusterOverrideFlag::TextContent)
+				{
+					tr.text = oldSnap.text.text;
+					dirtyText = true;
+				}
+				if (mask & ClusterOverrideFlag::TextSize)
+				{
+					tr.width = oldSnap.text.width;
+					tr.height = oldSnap.text.height;
+					dirtyText = true;
+				}
+				if (dirtyText)
+				{
+					registry.getComponentArray<TextRenderer>()->setEntityDirty(newEnt, true);
+					outShapesNeedUpdate = true;
+				}
+			}
+
+			if ((mask & ClusterOverrideFlag::GlobalName) && !oldSnap.globalName.empty())
+			{
+				services.names().setName(newEnt, oldSnap.globalName);
+			}
+
+			if (mask & ClusterOverrideFlag::CustomTags)
+			{
+				for (const auto& tag : oldSnap.customTags)
+				{
+					services.tags().addTag(newEnt, tag);
+				}
+			}
+		}
+	} // namespace
+
+	void ClusterService::markEntityOverride(Entity entity, uint32_t flags)
+	{
+		if (entity == INVALID_ENTITY || flags == ClusterOverrideFlag::None)
+			return;
+		if (auto* cluster = getClusterForEntity(entity))
+		{
+			cluster->markOverride(entity, flags);
+		}
+	}
+
+	void ClusterService::clearEntityOverride(Entity entity, uint32_t flags)
+	{
+		if (entity == INVALID_ENTITY || flags == ClusterOverrideFlag::None)
+			return;
+		if (auto* cluster = getClusterForEntity(entity))
+		{
+			cluster->clearOverride(entity, flags);
+		}
+	}
+
+	bool ClusterService::reloadInstance(uint32_t id, const std::string& overrideAssetPath,
+										std::unordered_map<Entity, Entity>* outOldToNewEntities)
 	{
 		ClusterInstance* cluster = getById(id);
 		if (!cluster)
@@ -1041,19 +1634,33 @@ namespace WeirdEngine
 
 		float currentRot = cluster->rotation;
 		std::vector<std::string> tags = cluster->tags;
+		const bool hadOverrideMetadata = cluster->hasOverrideMetadata;
 
-		// 2. Destroy old member entities and constraints connecting them
+		// Capture member state & scene overrides before tearing down old entities
+		float oldMaxRadius = 0.0f;
+		std::vector<OldClusterEntitySnapshot> oldSnapshots = captureClusterSnapshots(
+			*cluster, m_scene.m_registry, m_scene.m_services, centroid, currentRot, oldMaxRadius);
+
+		// 2. Partition old entities and constraints: destroy internal constraints, preserve external ones
 		std::unordered_set<Entity> oldEntitySet(cluster->entities.begin(), cluster->entities.end());
+		std::vector<ExternalConstraintRef> externalConstraints;
 
 		auto springArray = m_scene.m_registry.getComponentArray<Spring>();
 		if (springArray)
 		{
 			for (size_t i = 0; i < springArray->getSize(); ++i)
 			{
+				Entity spEnt = springArray->getEntityAtIdx(i);
 				auto& sp = springArray->getDataAtIdx(i);
-				if (oldEntitySet.count(sp.entityA) || oldEntitySet.count(sp.entityB))
+				const bool inA = oldEntitySet.count(sp.entityA) > 0;
+				const bool inB = oldEntitySet.count(sp.entityB) > 0;
+				if (inA && inB)
 				{
-					oldEntitySet.insert(springArray->getEntityAtIdx(i));
+					oldEntitySet.insert(spEnt);
+				}
+				else if (inA || inB)
+				{
+					externalConstraints.push_back({spEnt, true, inA, inA ? sp.entityA : sp.entityB});
 				}
 			}
 		}
@@ -1063,10 +1670,17 @@ namespace WeirdEngine
 		{
 			for (size_t i = 0; i < dcArray->getSize(); ++i)
 			{
+				Entity dcEnt = dcArray->getEntityAtIdx(i);
 				auto& dc = dcArray->getDataAtIdx(i);
-				if (oldEntitySet.count(dc.entityA) || oldEntitySet.count(dc.entityB))
+				const bool inA = oldEntitySet.count(dc.entityA) > 0;
+				const bool inB = oldEntitySet.count(dc.entityB) > 0;
+				if (inA && inB)
 				{
-					oldEntitySet.insert(dcArray->getEntityAtIdx(i));
+					oldEntitySet.insert(dcEnt);
+				}
+				else if (inA || inB)
+				{
+					externalConstraints.push_back({dcEnt, false, inA, inA ? dc.entityA : dc.entityB});
 				}
 			}
 		}
@@ -1079,12 +1693,16 @@ namespace WeirdEngine
 		}
 		m_scene.m_registry.freeRemovedComponents();
 
+		// Re-fetch cluster pointer after potential vector operations
+		cluster = getById(id);
+
 		// 3. Load newly modified cluster from asset file
 		std::vector<Entity> newEntities;
 		NameMap newLocalNames;
-		SceneSerializer::load(m_scene, resolvedPath.string(), &newLocalNames, false, &newEntities);
+		std::unordered_map<Entity, Entity> newSourceEntityIds;
+		SceneSerializer::load(m_scene, resolvedPath.string(), &newLocalNames, false, &newEntities, &newSourceEntityIds);
 
-		// 4. Apply tags
+		// 4. Apply cluster tags
 		for (Entity e : newEntities)
 		{
 			for (const auto& tag : tags)
@@ -1109,17 +1727,13 @@ namespace WeirdEngine
 			assetCentroid /= static_cast<float>(assetCount);
 		}
 
-		float cosR = std::cos(currentRot);
-		float sinR = std::sin(currentRot);
-
 		for (Entity e : newEntities)
 		{
 			if (m_scene.m_registry.hasComponent<Transform>(e))
 			{
 				auto& t = m_scene.m_registry.getComponent<Transform>(e);
 				vec2 rel = vec2(t.position) - assetCentroid;
-				vec2 rotated = vec2(rel.x * cosR - rel.y * sinR, rel.x * sinR + rel.y * cosR);
-				vec2 newWorld = centroid + rotated;
+				vec2 newWorld = centroid + rotate2D(rel, currentRot);
 				t.position.x = newWorld.x;
 				t.position.y = newWorld.y;
 				t.rotation.z += currentRot;
@@ -1133,15 +1747,78 @@ namespace WeirdEngine
 			}
 		}
 
-		// 6. Update cluster instance
+		// 6. Match old cluster members to new members and re-apply scene overrides
+		std::unordered_map<Entity, Entity> oldToNew = matchReloadedClusterMembers(
+			oldSnapshots, newEntities, newSourceEntityIds, newLocalNames, m_scene.m_registry, oldMaxRadius);
+
+		std::unordered_map<Entity, uint32_t> newOverrides;
+		bool shapesNeedUpdate = true;
+		for (const auto& oldSnap : oldSnapshots)
+		{
+			auto mapIt = oldToNew.find(oldSnap.oldEntity);
+			if (mapIt == oldToNew.end())
+				continue;
+
+			Entity newEnt = mapIt->second;
+			uint32_t mask = oldSnap.overrideMask;
+			if (!hadOverrideMetadata)
+			{
+				mask |= inferLegacyOverrides(oldSnap, newEnt, m_scene.m_registry);
+			}
+			if (mask != ClusterOverrideFlag::None)
+			{
+				applyEntityOverrides(oldSnap, newEnt, mask, centroid, currentRot, m_scene.m_registry,
+									 m_scene.m_simulation2D, m_scene.m_services, shapesNeedUpdate);
+				newOverrides[newEnt] = mask;
+			}
+		}
+
+		// 7. Rebind or clean up external constraints that connected old cluster entities to the rest of the scene
+		for (const auto& ext : externalConstraints)
+		{
+			auto mapIt = oldToNew.find(ext.oldClusterEntity);
+			if (mapIt == oldToNew.end())
+			{
+				m_scene.m_services.names().removeName(ext.constraintEntity);
+				m_scene.m_services.tags().removeAllTags(ext.constraintEntity);
+				m_scene.m_registry.destroyEntity(ext.constraintEntity);
+				continue;
+			}
+
+			Entity newClusterEnt = mapIt->second;
+			if (ext.isSpring && m_scene.m_registry.hasComponent<Spring>(ext.constraintEntity))
+			{
+				auto& sp = m_scene.m_registry.getComponent<Spring>(ext.constraintEntity);
+				if (ext.clusterOnA)
+					sp.entityA = newClusterEnt;
+				else
+					sp.entityB = newClusterEnt;
+				m_scene.m_registry.getComponentArray<Spring>()->setEntityDirty(ext.constraintEntity, true);
+			}
+			else if (!ext.isSpring && m_scene.m_registry.hasComponent<DistanceConstraint>(ext.constraintEntity))
+			{
+				auto& dc = m_scene.m_registry.getComponent<DistanceConstraint>(ext.constraintEntity);
+				if (ext.clusterOnA)
+					dc.entityA = newClusterEnt;
+				else
+					dc.entityB = newClusterEnt;
+				m_scene.m_registry.getComponentArray<DistanceConstraint>()->setEntityDirty(ext.constraintEntity, true);
+			}
+		}
+		m_scene.m_registry.freeRemovedComponents();
+
+		// 8. Update cluster instance
 		cluster->assetPath = path;
 		cluster->position = centroid;
 		cluster->rotation = currentRot;
 		cluster->entities = std::move(newEntities);
 		cluster->localNames = std::move(newLocalNames);
 		cluster->tags = std::move(tags);
+		cluster->sourceEntityIds = std::move(newSourceEntityIds);
+		cluster->entityOverrides = std::move(newOverrides);
+		cluster->hasOverrideMetadata = true;
 
-		// 7. Ensure internal springs and constraints are included in cluster entities
+		// 9. Ensure internal springs and constraints are included in cluster entities
 		auto newSpringArray = m_scene.m_registry.getComponentArray<Spring>();
 		if (newSpringArray)
 		{
@@ -1176,7 +1853,12 @@ namespace WeirdEngine
 			}
 		}
 
-		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = true;
+		if (outOldToNewEntities)
+		{
+			*outOldToNewEntities = std::move(oldToNew);
+		}
+
+		m_scene.m_2DWorldRenderContext.shapesNeedUpdate = shapesNeedUpdate;
 		return true;
 	}
 

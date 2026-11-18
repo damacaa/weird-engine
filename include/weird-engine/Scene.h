@@ -291,6 +291,18 @@ namespace WeirdEngine
 			m_resetCameraReprojection = true;
 		}
 
+		float getWorldSmoothFactorOverride() const
+		{
+			return m_worldSmoothFactorOverride;
+		}
+
+		bool consumeWorldSmoothFactorDirty()
+		{
+			bool dirty = m_worldSmoothFactorDirty;
+			m_worldSmoothFactorDirty = false;
+			return dirty;
+		}
+
 		// Set the path to a .weirdscene file to load when the scene starts
 		void setSceneFilePath(const std::string& path)
 		{
@@ -456,6 +468,8 @@ namespace WeirdEngine
 		float m_lastDelta = 0.0f;
 		uint64_t m_sceneInstanceId = 0;
 		bool m_resetCameraReprojection = true;
+		float m_worldSmoothFactorOverride = -1.0f;
+		bool m_worldSmoothFactorDirty = false;
 
 		ServiceProvider m_services;
 	};

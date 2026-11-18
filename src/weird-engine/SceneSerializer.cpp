@@ -231,6 +231,34 @@ namespace WeirdEngine
 					tagsJson.push_back(t);
 				cj["tags"] = tagsJson;
 
+				cj["hasOverrideMetadata"] = cluster.hasOverrideMetadata;
+
+				if (!cluster.sourceEntityIds.empty())
+				{
+					json sourceIdsJson = json::object();
+					for (const auto& [e, srcId] : cluster.sourceEntityIds)
+					{
+						if (!isBlacklisted(e) && srcId != INVALID_ENTITY)
+						{
+							sourceIdsJson[std::to_string(e.id)] = srcId.id;
+						}
+					}
+					cj["sourceEntityIds"] = sourceIdsJson;
+				}
+
+				if (!cluster.entityOverrides.empty())
+				{
+					json overridesJson = json::object();
+					for (const auto& [e, mask] : cluster.entityOverrides)
+					{
+						if (!isBlacklisted(e) && mask != ClusterOverrideFlag::None)
+						{
+							overridesJson[std::to_string(e.id)] = mask;
+						}
+					}
+					cj["overrides"] = overridesJson;
+				}
+
 				clustersJson.push_back(cj);
 			}
 			j["clusters"] = clustersJson;
@@ -310,7 +338,8 @@ namespace WeirdEngine
 	}
 
 	void SceneSerializer::load(Scene& scene, const std::string& path, SceneSerializer::NameMap* outNames,
-							   bool restoreCamera, std::vector<Entity>* outEntities)
+							   bool restoreCamera, std::vector<Entity>* outEntities,
+							   std::unordered_map<Entity, Entity>* outSourceEntityIds)
 	{
 		using json = nlohmann::json;
 
@@ -375,7 +404,14 @@ namespace WeirdEngine
 
 				// Track saved-id → new-entity mapping for tag remapping
 				if (ej.contains("id"))
-					entityIdMap[ej["id"].get<Entity>()] = entity;
+				{
+					Entity savedEntityId = ej["id"].get<Entity>();
+					entityIdMap[savedEntityId] = entity;
+					if (outSourceEntityIds)
+					{
+						(*outSourceEntityIds)[entity] = savedEntityId;
+					}
+				}
 
 				if (ej.contains("transform"))
 				{
@@ -760,6 +796,54 @@ namespace WeirdEngine
 				{
 					for (const auto& tj : cj["tags"])
 						cluster.tags.push_back(tj.get<std::string>());
+				}
+
+				cluster.hasOverrideMetadata = cj.value("hasOverrideMetadata", false);
+
+				if (cj.contains("sourceEntityIds") && cj["sourceEntityIds"].is_object())
+				{
+					for (auto it = cj["sourceEntityIds"].begin(); it != cj["sourceEntityIds"].end(); ++it)
+					{
+						if (!it.value().is_number_unsigned())
+							continue;
+						try
+						{
+							Entity savedEnt{static_cast<uint32_t>(std::stoul(it.key()))};
+							auto mapIt = entityIdMap.find(savedEnt);
+							if (mapIt != entityIdMap.end())
+							{
+								cluster.sourceEntityIds[mapIt->second] = Entity{it.value().get<uint32_t>()};
+							}
+						}
+						catch (...)
+						{
+						}
+					}
+				}
+
+				if (cj.contains("overrides") && cj["overrides"].is_object())
+				{
+					for (auto it = cj["overrides"].begin(); it != cj["overrides"].end(); ++it)
+					{
+						if (!it.value().is_number_unsigned())
+							continue;
+						try
+						{
+							Entity savedEnt{static_cast<uint32_t>(std::stoul(it.key()))};
+							auto mapIt = entityIdMap.find(savedEnt);
+							if (mapIt != entityIdMap.end())
+							{
+								uint32_t mask = it.value().get<uint32_t>();
+								if (mask != ClusterOverrideFlag::None)
+								{
+									cluster.entityOverrides[mapIt->second] = mask;
+								}
+							}
+						}
+						catch (...)
+						{
+						}
+					}
 				}
 
 				scene.m_clusters.push_back(std::move(cluster));

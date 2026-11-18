@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "weird-engine/ecs/Entity.h"
 #include "weird-engine/services/NameService.h"
@@ -31,7 +33,10 @@ namespace WeirdEngine
 		// outNames is nullptr the names are inserted into the scene as before.
 		// If restoreCamera is true, camera state from the file is applied to the main camera.
 		// If outEntities is non-null, every newly created Entity ID is appended to it.
+		// If outSourceEntityIds is non-null, maps each newly created Entity ID to the
+		// serialized "id" stored in the source file.
 		static void load(Scene& scene, const std::string& path, NameMap* outNames = nullptr, bool restoreCamera = true,
-						 std::vector<Entity>* outEntities = nullptr);
+						 std::vector<Entity>* outEntities = nullptr,
+						 std::unordered_map<Entity, Entity>* outSourceEntityIds = nullptr);
 	};
 } // namespace WeirdEngine

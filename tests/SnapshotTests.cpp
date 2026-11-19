@@ -2095,6 +2095,66 @@ namespace
 			require(dotMat6Count == 1, "Newly added entity in reloaded cluster asset must appear in scene.");
 		}
 	}
+
+	void testSceneSerializerInMemoryRoundTrip(SceneManager& manager, const std::string& namePrefix)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-src");
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-dst");
+		manager.loadScene(namePrefix + "-src");
+
+		nlohmann::json savedJson;
+		Entity srcBox = INVALID_ENTITY;
+		{
+			auto& scene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *scene.registry;
+			auto& services = *scene.services;
+
+			srcBox = registry.createEntity();
+			auto& shape = registry.addComponent<Shape>(srcBox);
+			shape.distanceFieldId = static_cast<ShapeId>(DefaultShapes::Box);
+			shape.parameters[0] = 3.5f;
+			shape.parameters[1] = -2.0f;
+			shape.parameters[2] = 1.25f;
+			shape.parameters[3] = 0.75f;
+			shape.material = 4;
+			services.names().setName(srcBox, "UndoBox");
+			services.tags().addTag(srcBox, "editable");
+
+			savedJson = SceneSerializer::serializeToJson(scene);
+			savedJson.erase("camera");
+		}
+
+		manager.loadScene(namePrefix + "-dst");
+		{
+			auto& dstScene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *dstScene.registry;
+			auto& services = *dstScene.services;
+
+			const Entity camEnt = services.render().getCameraEntity();
+			registry.getComponent<Transform>(camEnt).position = vec3(42.0f, -17.0f, 20.0f);
+
+			std::unordered_map<Entity, Entity> newToSaved;
+			SceneSerializer::loadFromJson(dstScene, savedJson, "", nullptr, false, nullptr, &newToSaved);
+
+			const vec3 camPosAfter = registry.getComponent<Transform>(camEnt).position;
+			require(std::abs(camPosAfter.x - 42.0f) < 1e-4f && std::abs(camPosAfter.y + 17.0f) < 1e-4f,
+					"loadFromJson(restoreCamera=false) must preserve the editor camera position.");
+
+			const Entity restoredBox = services.names().getEntityByName("UndoBox");
+			require(restoredBox != INVALID_ENTITY && registry.hasComponent<Shape>(restoredBox),
+					"In-memory loadFromJson must restore entity and Shape component.");
+			require(newToSaved.count(restoredBox) == 1 && newToSaved[restoredBox] == srcBox,
+					"outSourceEntityIds must map restored entity back to serialized source id.");
+			require(services.tags().hasTag(restoredBox, "editable"),
+					"In-memory loadFromJson must restore entity tags.");
+			const auto& restoredShape = registry.getComponent<Shape>(restoredBox);
+			require(std::abs(restoredShape.parameters[0] - 3.5f) < 1e-4f && restoredShape.material == 4,
+					"In-memory loadFromJson must restore Shape parameters and material.");
+		}
+	}
 } // namespace
 
 int main()
@@ -2143,6 +2203,8 @@ int main()
 			testPlatformerWorldClusterFixedBody(manager, "test-platformer" + suffix);
 			std::cout << "Checking ClusterOverrides" << suffix << ".\n" << std::flush;
 			testClusterReloadPreservesSceneOverrides(manager, "test-cluster-ov" + suffix);
+			std::cout << "Checking SceneSerializerJson" << suffix << ".\n" << std::flush;
+			testSceneSerializerInMemoryRoundTrip(manager, "test-serializer-json" + suffix);
 			std::cout << "Checking MusicScene" << suffix << ".\n" << std::flush;
 			testMusicScene(manager, "test-music" + suffix);
 			std::cout << "Checking InstrumentScene" << suffix << ".\n" << std::flush;

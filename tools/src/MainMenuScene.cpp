@@ -5,8 +5,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <imgui.h>
+#include <string_view>
 #include <unordered_set>
 
 namespace WeirdEngine::Tools
@@ -30,6 +33,381 @@ namespace WeirdEngine::Tools
 			std::transform(s.begin(), s.end(), s.begin(),
 						   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 			return s;
+		}
+
+		std::string trimCopy(std::string_view s)
+		{
+			size_t start = 0;
+			while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
+			{
+				++start;
+			}
+			size_t end = s.size();
+			while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1])))
+			{
+				--end;
+			}
+			return std::string(s.substr(start, end - start));
+		}
+
+		void replaceAll(std::string& str, std::string_view from, std::string_view to)
+		{
+			if (from.empty())
+			{
+				return;
+			}
+			size_t pos = 0;
+			while ((pos = str.find(from, pos)) != std::string::npos)
+			{
+				str.replace(pos, from.size(), to);
+				pos += to.size();
+			}
+		}
+
+		std::string sanitizeFolderName(const std::string& raw)
+		{
+			std::string result;
+			result.reserve(raw.size());
+			for (unsigned char c : trimCopy(raw))
+			{
+				if (c < 32 || c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' || c == '|' ||
+					c == '?' || c == '*')
+				{
+					result.push_back('_');
+				}
+				else
+				{
+					result.push_back(static_cast<char>(c));
+				}
+			}
+			while (!result.empty() && (result.back() == ' ' || result.back() == '.'))
+			{
+				result.pop_back();
+			}
+			return result;
+		}
+
+		std::string makeCmakeProjectName(const std::string& raw)
+		{
+			std::string trimmed = trimCopy(raw);
+			std::string out;
+			out.reserve(trimmed.size());
+			bool lastUnderscore = false;
+			for (unsigned char c : trimmed)
+			{
+				if (std::isalnum(c) || c == '-' || c == '_')
+				{
+					out.push_back(static_cast<char>(c));
+					lastUnderscore = (c == '_');
+				}
+				else if (!lastUnderscore && !out.empty())
+				{
+					out.push_back('_');
+					lastUnderscore = true;
+				}
+			}
+			while (!out.empty() && (out.back() == '_' || out.back() == '-'))
+			{
+				out.pop_back();
+			}
+			if (out.empty())
+			{
+				return "WeirdGame";
+			}
+			if (!std::isalpha(static_cast<unsigned char>(out.front())) && out.front() != '_')
+			{
+				out = "Game_" + out;
+			}
+			return out;
+		}
+
+		std::string makeCmakeVarPrefix(const std::string& cmakeName)
+		{
+			std::string out;
+			out.reserve(cmakeName.size());
+			for (unsigned char c : cmakeName)
+			{
+				if (std::isalnum(c))
+				{
+					out.push_back(static_cast<char>(std::toupper(c)));
+				}
+				else if (out.empty() || out.back() != '_')
+				{
+					out.push_back('_');
+				}
+			}
+			while (!out.empty() && out.back() == '_')
+			{
+				out.pop_back();
+			}
+			if (out.empty() || std::isdigit(static_cast<unsigned char>(out.front())))
+			{
+				out = "GAME_" + out;
+			}
+			return out;
+		}
+
+		std::string escapeCmakeString(const std::string& raw)
+		{
+			std::string out;
+			out.reserve(raw.size());
+			for (char c : raw)
+			{
+				if (c == '\\' || c == '"')
+				{
+					out.push_back('\\');
+				}
+				out.push_back(c);
+			}
+			return out;
+		}
+
+		std::filesystem::path findEmptyProjectTemplateDir()
+		{
+			std::vector<std::filesystem::path> candidates;
+			std::error_code ec;
+			std::filesystem::path cwd = std::filesystem::current_path(ec);
+			if (!ec && !cwd.empty())
+			{
+				candidates.push_back(cwd / "examples" / "empty-project");
+				candidates.push_back(cwd.parent_path() / "examples" / "empty-project");
+				candidates.push_back(cwd.parent_path().parent_path() / "examples" / "empty-project");
+				candidates.push_back(cwd.parent_path().parent_path().parent_path() / "examples" / "empty-project");
+			}
+#ifdef WEIRD_ENGINE_SOURCE_DIR
+			candidates.push_back(std::filesystem::path(WEIRD_ENGINE_SOURCE_DIR) / "examples" / "empty-project");
+#endif
+			for (const auto& candidate : candidates)
+			{
+				if (std::filesystem::exists(candidate / "CMakeLists.txt", ec) &&
+					std::filesystem::is_regular_file(candidate / "CMakeLists.txt", ec))
+				{
+					return std::filesystem::weakly_canonical(candidate, ec);
+				}
+			}
+			return {};
+		}
+
+		bool isPathSameOrInside(const std::filesystem::path& candidate, const std::filesystem::path& base)
+		{
+			if (candidate.empty() || base.empty())
+			{
+				return false;
+			}
+			std::error_code ec;
+			std::string candStr = toLowerCopy(std::filesystem::weakly_canonical(candidate, ec).generic_string());
+			std::string baseStr = toLowerCopy(std::filesystem::weakly_canonical(base, ec).generic_string());
+			while (candStr.size() > 1 && candStr.back() == '/')
+			{
+				candStr.pop_back();
+			}
+			while (baseStr.size() > 1 && baseStr.back() == '/')
+			{
+				baseStr.pop_back();
+			}
+			if (candStr == baseStr)
+			{
+				return true;
+			}
+			if (candStr.size() > baseStr.size() && candStr.compare(0, baseStr.size(), baseStr) == 0 &&
+				candStr[baseStr.size()] == '/')
+			{
+				return true;
+			}
+			return false;
+		}
+
+		std::string getDefaultNewProjectParentDir(const std::filesystem::path& templateDir)
+		{
+			std::error_code ec;
+			const std::filesystem::path engineRoot =
+				templateDir.empty() ? std::filesystem::path() : templateDir.parent_path().parent_path();
+
+			const std::string& activeRoot = ToolsSession::getInstance().getActiveProjectRoot();
+			if (!activeRoot.empty())
+			{
+				std::filesystem::path activePath(activeRoot);
+				if (!engineRoot.empty() && !isPathSameOrInside(activePath, engineRoot) &&
+					activePath.has_parent_path() && std::filesystem::exists(activePath.parent_path(), ec))
+				{
+					return ToolsSession::normalizePath(activePath.parent_path().string());
+				}
+			}
+
+			if (!engineRoot.empty() && engineRoot.has_parent_path() &&
+				std::filesystem::exists(engineRoot.parent_path(), ec))
+			{
+				return ToolsSession::normalizePath(engineRoot.parent_path().string());
+			}
+
+			return ToolsSession::getDefaultProjectBrowseDirectory();
+		}
+
+		std::string computeEngineLocalPathForCMake(const std::filesystem::path& engineRoot,
+												   const std::filesystem::path& destDir)
+		{
+			std::error_code ec;
+			std::filesystem::path absEngine = std::filesystem::weakly_canonical(engineRoot, ec);
+			std::filesystem::path absDest = std::filesystem::weakly_canonical(destDir, ec);
+			if (absEngine.empty())
+			{
+				absEngine = engineRoot;
+			}
+			if (absDest.empty())
+			{
+				absDest = destDir;
+			}
+
+			std::filesystem::path rel = std::filesystem::relative(absEngine, absDest, ec);
+			std::string result = (!ec && !rel.empty()) ? rel.generic_string() : absEngine.generic_string();
+			if (!result.empty() && result.back() != '/')
+			{
+				result.push_back('/');
+			}
+			return result;
+		}
+
+		std::string transformTemplateCMakeLists(std::string content, const std::filesystem::path& engineRoot,
+												const std::filesystem::path& destDir, const std::string& displayName)
+		{
+			const std::string cmakeName = makeCmakeProjectName(displayName);
+			const std::string varPrefix = makeCmakeVarPrefix(cmakeName);
+			const std::string engineLocalPath = computeEngineLocalPathForCMake(engineRoot, destDir);
+
+			replaceAll(content, "project(WeirdGame)", "project(" + cmakeName + ")");
+			replaceAll(content, "set(WEIRD_ENGINE_LOCAL_PATH \"../../\")",
+					   "set(WEIRD_ENGINE_LOCAL_PATH \"" + escapeCmakeString(engineLocalPath) + "\")");
+			replaceAll(content, "WEIRDGAME_", varPrefix + "_");
+			replaceAll(content, "set(WEIRD_WEB_TITLE \"WeirdGame\")",
+					   "set(WEIRD_WEB_TITLE \"" + escapeCmakeString(displayName) + "\")");
+			return content;
+		}
+
+		bool createProjectFromTemplate(const std::filesystem::path& templateDir, const std::filesystem::path& destDir,
+									   const std::string& displayName, std::string& outError)
+		{
+			outError.clear();
+			std::error_code ec;
+			if (templateDir.empty() || !std::filesystem::exists(templateDir / "CMakeLists.txt", ec))
+			{
+				outError = "Could not locate template at examples/empty-project.";
+				return false;
+			}
+			if (isPathSameOrInside(destDir, templateDir))
+			{
+				outError = "Destination cannot be inside examples/empty-project.";
+				return false;
+			}
+			if (std::filesystem::exists(destDir, ec))
+			{
+				outError = "Destination folder already exists.";
+				return false;
+			}
+
+			if (!std::filesystem::create_directories(destDir, ec) || ec)
+			{
+				outError = "Failed to create folder: " + ec.message();
+				return false;
+			}
+
+			auto rollback = [&]()
+			{
+				std::error_code rmEc;
+				std::filesystem::remove_all(destDir, rmEc);
+			};
+
+			const std::filesystem::path engineRoot = templateDir.parent_path().parent_path();
+
+			for (auto it = std::filesystem::recursive_directory_iterator(templateDir, ec);
+				 it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
+			{
+				if (ec)
+				{
+					rollback();
+					outError = "Failed to scan empty-project template: " + ec.message();
+					return false;
+				}
+
+				const std::filesystem::path& srcPath = it->path();
+				const std::string nameLower = toLowerCopy(srcPath.filename().string());
+				if (it->is_directory(ec) &&
+					(nameLower == ".git" || nameLower == "build" || nameLower.rfind("build-", 0) == 0))
+				{
+					it.disable_recursion_pending();
+					continue;
+				}
+
+				std::filesystem::path relPath = std::filesystem::relative(srcPath, templateDir, ec);
+				if (ec || relPath.empty())
+				{
+					continue;
+				}
+				const std::filesystem::path targetPath = destDir / relPath;
+
+				if (it->is_directory(ec))
+				{
+					std::filesystem::create_directories(targetPath, ec);
+					if (ec)
+					{
+						rollback();
+						outError = "Failed to create directory " + targetPath.string() + ": " + ec.message();
+						return false;
+					}
+					continue;
+				}
+
+				if (targetPath.has_parent_path())
+				{
+					std::filesystem::create_directories(targetPath.parent_path(), ec);
+				}
+
+				if (relPath.generic_string() == "CMakeLists.txt")
+				{
+					std::ifstream in(srcPath, std::ios::binary);
+					if (!in.is_open())
+					{
+						rollback();
+						outError = "Failed to read template CMakeLists.txt.";
+						return false;
+					}
+					std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+					text = transformTemplateCMakeLists(std::move(text), engineRoot, destDir, displayName);
+
+					std::ofstream out(targetPath, std::ios::binary | std::ios::trunc);
+					if (!out.is_open())
+					{
+						rollback();
+						outError = "Failed to write destination CMakeLists.txt.";
+						return false;
+					}
+					out.write(text.data(), static_cast<std::streamsize>(text.size()));
+					if (!out.good())
+					{
+						rollback();
+						outError = "Failed to flush destination CMakeLists.txt.";
+						return false;
+					}
+				}
+				else if (it->is_regular_file(ec))
+				{
+					std::filesystem::copy_file(srcPath, targetPath, std::filesystem::copy_options::overwrite_existing,
+											   ec);
+					if (ec)
+					{
+						rollback();
+						outError = "Failed to copy " + relPath.generic_string() + ": " + ec.message();
+						return false;
+					}
+				}
+			}
+
+			// Guarantee expected starter folders exist even if omitted by directory iteration order
+			for (const char* sub : {"assets", "include", "src"})
+			{
+				std::filesystem::create_directories(destDir / sub, ec);
+			}
+
+			return true;
 		}
 
 		const char* getRecentBadgeText(RecentItemType type)
@@ -128,6 +506,14 @@ namespace WeirdEngine::Tools
 		ToolsSession::showOpenFolderDialog(onDialogCallback, req, defaultDir, "Select Weird Engine Project Folder");
 	}
 
+	void MainMenuScene::browseNewProjectParentDialog()
+	{
+		std::string defaultDir = m_newProjectParentBuf[0] != '\0' ? std::string(m_newProjectParentBuf)
+																  : ToolsSession::getDefaultProjectBrowseDirectory();
+		auto* req = new DialogRequestData{this, PendingDialogKind::NewProjectParentFolder};
+		ToolsSession::showOpenFolderDialog(onDialogCallback, req, defaultDir, "Select Parent Folder for New Project");
+	}
+
 	void MainMenuScene::openClusterFileDialog()
 	{
 		static SDL_DialogFileFilter filters[1] = {{"Weird Cluster (*.weirdcluster)", "weirdcluster"}};
@@ -182,6 +568,13 @@ namespace WeirdEngine::Tools
 			case PendingDialogKind::ProjectFolder:
 				tryOpenProjectFolder(services, path);
 				break;
+			case PendingDialogKind::NewProjectParentFolder:
+			{
+				std::string normalized = ToolsSession::normalizePath(path);
+				std::snprintf(m_newProjectParentBuf, sizeof(m_newProjectParentBuf), "%s", normalized.c_str());
+				m_newProjectError.clear();
+				break;
+			}
 			case PendingDialogKind::ClusterFile:
 				session.openClusterInEditor(services, SCENE_MAIN_MENU, path, true);
 				break;
@@ -214,14 +607,13 @@ namespace WeirdEngine::Tools
 		if (ImGui::Begin("##WeirdEditorMainMenu", nullptr, rootFlags))
 		{
 			// Header row
-			ImGui::SetWindowFontScale(1.45f);
+			ImGui::SetWindowFontScale(2.0f);
 			ImGui::TextColored(ImVec4(0.95f, 0.96f, 0.98f, 1.0f), "Weird Editor");
 			ImGui::SetWindowFontScale(1.0f);
 
+			renderNewProjectModal(services);
 			renderInitProjectModal(services);
 
-			ImGui::Spacing();
-			ImGui::Separator();
 			ImGui::Spacing();
 
 			const float availW = ImGui::GetContentRegionAvail().x;
@@ -255,6 +647,180 @@ namespace WeirdEngine::Tools
 		{
 			m_pendingNewProjectFolder = resolved;
 			m_openInitProjectModal = true;
+		}
+	}
+
+	void MainMenuScene::openNewProjectModal()
+	{
+		const std::filesystem::path templateDir = findEmptyProjectTemplateDir();
+		const std::string defaultParent = getDefaultNewProjectParentDir(templateDir);
+		std::snprintf(m_newProjectParentBuf, sizeof(m_newProjectParentBuf), "%s", defaultParent.c_str());
+
+		std::string candidateName = "NewProject";
+		std::error_code ec;
+		if (!defaultParent.empty())
+		{
+			std::filesystem::path parentPath(defaultParent);
+			if (std::filesystem::exists(parentPath / candidateName, ec))
+			{
+				for (int suffix = 2; suffix < 100; ++suffix)
+				{
+					std::string numbered = "NewProject" + std::to_string(suffix);
+					if (!std::filesystem::exists(parentPath / numbered, ec))
+					{
+						candidateName = numbered;
+						break;
+					}
+				}
+			}
+		}
+		std::snprintf(m_newProjectNameBuf, sizeof(m_newProjectNameBuf), "%s", candidateName.c_str());
+
+		m_newProjectError.clear();
+		m_openNewProjectModal = true;
+	}
+
+	void MainMenuScene::renderNewProjectModal(ServiceProvider& services)
+	{
+		if (m_openNewProjectModal)
+		{
+			ImGui::OpenPopup("New Project");
+			m_openNewProjectModal = false;
+		}
+
+		ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+		if (ImGui::BeginPopupModal("New Project", nullptr,
+								   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+		{
+			const std::filesystem::path templateDir = findEmptyProjectTemplateDir();
+			constexpr float modalContentWidth = 500.0f;
+
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + modalContentWidth);
+			ImGui::TextWrapped("Create a new Weird Engine project based on examples/empty-project.");
+			ImGui::Spacing();
+
+			bool submitRequested = false;
+			ImGui::Text("Project Name:");
+			if (ImGui::IsWindowAppearing())
+			{
+				ImGui::SetKeyboardFocusHere();
+			}
+			ImGui::SetNextItemWidth(modalContentWidth);
+			if (ImGui::InputTextWithHint("##NewProjName", "Project Name (e.g. my-game)", m_newProjectNameBuf,
+										 sizeof(m_newProjectNameBuf), ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				submitRequested = true;
+			}
+
+			ImGui::Spacing();
+			ImGui::Text("Parent Folder:");
+			const float browseW = 92.0f;
+			ImGui::SetNextItemWidth(modalContentWidth - browseW - ImGui::GetStyle().ItemSpacing.x);
+			if (ImGui::InputText("##NewProjParent", m_newProjectParentBuf, sizeof(m_newProjectParentBuf),
+								 ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				submitRequested = true;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Browse...", ImVec2(browseW, 0.0f)))
+			{
+				browseNewProjectParentDialog();
+			}
+
+			const std::string displayName = trimCopy(m_newProjectNameBuf);
+			const std::string folderName = sanitizeFolderName(displayName);
+			const std::string cmakeName = makeCmakeProjectName(displayName);
+			const std::string parentTrimmed = trimCopy(m_newProjectParentBuf);
+
+			std::error_code ec;
+			const std::filesystem::path parentPath(parentTrimmed);
+			const std::filesystem::path destDir =
+				(!parentTrimmed.empty() && !folderName.empty()) ? (parentPath / folderName) : std::filesystem::path();
+
+			std::string validationError;
+			if (templateDir.empty())
+			{
+				validationError = "Template examples/empty-project could not be located.";
+			}
+			else if (folderName.empty())
+			{
+				validationError = "Enter a valid project name.";
+			}
+			else if (parentTrimmed.empty() || !std::filesystem::exists(parentPath, ec) ||
+					 !std::filesystem::is_directory(parentPath, ec))
+			{
+				validationError = "Select an existing parent folder.";
+			}
+			else if (isPathSameOrInside(destDir, templateDir))
+			{
+				validationError = "Destination cannot be inside examples/empty-project.";
+			}
+			else if (std::filesystem::exists(destDir, ec))
+			{
+				validationError = "Destination folder already exists.";
+			}
+
+			ImGui::Spacing();
+			if (!destDir.empty())
+			{
+				ImGui::TextDisabled("Folder: %s", destDir.generic_string().c_str());
+			}
+			if (!folderName.empty())
+			{
+				ImGui::TextDisabled("CMake project: %s", cmakeName.c_str());
+			}
+
+			if (!validationError.empty())
+			{
+				ImGui::Spacing();
+				ImGui::TextColored(ImVec4(0.95f, 0.45f, 0.40f, 1.0f), "%s", validationError.c_str());
+			}
+			else if (!m_newProjectError.empty())
+			{
+				ImGui::Spacing();
+				ImGui::TextColored(ImVec4(0.95f, 0.45f, 0.40f, 1.0f), "%s", m_newProjectError.c_str());
+			}
+
+			ImGui::PopTextWrapPos();
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+
+			const bool canCreate = validationError.empty();
+			if (!canCreate)
+			{
+				ImGui::BeginDisabled();
+			}
+			if ((ImGui::Button("Create & Open", ImVec2(140.0f, 0.0f)) || (canCreate && submitRequested)))
+			{
+				std::string err;
+				if (createProjectFromTemplate(templateDir, destDir, displayName, err))
+				{
+					std::string createdPath = ToolsSession::normalizePath(destDir.string());
+					m_newProjectError.clear();
+					ImGui::CloseCurrentPopup();
+					ToolsSession::getInstance().openProjectInSceneEditor(services, SCENE_MAIN_MENU, createdPath);
+				}
+				else
+				{
+					m_newProjectError = std::move(err);
+				}
+			}
+			if (!canCreate)
+			{
+				ImGui::EndDisabled();
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)) ||
+				(ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Escape)))
+			{
+				m_newProjectError.clear();
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
 		}
 	}
 
@@ -318,9 +884,7 @@ namespace WeirdEngine::Tools
 
 			if (ImGui::BeginChild(childId, ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY))
 			{
-				ImGui::SetWindowFontScale(1.15f);
 				ImGui::TextColored(accentColor, "%s", title);
-				ImGui::SetWindowFontScale(1.0f);
 
 				ImGui::Spacing();
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.77f, 0.80f, 1.0f));
@@ -356,9 +920,9 @@ namespace WeirdEngine::Tools
 		// 1. Project (Scene Editor) Card
 		renderToolCard(
 			"##CardProject", "Project (Scene Editor)",
-			"Open a project folder in the Scene Editor to browse scenes & assets, assemble 2D SDF worlds, and test "
-			"physics.",
-			ImVec4(0.32f, 0.66f, 0.98f, 1.0f), "Open Project...", [&]() { openProjectDialog(); }, nullptr, []() {});
+			"Create a new project from empty-project or open an existing project folder in the Scene Editor.",
+			ImVec4(0.32f, 0.66f, 0.98f, 1.0f), "New Project...", [&]() { openNewProjectModal(); }, "Open Project...",
+			[&]() { openProjectDialog(); });
 
 		// 2. Cluster Editor Card
 		renderToolCard(

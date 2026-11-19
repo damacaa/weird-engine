@@ -40,8 +40,6 @@ namespace WeirdEngine::Tools::SceneEd
 
 	struct ClusterRestData
 	{
-		vec2 initialPosition{0.0f, 0.0f};
-		float initialRotation{0.0f};
 		std::vector<vec2> restOffsets;
 		std::vector<float> restRotations;
 	};

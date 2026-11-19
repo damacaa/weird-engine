@@ -21,6 +21,7 @@
 #include "shape-editor/ui/InspectorView.h"
 #include "shape-editor/ui/MenuBarView.h"
 #include "shape-editor/ui/NodeCanvasView.h"
+#include "UndoHistory.h"
 #include "UnsavedChangesPrompt.h"
 #include "weird-renderer/core/Display.h"
 
@@ -139,6 +140,7 @@ namespace WeirdEngine::Tools
 
 			rebuildAndSync(services);
 			m_audioManager.updateAudioState(services);
+			resetUndoBaseline(m_hasUnsavedChanges);
 		}
 
 		void onDestroy(Registry& registry, ServiceProvider& services) override
@@ -170,11 +172,11 @@ namespace WeirdEngine::Tools
 										  &saveCancelled);
 			if (didLoad)
 			{
-				m_hasUnsavedChanges = false;
+				resetUndoBaseline(false);
 			}
 			if (didSave)
 			{
-				m_hasUnsavedChanges = false;
+				markSaved();
 				m_unsavedPrompt.notifySaveFinished(true);
 			}
 			else if (saveCancelled)
@@ -225,6 +227,83 @@ namespace WeirdEngine::Tools
 			m_cachedCppCode = NodeGraphCompiler::generateCppCode(m_graph);
 		}
 
+		void resetUndoBaseline(bool dirty = false)
+		{
+			m_undoHistory.clear(dirty);
+			m_committedGraphSnapshot = NodeGraphSerializer::serialize(m_graph);
+			m_hasUnsavedChanges = m_undoHistory.isDirty();
+		}
+
+		void syncUndoSnapshotIfChanged()
+		{
+			if (ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				return;
+			}
+
+			const nlohmann::json currentSnapshot = NodeGraphSerializer::serialize(m_graph);
+			if (currentSnapshot != m_committedGraphSnapshot)
+			{
+				m_undoHistory.push(m_committedGraphSnapshot);
+				m_committedGraphSnapshot = currentSnapshot;
+				m_hasUnsavedChanges = m_undoHistory.isDirty();
+			}
+		}
+
+		void markSaved()
+		{
+			if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				syncUndoSnapshotIfChanged();
+			}
+			m_committedGraphSnapshot = NodeGraphSerializer::serialize(m_graph);
+			m_undoHistory.markClean();
+			m_hasUnsavedChanges = m_undoHistory.isDirty();
+		}
+
+		void applyGraphSnapshot(const nlohmann::json& snapshot)
+		{
+			if (!NodeGraphSerializer::deserialize(m_graph, snapshot))
+			{
+				return;
+			}
+
+			m_committedGraphSnapshot = snapshot;
+			ImNodes::ClearNodeSelection();
+			ImNodes::ClearLinkSelection();
+			m_syncPositionsToImNodes = true;
+			m_dirty = true;
+			m_hasUnsavedChanges = m_undoHistory.isDirty();
+		}
+
+		void undo()
+		{
+			if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				syncUndoSnapshotIfChanged();
+			}
+
+			nlohmann::json target;
+			if (m_undoHistory.undo(NodeGraphSerializer::serialize(m_graph), target))
+			{
+				applyGraphSnapshot(target);
+			}
+		}
+
+		void redo()
+		{
+			if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				syncUndoSnapshotIfChanged();
+			}
+
+			nlohmann::json target;
+			if (m_undoHistory.redo(NodeGraphSerializer::serialize(m_graph), target))
+			{
+				applyGraphSnapshot(target);
+			}
+		}
+
 		void confirmIfDirty(std::function<void()> action)
 		{
 			std::string docName = m_fileManager.hasCurrentFilePath()
@@ -236,6 +315,18 @@ namespace WeirdEngine::Tools
 		void renderEditorUI(ServiceProvider& services)
 		{
 			const auto confirmAction = [this](std::function<void()> action) { confirmIfDirty(std::move(action)); };
+			const auto onSaved = [this]() { markSaved(); };
+			const auto onResetGraph = [this]() { resetUndoBaseline(false); };
+			const bool modalBlocking =
+				m_unsavedPrompt.isOpenOrPending() || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+
+			ShapeEd::MenuBarView::UndoHooks undoHooks;
+			undoHooks.canUndo = m_undoHistory.canUndo();
+			undoHooks.canRedo = m_undoHistory.canRedo();
+			undoHooks.onUndo = [this]() { undo(); };
+			undoHooks.onRedo = [this]() { redo(); };
+			undoHooks.onSaved = onSaved;
+			undoHooks.onResetGraph = onResetGraph;
 
 			int winW = WeirdRenderer::Display::width > 0 ? WeirdRenderer::Display::width : 1280;
 			int winH = WeirdRenderer::Display::height > 0 ? WeirdRenderer::Display::height : 800;
@@ -256,7 +347,7 @@ namespace WeirdEngine::Tools
 				ImGui::PopStyleVar(3);
 
 				ShapeEd::MenuBarView::render(services, m_graph, m_fileManager, m_dirty, m_syncPositionsToImNodes,
-											 m_hasUnsavedChanges, confirmAction);
+											 m_hasUnsavedChanges, confirmAction, &undoHooks);
 
 				float menuH = ImGui::GetFrameHeight();
 				float contentH = static_cast<float>(winH) - menuH;
@@ -272,7 +363,8 @@ namespace WeirdEngine::Tools
 				ImGui::BeginChild("##NodeCanvasChild", ImVec2(canvasWidth, contentH), false,
 								  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 				ShapeEd::NodeCanvasView::render(m_graph, m_fileManager, m_dirty, m_syncPositionsToImNodes,
-												m_hasUnsavedChanges, confirmAction);
+												m_hasUnsavedChanges, confirmAction, modalBlocking, onSaved,
+												onResetGraph);
 				ImGui::EndChild();
 				ImGui::PopStyleVar();
 				ImGui::PopStyleColor();
@@ -375,17 +467,36 @@ namespace WeirdEngine::Tools
 			}
 			ImGui::End();
 
+			const bool allowUndoShortcut = !modalBlocking && !ImGui::IsMouseDown(ImGuiMouseButton_Left);
+			switch (pollUndoShortcut(allowUndoShortcut))
+			{
+				case UndoShortcutAction::Undo:
+					undo();
+					break;
+				case UndoShortcutAction::Redo:
+					redo();
+					break;
+				case UndoShortcutAction::None:
+					break;
+			}
+
+			syncUndoSnapshotIfChanged();
+
 			m_unsavedPrompt.render(
 				[this]() -> bool
 				{
 					if (m_fileManager.saveGraph(m_graph))
 					{
-						m_hasUnsavedChanges = false;
+						markSaved();
 						return true;
 					}
 					return false;
 				},
-				[this]() { m_hasUnsavedChanges = false; });
+				[this]()
+				{
+					m_undoHistory.markClean();
+					m_hasUnsavedChanges = false;
+				});
 		}
 
 		NodeGraph m_graph;
@@ -402,5 +513,7 @@ namespace WeirdEngine::Tools
 		bool m_hasUnsavedChanges = false;
 		bool m_syncPositionsToImNodes = true;
 		UnsavedChangesPrompt m_unsavedPrompt;
+		UndoHistory<nlohmann::json> m_undoHistory;
+		nlohmann::json m_committedGraphSnapshot;
 	};
 } // namespace WeirdEngine::Tools

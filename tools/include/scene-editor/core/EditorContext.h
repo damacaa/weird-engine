@@ -9,6 +9,7 @@
 #include "weird-engine/systems/SDFRenderSystem.h"
 #include "weird-physics/Simulation2D.h"
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -23,6 +24,27 @@ namespace WeirdEngine
 
 namespace WeirdEngine::Tools::SceneEd
 {
+	struct EditorDirtyFlag
+	{
+		bool value = false;
+		uint64_t editCount = 0;
+
+		EditorDirtyFlag& operator=(bool dirty)
+		{
+			value = dirty;
+			if (dirty)
+			{
+				++editCount;
+			}
+			return *this;
+		}
+
+		operator bool() const
+		{
+			return value;
+		}
+	};
+
 	struct EditorContext
 	{
 		Scene2D* scene = nullptr;
@@ -35,7 +57,7 @@ namespace WeirdEngine::Tools::SceneEd
 		EditorProject project;
 
 		std::string currentScenePath;
-		bool isSceneDirty = false;
+		EditorDirtyFlag isSceneDirty;
 		bool sceneUpdatedFromAssets = false;
 
 		// Selection state

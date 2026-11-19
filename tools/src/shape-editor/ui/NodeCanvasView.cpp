@@ -12,7 +12,9 @@ namespace WeirdEngine::Tools::ShapeEd
 {
 	void NodeCanvasView::render(NodeGraph& graph, EditorFileManager& fileManager, bool& outDirty,
 								bool& syncPositionsToImNodes, bool& hasUnsavedChanges,
-								const std::function<void(std::function<void()>)>& confirmAction)
+								const std::function<void(std::function<void()>)>& confirmAction,
+								bool externalModalBlocking, const std::function<void()>& onSaved,
+								const std::function<void()>& onResetGraph)
 	{
 		bool canvasEdited = false;
 		ImNodes::BeginNodeEditor();
@@ -240,7 +242,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		}
 
 		// 5. Delete key handling for selected nodes/links
-		const bool modalBlocking = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+		const bool modalBlocking = externalModalBlocking || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
 		if (!modalBlocking && !ImGui::GetIO().WantTextInput &&
 			(ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_X)))
 		{
@@ -311,7 +313,8 @@ namespace WeirdEngine::Tools::ShapeEd
 		ImGui::PopStyleVar(4);
 
 		// 7. Shortcut: Ctrl+L to trigger Auto Layout
-		if (!modalBlocking && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_L))
+		const ImGuiIO& io = ImGui::GetIO();
+		if (!modalBlocking && io.KeyCtrl && !io.KeyAlt && !io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_L, false))
 		{
 			graph.autoLayout();
 			syncPositionsToImNodes = true;
@@ -319,7 +322,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		}
 
 		// 8. Shortcuts: Zoom in/out/reset and file actions
-		if (!modalBlocking && ImGui::GetIO().KeyCtrl)
+		if (!modalBlocking && io.KeyCtrl && !io.KeyAlt && !io.WantTextInput)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_Equal) || ImGui::IsKeyPressed(ImGuiKey_KeypadAdd))
 			{
@@ -335,9 +338,9 @@ namespace WeirdEngine::Tools::ShapeEd
 			{
 				ImNodes::EditorContextResetZoom();
 			}
-			else if (ImGui::IsKeyPressed(ImGuiKey_S))
+			else if (ImGui::IsKeyPressed(ImGuiKey_S, false))
 			{
-				if (ImGui::GetIO().KeyShift)
+				if (io.KeyShift)
 				{
 					fileManager.openSaveFileDialog();
 				}
@@ -346,19 +349,23 @@ namespace WeirdEngine::Tools::ShapeEd
 					if (fileManager.saveGraph(graph))
 					{
 						hasUnsavedChanges = false;
+						if (onSaved)
+						{
+							onSaved();
+						}
 					}
 				}
 			}
-			else if (ImGui::IsKeyPressed(ImGuiKey_O))
+			else if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_O, false))
 			{
 				if (confirmAction)
 					confirmAction([&fileManager]() { fileManager.openLoadFileDialog(); });
 				else
 					fileManager.openLoadFileDialog();
 			}
-			else if (ImGui::IsKeyPressed(ImGuiKey_N))
+			else if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_N, false))
 			{
-				auto doNewGraph = [&]()
+				auto doNewGraph = [&, onResetGraph]()
 				{
 					graph.clear();
 					graph.addNode("sdf_output", {400.0f, 200.0f});
@@ -367,6 +374,10 @@ namespace WeirdEngine::Tools::ShapeEd
 					outDirty = true;
 					syncPositionsToImNodes = true;
 					hasUnsavedChanges = false;
+					if (onResetGraph)
+					{
+						onResetGraph();
+					}
 				};
 				if (confirmAction)
 					confirmAction(std::move(doNewGraph));

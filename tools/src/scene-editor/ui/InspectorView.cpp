@@ -330,16 +330,11 @@ namespace WeirdEngine::Tools::SceneEd
 			ctx.isSceneDirty = true;
 		}
 
-		// Reset Cluster Buttons
+		// Reset Cluster Button
 		ImGui::Spacing();
-		if (ImGui::Button("Reset to Initial Position (R)", ImVec2(-1.0f, 26.0f)))
-		{
-			sceneOps.resetClusterToInitialPosition(*cluster);
-		}
 		if (ImGui::Button("Reset Shape at Current Centroid", ImVec2(-1.0f, 24.0f)))
 		{
-			vec2 centroid = sceneOps.computeClusterCentroid(*cluster);
-			sceneOps.resetClusterShapeAtPosition(*cluster, centroid);
+			sceneOps.resetClusterShapeAtCurrentCentroid(*cluster);
 		}
 
 		// Cluster Tags

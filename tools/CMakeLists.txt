@@ -147,6 +147,8 @@ endif()
 
 message(STATUS "WeirdEditor assets path: ${ASSETS_PATH}")
 target_compile_definitions(${WEIRD_TOOLS_TARGET} PUBLIC ASSETS_PATH="${ASSETS_PATH}")
+file(TO_CMAKE_PATH "${WEIRD_ENGINE_REAL_SOURCE}" WEIRD_ENGINE_SOURCE_CMAKE)
+target_compile_definitions(${WEIRD_TOOLS_TARGET} PRIVATE WEIRD_ENGINE_SOURCE_DIR="${WEIRD_ENGINE_SOURCE_CMAKE}")
 
 if(MINGW)
     target_link_options(${WEIRD_TOOLS_TARGET} PRIVATE -static -static-libgcc -static-libstdc++)

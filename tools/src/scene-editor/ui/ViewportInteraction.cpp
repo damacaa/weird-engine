@@ -1,6 +1,7 @@
 #include "scene-editor/ui/ViewportInteraction.h"
 #include "scene-editor/services/SceneOperations.h"
 #include "ToolsSession.h"
+#include "UndoHistory.h"
 
 #include "weird-engine.h"
 #include "weird-engine/components/Transform.h"
@@ -22,18 +23,6 @@ namespace WeirdEngine::Tools::SceneEd
 			return;
 		}
 
-		if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKeyDown(Input::N))
-		{
-			sceneOps.requestNewScene();
-		}
-		if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKeyDown(Input::O))
-		{
-			sceneOps.requestOpenLoadSceneDialog();
-		}
-		if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKeyDown(Input::S))
-		{
-			sceneOps.saveScenePrompt();
-		}
 		if (ctx.services->input().getKeyDown(Input::Space))
 		{
 			sceneOps.toggleSimulation();
@@ -41,19 +30,6 @@ namespace WeirdEngine::Tools::SceneEd
 		if (ctx.services->input().getKeyDown(Input::Delete) || ctx.services->input().getKeyDown(Input::X))
 		{
 			sceneOps.deleteSelected();
-		}
-		if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKey(Input::LeftShift) &&
-			ctx.services->input().getKeyDown(Input::G))
-		{
-			sceneOps.ungroupSelected();
-		}
-		else if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKeyDown(Input::G))
-		{
-			sceneOps.groupSelected();
-		}
-		if (ctx.services->input().getKey(Input::LeftCtrl) && ctx.services->input().getKeyDown(Input::D))
-		{
-			sceneOps.duplicateSelected();
 		}
 		if (ctx.services->input().getKeyDown(Input::Esc))
 		{
@@ -67,13 +43,60 @@ namespace WeirdEngine::Tools::SceneEd
 		{
 			ctx.selectIndividualClusterEntities = !ctx.selectIndividualClusterEntities;
 		}
-		if (ctx.services->input().getKeyDown(Input::R) && ctx.selectedClusterId != 0)
+	}
+
+	void ViewportInteraction::handleCustomUIShortcuts(EditorContext& ctx, SceneOperations& sceneOps)
+	{
+		const bool modalBlocking =
+			ctx.unsavedPrompt.isOpenOrPending() || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+		if (modalBlocking)
 		{
-			auto* c = ctx.services->clusters().getById(ctx.selectedClusterId);
-			if (c)
-			{
-				sceneOps.resetClusterToInitialPosition(*c);
-			}
+			return;
+		}
+
+		const bool allowUndo = !ctx.isSimulating && !ctx.isDragging && !ImGui::IsAnyItemActive() &&
+							   !ImGui::IsMouseDown(ImGuiMouseButton_Left);
+		switch (Tools::pollUndoShortcut(allowUndo))
+		{
+			case Tools::UndoShortcutAction::Undo:
+				sceneOps.undo();
+				return;
+			case Tools::UndoShortcutAction::Redo:
+				sceneOps.redo();
+				return;
+			case Tools::UndoShortcutAction::None:
+				break;
+		}
+
+		const ImGuiIO& io = ImGui::GetIO();
+		if (!io.KeyCtrl || io.KeyAlt || io.WantTextInput)
+		{
+			return;
+		}
+
+		if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_N, false))
+		{
+			sceneOps.requestNewScene();
+		}
+		else if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_O, false))
+		{
+			sceneOps.requestOpenLoadSceneDialog();
+		}
+		else if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_S, false))
+		{
+			sceneOps.saveScenePrompt();
+		}
+		else if (!ctx.isSimulating && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_G, false))
+		{
+			sceneOps.ungroupSelected();
+		}
+		else if (!ctx.isSimulating && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_G, false))
+		{
+			sceneOps.groupSelected();
+		}
+		else if (!ctx.isSimulating && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_D, false))
+		{
+			sceneOps.duplicateSelected();
 		}
 	}
 
@@ -231,6 +254,22 @@ namespace WeirdEngine::Tools::SceneEd
 
 			if (!ctx.dragHasMoved && (delta.x * delta.x + delta.y * delta.y) > 1e-8f)
 			{
+				for (auto& [cId, startPos] : ctx.dragClusterStartPositions)
+				{
+					if (auto* c = ctx.services->clusters().getById(cId))
+					{
+						sceneOps.resetClusterShapeAtCurrentCentroid(*c);
+						startPos = c->position;
+					}
+				}
+				if (ctx.dragClusterStartPositions.empty() && ctx.selectedClusterId != 0)
+				{
+					if (auto* c = ctx.services->clusters().getById(ctx.selectedClusterId))
+					{
+						sceneOps.resetClusterShapeAtCurrentCentroid(*c);
+						ctx.dragStartPos = c->position;
+					}
+				}
 				ctx.dragHasMoved = true;
 			}
 

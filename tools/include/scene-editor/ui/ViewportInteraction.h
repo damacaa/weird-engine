@@ -10,6 +10,7 @@ namespace WeirdEngine::Tools::SceneEd
 	{
 	public:
 		void handleHotkeys(EditorContext& ctx, SceneOperations& sceneOps);
+		void handleCustomUIShortcuts(EditorContext& ctx, SceneOperations& sceneOps);
 		void handleCameraInput(EditorContext& ctx);
 		void zoomCamera(EditorContext& ctx, float steps);
 		void panCamera(EditorContext& ctx, vec2 screenDelta);

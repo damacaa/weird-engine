@@ -19,6 +19,7 @@
 #include <SDL3/SDL_dialog.h>
 
 #include "ToolsSession.h"
+#include "UndoHistory.h"
 #include "UnsavedChangesPrompt.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-physics/components/DistanceConstraint.h"
@@ -169,9 +170,7 @@ namespace WeirdEngine::Tools
 			std::vector<size_t> selectedLinkIndices;
 		};
 
-		static constexpr size_t MAX_UNDO_HISTORY = 64;
-		std::vector<ClusterUndoState> m_undoStack;
-		std::vector<ClusterUndoState> m_redoStack;
+		UndoHistory<ClusterUndoState> m_undoHistory;
 		ClusterUndoState m_pendingBallDragUndo;
 		bool m_hasPendingBallDragUndo = false;
 		vec2 m_dragStartBallPos = vec2(0.0f);
@@ -228,8 +227,6 @@ namespace WeirdEngine::Tools
 		std::string m_pendingSavePath;
 		bool m_pendingSaveCancelled = false;
 		bool m_pendingNewCluster = false;
-		int m_editRevision = 0;
-		int m_cleanRevision = 0;
 		UnsavedChangesPrompt m_unsavedPrompt;
 
 		// Tag editor state
@@ -367,8 +364,7 @@ namespace WeirdEngine::Tools
 
 						if (saved.isDirty)
 						{
-							m_editRevision = 1;
-							m_cleanRevision = 0;
+							m_undoHistory.setDirtyState(true);
 						}
 						else
 						{
@@ -444,7 +440,7 @@ namespace WeirdEngine::Tools
 			}
 
 			const bool wantText = ImGui::GetIO().WantTextInput;
-			const bool ctrlHeld = m_tempSvc->input().getKey(Input::LeftCtrl);
+			const bool ctrlHeld = isCtrlHeld();
 
 			if ((!wantText && !ctrlHeld && m_tempSvc->input().getKeyDown(Input::Q)) ||
 				m_tempSvc->input().getGamepadButtonDown(Input::GamepadButton::North))
@@ -502,46 +498,6 @@ namespace WeirdEngine::Tools
 				handleDeleteKey();
 			}
 
-			if (ctrlHeld && !wantText)
-			{
-				const bool shiftHeld = m_tempSvc->input().getKey(Input::LeftShift);
-				if (m_tempSvc->input().getKeyDown(Input::Z))
-				{
-					if (shiftHeld)
-					{
-						redo();
-					}
-					else
-					{
-						undo();
-					}
-				}
-				else if (m_tempSvc->input().getKeyDown(Input::Y))
-				{
-					redo();
-				}
-			}
-
-			if (ctrlHeld && m_tempSvc->input().getKeyDown(Input::S))
-			{
-				saveCluster();
-			}
-
-			if (ctrlHeld && m_tempSvc->input().getKeyDown(Input::O))
-			{
-				requestOpenLoadFileDialog();
-			}
-
-			if (ctrlHeld && m_tempSvc->input().getKeyDown(Input::L))
-			{
-				requestOpenLoadFileDialog();
-			}
-
-			if (ctrlHeld && m_tempSvc->input().getKeyDown(Input::N))
-			{
-				m_pendingNewCluster = true;
-			}
-
 			if (m_pendingNewCluster)
 			{
 				m_pendingNewCluster = false;
@@ -562,12 +518,60 @@ namespace WeirdEngine::Tools
 			removeFallenBalls();
 		}
 
+		void handleImGuiShortcuts()
+		{
+			if (m_tempRegistry == nullptr || m_tempSvc == nullptr)
+			{
+				return;
+			}
+
+			const bool modalBlocking =
+				m_unsavedPrompt.isOpenOrPending() || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+			if (modalBlocking)
+			{
+				return;
+			}
+
+			const bool allowUndo = !m_isRotatingDrag && m_dragMode == DragMode::None;
+			switch (pollUndoShortcut(allowUndo))
+			{
+				case UndoShortcutAction::Undo:
+					undo();
+					return;
+				case UndoShortcutAction::Redo:
+					redo();
+					return;
+				case UndoShortcutAction::None:
+					break;
+			}
+
+			const ImGuiIO& io = ImGui::GetIO();
+			if (!io.KeyCtrl || io.KeyAlt || io.WantTextInput)
+			{
+				return;
+			}
+
+			if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_S, false))
+			{
+				saveCluster();
+			}
+			else if (!io.KeyShift && (ImGui::IsKeyPressed(ImGuiKey_O, false) || ImGui::IsKeyPressed(ImGuiKey_L, false)))
+			{
+				requestOpenLoadFileDialog();
+			}
+			else if (!io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_N, false))
+			{
+				requestNewCluster();
+			}
+		}
+
 		void onCustomUI(Registry& registry, ServiceProvider& services) override
 		{
 			m_tempRegistry = &registry;
 			m_tempSvc = &services;
 
 			renderMenuBar();
+			handleImGuiShortcuts();
 			renderSidePanel();
 			renderControlsWindow();
 			renderSceneOverlay();
@@ -652,7 +656,7 @@ namespace WeirdEngine::Tools
 					{
 						undo();
 					}
-					if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z", false, canRedo()))
+					if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z / Ctrl+Y", false, canRedo()))
 					{
 						redo();
 					}
@@ -4046,18 +4050,17 @@ namespace WeirdEngine::Tools
 
 		bool canUndo() const
 		{
-			return !m_undoStack.empty();
+			return m_undoHistory.canUndo();
 		}
 
 		bool canRedo() const
 		{
-			return !m_redoStack.empty();
+			return m_undoHistory.canRedo();
 		}
 
 		void clearUndoHistory()
 		{
-			m_undoStack.clear();
-			m_redoStack.clear();
+			m_undoHistory.clear();
 			m_hasPendingBallDragUndo = false;
 			m_resizedLinksDuringBallDrag = false;
 			m_hasPendingLinkDragUndo = false;
@@ -4142,17 +4145,7 @@ namespace WeirdEngine::Tools
 
 		void commitUndoState(const ClusterUndoState& snapshot)
 		{
-			m_undoStack.push_back(snapshot);
-			if (m_undoStack.size() > MAX_UNDO_HISTORY)
-			{
-				m_undoStack.erase(m_undoStack.begin());
-			}
-			m_redoStack.clear();
-			if (m_editRevision < m_cleanRevision)
-			{
-				m_cleanRevision = -1;
-			}
-			++m_editRevision;
+			m_undoHistory.push(snapshot);
 		}
 
 		void pushUndoState()
@@ -4171,16 +4164,11 @@ namespace WeirdEngine::Tools
 				return;
 			}
 
-			m_redoStack.push_back(captureUndoState());
-			if (m_redoStack.size() > MAX_UNDO_HISTORY)
+			ClusterUndoState target;
+			if (m_undoHistory.undo(captureUndoState(), target))
 			{
-				m_redoStack.erase(m_redoStack.begin());
+				applyUndoState(target);
 			}
-
-			ClusterUndoState target = std::move(m_undoStack.back());
-			m_undoStack.pop_back();
-			--m_editRevision;
-			applyUndoState(target);
 		}
 
 		void redo()
@@ -4190,16 +4178,11 @@ namespace WeirdEngine::Tools
 				return;
 			}
 
-			m_undoStack.push_back(captureUndoState());
-			if (m_undoStack.size() > MAX_UNDO_HISTORY)
+			ClusterUndoState target;
+			if (m_undoHistory.redo(captureUndoState(), target))
 			{
-				m_undoStack.erase(m_undoStack.begin());
+				applyUndoState(target);
 			}
-
-			ClusterUndoState target = std::move(m_redoStack.back());
-			m_redoStack.pop_back();
-			++m_editRevision;
-			applyUndoState(target);
 		}
 
 		Entity createBallEntity(vec2 pos, unsigned int materialId, bool isFixed)
@@ -4620,12 +4603,12 @@ namespace WeirdEngine::Tools
 
 		bool isClusterDirty() const
 		{
-			return m_editRevision != m_cleanRevision;
+			return m_undoHistory.isDirty();
 		}
 
 		void markClusterClean()
 		{
-			m_cleanRevision = m_editRevision;
+			m_undoHistory.markClean();
 		}
 
 		void confirmIfDirty(std::function<void()> action)
@@ -4659,7 +4642,6 @@ namespace WeirdEngine::Tools
 				{
 					clearCluster();
 					clearUndoHistory();
-					m_editRevision = 0;
 					markClusterClean();
 				});
 		}
@@ -6125,7 +6107,6 @@ namespace WeirdEngine::Tools
 
 			clearCluster();
 			clearUndoHistory();
-			m_editRevision = 0;
 			markClusterClean();
 
 			m_currentFilePath = path;

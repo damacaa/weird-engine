@@ -5,6 +5,7 @@
 #include "weird-engine/components/Transform.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/SceneSerializer.h"
+#include "weird-engine/systems/PhysicsSystem2D.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
@@ -54,6 +55,13 @@ namespace WeirdEngine::Tools::SceneEd
 
 	void SceneOperations::newScene()
 	{
+		resetSceneContents();
+		resetUndoBaseline(false);
+		Logger::log("[SceneEditor] Cleared scene.");
+	}
+
+	void SceneOperations::resetSceneContents()
+	{
 		Entity camEntity = m_ctx.services->render().getCameraEntity();
 
 		// 1. Destroy all non-camera entities
@@ -72,7 +80,7 @@ namespace WeirdEngine::Tools::SceneEd
 		// 3. Free removed component arrays and entities immediately
 		m_ctx.registry->freeRemovedComponents();
 
-		// 4. Reset physics bodies, particles, and shapes
+		// 4. Reset physics bodies, particles, and shapes (keep resumed so renderer simulation time stays active)
 		m_ctx.simulation2D->resetBodiesAndShapes();
 		m_ctx.simulation2D->resume();
 		m_ctx.simulation2D->setGravity(0.0f);
@@ -115,7 +123,9 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.currentScenePath.clear();
 		m_ctx.isSceneDirty = false;
 		m_ctx.sceneUpdatedFromAssets = false;
-		Logger::log("[SceneEditor] Cleared scene.");
+		m_ctx.hasShiftAnchor = false;
+		m_ctx.hasPendingShift = false;
+		m_ctx.renamingGroupId = 0;
 	}
 
 	void SceneOperations::openLoadSceneDialog()
@@ -152,7 +162,7 @@ namespace WeirdEngine::Tools::SceneEd
 
 	void SceneOperations::loadScene(const std::string& path)
 	{
-		newScene();
+		resetSceneContents();
 		if (m_ctx.scene)
 		{
 			SceneSerializer::load(reinterpret_cast<Scene&>(*m_ctx.scene), path);
@@ -247,6 +257,7 @@ namespace WeirdEngine::Tools::SceneEd
 			}
 		}
 
+		resetUndoBaseline(m_ctx.isSceneDirty);
 		Logger::log("[SceneEditor] Loaded scene: " + path);
 		ToolsSession::getInstance().addRecentScene(path);
 	}
@@ -256,6 +267,11 @@ namespace WeirdEngine::Tools::SceneEd
 		if (m_ctx.isSimulating)
 		{
 			toggleSimulation();
+		}
+
+		if (m_ctx.services && m_ctx.scene && hasPendingEditorEdit())
+		{
+			syncUndoStateIfChanged();
 		}
 
 		std::string finalPath = path;
@@ -309,12 +325,31 @@ namespace WeirdEngine::Tools::SceneEd
 			Logger::log("[SceneEditor] Error saving editor groups: " + std::string(ex.what()));
 		}
 
+		if (m_ctx.services && m_ctx.scene)
+		{
+			flushDesignPhysicsSync();
+			m_committedState = captureUndoState();
+			m_hasCommittedState = true;
+			m_undoHistory.markClean();
+		}
+		else
+		{
+			m_undoHistory.markClean();
+		}
+		m_ctx.isSceneDirty = false;
+		m_pendingUndoSync = false;
+		m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+
 		Logger::log("[SceneEditor] Saved scene to " + finalPath);
 		ToolsSession::getInstance().addRecentScene(finalPath);
 	}
 
 	void SceneOperations::confirmIfDirty(std::function<void()> action)
 	{
+		if (m_ctx.services && m_ctx.scene && !m_ctx.isSimulating && !m_ctx.isDragging && hasPendingEditorEdit())
+		{
+			syncUndoStateIfChanged();
+		}
 		std::string docName = !m_ctx.currentScenePath.empty()
 								  ? std::filesystem::path(m_ctx.currentScenePath).filename().string()
 								  : "Untitled Scene";
@@ -368,6 +403,7 @@ namespace WeirdEngine::Tools::SceneEd
 				}
 				m_ctx.isSceneDirty = false;
 				m_ctx.sceneUpdatedFromAssets = false;
+				m_undoHistory.markClean();
 			});
 	}
 
@@ -446,8 +482,6 @@ namespace WeirdEngine::Tools::SceneEd
 	Entity SceneOperations::spawnDefaultShape(uint16_t shapeType, vec2 pos)
 	{
 		Entity e = m_ctx.registry->createEntity();
-		auto& t = m_ctx.registry->addComponent<Transform>(e);
-		t.position = vec3(pos.x, pos.y, 0.0f);
 
 		auto& s = m_ctx.registry->addComponent<Shape>(e);
 		s.distanceFieldId = shapeType;
@@ -564,6 +598,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.selectedEntity = e;
 		m_ctx.selectedClusterId = 0;
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 		return e;
 	}
 
@@ -571,8 +606,6 @@ namespace WeirdEngine::Tools::SceneEd
 	{
 		ShapeId id = m_ctx.services->shapes().loadCustomShape(assetPath);
 		Entity e = m_ctx.registry->createEntity();
-		auto& t = m_ctx.registry->addComponent<Transform>(e);
-		t.position = vec3(pos.x, pos.y, 0.0f);
 
 		auto& s = m_ctx.registry->addComponent<Shape>(e);
 		s.distanceFieldId = id;
@@ -604,6 +637,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.selectedEntity = e;
 		m_ctx.selectedClusterId = 0;
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 		return e;
 	}
 
@@ -614,6 +648,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.selectedClusterId = cluster.id;
 		m_ctx.selectedEntity = INVALID_ENTITY;
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 
 		std::filesystem::path resolved = resolveClusterPath(assetPath);
 		std::error_code ec;
@@ -844,8 +879,6 @@ namespace WeirdEngine::Tools::SceneEd
 		}
 
 		ClusterRestData data;
-		data.initialPosition = cluster.position;
-		data.initialRotation = cluster.rotation;
 
 		std::filesystem::path path = resolveClusterPath(cluster.assetPath);
 		std::ifstream file(path);
@@ -988,13 +1021,12 @@ namespace WeirdEngine::Tools::SceneEd
 		}
 
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 	}
 
-	void SceneOperations::resetClusterToInitialPosition(ClusterInstance& cluster)
+	void SceneOperations::resetClusterShapeAtCurrentCentroid(ClusterInstance& cluster)
 	{
-		auto& restData = getOrCreateClusterRestData(cluster);
-		cluster.rotation = restData.initialRotation;
-		resetClusterShapeAtPosition(cluster, restData.initialPosition);
+		resetClusterShapeAtPosition(cluster, computeClusterCentroid(cluster));
 	}
 
 	void SceneOperations::setClusterPosition(uint32_t cId, vec2 newPos)
@@ -1114,6 +1146,7 @@ namespace WeirdEngine::Tools::SceneEd
 
 		m_ctx.worldRenderContext->shapesNeedUpdate = true;
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 		Logger::log("[SceneEditor] Reloaded cluster " + cluster->name + " from " + resolvedStr);
 		return true;
 	}
@@ -1244,6 +1277,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.worldRenderContext->shapesNeedUpdate = true;
 		m_ctx.uiRenderContext->shapesNeedUpdate = true;
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 
 		if (m_ctx.services)
 		{
@@ -1271,6 +1305,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.groups.push_back(std::move(g));
 		selectGroup(m_ctx.groups.back().id);
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 		return m_ctx.groups.back();
 	}
 
@@ -1329,6 +1364,7 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.groups.push_back(std::move(group));
 		selectGroup(m_ctx.groups.back().id);
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 		Logger::log("[SceneEditor] Grouped selected items into: " + m_ctx.groups.back().name);
 	}
 
@@ -1344,6 +1380,7 @@ namespace WeirdEngine::Tools::SceneEd
 				m_ctx.groups.erase(it);
 				m_ctx.selectedGroupId = 0;
 				m_ctx.isSceneDirty = true;
+				m_pendingUndoSync = true;
 			}
 		}
 	}
@@ -1389,6 +1426,7 @@ namespace WeirdEngine::Tools::SceneEd
 			{
 				target->entities.push_back(e);
 				m_ctx.isSceneDirty = true;
+				m_pendingUndoSync = true;
 			}
 		}
 	}
@@ -1403,6 +1441,7 @@ namespace WeirdEngine::Tools::SceneEd
 			{
 				target->clusterIds.push_back(cId);
 				m_ctx.isSceneDirty = true;
+				m_pendingUndoSync = true;
 			}
 		}
 	}
@@ -1416,6 +1455,7 @@ namespace WeirdEngine::Tools::SceneEd
 			{
 				g.entities.erase(it);
 				m_ctx.isSceneDirty = true;
+				m_pendingUndoSync = true;
 			}
 		}
 	}
@@ -1429,6 +1469,7 @@ namespace WeirdEngine::Tools::SceneEd
 			{
 				g.clusterIds.erase(it);
 				m_ctx.isSceneDirty = true;
+				m_pendingUndoSync = true;
 			}
 		}
 	}
@@ -1576,6 +1617,10 @@ namespace WeirdEngine::Tools::SceneEd
 			ungroupSelected();
 			return;
 		}
+		if (entitiesToDelete.empty() && clustersToDelete.empty())
+		{
+			return;
+		}
 
 		for (uint32_t cId : clustersToDelete)
 		{
@@ -1660,20 +1705,25 @@ namespace WeirdEngine::Tools::SceneEd
 		m_ctx.worldRenderContext->shapesNeedUpdate = true;
 		deselectAll();
 		m_ctx.isSceneDirty = true;
+		m_pendingUndoSync = true;
 	}
 
 	void SceneOperations::duplicateSelected()
 	{
 		if (m_ctx.selectedEntity != INVALID_ENTITY && m_ctx.registry->hasComponent<Shape>(m_ctx.selectedEntity))
 		{
-			auto& origShape = m_ctx.registry->getComponent<Shape>(m_ctx.selectedEntity);
-			auto& origTrans = m_ctx.registry->getComponent<Transform>(m_ctx.selectedEntity);
+			auto origShape = m_ctx.registry->getComponent<Shape>(m_ctx.selectedEntity);
 
 			Entity dup = m_ctx.registry->createEntity();
-			auto& newTrans = m_ctx.registry->addComponent<Transform>(dup);
-			newTrans = origTrans;
-			newTrans.position.x += 1.0f;
-			newTrans.position.y += 1.0f;
+			if (m_ctx.registry->hasComponent<Transform>(m_ctx.selectedEntity))
+			{
+				auto origTrans = m_ctx.registry->getComponent<Transform>(m_ctx.selectedEntity);
+				auto& newTrans = m_ctx.registry->addComponent<Transform>(dup);
+				newTrans = origTrans;
+				newTrans.position.x += 1.0f;
+				newTrans.position.y += 1.0f;
+				m_ctx.registry->setComponentDirty(newTrans);
+			}
 
 			auto& newShape = m_ctx.registry->addComponent<Shape>(dup);
 			newShape = origShape;
@@ -1683,16 +1733,24 @@ namespace WeirdEngine::Tools::SceneEd
 
 			if (m_ctx.registry->hasComponent<RigidBody2D>(m_ctx.selectedEntity))
 			{
-				auto& origRb = m_ctx.registry->getComponent<RigidBody2D>(m_ctx.selectedEntity);
+				auto origRb = m_ctx.registry->getComponent<RigidBody2D>(m_ctx.selectedEntity);
 				auto& newRb = m_ctx.registry->addComponent<RigidBody2D>(dup);
 				newRb.type = origRb.type;
+				newRb.isFixed = (origRb.type == BodyType::Fixed || origRb.isFixed);
 				newRb.mass = origRb.mass;
 				newRb.enableCollision = origRb.enableCollision;
 				newRb.enableShapeCollision = origRb.enableShapeCollision;
+				m_ctx.registry->setComponentDirty(newRb);
+				if (m_ctx.registry->hasComponent<Transform>(dup))
+				{
+					const auto& newTrans = m_ctx.registry->getComponent<Transform>(dup);
+					m_ctx.simulation2D->setPosition(newRb.simulationId, vec2(newTrans.position));
+				}
 			}
 
 			m_ctx.selectedEntity = dup;
 			m_ctx.isSceneDirty = true;
+			m_pendingUndoSync = true;
 		}
 	}
 
@@ -2111,26 +2169,34 @@ namespace WeirdEngine::Tools::SceneEd
 
 	void SceneOperations::toggleSimulation()
 	{
-		m_ctx.isSimulating = !m_ctx.isSimulating;
-		if (m_ctx.isSimulating)
+		if (!m_ctx.isSimulating)
 		{
+			if (hasPendingEditorEdit())
+			{
+				syncUndoStateIfChanged();
+			}
+			m_ctx.isSimulating = true;
 			// Take temporary snapshot before physics simulation
 			m_ctx.services->serialization().saveSnapshot("temp_editor.weirdsnap");
 			m_ctx.hasSnapshot = true;
 			m_ctx.simulation2D->setGravity(m_ctx.playGravity);
 			m_ctx.simulation2D->setDamping(m_ctx.playDamping);
+			m_ctx.simulation2D->resume();
 			Logger::log("[SceneEditor] Simulation started (play mode).");
 		}
 		else
 		{
-			m_ctx.simulation2D->setGravity(0.0f);
-			m_ctx.simulation2D->setDamping(1.0f);
-			// Revert to snapshot on pause
+			m_ctx.isSimulating = false;
+			// Revert to snapshot on returning to design mode (keep simulation resumed so renderer time stays alive)
 			if (m_ctx.hasSnapshot)
 			{
 				m_ctx.services->serialization().loadSnapshot("temp_editor.weirdsnap");
-				Logger::log("[SceneEditor] Simulation paused (design mode, reverted to snapshot).");
+				Logger::log("[SceneEditor] Simulation stopped (design mode, reverted to snapshot).");
 			}
+			m_ctx.simulation2D->setGravity(0.0f);
+			m_ctx.simulation2D->setDamping(1.0f);
+			m_ctx.simulation2D->resume();
+			flushDesignPhysicsSync();
 		}
 	}
 
@@ -2163,6 +2229,313 @@ namespace WeirdEngine::Tools::SceneEd
 		}
 
 		return "Entity " + std::to_string(static_cast<uint32_t>(e));
+	}
+
+	// =====================================================================
+	// Undo / Redo
+	// =====================================================================
+
+	bool SceneOperations::hasPendingEditorEdit() const
+	{
+		return m_pendingUndoSync || (m_ctx.isSceneDirty.editCount != m_lastSyncedEditCount);
+	}
+
+	void SceneOperations::flushDesignPhysicsSync()
+	{
+		if (m_ctx.registry == nullptr || m_ctx.simulation2D == nullptr || m_ctx.isSimulating)
+		{
+			return;
+		}
+
+		// Flush any queued physics commands (e.g. from SceneSerializer::loadFromJson,
+		// ClusterService::instantiate, or setEntityPosition), push any dirty ECS edits via
+		// PhysicsSystem2D::update, and flush again so Simulation2D read buffers match ECS before
+		// captureUndoState(). Simulation2D stays resumed so constraints keep resolving freely.
+		m_ctx.simulation2D->flushCommands();
+		ECS::PhysicsSystem2D::update(*m_ctx.registry, *m_ctx.simulation2D);
+		m_ctx.simulation2D->flushCommands();
+	}
+
+	bool SceneOperations::statesEquivalent(const SceneUndoState& a, const SceneUndoState& b)
+	{
+		if (a.sceneJson != b.sceneJson || a.playGravity != b.playGravity || a.playDamping != b.playDamping ||
+			a.groups.size() != b.groups.size())
+		{
+			return false;
+		}
+
+		for (size_t i = 0; i < a.groups.size(); ++i)
+		{
+			const auto& ga = a.groups[i];
+			const auto& gb = b.groups[i];
+			if (ga.id != gb.id || ga.name != gb.name || ga.entities != gb.entities || ga.clusterIds != gb.clusterIds)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	SceneOperations::SceneUndoState SceneOperations::captureUndoState() const
+	{
+		SceneUndoState state;
+		if (m_ctx.scene == nullptr || m_ctx.services == nullptr)
+		{
+			return state;
+		}
+
+		state.sceneJson = SceneSerializer::serializeToJson(static_cast<Scene&>(*m_ctx.scene), m_ctx.currentScenePath);
+		state.sceneJson.erase("camera");
+		state.groups = m_ctx.groups;
+		state.nextGroupId = m_ctx.nextGroupId;
+		state.clusterRestData = m_ctx.clusterRestData;
+		state.playGravity = m_ctx.playGravity;
+		state.playDamping = m_ctx.playDamping;
+		state.sceneUpdatedFromAssets = m_ctx.sceneUpdatedFromAssets;
+
+		state.selectedEntity = m_ctx.selectedEntity;
+		state.selectedClusterId = m_ctx.selectedClusterId;
+		state.selectedGroupId = m_ctx.selectedGroupId;
+		state.selectedEntities = m_ctx.selectedEntities;
+		state.selectedClusterIds = m_ctx.selectedClusterIds;
+		return state;
+	}
+
+	void SceneOperations::applyUndoState(const SceneUndoState& state)
+	{
+		if (m_ctx.scene == nullptr || m_ctx.services == nullptr || m_ctx.registry == nullptr)
+		{
+			return;
+		}
+
+		const std::string savedScenePath = m_ctx.currentScenePath;
+		const auto savedAssetWriteTimes = m_ctx.clusterAssetWriteTimes;
+
+		resetSceneContents();
+
+		m_ctx.currentScenePath = savedScenePath;
+		m_ctx.clusterAssetWriteTimes = savedAssetWriteTimes;
+
+		std::unordered_map<Entity, Entity> newToSaved;
+		SceneSerializer::loadFromJson(static_cast<Scene&>(*m_ctx.scene), state.sceneJson, m_ctx.currentScenePath,
+									  nullptr, false, nullptr, &newToSaved);
+
+		std::unordered_map<Entity, Entity> savedToNew;
+		savedToNew.reserve(newToSaved.size());
+		for (const auto& [newEnt, savedEnt] : newToSaved)
+		{
+			savedToNew[savedEnt] = newEnt;
+		}
+
+		const auto remapEntity = [&](Entity savedEnt) -> Entity
+		{
+			auto it = savedToNew.find(savedEnt);
+			if (it != savedToNew.end() && m_ctx.registry->isEntityAlive(it->second))
+			{
+				return it->second;
+			}
+			return INVALID_ENTITY;
+		};
+
+		m_ctx.clusterRestData = state.clusterRestData;
+		m_ctx.playGravity = state.playGravity;
+		m_ctx.playDamping = state.playDamping;
+		m_ctx.sceneUpdatedFromAssets = state.sceneUpdatedFromAssets;
+
+		m_ctx.groups.clear();
+		m_ctx.nextGroupId = 1;
+		for (const auto& sg : state.groups)
+		{
+			EditorGroup g;
+			g.id = sg.id;
+			g.name = sg.name;
+			for (Entity savedEnt : sg.entities)
+			{
+				Entity mapped = remapEntity(savedEnt);
+				if (mapped != INVALID_ENTITY)
+				{
+					g.entities.push_back(mapped);
+				}
+			}
+			for (uint32_t cId : sg.clusterIds)
+			{
+				if (m_ctx.services->clusters().getById(cId) != nullptr)
+				{
+					g.clusterIds.push_back(cId);
+				}
+			}
+			m_ctx.nextGroupId = (std::max)(m_ctx.nextGroupId, g.id + 1);
+			m_ctx.groups.push_back(std::move(g));
+		}
+		m_ctx.nextGroupId = (std::max)(m_ctx.nextGroupId, state.nextGroupId);
+
+		syncAllConstraintsClusterMembership();
+		cleanGroups();
+
+		if (state.selectedEntity != INVALID_ENTITY)
+		{
+			m_ctx.selectedEntity = remapEntity(state.selectedEntity);
+		}
+		for (Entity savedEnt : state.selectedEntities)
+		{
+			Entity mapped = remapEntity(savedEnt);
+			if (mapped != INVALID_ENTITY)
+			{
+				m_ctx.selectedEntities.insert(mapped);
+			}
+		}
+		if (state.selectedClusterId != 0 && m_ctx.services->clusters().getById(state.selectedClusterId) != nullptr)
+		{
+			m_ctx.selectedClusterId = state.selectedClusterId;
+		}
+		for (uint32_t cId : state.selectedClusterIds)
+		{
+			if (m_ctx.services->clusters().getById(cId) != nullptr)
+			{
+				m_ctx.selectedClusterIds.insert(cId);
+			}
+		}
+		if (state.selectedGroupId != 0 && findGroup(state.selectedGroupId) != nullptr)
+		{
+			m_ctx.selectedGroupId = state.selectedGroupId;
+		}
+
+		flushDesignPhysicsSync();
+		m_ctx.worldRenderContext->shapesNeedUpdate = true;
+		m_ctx.uiRenderContext->shapesNeedUpdate = true;
+		m_ctx.isSceneDirty = m_undoHistory.isDirty();
+		m_committedState = captureUndoState();
+		m_hasCommittedState = true;
+		m_pendingUndoSync = false;
+		m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+	}
+
+	bool SceneOperations::canUndo() const
+	{
+		return !m_ctx.isSimulating && m_undoHistory.canUndo();
+	}
+
+	bool SceneOperations::canRedo() const
+	{
+		return !m_ctx.isSimulating && m_undoHistory.canRedo();
+	}
+
+	void SceneOperations::resetUndoBaseline(bool dirty)
+	{
+		m_undoHistory.clear(dirty);
+		m_pendingUndoSync = false;
+		m_wasAnyImGuiItemActive = false;
+		if (m_ctx.scene != nullptr && m_ctx.services != nullptr)
+		{
+			flushDesignPhysicsSync();
+			m_committedState = captureUndoState();
+			m_hasCommittedState = true;
+			m_ctx.isSceneDirty = m_undoHistory.isDirty();
+		}
+		else
+		{
+			m_hasCommittedState = false;
+			m_ctx.isSceneDirty = dirty;
+		}
+		m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+	}
+
+	void SceneOperations::noteViewportDragState(bool isDragging)
+	{
+		if (isDragging)
+		{
+			m_pendingUndoSync = true;
+		}
+	}
+
+	void SceneOperations::syncUndoStateIfChanged()
+	{
+		if (m_ctx.scene == nullptr || m_ctx.services == nullptr || m_ctx.isSimulating)
+		{
+			return;
+		}
+
+		flushDesignPhysicsSync();
+		SceneUndoState current = captureUndoState();
+		m_pendingUndoSync = false;
+		if (!m_hasCommittedState)
+		{
+			m_committedState = std::move(current);
+			m_hasCommittedState = true;
+			m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+			return;
+		}
+
+		if (!statesEquivalent(current, m_committedState))
+		{
+			m_undoHistory.push(std::move(m_committedState));
+			m_committedState = std::move(current);
+			m_ctx.isSceneDirty = m_undoHistory.isDirty();
+		}
+		m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+	}
+
+	void SceneOperations::syncUndoStateAfterUI()
+	{
+		const bool isItemActive = ImGui::IsAnyItemActive();
+		m_wasAnyImGuiItemActive = isItemActive;
+
+		if (m_ctx.isSimulating || m_ctx.isDragging || isItemActive || ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			return;
+		}
+
+		const bool dirtyFlagMismatch = static_cast<bool>(m_ctx.isSceneDirty) != m_undoHistory.isDirty();
+		if (hasPendingEditorEdit() || dirtyFlagMismatch)
+		{
+			syncUndoStateIfChanged();
+			if (static_cast<bool>(m_ctx.isSceneDirty) && !m_undoHistory.isDirty())
+			{
+				m_undoHistory.markDirty();
+			}
+			m_lastSyncedEditCount = m_ctx.isSceneDirty.editCount;
+		}
+	}
+
+	void SceneOperations::undo()
+	{
+		if (m_ctx.isSimulating || m_ctx.isDragging || m_ctx.scene == nullptr || m_ctx.services == nullptr ||
+			ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			return;
+		}
+
+		if (hasPendingEditorEdit())
+		{
+			syncUndoStateIfChanged();
+		}
+
+		SceneUndoState target;
+		if (m_undoHistory.undo(captureUndoState(), target))
+		{
+			applyUndoState(target);
+		}
+	}
+
+	void SceneOperations::redo()
+	{
+		if (m_ctx.isSimulating || m_ctx.isDragging || m_ctx.scene == nullptr || m_ctx.services == nullptr ||
+			ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			return;
+		}
+
+		if (hasPendingEditorEdit())
+		{
+			syncUndoStateIfChanged();
+		}
+
+		SceneUndoState target;
+		if (m_undoHistory.redo(captureUndoState(), target))
+		{
+			applyUndoState(target);
+		}
 	}
 
 } // namespace WeirdEngine::Tools::SceneEd

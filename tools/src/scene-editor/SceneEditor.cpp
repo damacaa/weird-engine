@@ -132,6 +132,7 @@ namespace WeirdEngine
 		}
 
 		m_sceneOps.syncAllConstraintsClusterMembership();
+		m_sceneOps.resetUndoBaseline(m_context.isSceneDirty);
 
 		const Tools::PendingSceneExit pendingExit = session.consumePendingReturnExit();
 		if (pendingExit == Tools::PendingSceneExit::MainMenu)
@@ -180,7 +181,9 @@ namespace WeirdEngine
 
 		m_viewport.handleHotkeys(m_context, m_sceneOps);
 		m_viewport.handleCameraInput(m_context);
+		const bool wasDragMoved = m_context.dragHasMoved;
 		m_viewport.handleViewportMouseInput(m_context, m_sceneOps);
+		m_sceneOps.noteViewportDragState(wasDragMoved || m_context.dragHasMoved);
 	}
 
 	void SceneEditor::onDestroy(Registry& registry, ServiceProvider& services)
@@ -348,6 +351,8 @@ namespace WeirdEngine
 		m_viewport.renderBottomToolbar(m_context, m_sceneOps);
 		m_viewport.renderProjectModal(m_context, m_sceneOps);
 		m_viewport.renderViewportContextMenu(m_context, m_sceneOps);
+		m_viewport.handleCustomUIShortcuts(m_context, m_sceneOps);
+		m_sceneOps.syncUndoStateAfterUI();
 		m_sceneOps.renderUnsavedChangesModal();
 	}
 

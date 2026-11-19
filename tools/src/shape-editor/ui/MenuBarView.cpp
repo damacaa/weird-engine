@@ -49,7 +49,8 @@ namespace WeirdEngine::Tools::ShapeEd
 
 	void MenuBarView::render(ServiceProvider& services, NodeGraph& graph, EditorFileManager& fileManager,
 							 bool& outDirty, bool& outSyncPositionsToImNodes, bool& hasUnsavedChanges,
-							 const std::function<void(std::function<void()>)>& confirmAction)
+							 const std::function<void(std::function<void()>)>& confirmAction,
+							 const UndoHooks* undoHooks)
 	{
 #ifdef WEIRD_TOOLS_SHAPE_EDITOR_ONLY
 		(void)services;
@@ -61,6 +62,7 @@ namespace WeirdEngine::Tools::ShapeEd
 			else if (action)
 				action();
 		};
+		const std::function<void()> onResetGraph = undoHooks ? undoHooks->onResetGraph : std::function<void()>{};
 
 		ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
 		if (ImGui::BeginMenuBar())
@@ -70,7 +72,8 @@ namespace WeirdEngine::Tools::ShapeEd
 				if (ImGui::MenuItem("New Graph", "Ctrl+N"))
 				{
 					runConfirmed(
-						[&graph, &fileManager, &outDirty, &outSyncPositionsToImNodes, &hasUnsavedChanges]()
+						[&graph, &fileManager, &outDirty, &outSyncPositionsToImNodes, &hasUnsavedChanges,
+						 onResetGraph]()
 						{
 							graph.clear();
 							graph.addNode("sdf_output", {400.0f, 200.0f});
@@ -79,6 +82,8 @@ namespace WeirdEngine::Tools::ShapeEd
 							outDirty = true;
 							outSyncPositionsToImNodes = true;
 							hasUnsavedChanges = false;
+							if (onResetGraph)
+								onResetGraph();
 						});
 				}
 				if (ImGui::MenuItem("Open Graph JSON...", "Ctrl+O"))
@@ -109,13 +114,16 @@ namespace WeirdEngine::Tools::ShapeEd
 					if (!toLoad.empty())
 					{
 						runConfirmed(
-							[&graph, &fileManager, toLoad, &outDirty, &outSyncPositionsToImNodes, &hasUnsavedChanges]()
+							[&graph, &fileManager, toLoad, &outDirty, &outSyncPositionsToImNodes, &hasUnsavedChanges,
+							 onResetGraph]()
 							{
 								if (fileManager.loadGraphFromFile(graph, toLoad))
 								{
 									outDirty = true;
 									outSyncPositionsToImNodes = true;
 									hasUnsavedChanges = false;
+									if (onResetGraph)
+										onResetGraph();
 								}
 							});
 					}
@@ -126,6 +134,8 @@ namespace WeirdEngine::Tools::ShapeEd
 					if (fileManager.saveGraph(graph))
 					{
 						hasUnsavedChanges = false;
+						if (undoHooks && undoHooks->onSaved)
+							undoHooks->onSaved();
 					}
 				}
 				if (ImGui::MenuItem("Save Graph JSON As...", "Ctrl+Shift+S"))
@@ -190,6 +200,17 @@ namespace WeirdEngine::Tools::ShapeEd
 
 			if (ImGui::BeginMenu("Edit"))
 			{
+				const bool canUndo = undoHooks != nullptr && undoHooks->canUndo;
+				const bool canRedo = undoHooks != nullptr && undoHooks->canRedo;
+				if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo) && undoHooks && undoHooks->onUndo)
+				{
+					undoHooks->onUndo();
+				}
+				if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z / Ctrl+Y", false, canRedo) && undoHooks && undoHooks->onRedo)
+				{
+					undoHooks->onRedo();
+				}
+				ImGui::Separator();
 				if (ImGui::MenuItem("Auto Layout Nodes", "Ctrl+L"))
 				{
 					graph.autoLayout();

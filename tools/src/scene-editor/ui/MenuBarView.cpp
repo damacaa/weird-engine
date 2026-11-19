@@ -96,27 +96,6 @@ namespace WeirdEngine::Tools::SceneEd
 					sceneOps.openSaveSceneDialog();
 				}
 
-				ImGui::Separator();
-
-				auto recentScenes = ToolsSession::getInstance().getRecentPathsByType(RecentItemType::Scene);
-				if (ImGui::BeginMenu("Recent Scenes", !recentScenes.empty()))
-				{
-					for (const auto& path : recentScenes)
-					{
-						std::string filename = std::filesystem::path(path).filename().string();
-						if (ImGui::MenuItem(filename.c_str()))
-						{
-							sceneOps.requestLoadScene(path);
-						}
-						if (ImGui::IsItemHovered() && ImGui::BeginTooltip())
-						{
-							ImGui::TextUnformatted(path.c_str());
-							ImGui::EndTooltip();
-						}
-					}
-					ImGui::EndMenu();
-				}
-
 				if (ctx.services != nullptr)
 				{
 					ImGui::Separator();
@@ -128,6 +107,15 @@ namespace WeirdEngine::Tools::SceneEd
 
 			if (ImGui::BeginMenu("Edit"))
 			{
+				if (ImGui::MenuItem("Undo", "Ctrl+Z", false, sceneOps.canUndo()))
+				{
+					sceneOps.undo();
+				}
+				if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z / Ctrl+Y", false, sceneOps.canRedo()))
+				{
+					sceneOps.redo();
+				}
+				ImGui::Separator();
 				if (ImGui::MenuItem("Delete Selected", "Del / X", false, ctx.hasSelection()))
 				{
 					sceneOps.deleteSelected();
@@ -156,14 +144,6 @@ namespace WeirdEngine::Tools::SceneEd
 				ImGui::Separator();
 				if (ImGui::MenuItem("Move Individual Rigidbodies", "C", &ctx.selectIndividualClusterEntities))
 				{
-				}
-				if (ImGui::MenuItem("Reset Cluster to Initial Position", "R", false, ctx.selectedClusterId != 0))
-				{
-					auto* c = ctx.services->clusters().getById(ctx.selectedClusterId);
-					if (c)
-					{
-						sceneOps.resetClusterToInitialPosition(*c);
-					}
 				}
 				if (ImGui::MenuItem("Reload Selected Cluster (from file)", nullptr, false, ctx.selectedClusterId != 0))
 				{

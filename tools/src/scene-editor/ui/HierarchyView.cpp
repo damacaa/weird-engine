@@ -24,6 +24,11 @@ namespace WeirdEngine::Tools::SceneEd
 		{
 			sceneOps.createGroup();
 		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Editor-only folder to organize and move entities or clusters together (no runtime effect).");
+		}
 		ImGui::SameLine();
 		bool canGroup = sceneOps.canGroupSelected();
 		if (!canGroup)
@@ -361,12 +366,6 @@ namespace WeirdEngine::Tools::SceneEd
 				{
 					toolsMgr.launchClusterEditor(cluster.assetPath);
 				}
-			}
-			if (ImGui::MenuItem("Reset to Initial Position (R)"))
-			{
-				auto* c = ctx.services->clusters().getById(cluster.id);
-				if (c)
-					sceneOps.resetClusterToInitialPosition(*c);
 			}
 			if (sceneOps.canGroupSelected())
 			{

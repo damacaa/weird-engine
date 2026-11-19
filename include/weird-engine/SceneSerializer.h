@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <json/json.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,6 +18,16 @@ namespace WeirdEngine
 	public:
 		/// Name map type: entity name → entity id.
 		using NameMap = ::WeirdEngine::NameMap;
+
+		// Serialize the full scene state (entities, components, physics constraints,
+		// and entity names) into an in-memory JSON object.
+		static nlohmann::json serializeToJson(Scene& scene, const std::string& referencePath = "");
+
+		// Restore scene state from an in-memory JSON object.
+		static void loadFromJson(Scene& scene, const nlohmann::json& j, const std::string& referencePath = "",
+								 NameMap* outNames = nullptr, bool restoreCamera = true,
+								 std::vector<Entity>* outEntities = nullptr,
+								 std::unordered_map<Entity, Entity>* outSourceEntityIds = nullptr);
 
 		// Serialize the full scene state (entities, components, physics constraints,
 		// and entity names) to a .weird file (JSON internally).

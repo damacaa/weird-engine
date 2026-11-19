@@ -17,7 +17,7 @@
 
 namespace WeirdEngine
 {
-	void SceneSerializer::save(Scene& scene, const std::string& filename)
+	nlohmann::json SceneSerializer::serializeToJson(Scene& scene, const std::string& referencePath)
 	{
 		using json = nlohmann::json;
 
@@ -91,7 +91,7 @@ namespace WeirdEngine
 				if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
 				{
 					shapeJson["assetPath"] =
-						scene.m_services.resources().makePortableAssetPath(customData->filePath, filename);
+						scene.m_services.resources().makePortableAssetPath(customData->filePath, referencePath);
 				}
 				ej["shape"] = std::move(shapeJson);
 			}
@@ -206,7 +206,7 @@ namespace WeirdEngine
 				cj["id"] = cluster.id;
 				cj["name"] = cluster.name;
 				cj["type"] = cluster.type;
-				cj["assetPath"] = scene.m_services.resources().makePortableAssetPath(cluster.assetPath, filename);
+				cj["assetPath"] = scene.m_services.resources().makePortableAssetPath(cluster.assetPath, referencePath);
 				cj["position"] = {cluster.position.x, cluster.position.y};
 				cj["rotation"] = cluster.rotation;
 
@@ -321,6 +321,12 @@ namespace WeirdEngine
 			j["materials2D"] = materialsJson;
 		}
 
+		return j;
+	}
+
+	void SceneSerializer::save(Scene& scene, const std::string& filename)
+	{
+		const nlohmann::json j = serializeToJson(scene, filename);
 		std::filesystem::path filePath(filename);
 		if (filePath.has_parent_path())
 		{
@@ -363,6 +369,17 @@ namespace WeirdEngine
 			WeirdEngine::Logger::error("[SceneSerializer] JSON parse error in " + path + ": " + e.what());
 			return;
 		}
+
+		loadFromJson(scene, j, path, outNames, restoreCamera, outEntities, outSourceEntityIds);
+		WeirdEngine::Logger::log("[SceneSerializer] Scene loaded from " + path);
+	}
+
+	void SceneSerializer::loadFromJson(Scene& scene, const nlohmann::json& j, const std::string& referencePath,
+									   SceneSerializer::NameMap* outNames, bool restoreCamera,
+									   std::vector<Entity>* outEntities,
+									   std::unordered_map<Entity, Entity>* outSourceEntityIds)
+	{
+		using json = nlohmann::json;
 
 		// Restore camera state
 		if (restoreCamera && j.contains("camera"))
@@ -442,7 +459,8 @@ namespace WeirdEngine
 						std::string assetPath = sj["assetPath"].get<std::string>();
 						if (!assetPath.empty())
 						{
-							std::string resolvedPath = scene.m_services.resources().resolveAssetPath(assetPath, path);
+							std::string resolvedPath =
+								scene.m_services.resources().resolveAssetPath(assetPath, referencePath);
 							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(resolvedPath);
 						}
 					}
@@ -926,8 +944,6 @@ namespace WeirdEngine
 				}
 			}
 		}
-
-		WeirdEngine::Logger::log("[SceneSerializer] Scene loaded from " + path);
 	}
 
 } // namespace WeirdEngine

@@ -138,6 +138,10 @@ namespace WeirdEngine
 		void activatePendingBodies();
 		void beginCommandBatch();
 		void endCommandBatch();
+		void flushCommands()
+		{
+			executeSynchronous([]() {});
+		}
 		void removeObject(SimulationID id);
 		size_t getSize();
 		void resetBodiesAndShapes();

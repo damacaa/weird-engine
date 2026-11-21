@@ -158,13 +158,20 @@ namespace WeirdEngine
 			const auto& stats = getLastFrameStats();
 
 			double topMs = 0.0;
+			int topCount = 0;
 			for (const auto& s : stats)
 			{
 				if (s.depth == 0 && s.count > 0)
 				{
 					topMs = s.totalTimeMs / s.count;
+					topCount = s.count;
 					break;
 				}
+			}
+			if (topCount > 0 && topMs > 0.0)
+			{
+				ss << "Frame: " << std::fixed << std::setprecision(3) << topMs << " ms (" << std::setprecision(1)
+				   << (1000.0 / topMs) << " FPS, " << topCount << " frames)\n";
 			}
 			if (topMs <= 0.0)
 				topMs = 1.0;

@@ -83,6 +83,8 @@ namespace WeirdEngine
 			double startTime = 0.0;
 			double autoQuitAt = -1.0; // absolute time to quit, -1 disables
 			unsigned long long totalFrames = 0;
+			unsigned long long profilerWarmupRemaining = 0;
+			bool autoQuitOnReportFinish = false;
 #endif
 		};
 
@@ -117,6 +119,21 @@ namespace WeirdEngine
 			// Test hooks: auto-quit and periodic heartbeat logging (useful on
 			// headless devices where log.txt is the only output).
 			ctx.totalFrames++;
+			if (ctx.profilerWarmupRemaining > 0)
+			{
+				--ctx.profilerWarmupRemaining;
+				if (ctx.profilerWarmupRemaining == 0)
+				{
+					std::cout << "[WeirdEngine] Profiler warmup complete at frame " << ctx.totalFrames
+							  << " (t=" << (ctx.time - ctx.startTime) << "s)" << std::endl;
+					Profiler::get().startRecording();
+				}
+			}
+			if (ctx.autoQuitOnReportFinish && Profiler::get().isReportFinished())
+			{
+				std::cout << "[WeirdEngine] Profiler report finished, exiting cleanly." << std::endl;
+				ctx.quit = true;
+			}
 			if (ctx.totalFrames % 120 == 0)
 			{
 				std::cout << "[WeirdEngine] frame " << ctx.totalFrames << " (t=" << (ctx.time - ctx.startTime) << "s)"
@@ -368,7 +385,22 @@ namespace WeirdEngine
 
 		if (SDL_getenv("WEIRD_RECORD_PROFILER"))
 		{
-			Profiler::get().startRecording();
+			unsigned long long warmupFrames = 5;
+			if (const char* wf = SDL_getenv("WEIRD_PROFILER_WARMUP_FRAMES"))
+			{
+				long long parsed = atoll(wf);
+				warmupFrames = parsed > 0 ? static_cast<unsigned long long>(parsed) : 0;
+			}
+			if (warmupFrames == 0)
+			{
+				Profiler::get().startRecording();
+			}
+			else
+			{
+				runtimeContext.profilerWarmupRemaining = warmupFrames;
+				std::cout << "[WeirdEngine] Profiler warmup: waiting " << warmupFrames << " frames..." << std::endl;
+			}
+			runtimeContext.autoQuitOnReportFinish = (SDL_getenv("WEIRD_QUIT_AFTER_PROFILER") != nullptr);
 		}
 #endif
 

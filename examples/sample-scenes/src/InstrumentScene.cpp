@@ -1510,7 +1510,6 @@ namespace InstrumentSceneNamespace
 		}
 
 		// Update key downward press displacement, glowing press dot, & scale highlighting
-		bool materialChanged = false;
 		const bool modEnabled = isModControlEnabled(state, music);
 		if (modEnabled != state.cachedModEnabled)
 		{
@@ -1546,7 +1545,7 @@ namespace InstrumentSceneNamespace
 
 			auto& shape = registry.getComponent<UIShape>(k.entity);
 
-			// Physical downward press effect via position & size parameters (no shader recompile needed!)
+			// Physical downward press effect via position & size parameters
 			float targetPosY = k.basePosY - (k.isBlack ? 5.0f : 7.0f) * pressRatio;
 			float targetSizeX = k.sizeX * (1.0f - 0.06f * pressRatio);
 			float targetSizeY = k.sizeY * (1.0f - 0.05f * pressRatio);
@@ -1581,7 +1580,6 @@ namespace InstrumentSceneNamespace
 				}
 			}
 
-			// Material only changes when the user changes the scale/root/octave in the UI
 			bool inScale = isNoteInSelectedScale(actualMidi, state.highlightScaleIdx, state.highlightRootNote);
 			Material2DHandle targetMat = k.isBlack ? (inScale ? state.blackScaleMat : state.blackKeyMat)
 												   : (inScale ? state.whiteScaleMat : state.whiteKeyMat);
@@ -1590,7 +1588,6 @@ namespace InstrumentSceneNamespace
 			{
 				shape.material = targetMat.id;
 				registry.setComponentDirty(shape);
-				materialChanged = true;
 			}
 		}
 
@@ -1618,11 +1615,6 @@ namespace InstrumentSceneNamespace
 				arpLbl.material = targetMat;
 				registry.setComponentDirty(arpLbl);
 			}
-		}
-
-		if (materialChanged)
-		{
-			services.render().forceShaderRefreshUI();
 		}
 
 		// Update live oscilloscope dot ribbon (dense overlapping points with tapered amplitude and instrument accent)

@@ -947,7 +947,6 @@ namespace MusicSceneNamespace
 		auto toggles = musicEngine.getTrackToggles();
 		bool* engineFields[State::NUM_TRACKS] = {&toggles.lead, &toggles.bass, &toggles.pad, &toggles.drums};
 		bool userChangedTracks = false;
-		bool visualMatChanged = false;
 
 		for (size_t i = 0; i < State::NUM_TRACKS; ++i)
 		{
@@ -992,7 +991,6 @@ namespace MusicSceneNamespace
 				{
 					s.material = targetMat;
 					registry.setComponentDirty(s);
-					visualMatChanged = true;
 				}
 			}
 			if (registry.isEntityValid(state.trackLabels[i]) &&
@@ -1012,10 +1010,6 @@ namespace MusicSceneNamespace
 		{
 			musicEngine.setTrackToggles(toggles);
 			services.audio().playSound({0.02f, 620.0f, false, vec3(0.0f), 1});
-		}
-		if (visualMatChanged)
-		{
-			services.render().forceShaderRefreshUI();
 		}
 	}
 

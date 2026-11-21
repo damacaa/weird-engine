@@ -82,6 +82,7 @@ namespace MenuSceneNamespace
 					{"IMAGE", "Image Signed Distance Field processing", "launch_scene", "image"},
 					{"MUSIC", "Original Music Scene visualizer", "launch_scene", "music"},
 					{"INSTRUMENTS", "Interactive synthesizer & instrument playground", "launch_scene", "instruments"},
+					{"STRESS TEST", "", "launch_scene", "destroy-test"},
 				}},
 			MenuCategory{"MUSIC",
 						 {
@@ -539,7 +540,6 @@ namespace MenuSceneNamespace
 		auto& uiDimmed = services.materials2D().get("ui_dimmed");
 		auto& uiWhite = services.materials2D().get("ui_white");
 
-		bool changed = false;
 		for (size_t i = 0; i < State::CATEGORY_COUNT; ++i)
 		{
 			if (registry.isEntityValid(state.categoryIcons[i]))
@@ -550,15 +550,10 @@ namespace MenuSceneNamespace
 				{
 					ui.material = targetMat;
 					registry.setComponentDirty(ui);
-					changed = true;
 				}
 			}
 		}
 
-		if (changed)
-		{
-			services.render().forceShaderRefreshUI();
-		}
 		state.lastRenderedCategory = state.selectedCategory;
 	}
 

@@ -2006,6 +2006,222 @@ namespace
 		require(defVersion == 2, "ShapeService::registerSDF must increment sdfDefinitionsVersion.");
 	}
 
+	void testBounds2DExprAndAutoPropagation()
+	{
+		using namespace SDF;
+
+		Scene::registerBuiltinSDFs();
+		const auto builtins = Scene::getBuiltinSDFs();
+		constexpr float kTime = 1.25f;
+		constexpr float kAudio = 0.6f;
+
+		// 1. Verify computeBuiltinBounds encloses every inside point for all 22 built-in shapes
+		struct BuiltinBoundsCase
+		{
+			ShapeId id;
+			float vars[8];
+			bool expectFiniteX;
+			bool expectFiniteYMin;
+		};
+
+		const BuiltinBoundsCase cases[] = {
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.0f, 0, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::CircleLine, {1.2f, -0.7f, 2.0f, 0.3f, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::BoxLine, {-1.5f, 0.8f, 2.2f, 1.1f, 0.25f, 0, 0, 0}, true, true},
+			{DefaultShapes::RoundBox, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0, 0}, true, true},
+			{DefaultShapes::RoundBoxLine, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0.2f, 0, 0}, true, true},
+			{DefaultShapes::RoundedBox, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0, 0, 0}, true, true},
+			{DefaultShapes::RoundedBoxLine, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0.15f, 0, 0}, true, true},
+			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::TriangleLine, {0.5f, -0.4f, 2.6f, 2.1f, 0.2f, 0, 0, 0}, true, true},
+			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0, 0, 0}, true, true},
+			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0, 0}, true, true},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0, 0, 0, 0}, false, false},
+			{DefaultShapes::Star, {-0.6f, 0.7f, 1.8f, 0.45f, 5.0f, 1.3f, 0, 0}, true, true},
+			{DefaultShapes::BoxRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0, 0, 0}, true, true},
+			{DefaultShapes::BoxLineRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0.2f, 0, 0}, true, true},
+			{DefaultShapes::TriangleRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0, 0, 0}, true, true},
+			{DefaultShapes::TriangleLineRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0.15f, 0, 0}, true, true},
+			{DefaultShapes::RampRotated, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0, 0}, true, true},
+			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0, 0}, true, true},
+			{DefaultShapes::RoundTriangleRotated, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0, 0}, true, true},
+			{DefaultShapes::RoundBoxRotated, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0, 0}, true, true},
+		};
+
+		for (const auto& tc : cases)
+		{
+			vec4 meta, p0, p1;
+			GpuShape2D::packInstance(tc.id, CombinationType::Addition, 0, 1, 1.0f, tc.vars, meta, p0, p1);
+			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+			const uint16_t gpuId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+			const uint32_t flags = packed0 >> 19u;
+
+			vec2 bMin, bMax;
+			GpuShape2D::computeBuiltinBounds(gpuId, flags, meta.w, p0, p1, bMin, bMax);
+
+			if (tc.expectFiniteX)
+			{
+				require(std::isfinite(bMin.x) && std::isfinite(bMax.x) && bMin.x < bMax.x,
+						"Bounded builtin shape must produce finite non-empty X bounds.");
+			}
+			else
+			{
+				require(std::isinf(bMin.x) && bMin.x < 0.0f && std::isinf(bMax.x) && bMax.x > 0.0f,
+						"SineWave must be horizontally unbounded.");
+			}
+			if (tc.expectFiniteYMin)
+			{
+				require(std::isfinite(bMin.y) && std::isfinite(bMax.y) && bMin.y < bMax.y,
+						"Bounded builtin shape must produce finite non-empty Y bounds.");
+			}
+			else
+			{
+				require(std::isinf(bMin.y) && bMin.y < 0.0f && std::isfinite(bMax.y),
+						"SineWave must be half-bounded from above (finite maxY, -inf minY).");
+			}
+
+			// Dense sample grid check: no inside point (sdf <= 0) may ever fall outside [bMin, bMax]
+			for (int gy = -16; gy <= 16; ++gy)
+			{
+				for (int gx = -16; gx <= 16; ++gx)
+				{
+					const vec2 pt(gx * 0.35f, gy * 0.35f);
+					float params[12];
+					packSdfParameters(params, tc.vars, kTime, pt, kAudio);
+					const float d = builtins[tc.id]->getValue(params);
+					if (d <= 0.0f)
+					{
+						require(pt.x >= bMin.x - 1e-3f && pt.x <= bMax.x + 1e-3f && pt.y >= bMin.y - 1e-3f &&
+									pt.y <= bMax.y + 1e-3f,
+								"Built-in AABB must conservatively enclose every interior point.");
+					}
+				}
+			}
+		}
+
+		// 2. Explicit Bounds2DExpr API (time + audioVolume + combinators)
+		{
+			auto posY = var(1) + var(4) * sin(var(5) * time());
+			auto boxB = boundsBox({var(0), posY}, {var(2), var(3)});
+			auto waveB = boundsHalfPlaneBelow(var(3) + abs(var(0)) + audioVolume() * var(4));
+
+			float vars[8] = {2.0f, 5.0f, 1.5f, 1.0f, 3.0f, 2.0f, 0.0f, 0.0f};
+			float params[12];
+			packSdfParameters(params, vars, kTime, {0.0f, 0.0f}, kAudio);
+
+			vec2 mn, mx;
+			boxB.evaluate(params, mn, mx);
+			const float expectedY = 5.0f + 3.0f * std::sin(2.0f * kTime);
+			require(std::abs(mn.x - 0.5f) < 1e-4f && std::abs(mx.x - 3.5f) < 1e-4f &&
+						std::abs(mn.y - (expectedY - 1.0f)) < 1e-4f && std::abs(mx.y - (expectedY + 1.0f)) < 1e-4f,
+					"Explicit animated Bounds2DExpr must evaluate live time() bounds accurately.");
+
+			waveB.evaluate(params, mn, mx);
+			const float expectedMaxY = 1.0f + 2.0f + kAudio * 3.0f;
+			require(std::isinf(mn.x) && std::isinf(mx.x) && std::isinf(mn.y) && std::abs(mx.y - expectedMaxY) < 1e-4f,
+					"boundsHalfPlaneBelow must evaluate audioVolume()-reactive crest height.");
+		}
+
+		// 3. Automatic bounds propagation through SDF transforms, scaling, mirrorX, CSG, and repeat
+		{
+			// Scaled local space (PieceShapes pattern): translate -> divide by s -> union + smoothUnion + onion -> * s
+			auto s = var(2);
+			auto pScaled = translate(point(), {var(0), var(1)}) / s;
+			Expr base = sdBox(translate(pScaled, {0.0f, -0.5f}), {0.5f, 0.25f});
+			Expr top = sdCircle(translate(pScaled, {0.0f, 0.5f}), 0.5f);
+			Expr piece = sdfOnion(sdfSmoothUnion(base, top, 0.1f), 0.05f) * s;
+			require(piece.bounds != nullptr && !piece.bounds->isUnbounded,
+					"Composed scaled SDF expression must auto-derive bounded Bounds2DExpr.");
+
+			float vars[8] = {10.0f, -4.0f, 2.0f, 0, 0, 0, 0, 0};
+			float params[12];
+			packSdfParameters(params, vars, kTime, {0.0f, 0.0f}, 0.0f);
+			vec2 mn, mx;
+			piece.bounds->evaluate(params, mn, mx);
+			// Local union: x in [-0.5, 0.5], y in [-0.75, 1.0]; scaled by 2 around (10, -4):
+			// x in [9, 11], y in [-5.5, -2]; smoothUnion(+0.1*2) + onion(+0.05*2) = +0.3 world pad
+			require(std::abs(mn.x - 8.7f) < 1e-3f && std::abs(mx.x - 11.3f) < 1e-3f &&
+						std::abs(mn.y - (-5.8f)) < 1e-3f && std::abs(mx.y - (-1.7f)) < 1e-3f,
+					"Scaled domain auto-bounds must scale smoothUnion and onion margins by frame metricScale.");
+
+			// mirrorX propagation
+			Expr eyes = sdCircle(translate(mirrorX(translate(point(), {10.0f, 5.0f})), {2.0f, 1.0f}), 0.5f);
+			require(eyes.bounds != nullptr, "mirrorX SDF must auto-derive symmetric bounds.");
+			eyes.bounds->evaluate(params, mn, mx);
+			require(std::abs(mn.x - 7.5f) < 1e-4f && std::abs(mx.x - 12.5f) < 1e-4f && std::abs(mn.y - 5.5f) < 1e-4f &&
+						std::abs(mx.y - 6.5f) < 1e-4f,
+					"mirrorX auto-bounds must mirror local X bounds across the mirror plane.");
+
+			// Subtraction preserves base bounds even when subtrahend is unbounded (repeat)
+			Expr repeatedCut = sdCircle(repeat(point(), 2.0f), 0.25f);
+			require(repeatedCut.bounds == nullptr, "Repeated domain SDF must fall back to unbounded.");
+			Expr carved = sdfSubtract(sdBox(translate(point(), {1.0f, 2.0f}), {3.0f, 4.0f}), repeatedCut);
+			require(carved.bounds != nullptr, "sdfSubtract must preserve base shape bounds.");
+			carved.bounds->evaluate(params, mn, mx);
+			require(std::abs(mn.x - (-2.0f)) < 1e-4f && std::abs(mx.x - 4.0f) < 1e-4f &&
+						std::abs(mn.y - (-2.0f)) < 1e-4f && std::abs(mx.y - 6.0f) < 1e-4f,
+					"sdfSubtract bounds must match base AABB.");
+
+			// sdTerrain auto-bounds
+			std::vector<glm::vec2> pts = {{0.0f, 5.0f}, {10.0f, 12.0f}, {20.0f, 3.0f}};
+			Expr terrain = sdTerrain(translate(point(), {var(0), 0.0f}), pts, 2.0f, -100.0f);
+			require(terrain.bounds != nullptr, "sdTerrain must auto-derive vertex AABB.");
+			terrain.bounds->evaluate(params, mn, mx);
+			// x: [0-2+10, 20+2+10] = [8, 32], y: [-100, 12+2] = [-100, 14]
+			require(std::abs(mn.x - 8.0f) < 1e-4f && std::abs(mx.x - 32.0f) < 1e-4f &&
+						std::abs(mn.y - (-100.0f)) < 1e-4f && std::abs(mx.y - 14.0f) < 1e-4f,
+					"sdTerrain auto-bounds must track translated vertex extents.");
+		}
+
+		// 4. NodeGraphCompiler auto-bounds + ShapeService registerSDF priority rules
+		{
+			NodeGraph graph;
+			int pNode = graph.addNode("point", {0.0f, 0.0f});
+			int cNode = graph.addNode("circle", {120.0f, 0.0f});
+			int outNode = graph.addNode("sdf_output", {260.0f, 0.0f});
+			graph.addLink(makePinId(pNode, false, 0), makePinId(cNode, true, 0));
+			graph.addLink(makePinId(cNode, false, 0), makePinId(outNode, true, 0));
+			Expr compiled = NodeGraphCompiler::evaluate(graph);
+			require(compiled.bounds != nullptr && !compiled.bounds->isUnbounded,
+					"NodeGraphCompiler::evaluate must automatically propagate Bounds2DExpr.");
+
+			Registry reg;
+			reg.registerComponent<Shape>();
+			PhysicsSettings settings{};
+			Simulation2D sim(16, settings);
+			std::vector<std::shared_ptr<IMathExpression>> sdfs(builtins.begin(), builtins.end());
+			std::vector<std::shared_ptr<Bounds2DExpr>> sdfBounds(builtins.size(), nullptr);
+			uint64_t defVersion = 1;
+			ShapeService shapeService(reg, sim, sdfs, nullptr, &defVersion, &sdfBounds);
+
+			ShapeId autoId = shapeService.registerSDF(sdCircle(translate(point(), {var(0), var(1)}), var(2)));
+			ShapeId overrideId = shapeService.registerSDF(sdCircle(translate(point(), {var(0), var(1)}), var(2)),
+														  boundsBox({var(0), var(1)}, {5.0f, 5.0f}));
+			ShapeId rawId = shapeService.registerSDF(std::make_shared<FloatConstant>(1.0f));
+
+			const Entity eAuto = shapeService.addShape({.shapeId = autoId, .variables = {3.0f, 4.0f, 2.0f}});
+			const Entity eOverride = shapeService.addShape({.shapeId = overrideId, .variables = {3.0f, 4.0f, 2.0f}});
+			const Entity eRaw = shapeService.addShape({.shapeId = rawId});
+			(void)eAuto;
+			(void)eOverride;
+			(void)eRaw;
+
+			std::vector<vec4> packed;
+			std::vector<Shape2DAABB> aabbs;
+			std::vector<size_t> scratch;
+			uint32_t shapeCount = 0;
+			GpuShape2D::packShapes<Shape>(reg, packed, scratch, shapeCount, &aabbs, &sdfBounds, kTime, kAudio);
+			require(shapeCount == 3 && aabbs.size() == 3, "packShapes must emit parallel AABBs.");
+			require(std::abs(aabbs[0].min.x - 1.0f) < 1e-4f && std::abs(aabbs[0].max.x - 5.0f) < 1e-4f,
+					"Auto-derived custom bounds must evaluate via packShapes.");
+			require(std::abs(aabbs[1].min.x - (-2.0f)) < 1e-4f && std::abs(aabbs[1].max.x - 8.0f) < 1e-4f,
+					"Explicit registerSDF bounds must override auto-derived bounds.");
+			require(std::isinf(aabbs[2].min.x) && std::isinf(aabbs[2].max.x),
+					"Raw IMathExpression without bounds must safely fall back to unbounded.");
+		}
+	}
+
 	void testPlatformerWorldClusterFixedBody(SceneManager& manager, const std::string& name)
 	{
 		WeirdRenderer::Display::width = 800;
@@ -2436,6 +2652,8 @@ int main()
 		testBuiltinRotatedAndRoundedShapes();
 		std::cout << "Checking GPU 2D shape packing parity.\n" << std::flush;
 		testGpuShape2DPackingParity();
+		std::cout << "Checking Bounds2DExpr and auto-propagation.\n" << std::flush;
+		testBounds2DExprAndAutoPropagation();
 		auto& manager = SceneManager::getInstance();
 		for (bool threaded : {false, true})
 		{

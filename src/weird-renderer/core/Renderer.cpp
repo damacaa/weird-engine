@@ -401,13 +401,14 @@ namespace WeirdEngine
 			const vec4* uiDotData = nullptr;
 			uint32_t uiDotCount = 0;
 			const vec4* uiShapeData = nullptr;
+			const Shape2DAABB* uiShapeBounds = nullptr;
 			uint32_t uiShapeCount = 0;
-			scene.getUIData(uiDotData, uiDotCount, uiShapeData, uiShapeCount);
+			scene.getUIData(uiDotData, uiDotCount, uiShapeData, uiShapeBounds, uiShapeCount);
 
 			static const std::vector<Light2D> s_emptyLights2D;
 			double time = scene.getTime();
 			auto& m_finalResultTexture =
-				m_uiPipeline->render(uiDotData, uiDotCount, uiShapeData, uiShapeCount, s_emptyLights2D,
+				m_uiPipeline->render(uiDotData, uiDotCount, uiShapeData, uiShapeBounds, uiShapeCount, s_emptyLights2D,
 									 scene.getMaterials2D(), m_uiCamera, time, delta, scene.getBackground(), &texture);
 
 			// TODO: abstract this
@@ -857,14 +858,15 @@ namespace WeirdEngine
 				const vec4* dotData = nullptr;
 				uint32_t dotCount = 0;
 				const vec4* shapeData = nullptr;
+				const Shape2DAABB* shapeBounds = nullptr;
 				uint32_t shapeCount = 0;
-				scene.get2DShapesData(dotData, dotCount, shapeData, shapeCount);
+				scene.get2DShapesData(dotData, dotCount, shapeData, shapeBounds, shapeCount);
 
 				auto& lights2D = scene.getLights2D();
-				auto& texture =
-					m_worldPipeline->render(dotData, dotCount, shapeData, shapeCount, lights2D, scene.getMaterials2D(),
-											sceneCamera, scene.getTime(), delta, scene.getBackground(),
-											enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
+				auto& texture = m_worldPipeline->render(dotData, dotCount, shapeData, shapeBounds, shapeCount, lights2D,
+														scene.getMaterials2D(), sceneCamera, scene.getTime(), delta,
+														scene.getBackground(),
+														enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
 				return texture;

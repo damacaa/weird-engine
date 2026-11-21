@@ -218,6 +218,7 @@ namespace WeirdEngine
 		registerBuiltinSDFs();
 		auto builtins = Scene::getBuiltinSDFs();
 		m_sdfs.assign(builtins.begin(), builtins.end());
+		m_sdfBounds.assign(builtins.size(), nullptr);
 		m_simulation2D.setSDFs(m_sdfs);
 
 		// Initialize simulation
@@ -657,16 +658,20 @@ namespace WeirdEngine
 		return m_registry.getComponent<Camera>(m_mainCamera).camera;
 	}
 
-	void Scene::get2DShapesData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount)
+	void Scene::get2DShapesData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData,
+								const Shape2DAABB*& shapeBounds, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch World Data");
 		SDFRenderSystem::updateDots<Dot, TextRenderer>(m_registry, m_2DWorldRenderContext,
 													   m_2DWorldRenderContext.dotBuffer);
+		const float audioVol = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 		GpuShape2D::packShapes<Shape>(m_registry, m_2DWorldRenderContext.shapeBuffer,
-									  m_2DWorldRenderContext.shapeOrderScratch, shapeCount);
+									  m_2DWorldRenderContext.shapeOrderScratch, shapeCount,
+									  &m_2DWorldRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(), audioVol);
 		dotCount = static_cast<uint32_t>(m_2DWorldRenderContext.dotBuffer.size());
 		dotData = dotCount > 0 ? m_2DWorldRenderContext.dotBuffer.data() : nullptr;
 		shapeData = shapeCount > 0 ? m_2DWorldRenderContext.shapeBuffer.data() : nullptr;
+		shapeBounds = shapeCount > 0 ? m_2DWorldRenderContext.shapeBoundsBuffer.data() : nullptr;
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
@@ -676,15 +681,19 @@ namespace WeirdEngine
 		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
 	}
 
-	void Scene::getUIData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount)
+	void Scene::getUIData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData,
+						  const Shape2DAABB*& shapeBounds, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
 		SDFRenderSystem::updateDots<UIDot, UITextRenderer>(m_registry, m_UIRenderContext, m_UIRenderContext.dotBuffer);
+		const float audioVol = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 		GpuShape2D::packShapes<UIShape>(m_registry, m_UIRenderContext.shapeBuffer, m_UIRenderContext.shapeOrderScratch,
-										shapeCount);
+										shapeCount, &m_UIRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(),
+										audioVol);
 		dotCount = static_cast<uint32_t>(m_UIRenderContext.dotBuffer.size());
 		dotData = dotCount > 0 ? m_UIRenderContext.dotBuffer.data() : nullptr;
 		shapeData = shapeCount > 0 ? m_UIRenderContext.shapeBuffer.data() : nullptr;
+		shapeBounds = shapeCount > 0 ? m_UIRenderContext.shapeBoundsBuffer.data() : nullptr;
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)

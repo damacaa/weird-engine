@@ -2,6 +2,7 @@
 #include "weird-engine/components/Transform.h"
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/components/TextRenderer.h"
 #include "weird-renderer/resources/Font.h"
 #include <cstdint>
@@ -25,6 +26,7 @@ namespace WeirdEngine
 		// Reusable per-frame upload buffers for the 2D SDF pipeline (avoid per-frame allocations)
 		std::vector<vec4> dotBuffer;
 		std::vector<vec4> shapeBuffer;
+		std::vector<Shape2DAABB> shapeBoundsBuffer;
 		std::vector<size_t> shapeOrderScratch;
 
 		SDFRenderSystemContext()

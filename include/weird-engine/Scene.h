@@ -206,9 +206,11 @@ namespace WeirdEngine
 		void updateUIShader(WeirdRenderer::Shader& shader);
 		void forceShaderRefresh();
 		void mark2DShaderSyncNeeded();
-		void get2DShapesData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount);
+		void get2DShapesData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData,
+							 const Shape2DAABB*& shapeBounds, uint32_t& shapeCount);
 		void get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount);
-		void getUIData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount);
+		void getUIData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData,
+					   const Shape2DAABB*& shapeBounds, uint32_t& shapeCount);
 		void renderSettingsTab();
 		void renderHierarchyTab();
 		void renderPhysicsTab();
@@ -339,6 +341,7 @@ namespace WeirdEngine
 		Entity m_mainCamera;
 		ResourceManager m_resourceManager;
 		std::vector<std::shared_ptr<IMathExpression>> m_sdfs;
+		std::vector<std::shared_ptr<Bounds2DExpr>> m_sdfBounds;
 		uint64_t m_sdfDefinitionsVersion = 1;
 		bool m_debugFly = false;
 		bool m_debugInput = false;

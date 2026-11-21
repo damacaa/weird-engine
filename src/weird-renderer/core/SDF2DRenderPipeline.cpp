@@ -346,14 +346,15 @@ namespace WeirdEngine
 		}
 
 		Texture& SDF2DRenderPipeline::render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
-											 uint32_t shapeCount, const std::vector<Light2D>& lights,
-											 const Material2D* materials, const Camera& camera, double time,
-											 double delta, const BackgroundParams& bgParams, Texture* backgroundTexture)
+											 const Shape2DAABB* shapeBounds, uint32_t shapeCount,
+											 const std::vector<Light2D>& lights, const Material2D* materials,
+											 const Camera& camera, double time, double delta,
+											 const BackgroundParams& bgParams, Texture* backgroundTexture)
 		{
 			// PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
 
 			// Execute all pipeline stages
-			renderDistanceField(dotData, dotCount, shapeData, shapeCount, camera, time, delta);
+			renderDistanceField(dotData, dotCount, shapeData, shapeBounds, shapeCount, camera, time, delta);
 
 			if (m_config.enableShadows)
 			{
@@ -603,29 +604,363 @@ namespace WeirdEngine
 			return {minX, minY, stepX, stepY, fadeStart, fadeSpan, gridCols, gridRows, indexTexWidth, indexTexHeight};
 		}
 
+		SDF2DRenderPipeline::ShapeTileGridInfo SDF2DRenderPipeline::buildShapeTileGrid(const Shape2DAABB* shapeBounds,
+																					   uint32_t shapeCount,
+																					   const Camera& camera)
+		{
+			constexpr int TILE_SIZE = 16;
+			constexpr int INDEX_TEX_WIDTH = 1024;
+			constexpr float kNegInf = -std::numeric_limits<float>::infinity();
+			constexpr float kPosInf = std::numeric_limits<float>::infinity();
+
+			const int sampleW = static_cast<int>(std::max(1u, m_distanceSampleWidth));
+			const int sampleH = static_cast<int>(std::max(1u, m_distanceSampleHeight));
+			const int tileCols = std::max(1, (sampleW + TILE_SIZE - 1) / TILE_SIZE);
+			const int tileRows = std::max(1, (sampleH + TILE_SIZE - 1) / TILE_SIZE);
+			const int numTiles = tileCols * tileRows;
+
+			// Derive visible world rectangle matching sdf_shapes.frag coordinate mapping
+			const float zoom = -camera.view[3].z;
+			const float absZoom = std::abs(zoom);
+			const float camX = camera.view[3].x;
+			const float camY = camera.view[3].y;
+			const float aspectRatio = static_cast<float>(sampleW) / static_cast<float>(sampleH);
+			const float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
+
+			float uvX0, uvY0, uvX1, uvY1;
+			if (m_config.isUI)
+			{
+				uvX0 = 0.0f;
+				uvY0 = 0.0f;
+				uvX1 = aspectRatio;
+				uvY1 = 1.0f;
+			}
+			else
+			{
+				uvX0 = (-1.0f - overscan) * aspectRatio;
+				uvY0 = (-1.0f - overscan);
+				uvX1 = (1.0f + overscan) * aspectRatio;
+				uvY1 = (1.0f + overscan);
+			}
+
+			const float worldX0 = zoom * uvX0 - camX;
+			const float worldY0 = zoom * uvY0 - camY;
+			const float worldX1 = zoom * uvX1 - camX;
+			const float worldY1 = zoom * uvY1 - camY;
+			const float worldPerPxX = (worldX1 - worldX0) / static_cast<float>(sampleW);
+			const float worldPerPxY = (worldY1 - worldY0) / static_cast<float>(sampleH);
+			const float worldTexel = std::max(std::abs(worldPerPxX), std::abs(worldPerPxY));
+
+			// Compute C2 saturation range & conservative exterior padding so tile boundaries are invisible
+			float worldSmoothing = 0.0f;
+			if (!m_config.isUI && m_config.renderHeight > 0)
+			{
+				const float maxSmoothingNorm = 2.0f * (1.0f + overscan) / static_cast<float>(m_config.renderHeight);
+				const float aoWorld =
+					!m_config.enableShadows ? (absZoom * m_config.ambienOcclusionRadius * 0.001f) : 0.0f;
+				worldSmoothing = std::max(maxSmoothingNorm * 2.0f * absZoom * aspectRatio, aoWorld);
+			}
+
+			float fadeStart = 0.0f;
+			float fadeReach = 10.0f;
+			if (m_config.isUI)
+			{
+				fadeStart = std::min(6.0f, std::max(2.0f, worldTexel * 2.0f + 1.0f));
+				fadeReach = 10.0f;
+			}
+			else
+			{
+				fadeStart = worldSmoothing + 2.0f * worldTexel + 0.5f;
+				const float minSpan = std::max(1.5f, 4.0f * worldTexel);
+				fadeReach = std::max({2.5f, fadeStart + 0.5f * minSpan, 0.06f * absZoom});
+			}
+			const float fadeSpan = 2.0f * (fadeReach - fadeStart);
+			const float basePad = fadeStart + fadeSpan + worldTexel + 0.5f;
+
+			// Clamp shapeCount to uint16_t index capacity
+			const uint32_t count = std::min<uint32_t>(shapeCount, 65535u);
+
+			m_shapePaddedMin.resize(count);
+			m_shapePaddedMax.resize(count);
+			m_shapeTileObjBounds.resize(count);
+			m_shapeTileCounts.assign(numTiles, 0u);
+
+			// 1. Compute global smooth radius from GLOBAL_GROUP (if present at tail of sorted shape list)
+			float globalMaxSmooth = 0.0f;
+			uint32_t globalStart = count;
+			if (shapeBounds)
+			{
+				for (uint32_t i = count; i > 0; --i)
+				{
+					const Shape2DAABB& b = shapeBounds[i - 1];
+					if (b.groupIdx != Shape::GLOBAL_GROUP)
+					{
+						break;
+					}
+					globalStart = i - 1;
+					if (b.combination == CombinationType::SmoothAddition ||
+						b.combination == CombinationType::SmoothSubtraction)
+					{
+						globalMaxSmooth = std::max(globalMaxSmooth, std::max(b.smoothFactor, 0.0f));
+					}
+				}
+			}
+
+			auto expandAxisMin = [](float v, float pad) -> float { return std::isfinite(v) ? (v - pad) : v; };
+			auto expandAxisMax = [](float v, float pad) -> float { return std::isfinite(v) ? (v + pad) : v; };
+
+			// 2. Per-group padding + backward Intersection AABB clamping (preserves exact CSG semantics!)
+			vec2 globalClipMin(kNegInf, kNegInf);
+			vec2 globalClipMax(kPosInf, kPosInf);
+			bool hasGlobalClip = false;
+
+			if (shapeBounds)
+			{
+				uint32_t gStart = 0;
+				while (gStart < count)
+				{
+					const uint16_t groupId = shapeBounds[gStart].groupIdx;
+					uint32_t gEnd = gStart + 1;
+					float groupMaxSmooth = 0.0f;
+					while (gEnd < count && shapeBounds[gEnd].groupIdx == groupId)
+					{
+						++gEnd;
+					}
+
+					for (uint32_t i = gStart; i < gEnd; ++i)
+					{
+						const auto comb = shapeBounds[i].combination;
+						if (comb == CombinationType::SmoothAddition || comb == CombinationType::SmoothSubtraction)
+						{
+							groupMaxSmooth = std::max(groupMaxSmooth, std::max(shapeBounds[i].smoothFactor, 0.0f));
+						}
+					}
+
+					const float groupPad = basePad + groupMaxSmooth + globalMaxSmooth;
+					for (uint32_t i = gStart; i < gEnd; ++i)
+					{
+						m_shapePaddedMin[i] = vec2(expandAxisMin(shapeBounds[i].min.x, groupPad),
+												   expandAxisMin(shapeBounds[i].min.y, groupPad));
+						m_shapePaddedMax[i] = vec2(expandAxisMax(shapeBounds[i].max.x, groupPad),
+												   expandAxisMax(shapeBounds[i].max.y, groupPad));
+					}
+
+					// Backward pass: an Intersection clamps all preceding shapes in the same group
+					vec2 clipMin(kNegInf, kNegInf);
+					vec2 clipMax(kPosInf, kPosInf);
+					bool hasClip = false;
+					for (uint32_t i = gEnd; i > gStart; --i)
+					{
+						const uint32_t idx = i - 1;
+						if (hasClip)
+						{
+							m_shapePaddedMin[idx] = glm::max(m_shapePaddedMin[idx], clipMin);
+							m_shapePaddedMax[idx] = glm::min(m_shapePaddedMax[idx], clipMax);
+						}
+						if (shapeBounds[idx].combination == CombinationType::Intersection)
+						{
+							clipMin = glm::max(clipMin, m_shapePaddedMin[idx]);
+							clipMax = glm::min(clipMax, m_shapePaddedMax[idx]);
+							hasClip = true;
+						}
+					}
+
+					if (groupId == Shape::GLOBAL_GROUP && hasClip)
+					{
+						globalClipMin = clipMin;
+						globalClipMax = clipMax;
+						hasGlobalClip = true;
+					}
+
+					gStart = gEnd;
+				}
+
+				if (hasGlobalClip)
+				{
+					for (uint32_t i = 0; i < globalStart; ++i)
+					{
+						m_shapePaddedMin[i] = glm::max(m_shapePaddedMin[i], globalClipMin);
+						m_shapePaddedMax[i] = glm::min(m_shapePaddedMax[i], globalClipMax);
+					}
+				}
+			}
+			else
+			{
+				for (uint32_t i = 0; i < count; ++i)
+				{
+					m_shapePaddedMin[i] = vec2(kNegInf, kNegInf);
+					m_shapePaddedMax[i] = vec2(kPosInf, kPosInf);
+				}
+			}
+
+			// 3. Project padded AABBs onto 16x16 screen tiles and tally counts
+			const float tileWorldW = worldPerPxX * static_cast<float>(TILE_SIZE);
+			const float tileWorldH = worldPerPxY * static_cast<float>(TILE_SIZE);
+			const bool validProjection = (tileWorldW > 1e-9f && tileWorldH > 1e-9f);
+
+			auto worldToTileClamped = [](float worldCoord, float origin, float tileSpan, int maxTile) -> int
+			{
+				if (std::isnan(worldCoord))
+					return 0;
+				if (std::isinf(worldCoord))
+					return worldCoord < 0.0f ? -1 : maxTile;
+				const float t = std::floor((worldCoord - origin) / tileSpan);
+				if (t < -1.0f)
+					return -1;
+				if (t > static_cast<float>(maxTile))
+					return maxTile;
+				return static_cast<int>(t);
+			};
+
+			int visibleShapes = 0;
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				const vec2& mn = m_shapePaddedMin[i];
+				const vec2& mx = m_shapePaddedMax[i];
+
+				if (mn.x > mx.x || mn.y > mx.y)
+				{
+					m_shapeTileObjBounds[i] = {-1, -1, -1, -1};
+					continue;
+				}
+
+				int minTX = 0;
+				int maxTX = tileCols - 1;
+				int minTY = 0;
+				int maxTY = tileRows - 1;
+
+				if (validProjection)
+				{
+					minTX = worldToTileClamped(mn.x, worldX0, tileWorldW, tileCols);
+					maxTX = worldToTileClamped(mx.x, worldX0, tileWorldW, tileCols);
+					minTY = worldToTileClamped(mn.y, worldY0, tileWorldH, tileRows);
+					maxTY = worldToTileClamped(mx.y, worldY0, tileWorldH, tileRows);
+
+					if (maxTX < 0 || maxTY < 0 || minTX >= tileCols || minTY >= tileRows)
+					{
+						m_shapeTileObjBounds[i] = {-1, -1, -1, -1};
+						continue;
+					}
+
+					minTX = std::max(0, minTX);
+					minTY = std::max(0, minTY);
+					maxTX = std::min(tileCols - 1, maxTX);
+					maxTY = std::min(tileRows - 1, maxTY);
+				}
+
+				m_shapeTileObjBounds[i] = {minTX, minTY, maxTX, maxTY};
+				++visibleShapes;
+
+				for (int ty = minTY; ty <= maxTY; ++ty)
+				{
+					const int rowBase = ty * tileCols;
+					for (int tx = minTX; tx <= maxTX; ++tx)
+					{
+						m_shapeTileCounts[rowBase + tx]++;
+					}
+				}
+			}
+
+			// 4. Prefix sum offsets & fill compact uint16_t tile index table (preserves sorted group/CSG order)
+			m_shapeTileOffsets.resize(numTiles);
+			m_shapeTileHeader.resize(static_cast<size_t>(numTiles) * 2);
+			uint32_t totalIndices = 0;
+			for (int t = 0; t < numTiles; ++t)
+			{
+				const uint32_t c = m_shapeTileCounts[t];
+				m_shapeTileOffsets[t] = totalIndices;
+				m_shapeTileHeader[static_cast<size_t>(t) * 2] = totalIndices;
+				m_shapeTileHeader[static_cast<size_t>(t) * 2 + 1] = c;
+				totalIndices += c;
+			}
+
+			const int indexTexHeight =
+				std::max(1, static_cast<int>((totalIndices + INDEX_TEX_WIDTH - 1) / INDEX_TEX_WIDTH));
+			const size_t paddedIndices = static_cast<size_t>(INDEX_TEX_WIDTH) * static_cast<size_t>(indexTexHeight);
+			m_shapeTileIndices.assign(paddedIndices, 0u);
+
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				const ObjBounds& b = m_shapeTileObjBounds[i];
+				if (b.minX < 0)
+					continue;
+				const uint16_t shapeIdx16 = static_cast<uint16_t>(i);
+				for (int ty = b.minY; ty <= b.maxY; ++ty)
+				{
+					const int rowBase = ty * tileCols;
+					for (int tx = b.minX; tx <= b.maxX; ++tx)
+					{
+						m_shapeTileIndices[m_shapeTileOffsets[rowBase + tx]++] = shapeIdx16;
+					}
+				}
+			}
+
+			return {tileCols, tileRows, INDEX_TEX_WIDTH, indexTexHeight, visibleShapes, fadeStart, fadeSpan, fadeReach};
+		}
+
 		void SDF2DRenderPipeline::renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
-													  uint32_t shapeCount, const Camera& camera, double time,
-													  double delta)
+													  const Shape2DAABB* shapeBounds, uint32_t shapeCount,
+													  const Camera& camera, double time, double delta)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
 
+			// Build and upload all CPU acceleration buffers BEFORE binding FBOs so no glTexSubImage2D
+			// occurs while Pass 1's framebuffer is open/unflushed (avoids Mali TBDR driver stalls).
+			ShapeTileGridInfo tileGrid{};
+			const bool hasShapesToDraw = (shapeCount > 0 || m_config.debugShapeTiles);
+			bool drawShapesPass = false;
+			if (hasShapesToDraw)
+			{
+				tileGrid = buildShapeTileGrid(shapeBounds, shapeCount, camera);
+				drawShapesPass = (tileGrid.visibleShapes > 0 || m_config.debugShapeTiles);
+				if (drawShapesPass)
+				{
+					// Each 2D shape instance occupies 3 vec4 slots: meta, p0, p1
+					if (shapeCount > 0)
+					{
+						m_shapeDataBuffer.uploadData<vec4>(shapeData, static_cast<size_t>(shapeCount) * 3);
+					}
+					m_shapeTileHeaderBuffer.uploadRG32UI(m_shapeTileHeader.data(), tileGrid.tileCols,
+														 tileGrid.tileRows);
+					m_shapeTileIndicesBuffer.uploadR16UI(m_shapeTileIndices.data(), tileGrid.indexTexWidth,
+														 tileGrid.indexTexHeight);
+				}
+			}
+
+			const bool needGrid = (dotCount > 0) || m_config.debugGrid;
+			GridInfo grid{};
+			if (dotCount > 0)
+			{
+				m_dotDataBuffer.uploadData<vec4>(dotData, dotCount);
+			}
+			if (needGrid)
+			{
+				grid = buildAccelerationGrid(dotData, dotCount, camera);
+				m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
+				m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
+															grid.indexTexHeight);
+			}
+
 			// -----------------------------------------------------------------
-			// Pass 1: Render Shape Distance Field
+			// Pass 1: Render Shape Distance Field (16x16 screen-space tile grid)
 			// -----------------------------------------------------------------
 			{
+				PROFILE_SCOPE(m_config.isUI ? "renderDistanceField Shapes (UI)" : "renderDistanceField Shapes (World)");
 				m_shapeRender.bind();
 
-				if (shapeCount == 0)
+				if (!hasShapesToDraw)
 				{
 					// Stay within GL_RGBA16F finite range (max 65504.0) to avoid +Inf during linear sampling
 					glClearColor(50000.0f, 0.0f, 0.0f, 1.0f);
 					glClear(GL_COLOR_BUFFER_BIT);
 				}
+				else if (!drawShapesPass)
+				{
+					glClearColor(std::min(tileGrid.fadeReach, 50000.0f), 0.0f, 0.0f, 1.0f);
+					glClear(GL_COLOR_BUFFER_BIT);
+				}
 				else
 				{
-					// Each 2D shape instance occupies 3 vec4 slots: meta, p0, p1
-					m_shapeDataBuffer.uploadData<vec4>(shapeData, static_cast<size_t>(shapeCount) * 3);
-
 					m_shapeShader.use();
 					m_shapeShader.setUniform("u_camMatrix", camera.view);
 					m_shapeShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
@@ -633,34 +968,38 @@ namespace WeirdEngine
 					m_shapeShader.setUniform("u_time", static_cast<float>(time));
 					m_shapeShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
 					m_shapeShader.setUniform("u_shapeCount", static_cast<int>(shapeCount));
+					m_shapeShader.setUniform("u_shapeTileCols", tileGrid.tileCols);
+					m_shapeShader.setUniform("u_shapeTileRows", tileGrid.tileRows);
+					m_shapeShader.setUniform("u_shapeFadeRange", glm::vec2(tileGrid.fadeStart, tileGrid.fadeSpan));
+					m_shapeShader.setUniform("u_shapeFadeReach", tileGrid.fadeReach);
 
 					m_shapeShader.setUniform("t_shapeBuffer", 0);
 					m_shapeDataBuffer.bind(0);
+					m_shapeShader.setUniform("t_shapeTileHeader", 1);
+					m_shapeTileHeaderBuffer.bind(1);
+					m_shapeShader.setUniform("t_shapeTileIndices", 2);
+					m_shapeTileIndicesBuffer.bind(2);
 
 					m_renderPlane.draw(m_shapeShader);
 				}
+#ifdef WEIRD_USE_FBDEV_EGL
+				// Workaround for ARM Mali-G31 Bifrost (r20p0 fbdev EGL): chaining Pass 1 (sdf_shapes.frag reading
+				// GL_RG32UI/GL_R16UI usampler2D tile buffers and writing m_shapeTexture) directly into Pass 2
+				// (sdf_dots.frag sampling m_shapeTexture + dot buffers) without a hard barrier triggers a ~300 ms/frame
+				// driver stall. Moving buffer uploads upfront and calling glFlush() do not clear it; glFinish() drops
+				// renderDistanceField (UI) from ~300 ms down to ~8 ms.
+				glFinish();
+#endif
+				Profiler::get().gpuSync();
 			}
 
 			// -----------------------------------------------------------------
 			// Pass 2: Render Dots Distance Field & Composite (Motion Blur)
 			// -----------------------------------------------------------------
 			{
+				PROFILE_SCOPE(m_config.isUI ? "renderDistanceField Dots (UI)" : "renderDistanceField Dots (World)");
 				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
-
-				const bool needGrid = (dotCount > 0) || m_config.debugGrid;
-				GridInfo grid{};
-				if (dotCount > 0)
-				{
-					m_dotDataBuffer.uploadData<vec4>(dotData, dotCount);
-				}
-				if (needGrid)
-				{
-					grid = buildAccelerationGrid(dotData, dotCount, camera);
-					m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
-					m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
-																grid.indexTexHeight);
-				}
 
 				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
 				m_distanceShader.use();
@@ -724,6 +1063,26 @@ namespace WeirdEngine
 
 				m_renderPlane.draw(m_distanceShader);
 				Profiler::get().gpuSync();
+
+#ifdef WEIRD_TEST_HOOKS
+				if (Profiler::get().isRecordingReport())
+				{
+					static bool s_loggedWorld = false;
+					static bool s_loggedUI = false;
+					bool& logged = m_config.isUI ? s_loggedUI : s_loggedWorld;
+					if (!logged)
+					{
+						logged = true;
+						std::cout << "[SDF2D Stats " << (m_config.isUI ? "UI" : "World")
+								  << "] sampleRes=" << m_distanceSampleWidth << "x" << m_distanceSampleHeight
+								  << " shapeCount=" << shapeCount << " visibleShapes=" << tileGrid.visibleShapes
+								  << " shapeTiles=" << tileGrid.tileCols << "x" << tileGrid.tileRows
+								  << " shapeIdxH=" << tileGrid.indexTexHeight << " dotCount=" << dotCount
+								  << " dotGrid=" << grid.gridCols << "x" << grid.gridRows
+								  << " dotIdxH=" << grid.indexTexHeight << " ballK=" << m_config.ballK << std::endl;
+					}
+				}
+#endif
 			}
 		}
 
@@ -1156,6 +1515,14 @@ namespace WeirdEngine
 					m_distanceShader.addDefine("DEBUG_SHOW_GRID");
 				else
 					m_distanceShader.removeDefine("DEBUG_SHOW_GRID");
+			}
+
+			if (ImGui::Checkbox("Show shape tiles", &m_config.debugShapeTiles))
+			{
+				if (m_config.debugShapeTiles)
+					m_shapeShader.addDefine("DEBUG_SHOW_SHAPE_TILES");
+				else
+					m_shapeShader.removeDefine("DEBUG_SHOW_SHAPE_TILES");
 			}
 
 			ImGui::SeparatorText("Ambient Occlusion");

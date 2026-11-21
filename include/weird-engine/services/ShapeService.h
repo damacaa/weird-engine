@@ -35,12 +35,14 @@ namespace WeirdEngine
 	{
 	public:
 		ShapeService(Registry& registry, Simulation2D& simulation, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
-					 const ResourceService* resources = nullptr, uint64_t* sdfDefinitionsVersion = nullptr)
+					 const ResourceService* resources = nullptr, uint64_t* sdfDefinitionsVersion = nullptr,
+					 std::vector<std::shared_ptr<Bounds2DExpr>>* sdfBounds = nullptr)
 			: m_registry(registry)
 			, m_simulation(simulation)
 			, m_sdfs(sdfs)
 			, m_resources(resources)
 			, m_sdfDefinitionsVersion(sdfDefinitionsVersion)
+			, m_sdfBounds(sdfBounds)
 		{
 		}
 
@@ -52,6 +54,11 @@ namespace WeirdEngine
 		void setSdfDefinitionsVersion(uint64_t* version)
 		{
 			m_sdfDefinitionsVersion = version;
+		}
+
+		void setSdfBoundsStorage(std::vector<std::shared_ptr<Bounds2DExpr>>* sdfBounds)
+		{
+			m_sdfBounds = sdfBounds;
 		}
 
 		static std::string normalizePath(const std::string& path)
@@ -74,12 +81,35 @@ namespace WeirdEngine
 
 		ShapeId registerSDF(const Expr& expr)
 		{
-			return registerSDF(expr.node);
+			return registerSDF(expr.node, expr.bounds);
+		}
+
+		ShapeId registerSDF(const Expr& expr, const Bounds2DExpr& bounds)
+		{
+			return registerSDF(expr.node, std::make_shared<Bounds2DExpr>(bounds));
 		}
 
 		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf)
 		{
+			return registerSDF(std::move(sdf), std::shared_ptr<Bounds2DExpr>{});
+		}
+
+		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf, const Bounds2DExpr& bounds)
+		{
+			return registerSDF(std::move(sdf), std::make_shared<Bounds2DExpr>(bounds));
+		}
+
+		ShapeId registerSDF(std::shared_ptr<IMathExpression> sdf, std::shared_ptr<Bounds2DExpr> bounds)
+		{
 			m_sdfs.push_back(std::move(sdf));
+			if (m_sdfBounds)
+			{
+				if (m_sdfBounds->size() < m_sdfs.size() - 1)
+				{
+					m_sdfBounds->resize(m_sdfs.size() - 1);
+				}
+				m_sdfBounds->push_back(std::move(bounds));
+			}
 			m_simulation.setSDFs(m_sdfs);
 			if (m_sdfDefinitionsVersion)
 			{
@@ -87,6 +117,19 @@ namespace WeirdEngine
 			}
 
 			return static_cast<ShapeId>(m_sdfs.size() - 1);
+		}
+
+		void setSDFBounds(ShapeId id, const Bounds2DExpr& bounds)
+		{
+			if (!m_sdfBounds || id >= m_sdfs.size())
+			{
+				return;
+			}
+			if (m_sdfBounds->size() < m_sdfs.size())
+			{
+				m_sdfBounds->resize(m_sdfs.size());
+			}
+			(*m_sdfBounds)[id] = std::make_shared<Bounds2DExpr>(bounds);
 		}
 
 		ShapeId loadCustomShape(const std::string& filePath)
@@ -206,6 +249,14 @@ namespace WeirdEngine
 			if (id < m_sdfs.size())
 			{
 				m_sdfs[id] = expr.node;
+				if (m_sdfBounds)
+				{
+					if (m_sdfBounds->size() < m_sdfs.size())
+					{
+						m_sdfBounds->resize(m_sdfs.size());
+					}
+					(*m_sdfBounds)[id] = expr.bounds;
+				}
 				m_simulation.setSDFs(m_sdfs);
 				if (m_sdfDefinitionsVersion)
 				{
@@ -390,6 +441,7 @@ namespace WeirdEngine
 		std::vector<std::shared_ptr<IMathExpression>>& m_sdfs;
 		const ResourceService* m_resources = nullptr;
 		uint64_t* m_sdfDefinitionsVersion = nullptr;
+		std::vector<std::shared_ptr<Bounds2DExpr>>* m_sdfBounds = nullptr;
 		std::unordered_map<std::string, CustomShapeData> m_customShapeCache;
 		std::unordered_map<ShapeId, std::string> m_shapeIdToCustomPath;
 	};

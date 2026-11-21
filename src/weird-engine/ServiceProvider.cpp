@@ -30,7 +30,8 @@ namespace WeirdEngine
 		: m_registry(scene.m_registry)
 		, m_time(scene.m_simulation2D, scene.m_lastDelta)
 		, m_physics(scene.m_registry, scene.m_simulation2D, scene.m_sdfs)
-		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs, nullptr, &scene.m_sdfDefinitionsVersion)
+		, m_shapes(scene.m_registry, scene.m_simulation2D, scene.m_sdfs, nullptr, &scene.m_sdfDefinitionsVersion,
+				   &scene.m_sdfBounds)
 		, m_render(scene.m_registry, scene.m_mainCamera, scene.m_2DWorldRenderContext, scene.m_3DWorldRenderContext,
 				   scene.m_UIRenderContext, scene.m_lights2D, scene.m_lights3D, scene.m_background, scene.m_renderMode,
 				   scene.m_resetCameraReprojection, scene.m_worldSmoothFactorOverride, scene.m_worldSmoothFactorDirty)

@@ -3,6 +3,7 @@
 #include "weird-engine/Background.h"
 #include "weird-engine/Material2D.h"
 #include "weird-engine/vec.h"
+#include "weird-renderer/components/Shape.h"
 #include "weird-renderer/core/Display.h"
 #include "weird-renderer/core/RenderPlane.h"
 #include "weird-renderer/core/RenderTarget.h"
@@ -46,6 +47,7 @@ namespace WeirdEngine
 				bool debugLightingDistanceField = false;
 				bool debugMaterialColors;
 				bool debugGrid = false;
+				bool debugShapeTiles = false;
 				float ballK;
 				float ambienOcclusionRadius;
 				float ambienOcclusionStrength;
@@ -78,10 +80,10 @@ namespace WeirdEngine
 			{
 				return m_config.ballK;
 			}
-			Texture& render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData, uint32_t shapeCount,
-							const std::vector<Light2D>& lights, const Material2D* materials, const Camera& camera,
-							double time, double delta, const BackgroundParams& bgParams,
-							Texture* backgroundTexture = nullptr);
+			Texture& render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
+							const Shape2DAABB* shapeBounds, uint32_t shapeCount, const std::vector<Light2D>& lights,
+							const Material2D* materials, const Camera& camera, double time, double delta,
+							const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 			void showDebugUI();
@@ -148,10 +150,12 @@ namespace WeirdEngine
 
 			DataBuffer m_dotDataBuffer;
 			DataBuffer m_shapeDataBuffer;
+			DataBuffer m_shapeTileHeaderBuffer;
+			DataBuffer m_shapeTileIndicesBuffer;
 			DataBuffer m_gridHeaderBuffer;
 			DataBuffer m_gridIndicesBuffer;
 
-			// Reusable scratch buffers for grid building — allocated once, reused every frame
+			// Reusable scratch buffers for dot grid building — allocated once, reused every frame
 			struct ObjBounds
 			{
 				int minX, minY, maxX, maxY;
@@ -161,6 +165,15 @@ namespace WeirdEngine
 			std::vector<int> m_gridCellOffsets;
 			std::vector<glm::vec4> m_gridHeader;
 			std::vector<glm::vec4> m_gridIndices;
+
+			// Reusable scratch buffers for 16x16 screen-space shape tile acceleration grid
+			std::vector<vec2> m_shapePaddedMin;
+			std::vector<vec2> m_shapePaddedMax;
+			std::vector<ObjBounds> m_shapeTileObjBounds;
+			std::vector<uint32_t> m_shapeTileCounts;
+			std::vector<uint32_t> m_shapeTileOffsets;
+			std::vector<uint32_t> m_shapeTileHeader;  // interleaved (start, count) pairs for GL_RG32UI
+			std::vector<uint16_t> m_shapeTileIndices; // compact GL_R16UI shape index table
 
 			glm::mat4 m_oldCameraMatrix;
 			glm::mat4
@@ -180,9 +193,19 @@ namespace WeirdEngine
 				float fadeStart, fadeSpan;
 				int gridCols, gridRows, indexTexWidth, indexTexHeight;
 			};
+			struct ShapeTileGridInfo
+			{
+				int tileCols, tileRows;
+				int indexTexWidth, indexTexHeight;
+				int visibleShapes;
+				float fadeStart, fadeSpan, fadeReach;
+			};
+			ShapeTileGridInfo buildShapeTileGrid(const Shape2DAABB* shapeBounds, uint32_t shapeCount,
+												 const Camera& camera);
 			GridInfo buildAccelerationGrid(const vec4* dotData, uint32_t dotCount, const Camera& camera);
-			void renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData, uint32_t shapeCount,
-									 const Camera& camera, double time, double delta);
+			void renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
+									 const Shape2DAABB* shapeBounds, uint32_t shapeCount, const Camera& camera,
+									 double time, double delta);
 			void applyJumpFloodCorrection();
 			void upscaleDistance();
 			void renderMaterialColors(const Material2D* materials, const Camera& camera, double time, double delta);

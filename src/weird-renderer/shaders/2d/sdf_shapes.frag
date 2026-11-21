@@ -2,6 +2,7 @@
 precision highp float;
 precision highp int;
 precision highp sampler2D;
+precision highp usampler2D;
 
 // SDF Operations
 float fOpUnionSoft(float a, float b, float r)
@@ -52,6 +53,12 @@ uniform float u_time;
 uniform float u_audioVolume;
 uniform int u_shapeCount;
 uniform highp sampler2D t_shapeBuffer;
+uniform highp usampler2D t_shapeTileHeader;
+uniform highp usampler2D t_shapeTileIndices;
+uniform int u_shapeTileCols;
+uniform int u_shapeTileRows;
+uniform vec2 u_shapeFadeRange;
+uniform float u_shapeFadeReach;
 
 uniform vec2 u_resolution;
 uniform float u_overscan;
@@ -130,8 +137,8 @@ float evalBuiltinTriangle(vec2 p, vec4 p0, vec4 p1)
 
 	float s = sign(e0.x * e2.y - e0.y * e2.x);
 	float dx = min(min(dot(pq0, pq0), dot(pq1, pq1)), dot(pq2, pq2));
-	float dy = min(min(s * (d0.x * e0.y - d0.y * e0.x), s * (d1.x * e1.y - d1.y * e1.x)),
-				   s * (d2.x * e2.y - d2.y * e2.x));
+	float dy =
+		min(min(s * (d0.x * e0.y - d0.y * e0.x), s * (d1.x * e1.y - d1.y * e1.x)), s * (d2.x * e2.y - d2.y * e2.x));
 
 	return -sqrt(dx) * sign(dy) - p1.z;
 }
@@ -210,7 +217,7 @@ float evaluateShape(int shapeId, vec2 p, vec4 parameters0, vec4 parameters1)
 			return evalBuiltinSineWave(p, parameters0);
 		case GPU_SHAPE_STAR:
 			return evalBuiltinStar(p, parameters0, parameters1);
-		// Slot 1: Injected dynamically by SDFShaderGenerationSystem (custom shape dispatch cases).
+			// Slot 1: Injected dynamically by SDFShaderGenerationSystem (custom shape dispatch cases).
 #include "custom_shape_cases"
 		default:
 			return 10000.0;
@@ -314,7 +321,7 @@ void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout fl
 	}
 }
 
-vec2 getShapeDistanceMaterial(vec2 p)
+vec2 getShapeDistanceMaterial(vec2 p, uint tileStart, uint tileCount)
 {
 	float minDist = 50000.0;
 	int finalMaterialId = 0;
@@ -325,10 +332,13 @@ vec2 getShapeDistanceMaterial(vec2 p)
 	float groupBlend = 0.0;
 	int currentGroupColor = -1;
 
-	for (int i = 0; i < u_shapeCount; ++i)
+	for (uint k = 0u; k < tileCount; ++k)
 	{
+		uint flatIdx = tileStart + k;
+		int shapeIdx = int(texelFetch(t_shapeTileIndices, ivec2(int(flatIdx & 1023u), int(flatIdx >> 10u)), 0).x);
+
 		vec4 meta, p0, p1;
-		fetchShapeInstance(i, meta, p0, p1);
+		fetchShapeInstance(shapeIdx, meta, p0, p1);
 
 		uint packed0 = uint(meta.x + 0.5);
 		uint packed1 = uint(meta.y + 0.5);
@@ -379,6 +389,20 @@ vec2 getShapeDistanceMaterial(vec2 p)
 
 void main()
 {
+	ivec2 fragPx = ivec2(gl_FragCoord.xy);
+	ivec2 tileCoord = clamp(fragPx >> 4, ivec2(0), ivec2(u_shapeTileCols - 1, u_shapeTileRows - 1));
+	uvec2 tileData = texelFetch(t_shapeTileHeader, tileCoord, 0).xy;
+	uint tileStart = tileData.x;
+	uint tileCount = tileData.y;
+
+#ifndef DEBUG_SHOW_SHAPE_TILES
+	if (tileCount == 0u)
+	{
+		FragColor = vec4(u_shapeFadeReach, 0.0, 0.0, 1.0);
+		return;
+	}
+#endif
+
 #ifdef UI_PIPELINE
 	// UI: origin at bottom-left, UV stays in [0,1] to match screen-space layout
 	vec2 uv = v_texCoord;
@@ -394,7 +418,26 @@ void main()
 	float zoom = -u_camMatrix[3].z;
 	vec2 pos = (zoom * uv) - u_camMatrix[3].xy;
 
-	vec2 res = getShapeDistanceMaterial(pos);
+	vec2 res = (tileCount > 0u) ? getShapeDistanceMaterial(pos, tileStart, tileCount) : vec2(50000.0, 0.0);
 
-	FragColor = vec4(res.x, res.y, 0.0, 1.0);
+	// Smoothly saturate positive distance with a C2 Hermite curve so populated tiles meet empty tiles
+	// identically at tile boundaries with zero discontinuity, while interior (d < 0) remains exact.
+	float fadeStart = u_shapeFadeRange.x;
+	float fadeSpan = max(u_shapeFadeRange.y, 1e-4);
+	float d = res.x;
+	float t = clamp((d - fadeStart) / fadeSpan, 0.0, 1.0);
+	float t2 = t * t;
+	float effectiveDist = (d <= fadeStart) ? d : fadeStart + fadeSpan * (t - t2 * t + 0.5 * t2 * t2);
+	float finalMat = res.y;
+
+#ifdef DEBUG_SHOW_SHAPE_TILES
+	ivec2 localPx = fragPx & 15;
+	if (localPx.x == 0 || localPx.y == 0)
+	{
+		effectiveDist = min(effectiveDist, -0.01);
+		finalMat = float(min(tileCount, 15u));
+	}
+#endif
+
+	FragColor = vec4(effectiveDist, finalMat, 0.0, 1.0);
 }

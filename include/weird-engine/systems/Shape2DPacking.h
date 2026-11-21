@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
+#include <memory>
 #include <vector>
 
 #include "weird-engine/ecs/Registry.h"
 #include "weird-engine/math/Default2DSDFs.h"
 #include "weird-engine/math/Default3DSDFs.h"
+#include "weird-engine/math/SDF.h"
 #include "weird-engine/vec.h"
 #include "weird-renderer/components/Shape.h"
 
@@ -279,16 +282,145 @@ namespace WeirdEngine
 			outMeta = vec4(static_cast<float>(packed0), static_cast<float>(packed1), smoothFactor, onionThickness);
 		}
 
-		// Collects, group-sorts, and packs all 2D shape instances into a contiguous GPU upload buffer.
+		// Computes an exact tight world-space AABB for any collapsed built-in GPU primitive directly from packed
+		// params.
+		inline void computeBuiltinBounds(uint16_t gpuShapeId, uint32_t flags, float onionThickness, const vec4& p0,
+										 const vec4& p1, vec2& outMin, vec2& outMax)
+		{
+			constexpr float kNegInf = -std::numeric_limits<float>::infinity();
+			constexpr float kPosInf = std::numeric_limits<float>::infinity();
+			const bool isOnion = (flags & FLAG_ONION) != 0u;
+			const float onion = isOnion ? std::max(onionThickness, 0.0f) : 0.0f;
+
+			switch (gpuShapeId)
+			{
+				case BuiltinType::Circle:
+				{
+					const float reach = std::max(p0.z, 0.0f) + onion;
+					outMin = vec2(p0.x - reach, p0.y - reach);
+					outMax = vec2(p0.x + reach, p0.y + reach);
+					return;
+				}
+				case BuiltinType::Box:
+				{
+					const float bx = std::abs(p0.z);
+					const float by = std::abs(p0.w);
+					const float ac = std::abs(p1.x);
+					const float as = std::abs(p1.y);
+					const float r = std::max(p1.z, 0.0f) + onion;
+					const float hx = ac * bx + as * by + r;
+					const float hy = as * bx + ac * by + r;
+					outMin = vec2(p0.x - hx, p0.y - hy);
+					outMax = vec2(p0.x + hx, p0.y + hy);
+					return;
+				}
+				case BuiltinType::Triangle:
+				{
+					const float w = p0.z;
+					const float h = p0.w;
+					const float cosA = p1.x;
+					const float sinA = p1.y;
+					const float expand = std::max(p1.z, 0.0f) + onion;
+					const float shiftY = p1.w;
+
+					const vec2 localVerts[3] = {
+						{-w * 0.5f, -h / 3.0f + shiftY},
+						{w * 0.5f, -h / 3.0f + shiftY},
+						{0.0f, (2.0f * h) / 3.0f + shiftY},
+					};
+
+					vec2 mn(kPosInf, kPosInf);
+					vec2 mx(kNegInf, kNegInf);
+					for (const vec2& v : localVerts)
+					{
+						// Inverse rotation R(-A) maps q_rot back to world space relative to (p0.x, p0.y)
+						const float wx = p0.x + cosA * v.x + sinA * v.y;
+						const float wy = p0.y - sinA * v.x + cosA * v.y;
+						mn.x = std::min(mn.x, wx);
+						mn.y = std::min(mn.y, wy);
+						mx.x = std::max(mx.x, wx);
+						mx.y = std::max(mx.y, wy);
+					}
+					outMin = mn - vec2(expand);
+					outMax = mx + vec2(expand);
+					return;
+				}
+				case BuiltinType::Line:
+				{
+					const float ax = p0.x;
+					const float ay = p0.y;
+					const float bx = ax + p0.z;
+					const float by = ay + p0.w;
+					const float reach = std::max(p1.y, 0.0f) + onion;
+					outMin = vec2(std::min(ax, bx) - reach, std::min(ay, by) - reach);
+					outMax = vec2(std::max(ax, bx) + reach, std::max(ay, by) + reach);
+					return;
+				}
+				case BuiltinType::Ramp:
+				{
+					const float wi = p0.z;
+					const float he = p0.w;
+					const float sk = p1.x;
+					const float cosA = p1.y;
+					const float sinA = p1.z;
+
+					const float c0y = sk + he;
+					const float c1y = sk - he;
+					const float hx =
+						std::max(std::abs(cosA * wi + sinA * c0y), std::abs(cosA * wi + sinA * c1y)) + onion;
+					const float hy =
+						std::max(std::abs(-sinA * wi + cosA * c0y), std::abs(-sinA * wi + cosA * c1y)) + onion;
+					outMin = vec2(p0.x - hx, p0.y - hy);
+					outMax = vec2(p0.x + hx, p0.y + hy);
+					return;
+				}
+				case BuiltinType::SineWave:
+				{
+					const float amp = std::abs(p0.x);
+					const float offset = p0.w;
+					if (isOnion)
+					{
+						outMin = vec2(kNegInf, offset - amp - onion);
+						outMax = vec2(kPosInf, offset + amp + onion);
+					}
+					else
+					{
+						outMin = vec2(kNegInf, kNegInf);
+						outMax = vec2(kPosInf, offset + amp);
+					}
+					return;
+				}
+				case BuiltinType::Star:
+				{
+					const float reach = std::max(p0.z, 0.0f) + std::abs(p0.w) + onion;
+					outMin = vec2(p0.x - reach, p0.y - reach);
+					outMax = vec2(p0.x + reach, p0.y + reach);
+					return;
+				}
+				default:
+					outMin = vec2(kNegInf, kNegInf);
+					outMax = vec2(kPosInf, kPosInf);
+					return;
+			}
+		}
+
+		// Collects, group-sorts, and packs all 2D shape instances into a contiguous GPU upload buffer,
+		// optionally computing parallel world-space AABBs for the screen-space tile acceleration grid.
 		template <typename ShapeClass>
 		inline void packShapes(Registry& registry, std::vector<vec4>& outShapeBuffer, std::vector<size_t>& scratchOrder,
-							   uint32_t& outShapeCount)
+							   uint32_t& outShapeCount, std::vector<Shape2DAABB>* outBoundsBuffer = nullptr,
+							   const std::vector<std::shared_ptr<Bounds2DExpr>>* sdfBounds = nullptr, float time = 0.0f,
+							   float audioVolume = 0.0f)
 		{
 			auto shapeArray = registry.getComponentArray<ShapeClass>();
 			if (!shapeArray)
 			{
 				outShapeCount = 0;
 				outShapeBuffer.clear();
+				if (outBoundsBuffer)
+				{
+					outBoundsBuffer->clear();
+				}
 				return;
 			}
 
@@ -297,6 +429,10 @@ namespace WeirdEngine
 			if (count == 0)
 			{
 				outShapeBuffer.clear();
+				if (outBoundsBuffer)
+				{
+					outBoundsBuffer->clear();
+				}
 				return;
 			}
 
@@ -310,12 +446,50 @@ namespace WeirdEngine
 							 { return shapeArray->getDataAtIdx(a).groupIdx < shapeArray->getDataAtIdx(b).groupIdx; });
 
 			outShapeBuffer.resize(count * VEC4S_PER_SHAPE);
+			if (outBoundsBuffer)
+			{
+				outBoundsBuffer->resize(count);
+			}
+
+			float evalParams[12] = {0.0f};
+			evalParams[SystemParams::TIME] = time;
+			evalParams[SystemParams::AUDIO_VOLUME] = audioVolume;
+
 			for (size_t outIdx = 0; outIdx < count; ++outIdx)
 			{
 				const ShapeClass& s = shapeArray->getDataAtIdx(scratchOrder[outIdx]);
 				const size_t base = outIdx * VEC4S_PER_SHAPE;
+				vec4& meta = outShapeBuffer[base];
+				vec4& p0 = outShapeBuffer[base + 1];
+				vec4& p1 = outShapeBuffer[base + 2];
 				packInstance(s.distanceFieldId, s.combination, s.groupIdx, s.material, s.smoothFactor, s.parameters,
-							 outShapeBuffer[base], outShapeBuffer[base + 1], outShapeBuffer[base + 2]);
+							 meta, p0, p1);
+
+				if (outBoundsBuffer)
+				{
+					Shape2DAABB& aabb = (*outBoundsBuffer)[outIdx];
+					aabb.groupIdx = s.groupIdx;
+					aabb.combination = s.combination;
+					aabb.smoothFactor = s.smoothFactor;
+
+					if (s.distanceFieldId < DefaultShapes::COUNT_2D)
+					{
+						const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+						const uint16_t gpuShapeId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+						const uint32_t flags = packed0 >> 19u;
+						computeBuiltinBounds(gpuShapeId, flags, meta.w, p0, p1, aabb.min, aabb.max);
+					}
+					else if (sdfBounds && s.distanceFieldId < sdfBounds->size() && (*sdfBounds)[s.distanceFieldId])
+					{
+						std::copy_n(s.parameters, 8, evalParams);
+						(*sdfBounds)[s.distanceFieldId]->evaluate(evalParams, aabb.min, aabb.max);
+					}
+					else
+					{
+						aabb.min = vec2(Bounds2DExpr::kNegInf, Bounds2DExpr::kNegInf);
+						aabb.max = vec2(Bounds2DExpr::kPosInf, Bounds2DExpr::kPosInf);
+					}
+				}
 			}
 		}
 	} // namespace GpuShape2D

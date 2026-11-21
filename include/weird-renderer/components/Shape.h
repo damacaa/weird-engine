@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 
 #include "weird-engine/math/MathExpressions.h"
 #include "weird-engine/vec.h"
@@ -42,6 +43,16 @@ namespace WeirdEngine
 		float smoothFactor = 10.0f;
 
 		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
+	};
+
+	// World-space (or UI screen-space) AABB + CSG metadata for one packed 2D shape instance.
+	struct Shape2DAABB
+	{
+		vec2 min = vec2(-std::numeric_limits<float>::infinity());
+		vec2 max = vec2(std::numeric_limits<float>::infinity());
+		uint16_t groupIdx = 0;
+		CombinationType combination = CombinationType::Addition;
+		float smoothFactor = 0.0f;
 	};
 
 	// Packs the 12-slot array passed to IMathExpression::getValue for one shape

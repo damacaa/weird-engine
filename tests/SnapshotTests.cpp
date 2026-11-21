@@ -12,6 +12,7 @@
 #include "weird-engine/shapes/NodeGraphSerializer.h"
 #include "weird-engine/systems/ButtonSystem.h"
 #include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 #include "weird-physics/components/RigidBodyManager.h"
 
 #include <chrono>
@@ -1681,7 +1682,7 @@ namespace
 		auto builtins = Scene::getBuiltinSDFs();
 		require(builtins.size() >= DefaultShapes::COUNT_2D, "Builtin SDF table must cover all 2D DefaultShapes.");
 
-		auto evalBuiltin = [&](ShapeId id, const float (&shapeVars)[8], vec2 p) -> float
+		auto evalBuiltin = [&](ShapeId id, const float(&shapeVars)[8], vec2 p) -> float
 		{
 			const auto& expr = builtins[id];
 			require(expr != nullptr, "Builtin shape AST must not be null.");
@@ -1754,6 +1755,255 @@ namespace
 		Expr compiled = NodeGraphCompiler::evaluate(graph);
 		require(compiled.node != nullptr && !compiled.node->print().empty(),
 				"NodeGraph round_triangle node must evaluate and print GLSL.");
+	}
+
+	void testGpuShape2DPackingParity()
+	{
+		Scene::registerBuiltinSDFs();
+		const auto builtins = Scene::getBuiltinSDFs();
+		constexpr float kTime = 1.37f;
+
+		// CPU mirror of the 7 collapsed GLSL evaluators in shaders/2d/sdf_shapes.frag
+		auto evalPackedBuiltin = [&](const vec4& meta, const vec4& p0, const vec4& p1, vec2 p) -> float
+		{
+			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+			const uint16_t shapeId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+			const uint32_t flags = packed0 >> 19u;
+			const float onionThickness = meta.w;
+
+			float dist = 10000.0f;
+			switch (shapeId)
+			{
+				case GpuShape2D::Circle:
+					dist = glm::length(p - vec2(p0.x, p0.y)) - p0.z;
+					break;
+				case GpuShape2D::Box:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
+					vec2 d = glm::abs(q) - vec2(p0.z, p0.w);
+					dist = glm::length(glm::max(d, vec2(0.0f))) + std::min(std::max(d.x, d.y), 0.0f) - p1.z;
+					break;
+				}
+				case GpuShape2D::Triangle:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
+					q.y -= p1.w;
+					const float w = p0.z;
+					const float h = p0.w;
+					const vec2 v0(-w * 0.5f, -h / 3.0f);
+					const vec2 v1(w * 0.5f, -h / 3.0f);
+					const vec2 v2(0.0f, 2.0f * h / 3.0f);
+					const vec2 e0 = v1 - v0, e1 = v2 - v1, e2 = v0 - v2;
+					const vec2 d0 = q - v0, d1 = q - v1, d2 = q - v2;
+					const vec2 pq0 =
+						d0 - e0 * std::clamp(glm::dot(d0, e0) / std::max(glm::dot(e0, e0), 1e-12f), 0.0f, 1.0f);
+					const vec2 pq1 =
+						d1 - e1 * std::clamp(glm::dot(d1, e1) / std::max(glm::dot(e1, e1), 1e-12f), 0.0f, 1.0f);
+					const vec2 pq2 =
+						d2 - e2 * std::clamp(glm::dot(d2, e2) / std::max(glm::dot(e2, e2), 1e-12f), 0.0f, 1.0f);
+					const float s = (e0.x * e2.y - e0.y * e2.x) >= 0.0f ? 1.0f : -1.0f;
+					const float dx = std::min({glm::dot(pq0, pq0), glm::dot(pq1, pq1), glm::dot(pq2, pq2)});
+					const float dy = std::min({s * (d0.x * e0.y - d0.y * e0.x), s * (d1.x * e1.y - d1.y * e1.x),
+											   s * (d2.x * e2.y - d2.y * e2.x)});
+					const float signDy = (dy > 0.0f) ? 1.0f : ((dy < 0.0f) ? -1.0f : 0.0f);
+					dist = -std::sqrt(dx) * signDy - p1.z;
+					break;
+				}
+				case GpuShape2D::Line:
+				{
+					const vec2 pa = p - vec2(p0.x, p0.y);
+					const vec2 ba(p0.z, p0.w);
+					const float h = std::clamp(glm::dot(pa, ba) * p1.x, 0.0f, 1.0f);
+					dist = glm::length(pa - ba * h) - p1.y;
+					break;
+				}
+				case GpuShape2D::Ramp:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					q = vec2(p1.y * q.x - p1.z * q.y, p1.z * q.x + p1.y * q.y);
+					const float wi = p0.z;
+					const float he = p0.w;
+					const float sk = p1.x;
+					const vec2 e(wi, sk);
+					q *= (q.x >= 0.0f ? 1.0f : -1.0f);
+					const vec2 w = q - e;
+					const vec2 wClamped(w.x, w.y - std::clamp(w.y, -he, he));
+					const float dx0 = glm::dot(wClamped, wClamped);
+					const float dy0 = -w.x;
+					const float s = q.y * e.x - q.x * e.y;
+					q *= (s >= 0.0f ? 1.0f : -1.0f);
+					vec2 v = q - vec2(0.0f, he);
+					const float h = std::clamp(glm::dot(v, e) * p1.w, -1.0f, 1.0f);
+					v -= e * h;
+					const float dx1 = glm::dot(v, v);
+					const float dy1 = wi * he - std::abs(s);
+					const float mdy = -std::min(dy0, dy1);
+					const float signMdy = (mdy > 0.0f) ? 1.0f : ((mdy < 0.0f) ? -1.0f : 0.0f);
+					dist = std::sqrt(std::min(dx0, dx1)) * signMdy;
+					break;
+				}
+				case GpuShape2D::SineWave:
+					dist = (p.y - p0.w) - p0.x * std::sin(p0.y * p.x + p0.z * kTime);
+					break;
+				case GpuShape2D::Star:
+				{
+					const vec2 q = p - vec2(p0.x, p0.y);
+					const float d = glm::length(q) - p0.z;
+					const float angle = p1.x * std::atan2(q.y, q.x) - p1.y * kTime;
+					dist = d + p0.w * std::sin(angle);
+					break;
+				}
+				default:
+					break;
+			}
+
+			if ((flags & GpuShape2D::FLAG_ONION) != 0u)
+			{
+				dist = std::abs(dist) - onionThickness;
+			}
+			return dist;
+		};
+
+		struct BuiltinCase
+		{
+			ShapeId id;
+			float vars[8];
+		};
+
+		const BuiltinCase cases[] = {
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.5f, 0, 0, 0, 0, 0}},
+			{DefaultShapes::CircleLine, {1.2f, -0.7f, 2.5f, 0.25f, 0, 0, 0, 0}},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0, 0}},
+			{DefaultShapes::BoxLine, {-1.5f, 0.8f, 2.2f, 1.1f, 0.2f, 0, 0, 0}},
+			{DefaultShapes::RoundBox, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0, 0}},
+			{DefaultShapes::RoundBoxLine, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0.15f, 0, 0}},
+			{DefaultShapes::RoundedBox, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0, 0, 0}},
+			{DefaultShapes::RoundedBoxLine, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0.12f, 0, 0}},
+			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0, 0}},
+			{DefaultShapes::TriangleLine, {0.5f, -0.4f, 2.6f, 2.1f, 0.18f, 0, 0, 0}},
+			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0, 0, 0}},
+			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0, 0}},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0, 0, 0, 0}},
+			{DefaultShapes::Star, {-0.6f, 0.7f, 2.0f, 0.45f, 5.0f, 1.3f, 0, 0}},
+			{DefaultShapes::BoxRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0, 0, 0}},
+			{DefaultShapes::BoxLineRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0.18f, 0, 0}},
+			{DefaultShapes::TriangleRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0, 0, 0}},
+			{DefaultShapes::TriangleLineRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0.15f, 0, 0}},
+			{DefaultShapes::RampRotated, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0, 0}},
+			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0, 0}},
+			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, -2.0f, 0.3f, 0, 0, 0}},
+			{DefaultShapes::RoundTriangleRotated, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0, 0}},
+			{DefaultShapes::RoundBoxRotated, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0, 0}},
+		};
+
+		const vec2 samplePoints[] = {
+			{0.0f, 0.0f}, {1.2f, -0.7f}, {-2.3f, 1.8f}, {3.1f, -2.4f}, {0.35f, 0.95f}, {-0.9f, -1.6f},
+		};
+
+		for (const auto& tc : cases)
+		{
+			vec4 meta, p0, p1;
+			GpuShape2D::packInstance(tc.id, CombinationType::Addition, 0, 3, 1.0f, tc.vars, meta, p0, p1);
+			for (const vec2& pt : samplePoints)
+			{
+				float fullParams[12];
+				packSdfParameters(fullParams, tc.vars, kTime, pt, 0.0f);
+				const float refDist = builtins[tc.id]->getValue(fullParams);
+				const float gpuDist = evalPackedBuiltin(meta, p0, p1, pt);
+				require(std::isfinite(gpuDist) && std::abs(refDist - gpuDist) < 1e-4f,
+						"Collapsed GPU builtin evaluator must match reference AST SDF for all 22 built-in shapes.");
+			}
+		}
+
+		// Verify metadata bit packing, custom shape passthrough, and group sorting in packShapes
+		Registry reg;
+		reg.registerComponent<Shape>();
+		const Entity eGlobal = reg.createEntity();
+		{
+			auto& s = reg.addComponent<Shape>(eGlobal);
+			s.distanceFieldId = DefaultShapes::Circle;
+			s.combination = CombinationType::SmoothSubtraction;
+			s.groupIdx = Shape::GLOBAL_GROUP;
+			s.material = 12;
+			s.smoothFactor = 2.5f;
+		}
+		const Entity eGroup2 = reg.createEntity();
+		{
+			auto& s = reg.addComponent<Shape>(eGroup2);
+			s.distanceFieldId = static_cast<ShapeId>(DefaultShapes3D::TOTAL_BUILTIN_SHAPES + 3);
+			s.combination = CombinationType::SmoothAddition;
+			s.groupIdx = 2;
+			s.material = 7;
+			s.smoothFactor = 0.75f;
+			s.parameters[0] = 42.0f;
+			s.parameters[7] = -9.5f;
+		}
+		const Entity eGroup0 = reg.createEntity();
+		{
+			auto& s = reg.addComponent<Shape>(eGroup0);
+			s.distanceFieldId = DefaultShapes::BoxLine;
+			s.combination = CombinationType::Addition;
+			s.groupIdx = 0;
+			s.material = 15;
+			s.parameters[DefaultShapes::BoxLine::Thickness] = 0.3f;
+		}
+
+		std::vector<vec4> packed;
+		std::vector<size_t> scratch;
+		uint32_t shapeCount = 0;
+		GpuShape2D::packShapes<Shape>(reg, packed, scratch, shapeCount);
+
+		require(shapeCount == 3 && packed.size() == 9, "packShapes must emit 3 vec4s per shape.");
+
+		auto unpack = [&](size_t idx)
+		{
+			const vec4& m = packed[idx * 3];
+			const uint32_t p0Bits = static_cast<uint32_t>(m.x + 0.5f);
+			const uint32_t p1Bits = static_cast<uint32_t>(m.y + 0.5f);
+			struct Unpacked
+			{
+				uint16_t shapeId;
+				uint16_t comb;
+				uint32_t flags;
+				uint16_t group;
+				uint16_t mat;
+				float smooth;
+				float onion;
+			};
+			return Unpacked{static_cast<uint16_t>(p0Bits & 0xFFFFu),
+							static_cast<uint16_t>((p0Bits >> 16u) & 0x7u),
+							p0Bits >> 19u,
+							static_cast<uint16_t>(p1Bits & 0xFFFFu),
+							static_cast<uint16_t>((p1Bits >> 16u) & 0x3Fu),
+							m.z,
+							m.w};
+		};
+
+		const auto u0 = unpack(0);
+		const auto u1 = unpack(1);
+		const auto u2 = unpack(2);
+		require(u0.group == 0 && u0.shapeId == GpuShape2D::Box && (u0.flags & GpuShape2D::FLAG_ONION) != 0u &&
+					u0.mat == 15 && std::abs(u0.onion - 0.3f) < 1e-5f,
+				"First sorted shape must be group 0 BoxLine collapsed to Box with FLAG_ONION.");
+		require(u1.group == 2 && u1.shapeId == DefaultShapes3D::TOTAL_BUILTIN_SHAPES + 3 &&
+					u1.comb == static_cast<uint16_t>(CombinationType::SmoothAddition) && u1.mat == 7 &&
+					std::abs(u1.smooth - 0.75f) < 1e-5f && packed[4].x == 42.0f && packed[5].w == -9.5f,
+				"Second sorted shape must preserve custom ShapeId and raw parameters.");
+		require(u2.group == Shape::GLOBAL_GROUP && (u2.flags & GpuShape2D::FLAG_GLOBAL_GROUP) != 0u &&
+					u2.shapeId == GpuShape2D::Circle &&
+					u2.comb == static_cast<uint16_t>(CombinationType::SmoothSubtraction) && u2.mat == 12,
+				"GLOBAL_GROUP shape must sort last with FLAG_GLOBAL_GROUP set.");
+
+		// Verify ShapeService increments sdfDefinitionsVersion on registerSDF
+		uint64_t defVersion = 1;
+		PhysicsSettings settings{};
+		Simulation2D sim(16, settings);
+		std::vector<std::shared_ptr<IMathExpression>> sdfs(builtins.begin(), builtins.end());
+		ShapeService shapeService(reg, sim, sdfs, nullptr, &defVersion);
+		shapeService.registerSDF(SDF::sdCircle(SDF::point(), 1.0f));
+		require(defVersion == 2, "ShapeService::registerSDF must increment sdfDefinitionsVersion.");
 	}
 
 	void testPlatformerWorldClusterFixedBody(SceneManager& manager, const std::string& name)
@@ -2184,6 +2434,8 @@ int main()
 		testTextButtonAndToggleComponents();
 		std::cout << "Checking builtin rotated and rounded shapes.\n" << std::flush;
 		testBuiltinRotatedAndRoundedShapes();
+		std::cout << "Checking GPU 2D shape packing parity.\n" << std::flush;
+		testGpuShape2DPackingParity();
 		auto& manager = SceneManager::getInstance();
 		for (bool threaded : {false, true})
 		{

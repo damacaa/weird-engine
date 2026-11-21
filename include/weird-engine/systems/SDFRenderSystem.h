@@ -4,8 +4,10 @@
 #include "weird-engine/vec.h"
 #include "weird-renderer/components/TextRenderer.h"
 #include "weird-renderer/resources/Font.h"
+#include <cstdint>
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+#include <vector>
 
 namespace WeirdEngine
 {
@@ -17,6 +19,13 @@ namespace WeirdEngine
 		WeirdRenderer::Font font;
 
 		bool shapesNeedUpdate = true;
+		uint64_t compiledSdfVersion = 0;
+		bool forceShaderReload = false;
+
+		// Reusable per-frame upload buffers for the 2D SDF pipeline (avoid per-frame allocations)
+		std::vector<vec4> dotBuffer;
+		std::vector<vec4> shapeBuffer;
+		std::vector<size_t> shapeOrderScratch;
 
 		SDFRenderSystemContext()
 			: font(FONTS_PATH "small.bmp", 3, 4, 1,
@@ -27,6 +36,116 @@ namespace WeirdEngine
 
 	namespace SDFRenderSystem
 	{
+		// Packs 2D dots and text dots into a dedicated reusable vector (1 vec4 per dot).
+		template <typename DotClass, typename TextClass>
+		inline void updateDots(Registry& registry, SDFRenderSystemContext& ctx, std::vector<vec4>& outDotData)
+		{
+			uint32_t normalDots = 0;
+			if (auto dotArray = registry.getComponentArray<DotClass>())
+			{
+				normalDots = dotArray->getSize();
+			}
+
+			uint32_t textDots = 0;
+			registry.forEach<TextClass>(
+				[&](Entity entity, TextClass& text)
+				{
+					if (registry.isComponentDirty(text))
+					{
+						text.bufferedDotCount = 0;
+
+						for (const auto& c : text.text)
+						{
+							text.bufferedDotCount += ctx.font.getCharData(c).dotCount;
+						}
+
+						int charCount = static_cast<int>(text.text.length());
+						text.width = (charCount * ctx.font.getCharWidth() * 2 * ctx.dotRadious) +
+									 ((charCount - 1) * ctx.charSpacing);
+						text.height = ctx.font.getCharHeight() * 2 * ctx.dotRadious;
+
+						registry.setComponentDirty(text, false);
+					}
+
+					textDots += text.bufferedDotCount;
+				});
+
+			uint32_t dotCount = normalDots + textDots;
+			outDotData.resize(dotCount);
+			if (dotCount == 0)
+			{
+				return;
+			}
+
+			int dotIdx = 0;
+			registry.forEach<DotClass, Transform>(
+				[&](Entity entity, DotClass& dotComp, Transform& t)
+				{
+					outDotData[dotIdx].x = t.position.x;
+					outDotData[dotIdx].y = t.position.y;
+					outDotData[dotIdx].z = t.position.z;
+					outDotData[dotIdx].w = static_cast<float>(dotComp.materialId);
+					dotIdx++;
+				});
+
+			float charWidth = ctx.font.getCharWidth() * 2 * ctx.dotRadious;
+
+			int dotIndex = 0;
+			registry.forEach<TextClass, Transform>(
+				[&](Entity entity, TextClass& text, Transform& t)
+				{
+					int charCount = static_cast<int>(text.text.length());
+
+					float horizontalOffset = 0.0f;
+					switch (text.horizontalAlignment)
+					{
+						case TextRenderer::HorizontalAlignment::Left:
+							horizontalOffset = 0.0f;
+							break;
+						case TextRenderer::HorizontalAlignment::Center:
+							horizontalOffset = -text.width * 0.5f;
+							break;
+						case TextRenderer::HorizontalAlignment::Right:
+							horizontalOffset = -text.width;
+							break;
+					}
+
+					float verticalOffset = 0.0f;
+					switch (text.verticalAlignment)
+					{
+						case TextRenderer::VerticalAlignment::Bottom:
+							verticalOffset = 0.0f;
+							break;
+						case TextRenderer::VerticalAlignment::Center:
+							verticalOffset = -text.height * 0.5f;
+							break;
+						case TextRenderer::VerticalAlignment::Top:
+							verticalOffset = -text.height;
+							break;
+					}
+
+					vec2 alignmentOffset(horizontalOffset, verticalOffset);
+
+					for (size_t c = 0; c < static_cast<size_t>(charCount); c++)
+					{
+						auto charData = ctx.font.getCharData(text.text[c]);
+						for (size_t j = 0; j < charData.dotCount; j++)
+						{
+							int idx = static_cast<int>(normalDots) + dotIndex;
+							dotIndex++;
+
+							vec2 charOffset =
+								vec2(((charWidth + ctx.charSpacing) * c) + ctx.dotRadious, ctx.dotRadious);
+							vec2 scaledDotPosition = 2 * ctx.dotRadious * charData.positions[j];
+							vec2 position = (vec2)t.position + charOffset + scaledDotPosition + alignmentOffset;
+							outDotData[idx].x = position.x;
+							outDotData[idx].y = position.y;
+							outDotData[idx].z = 1.0f;
+							outDotData[idx].w = static_cast<float>(text.material);
+						}
+					}
+				});
+		}
 
 		template <typename DotClass, typename ShapeClass, typename TextClass>
 		inline void update(Registry& registry, SDFRenderSystemContext& ctx, vec4*& data, uint32_t& size)

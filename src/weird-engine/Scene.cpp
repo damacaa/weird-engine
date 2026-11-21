@@ -41,6 +41,7 @@
 #include "weird-engine/systems/RenderSystem.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
 #include "weird-engine/systems/SDFShaderGenerationSystem.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 
 namespace WeirdEngine
 {
@@ -310,6 +311,8 @@ namespace WeirdEngine
 
 		if (Input::GetKey(Input::LeftCtrl) && Input::GetKeyDown((Input::R)))
 		{
+			m_2DWorldRenderContext.forceShaderReload = true;
+			m_UIRenderContext.forceShaderReload = true;
 			forceShaderRefresh();
 		}
 
@@ -654,11 +657,16 @@ namespace WeirdEngine
 		return m_registry.getComponent<Camera>(m_mainCamera).camera;
 	}
 
-	void Scene::get2DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
+	void Scene::get2DShapesData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch World Data");
-		shapeCount = m_registry.getComponentArray<Shape>()->getSize();
-		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_2DWorldRenderContext, data, size);
+		SDFRenderSystem::updateDots<Dot, TextRenderer>(m_registry, m_2DWorldRenderContext,
+													   m_2DWorldRenderContext.dotBuffer);
+		GpuShape2D::packShapes<Shape>(m_registry, m_2DWorldRenderContext.shapeBuffer,
+									  m_2DWorldRenderContext.shapeOrderScratch, shapeCount);
+		dotCount = static_cast<uint32_t>(m_2DWorldRenderContext.dotBuffer.size());
+		dotData = dotCount > 0 ? m_2DWorldRenderContext.dotBuffer.data() : nullptr;
+		shapeData = shapeCount > 0 ? m_2DWorldRenderContext.shapeBuffer.data() : nullptr;
 	}
 
 	void Scene::get3DShapesData(vec4*& data, uint32_t& size, uint32_t& shapeCount)
@@ -668,18 +676,23 @@ namespace WeirdEngine
 		SDFRenderSystem::update<Dot, Shape, TextRenderer>(m_registry, m_3DWorldRenderContext, data, size);
 	}
 
-	void Scene::getUIData(vec4*& uiData, uint32_t& size, uint32_t& shapeCount)
+	void Scene::getUIData(const vec4*& dotData, uint32_t& dotCount, const vec4*& shapeData, uint32_t& shapeCount)
 	{
 		// PROFILE_SCOPE("Fetch UI Data");
-		shapeCount = m_registry.getComponentArray<UIShape>()->getSize();
-		SDFRenderSystem::update<UIDot, UIShape, UITextRenderer>(m_registry, m_UIRenderContext, uiData, size);
+		SDFRenderSystem::updateDots<UIDot, UITextRenderer>(m_registry, m_UIRenderContext, m_UIRenderContext.dotBuffer);
+		GpuShape2D::packShapes<UIShape>(m_registry, m_UIRenderContext.shapeBuffer, m_UIRenderContext.shapeOrderScratch,
+										shapeCount);
+		dotCount = static_cast<uint32_t>(m_UIRenderContext.dotBuffer.size());
+		dotData = dotCount > 0 ? m_UIRenderContext.dotBuffer.data() : nullptr;
+		shapeData = shapeCount > 0 ? m_UIRenderContext.shapeBuffer.data() : nullptr;
 	}
 
 	void Scene::update2DWorldShader(WeirdRenderer::Shader& shader)
 	{
-		m_simulation2D.setSDFs(m_sdfs);
-		SDFShaderGenerationSystem::update<Shape, SDFRenderSystemContext, false>(m_registry, m_2DWorldRenderContext,
-																				shader, m_sdfs);
+		const bool onlyActiveCustom = (m_renderMode != RenderMode::RayMarching2D);
+		SDFShaderGenerationSystem::update2D<Shape, SDFRenderSystemContext>(
+			m_registry, m_2DWorldRenderContext, shader, m_sdfs, m_sdfDefinitionsVersion,
+			static_cast<ShapeId>(DefaultShapes3D::TOTAL_BUILTIN_SHAPES), onlyActiveCustom);
 	}
 
 	void Scene::update3DWorldShader(WeirdRenderer::Shader& shader)
@@ -691,9 +704,10 @@ namespace WeirdEngine
 
 	void Scene::updateUIShader(WeirdRenderer::Shader& shader)
 	{
-		m_simulation2D.setSDFs(m_sdfs);
-		SDFShaderGenerationSystem::update<UIShape, SDFRenderSystemContext, false>(m_registry, m_UIRenderContext, shader,
-																				  m_sdfs);
+		const bool onlyActiveCustom = (m_renderMode != RenderMode::RayMarching2D);
+		SDFShaderGenerationSystem::update2D<UIShape, SDFRenderSystemContext>(
+			m_registry, m_UIRenderContext, shader, m_sdfs, m_sdfDefinitionsVersion,
+			static_cast<ShapeId>(DefaultShapes3D::TOTAL_BUILTIN_SHAPES), onlyActiveCustom);
 	}
 
 	void Scene::forceShaderRefresh()
@@ -701,6 +715,12 @@ namespace WeirdEngine
 		m_2DWorldRenderContext.shapesNeedUpdate = true;
 		m_3DWorldRenderContext.shapesNeedUpdate = true;
 		m_UIRenderContext.shapesNeedUpdate = true;
+	}
+
+	void Scene::mark2DShaderSyncNeeded()
+	{
+		m_2DWorldRenderContext.compiledSdfVersion = 0;
+		m_UIRenderContext.compiledSdfVersion = 0;
 	}
 
 	const std::vector<WeirdRenderer::DrawCommand>& Scene::getDrawQueue() const

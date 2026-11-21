@@ -167,6 +167,10 @@ namespace WeirdEngine
 			clampedDelta = scene.getTime() > 1.0 ? clampedDelta : scene.getTime() * clampedDelta;
 
 			const bool sceneChanged = (scene.getSceneInstanceId() != m_lastSceneInstanceId);
+			if (sceneChanged)
+			{
+				scene.mark2DShaderSyncNeeded();
+			}
 			if (scene.shouldResetCameraReprojection() || sceneChanged)
 			{
 				m_lastSceneInstanceId = scene.getSceneInstanceId();
@@ -394,16 +398,17 @@ namespace WeirdEngine
 			m_uiPipeline->getShapeShader().use();
 			scene.updateUIShader(m_uiPipeline->getShapeShader());
 
-			static uint32_t dataSize;
-			static uint32_t shapeCount;
-			static vec4* uiData = nullptr;
-			scene.getUIData(uiData, dataSize, shapeCount);
+			const vec4* uiDotData = nullptr;
+			uint32_t uiDotCount = 0;
+			const vec4* uiShapeData = nullptr;
+			uint32_t uiShapeCount = 0;
+			scene.getUIData(uiDotData, uiDotCount, uiShapeData, uiShapeCount);
 
 			static const std::vector<Light2D> s_emptyLights2D;
 			double time = scene.getTime();
 			auto& m_finalResultTexture =
-				m_uiPipeline->render(uiData, dataSize, shapeCount, s_emptyLights2D, scene.getMaterials2D(), m_uiCamera,
-									 time, delta, scene.getBackground(), &texture);
+				m_uiPipeline->render(uiDotData, uiDotCount, uiShapeData, uiShapeCount, s_emptyLights2D,
+									 scene.getMaterials2D(), m_uiCamera, time, delta, scene.getBackground(), &texture);
 
 			// TODO: abstract this
 			glDisable(GL_DEPTH_TEST);
@@ -842,21 +847,24 @@ namespace WeirdEngine
 			glDisable(GL_DEPTH_TEST);
 
 			// 2D
-			static uint32_t dataSize;
-			static uint32_t shapeCount;
-			static vec4* data = nullptr;
 			if (enable2D)
 			{
 				PROFILE_SCOPE("2D Render", enable3D);
 
 				m_worldPipeline->getShapeShader().use();
 				scene.update2DWorldShader(m_worldPipeline->getShapeShader());
-				scene.get2DShapesData(data, dataSize, shapeCount);
+
+				const vec4* dotData = nullptr;
+				uint32_t dotCount = 0;
+				const vec4* shapeData = nullptr;
+				uint32_t shapeCount = 0;
+				scene.get2DShapesData(dotData, dotCount, shapeData, shapeCount);
 
 				auto& lights2D = scene.getLights2D();
-				auto& texture = m_worldPipeline->render(data, dataSize, shapeCount, lights2D, scene.getMaterials2D(),
-														sceneCamera, scene.getTime(), delta, scene.getBackground(),
-														enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
+				auto& texture =
+					m_worldPipeline->render(dotData, dotCount, shapeData, shapeCount, lights2D, scene.getMaterials2D(),
+											sceneCamera, scene.getTime(), delta, scene.getBackground(),
+											enable3D ? &m_3DWorldPipeline->getOutputTexture() : nullptr);
 				// In both pure 2D and RayMarchingBoth modes, the 2D pipeline's output is the final result.
 				// When enable3D is true, the 3D texture was already passed as the background so it's baked in.
 				return texture;

@@ -345,15 +345,15 @@ namespace WeirdEngine
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
 		}
 
-		Texture& SDF2DRenderPipeline::render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-											 const std::vector<Light2D>& lights, const Material2D* materials,
-											 const Camera& camera, double time, double delta,
-											 const BackgroundParams& bgParams, Texture* backgroundTexture)
+		Texture& SDF2DRenderPipeline::render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
+											 uint32_t shapeCount, const std::vector<Light2D>& lights,
+											 const Material2D* materials, const Camera& camera, double time,
+											 double delta, const BackgroundParams& bgParams, Texture* backgroundTexture)
 		{
 			// PROFILE_SCOPE(m_config.isUI ? "SDF2DRenderPipeline (UI)" : "SDF2DRenderPipeline (World)");
 
 			// Execute all pipeline stages
-			renderDistanceField(shapeData, dataSize, shapeCount, camera, time, delta);
+			renderDistanceField(dotData, dotCount, shapeData, shapeCount, camera, time, delta);
 
 			if (m_config.enableShadows)
 			{
@@ -402,8 +402,7 @@ namespace WeirdEngine
 			return m_litSceneTexture;
 		}
 
-		SDF2DRenderPipeline::GridInfo SDF2DRenderPipeline::buildAccelerationGrid(vec4* shapeData, uint32_t dataSize,
-																				 uint32_t shapeCount,
+		SDF2DRenderPipeline::GridInfo SDF2DRenderPipeline::buildAccelerationGrid(const vec4* dotData, uint32_t dotCount,
 																				 const Camera& camera)
 		{
 			// Build acceleration grid using CPU padding spatial partitioning.
@@ -414,7 +413,7 @@ namespace WeirdEngine
 			// If the camera representation changes, update the frustum derivation below accordingly.
 			constexpr int indexTexWidth = 1024;
 
-			int objectCount = static_cast<int>(dataSize) - (2 * static_cast<int>(shapeCount));
+			int objectCount = static_cast<int>(dotCount);
 
 			// Derive the visible world-space rectangle from the camera matrix
 			float zoom = -camera.view[3].z;
@@ -532,8 +531,8 @@ namespace WeirdEngine
 			int visibleObjects = 0;
 			for (int i = 0; i < objectCount; ++i)
 			{
-				float cx = shapeData[i].x;
-				float cy = shapeData[i].y;
+				float cx = dotData[i].x;
+				float cy = dotData[i].y;
 				int minCellX = static_cast<int>(std::floor((cx - cellPad - minX) / stepX));
 				int minCellY = static_cast<int>(std::floor((cy - cellPad - minY) / stepY));
 				int maxCellX = static_cast<int>(std::floor((cx + cellPad - minX) / stepX));
@@ -604,13 +603,11 @@ namespace WeirdEngine
 			return {minX, minY, stepX, stepY, fadeStart, fadeSpan, gridCols, gridRows, indexTexWidth, indexTexHeight};
 		}
 
-		void SDF2DRenderPipeline::renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-													  const Camera& camera, double time, double delta)
+		void SDF2DRenderPipeline::renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
+													  uint32_t shapeCount, const Camera& camera, double time,
+													  double delta)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
-
-			// Upload shape data buffer used by both passes
-			m_shapeDataBuffer.uploadData<vec4>(shapeData, dataSize);
 
 			// -----------------------------------------------------------------
 			// Pass 1: Render Shape Distance Field
@@ -626,13 +623,15 @@ namespace WeirdEngine
 				}
 				else
 				{
+					// Each 2D shape instance occupies 3 vec4 slots: meta, p0, p1
+					m_shapeDataBuffer.uploadData<vec4>(shapeData, static_cast<size_t>(shapeCount) * 3);
+
 					m_shapeShader.use();
 					m_shapeShader.setUniform("u_camMatrix", camera.view);
 					m_shapeShader.setUniform("u_resolution", glm::vec2(m_distanceSampleWidth, m_distanceSampleHeight));
 					m_shapeShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 					m_shapeShader.setUniform("u_time", static_cast<float>(time));
 					m_shapeShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
-					m_shapeShader.setUniform("u_loadedObjects", static_cast<int>(dataSize));
 					m_shapeShader.setUniform("u_shapeCount", static_cast<int>(shapeCount));
 
 					m_shapeShader.setUniform("t_shapeBuffer", 0);
@@ -649,10 +648,19 @@ namespace WeirdEngine
 				int previousDistanceIndex = m_distanceTextureDoubleBufferIdx;
 				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
 
-				GridInfo grid = buildAccelerationGrid(shapeData, dataSize, shapeCount, camera);
-				m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
-				m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
-															grid.indexTexHeight);
+				const bool needGrid = (dotCount > 0) || m_config.debugGrid;
+				GridInfo grid{};
+				if (dotCount > 0)
+				{
+					m_dotDataBuffer.uploadData<vec4>(dotData, dotCount);
+				}
+				if (needGrid)
+				{
+					grid = buildAccelerationGrid(dotData, dotCount, camera);
+					m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
+					m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
+																grid.indexTexHeight);
+				}
 
 				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
 				m_distanceShader.use();
@@ -694,22 +702,25 @@ namespace WeirdEngine
 				m_distanceShader.setUniform("t_shapeDistanceTexture", 1);
 				m_shapeTexture.bind(1);
 
-				// Slot 2: Shape data buffer (for dot positions & materials)
-				m_distanceShader.setUniform("u_loadedObjects", static_cast<int>(dataSize));
-				m_distanceShader.setUniform("t_shapeBuffer", 2);
-				m_shapeDataBuffer.bind(2);
+				// Slot 2: Dot data buffer (positions & materials)
+				m_distanceShader.setUniform("u_dotCount", static_cast<int>(dotCount));
+				m_distanceShader.setUniform("t_dotBuffer", 2);
+				m_dotDataBuffer.bind(2);
 
 				// Slot 3 & 4: Acceleration grid
-				m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
-				m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
-				m_distanceShader.setUniform("u_dotFadeRange", glm::vec2(grid.fadeStart, grid.fadeSpan));
-				m_distanceShader.setUniform("u_gridCols", grid.gridCols);
-				m_distanceShader.setUniform("u_gridRows", grid.gridRows);
+				if (needGrid)
+				{
+					m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
+					m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
+					m_distanceShader.setUniform("u_dotFadeRange", glm::vec2(grid.fadeStart, grid.fadeSpan));
+					m_distanceShader.setUniform("u_gridCols", grid.gridCols);
+					m_distanceShader.setUniform("u_gridRows", grid.gridRows);
 
-				m_distanceShader.setUniform("t_gridHeader", 3);
-				m_gridHeaderBuffer.bind(3);
-				m_distanceShader.setUniform("t_gridIndices", 4);
-				m_gridIndicesBuffer.bind(4);
+					m_distanceShader.setUniform("t_gridHeader", 3);
+					m_gridHeaderBuffer.bind(3);
+					m_distanceShader.setUniform("t_gridIndices", 4);
+					m_gridIndicesBuffer.bind(4);
+				}
 
 				m_renderPlane.draw(m_distanceShader);
 				Profiler::get().gpuSync();

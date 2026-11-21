@@ -35,17 +35,23 @@ namespace WeirdEngine
 	{
 	public:
 		ShapeService(Registry& registry, Simulation2D& simulation, std::vector<std::shared_ptr<IMathExpression>>& sdfs,
-					 const ResourceService* resources = nullptr)
+					 const ResourceService* resources = nullptr, uint64_t* sdfDefinitionsVersion = nullptr)
 			: m_registry(registry)
 			, m_simulation(simulation)
 			, m_sdfs(sdfs)
 			, m_resources(resources)
+			, m_sdfDefinitionsVersion(sdfDefinitionsVersion)
 		{
 		}
 
 		void setResourceService(const ResourceService* resources)
 		{
 			m_resources = resources;
+		}
+
+		void setSdfDefinitionsVersion(uint64_t* version)
+		{
+			m_sdfDefinitionsVersion = version;
 		}
 
 		static std::string normalizePath(const std::string& path)
@@ -75,6 +81,10 @@ namespace WeirdEngine
 		{
 			m_sdfs.push_back(std::move(sdf));
 			m_simulation.setSDFs(m_sdfs);
+			if (m_sdfDefinitionsVersion)
+			{
+				++(*m_sdfDefinitionsVersion);
+			}
 
 			return static_cast<ShapeId>(m_sdfs.size() - 1);
 		}
@@ -197,6 +207,10 @@ namespace WeirdEngine
 			{
 				m_sdfs[id] = expr.node;
 				m_simulation.setSDFs(m_sdfs);
+				if (m_sdfDefinitionsVersion)
+				{
+					++(*m_sdfDefinitionsVersion);
+				}
 			}
 			else
 			{
@@ -375,6 +389,7 @@ namespace WeirdEngine
 		Simulation2D& m_simulation;
 		std::vector<std::shared_ptr<IMathExpression>>& m_sdfs;
 		const ResourceService* m_resources = nullptr;
+		uint64_t* m_sdfDefinitionsVersion = nullptr;
 		std::unordered_map<std::string, CustomShapeData> m_customShapeCache;
 		std::unordered_map<ShapeId, std::string> m_shapeIdToCustomPath;
 	};

@@ -112,6 +112,25 @@ namespace WeirdEngine
 			}
 		}
 
+		bool Shader::setFragmentIncludeCodes(const std::string& slot0, const std::string& slot1, bool forceRecompile)
+		{
+			if (m_includedFragmentContents.size() < 2)
+			{
+				return false;
+			}
+
+			const bool changed = (m_includedFragmentContents[0] != slot0) || (m_includedFragmentContents[1] != slot1);
+			if (!changed && !forceRecompile)
+			{
+				return false;
+			}
+
+			m_includedFragmentContents[0] = slot0;
+			m_includedFragmentContents[1] = slot1;
+			recompile();
+			return true;
+		}
+
 		void Shader::addDefine(const std::string& name)
 		{
 			for (const auto& define : m_activeDefines)

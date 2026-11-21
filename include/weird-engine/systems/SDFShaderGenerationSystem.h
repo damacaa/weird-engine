@@ -508,4 +508,88 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		}
 #endif
 	}
+
+	/**
+	 * @brief Data-driven 2D shader synchronization.
+	 *
+	 * Built-in 2D shapes are collapsed into 7 canonical evaluators compiled directly inside
+	 * `sdf_shapes.frag`. This function only emits CSE helper functions (Slot 0) and `switch`
+	 * dispatch cases (Slot 1) for custom registered SDFs (`id >= customShapeStartId`).
+	 * Recompilation only happens when custom SDF definitions change (e.g. scene start,
+	 * `registerSDF`, custom shape hot-reload) or when an explicit disk reload is requested —
+	 * never when shape instances are spawned, destroyed, or have material/group/CSG changed.
+	 */
+	template <typename ShapeClass, typename RenderContext>
+	inline void update2D(Registry& registry, RenderContext& ctx, WeirdRenderer::Shader& shader,
+						 const std::vector<std::shared_ptr<IMathExpression>>& sdfs, uint64_t sdfDefinitionsVersion,
+						 ShapeId customShapeStartId, bool onlyActiveCustomShapes = false)
+	{
+		const bool needSync = (ctx.compiledSdfVersion != sdfDefinitionsVersion) || ctx.forceShaderReload ||
+							  (onlyActiveCustomShapes && ctx.shapesNeedUpdate);
+		if (!needSync)
+		{
+			return;
+		}
+
+		const bool forceReload = ctx.forceShaderReload;
+		ctx.compiledSdfVersion = sdfDefinitionsVersion;
+		ctx.forceShaderReload = false;
+		ctx.shapesNeedUpdate = false;
+
+		std::ostringstream functionsOss; // Slot 0: #include "helper_functions"
+		std::ostringstream casesOss;	 // Slot 1: #include "custom_shape_cases"
+
+		auto emitCustomShape = [&](ShapeId id)
+		{
+			if (id < customShapeStartId || id >= sdfs.size() || !sdfs[id])
+			{
+				return;
+			}
+			functionsOss << CSE::generateFunction(sdfs[id], id, false);
+			casesOss << "\t\tcase " << id << ":\n\t\t\treturn evaluate_sdf_" << id
+					 << "(p, parameters0, parameters1);\n";
+		};
+
+		if (onlyActiveCustomShapes)
+		{
+			const auto componentArray = registry.getComponentManager<ShapeClass>()->getComponentArray();
+			std::unordered_set<ShapeId> emitted;
+			std::vector<ShapeId> orderedIds;
+			for (size_t i = 0; i < componentArray->getSize(); ++i)
+			{
+				const ShapeId id = componentArray->getDataAtIdx(i).distanceFieldId;
+				if (id >= customShapeStartId && id < sdfs.size() && sdfs[id] && emitted.insert(id).second)
+				{
+					orderedIds.push_back(id);
+				}
+			}
+			std::sort(orderedIds.begin(), orderedIds.end());
+			for (ShapeId id : orderedIds)
+			{
+				emitCustomShape(id);
+			}
+		}
+		else
+		{
+			for (size_t id = customShapeStartId; id < sdfs.size(); ++id)
+			{
+				emitCustomShape(static_cast<ShapeId>(id));
+			}
+		}
+
+		const std::string helperFunctionsTotal = functionsOss.str();
+		const std::string customCasesTotal = casesOss.str();
+
+		const bool recompiled = shader.setFragmentIncludeCodes(helperFunctionsTotal, customCasesTotal, forceReload);
+
+#if defined(WEIRD_DEBUG) && defined(LOG_SDF_SHADER_GENERATION)
+		if (recompiled)
+		{
+			WeirdEngine::Logger::log("2D CUSTOM HELPER FUNCTIONS:\n" + helperFunctionsTotal);
+			WeirdEngine::Logger::log("2D CUSTOM DISPATCH CASES:\n" + customCasesTotal);
+		}
+#else
+		(void)recompiled;
+#endif
+	}
 } // namespace WeirdEngine::SDFShaderGenerationSystem

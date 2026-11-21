@@ -78,9 +78,10 @@ namespace WeirdEngine
 			{
 				return m_config.ballK;
 			}
-			Texture& render(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const std::vector<Light2D>& lights,
-							const Material2D* materials, const Camera& camera, double time, double delta,
-							const BackgroundParams& bgParams, Texture* backgroundTexture = nullptr);
+			Texture& render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData, uint32_t shapeCount,
+							const std::vector<Light2D>& lights, const Material2D* materials, const Camera& camera,
+							double time, double delta, const BackgroundParams& bgParams,
+							Texture* backgroundTexture = nullptr);
 			void resize(unsigned int newWidth, unsigned int newHeight);
 			void free();
 			void showDebugUI();
@@ -145,6 +146,7 @@ namespace WeirdEngine
 			Texture m_litSceneTexture;
 			RenderTarget m_litSceneRender;
 
+			DataBuffer m_dotDataBuffer;
 			DataBuffer m_shapeDataBuffer;
 			DataBuffer m_gridHeaderBuffer;
 			DataBuffer m_gridIndicesBuffer;
@@ -178,10 +180,9 @@ namespace WeirdEngine
 				float fadeStart, fadeSpan;
 				int gridCols, gridRows, indexTexWidth, indexTexHeight;
 			};
-			GridInfo buildAccelerationGrid(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount,
-										   const Camera& camera);
-			void renderDistanceField(vec4* shapeData, uint32_t dataSize, uint32_t shapeCount, const Camera& camera,
-									 double time, double delta);
+			GridInfo buildAccelerationGrid(const vec4* dotData, uint32_t dotCount, const Camera& camera);
+			void renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData, uint32_t shapeCount,
+									 const Camera& camera, double time, double delta);
 			void applyJumpFloodCorrection();
 			void upscaleDistance();
 			void renderMaterialColors(const Material2D* materials, const Camera& camera, double time, double delta);

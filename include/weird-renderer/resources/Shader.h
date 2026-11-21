@@ -40,6 +40,8 @@ namespace WeirdEngine
 				return m_lastCompleteFragmentCode;
 			}
 			void setFragmentIncludeCode(int i, const std::string& code, bool shouldRecompile = true);
+			bool setFragmentIncludeCodes(const std::string& slot0, const std::string& slot1,
+										 bool forceRecompile = false);
 			void addDefine(const std::string& name);
 			void removeDefine(const std::string& name);
 			void toggleDefine(const std::string& name);

@@ -367,9 +367,9 @@ namespace WeirdEngine
 			// Execute all pipeline stages
 			renderDistanceField(dotData, dotCount, shapeData, shapeBounds, shapeCount, camera, time, delta);
 
-			if (m_config.enableShadows)
+			if (m_config.enableShadows && m_config.enableLongShadows)
 			{
-				applyJumpFloodCorrection(camera); // Produces the flood texture consumed by lighting for shadows/AO
+				applyJumpFloodCorrection(camera); // Produces the flood texture consumed by lighting for long shadows/AO
 			}
 
 			upscaleDistance();
@@ -478,8 +478,9 @@ namespace WeirdEngine
 				if (m_config.renderHeight > 0)
 				{
 					float maxSmoothingNorm = 2.0f * (1.0f + overscan) / static_cast<float>(m_config.renderHeight);
-					float aoWorld =
-						!m_config.enableShadows ? (absZoom * m_config.ambienOcclusionRadius * 0.001f) : 0.0f;
+					float aoWorld = (!m_config.enableShadows || !m_config.enableLongShadows)
+										? (absZoom * m_config.ambienOcclusionRadius * 0.001f)
+										: 0.0f;
 					worldSmoothing = std::max(maxSmoothingNorm * 2.0f * absZoom * aspectRatio, aoWorld);
 				}
 			}
@@ -668,8 +669,9 @@ namespace WeirdEngine
 			if (!m_config.isUI && m_config.renderHeight > 0)
 			{
 				const float maxSmoothingNorm = 2.0f * (1.0f + overscan) / static_cast<float>(m_config.renderHeight);
-				const float aoWorld =
-					!m_config.enableShadows ? (absZoom * m_config.ambienOcclusionRadius * 0.001f) : 0.0f;
+				const float aoWorld = (!m_config.enableShadows || !m_config.enableLongShadows)
+										  ? (absZoom * m_config.ambienOcclusionRadius * 0.001f)
+										  : 0.0f;
 				worldSmoothing = std::max(maxSmoothingNorm * 2.0f * absZoom * aspectRatio, aoWorld);
 			}
 
@@ -1111,12 +1113,12 @@ namespace WeirdEngine
 			const float maxDim = std::max(sampleW, sampleH);
 			int startJump = largestPowerOfTwoBelow(static_cast<int>(maxDim));
 
-			// Regular shadows only march up to SHADOW_WORLD_DISTANCE / zoom in UV space (0.5 / zoom) and AO
+			// Regular shadows only march up to SHADOW_WORLD_DISTANCE / zoom in UV space (0.4 / zoom) and AO
 			// saturates within ambienOcclusionRadius * 0.001, so cap startJump to the actual reach needed.
 			// Long shadows and lighting-distance debug views keep the full-screen startJump.
 			if (!m_config.enableLongShadows && !m_config.debugLightingDistanceField)
 			{
-				constexpr float SHADOW_WORLD_DISTANCE = 0.5f;
+				constexpr float SHADOW_WORLD_DISTANCE = 0.4f;
 				const float absZoom = std::max(std::abs(camera.view[3].z), 1e-4f);
 				const float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
 				const float shadowFarUV = std::min(1.4f, SHADOW_WORLD_DISTANCE / absZoom);
@@ -1447,11 +1449,18 @@ namespace WeirdEngine
 				}
 			}
 
-			// Flood field (seed + squared distance) for shadows and AO
+			// Flood field (seed + squared distance) for long shadows, or uncorrected SDF for short shadows/AO
 			if (m_config.enableShadows)
 			{
 				m_lightingShader.setUniform("t_floodTexture", 3);
-				m_jumpFloodDoubleBuffer[m_lastFloodTextureIdx]->getColorAttachment()->bind(3);
+				if (m_config.enableLongShadows)
+				{
+					m_jumpFloodDoubleBuffer[m_lastFloodTextureIdx]->getColorAttachment()->bind(3);
+				}
+				else
+				{
+					m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(3);
+				}
 			}
 
 			m_renderPlane.draw(m_lightingShader);

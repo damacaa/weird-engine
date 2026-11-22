@@ -12,7 +12,7 @@ const float FAR = 1.4;
 const float NORMAL_EPSILON = 0.001;
 
 const float SHADOW_VALUE = 0.85;
-const float SHADOW_WORLD_DISTANCE = 0.5; // Max shadow cast distance in world-space units
+const float SHADOW_WORLD_DISTANCE = 0.4; // Max shadow cast distance in world-space units
 
 layout(location = 0) out vec4 FragColor;
 
@@ -61,22 +61,30 @@ uniform int u_numLights;
 uniform Light2D u_lights[8];
 uniform Material2D u_materials[16];
 
-// For cast shadows and ambient occlusion, we need a distance function that has been corrected to fix smooth union
-// artifacts and acceleration grid truncation. The jump flood stores the signed squared aspect-corrected UV distance
-// to the surface in .z (negative inside), so the real distance is recovered with a square root of the clamped value.
+// For cast shadows and ambient occlusion, long shadows use the JFA-corrected flood texture (.z = signed squared
+// aspect-corrected UV distance, negative inside). Short shadows skip JFA and sample the uncorrected SDF texture (.x =
+// signed distance in screen-width units, divided by 1 + u_overscan to match overscan-texture-width UV units).
 float mapOutside(vec2 p)
 {
 	// Remap screen UV to overscan texture UV
 	vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
+#ifdef LONG_SHADOWS
 	return sqrt(max(texture(t_floodTexture, overscanUV).z, 0.0));
+#else
+	return max(texture(t_floodTexture, overscanUV).x, 0.0) / (1.0 + u_overscan);
+#endif
 }
 
 // Signed variant for debugging: real distance with the inside negative, in distance texture units
 float mapOutsideSigned(vec2 p)
 {
 	vec2 overscanUV = 0.5 + (p - 0.5) / (1.0 + u_overscan);
+#ifdef LONG_SHADOWS
 	float z = texture(t_floodTexture, overscanUV).z;
 	return sign(z) * sqrt(abs(z)) * (1.0 + u_overscan);
+#else
+	return texture(t_floodTexture, overscanUV).x;
+#endif
 }
 
 vec2 softShadow(vec2 ro, vec2 rd, float initialDistance, float far, float k)
@@ -212,6 +220,10 @@ void main()
 
 	float baseLightShadowOffset = min(0.005 * zoom, 0.3);
 	float lightShadowOffset = max(baseLightShadowOffset / (zoom * overscanScale), 4.0 * smoothing);
+#ifndef LONG_SHADOWS
+	// Only offset rays inside/on shapes (for rim highlight) so exterior short shadows attach to the caster
+	lightShadowOffset *= shapeFactor;
+#endif
 	float highlightThickness = smoothing;
 
 	vec3 accumulatedShapeDiffuse = vec3(0.0);

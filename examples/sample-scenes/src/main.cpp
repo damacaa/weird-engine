@@ -60,9 +60,9 @@ int main(int argc, char* argv[])
 	displaySettings.width = 640;
 	displaySettings.height = 480;
 	displaySettings.fullscreen = true;
-	displaySettings.distanceSampleScale = 1.0f;
+	displaySettings.distanceSampleScale = 0.5f;
 	displaySettings.internalResolutionScale = 0.5f;
-	displaySettings.enableMaterialBlending = false;
+	displaySettings.enableMaterialBlending = true;
 
 #endif
 

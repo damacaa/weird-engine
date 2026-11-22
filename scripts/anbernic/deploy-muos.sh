@@ -50,7 +50,8 @@ cp "$EXEC_PATH" "$STAGE/"
 [ -d "$BUILD_DIR/shaders" ] && cp -r "$BUILD_DIR/shaders" "$STAGE/"
 rm -rf "$STAGE/shaders/.vscode" 2>/dev/null || true
 
-LAUNCHER_SCRIPT="$STAGE/${PROJECT_NAME}.sh"
+LAUNCHER_NAME=$(echo "$PROJECT_NAME" | sed -E 's/([a-z])([A-Z])/\1 \2/g')
+LAUNCHER_SCRIPT="$STAGE/${LAUNCHER_NAME}.sh"
 cat << 'EOF' > "$LAUNCHER_SCRIPT"
 #!/bin/bash
 if [ -d "/opt/system/Tools/PortMaster/" ]; then

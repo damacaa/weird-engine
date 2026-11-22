@@ -13,28 +13,6 @@ float fOpUnionSoft(float a, float b, float r)
 	return min(a, b) - h * h * 0.25 / r;
 }
 
-float fOpUnionSoft(float a, float b, float r, float invR)
-{
-	float h = max(r - abs(a - b), 0.0);
-	return min(a, b) - h * h * 0.25 * invR;
-}
-
-vec2 fOpUnionSoft_blend(float a, float b, float r)
-{
-	if (r <= 1e-6)
-		return vec2(min(a, b), 0.0);
-	float h = max(r - abs(a - b), 0.0);
-	float blend = h / r;
-	return vec2(min(a, b) - h * h * 0.25 / r, blend);
-}
-
-vec2 fOpUnionSoft_blend(float a, float b, float r, float invR)
-{
-	float h = max(r - abs(a - b), 0.0);
-	float blend = h * invR;
-	return vec2(min(a, b) - h * h * 0.25 * invR, blend);
-}
-
 float fOpSubSoft(float a, float b, float r)
 {
 	return -fOpUnionSoft(b, -a, r);
@@ -117,28 +95,34 @@ float evalBuiltinTriangle(vec2 p, vec4 p0, vec4 p1)
 	q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
 	q.y -= p1.w;
 
-	float w = p0.z;
-	float h = p0.w;
-	vec2 v0 = vec2(-w * 0.5, -h / 3.0);
-	vec2 v1 = vec2(w * 0.5, -h / 3.0);
-	vec2 v2 = vec2(0.0, 2.0 * h / 3.0);
+	float hw = p0.z * 0.5;
+	float yBot = -p0.w * (1.0 / 3.0);
+	float yTop = p0.w * (2.0 / 3.0);
 
-	vec2 e0 = v1 - v0;
-	vec2 e1 = v2 - v1;
+	vec2 v0 = vec2(-hw, yBot);
+	vec2 v1 = vec2(hw, yBot);
+	vec2 v2 = vec2(0.0, yTop);
+
+	// Evaluate edges sequentially to keep peak live registers low on mobile TBDR GPUs.
+	vec2 e = v1 - v0;
 	vec2 e2 = v0 - v2;
+	float s = sign(e.x * e2.y - e.y * e2.x);
 
-	vec2 d0 = q - v0;
-	vec2 d1 = q - v1;
-	vec2 d2 = q - v2;
+	vec2 d = q - v0;
+	vec2 pq = d - e * clamp(dot(d, e) / max(dot(e, e), 1e-12), 0.0, 1.0);
+	float dx = dot(pq, pq);
+	float dy = s * (d.x * e.y - d.y * e.x);
 
-	vec2 pq0 = d0 - e0 * clamp(dot(d0, e0) / max(dot(e0, e0), 1e-12), 0.0, 1.0);
-	vec2 pq1 = d1 - e1 * clamp(dot(d1, e1) / max(dot(e1, e1), 1e-12), 0.0, 1.0);
-	vec2 pq2 = d2 - e2 * clamp(dot(d2, e2) / max(dot(e2, e2), 1e-12), 0.0, 1.0);
+	e = v2 - v1;
+	d = q - v1;
+	pq = d - e * clamp(dot(d, e) / max(dot(e, e), 1e-12), 0.0, 1.0);
+	dx = min(dx, dot(pq, pq));
+	dy = min(dy, s * (d.x * e.y - d.y * e.x));
 
-	float s = sign(e0.x * e2.y - e0.y * e2.x);
-	float dx = min(min(dot(pq0, pq0), dot(pq1, pq1)), dot(pq2, pq2));
-	float dy =
-		min(min(s * (d0.x * e0.y - d0.y * e0.x), s * (d1.x * e1.y - d1.y * e1.x)), s * (d2.x * e2.y - d2.y * e2.x));
+	d = q - v2;
+	pq = d - e2 * clamp(dot(d, e2) / max(dot(e2, e2), 1e-12), 0.0, 1.0);
+	dx = min(dx, dot(pq, pq));
+	dy = min(dy, s * (d.x * e2.y - d.y * e2.x));
 
 	return -sqrt(dx) * sign(dy) - p1.z;
 }
@@ -158,24 +142,20 @@ float evalBuiltinRamp(vec2 p, vec4 p0, vec4 p1)
 
 	float wi = p0.z;
 	float he = p0.w;
-	float sk = p1.x;
-	vec2 e = vec2(wi, sk);
+	vec2 e = vec2(wi, p1.x);
 
 	q *= (q.x >= 0.0 ? 1.0 : -1.0);
 
 	vec2 w = q - e;
-	float wy = w.y - clamp(w.y, -he, he);
-	vec2 wClamped = vec2(w.x, wy);
-
-	float dx0 = dot(wClamped, wClamped);
 	float dy0 = -w.x;
+	w.y -= clamp(w.y, -he, he);
+	float dx0 = dot(w, w);
 
 	float s = q.y * e.x - q.x * e.y;
 	q *= (s >= 0.0 ? 1.0 : -1.0);
 
 	vec2 v = q - vec2(0.0, he);
-	float h = clamp(dot(v, e) * p1.w, -1.0, 1.0);
-	v -= e * h;
+	v -= e * clamp(dot(v, e) * p1.w, -1.0, 1.0);
 
 	float dx1 = dot(v, v);
 	float dy1 = wi * he - abs(s);
@@ -199,7 +179,7 @@ float evalBuiltinStar(vec2 p, vec4 p0, vec4 p1)
 // Slot 0: Injected dynamically by SDFShaderGenerationSystem (custom evaluate_sdf_<id> functions).
 #include "helper_functions"
 
-float evaluateShape(int shapeId, vec2 p, vec4 parameters0, vec4 parameters1)
+float evaluateShape(mediump int shapeId, vec2 p, vec4 parameters0, vec4 parameters1)
 {
 	switch (shapeId)
 	{
@@ -234,12 +214,10 @@ void fetchShapeInstance(int shapeIndex, out vec4 meta, out vec4 p0, out vec4 p1)
 	p1 = texelFetch(t_shapeBuffer, ivec2(idx2 & 16383, idx2 >> 14), 0);
 }
 
-void applyShapeAddition(float dist, int material, inout float currentMinDist, inout float currentBlend,
-						inout int groupColor)
+void applyShapeAddition(float dist, mediump int material, inout float currentMinDist, inout mediump int groupColor)
 {
 	if (dist <= currentMinDist)
 	{
-		currentBlend = 0.0;
 		groupColor = material;
 	}
 	currentMinDist = min(currentMinDist, dist);
@@ -255,23 +233,15 @@ void applyShapeIntersection(float dist, inout float currentMinDist)
 	currentMinDist = max(currentMinDist, dist);
 }
 
-void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inout float currentMinDist,
-							  inout float currentBlend, inout int groupColor)
+void applyShapeSmoothAddition(float dist, mediump int material, float smoothFactor, inout float currentMinDist,
+							  inout mediump int groupColor)
 {
-	vec2 res = fOpUnionSoft_blend(currentMinDist, dist, smoothFactor);
-	if (res.y > 0.0)
-	{
-		currentBlend = max(currentBlend, res.y);
-	}
-	else if (dist < currentMinDist)
-	{
-		currentBlend = 0.0;
-	}
-	if (dist <= res.x)
+	float res = fOpUnionSoft(currentMinDist, dist, smoothFactor);
+	if (dist <= res)
 	{
 		groupColor = material;
 	}
-	currentMinDist = res.x;
+	currentMinDist = res;
 }
 
 void applyShapeSmoothSubtraction(float dist, float smoothFactor, inout float currentMinDist)
@@ -279,12 +249,12 @@ void applyShapeSmoothSubtraction(float dist, float smoothFactor, inout float cur
 	currentMinDist = fOpSubSoft(currentMinDist, dist, smoothFactor);
 }
 
-void applyShapeCombination(int combination, float dist, int material, float smoothFactor, inout float targetDist,
-						   inout float targetBlend, inout int targetColor)
+void applyShapeCombination(mediump int combination, float dist, mediump int material, float smoothFactor,
+						   inout float targetDist, inout mediump int targetColor)
 {
 	if (combination == COMB_ADDITION)
 	{
-		applyShapeAddition(dist, material, targetDist, targetBlend, targetColor);
+		applyShapeAddition(dist, material, targetDist, targetColor);
 	}
 	else if (combination == COMB_SUBTRACTION)
 	{
@@ -296,7 +266,7 @@ void applyShapeCombination(int combination, float dist, int material, float smoo
 	}
 	else if (combination == COMB_SMOOTH_ADDITION)
 	{
-		applyShapeSmoothAddition(dist, material, smoothFactor, targetDist, targetBlend, targetColor);
+		applyShapeSmoothAddition(dist, material, smoothFactor, targetDist, targetColor);
 	}
 	else if (combination == COMB_SMOOTH_SUBTRACTION)
 	{
@@ -304,84 +274,71 @@ void applyShapeCombination(int combination, float dist, int material, float smoo
 	}
 }
 
-void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout float minDist, inout float globalBlend,
-					 inout int finalMaterialId)
+void flushShapeGroup(float groupDist, mediump int groupColor, inout float minDist, inout mediump int finalMaterialId)
 {
 	if (groupDist <= max(minDist, 0.0))
 	{
 		finalMaterialId = groupColor;
 	}
-	if (groupDist <= minDist)
-	{
-		globalBlend = groupBlend;
-	}
-	if (minDist > groupDist)
-	{
-		minDist = groupDist;
-	}
+	minDist = min(minDist, groupDist);
 }
 
 vec2 getShapeDistanceMaterial(vec2 p, uint tileStart, uint tileCount)
 {
 	float minDist = 50000.0;
-	int finalMaterialId = 0;
-	float globalBlend = 0.0;
+	mediump int finalMaterialId = 0;
 
 	int currentGroup = -1;
 	float groupDist = 10000.0;
-	float groupBlend = 0.0;
-	int currentGroupColor = -1;
+	mediump int currentGroupColor = -1;
 
 	for (uint k = 0u; k < tileCount; ++k)
 	{
 		uint flatIdx = tileStart + k;
-		int shapeIdx = int(texelFetch(t_shapeTileIndices, ivec2(int(flatIdx & 1023u), int(flatIdx >> 10u)), 0).x);
+		int shapeIdx = int(texelFetch(t_shapeTileIndices, ivec2(int(flatIdx & 63u), int(flatIdx >> 6u)), 0).x);
 
 		vec4 meta, p0, p1;
 		fetchShapeInstance(shapeIdx, meta, p0, p1);
 
+		// Evaluate shape before unpacking remaining metadata so fewer scalars stay live across the switch.
+		mediump int shapeId = int(uint(meta.x + 0.5) & 0xFFFFu);
+		float dist = evaluateShape(shapeId, p, p0, p1);
+
 		uint packed0 = uint(meta.x + 0.5);
 		uint packed1 = uint(meta.y + 0.5);
-
-		int shapeId = int(packed0 & 0xFFFFu);
-		int combination = int((packed0 >> 16u) & 0x7u);
-		uint flags = packed0 >> 19u;
-
+		mediump int combination = int((packed0 >> 16u) & 0x7u);
+		mediump uint flags = packed0 >> 19u;
 		int group = int(packed1 & 0xFFFFu);
-		int material = int((packed1 >> 16u) & 0x3Fu);
-		float smoothFactor = meta.z;
-		float onionThickness = meta.w;
+		mediump int material = int((packed1 >> 16u) & 0x3Fu);
 
 		if (group != currentGroup)
 		{
 			if (currentGroup != -1 && currentGroup != 65535)
 			{
-				flushShapeGroup(groupDist, groupBlend, currentGroupColor, minDist, globalBlend, finalMaterialId);
+				flushShapeGroup(groupDist, currentGroupColor, minDist, finalMaterialId);
 			}
 			currentGroup = group;
 			groupDist = 10000.0;
-			groupBlend = 0.0;
 		}
 
-		float dist = evaluateShape(shapeId, p, p0, p1);
 		if ((flags & FLAG_ONION) != 0u)
 		{
-			dist = abs(dist) - onionThickness;
+			dist = abs(dist) - meta.w;
 		}
 
 		if ((flags & FLAG_GLOBAL_GROUP) != 0u)
 		{
-			applyShapeCombination(combination, dist, material, smoothFactor, minDist, globalBlend, finalMaterialId);
+			applyShapeCombination(combination, dist, material, meta.z, minDist, finalMaterialId);
 		}
 		else
 		{
-			applyShapeCombination(combination, dist, material, smoothFactor, groupDist, groupBlend, currentGroupColor);
+			applyShapeCombination(combination, dist, material, meta.z, groupDist, currentGroupColor);
 		}
 	}
 
 	if (currentGroup != -1 && currentGroup != 65535)
 	{
-		flushShapeGroup(groupDist, groupBlend, currentGroupColor, minDist, globalBlend, finalMaterialId);
+		flushShapeGroup(groupDist, currentGroupColor, minDist, finalMaterialId);
 	}
 
 	return vec2(minDist, max(float(finalMaterialId), 0.0));

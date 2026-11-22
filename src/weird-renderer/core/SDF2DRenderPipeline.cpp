@@ -31,6 +31,17 @@ namespace WeirdEngine
 			return p;
 		}
 
+		// Hints TBDR GPUs (e.g. ARM Mali) not to load stale color attachment contents from DRAM
+		// before a fullscreen pass that overwrites every pixel.
+		static inline void invalidateColorAttachment0()
+		{
+			if (glInvalidateFramebuffer)
+			{
+				static constexpr GLenum kColor0 = GL_COLOR_ATTACHMENT0;
+				glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &kColor0);
+			}
+		}
+
 		int SDF2DRenderPipeline::largestPowerOfTwoBelow(int n)
 		{
 			return ::WeirdEngine::WeirdRenderer::largestPowerOfTwoBelow(n);
@@ -358,7 +369,7 @@ namespace WeirdEngine
 
 			if (m_config.enableShadows)
 			{
-				applyJumpFloodCorrection(); // Produces the flood texture consumed by lighting for shadows/AO
+				applyJumpFloodCorrection(camera); // Produces the flood texture consumed by lighting for shadows/AO
 			}
 
 			upscaleDistance();
@@ -412,7 +423,7 @@ namespace WeirdEngine
 			//   zoom  = -view[3].z   (positive distance from origin)
 			//   camXY = view[3].xy   (camera translation in world space)
 			// If the camera representation changes, update the frustum derivation below accordingly.
-			constexpr int indexTexWidth = 1024;
+			constexpr int indexTexWidth = 64;
 
 			int objectCount = static_cast<int>(dotCount);
 
@@ -568,8 +579,8 @@ namespace WeirdEngine
 				totalIndices += m_gridCellCounts[i];
 			}
 
-			// Pre-allocate index buffer at final padded size to avoid realloc during fill
-			int indexTexHeight = std::max(1, (totalIndices + indexTexWidth - 1) / indexTexWidth);
+			// Keep height >= 2 so Mali Bifrost drivers never hit degenerate 1-row 2D texture paths.
+			int indexTexHeight = std::max(2, (totalIndices + indexTexWidth - 1) / indexTexWidth);
 			int paddedSize = indexTexWidth * indexTexHeight;
 
 			m_gridHeader.resize(numCells);
@@ -601,7 +612,8 @@ namespace WeirdEngine
 				writePos += m_gridCellCounts[i];
 			}
 
-			return {minX, minY, stepX, stepY, fadeStart, fadeSpan, gridCols, gridRows, indexTexWidth, indexTexHeight};
+			return {minX,	  minY,		stepX,		   stepY,		   fadeStart,	  fadeSpan,
+					gridCols, gridRows, indexTexWidth, indexTexHeight, visibleObjects};
 		}
 
 		SDF2DRenderPipeline::ShapeTileGridInfo SDF2DRenderPipeline::buildShapeTileGrid(const Shape2DAABB* shapeBounds,
@@ -609,7 +621,7 @@ namespace WeirdEngine
 																					   const Camera& camera)
 		{
 			constexpr int TILE_SIZE = 16;
-			constexpr int INDEX_TEX_WIDTH = 1024;
+			constexpr int INDEX_TEX_WIDTH = 64;
 			constexpr float kNegInf = -std::numeric_limits<float>::infinity();
 			constexpr float kPosInf = std::numeric_limits<float>::infinity();
 
@@ -875,7 +887,7 @@ namespace WeirdEngine
 			}
 
 			const int indexTexHeight =
-				std::max(1, static_cast<int>((totalIndices + INDEX_TEX_WIDTH - 1) / INDEX_TEX_WIDTH));
+				std::max(2, static_cast<int>((totalIndices + INDEX_TEX_WIDTH - 1) / INDEX_TEX_WIDTH));
 			const size_t paddedIndices = static_cast<size_t>(INDEX_TEX_WIDTH) * static_cast<size_t>(indexTexHeight);
 			m_shapeTileIndices.assign(paddedIndices, 0u);
 
@@ -904,7 +916,7 @@ namespace WeirdEngine
 		{
 			PROFILE_SCOPE(m_config.isUI ? "renderDistanceField (UI)" : "renderDistanceField (World)");
 
-			// Build and upload all CPU acceleration buffers BEFORE binding FBOs so no glTexSubImage2D
+			// Build and upload all CPU acceleration buffers BEFORE binding FBOs so no texture upload
 			// occurs while Pass 1's framebuffer is open/unflushed (avoids Mali TBDR driver stalls).
 			ShapeTileGridInfo tileGrid{};
 			const bool hasShapesToDraw = (shapeCount > 0 || m_config.debugShapeTiles);
@@ -929,13 +941,13 @@ namespace WeirdEngine
 
 			const bool needGrid = (dotCount > 0) || m_config.debugGrid;
 			GridInfo grid{};
-			if (dotCount > 0)
-			{
-				m_dotDataBuffer.uploadData<vec4>(dotData, dotCount);
-			}
 			if (needGrid)
 			{
 				grid = buildAccelerationGrid(dotData, dotCount, camera);
+				if (dotCount > 0)
+				{
+					m_dotDataBuffer.uploadData<vec4>(dotData, dotCount);
+				}
 				m_gridHeaderBuffer.uploadData2D<glm::vec4>(m_gridHeader.data(), grid.gridCols, grid.gridRows);
 				m_gridIndicesBuffer.uploadData2D<glm::vec4>(m_gridIndices.data(), grid.indexTexWidth,
 															grid.indexTexHeight);
@@ -947,6 +959,7 @@ namespace WeirdEngine
 			{
 				PROFILE_SCOPE(m_config.isUI ? "renderDistanceField Shapes (UI)" : "renderDistanceField Shapes (World)");
 				m_shapeRender.bind();
+				invalidateColorAttachment0();
 
 				if (!hasShapesToDraw)
 				{
@@ -973,12 +986,13 @@ namespace WeirdEngine
 					m_shapeShader.setUniform("u_shapeFadeRange", glm::vec2(tileGrid.fadeStart, tileGrid.fadeSpan));
 					m_shapeShader.setUniform("u_shapeFadeReach", tileGrid.fadeReach);
 
+					// Keep Pass 1 usampler2D textures on dedicated units 5 & 6 (never aliased with Pass 2 sampler2D).
 					m_shapeShader.setUniform("t_shapeBuffer", 0);
 					m_shapeDataBuffer.bind(0);
-					m_shapeShader.setUniform("t_shapeTileHeader", 1);
-					m_shapeTileHeaderBuffer.bind(1);
-					m_shapeShader.setUniform("t_shapeTileIndices", 2);
-					m_shapeTileIndicesBuffer.bind(2);
+					m_shapeShader.setUniform("t_shapeTileHeader", 5);
+					m_shapeTileHeaderBuffer.bind(5);
+					m_shapeShader.setUniform("t_shapeTileIndices", 6);
+					m_shapeTileIndicesBuffer.bind(6);
 
 					m_renderPlane.draw(m_shapeShader);
 				}
@@ -1002,6 +1016,7 @@ namespace WeirdEngine
 				m_distanceTextureDoubleBufferIdx = (m_distanceTextureDoubleBufferIdx + 1) % 2;
 
 				m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->bind();
+				invalidateColorAttachment0();
 				m_distanceShader.use();
 
 				// Set uniforms
@@ -1043,12 +1058,12 @@ namespace WeirdEngine
 
 				// Slot 2: Dot data buffer (positions & materials)
 				m_distanceShader.setUniform("u_dotCount", static_cast<int>(dotCount));
-				m_distanceShader.setUniform("t_dotBuffer", 2);
-				m_dotDataBuffer.bind(2);
-
-				// Slot 3 & 4: Acceleration grid
 				if (needGrid)
 				{
+					m_distanceShader.setUniform("t_dotBuffer", 2);
+					m_dotDataBuffer.bind(2);
+
+					// Slot 3 & 4: Acceleration grid
 					m_distanceShader.setUniform("u_gridBoundsMin", glm::vec2(grid.minX, grid.minY));
 					m_distanceShader.setUniform("u_gridStep", glm::vec2(grid.stepX, grid.stepY));
 					m_distanceShader.setUniform("u_dotFadeRange", glm::vec2(grid.fadeStart, grid.fadeSpan));
@@ -1078,36 +1093,54 @@ namespace WeirdEngine
 								  << " shapeCount=" << shapeCount << " visibleShapes=" << tileGrid.visibleShapes
 								  << " shapeTiles=" << tileGrid.tileCols << "x" << tileGrid.tileRows
 								  << " shapeIdxH=" << tileGrid.indexTexHeight << " dotCount=" << dotCount
-								  << " dotGrid=" << grid.gridCols << "x" << grid.gridRows
-								  << " dotIdxH=" << grid.indexTexHeight << " ballK=" << m_config.ballK << std::endl;
+								  << " visDots=" << grid.visibleObjects << " dotGrid=" << grid.gridCols << "x"
+								  << grid.gridRows << " dotIdxH=" << grid.indexTexHeight << " ballK=" << m_config.ballK
+								  << std::endl;
 					}
 				}
 #endif
 			}
 		}
 
-		void SDF2DRenderPipeline::applyJumpFloodCorrection()
+		void SDF2DRenderPipeline::applyJumpFloodCorrection(const Camera& camera)
 		{
 			PROFILE_SCOPE(m_config.isUI ? "applyJumpFloodCorrection (UI)" : "applyJumpFloodCorrection (World)");
 
-			float maxDim =
-				std::max(static_cast<float>(m_distanceSampleWidth), static_cast<float>(m_distanceSampleHeight));
+			const float sampleW = static_cast<float>(std::max(1u, m_distanceSampleWidth));
+			const float sampleH = static_cast<float>(std::max(1u, m_distanceSampleHeight));
+			const float maxDim = std::max(sampleW, sampleH);
 			int startJump = largestPowerOfTwoBelow(static_cast<int>(maxDim));
 
-			// Regular shadows only march up to SHADOW_WORLD_DISTANCE / zoom in UV space, far below the screen
-			// diagonal, so jumps larger than that can never contribute to a visible shadow. Long shadows use the
-			// full screen extent (FAR), so they keep the uncapped start jump.
-			if (!m_config.enableLongShadows)
-				startJump = std::min(startJump, 256);
+			// Regular shadows only march up to SHADOW_WORLD_DISTANCE / zoom in UV space (0.5 / zoom) and AO
+			// saturates within ambienOcclusionRadius * 0.001, so cap startJump to the actual reach needed.
+			// Long shadows and lighting-distance debug views keep the full-screen startJump.
+			if (!m_config.enableLongShadows && !m_config.debugLightingDistanceField)
+			{
+				constexpr float SHADOW_WORLD_DISTANCE = 0.5f;
+				const float absZoom = std::max(std::abs(camera.view[3].z), 1e-4f);
+				const float overscan = std::clamp(m_config.distanceOverscan, 0.0f, 0.5f);
+				const float shadowFarUV = std::min(1.4f, SHADOW_WORLD_DISTANCE / absZoom);
+				const float shadowTexels = shadowFarUV * sampleW;
+				const float aoTexels = (m_config.ambienOcclusionRadius * 0.001f / (1.0f + overscan)) * sampleH;
+				const float neededReach = std::ceil(std::max(shadowTexels, aoTexels)) + 4.0f;
+
+				// Jump sequence S, S/2, ..., 1 + JFA+1 covers Chebyshev radius 2*S texels.
+				int targetJump = 4;
+				while (targetJump * 2 < static_cast<int>(neededReach) && targetJump < startJump)
+				{
+					targetJump *= 2;
+				}
+				startJump = std::min(startJump, targetJump);
+			}
 
 			bool pingpong = true;
 
 			// Initialize
 			m_jumpFloodInitRender.bind();
+			invalidateColorAttachment0();
 			m_jumpFloodInitShader.use();
 
-			m_jumpFloodInitShader.setUniform("u_texelSize",
-											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
+			m_jumpFloodInitShader.setUniform("u_texelSize", glm::vec2(1.0f / sampleW, 1.0f / sampleH));
 			m_jumpFloodInitShader.setUniform("u_overscan", std::clamp(m_config.distanceOverscan, 0.0f, 0.5f));
 			m_jumpFloodInitShader.setUniform("t_distanceTexture", 0);
 			m_distanceTextureDoubleBuffer[m_distanceTextureDoubleBufferIdx]->getColorAttachment()->bind(0);
@@ -1117,8 +1150,7 @@ namespace WeirdEngine
 			// Jump flood passes
 			m_jumpFloodStepShader.use();
 			m_jumpFloodStepShader.setUniform("t_prevSeeds", 0);
-			m_jumpFloodStepShader.setUniform("u_texelSize",
-											 glm::vec2(1.0f / m_distanceSampleWidth, 1.0f / m_distanceSampleHeight));
+			m_jumpFloodStepShader.setUniform("u_aspectScale", sampleH / sampleW);
 			m_jumpFloodStepShader.setUniform("u_resolution", glm::ivec2(m_distanceSampleWidth, m_distanceSampleHeight));
 
 			int jump = startJump;
@@ -1127,6 +1159,7 @@ namespace WeirdEngine
 			while (jump >= 1)
 			{
 				m_jumpFloodDoubleBuffer[pingpong]->bind();
+				invalidateColorAttachment0();
 
 				m_jumpFloodStepShader.setUniform("u_jump", jump);
 
@@ -1148,6 +1181,7 @@ namespace WeirdEngine
 
 			// JFA+1: one final jump=1 pass tightens the Voronoi assignment near boundaries
 			m_jumpFloodDoubleBuffer[pingpong]->bind();
+			invalidateColorAttachment0();
 			m_jumpFloodStepShader.setUniform("u_jump", 1);
 			m_jumpFloodDoubleBuffer[!pingpong]->getColorAttachment()->bind(0);
 			m_renderPlane.draw(m_jumpFloodStepShader);
@@ -1163,6 +1197,7 @@ namespace WeirdEngine
 			PROFILE_SCOPE(m_config.isUI ? "upscaleDistance (UI)" : "upscaleDistance (World)");
 
 			m_distanceUpscaler.bind();
+			invalidateColorAttachment0();
 
 			m_distanceUpscalerShader.use();
 			m_distanceUpscalerShader.setUniform("u_originalResolution",
@@ -1184,6 +1219,7 @@ namespace WeirdEngine
 			PROFILE_SCOPE(m_config.isUI ? "renderMaterialColors (UI)" : "renderMaterialColors (World)");
 
 			m_colorRender.bind();
+			invalidateColorAttachment0();
 
 			m_materialColorShader.use();
 			m_materialColorShader.setUniform("u_camMatrix", camera.view);
@@ -1214,6 +1250,11 @@ namespace WeirdEngine
 
 		void SDF2DRenderPipeline::blendMaterials(double time)
 		{
+			if (m_materialBlendIterations == 0)
+			{
+				return;
+			}
+
 			PROFILE_SCOPE(m_config.isUI ? "blendMaterials (UI)" : "blendMaterials (World)");
 
 			m_materialBlendShader.use();
@@ -1223,6 +1264,7 @@ namespace WeirdEngine
 			for (unsigned int i = 0; i < m_materialBlendIterations * 2; i++)
 			{
 				m_postProcessDoubleBuffer[horizontal]->bind();
+				invalidateColorAttachment0();
 
 				m_materialBlendShader.setUniform("u_horizontal", horizontal);
 				if (i == 0)
@@ -1299,6 +1341,7 @@ namespace WeirdEngine
 
 			int writeIdx = (m_backgroundDoubleBufferIdx + 1) % 2;
 			m_backgroundDoubleBuffer[writeIdx]->bind();
+			invalidateColorAttachment0();
 
 			m_defaultBackgroundShader.use();
 			m_defaultBackgroundShader.setUniform("t_prevBackground", 0);
@@ -1334,6 +1377,7 @@ namespace WeirdEngine
 			PROFILE_SCOPE(m_config.isUI ? "applyLighting (UI)" : "applyLighting (World)");
 
 			m_litSceneRender.bind();
+			invalidateColorAttachment0();
 
 			m_lightingShader.use();
 			m_lightingShader.setUniform("u_camMatrix", camera.view);

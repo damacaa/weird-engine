@@ -78,6 +78,22 @@ namespace WeirdEngine
 				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
 				glBindTexture(GL_TEXTURE_2D, m_texture);
 
+#ifdef WEIRD_USE_FBDEV_EGL
+				// On Mali Bifrost (r20p0 fbdev EGL), orphan with exact-size glTexImage2D so the driver
+				// allocates clean backing storage without partial glTexSubImage2D stalls or uninitialized tails.
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texW, texH, 0, GL_RGBA, GL_FLOAT, uploadPtr);
+				if (!m_paramsInitialized)
+				{
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					m_paramsInitialized = true;
+				}
+				m_allocatedWidth = texW;
+				m_allocatedHeight = texH;
+				m_allocatedFormat = GL_RGBA32F;
+#else
 				if (texW > m_allocatedWidth || texH > m_allocatedHeight || m_allocatedFormat != GL_RGBA32F)
 				{
 					GLsizei allocW = (texH > 1) ? maxTexSize : std::min(maxTexSize, nextPowerOfTwo(std::max(texW, 64)));
@@ -99,6 +115,7 @@ namespace WeirdEngine
 				}
 
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texW, texH, GL_RGBA, GL_FLOAT, uploadPtr);
+#endif
 
 				glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTextureBinding2D));
 				glActiveTexture(static_cast<GLenum>(previousActiveTexture));
@@ -125,6 +142,20 @@ namespace WeirdEngine
 				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
 				glBindTexture(GL_TEXTURE_2D, m_texture);
 
+#ifdef WEIRD_USE_FBDEV_EGL
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texW, texH, 0, GL_RGBA, GL_FLOAT, data);
+				if (!m_paramsInitialized)
+				{
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					m_paramsInitialized = true;
+				}
+				m_allocatedWidth = texW;
+				m_allocatedHeight = texH;
+				m_allocatedFormat = GL_RGBA32F;
+#else
 				if (texW > m_allocatedWidth || texH > m_allocatedHeight || m_allocatedFormat != GL_RGBA32F)
 				{
 					constexpr GLsizei maxTexSize = 16384;
@@ -147,6 +178,7 @@ namespace WeirdEngine
 				}
 
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texW, texH, GL_RGBA, GL_FLOAT, data);
+#endif
 
 				glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTextureBinding2D));
 				glActiveTexture(static_cast<GLenum>(previousActiveTexture));
@@ -167,6 +199,20 @@ namespace WeirdEngine
 				glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureBinding2D);
 				glBindTexture(GL_TEXTURE_2D, m_texture);
 
+#ifdef WEIRD_USE_FBDEV_EGL
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32UI, texW, texH, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, data);
+				if (!m_paramsInitialized)
+				{
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					m_paramsInitialized = true;
+				}
+				m_allocatedWidth = texW;
+				m_allocatedHeight = texH;
+				m_allocatedFormat = GL_RG32UI;
+#else
 				if (texW > m_allocatedWidth || texH > m_allocatedHeight || m_allocatedFormat != GL_RG32UI)
 				{
 					constexpr GLsizei maxTexSize = 16384;
@@ -190,6 +236,7 @@ namespace WeirdEngine
 				}
 
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texW, texH, GL_RG_INTEGER, GL_UNSIGNED_INT, data);
+#endif
 
 				glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previousTextureBinding2D));
 				glActiveTexture(static_cast<GLenum>(previousActiveTexture));
@@ -218,6 +265,20 @@ namespace WeirdEngine
 					glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
 				}
 
+#ifdef WEIRD_USE_FBDEV_EGL
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, texW, texH, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, data);
+				if (!m_paramsInitialized)
+				{
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					m_paramsInitialized = true;
+				}
+				m_allocatedWidth = texW;
+				m_allocatedHeight = texH;
+				m_allocatedFormat = GL_R16UI;
+#else
 				if (texW > m_allocatedWidth || texH > m_allocatedHeight || m_allocatedFormat != GL_R16UI)
 				{
 					constexpr GLsizei maxTexSize = 16384;
@@ -241,6 +302,7 @@ namespace WeirdEngine
 				}
 
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texW, texH, GL_RED_INTEGER, GL_UNSIGNED_SHORT, data);
+#endif
 
 				if (needsAlign2)
 				{
@@ -271,6 +333,7 @@ namespace WeirdEngine
 			mutable GLsizei m_allocatedWidth = 0;
 			mutable GLsizei m_allocatedHeight = 0;
 			mutable GLenum m_allocatedFormat = 0;
+			mutable bool m_paramsInitialized = false;
 			mutable std::vector<float> m_paddedScratch;
 		};
 

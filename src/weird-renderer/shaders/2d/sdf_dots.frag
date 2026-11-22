@@ -124,58 +124,65 @@ void main()
 		int startIndex = int(cellData.x);
 		count = int(cellData.y);
 
-		float minDotDist =
-			1e6; // Far value; must exceed any real distance so empty cells leave the shape field untouched
-
-		for (int i = 0; i < count; i++)
+		if (count > 0)
 		{
-			int flatIndex = startIndex + i;
-			ivec2 indexCoord = ivec2(flatIndex % 1024, flatIndex / 1024);
-			int objectIndex = int(texelFetch(t_gridIndices, indexCoord, 0).x);
+			float minDotDist =
+				1e6; // Far value; must exceed any real distance so empty cells leave the shape field untouched
 
-			// Dot buffer wraps to 2D at 16384 texels wide (matches DataBuffer::uploadRawData on ES drivers)
-			vec4 positionSizeMaterial =
-				texelFetch(t_dotBuffer, ivec2(objectIndex & 16383, objectIndex >> 14), 0);
-			int materialId = int(positionSizeMaterial.w);
+			for (int i = 0; i < count; i++)
+			{
+				int flatIndex = startIndex + i;
+				ivec2 indexCoord = ivec2(flatIndex & 63, flatIndex >> 6);
+				int objectIndex = int(texelFetch(t_gridIndices, indexCoord, 0).x);
+
+				// Dot buffer wraps to 2D at 16384 texels wide (matches DataBuffer::uploadRawData on ES drivers)
+				vec4 positionSizeMaterial = texelFetch(t_dotBuffer, ivec2(objectIndex & 16383, objectIndex >> 14), 0);
+				int materialId = int(positionSizeMaterial.w);
 
 #ifdef UI_PIPELINE
-			float objectDist = shape_circle(pos - positionSizeMaterial.xy, 5.0);
+				float objectDist = shape_circle(pos - positionSizeMaterial.xy, 5.0);
 #else
-			float objectDist = shape_circle(pos - positionSizeMaterial.xy);
+				float objectDist = shape_circle(pos - positionSizeMaterial.xy);
 #endif
 
-			mask = max(mask, clamp(-objectDist * 4.0, 0.0, 1.0));
+				mask = max(mask, clamp(-objectDist * 4.0, 0.0, 1.0));
 
 #ifdef BLEND_SHAPES
-			finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-			minDotDist = fOpUnionSoft(objectDist, minDotDist, u_k, inv_k);
-			minColorDist = min(minColorDist, objectDist);
+				finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
+				minDotDist = fOpUnionSoft(objectDist, minDotDist, u_k, inv_k);
+				minColorDist = min(minColorDist, objectDist);
 #else
-			finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
-			minColorDist = min(minColorDist, objectDist);
-			minDotDist = min(minDotDist, objectDist);
+				finalMaterialId = objectDist <= minColorDist ? materialId : finalMaterialId;
+				minColorDist = min(minColorDist, objectDist);
+				minDotDist = min(minDotDist, objectDist);
 #endif
-		}
+			}
 
 #ifndef UI_PIPELINE
-		float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
-		distanceBonus =
-			min(distanceBonus, 1.0 * abs(zoom) / u_resolution.y); // Cap distance bonus to prevent artifacts
+			float distanceBonus = (0.00002 * zoom * zoom); // Compensate for precision issues when zoomed out far away
+			distanceBonus =
+				min(distanceBonus, 1.0 * abs(zoom) / u_resolution.y); // Cap distance bonus to prevent artifacts
 #else
-		float distanceBonus = 0.0;
+			float distanceBonus = 0.0;
 #endif
 
-		// Smoothly saturate dot distance with a C2 Hermite curve (derivative in [0, 1]) so empty cells
-		// and populated cells meet identically before cell boundaries without steep distance gradients.
-		float fadeStart = u_dotFadeRange.x;
-		float fadeSpan = max(u_dotFadeRange.y, 1e-4);
-		float dotDist = minDotDist - distanceBonus;
-		float t = clamp((dotDist - fadeStart) / fadeSpan, 0.0, 1.0);
-		float t2 = t * t;
-		float effectiveDotDist =
-			(dotDist <= fadeStart) ? dotDist : fadeStart + fadeSpan * (t - t2 * t + 0.5 * t2 * t2);
+			// Smoothly saturate dot distance with a C2 Hermite curve (derivative in [0, 1]) so empty cells
+			// and populated cells meet identically before cell boundaries without steep distance gradients.
+			float fadeStart = u_dotFadeRange.x;
+			float fadeSpan = max(u_dotFadeRange.y, 1e-4);
+			float dotDist = minDotDist - distanceBonus;
+			float t = clamp((dotDist - fadeStart) / fadeSpan, 0.0, 1.0);
+			float t2 = t * t;
+			float effectiveDotDist =
+				(dotDist <= fadeStart) ? dotDist : fadeStart + fadeSpan * (t - t2 * t + 0.5 * t2 * t2);
 
-		minDist = min(minDist, effectiveDotDist);
+			minDist = min(minDist, effectiveDotDist);
+		}
+		else
+		{
+			// Empty cell: Hermite curve at minDotDist = 1e6 evaluates identically to fadeStart + 0.5 * fadeSpan.
+			minDist = min(minDist, u_dotFadeRange.x + 0.5 * u_dotFadeRange.y);
+		}
 	}
 #ifdef UI_PIPELINE
 	minDist = min(minDist, 10.0); // Clamp max distance in UI mode

@@ -189,9 +189,10 @@ namespace WeirdEngine
 
 			struct GridInfo
 			{
-				float minX, minY, stepX, stepY;
-				float fadeStart, fadeSpan;
-				int gridCols, gridRows, indexTexWidth, indexTexHeight;
+				float minX = 0.0f, minY = 0.0f, stepX = 1.0f, stepY = 1.0f;
+				float fadeStart = 0.0f, fadeSpan = 1.0f;
+				int gridCols = 0, gridRows = 0, indexTexWidth = 0, indexTexHeight = 0;
+				int visibleObjects = 0;
 			};
 			struct ShapeTileGridInfo
 			{
@@ -206,7 +207,7 @@ namespace WeirdEngine
 			void renderDistanceField(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,
 									 const Shape2DAABB* shapeBounds, uint32_t shapeCount, const Camera& camera,
 									 double time, double delta);
-			void applyJumpFloodCorrection();
+			void applyJumpFloodCorrection(const Camera& camera);
 			void upscaleDistance();
 			void renderMaterialColors(const Material2D* materials, const Camera& camera, double time, double delta);
 			void blendMaterials(double time);

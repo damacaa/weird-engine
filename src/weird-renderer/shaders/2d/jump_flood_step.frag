@@ -11,7 +11,7 @@ in vec2 v_texCoord;
 // Uniforms
 uniform sampler2D t_prevSeeds; // previous seed texture
 uniform int u_jump;			   // jump distance in texels
-uniform vec2 u_texelSize;	   // 1.0 / texture resolution (e.g., 1/width, 1/height)
+uniform float u_aspectScale;   // u_texelSize.x / u_texelSize.y (height / width)
 uniform ivec2 u_resolution;	   // texture resolution in texels
 
 float distanceSqrt(vec2 a, vec2 b)
@@ -19,7 +19,7 @@ float distanceSqrt(vec2 a, vec2 b)
 	vec2 d = (a - b);
 
 	// Normalize Y scale to match X scale to fix the aspect ratio
-	d.y *= (u_texelSize.x / u_texelSize.y);
+	d.y *= u_aspectScale;
 
 	return dot(d, d);
 }
@@ -39,7 +39,7 @@ void main()
 	float bestDist = data.z;
 
 	// Check neighbors at jump distance
-	for (int i = 0; i < 8; i++)
+	for (mediump int i = 0; i < 8; i++)
 	{
 		ivec2 sampleCoord = coord + (OFFSETS[i] * u_jump);
 

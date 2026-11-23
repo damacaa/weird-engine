@@ -13,7 +13,7 @@ namespace MusicSceneNamespace
 {
 	struct State
 	{
-		static constexpr size_t NUM_SONGS = 4;
+		static constexpr size_t MAX_SONGS = 16;
 		static constexpr size_t NUM_DYNAMICS = 2;
 		static constexpr size_t NUM_GAUGE_BARS = 5;
 		static constexpr size_t NUM_TRACKS = 4;
@@ -24,10 +24,9 @@ namespace MusicSceneNamespace
 			DYN_DUCK = 1
 		};
 
-		std::array<WeirdEngine::Entity, NUM_SONGS> songToggles{WeirdEngine::INVALID_ENTITY, WeirdEngine::INVALID_ENTITY,
-															   WeirdEngine::INVALID_ENTITY,
-															   WeirdEngine::INVALID_ENTITY};
-		std::array<WeirdEngine::Material2DHandle, NUM_SONGS> songMats{};
+		size_t songCount = 0;
+		std::array<WeirdEngine::Entity, MAX_SONGS> songToggles{};
+		std::array<WeirdEngine::Material2DHandle, MAX_SONGS> songMats{};
 
 		int selectedSongIndex = -1;
 		int currentLoadedSongIndex = -1;

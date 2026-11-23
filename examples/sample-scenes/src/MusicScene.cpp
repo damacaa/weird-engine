@@ -11,7 +11,8 @@ using namespace WeirdEngine;
 
 namespace MusicSceneNamespace
 {
-	static std::array<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>, State::NUM_SONGS> s_songs;
+	static std::vector<MusicShapes::LoadedSongAsset> s_songAssets;
+	static std::vector<std::shared_ptr<WeirdEngine::WeirdAudio::SdfSong>> s_songs;
 	State& getState(Registry& registry)
 	{
 		State* state = registry.getState<State>();
@@ -21,7 +22,8 @@ namespace MusicSceneNamespace
 
 	void stateInitSystem(Registry& registry, ServiceProvider& services)
 	{
-		registry.emplaceState<State>();
+		State& state = registry.emplaceState<State>();
+		state.songToggles.fill(WeirdEngine::INVALID_ENTITY);
 	}
 
 	using namespace SDF;
@@ -38,24 +40,25 @@ namespace MusicSceneNamespace
 		glm::vec2 previewCenter(winW * 0.5f, winH * 0.5f);
 		state.lastResolutionHash = (Display::width * 73856093) ^ Display::height;
 
-		for (size_t i = 0; i < State::NUM_SONGS; ++i)
+		s_songAssets = MusicShapes::loadSongsFromAssets(services.resources());
+		state.songCount = std::min(s_songAssets.size(), State::MAX_SONGS);
+
+		s_songs.clear();
+		s_songs.resize(state.songCount);
+
+		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			Material2D& mat = services.materials2D().createMaterial("music_mat_" + std::to_string(i));
-			mat.color = ColorPalette::Default[8 + i % ColorPalette::Default.size()];
+			mat.color = ColorPalette::Default[(8 + i) % ColorPalette::Default.size()];
 			state.songMats[i] = mat.id;
-		}
-
-		// 3. Instantiate the 4 songs using shared MusicShapes definitions
-		for (size_t i = 0; i < State::NUM_SONGS; ++i)
-		{
-			s_songs[i] = MusicShapes::createSong(i, previewCenter);
+			s_songs[i] = MusicShapes::createSong(s_songAssets[i], previewCenter);
 		}
 
 		auto activeSong = services.audio().music().getCurrentSong();
 		int activeIdx = -1;
 		if (activeSong && services.audio().music().getVolume() > 0.0f)
 		{
-			for (size_t i = 0; i < State::NUM_SONGS; ++i)
+			for (size_t i = 0; i < state.songCount; ++i)
 			{
 				if (s_songs[i]->getName() == activeSong->getName())
 				{
@@ -233,11 +236,11 @@ namespace MusicSceneNamespace
 
 		auto& t = registry.getComponent<Transform>(state.cursorDot);
 		if (state.selectionMode && state.cursorSongIndex >= 0 &&
-			state.cursorSongIndex < static_cast<int>(State::NUM_SONGS))
+			state.cursorSongIndex < static_cast<int>(state.songCount))
 		{
 			const MusicUiLayout l = computeMusicUiLayout();
 			const float spacingX = 60.0f;
-			const float totalWidth = spacingX * 3;
+			const float totalWidth = (state.songCount > 1) ? spacingX * static_cast<float>(state.songCount - 1) : 0.0f;
 			const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 
 			t.position = vec3(startX + static_cast<float>(state.cursorSongIndex) * spacingX, l.toggleY - 36.0f, 0.0f);
@@ -295,7 +298,7 @@ namespace MusicSceneNamespace
 
 	static void loadAndPlaySong(Registry& registry, ServiceProvider& services, State& state, int idx)
 	{
-		if (idx < 0 || idx >= static_cast<int>(State::NUM_SONGS) || !s_songs[idx])
+		if (idx < 0 || idx >= static_cast<int>(state.songCount) || !s_songs[idx])
 			return;
 
 		state.selectedSongIndex = idx;
@@ -304,7 +307,7 @@ namespace MusicSceneNamespace
 		state.currentLoadedSongIndex = idx;
 		state.isPlaying = true;
 
-		for (size_t i = 0; i < State::NUM_SONGS; ++i)
+		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			if (registry.isEntityValid(state.songToggles[i]) &&
 				registry.hasComponent<ShapeToggle>(state.songToggles[i]))
@@ -357,7 +360,7 @@ namespace MusicSceneNamespace
 
 		const MusicUiLayout l = computeMusicUiLayout();
 		const float spacingX = 60.0f;
-		const float totalWidth = spacingX * 3;
+		const float totalWidth = (state.songCount > 1) ? spacingX * static_cast<float>(state.songCount - 1) : 0.0f;
 		const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 
 		auto boundToggle = [](Expr shape, Vec2Expr p)
@@ -366,10 +369,10 @@ namespace MusicSceneNamespace
 			return sdfIntersect(shape, sdCircle(p, Expr(var(0)) * 1.2f));
 		};
 
-		for (size_t i = 0; i < State::NUM_SONGS; ++i)
+		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId id = services.shapes().registerSDF(boundToggle(MusicShapes::getSongShape(i, p), p));
+			ShapeId id = services.shapes().registerSDF(boundToggle(MusicShapes::evaluateSongShape(s_songAssets[i], p), p));
 			state.songToggles[i] = services.shapes().addUIShape(
 				{.shapeId = id,
 				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + static_cast<float>(i) * spacingX}, {3, l.toggleY}},
@@ -581,7 +584,7 @@ namespace MusicSceneNamespace
 			t.position = vec3(400.0f, 400.0f, 0.0f);
 
 			auto& ui = registry.addComponent<UIDot>(ee);
-			ui.materialId = state.songMats[i % State::NUM_SONGS];
+			ui.materialId = (state.songCount > 0) ? state.songMats[i % state.songCount] : state.textMat;
 
 			state.uiPoints[i] = ee;
 		}
@@ -641,9 +644,9 @@ namespace MusicSceneNamespace
 		else if (services.input().getKeyDown(Input::Num4))
 			keySelected = 3;
 
-		if (keySelected >= 0 && keySelected < static_cast<int>(State::NUM_SONGS))
+		if (keySelected >= 0 && keySelected < static_cast<int>(state.songCount))
 		{
-			for (size_t i = 0; i < State::NUM_SONGS; ++i)
+			for (size_t i = 0; i < state.songCount; ++i)
 			{
 				if (registry.isEntityValid(state.songToggles[i]) &&
 					registry.hasComponent<ShapeToggle>(state.songToggles[i]))
@@ -666,7 +669,7 @@ namespace MusicSceneNamespace
 		}
 
 		// Mouse toggle selection
-		for (size_t i = 0; i < State::NUM_SONGS; ++i)
+		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			if (registry.isEntityValid(state.songToggles[i]) &&
 				registry.hasComponent<ShapeToggle>(state.songToggles[i]))
@@ -683,7 +686,7 @@ namespace MusicSceneNamespace
 						state.paramSize = s_songs[i]->getParameter(0);
 						state.paramSpeed = s_songs[i]->getParameter(1);
 					}
-					for (size_t j = 0; j < State::NUM_SONGS; ++j)
+					for (size_t j = 0; j < state.songCount; ++j)
 					{
 						if (j != i && registry.isEntityValid(state.songToggles[j]) &&
 							registry.hasComponent<ShapeToggle>(state.songToggles[j]))
@@ -708,10 +711,10 @@ namespace MusicSceneNamespace
 
 		if (!state.selectionMode)
 		{
-			if (dpadLeft || dpadRight || dpadUp || dpadDown)
+			if ((dpadLeft || dpadRight || dpadUp || dpadDown) && state.songCount > 0)
 			{
 				state.selectionMode = true;
-				if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
+				if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(state.songCount))
 				{
 					state.cursorSongIndex = state.selectedSongIndex;
 				}
@@ -720,13 +723,14 @@ namespace MusicSceneNamespace
 					state.cursorSongIndex = 0;
 				}
 
+				const int songCount = static_cast<int>(state.songCount);
 				if (dpadLeft)
 				{
-					state.cursorSongIndex = (state.cursorSongIndex - 1 + State::NUM_SONGS) % State::NUM_SONGS;
+					state.cursorSongIndex = (state.cursorSongIndex - 1 + songCount) % songCount;
 				}
 				else if (dpadRight)
 				{
-					state.cursorSongIndex = (state.cursorSongIndex + 1) % State::NUM_SONGS;
+					state.cursorSongIndex = (state.cursorSongIndex + 1) % songCount;
 				}
 
 				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
@@ -743,12 +747,13 @@ namespace MusicSceneNamespace
 				services.audio().playSound({0.03f, 320.0f, false, vec3(0.0f), 1});
 				updateCursorDot(registry, state);
 			}
-			else if (crossDown)
+			else if (crossDown && state.cursorSongIndex >= 0 &&
+					 state.cursorSongIndex < static_cast<int>(state.songCount))
 			{
 				// PlayStation cross confirms selection
 				state.selectedSongIndex = state.cursorSongIndex;
 				state.confirmedSongIndex = state.cursorSongIndex;
-				for (size_t i = 0; i < State::NUM_SONGS; ++i)
+				for (size_t i = 0; i < state.songCount; ++i)
 				{
 					if (registry.isEntityValid(state.songToggles[i]) &&
 						registry.hasComponent<ShapeToggle>(state.songToggles[i]))
@@ -764,17 +769,19 @@ namespace MusicSceneNamespace
 				}
 				services.audio().playSound({0.04f, 750.0f, false, vec3(0.0f), 1});
 			}
-			else if (dpadLeft)
+			else if (dpadLeft && state.songCount > 0)
 			{
 				// Left moves dot cursor only
-				state.cursorSongIndex = (state.cursorSongIndex - 1 + State::NUM_SONGS) % State::NUM_SONGS;
+				const int songCount = static_cast<int>(state.songCount);
+				state.cursorSongIndex = (state.cursorSongIndex - 1 + songCount) % songCount;
 				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
 				updateCursorDot(registry, state);
 			}
-			else if (dpadRight)
+			else if (dpadRight && state.songCount > 0)
 			{
 				// Right moves dot cursor only
-				state.cursorSongIndex = (state.cursorSongIndex + 1) % State::NUM_SONGS;
+				const int songCount = static_cast<int>(state.songCount);
+				state.cursorSongIndex = (state.cursorSongIndex + 1) % songCount;
 				services.audio().playSound({0.02f, 500.0f + state.cursorSongIndex * 90.0f, false, vec3(0.0f), 1});
 				updateCursorDot(registry, state);
 			}
@@ -835,7 +842,7 @@ namespace MusicSceneNamespace
 		// Handle Play Action: loads selected song into preview UI via setSong()
 		if (playClicked)
 		{
-			if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
+			if (state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(state.songCount))
 			{
 				loadAndPlaySong(registry, services, state, state.selectedSongIndex);
 				services.audio().playSound({0.03f, 750.0f, false, vec3(0.0f), 1});
@@ -855,7 +862,7 @@ namespace MusicSceneNamespace
 			services.audio().music().setVolume(0.0f);
 
 			// Reset all shape toggles
-			for (size_t i = 0; i < State::NUM_SONGS; ++i)
+			for (size_t i = 0; i < state.songCount; ++i)
 			{
 				if (registry.isEntityValid(state.songToggles[i]) &&
 					registry.hasComponent<ShapeToggle>(state.songToggles[i]))
@@ -886,7 +893,7 @@ namespace MusicSceneNamespace
 			if (!state.isPlaying || !currentSong)
 			{
 				int targetIdx =
-					(state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(State::NUM_SONGS))
+					(state.selectedSongIndex >= 0 && state.selectedSongIndex < static_cast<int>(state.songCount))
 						? state.selectedSongIndex
 						: 0;
 				loadAndPlaySong(registry, services, state, targetIdx);
@@ -1112,7 +1119,7 @@ namespace MusicSceneNamespace
 			const MusicUiLayout l = computeMusicUiLayout();
 			glm::vec2 previewCenter(l.winW * 0.5f, l.winH * 0.5f);
 
-			for (size_t i = 0; i < State::NUM_SONGS; ++i)
+			for (size_t i = 0; i < state.songCount; ++i)
 			{
 				if (s_songs[i])
 				{
@@ -1121,13 +1128,14 @@ namespace MusicSceneNamespace
 
 				// Re-center toggles
 				const float spacingX = 60.0f;
-				const float totalWidth = spacingX * 3;
+				const float totalWidth =
+					(state.songCount > 1) ? spacingX * static_cast<float>(state.songCount - 1) : 0.0f;
 				const float startX = (l.winW * 0.5f) - (totalWidth * 0.5f);
 				if (registry.isEntityValid(state.songToggles[i]) &&
 					registry.hasComponent<UIShape>(state.songToggles[i]))
 				{
 					auto& shape = registry.getComponent<UIShape>(state.songToggles[i]);
-					shape.parameters[2] = startX + i * spacingX;
+					shape.parameters[2] = startX + static_cast<float>(i) * spacingX;
 					shape.parameters[3] = l.toggleY;
 				}
 			}
@@ -1197,15 +1205,15 @@ void MusicScene::onImGuiRender(Registry& registry, ServiceProvider& services)
 
 		// 1. Song Picker & Shape Parameters
 		ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Song & Shape Parameters:");
-		const auto& defs = MusicShapes::getSongDefinitions();
-		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_SONGS; ++i)
+		const auto& assets = MusicSceneNamespace::s_songAssets;
+		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			if (i > 0)
 				ImGui::SameLine();
 			bool isCurrent = (state.currentLoadedSongIndex == static_cast<int>(i) && state.isPlaying);
 			if (isCurrent)
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.65f, 0.35f, 1.0f));
-			if (ImGui::Button(defs[i].title.c_str()))
+			if (ImGui::Button(assets[i].title.c_str()))
 			{
 				state.selectedSongIndex = static_cast<int>(i);
 				state.confirmedSongIndex = static_cast<int>(i);

@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 	// sceneManager.registerScene<CollisionHandlingScene>("collision-handling");
 
 	// Stress tests / benchmarks (commented out due to runtime shader rebuild overhead)
-	// sceneManager.registerScene<DestroyScene>("destroy-test");
+	sceneManager.registerScene<DestroyScene>("destroy-test");
 
 	sceneManager.registerScene<AquariumScene>("aquarium", ASSETS_PATH "aquarium.weirdscene");
 

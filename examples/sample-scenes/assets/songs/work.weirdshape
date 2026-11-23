@@ -1,0 +1,188 @@
+{
+  "links": [
+    {
+      "endPinId": 400,
+      "id": 1,
+      "startPinId": 150
+    },
+    {
+      "endPinId": 401,
+      "id": 2,
+      "startPinId": 250
+    },
+    {
+      "endPinId": 500,
+      "id": 3,
+      "startPinId": 150
+    },
+    {
+      "endPinId": 501,
+      "id": 4,
+      "startPinId": 350
+    },
+    {
+      "endPinId": 600,
+      "id": 5,
+      "startPinId": 450
+    },
+    {
+      "endPinId": 601,
+      "id": 6,
+      "startPinId": 550
+    },
+    {
+      "endPinId": 700,
+      "id": 7,
+      "startPinId": 650
+    }
+  ],
+  "nodes": [
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 1,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 60.0,
+      "posY": 80.0,
+      "typeId": "point"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 2,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 60.0,
+      "posY": 200.0,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 1,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 3,
+      "inputFloats": [],
+      "inputVec2s": [],
+      "posX": 60.0,
+      "posY": 320.0,
+      "typeId": "param_var"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 4,
+      "inputFloats": [
+        0.0,
+        20.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 310.0,
+      "posY": 140.0,
+      "typeId": "circle"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 5,
+      "inputFloats": [
+        0.0,
+        20.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 310.0,
+      "posY": 260.0,
+      "typeId": "circle"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 6,
+      "inputFloats": [
+        0.0,
+        0.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 560.0,
+      "posY": 200.0,
+      "typeId": "subtract"
+    },
+    {
+      "customFloat": 1.0,
+      "customInt": 0,
+      "customVec2X": 0.0,
+      "customVec2Y": 0.0,
+      "id": 7,
+      "inputFloats": [
+        1.0
+      ],
+      "inputVec2s": [
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "posX": 810.0,
+      "posY": 200.0,
+      "typeId": "sdf_output"
+    }
+  ],
+  "parameterNames": [
+    "OuterRad",
+    "InnerRad",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "parameters": [
+    28.0,
+    18.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

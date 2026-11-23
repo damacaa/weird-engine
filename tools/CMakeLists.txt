@@ -112,10 +112,16 @@ endif()
 
 set_source_files_properties(${WEIRD_TOOLS_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
+set(WEIRD_TOOLS_RESOURCES "")
+if(WIN32 AND NOT BUILD_WEB)
+    set(WEIRD_TOOLS_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources/weird_editor.rc")
+endif()
+
 add_executable(${WEIRD_TOOLS_TARGET}
     ${WEIRD_TOOLS_SOURCES}
     ${WEIRD_TOOLS_HEADERS}
     ${WEIRD_TOOLS_ASSETS}
+    ${WEIRD_TOOLS_RESOURCES}
 )
 
 if(WEIRD_TOOLS_SHAPE_EDITOR_ONLY)
@@ -133,6 +139,7 @@ target_include_directories(${WEIRD_TOOLS_TARGET} PRIVATE
 )
 
 target_link_libraries(${WEIRD_TOOLS_TARGET} PRIVATE WeirdEngine)
+weird_configure_app(${WEIRD_TOOLS_TARGET})
 
 if(WIN32 AND NOT WEIRD_TOOLS_SHAPE_EDITOR_ONLY)
     target_link_libraries(${WEIRD_TOOLS_TARGET} PRIVATE ole32 shell32 uuid)
@@ -201,4 +208,4 @@ function(assign_source_groups TARGET)
     endforeach()
 endfunction()
 
-assign_source_groups(${WEIRD_TOOLS_TARGET} ${WEIRD_TOOLS_SOURCES} ${WEIRD_TOOLS_HEADERS} ${WEIRD_TOOLS_ASSETS})
+assign_source_groups(${WEIRD_TOOLS_TARGET} ${WEIRD_TOOLS_SOURCES} ${WEIRD_TOOLS_HEADERS} ${WEIRD_TOOLS_ASSETS} ${WEIRD_TOOLS_RESOURCES})

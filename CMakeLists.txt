@@ -249,6 +249,8 @@ endfunction()
 
 assign_source_groups(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/WeirdApp.cmake")
+
 # Examples
 option(WEIRD_ENGINE_BUILD_EXAMPLES "Build example projects" OFF)
 if(WEIRD_ENGINE_BUILD_EXAMPLES)

@@ -59,7 +59,25 @@ namespace WeirdEngine
 
 		std::unordered_set<int> activeNodes;
 		std::unordered_map<int, NodeValue> cache;
-		NodeValue val = evaluateNode(graph, outputId, 0, activeNodes, cache);
+		NodeValue val = evaluateNode(graph, outputId, 0, activeNodes, cache, nullptr);
+		return asFloat(val);
+	}
+
+	Expr NodeGraphCompiler::evaluate(NodeGraph& graph, const Vec2Expr& samplePoint)
+	{
+		int outputId = findOutputNodeId(graph);
+		if (outputId <= 0)
+		{
+			return Expr(1.0f);
+		}
+		if (graph.getOutputNodeId() <= 0)
+		{
+			graph.setOutputNodeId(outputId);
+		}
+
+		std::unordered_set<int> activeNodes;
+		std::unordered_map<int, NodeValue> cache;
+		NodeValue val = evaluateNode(graph, outputId, 0, activeNodes, cache, &samplePoint);
 		return asFloat(val);
 	}
 
@@ -104,7 +122,8 @@ namespace WeirdEngine
 
 	NodeValue NodeGraphCompiler::evaluateNode(const NodeGraph& graph, int nodeId, int outputPinIdx,
 											  std::unordered_set<int>& activeNodes,
-											  std::unordered_map<int, NodeValue>& cache)
+											  std::unordered_map<int, NodeValue>& cache,
+											  const Vec2Expr* customPoint)
 	{
 		int cacheKey = makePinId(nodeId, false, outputPinIdx);
 		if (auto it = cache.find(cacheKey); it != cache.end())
@@ -126,6 +145,14 @@ namespace WeirdEngine
 			return NodeValue(Expr(0.0f));
 		}
 
+		if (customPoint != nullptr && def->typeId == "point")
+		{
+			activeNodes.erase(nodeId);
+			NodeValue result(*customPoint);
+			cache[cacheKey] = result;
+			return result;
+		}
+
 		std::vector<NodeValue> evaluatedInputs;
 		evaluatedInputs.reserve(def->inputs.size());
 
@@ -139,7 +166,8 @@ namespace WeirdEngine
 				bool upstreamIsInput = false;
 				decomposePinId(incomingLink->startPinId, upstreamNodeId, upstreamIsInput, upstreamPinIdx);
 
-				evaluatedInputs.push_back(evaluateNode(graph, upstreamNodeId, upstreamPinIdx, activeNodes, cache));
+				evaluatedInputs.push_back(
+					evaluateNode(graph, upstreamNodeId, upstreamPinIdx, activeNodes, cache, customPoint));
 			}
 			else if (node->typeId == "sdf_output")
 			{

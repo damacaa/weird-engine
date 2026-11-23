@@ -13,11 +13,13 @@ namespace WeirdEngine
 	{
 	public:
 		static Expr evaluate(NodeGraph& graph);
+		static Expr evaluate(NodeGraph& graph, const Vec2Expr& samplePoint);
 		static std::string generateCppCode(const NodeGraph& graph);
 
 	private:
 		static NodeValue evaluateNode(const NodeGraph& graph, int nodeId, int outputPinIdx,
-									  std::unordered_set<int>& activeNodes, std::unordered_map<int, NodeValue>& cache);
+									  std::unordered_set<int>& activeNodes, std::unordered_map<int, NodeValue>& cache,
+									  const Vec2Expr* customPoint = nullptr);
 		static std::string generateNodeCpp(const NodeGraph& graph, int nodeId, int outputPinIdx,
 										   std::unordered_set<int>& activeNodes,
 										   std::unordered_map<int, std::string>& cache,

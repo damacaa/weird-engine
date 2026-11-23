@@ -66,6 +66,19 @@ namespace MenuSceneNamespace
 	{
 		auto& state = registry.emplaceState<State>();
 
+		// Load all song shapes from assets/songs
+		auto loadedSongs = MusicShapes::loadSongsFromAssets(services.resources());
+
+		std::vector<MenuItem> musicItems;
+		musicItems.reserve(loadedSongs.size() + 1);
+		for (size_t i = 0; i < loadedSongs.size(); ++i)
+		{
+			char trackLabel[32];
+			std::snprintf(trackLabel, sizeof(trackLabel), "TRACK %02zu", i + 1);
+			musicItems.push_back({trackLabel, loadedSongs[i].description, "play_song", "", static_cast<int>(i)});
+		}
+		musicItems.push_back({"STOP MUSIC", "Silence background audio playback", "stop_song", "", -1});
+
 		// Initialize 3 Categories: SCENES, MUSIC, SETTINGS
 		s_categories = {
 			MenuCategory{
@@ -84,14 +97,7 @@ namespace MenuSceneNamespace
 					{"INSTRUMENTS", "Interactive synthesizer & instrument playground", "launch_scene", "instruments"},
 					{"STRESS TEST", "", "launch_scene", "destroy-test"},
 				}},
-			MenuCategory{"MUSIC",
-						 {
-							 {"TRACK 01", "Midnight Pulse (Synthwave Beat)", "play_song", "", 0},
-							 {"TRACK 02", "Silica Dreams (Ambient Chill)", "play_song", "", 1},
-							 {"TRACK 03", "Velocity (Electronic Melody)", "play_song", "", 2},
-							 {"TRACK 04", "Vortex (Hypnotic Rhythm)", "play_song", "", 3},
-							 {"STOP MUSIC", "Silence background audio playback", "stop_song", "", -1},
-						 }},
+			MenuCategory{"MUSIC", std::move(musicItems)},
 			MenuCategory{"SETTINGS",
 						 {
 							 {"THEME", "Cycle background color palette", "cycle_theme", ""},
@@ -124,8 +130,13 @@ namespace MenuSceneNamespace
 
 		glm::vec2 previewCenter = getClockPreviewCenter(registry);
 
-		// Instantiate procedural songs using shared MusicShapes definitions
-		s_songs = MusicShapes::createAllSongs(previewCenter);
+		// Instantiate procedural songs from loaded assets
+		s_songs.clear();
+		s_songs.reserve(loadedSongs.size());
+		for (auto& asset : loadedSongs)
+		{
+			s_songs.push_back(MusicShapes::createSong(asset, previewCenter));
+		}
 		state.currentPlayingSong = -1;
 	}
 
@@ -757,11 +768,25 @@ namespace MenuSceneNamespace
 			}
 		}
 
+		auto resetItemLabelButtons = [&]()
+		{
+			for (int slot = 0; slot < State::VISIBLE_ITEM_SLOTS; ++slot)
+			{
+				if (registry.isEntityValid(state.itemLabels[slot]) &&
+					registry.hasComponent<TextButton>(state.itemLabels[slot]))
+				{
+					auto& txtBtn = registry.getComponent<TextButton>(state.itemLabels[slot]);
+					txtBtn.hovered = false;
+					txtBtn.state = ButtonState::Off;
+				}
+			}
+		};
+
 		if (clickedCat >= 0)
 		{
 			if (selectCategory(clickedCat))
 			{
-				input.suppressMouseInput();
+				resetItemLabelButtons();
 			}
 		}
 		else
@@ -785,8 +810,8 @@ namespace MenuSceneNamespace
 							s_categories[state.selectedCategory].selectedItem = clickedItem;
 							state.categoryTitleTimer = 0.0f;
 							playNavigationSound(services, 1120.0f, 0.32f);
+							resetItemLabelButtons();
 						}
-						input.suppressMouseInput();
 					}
 					break;
 				}

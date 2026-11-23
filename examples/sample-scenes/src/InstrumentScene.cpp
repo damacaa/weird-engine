@@ -900,6 +900,7 @@ namespace InstrumentSceneNamespace
 											  .group = 0});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
+			btn.requireClickStart = false;
 
 			KeyVisual kv;
 			kv.midiNote = 60 + WHITE_OFFSETS[i];
@@ -930,6 +931,7 @@ namespace InstrumentSceneNamespace
 														.group = 1});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
+			btn.requireClickStart = false;
 
 			KeyVisual kv;
 			kv.midiNote = 60 + bd.semitone;

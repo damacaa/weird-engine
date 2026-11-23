@@ -20,6 +20,8 @@ namespace WeirdEngine
 		float modifierAmount = 0.0f;
 		float clickPadding = 10.0f;
 		bool hovered = false;
+		// When true, the click must start while hovering
+		bool requireClickStart = true;
 	};
 
 	struct ShapeToggle
@@ -39,6 +41,8 @@ namespace WeirdEngine
 		ButtonState state = ButtonState::Off;
 		float clickPadding = 10.0f;
 		bool hovered = false;
+		// When true, the click must start while hovering
+		bool requireClickStart = true;
 		uint16_t baseMaterial = UNSET_MATERIAL;
 		uint16_t hoverMaterial = UNSET_MATERIAL;
 		uint16_t pressedMaterial = UNSET_MATERIAL;

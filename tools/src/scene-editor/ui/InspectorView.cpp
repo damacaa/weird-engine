@@ -1332,6 +1332,11 @@ namespace WeirdEngine::Tools::SceneEd
 					ctx.registry->setComponentDirty(btn);
 					ctx.isSceneDirty = true;
 				}
+				if (ImGui::Checkbox("Require Click Start", &btn.requireClickStart))
+				{
+					ctx.registry->setComponentDirty(btn);
+					ctx.isSceneDirty = true;
+				}
 				ImGui::Text("Hovered: %s", btn.hovered ? "True" : "False");
 
 				if (ImGui::Button("Remove Shape Button", ImVec2(-1.0f, 22.0f)))

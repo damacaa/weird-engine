@@ -1320,6 +1320,27 @@ namespace
 					registry.getComponent<UITextRenderer>(state.itemLabels[5]).material == uiDimmed.id,
 				"Leaving MenuScene item label must restore base dimmed material.");
 
+		// Regression: clicking an item and holding mouse while list animates must not reset slots into a second click
+		Input::clearUIClick();
+		Input::SetMousePosition(slot5Tf.position.x + 25.0f, 800.0f - slot5Tf.position.y);
+		ButtonSystem::updateTextButtons(registry, uiCtx, true, true);
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		require(state.selectedItem == 1 &&
+					registry.getComponent<TextButton>(state.itemLabels[5]).state == ButtonState::Off,
+				"Clicking MenuScene item must select it and clear recycled slot button states.");
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+		Input::clearUIClick();
+		ButtonSystem::updateTextButtons(registry, uiCtx, true, false);
+		MenuSceneNamespace::menuInputSystem(registry, services);
+		require(state.selectedItem == 1,
+				"Continuing to hold mouse while MenuScene items animate must not click another item.");
+		Input::clearUIClick();
+		Input::SetMousePosition(0.0f, 0.0f);
+		ButtonSystem::updateTextButtons(registry, uiCtx, false, false);
+		state.selectedItem = 0;
+		state.smoothItem = 0.0f;
+		MenuSceneNamespace::menuAnimationSystem(registry, services);
+
 		// Click unselected item slot 6 ("ROPE") via TextButton -> selects item 2
 		registry.getComponent<TextButton>(state.itemLabels[6]).state = ButtonState::Down;
 		MenuSceneNamespace::menuInputSystem(registry, services);
@@ -1554,6 +1575,8 @@ namespace
 
 	void testTextButtonAndToggleComponents()
 	{
+		static_assert(WeirdEngine::is_snapshot_serializable_v<ShapeButton>,
+					  "ShapeButton must remain snapshot-serializable.");
 		static_assert(WeirdEngine::is_snapshot_serializable_v<TextButton>,
 					  "TextButton must remain snapshot-serializable.");
 		static_assert(WeirdEngine::is_snapshot_serializable_v<TextToggle>,
@@ -1604,20 +1627,52 @@ namespace
 
 		// Verify momentary and toggle state transitions + UI click claiming
 		Input::suppressMouseInput();
+		Input::clearUIClick();
 		ButtonState mState = ButtonState::Off;
-		ButtonSystem::stepMomentaryButton(mState, true, true, true);
+		ButtonSystem::stepMomentaryButton(mState, true, true, false, true);
+		require(mState == ButtonState::Off && !Input::isUIClick(),
+				"Default requireClickStart must ignore hovering while mouse is already held.");
+		ButtonSystem::stepMomentaryButton(mState, true, true, true, true);
 		require(mState == ButtonState::Down && Input::isUIClick(),
 				"Hovered press must enter Down and claim Input::isUIClick().");
 		ButtonState blockedState = ButtonState::Off;
-		ButtonSystem::stepMomentaryButton(blockedState, true, true, true);
+		ButtonSystem::stepMomentaryButton(blockedState, true, true, true, true);
 		require(blockedState == ButtonState::Off,
 				"Overlapping TextButton must respect an already-claimed Input::isUIClick().");
-		ButtonSystem::stepMomentaryButton(mState, true, true, true);
-		require(mState == ButtonState::Hold, "Continued press must transition Down -> Hold.");
-		ButtonSystem::stepMomentaryButton(mState, true, false, true);
+		Input::clearUIClick();
+		ButtonSystem::stepMomentaryButton(mState, false, true, false, true);
+		require(mState == ButtonState::Hold && Input::isUIClick(),
+				"Continued press after leaving hover must transition Down -> Hold when requireClickStart is enabled.");
+		ButtonSystem::stepMomentaryButton(mState, true, false, false, true);
 		require(mState == ButtonState::Up, "Releasing mouse must transition Hold -> Up.");
-		ButtonSystem::stepMomentaryButton(mState, true, false, true);
+		ButtonSystem::stepMomentaryButton(mState, true, false, false, true);
 		require(mState == ButtonState::Off, "Subsequent frame must settle Up -> Off.");
+
+		// Verify requireClickStart = false: hovering while held triggers, and leaving immediately releases
+		Input::clearUIClick();
+		ButtonState dragState = ButtonState::Off;
+		const auto dragEnter = ButtonSystem::stepMomentaryButton(dragState, true, true, false, true, false);
+		require(dragState == ButtonState::Down && dragEnter.enteredFromOff && Input::isUIClick(),
+				"With requireClickStart disabled, hovering while mouse is held must enter Down.");
+		Input::clearUIClick();
+		ButtonSystem::stepMomentaryButton(dragState, true, true, false, true, false);
+		require(dragState == ButtonState::Hold,
+				"With requireClickStart disabled, continued hover while held must enter Hold.");
+		Input::clearUIClick();
+		const auto dragLeave = ButtonSystem::stepMomentaryButton(dragState, false, true, false, true, false);
+		require(dragState == ButtonState::Up && !dragLeave.exitedToOff && !Input::isUIClick(),
+				"With requireClickStart disabled, leaving while held must immediately transition to Up.");
+		const auto dragSettle = ButtonSystem::stepMomentaryButton(dragState, false, true, false, true, false);
+		require(dragState == ButtonState::Off && dragSettle.exitedToOff,
+				"With requireClickStart disabled, staying outside after leaving must settle Up -> Off.");
+		Input::clearUIClick();
+		ButtonSystem::stepMomentaryButton(dragState, true, true, false, true, false);
+		Input::clearUIClick();
+		ButtonSystem::stepMomentaryButton(dragState, false, true, false, true, false);
+		Input::clearUIClick();
+		const auto dragReenter = ButtonSystem::stepMomentaryButton(dragState, true, true, false, true, false);
+		require(dragState == ButtonState::Down && !dragReenter.enteredFromOff,
+				"Re-entering on the Up frame must re-trigger Down without duplicating enteredFromOff.");
 
 		ButtonState tState = ButtonState::Off;
 		bool tActive = false;
@@ -1673,6 +1728,90 @@ namespace
 		require(!txtBtn.hovered && btnText.material == 2 && txtTgl.hovered && tglText.material == 8,
 				"Leaving TextButton must restore baseMaterial and hovering TextToggle must apply hoverMaterial.");
 
+		// Verify TextButton requireClickStart (default true vs false) with Registry updateTextButtons
+		txtBtn.pressedMaterial = 9;
+		Input::clearUIClick();
+		Input::SetMousePosition(140.0f, 490.0f); // over PLAY TextButton
+		ButtonSystem::updateTextButtons(reg, uiCtx, true, false);
+		require(txtBtn.hovered && txtBtn.state == ButtonState::Off && btnText.material == 5,
+				"TextButton with default requireClickStart must not click when hovered while mouse is already held.");
+
+		txtBtn.requireClickStart = false;
+		Input::clearUIClick();
+		ButtonSystem::updateTextButtons(reg, uiCtx, true, false);
+		require(txtBtn.hovered && txtBtn.state == ButtonState::Down && btnText.material == 9,
+				"TextButton with requireClickStart=false must trigger Down when hovered while mouse is held.");
+		Input::clearUIClick();
+		ButtonSystem::updateTextButtons(reg, uiCtx, true, false);
+		require(txtBtn.state == ButtonState::Hold && btnText.material == 9,
+				"TextButton with requireClickStart=false must advance to Hold while hovered and held.");
+		Input::SetMousePosition(0.0f, 0.0f); // leave PLAY TextButton while still holding mouse
+		Input::clearUIClick();
+		ButtonSystem::updateTextButtons(reg, uiCtx, true, false);
+		require(!txtBtn.hovered && txtBtn.state == ButtonState::Up && btnText.material == 2,
+				"TextButton with requireClickStart=false must stop being clicked and restore baseMaterial on leave.");
+		Input::clearUIClick();
+		ButtonSystem::updateTextButtons(reg, uiCtx, true, false);
+		require(txtBtn.state == ButtonState::Off,
+				"TextButton with requireClickStart=false must settle Up -> Off after leaving.");
+
+		// Verify ShapeButton requireClickStart (default true vs false) with Registry updateButtons
+		Scene::registerBuiltinSDFs();
+		auto builtinSpan = Scene::getBuiltinSDFs();
+		std::vector<std::shared_ptr<IMathExpression>> builtins(builtinSpan.begin(), builtinSpan.end());
+		Registry shapeReg;
+		shapeReg.registerComponent<UIShape>();
+		shapeReg.registerComponent<ShapeButton>();
+
+		const Entity shapeBtnEntity = shapeReg.createEntity();
+		auto& uiShape = shapeReg.addComponent<UIShape>(shapeBtnEntity);
+		uiShape.distanceFieldId = DefaultShapes::Box;
+		uiShape.parameters[DefaultShapes::Box::PosX] = 200.0f;
+		uiShape.parameters[DefaultShapes::Box::PosY] = 200.0f;
+		uiShape.parameters[DefaultShapes::Box::SizeX] = 40.0f;
+		uiShape.parameters[DefaultShapes::Box::SizeY] = 20.0f;
+		auto& shapeBtn = shapeReg.addComponent<ShapeButton>(shapeBtnEntity);
+		shapeBtn.clickPadding = 0.0f;
+		shapeBtn.modifierAmount = 5.0f;
+		shapeBtn.parameterModifierMask.set(DefaultShapes::Box::SizeX);
+
+		// Screen UI Y=200 maps to SDL Y=600 at 800px height
+		Input::SetMousePosition(200.0f, 600.0f);
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, false);
+		require(shapeBtn.hovered && shapeBtn.state == ButtonState::Off &&
+					std::abs(uiShape.parameters[DefaultShapes::Box::SizeX] - 40.0f) < 0.01f,
+				"ShapeButton with default requireClickStart must ignore hovering while mouse is already held.");
+
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, true);
+		require(shapeBtn.state == ButtonState::Down &&
+					std::abs(uiShape.parameters[DefaultShapes::Box::SizeX] - 45.0f) < 0.01f,
+				"ShapeButton with default requireClickStart must trigger when click starts on hover.");
+		Input::SetMousePosition(0.0f, 0.0f);
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, false);
+		require(!shapeBtn.hovered && shapeBtn.state == ButtonState::Hold,
+				"ShapeButton with default requireClickStart must stay Hold while mouse remains pressed.");
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, false, false);
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, false, false);
+		require(shapeBtn.state == ButtonState::Off &&
+					std::abs(uiShape.parameters[DefaultShapes::Box::SizeX] - 40.0f) < 0.01f,
+				"ShapeButton must settle to Off and revert parameter modifier after mouse release.");
+
+		shapeBtn.requireClickStart = false;
+		Input::SetMousePosition(200.0f, 600.0f);
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, false);
+		require(shapeBtn.hovered && shapeBtn.state == ButtonState::Down &&
+					std::abs(uiShape.parameters[DefaultShapes::Box::SizeX] - 45.0f) < 0.01f,
+				"ShapeButton with requireClickStart=false must trigger when hovered while mouse is held.");
+		Input::SetMousePosition(0.0f, 0.0f);
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, false);
+		require(!shapeBtn.hovered && shapeBtn.state == ButtonState::Up,
+				"ShapeButton with requireClickStart=false must stop being clicked as soon as mouse leaves shape.");
+		ButtonSystem::updateButtons(shapeReg, builtins, 0.0f, true, false);
+		require(shapeBtn.state == ButtonState::Off &&
+					std::abs(uiShape.parameters[DefaultShapes::Box::SizeX] - 40.0f) < 0.01f,
+				"ShapeButton with requireClickStart=false must settle Off and revert modifier after leaving.");
+
+		Input::clearUIClick();
 		Input::SetMousePosition(0.0f, 0.0f);
 	}
 
@@ -1682,7 +1821,7 @@ namespace
 		auto builtins = Scene::getBuiltinSDFs();
 		require(builtins.size() >= DefaultShapes::COUNT_2D, "Builtin SDF table must cover all 2D DefaultShapes.");
 
-		auto evalBuiltin = [&](ShapeId id, const float(&shapeVars)[8], vec2 p) -> float
+		auto evalBuiltin = [&](ShapeId id, const float (&shapeVars)[8], vec2 p) -> float
 		{
 			const auto& expr = builtins[id];
 			require(expr != nullptr, "Builtin shape AST must not be null.");

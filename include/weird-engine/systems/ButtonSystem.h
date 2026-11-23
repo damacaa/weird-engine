@@ -33,34 +33,50 @@ namespace WeirdEngine
 		};
 
 		inline ButtonTransition stepMomentaryButton(ButtonState& state, bool hovered, bool mouseIsClicking,
-													bool respectUIClick)
+													bool mouseDown, bool respectUIClick, bool requireClickStart = true)
 		{
 			ButtonTransition transition{};
-			if (mouseIsClicking && hovered)
+			const bool isPressedState = (state == ButtonState::Down || state == ButtonState::Hold);
+			const bool blockedByPriorUI = respectUIClick && Input::isUIClick() && !isPressedState;
+
+			bool activeThisFrame = false;
+			if (requireClickStart)
 			{
-				const bool blockedByPriorUI =
-					respectUIClick && Input::isUIClick() && (state == ButtonState::Off || state == ButtonState::Up);
-				if (!blockedByPriorUI)
+				// Click must start while hovering; once active, keep holding until mouse release.
+				if (isPressedState)
 				{
-					switch (state)
-					{
-						case ButtonState::Off:
-							state = ButtonState::Down;
-							transition.enteredFromOff = true;
-							break;
-						case ButtonState::Up:
-							state = ButtonState::Down;
-							break;
-						case ButtonState::Down:
-						case ButtonState::Hold:
-							state = ButtonState::Hold;
-							break;
-					}
-					Input::flagUIClick();
+					activeThisFrame = mouseIsClicking;
+				}
+				else
+				{
+					activeThisFrame = hovered && mouseIsClicking && mouseDown && !blockedByPriorUI;
 				}
 			}
+			else
+			{
+				// Hovering while mouse is held triggers the button; leaving releases it immediately.
+				activeThisFrame = hovered && mouseIsClicking && !blockedByPriorUI;
+			}
 
-			if (!mouseIsClicking)
+			if (activeThisFrame)
+			{
+				switch (state)
+				{
+					case ButtonState::Off:
+						state = ButtonState::Down;
+						transition.enteredFromOff = true;
+						break;
+					case ButtonState::Up:
+						state = ButtonState::Down;
+						break;
+					case ButtonState::Down:
+					case ButtonState::Hold:
+						state = ButtonState::Hold;
+						break;
+				}
+				Input::flagUIClick();
+			}
+			else
 			{
 				switch (state)
 				{
@@ -200,9 +216,9 @@ namespace WeirdEngine
 			}
 		}
 
-		inline void updateButtons(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		inline void updateButtons(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time,
+								  bool mouseIsClicking, bool mouseDown)
 		{
-			const bool mouseIsClicking = Input::GetMouseButton(Input::LeftClick);
 			const vec2 mousePos(Input::GetMouseX(), Input::GetMouseY());
 			const float audioVolume = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
 
@@ -216,7 +232,8 @@ namespace WeirdEngine
 					buttonComponent.hovered = distance < buttonComponent.clickPadding;
 
 					const ButtonTransition transition =
-						stepMomentaryButton(buttonComponent.state, buttonComponent.hovered, mouseIsClicking, false);
+						stepMomentaryButton(buttonComponent.state, buttonComponent.hovered, mouseIsClicking, mouseDown,
+											false, buttonComponent.requireClickStart);
 					if (transition.enteredFromOff)
 					{
 						applyShapeParameterModifier(shape, buttonComponent.parameterModifierMask,
@@ -228,6 +245,12 @@ namespace WeirdEngine
 													-buttonComponent.modifierAmount);
 					}
 				});
+		}
+
+		inline void updateButtons(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
+		{
+			updateButtons(registry, sdfs, time, Input::GetMouseButton(Input::LeftClick),
+						  Input::GetMouseButtonDown(Input::LeftClick));
 		}
 
 		inline void updateToggles(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time)
@@ -260,9 +283,9 @@ namespace WeirdEngine
 				});
 		}
 
-		inline void updateTextButtons(Registry& registry, const SDFRenderSystemContext& uiContext)
+		inline void updateTextButtons(Registry& registry, const SDFRenderSystemContext& uiContext, bool mouseIsClicking,
+									  bool mouseDown)
 		{
-			const bool mouseIsClicking = Input::GetMouseButton(Input::LeftClick);
 			const float mx = Input::GetMouseX();
 			const float my = Input::GetMouseY();
 
@@ -272,7 +295,8 @@ namespace WeirdEngine
 					buttonComponent.hovered =
 						isPointInsideText(text, transform, uiContext, mx, my, buttonComponent.clickPadding);
 
-					stepMomentaryButton(buttonComponent.state, buttonComponent.hovered, mouseIsClicking, true);
+					stepMomentaryButton(buttonComponent.state, buttonComponent.hovered, mouseIsClicking, mouseDown,
+										true, buttonComponent.requireClickStart);
 
 					const bool hasCustomMaterials = (buttonComponent.hoverMaterial != TextButton::UNSET_MATERIAL) ||
 													(buttonComponent.pressedMaterial != TextButton::UNSET_MATERIAL);
@@ -296,6 +320,12 @@ namespace WeirdEngine
 					}
 					text.material = targetMat;
 				});
+		}
+
+		inline void updateTextButtons(Registry& registry, const SDFRenderSystemContext& uiContext)
+		{
+			updateTextButtons(registry, uiContext, Input::GetMouseButton(Input::LeftClick),
+							  Input::GetMouseButtonDown(Input::LeftClick));
 		}
 
 		inline void updateTextToggles(Registry& registry, const SDFRenderSystemContext& uiContext)

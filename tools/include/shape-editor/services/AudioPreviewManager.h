@@ -16,6 +16,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		static std::string midiToNoteString(int midi);
 		static const char* getWaveTypeName(WeirdAudio::WaveType waveType);
 		static const char* getDrumKitName(int kit);
+		static const char* getLeadStyleName(WeirdAudio::LeadStyle style);
 
 		AudioPreviewManager() = default;
 

@@ -6,89 +6,63 @@ namespace WeirdEngine::Tools::ShapeEd
 {
 	const char* AudioPreviewManager::getScaleName(WeirdAudio::MusicalScale scale)
 	{
-		switch (scale)
-		{
-			case WeirdAudio::MusicalScale::PentatonicMajor:
-				return "Pentatonic Major";
-			case WeirdAudio::MusicalScale::PentatonicMinor:
-				return "Pentatonic Minor";
-			case WeirdAudio::MusicalScale::Major:
-				return "Major";
-			case WeirdAudio::MusicalScale::NaturalMinor:
-				return "Natural Minor";
-			case WeirdAudio::MusicalScale::Dorian:
-				return "Dorian";
-			case WeirdAudio::MusicalScale::Lydian:
-				return "Lydian";
-			case WeirdAudio::MusicalScale::Chromatic:
-				return "Chromatic";
-			default:
-				return "Unknown";
-		}
+		return WeirdAudio::SdfSong::getScaleName(scale);
 	}
 
 	std::string AudioPreviewManager::midiToNoteString(int midi)
 	{
-		if (midi < 0 || midi > 127)
-			return "N/A";
-		const char* noteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-		int note = midi % 12;
-		int octave = (midi / 12) - 1;
-		return std::string(noteNames[note]) + std::to_string(octave);
+		return WeirdAudio::SdfSong::midiToNoteString(midi);
 	}
 
 	const char* AudioPreviewManager::getWaveTypeName(WeirdAudio::WaveType waveType)
 	{
-		switch (waveType)
-		{
-			case WeirdAudio::WaveType::SoftSine:
-				return "Soft Sine (Warm)";
-			case WeirdAudio::WaveType::BandlimitedSaw:
-				return "Bandlimited Saw (Bright)";
-			case WeirdAudio::WaveType::PulseSquare:
-				return "Pulse Square (Reedy)";
-			case WeirdAudio::WaveType::FMPluck:
-				return "FM Pluck (Bell/Metallic)";
-			case WeirdAudio::WaveType::Wavefolder:
-				return "Wavefolder (Buchla/Evolving)";
-			default:
-				return "Unknown";
-		}
+		return WeirdAudio::SdfMusicEngine::getWaveTypeName(waveType);
 	}
 
 	const char* AudioPreviewManager::getDrumKitName(int kit)
 	{
-		switch (kit)
-		{
-			case 1:
-				return "Acoustic Punch";
-			case 2:
-				return "Industrial / 909";
-			case 0:
-			default:
-				return "Deep 808 Electronic";
-		}
+		return WeirdAudio::SdfMusicEngine::getDrumKitName(kit);
+	}
+
+	const char* AudioPreviewManager::getLeadStyleName(WeirdAudio::LeadStyle style)
+	{
+		return WeirdAudio::SdfMusicEngine::getLeadStyleName(style);
 	}
 
 	Entity AudioPreviewManager::syncSong(ServiceProvider& services, const Expr& expr, glm::vec2 uiCenter,
 										 const std::array<float, 8>& params)
 	{
+		const bool isNewSong = !m_song;
+		bool topologyChanged = false;
 		if (m_song)
 		{
-			m_song->setCenter(uiCenter);
+			const auto prevFp = m_song->getFingerprint();
+			if (m_song->getCenter() != uiCenter)
+			{
+				m_song->setCenter(uiCenter);
+			}
 			m_song->setShapeExpression(expr.node);
 			for (size_t i = 0; i < 8; ++i)
 			{
-				m_song->setParameter(i, params[i]);
+				if (m_song->getParameter(i) != params[i])
+				{
+					m_song->setParameter(i, params[i]);
+				}
 			}
 			m_song->calculateMusicalPropertiesFromShape();
+			const auto& nextFp = m_song->getFingerprint();
+			topologyChanged = (prevFp.structuralHash != nextFp.structuralHash || prevFp.nodeCount != nextFp.nodeCount ||
+							   prevFp.maxDepth != nextFp.maxDepth || prevFp.branchCount != nextFp.branchCount);
 		}
 		else
 		{
 			m_song = WeirdAudio::SdfSong::create("node_editor_song", expr, uiCenter);
 			for (size_t i = 0; i < 8; ++i)
 			{
-				m_song->setParameter(i, params[i]);
+				if (m_song->getParameter(i) != params[i])
+				{
+					m_song->setParameter(i, params[i]);
+				}
 			}
 		}
 
@@ -98,7 +72,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		visualOptions.combination = CombinationType::Addition;
 		visualOptions.group = 0;
 
-		Entity previewEntity = services.audio().setSong(m_song, visualOptions);
+		Entity previewEntity = services.audio().setSong(m_song, visualOptions, false);
 		if (previewEntity != INVALID_ENTITY && services.registry().hasComponent<UIShape>(previewEntity))
 		{
 			auto& uiShape = services.registry().getComponent<UIShape>(previewEntity);
@@ -106,6 +80,15 @@ namespace WeirdEngine::Tools::ShapeEd
 			uiShape.material = 0;
 			std::copy_n(params.data(), 8, uiShape.parameters);
 			services.registry().setComponentDirty(uiShape);
+		}
+
+		if (!isNewSong)
+		{
+			services.audio().resampleShape();
+			if (topologyChanged)
+			{
+				services.audio().music().resetInstrumentRackToShape();
+			}
 		}
 
 		return previewEntity;

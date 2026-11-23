@@ -86,7 +86,7 @@ namespace WeirdEngine::Tools::ShapeEd
 								onResetGraph();
 						});
 				}
-				if (ImGui::MenuItem("Open Graph JSON...", "Ctrl+O"))
+				if (ImGui::MenuItem("Open Shape...", "Ctrl+O"))
 				{
 					runConfirmed([&fileManager]() { fileManager.openLoadFileDialog(); });
 				}
@@ -129,7 +129,7 @@ namespace WeirdEngine::Tools::ShapeEd
 					}
 				}
 				const bool hasFile = fileManager.hasCurrentFilePath();
-				if (ImGui::MenuItem(hasFile ? "Save Graph JSON" : "Save Graph JSON...", "Ctrl+S"))
+				if (ImGui::MenuItem(hasFile ? "Save Shape" : "Save Shape...", "Ctrl+S"))
 				{
 					if (fileManager.saveGraph(graph))
 					{
@@ -138,7 +138,7 @@ namespace WeirdEngine::Tools::ShapeEd
 							undoHooks->onSaved();
 					}
 				}
-				if (ImGui::MenuItem("Save Graph JSON As...", "Ctrl+Shift+S"))
+				if (ImGui::MenuItem("Save Shape As...", "Ctrl+Shift+S"))
 				{
 					fileManager.openSaveFileDialog();
 				}
@@ -158,23 +158,15 @@ namespace WeirdEngine::Tools::ShapeEd
 							});
 					};
 
-					if (ImGui::MenuItem("Star (Procedural Song)"))
-					{
-						applyPreset(NodeGraphPresets::loadStar);
-					}
-					if (ImGui::MenuItem("Aquatic Wave (Procedural Song)"))
-					{
-						applyPreset(NodeGraphPresets::loadAquaticWave);
-					}
-					if (ImGui::MenuItem("CSG Ring (Subtract)"))
-					{
-						applyPreset(NodeGraphPresets::loadCsgRing);
-					}
-					if (ImGui::MenuItem("Basic Circle"))
+					if (ImGui::MenuItem("Circle"))
 					{
 						applyPreset(NodeGraphPresets::loadCircle);
 					}
-					if (ImGui::MenuItem("Infinite Repeat (Modulo Grid)"))
+					if (ImGui::MenuItem("Ring"))
+					{
+						applyPreset(NodeGraphPresets::loadCsgRing);
+					}
+					if (ImGui::MenuItem("Infinite Circle Grid"))
 					{
 						applyPreset(NodeGraphPresets::loadInfiniteRepeat);
 					}

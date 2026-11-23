@@ -1,6 +1,8 @@
 #include "shape-editor/ui/InspectorView.h"
 
 #include "weird-audio/AudioEngine.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <imgui.h>
 
@@ -127,12 +129,8 @@ namespace WeirdEngine::Tools::ShapeEd
 				previewController.syncParameters(services, params);
 				if (auto song = audioManager.getSong())
 				{
-					for (size_t p = 0; p < 8; ++p)
-					{
-						song->setParameter(p, params[p]);
-						services.audio().setSongParameter(p, params[p]);
-					}
-					song->calculateMusicalPropertiesFromShape();
+					song->setParameter(static_cast<size_t>(i), params[i]);
+					services.audio().setSongParameter(static_cast<size_t>(i), params[i]);
 				}
 			}
 			ImGui::PopID();
@@ -166,6 +164,19 @@ namespace WeirdEngine::Tools::ShapeEd
 		{
 			audioManager.setPlaying(services, isPlaying);
 		}
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Resample"))
+		{
+			if (auto currentSong = audioManager.getSong())
+			{
+				currentSong->calculateMusicalPropertiesFromShape();
+			}
+			services.audio().resampleShape();
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("Immediately re-probe domain motion, fill, curvature, and musical properties.");
+		}
 
 		float volume = audioManager.getVolume();
 		if (ImGui::SliderFloat("Master Volume", &volume, 0.0f, 1.0f, "%.2f"))
@@ -175,35 +186,249 @@ namespace WeirdEngine::Tools::ShapeEd
 
 		auto song = audioManager.getSong();
 
+		auto drawKeyValueRow = [](const char* label, const char* value, const char* tooltip = nullptr)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextDisabled("%s", label);
+			if (tooltip && ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("%s", tooltip);
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextWrapped("%s", value);
+		};
+
+		auto drawMetricBarRow =
+			[](const char* label, float fraction, const char* overlay, const char* tooltip = nullptr)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextUnformatted(label);
+			if (tooltip && ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("%s", tooltip);
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::ProgressBar(std::clamp(fraction, 0.0f, 1.0f), ImVec2(-1.0f, 0.0f), overlay);
+			if (tooltip && ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("%s", tooltip);
+			}
+		};
+
+		auto beginInspectorTable = [](const char* id, float labelColWidth) -> bool
+		{
+			if (!ImGui::BeginTable(id, 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
+			{
+				return false;
+			}
+			ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, labelColWidth);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+			return true;
+		};
+
 		ImGui::Spacing();
 		if (ImGui::CollapsingHeader("Musical Properties", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			if (song)
 			{
-				ImGui::Text("Scale:  %s", AudioPreviewManager::getScaleName(song->getScale()));
-				ImGui::Text("Tempo:  %.1f BPM", song->getTempo());
-				ImGui::Text("Root:   %s (MIDI %d)", AudioPreviewManager::midiToNoteString(song->getRootMidi()).c_str(),
-							song->getRootMidi());
+				if (beginInspectorTable("##MusicalPropsTable", 110.0f))
+				{
+					char buf[96];
 
-				const auto& p = music.getShapeParameters();
-				ImGui::Spacing();
-				ImGui::Text("Melody Density:  %.2f", p.melodyDensity);
-				ImGui::Text("Harmony Richness:%.2f", p.harmonyRichness);
-				ImGui::Text("Bass Weight:     %.2f", p.bassWeight);
-				ImGui::Text("Brightness:      %.2f", p.brightness);
-				ImGui::Text("Syncopation:     %.2f", p.syncopation);
+					drawKeyValueRow("Scale", AudioPreviewManager::getScaleName(song->getScale()),
+									"Derived from 24-angle perimeter profiling (smoothness, spikiness, hollowness, "
+									"asymmetry).");
 
-				ImGui::Spacing();
-				ImGui::ProgressBar(music.getMotionNorm(), ImVec2(-1.0f, 0.0f), "Motion Level");
-				ImGui::ProgressBar(music.getFillRatio(), ImVec2(-1.0f, 0.0f), "Domain Fill Ratio");
-				ImGui::ProgressBar(music.getComplexityNorm(), ImVec2(-1.0f, 0.0f), "Surface Complexity");
+					const int rootMidi = song->getRootMidi();
+					std::snprintf(buf, sizeof(buf), "%s (MIDI %d)",
+								  AudioPreviewManager::midiToNoteString(rootMidi).c_str(), rootMidi);
+					drawKeyValueRow("Root Key", buf,
+									"Derived from center SDF depth, mean perimeter distance, and domain fill ratio.");
+
+					std::snprintf(buf, sizeof(buf), "%.1f BPM", song->getTempo());
+					drawKeyValueRow("Base Tempo", buf, "Static base tempo derived from domain motion probe.");
+
+					std::snprintf(buf, sizeof(buf), "%.1f BPM (%.2fs)", music.getTempo(), music.getTimeBetweenBeats());
+					drawKeyValueRow("Dynamic Tempo", buf,
+									"Live tempo = Base Tempo x Tempo Factor x Motion Mult x Surge/Duck.");
+
+					const auto leadStyle = music.getLeadStyle();
+					const auto effectiveLeadStyle = music.getEffectiveLeadStyle();
+					if (leadStyle == WeirdAudio::LeadStyle::Auto)
+					{
+						std::snprintf(buf, sizeof(buf), "%s (Auto)",
+									  AudioPreviewManager::getLeadStyleName(effectiveLeadStyle));
+					}
+					else
+					{
+						std::snprintf(buf, sizeof(buf), "%s", AudioPreviewManager::getLeadStyleName(leadStyle));
+					}
+					drawKeyValueRow("Lead Style", buf,
+									"Selected from motion, melody density, syncopation, and AST structural hash.");
+
+					ImGui::EndTable();
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled("No active shape song.");
+			}
+		}
+
+		ImGui::Spacing();
+		if (ImGui::CollapsingHeader("Domain Sampling Metrics", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (song)
+			{
+				ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.18f, 0.56f, 0.72f, 1.0f));
+				if (beginInspectorTable("##DomainMetricsTable", 122.0f))
+				{
+					char overlay[64];
+					char complexityTooltip[128];
+
+					const float motionNorm = music.getMotionNorm();
+					std::snprintf(overlay, sizeof(overlay), "%.2f (raw %.1f)", motionNorm, music.getMotionLevel());
+					drawMetricBarRow("Motion Level", motionNorm, overlay,
+									 "Boundary movement rate |d1 - d0| / dt averaged across 32 domain points.");
+
+					const float tempoFromMotion = music.getTempoFromMotion();
+					std::snprintf(overlay, sizeof(overlay), "%.2fx", tempoFromMotion);
+					drawMetricBarRow("Motion Tempo", (tempoFromMotion - 0.45f) / (1.20f - 0.45f), overlay,
+									 "Tempo multiplier derived from motion norm [0.45x .. 1.20x].");
+
+					const float fillRatio = std::clamp(music.getFillRatio(), 0.0f, 1.0f);
+					std::snprintf(overlay, sizeof(overlay), "%.0f%% (%.2f)", fillRatio * 100.0f, fillRatio);
+					drawMetricBarRow("Domain Fill", fillRatio, overlay,
+									 "Fraction of 32 domain sample points inside the shape (d < 0).");
+
+					const float volumeFromFill = music.getVolumeFromFill();
+					std::snprintf(overlay, sizeof(overlay), "%.2fx", volumeFromFill);
+					drawMetricBarRow("Fill Volume", (volumeFromFill - 0.35f) / (1.00f - 0.35f), overlay,
+									 "Volume multiplier derived from fill ratio [0.35x .. 1.00x].");
+
+					const float complexityNorm = music.getComplexityNorm();
+					std::snprintf(overlay, sizeof(overlay), "%.2f (raw %.2f)", complexityNorm,
+								  music.getComplexityLevel());
+					std::snprintf(complexityTooltip, sizeof(complexityTooltip),
+								  "Scale-normalized curvature spread stddev(kappa) * R_char (saturation %.1f).",
+								  music.getComplexitySaturation());
+					drawMetricBarRow("Complexity", complexityNorm, overlay, complexityTooltip);
+
+					const float tension = music.getTension();
+					std::snprintf(overlay, sizeof(overlay), "%.2f", tension);
+					drawMetricBarRow("Tension", tension, overlay,
+									 "Complexity-derived tension metric (complexity ^ 0.8).");
+
+					ImGui::EndTable();
+				}
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				ImGui::TextDisabled("No active shape song.");
+			}
+		}
+
+		ImGui::Spacing();
+		if (ImGui::CollapsingHeader("Visual Shape Traits", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (song)
+			{
+				const auto traits = music.getVisualTraits();
+				ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.20f, 0.60f, 0.48f, 1.0f));
+				if (beginInspectorTable("##VisualTraitsTable", 122.0f))
+				{
+					char overlay[32];
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", traits.mass);
+					drawMetricBarRow("Size / Mass", traits.mass, overlay,
+									 "Area fill & radial reach -> drives Harmony Richness & Bass Weight.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", traits.motion);
+					drawMetricBarRow("Motion Speed", traits.motion, overlay,
+									 "Boundary movement speed -> drives Tempo Factor & Percussion Energy.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", traits.spikiness);
+					drawMetricBarRow("Spikiness / Sharp", traits.spikiness, overlay,
+									 "Perimeter lobes & surface curvature -> drives Brightness, Melody Density, "
+									 "Variation & Timbre.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", traits.hollowness);
+					drawMetricBarRow("Hollowness", traits.hollowness, overlay,
+									 "Center cutout / ring vs solid core -> drives Syncopation, Variation & Scale.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", traits.asymmetry);
+					drawMetricBarRow("Asymmetry", traits.asymmetry, overlay,
+									 "180-degree opposite-side imbalance -> drives Syncopation, Variation & Scale.");
+
+					ImGui::EndTable();
+				}
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				ImGui::TextDisabled("No active shape song.");
+			}
+		}
+
+		ImGui::Spacing();
+		if (ImGui::CollapsingHeader("Shape Musical Parameters", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			if (song)
+			{
+				if (music.isShapeParamsOverridden())
+				{
+					ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "Manual override active");
+				}
+				const auto p = music.getShapeParameters();
+				ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.38f, 0.44f, 0.74f, 1.0f));
+				if (beginInspectorTable("##ShapeMusicalParamsTable", 122.0f))
+				{
+					char overlay[32];
+
+					std::snprintf(overlay, sizeof(overlay), "%.2fx", p.tempoFactor);
+					drawMetricBarRow("Tempo Factor", (p.tempoFactor - 0.70f) / (1.40f - 0.70f), overlay,
+									 "Driven by Motion Speed & lightness [0.72x .. 1.30x].");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.melodyDensity);
+					drawMetricBarRow("Melody Density", p.melodyDensity, overlay, "Driven by Spikiness & Motion Speed.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.harmonyRichness);
+					drawMetricBarRow("Harmony Richness", p.harmonyRichness, overlay,
+									 "Driven by Size / Mass & Core Solidity.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.bassWeight);
+					drawMetricBarRow("Bass Weight", p.bassWeight, overlay, "Driven by Size / Mass & Core Solidity.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.percEnergy);
+					drawMetricBarRow("Percussion Energy", p.percEnergy, overlay, "Driven by Motion Speed & Spikiness.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.brightness);
+					drawMetricBarRow("Brightness", p.brightness, overlay, "Driven by Spikiness / Sharpness.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.syncopation);
+					drawMetricBarRow("Syncopation", p.syncopation, overlay, "Driven by Asymmetry & Hollowness.");
+
+					std::snprintf(overlay, sizeof(overlay), "%.2f", p.variation);
+					drawMetricBarRow("Variation", p.variation, overlay, "Driven by Spikiness, Hollowness & Asymmetry.");
+
+					ImGui::EndTable();
+				}
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				ImGui::TextDisabled("No active shape song.");
 			}
 		}
 
 		ImGui::Spacing();
 		if (ImGui::CollapsingHeader("Instrument Rack (AST Driven)", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			const auto& rack = music.getInstrumentRack();
+			const auto rack = music.getInstrumentRack();
 			ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Assigned Waveforms & Kit:");
 
 			auto renderTrackStatusBadge = [&](WeirdAudio::MusicTrack track)
@@ -245,76 +470,107 @@ namespace WeirdEngine::Tools::ShapeEd
 				ImGui::SameLine(startX + badgeColWidth);
 			};
 
-			float trackNameColWidth =
-				(std::max)({ImGui::CalcTextSize("Lead Wave:").x, ImGui::CalcTextSize("Bass Wave:").x,
-							ImGui::CalcTextSize("Pad Wave:").x, ImGui::CalcTextSize("Drum Kit:").x}) +
-				8.0f;
+			float trackNameColWidth = (std::max)({ImGui::CalcTextSize("Lead:").x, ImGui::CalcTextSize("Bass:").x,
+												  ImGui::CalcTextSize("Pad:").x, ImGui::CalcTextSize("Drums:").x}) +
+									  8.0f;
 
-			bool leadEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Lead);
-			if (ImGui::Checkbox("##lead_toggle", &leadEnabled))
+			auto renderTrackRow = [&](const char* checkboxId, const char* trackLabel, WeirdAudio::MusicTrack track,
+									  const char* timbreName)
 			{
-				music.setTrackEnabled(WeirdAudio::MusicTrack::Lead, leadEnabled);
-			}
-			ImGui::SameLine();
-			float startXLead = ImGui::GetCursorPosX();
-			ImGui::Text("Lead Wave:");
-			ImGui::SameLine(startXLead + trackNameColWidth);
-			renderTrackStatusBadge(WeirdAudio::MusicTrack::Lead);
-			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.lead));
+				bool enabled = music.isTrackEnabled(track);
+				if (ImGui::Checkbox(checkboxId, &enabled))
+				{
+					music.setTrackEnabled(track, enabled);
+				}
+				ImGui::SameLine();
+				float startX = ImGui::GetCursorPosX();
+				ImGui::TextUnformatted(trackLabel);
+				ImGui::SameLine(startX + trackNameColWidth);
+				renderTrackStatusBadge(track);
+				ImGui::TextWrapped("%s", timbreName);
+			};
 
-			bool bassEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Bass);
-			if (ImGui::Checkbox("##bass_toggle", &bassEnabled))
-			{
-				music.setTrackEnabled(WeirdAudio::MusicTrack::Bass, bassEnabled);
-			}
-			ImGui::SameLine();
-			float startXBass = ImGui::GetCursorPosX();
-			ImGui::Text("Bass Wave:");
-			ImGui::SameLine(startXBass + trackNameColWidth);
-			renderTrackStatusBadge(WeirdAudio::MusicTrack::Bass);
-			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.bass));
-
-			bool padEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Pad);
-			if (ImGui::Checkbox("##pad_toggle", &padEnabled))
-			{
-				music.setTrackEnabled(WeirdAudio::MusicTrack::Pad, padEnabled);
-			}
-			ImGui::SameLine();
-			float startXPad = ImGui::GetCursorPosX();
-			ImGui::Text("Pad Wave:");
-			ImGui::SameLine(startXPad + trackNameColWidth);
-			renderTrackStatusBadge(WeirdAudio::MusicTrack::Pad);
-			ImGui::Text("%s", AudioPreviewManager::getWaveTypeName(rack.pad));
-
-			bool drumsEnabled = music.isTrackEnabled(WeirdAudio::MusicTrack::Drums);
-			if (ImGui::Checkbox("##drums_toggle", &drumsEnabled))
-			{
-				music.setTrackEnabled(WeirdAudio::MusicTrack::Drums, drumsEnabled);
-			}
-			ImGui::SameLine();
-			float startXDrums = ImGui::GetCursorPosX();
-			ImGui::Text("Drum Kit:");
-			ImGui::SameLine(startXDrums + trackNameColWidth);
-			renderTrackStatusBadge(WeirdAudio::MusicTrack::Drums);
-			ImGui::Text("%s", AudioPreviewManager::getDrumKitName(rack.drumKit));
+			renderTrackRow("##lead_toggle", "Lead:", WeirdAudio::MusicTrack::Lead,
+						   AudioPreviewManager::getWaveTypeName(rack.lead));
+			renderTrackRow("##bass_toggle", "Bass:", WeirdAudio::MusicTrack::Bass,
+						   AudioPreviewManager::getWaveTypeName(rack.bass));
+			renderTrackRow("##pad_toggle", "Pad:", WeirdAudio::MusicTrack::Pad,
+						   AudioPreviewManager::getWaveTypeName(rack.pad));
+			renderTrackRow("##drums_toggle", "Drums:", WeirdAudio::MusicTrack::Drums,
+						   AudioPreviewManager::getDrumKitName(rack.drumKit));
 
 			ImGui::Spacing();
 			ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Synthesis Parameters:");
-			ImGui::Text("Pulse Width: %.2f", rack.pulseWidth);
-			ImGui::Text("FM Mod Index:%.2f", rack.fmModIndex);
-			ImGui::Text("Fold Drive:  %.2f", rack.foldDrive);
+			if (beginInspectorTable("##SynthParamsTable", 110.0f))
+			{
+				char buf[32];
+				std::snprintf(buf, sizeof(buf), "%.2f", rack.pulseWidth);
+				drawKeyValueRow("Pulse Width", buf, "Derived from AST structural hash [0.22 .. 0.48].");
+
+				std::snprintf(buf, sizeof(buf), "%.2f", rack.fmModIndex);
+				drawKeyValueRow("FM Mod Index", buf, "Derived from Spikiness & AST structural hash.");
+
+				std::snprintf(buf, sizeof(buf), "%.2f", rack.foldDrive);
+				drawKeyValueRow("Fold Drive", buf, "Derived from Spikiness & Size / Mass.");
+
+				ImGui::EndTable();
+			}
 		}
 
 		ImGui::Spacing();
-		if (ImGui::CollapsingHeader("AST Topology Fingerprint", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("AST Topology & Arrangement", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			if (song)
 			{
 				const auto& fp = song->getFingerprint();
-				ImGui::Text("Structural Seed: 0x%08X", fp.structuralHash);
-				ImGui::Text("Total Operators: %d", fp.nodeCount);
-				ImGui::Text("Tree Depth:      %d", fp.maxDepth);
-				ImGui::Text("Branching Nodes: %d", fp.branchCount);
+				const uint32_t arch = fp.structuralHash % 3u;
+				const char* archNames[3] = {"Groove-First (32-Bar A/B)", "Ambient-First (Floating Intro)",
+											"Driving Minimalist"};
+
+				const float playheadBeat = music.getPlayheadBeat();
+				int currentStep = static_cast<int>(std::lround(playheadBeat * 4.0f)) % 512;
+				if (currentStep < 0)
+				{
+					currentStep += 512;
+				}
+				const int stepInBar = currentStep % 16;
+				const int barInSong = (currentStep / 16) % 32;
+				const int phraseInSong = barInSong / 4;
+				const char* phraseNames[8] = {"1: Intro (No Lead)",		"2: Section A1 (Main Theme)",
+											  "3: Section A2 (Answer)", "4: Groove Breather",
+											  "5: Section B Bridge",	"6: Breakdown (No Drums)",
+											  "7: Section A3 (Return)", "8: Outro / Cool-Down"};
+
+				if (beginInspectorTable("##AstArrangementTable", 115.0f))
+				{
+					char buf[96];
+
+					std::snprintf(buf, sizeof(buf), "0x%08X", fp.structuralHash);
+					drawKeyValueRow("Structural Seed", buf,
+									"Topological FNV-1a hash (ignores constants & var0..var7).");
+
+					std::snprintf(buf, sizeof(buf), "%d", fp.nodeCount);
+					drawKeyValueRow("Total Operators", buf);
+
+					std::snprintf(buf, sizeof(buf), "%d", fp.maxDepth);
+					drawKeyValueRow("Tree Depth", buf);
+
+					std::snprintf(buf, sizeof(buf), "%d", fp.branchCount);
+					drawKeyValueRow("Branching Nodes", buf);
+
+					drawKeyValueRow("Arrangement", archNames[arch], "Derived from Structural Seed mod 3.");
+					drawKeyValueRow("Section", phraseNames[phraseInSong]);
+
+					std::snprintf(buf, sizeof(buf), "Bar %d/32 | Step %d/16 | Loop #%d", barInSong + 1, stepInBar + 1,
+								  music.getLoopCycle() + 1);
+					drawKeyValueRow("Playhead", buf);
+
+					ImGui::EndTable();
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled("No active shape song.");
 			}
 		}
 

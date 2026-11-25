@@ -46,8 +46,7 @@ namespace WeirdEngine::Tools::SceneEd
 
 		std::string formatShapeHierarchyPrefix(const Shape& s)
 		{
-			std::string prefix =
-				(s.layer == Shape::GLOBAL_LAYER) ? "[Global" : ("[L" + std::to_string(s.layer));
+			std::string prefix = (s.layer == Shape::GLOBAL_LAYER) ? "[Global" : ("[L" + std::to_string(s.layer));
 			switch (s.combination)
 			{
 				case CombinationType::Subtraction:
@@ -208,7 +207,8 @@ namespace WeirdEngine::Tools::SceneEd
 				const ImVec2 mx = ImGui::GetItemRectMax();
 				ImDrawList* drawList = ImGui::GetWindowDrawList();
 				const bool hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-				drawList->AddRectFilled(mn, mx, hovered ? IM_COL32(60, 140, 200, 45) : IM_COL32(120, 120, 130, 22), 4.0f);
+				drawList->AddRectFilled(mn, mx, hovered ? IM_COL32(60, 140, 200, 45) : IM_COL32(120, 120, 130, 22),
+										4.0f);
 				drawList->AddRect(mn, mx, hovered ? IM_COL32(80, 200, 255, 220) : IM_COL32(140, 140, 150, 120), 4.0f);
 				const char* dropText = "Drop here to move to Root";
 				const ImVec2 textSz = ImGui::CalcTextSize(dropText);
@@ -301,7 +301,8 @@ namespace WeirdEngine::Tools::SceneEd
 					const auto& s = ctx.registry->getComponent<Shape>(e);
 					auto layerShapes = sceneOps.getShapesInLayer(s.layer);
 					auto posIt = std::find(layerShapes.begin(), layerShapes.end(), e);
-					int posInLayer = (posIt != layerShapes.end()) ? static_cast<int>(posIt - layerShapes.begin()) + 1 : 0;
+					int posInLayer =
+						(posIt != layerShapes.end()) ? static_cast<int>(posIt - layerShapes.begin()) + 1 : 0;
 					if (s.layer == Shape::GLOBAL_LAYER)
 					{
 						ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Global Layer | Order: %d / %zu",
@@ -365,8 +366,8 @@ namespace WeirdEngine::Tools::SceneEd
 					const float lineY = insertAfter ? itemMax.y : itemMin.y;
 
 					ImDrawList* drawList = ImGui::GetWindowDrawList();
-					drawList->AddLine(ImVec2(itemMin.x, lineY), ImVec2(itemMax.x, lineY),
-									  IM_COL32(80, 200, 255, 255), 2.5f);
+					drawList->AddLine(ImVec2(itemMin.x, lineY), ImVec2(itemMax.x, lineY), IM_COL32(80, 200, 255, 255),
+									  2.5f);
 
 					if (payload->IsDelivery())
 					{

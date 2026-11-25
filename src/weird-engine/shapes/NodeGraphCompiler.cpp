@@ -122,8 +122,7 @@ namespace WeirdEngine
 
 	NodeValue NodeGraphCompiler::evaluateNode(const NodeGraph& graph, int nodeId, int outputPinIdx,
 											  std::unordered_set<int>& activeNodes,
-											  std::unordered_map<int, NodeValue>& cache,
-											  const Vec2Expr* customPoint)
+											  std::unordered_map<int, NodeValue>& cache, const Vec2Expr* customPoint)
 	{
 		int cacheKey = makePinId(nodeId, false, outputPinIdx);
 		if (auto it = cache.find(cacheKey); it != cache.end())

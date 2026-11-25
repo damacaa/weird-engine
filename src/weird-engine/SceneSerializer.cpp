@@ -170,8 +170,8 @@ namespace WeirdEngine
 					{"text", tr.text}, {"material", tr.material}, {"width", tr.width}, {"height", tr.height}};
 			}
 
-			// Save entities in deterministic ID order (SDF evaluation order is persisted explicitly via Shape::layer and
-			// Shape::order).
+			// Save entities in deterministic ID order (SDF evaluation order is persisted explicitly via Shape::layer
+			// and Shape::order).
 			for (Entity e = 0; e < scene.m_registry.getEntityCount(); ++e)
 			{
 				if (isBlacklisted(e))

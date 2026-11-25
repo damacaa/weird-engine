@@ -347,8 +347,8 @@ namespace WeirdEngine
 			if (isCanonicalBuiltin)
 			{
 				vec4 meta, p0, p1;
-				packInstance(shape.distanceFieldId, shape.combination, shape.layer, shape.material,
-							 shape.smoothFactor, shape.parameters, meta, p0, p1);
+				packInstance(shape.distanceFieldId, shape.combination, shape.layer, shape.material, shape.smoothFactor,
+							 shape.parameters, meta, p0, p1);
 				const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
 				const uint16_t gpuId = static_cast<uint16_t>(packed0 & 0xFFFFu);
 				const uint32_t flags = packed0 >> 19u;

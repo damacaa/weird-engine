@@ -4146,7 +4146,8 @@ namespace WeirdEngine::Tools::SceneEd
 		s.layer = newLayer;
 		s.order = maxOrder + 1;
 		m_ctx.registry->setComponentDirty(s);
-		m_ctx.services->clusters().markEntityOverride(e, ClusterOverrideFlag::ShapeLayer | ClusterOverrideFlag::ShapeOrder);
+		m_ctx.services->clusters().markEntityOverride(e, ClusterOverrideFlag::ShapeLayer |
+															 ClusterOverrideFlag::ShapeOrder);
 
 		normalizeLayerOrders(oldLayer);
 		normalizeLayerOrders(newLayer);

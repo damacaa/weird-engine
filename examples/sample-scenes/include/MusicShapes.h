@@ -106,8 +106,7 @@ namespace MusicShapes
 			}
 		}
 
-		std::sort(songFiles.begin(), songFiles.end(),
-				  [](const std::filesystem::path& a, const std::filesystem::path& b)
+		std::sort(songFiles.begin(), songFiles.end(), [](const std::filesystem::path& a, const std::filesystem::path& b)
 				  { return a.filename().string() < b.filename().string(); });
 
 		const auto& knownMeta = detail::getKnownMetadata();
@@ -170,8 +169,7 @@ namespace MusicShapes
 		return NodeGraphCompiler::evaluate(asset.graph, p);
 	}
 
-	inline std::shared_ptr<SdfSong> createSong(LoadedSongAsset& asset,
-											   std::optional<glm::vec2> center = std::nullopt)
+	inline std::shared_ptr<SdfSong> createSong(LoadedSongAsset& asset, std::optional<glm::vec2> center = std::nullopt)
 	{
 		Expr shapeExpr = NodeGraphCompiler::evaluate(asset.graph);
 		auto song = SdfSong::create(asset.title, shapeExpr, asset.tempo, asset.scale, asset.rootMidi);

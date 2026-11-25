@@ -1852,8 +1852,8 @@ namespace WeirdEngine
 					 "Shape registered with unregistered distanceFieldId");
 
 		auto it = m_entityToObjectsIdx.find(owner);
-		const uint64_t seq = (it != m_entityToObjectsIdx.end()) ? m_objects[it->second].insertionSeq
-																: m_nextShapeInsertionSeq++;
+		const uint64_t seq =
+			(it != m_entityToObjectsIdx.end()) ? m_objects[it->second].insertionSeq : m_nextShapeInsertionSeq++;
 
 		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.layer, shape.order, seq,
 								  shape.parameters, shape.smoothFactor);

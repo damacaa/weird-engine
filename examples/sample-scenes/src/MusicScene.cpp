@@ -171,11 +171,11 @@ namespace MusicSceneNamespace
 			{
 				const float trackHalfH = 3.5f + profile * 4.5f;
 				auto& tr = registry.getComponent<UIShape>(trackBars[i]);
-				tr.parameters[DefaultShapes::RoundBox::PosX] = bx;
-				tr.parameters[DefaultShapes::RoundBox::PosY] = baseY + trackHalfH;
-				tr.parameters[DefaultShapes::RoundBox::SizeX] = l.gaugeHalfW;
-				tr.parameters[DefaultShapes::RoundBox::SizeY] = trackHalfH;
-				tr.parameters[DefaultShapes::RoundBox::Radius] = 3.0f;
+				tr.parameters[DefaultShapes::Box::PosX] = bx;
+				tr.parameters[DefaultShapes::Box::PosY] = baseY + trackHalfH;
+				tr.parameters[DefaultShapes::Box::SizeX] = l.gaugeHalfW;
+				tr.parameters[DefaultShapes::Box::SizeY] = trackHalfH;
+				tr.parameters[DefaultShapes::Box::Radius] = 3.0f;
 			}
 
 			if (registry.isEntityValid(fillBars[i]) && registry.hasComponent<UIShape>(fillBars[i]))
@@ -185,11 +185,11 @@ namespace MusicSceneNamespace
 				const float activeFrac = std::clamp((clamped - threshold) / 0.28f, 0.0f, 1.0f);
 				if (activeFrac <= 0.01f)
 				{
-					fill.parameters[DefaultShapes::RoundBox::PosX] = -1000.0f;
-					fill.parameters[DefaultShapes::RoundBox::PosY] = -1000.0f;
-					fill.parameters[DefaultShapes::RoundBox::SizeX] = 4.0f;
-					fill.parameters[DefaultShapes::RoundBox::SizeY] = 4.0f;
-					fill.parameters[DefaultShapes::RoundBox::Radius] = 2.0f;
+					fill.parameters[DefaultShapes::Box::PosX] = -1000.0f;
+					fill.parameters[DefaultShapes::Box::PosY] = -1000.0f;
+					fill.parameters[DefaultShapes::Box::SizeX] = 4.0f;
+					fill.parameters[DefaultShapes::Box::SizeY] = 4.0f;
+					fill.parameters[DefaultShapes::Box::Radius] = 2.0f;
 				}
 				else
 				{
@@ -198,11 +198,11 @@ namespace MusicSceneNamespace
 															static_cast<float>(i) * 1.15f);
 					const float fullH = (l.gaugeMaxH * profile) * (0.28f + 0.72f * activeFrac) * wave;
 					const float halfH = (std::max)(4.0f, 0.5f * fullH);
-					fill.parameters[DefaultShapes::RoundBox::PosX] = bx;
-					fill.parameters[DefaultShapes::RoundBox::PosY] = baseY + halfH;
-					fill.parameters[DefaultShapes::RoundBox::SizeX] = l.gaugeHalfW;
-					fill.parameters[DefaultShapes::RoundBox::SizeY] = halfH;
-					fill.parameters[DefaultShapes::RoundBox::Radius] = 3.5f;
+					fill.parameters[DefaultShapes::Box::PosX] = bx;
+					fill.parameters[DefaultShapes::Box::PosY] = baseY + halfH;
+					fill.parameters[DefaultShapes::Box::SizeX] = l.gaugeHalfW;
+					fill.parameters[DefaultShapes::Box::SizeY] = halfH;
+					fill.parameters[DefaultShapes::Box::Radius] = 3.5f;
 				}
 			}
 		}
@@ -214,10 +214,10 @@ namespace MusicSceneNamespace
 		if (registry.isEntityValid(pillEntity) && registry.hasComponent<UIShape>(pillEntity))
 		{
 			auto& shape = registry.getComponent<UIShape>(pillEntity);
-			shape.parameters[DefaultShapes::RoundBox::PosX] = px;
-			shape.parameters[DefaultShapes::RoundBox::PosY] = y;
-			shape.parameters[DefaultShapes::RoundBox::SizeX] = halfSize;
-			shape.parameters[DefaultShapes::RoundBox::SizeY] = halfSize;
+			shape.parameters[DefaultShapes::Box::PosX] = px;
+			shape.parameters[DefaultShapes::Box::PosY] = y;
+			shape.parameters[DefaultShapes::Box::SizeX] = halfSize;
+			shape.parameters[DefaultShapes::Box::SizeY] = halfSize;
 		}
 
 		if (registry.isEntityValid(labelEntity) && registry.hasComponent<Transform>(labelEntity))
@@ -258,8 +258,8 @@ namespace MusicSceneNamespace
 		if (registry.isEntityValid(state.playButton) && registry.hasComponent<UIShape>(state.playButton))
 		{
 			auto& s = registry.getComponent<UIShape>(state.playButton);
-			s.parameters[DefaultShapes::TriangleRotated::PosX] = 44.0f;
-			s.parameters[DefaultShapes::TriangleRotated::PosY] = l.botY;
+			s.parameters[DefaultShapes::Triangle::PosX] = 44.0f;
+			s.parameters[DefaultShapes::Triangle::PosY] = l.botY;
 		}
 		if (registry.isEntityValid(state.pauseButton) && registry.hasComponent<UIShape>(state.pauseButton))
 		{
@@ -372,7 +372,8 @@ namespace MusicSceneNamespace
 		for (size_t i = 0; i < state.songCount; ++i)
 		{
 			Vec2Expr p = translate(point(), {Expr(var(2)), Expr(var(3))});
-			ShapeId id = services.shapes().registerSDF(boundToggle(MusicShapes::evaluateSongShape(s_songAssets[i], p), p));
+			ShapeId id =
+				services.shapes().registerSDF(boundToggle(MusicShapes::evaluateSongShape(s_songAssets[i], p), p));
 			state.songToggles[i] = services.shapes().addUIShape(
 				{.shapeId = id,
 				 .variables = {{0, 16.0f}, {1, 1.0f}, {2, startX + static_cast<float>(i) * spacingX}, {3, l.toggleY}},
@@ -437,18 +438,18 @@ namespace MusicSceneNamespace
 		// 1. Play Button: Triangle
 		{
 			state.playButton =
-				services.shapes().addUIShape({.shapeId = DefaultShapes::TriangleRotated,
-											  .variables = {{DefaultShapes::TriangleRotated::PosX, 44.0f},
-															{DefaultShapes::TriangleRotated::PosY, l.botY},
-															{DefaultShapes::TriangleRotated::Width, 26.0f},
-															{DefaultShapes::TriangleRotated::Height, 26.0f},
-															{DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
+				services.shapes().addUIShape({.shapeId = DefaultShapes::Triangle,
+											  .variables = {{DefaultShapes::Triangle::PosX, 44.0f},
+															{DefaultShapes::Triangle::PosY, l.botY},
+															{DefaultShapes::Triangle::Width, 26.0f},
+															{DefaultShapes::Triangle::Height, 26.0f},
+															{DefaultShapes::Triangle::Angle, 1.5707963f}},
 											  .material = playMat});
 			auto& btn = registry.addComponent<ShapeButton>(state.playButton);
 			btn.clickPadding = 8.0f;
 			btn.modifierAmount = 3.0f;
-			btn.parameterModifierMask.set(DefaultShapes::TriangleRotated::Width);
-			btn.parameterModifierMask.set(DefaultShapes::TriangleRotated::Height);
+			btn.parameterModifierMask.set(DefaultShapes::Triangle::Width);
+			btn.parameterModifierMask.set(DefaultShapes::Triangle::Height);
 		}
 
 		// 2. Square Pause Button: Box
@@ -501,29 +502,28 @@ namespace MusicSceneNamespace
 			}
 		}
 
-		// Surge & Duck 5-Bar Equalizer Gauges (track group 0, active fill group 1)
+		// Surge & Duck 5-Bar Equalizer Gauges (track layer 0, active fill layer 1)
 		auto createGaugeBars = [&](std::array<Entity, State::NUM_GAUGE_BARS>& trackBars,
 								   std::array<Entity, State::NUM_GAUGE_BARS>& fillBars, Material2DHandle fillMat)
 		{
 			for (size_t i = 0; i < State::NUM_GAUGE_BARS; ++i)
 			{
-				trackBars[i] =
-					services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
-												  .variables = {{DefaultShapes::RoundBox::PosX, -1000.0f},
-																{DefaultShapes::RoundBox::PosY, -1000.0f},
-																{DefaultShapes::RoundBox::SizeX, l.gaugeHalfW},
-																{DefaultShapes::RoundBox::SizeY, 5.0f},
-																{DefaultShapes::RoundBox::Radius, 3.0f}},
-												  .material = state.trackOffMat,
-												  .group = 0});
-				fillBars[i] = services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
-															.variables = {{DefaultShapes::RoundBox::PosX, -1000.0f},
-																		  {DefaultShapes::RoundBox::PosY, -1000.0f},
-																		  {DefaultShapes::RoundBox::SizeX, 4.0f},
-																		  {DefaultShapes::RoundBox::SizeY, 4.0f},
-																		  {DefaultShapes::RoundBox::Radius, 2.0f}},
+				trackBars[i] = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															 .variables = {{DefaultShapes::Box::PosX, -1000.0f},
+																		   {DefaultShapes::Box::PosY, -1000.0f},
+																		   {DefaultShapes::Box::SizeX, l.gaugeHalfW},
+																		   {DefaultShapes::Box::SizeY, 5.0f},
+																		   {DefaultShapes::Box::Radius, 3.0f}},
+															 .material = state.trackOffMat,
+															 .layer = 0});
+				fillBars[i] = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															.variables = {{DefaultShapes::Box::PosX, -1000.0f},
+																		  {DefaultShapes::Box::PosY, -1000.0f},
+																		  {DefaultShapes::Box::SizeX, 4.0f},
+																		  {DefaultShapes::Box::SizeY, 4.0f},
+																		  {DefaultShapes::Box::Radius, 2.0f}},
 															.material = fillMat,
-															.group = 1});
+															.layer = 1});
 			}
 		};
 		createGaugeBars(state.surgeTrackBars, state.surgeFillBars, state.surgeMat);
@@ -540,19 +540,19 @@ namespace MusicSceneNamespace
 			state.trackVisualActive[i] = initStates[i] ? 1 : 0;
 			Material2DHandle mat = initStates[i] ? state.trackOnMat : state.trackOffMat;
 			state.trackToggles[i] =
-				services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
-											  .variables = {{DefaultShapes::RoundBox::PosX, l.leftPillX},
-															{DefaultShapes::RoundBox::PosY, l.trackY[i]},
-															{DefaultShapes::RoundBox::SizeX, l.pillHalfSize},
-															{DefaultShapes::RoundBox::SizeY, l.pillHalfSize},
-															{DefaultShapes::RoundBox::Radius, 4.0f}},
+				services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+											  .variables = {{DefaultShapes::Box::PosX, l.leftPillX},
+															{DefaultShapes::Box::PosY, l.trackY[i]},
+															{DefaultShapes::Box::SizeX, l.pillHalfSize},
+															{DefaultShapes::Box::SizeY, l.pillHalfSize},
+															{DefaultShapes::Box::Radius, 4.0f}},
 											  .material = mat});
 			auto& tgl = registry.addComponent<ShapeToggle>(state.trackToggles[i]);
 			tgl.active = initStates[i];
 			tgl.clickPadding = 6.0f;
 			tgl.modifierAmount = 2.5f;
-			tgl.parameterModifierMask.set(DefaultShapes::RoundBox::SizeX);
-			tgl.parameterModifierMask.set(DefaultShapes::RoundBox::SizeY);
+			tgl.parameterModifierMask.set(DefaultShapes::Box::SizeX);
+			tgl.parameterModifierMask.set(DefaultShapes::Box::SizeY);
 
 			state.trackLabels[i] = registry.createEntity();
 			auto& lt = registry.addComponent<Transform>(state.trackLabels[i]);

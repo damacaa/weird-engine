@@ -23,8 +23,7 @@
             "id": 1,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 5,
-                "groupIdx": 1,
+                "layer": 1,
                 "hasCollisions": true,
                 "material": 2,
                 "parameters": [
@@ -33,19 +32,19 @@
                     54.5,
                     35.5,
                     2.200000047683716,
-                    1.100000023841858,
                     0.0,
+                    1.100000023841858,
                     0.0
                 ],
-                "smoothFactor": 0.4000000059604645
+                "smoothFactor": 0.4000000059604645,
+                "type": "Box"
             }
         },
         {
             "id": 2,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 4,
-                "groupIdx": 1,
+                "layer": 1,
                 "hasCollisions": true,
                 "material": 3,
                 "parameters": [
@@ -58,15 +57,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.4000000059604645
+                "smoothFactor": 0.4000000059604645,
+                "type": "Box"
             }
         },
         {
             "id": 3,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 4,
-                "groupIdx": 1,
+                "layer": 1,
                 "hasCollisions": true,
                 "material": 3,
                 "parameters": [
@@ -79,15 +78,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.4000000059604645
+                "smoothFactor": 0.4000000059604645,
+                "type": "Box"
             }
         },
         {
             "id": 4,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 4,
-                "groupIdx": 1,
+                "layer": 1,
                 "hasCollisions": false,
                 "material": 3,
                 "parameters": [
@@ -100,15 +99,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.5
+                "smoothFactor": 0.5,
+                "type": "Box"
             }
         },
         {
             "id": 5,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 4,
-                "groupIdx": 1,
+                "layer": 1,
                 "hasCollisions": false,
                 "material": 3,
                 "parameters": [
@@ -121,15 +120,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.5
+                "smoothFactor": 0.5,
+                "type": "Box"
             }
         },
         {
             "id": 6,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 2,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -142,15 +141,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Box"
             }
         },
         {
             "id": 7,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -163,15 +162,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 5.5
+                "smoothFactor": 5.5,
+                "type": "Circle"
             }
         },
         {
             "id": 8,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -184,15 +183,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 5.0
+                "smoothFactor": 5.0,
+                "type": "Circle"
             }
         },
         {
             "id": 9,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -205,15 +204,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 6.0
+                "smoothFactor": 6.0,
+                "type": "Circle"
             }
         },
         {
             "id": 10,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -226,15 +225,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 5.5
+                "smoothFactor": 5.5,
+                "type": "Circle"
             }
         },
         {
             "id": 11,
             "shape": {
                 "combination": 2,
-                "distanceFieldId": 2,
-                "groupIdx": 2,
+                "layer": 2,
                 "hasCollisions": true,
                 "material": 0,
                 "parameters": [
@@ -247,15 +246,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.5
+                "smoothFactor": 0.5,
+                "type": "Box"
             }
         },
         {
             "id": 12,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 14,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -263,20 +262,20 @@
                     -25.200000762939453,
                     5.199999809265137,
                     5.800000190734863,
-                    0.11999999731779099,
                     0.0,
+                    0.11999999731779099,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.4000000953674316
+                "smoothFactor": 2.4000000953674316,
+                "type": "Box"
             }
         },
         {
             "id": 13,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -289,15 +288,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.799999952316284
+                "smoothFactor": 2.799999952316284,
+                "type": "Circle"
             }
         },
         {
             "id": 14,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 14,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -305,20 +304,20 @@
                     -26.200000762939453,
                     4.599999904632568,
                     5.199999809265137,
-                    -0.11999999731779099,
                     0.0,
+                    -0.11999999731779099,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.5999999046325684
+                "smoothFactor": 2.5999999046325684,
+                "type": "Box"
             }
         },
         {
             "id": 15,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -331,15 +330,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.799999952316284
+                "smoothFactor": 2.799999952316284,
+                "type": "Circle"
             }
         },
         {
             "id": 16,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 14,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -347,20 +346,20 @@
                     -13.199999809265137,
                     10.600000381469727,
                     2.700000047683716,
-                    -0.05000000074505806,
                     0.0,
+                    -0.05000000074505806,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 3.0
+                "smoothFactor": 3.0,
+                "type": "Box"
             }
         },
         {
             "id": 17,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 0,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -373,15 +372,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.5999999046325684
+                "smoothFactor": 2.5999999046325684,
+                "type": "Circle"
             }
         },
         {
             "id": 18,
             "shape": {
                 "combination": 4,
-                "distanceFieldId": 0,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -394,15 +393,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.200000047683716
+                "smoothFactor": 2.200000047683716,
+                "type": "Circle"
             }
         },
         {
             "id": 19,
             "shape": {
                 "combination": 4,
-                "distanceFieldId": 2,
-                "groupIdx": 3,
+                "layer": 3,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -415,15 +414,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.7999999523162842
+                "smoothFactor": 1.7999999523162842,
+                "type": "Box"
             }
         },
         {
             "id": 20,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 14,
-                "groupIdx": 4,
+                "layer": 4,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -431,20 +430,20 @@
                     -24.36116600036621,
                     7.449999809265137,
                     5.599999904632568,
-                    -0.15000000596046448,
                     0.0,
+                    -0.15000000596046448,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.4000000953674316
+                "smoothFactor": 2.4000000953674316,
+                "type": "Box"
             }
         },
         {
             "id": 21,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 14,
-                "groupIdx": 4,
+                "layer": 4,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -452,20 +451,20 @@
                     -16.200000762939453,
                     4.800000190734863,
                     3.5999999046325684,
-                    0.18000000715255737,
                     0.0,
+                    0.18000000715255737,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.799999952316284
+                "smoothFactor": 2.799999952316284,
+                "type": "Box"
             }
         },
         {
             "id": 22,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 14,
-                "groupIdx": 4,
+                "layer": 4,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -473,20 +472,20 @@
                     -20.799999237060547,
                     4.800000190734863,
                     1.899999976158142,
-                    0.2199999988079071,
                     0.0,
+                    0.2199999988079071,
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 2.4000000953674316
+                "smoothFactor": 2.4000000953674316,
+                "type": "Box"
             }
         },
         {
             "id": 23,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 10,
-                "groupIdx": 5,
+                "layer": 5,
                 "hasCollisions": false,
                 "material": 4,
                 "parameters": [
@@ -499,15 +498,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.8999999761581421
+                "smoothFactor": 0.8999999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 24,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 5,
+                "layer": 5,
                 "hasCollisions": false,
                 "material": 4,
                 "parameters": [
@@ -520,15 +519,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.8999999761581421
+                "smoothFactor": 0.8999999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 25,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 5,
+                "layer": 5,
                 "hasCollisions": false,
                 "material": 4,
                 "parameters": [
@@ -541,15 +540,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.800000011920929
+                "smoothFactor": 0.800000011920929,
+                "type": "Line"
             }
         },
         {
             "id": 26,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 5,
+                "layer": 5,
                 "hasCollisions": false,
                 "material": 4,
                 "parameters": [
@@ -562,15 +561,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.800000011920929
+                "smoothFactor": 0.800000011920929,
+                "type": "Line"
             }
         },
         {
             "id": 27,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 10,
-                "groupIdx": 6,
+                "layer": 6,
                 "hasCollisions": false,
                 "material": 5,
                 "parameters": [
@@ -583,15 +582,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.8999999761581421
+                "smoothFactor": 0.8999999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 28,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 6,
+                "layer": 6,
                 "hasCollisions": false,
                 "material": 5,
                 "parameters": [
@@ -604,15 +603,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.8999999761581421
+                "smoothFactor": 0.8999999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 29,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 6,
+                "layer": 6,
                 "hasCollisions": false,
                 "material": 5,
                 "parameters": [
@@ -625,7 +624,8 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.8999999761581421
+                "smoothFactor": 0.8999999761581421,
+                "type": "Line"
             }
         },
         {
@@ -633,8 +633,7 @@
             "shape": {
                 "assetPath": "clam.weirdshape",
                 "combination": 0,
-                "distanceFieldId": 25,
-                "groupIdx": 7,
+                "layer": 7,
                 "hasCollisions": false,
                 "material": 5,
                 "parameters": [
@@ -654,8 +653,7 @@
             "id": 31,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 10,
-                "groupIdx": 7,
+                "layer": 7,
                 "hasCollisions": false,
                 "material": 6,
                 "parameters": [
@@ -668,15 +666,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.6499999761581421
+                "smoothFactor": 0.6499999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 32,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 7,
+                "layer": 7,
                 "hasCollisions": false,
                 "material": 6,
                 "parameters": [
@@ -689,15 +687,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.6499999761581421
+                "smoothFactor": 0.6499999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 33,
             "shape": {
                 "combination": 3,
-                "distanceFieldId": 10,
-                "groupIdx": 7,
+                "layer": 7,
                 "hasCollisions": false,
                 "material": 6,
                 "parameters": [
@@ -710,15 +708,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.6499999761581421
+                "smoothFactor": 0.6499999761581421,
+                "type": "Line"
             }
         },
         {
             "id": 34,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 0,
-                "groupIdx": 8,
+                "layer": 8,
                 "hasCollisions": false,
                 "material": 15,
                 "parameters": [
@@ -731,15 +729,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.4000000059604645
+                "smoothFactor": 0.4000000059604645,
+                "type": "Circle"
             }
         },
         {
             "id": 35,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 13,
-                "groupIdx": 9,
+                "layer": 9,
                 "hasCollisions": false,
                 "material": 4,
                 "parameters": [
@@ -752,15 +750,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 0.4000000059604645
+                "smoothFactor": 0.4000000059604645,
+                "type": "Star"
             }
         },
         {
             "id": 36,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 13,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 6,
                 "parameters": [
@@ -773,7 +771,8 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Star"
             }
         }
     ],
@@ -1073,5 +1072,5 @@
         "distanceConstraints": [],
         "springs": []
     },
-    "version": 1
+    "version": 2
 }

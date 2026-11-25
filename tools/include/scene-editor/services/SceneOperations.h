@@ -11,6 +11,21 @@
 
 namespace WeirdEngine::Tools::SceneEd
 {
+	struct WorldPickResult
+	{
+		enum class Kind
+		{
+			None,
+			Entity,
+			Cluster
+		};
+
+		Kind kind = Kind::None;
+		Entity entity = INVALID_ENTITY;
+		uint32_t clusterId = 0;
+		bool isDirectInside = false;
+	};
+
 	class SceneOperations
 	{
 	public:
@@ -42,6 +57,18 @@ namespace WeirdEngine::Tools::SceneEd
 		vec2 getShapePosition(const Shape& s, Entity e) const;
 		vec2 getEntityPosition(Entity e) const;
 		void setEntityPosition(Entity e, vec2 newPos);
+		vec2 getLineEndpoint(Entity e, int endpointIndex) const;
+		void setLineEndpoint(Entity e, int endpointIndex, vec2 newPos);
+
+		// Shape layers & evaluation ordering
+		std::vector<Entity> getShapesInLayer(uint16_t layer) const;
+		std::vector<uint16_t> getUsedShapeLayers() const;
+		void setShapeLayer(Entity e, uint16_t newLayer);
+		void moveShapeOrderInLayer(Entity e, int delta);
+		void moveShapeToLayerEdge(Entity e, bool toEnd);
+		void reorderShapeRelativeTo(Entity srcEntity, Entity dstEntity, bool insertAfter);
+		void normalizeLayerOrders(uint16_t layer);
+		uint32_t getEntityGroupId(Entity e) const;
 
 		// Cluster manipulation
 		std::filesystem::path resolveClusterPath(const std::string& assetPath) const;
@@ -77,10 +104,19 @@ namespace WeirdEngine::Tools::SceneEd
 		// Selection & editing commands
 		void deleteSelected();
 		void duplicateSelected();
+		void copySelected();
+		void cutSelected();
+		bool canPaste() const;
+		void pasteClipboard(const vec2* targetWorldCenter = nullptr);
 		vec2 getSelectedPosition() const;
 		void setSelectedPosition(vec2 newPos);
 
 		// Picking & selection helpers
+		WorldPickResult hitTestAtWorld(vec2 worldPos, float worldPerPixel = 0.0f) const;
+		bool getEntityWorldBounds(Entity e, vec2& outMin, vec2& outMax) const;
+		bool doesEntityOverlapWorldBox(Entity e, vec2 boxMin, vec2 boxMax) const;
+		void selectInWorldBox(vec2 boxMin, vec2 boxMax, const std::unordered_set<Entity>& baseEntities,
+							  const std::unordered_set<uint32_t>& baseClusterIds);
 		void pickAtWorld(vec2 worldPos);
 		void selectEntity(Entity e, bool multiSelect = false);
 		void selectCluster(uint32_t cId, bool multiSelect = false);
@@ -125,6 +161,10 @@ namespace WeirdEngine::Tools::SceneEd
 			std::unordered_set<uint32_t> selectedClusterIds;
 		};
 
+		bool captureSelectionPayload(nlohmann::json& outJson, vec2& outAnchor) const;
+		void instantiateSelectionPayload(const nlohmann::json& j, vec2 deltaOffset);
+		std::string makeUniqueEntityName(const std::string& baseName) const;
+		std::string makeUniqueClusterName(const std::string& baseName) const;
 		static bool statesEquivalent(const SceneUndoState& a, const SceneUndoState& b);
 		bool hasPendingEditorEdit() const;
 		void flushDesignPhysicsSync();

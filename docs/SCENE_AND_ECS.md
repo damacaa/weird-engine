@@ -424,7 +424,7 @@ if (hit.entity != INVALID_ENTITY)
 }
 ```
 
-Both queries respect shape combination/group semantics and skip shapes with
+Both queries respect shape combination/layer semantics and skip shapes with
 `hasCollisions = false`. Rigidbodies are evaluated through the physics spatial
 grid snapshot, so the queries stay safe on the main thread.
 

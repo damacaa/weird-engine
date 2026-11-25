@@ -103,7 +103,7 @@ namespace PlatformerSceneNamespace
 																.material = state.playerMaterial,
 																.combination = WeirdEngine::CombinationType::Addition,
 																.hasCollision = false,
-																.group = 2});
+																.layer = 2});
 			}
 		}
 	}
@@ -119,12 +119,12 @@ namespace PlatformerSceneNamespace
 		state.previewSubMaterial = subMat;
 
 		// UI preview box line cursor for platform creation (initially offscreen)
-		state.previewBox = services.shapes().addUIShape({.shapeId = DefaultShapes::BoxLine,
-														 .variables = {{DefaultShapes::BoxLine::PosX, -1000.0f},
-																	   {DefaultShapes::BoxLine::PosY, -1000.0f},
-																	   {DefaultShapes::BoxLine::SizeX, 0.0f},
-																	   {DefaultShapes::BoxLine::SizeY, 0.0f},
-																	   {DefaultShapes::BoxLine::Thickness, 2.0f}},
+		state.previewBox = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+														 .variables = {{DefaultShapes::Box::PosX, -1000.0f},
+																	   {DefaultShapes::Box::PosY, -1000.0f},
+																	   {DefaultShapes::Box::SizeX, 0.0f},
+																	   {DefaultShapes::Box::SizeY, 0.0f},
+																	   {DefaultShapes::Box::OutlineThickness, 2.0f}},
 														 .material = state.previewAddMaterial});
 	}
 
@@ -174,11 +174,11 @@ namespace PlatformerSceneNamespace
 				state.boxStart = ECS::Camera::screenPositionToWorldPosition2D(cam, screen);
 
 				// Position initial outline box cursor at click
-				previewUi.parameters[DefaultShapes::BoxLine::PosX] = screen.x;
-				previewUi.parameters[DefaultShapes::BoxLine::PosY] = screen.y;
-				previewUi.parameters[DefaultShapes::BoxLine::SizeX] = 2.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 2.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 2.0f;
+				previewUi.parameters[DefaultShapes::Box::PosX] = screen.x;
+				previewUi.parameters[DefaultShapes::Box::PosY] = screen.y;
+				previewUi.parameters[DefaultShapes::Box::SizeX] = 2.0f;
+				previewUi.parameters[DefaultShapes::Box::SizeY] = 2.0f;
+				previewUi.parameters[DefaultShapes::Box::OutlineThickness] = 2.0f;
 				registry.setComponentDirty(previewUi);
 			}
 		}
@@ -196,11 +196,11 @@ namespace PlatformerSceneNamespace
 				state.isCreatingBox = false;
 
 				// Hide preview box offscreen
-				previewUi.parameters[DefaultShapes::BoxLine::PosX] = -1000.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::PosY] = -1000.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::SizeX] = 0.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 0.0f;
-				previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 0.0f;
+				previewUi.parameters[DefaultShapes::Box::PosX] = -1000.0f;
+				previewUi.parameters[DefaultShapes::Box::PosY] = -1000.0f;
+				previewUi.parameters[DefaultShapes::Box::SizeX] = 0.0f;
+				previewUi.parameters[DefaultShapes::Box::SizeY] = 0.0f;
+				previewUi.parameters[DefaultShapes::Box::OutlineThickness] = 0.0f;
 				registry.setComponentDirty(previewUi);
 			}
 			else
@@ -212,11 +212,11 @@ namespace PlatformerSceneNamespace
 					vec2 pos = (currentScreen + startScreen) / 2.0f;
 					vec2 size = 0.5f * glm::abs(currentScreen - startScreen);
 
-					previewUi.parameters[DefaultShapes::BoxLine::PosX] = pos.x;
-					previewUi.parameters[DefaultShapes::BoxLine::PosY] = pos.y;
-					previewUi.parameters[DefaultShapes::BoxLine::SizeX] = std::max(size.x, 2.0f);
-					previewUi.parameters[DefaultShapes::BoxLine::SizeY] = std::max(size.y, 2.0f);
-					previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 2.0f;
+					previewUi.parameters[DefaultShapes::Box::PosX] = pos.x;
+					previewUi.parameters[DefaultShapes::Box::PosY] = pos.y;
+					previewUi.parameters[DefaultShapes::Box::SizeX] = std::max(size.x, 2.0f);
+					previewUi.parameters[DefaultShapes::Box::SizeY] = std::max(size.y, 2.0f);
+					previewUi.parameters[DefaultShapes::Box::OutlineThickness] = 2.0f;
 					registry.setComponentDirty(previewUi);
 				}
 
@@ -249,11 +249,11 @@ namespace PlatformerSceneNamespace
 												.combination = state.boxCombination});
 
 					// Hide preview box offscreen
-					previewUi.parameters[DefaultShapes::BoxLine::PosX] = -1000.0f;
-					previewUi.parameters[DefaultShapes::BoxLine::PosY] = -1000.0f;
-					previewUi.parameters[DefaultShapes::BoxLine::SizeX] = 0.0f;
-					previewUi.parameters[DefaultShapes::BoxLine::SizeY] = 0.0f;
-					previewUi.parameters[DefaultShapes::BoxLine::Thickness] = 0.0f;
+					previewUi.parameters[DefaultShapes::Box::PosX] = -1000.0f;
+					previewUi.parameters[DefaultShapes::Box::PosY] = -1000.0f;
+					previewUi.parameters[DefaultShapes::Box::SizeX] = 0.0f;
+					previewUi.parameters[DefaultShapes::Box::SizeY] = 0.0f;
+					previewUi.parameters[DefaultShapes::Box::OutlineThickness] = 0.0f;
 					registry.setComponentDirty(previewUi);
 				}
 			}

@@ -352,6 +352,7 @@ namespace WeirdEngine
 		m_viewport.renderProjectModal(m_context, m_sceneOps);
 		m_viewport.renderViewportContextMenu(m_context, m_sceneOps);
 		m_viewport.handleCustomUIShortcuts(m_context, m_sceneOps);
+		m_viewport.renderViewportOverlays(m_context, m_sceneOps);
 		m_sceneOps.syncUndoStateAfterUI();
 		m_sceneOps.renderUnsavedChangesModal();
 	}

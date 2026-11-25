@@ -270,7 +270,7 @@ services.audio().setSong(createSceneSong(), {
 	.mode = SongVisualizationMode::UI,
 	.material = songMat.id,
 	.combination = CombinationType::Addition,
-	.group = 1
+	.layer = 1
 });
 ```
 

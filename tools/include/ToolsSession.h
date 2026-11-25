@@ -106,6 +106,15 @@ namespace WeirdEngine::Tools
 		float audioVolume = 0.75f;
 	};
 
+	struct SceneClipboardState
+	{
+		bool hasData = false;
+		bool fromCut = false;
+		int pasteCount = 0;
+		vec2 anchorWorld{0.0f, 0.0f};
+		nlohmann::json data;
+	};
+
 	enum class PendingSceneExit
 	{
 		None,
@@ -217,6 +226,15 @@ namespace WeirdEngine::Tools
 			return m_shapeState;
 		}
 
+		SceneClipboardState& sceneClipboard()
+		{
+			return m_sceneClipboard;
+		}
+		const SceneClipboardState& sceneClipboard() const
+		{
+			return m_sceneClipboard;
+		}
+
 		static std::string getSceneTempSessionPath();
 		static std::string getClusterTempSessionPath();
 
@@ -253,5 +271,6 @@ namespace WeirdEngine::Tools
 		SceneEditorSession m_sceneState;
 		ClusterEditorSession m_clusterState;
 		ShapeEditorSession m_shapeState;
+		SceneClipboardState m_sceneClipboard;
 	};
 } // namespace WeirdEngine::Tools

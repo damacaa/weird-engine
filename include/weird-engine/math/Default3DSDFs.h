@@ -2,6 +2,7 @@
 #define WEIRDSAMPLES_DEFAULT3DSDFS_H
 
 #include <cstdint>
+#include <string_view>
 
 #include "SDF.h"
 
@@ -55,6 +56,49 @@ namespace WeirdEngine
 
 		constexpr size_t TOTAL_BUILTIN_SHAPES = COUNT_3D;
 	} // namespace DefaultShapes3D
+
+	namespace BuiltinShapes
+	{
+		constexpr const char* toName(ShapeId id) noexcept
+		{
+			switch (id)
+			{
+#define WEIRD_BUILTIN_2D_TO_NAME(Name, params, expr)                                                                   \
+	case DefaultShapes::Name:                                                                                          \
+		return #Name;
+				WEIRD_BUILTIN_SHAPES_2D(WEIRD_BUILTIN_2D_TO_NAME)
+#undef WEIRD_BUILTIN_2D_TO_NAME
+#define WEIRD_BUILTIN_3D_TO_NAME(Name, params, expr)                                                                   \
+	case DefaultShapes3D::Name:                                                                                        \
+		return "3D/" #Name;
+				WEIRD_BUILTIN_SHAPES_3D(WEIRD_BUILTIN_3D_TO_NAME)
+#undef WEIRD_BUILTIN_3D_TO_NAME
+				default:
+					return nullptr;
+			}
+		}
+
+		constexpr bool fromName(std::string_view name, ShapeId& outId) noexcept
+		{
+#define WEIRD_BUILTIN_2D_FROM_NAME(Name, params, expr)                                                                 \
+	if (name == #Name)                                                                                                 \
+	{                                                                                                                  \
+		outId = DefaultShapes::Name;                                                                                   \
+		return true;                                                                                                   \
+	}
+			WEIRD_BUILTIN_SHAPES_2D(WEIRD_BUILTIN_2D_FROM_NAME)
+#undef WEIRD_BUILTIN_2D_FROM_NAME
+#define WEIRD_BUILTIN_3D_FROM_NAME(Name, params, expr)                                                                 \
+	if (name == "3D/" #Name)                                                                                           \
+	{                                                                                                                  \
+		outId = DefaultShapes3D::Name;                                                                                 \
+		return true;                                                                                                   \
+	}
+			WEIRD_BUILTIN_SHAPES_3D(WEIRD_BUILTIN_3D_FROM_NAME)
+#undef WEIRD_BUILTIN_3D_FROM_NAME
+			return false;
+		}
+	} // namespace BuiltinShapes
 } // namespace WeirdEngine
 
 #endif // WEIRDSAMPLES_DEFAULT3DSDFS_H

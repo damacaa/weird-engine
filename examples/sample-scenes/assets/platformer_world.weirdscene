@@ -1,9 +1,9 @@
 {
     "camera": {
         "position": [
-            -4.805229663848877,
-            2.3411331176757813,
-            94.28733825683594
+            -65.25254821777344,
+            -62.03123474121094,
+            212.49949645996094
         ],
         "rotation": [
             0.0,
@@ -197,10 +197,10 @@
             "id": 1,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 2,
-                "groupIdx": 0,
                 "hasCollisions": true,
+                "layer": 1,
                 "material": 4,
+                "order": 0,
                 "parameters": [
                     -4.163448333740234,
                     -100.0,
@@ -211,20 +211,21 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Box"
             }
         },
         {
             "id": 2,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 0,
-                "groupIdx": 0,
                 "hasCollisions": true,
+                "layer": 0,
                 "material": 2,
+                "order": 2,
                 "parameters": [
-                    -52.31854248046875,
-                    13.565376281738281,
+                    -63.89936828613281,
+                    8.967107772827148,
                     20.5,
                     0.0,
                     0.0,
@@ -232,17 +233,18 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Circle"
             }
         },
         {
             "id": 3,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 8,
-                "groupIdx": 0,
                 "hasCollisions": true,
+                "layer": 0,
                 "material": 7,
+                "order": 3,
                 "parameters": [
                     34.457977294921875,
                     0.0960226058959961,
@@ -253,17 +255,18 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Triangle"
             }
         },
         {
             "id": 4,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 2,
-                "groupIdx": 0,
                 "hasCollisions": true,
+                "layer": 0,
                 "material": 10,
+                "order": 0,
                 "parameters": [
                     -6.412008285522461,
                     3.483229875564575,
@@ -274,17 +277,18 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Box"
             }
         },
         {
             "id": 5,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 2,
-                "groupIdx": 0,
                 "hasCollisions": true,
+                "layer": 0,
                 "material": 10,
+                "order": 1,
                 "parameters": [
                     -1.4975965023040771,
                     3.0319223403930664,
@@ -295,7 +299,8 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Box"
             }
         },
         {
@@ -1857,6 +1862,28 @@
                     1.0
                 ]
             }
+        },
+        {
+            "id": 118,
+            "shape": {
+                "combination": 3,
+                "hasCollisions": true,
+                "layer": 0,
+                "material": 2,
+                "order": 4,
+                "parameters": [
+                    -64.60243225097656,
+                    -7.233822822570801,
+                    46.150001525878906,
+                    6.650000095367432,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "smoothFactor": 10.0,
+                "type": "Box"
+            }
         }
     ],
     "entityTags": [],
@@ -2615,5 +2642,5 @@
             }
         ]
     },
-    "version": 1
+    "version": 2
 }

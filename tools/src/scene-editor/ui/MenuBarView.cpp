@@ -116,11 +116,24 @@ namespace WeirdEngine::Tools::SceneEd
 					sceneOps.redo();
 				}
 				ImGui::Separator();
-				if (ImGui::MenuItem("Delete Selected", "Del / X", false, ctx.hasSelection()))
+				if (ImGui::MenuItem("Cut", "Ctrl+X", false, !ctx.isSimulating && ctx.hasSelection()))
+				{
+					sceneOps.cutSelected();
+				}
+				if (ImGui::MenuItem("Copy", "Ctrl+C", false, !ctx.isSimulating && ctx.hasSelection()))
+				{
+					sceneOps.copySelected();
+				}
+				if (ImGui::MenuItem("Paste", "Ctrl+V", false, !ctx.isSimulating && sceneOps.canPaste()))
+				{
+					sceneOps.pasteClipboard(nullptr);
+				}
+				ImGui::Separator();
+				if (ImGui::MenuItem("Delete Selected", "Del / X", false, !ctx.isSimulating && ctx.hasSelection()))
 				{
 					sceneOps.deleteSelected();
 				}
-				if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, ctx.selectedEntity != INVALID_ENTITY))
+				if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, !ctx.isSimulating && ctx.hasSelection()))
 				{
 					sceneOps.duplicateSelected();
 				}

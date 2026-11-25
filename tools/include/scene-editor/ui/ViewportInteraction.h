@@ -17,6 +17,7 @@ namespace WeirdEngine::Tools::SceneEd
 		void resetCamera(EditorContext& ctx);
 		vec2 getMouseWorld(EditorContext& ctx);
 		void handleViewportMouseInput(EditorContext& ctx, SceneOperations& sceneOps);
+		void renderViewportOverlays(EditorContext& ctx, SceneOperations& sceneOps);
 
 		void renderBottomToolbar(EditorContext& ctx, SceneOperations& sceneOps);
 		void renderViewportContextMenu(EditorContext& ctx, SceneOperations& sceneOps);

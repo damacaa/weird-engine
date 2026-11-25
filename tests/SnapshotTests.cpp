@@ -609,7 +609,7 @@ namespace
 		require(glm::length(dotCentroid - state.shipPos) < 0.01f,
 				"Spaceship cluster dots must remain centered on shipPos.");
 
-		// Verify Fuel UI groups are separated (active fill draws over track) and label clears the bar vertically.
+		// Verify Fuel UI layers are separated (active fill draws over track) and label clears the bar vertically.
 		require(registry.isEntityValid(state.fuelBgLineEntity) && registry.isEntityValid(state.fuelLineEntity) &&
 					registry.isEntityValid(state.fuelLabelEntity),
 				"ThrustScene fuel UI entities must all be created.");
@@ -619,8 +619,8 @@ namespace
 		const float trackTop =
 			bgUi.parameters[DefaultShapes::Line::StartY] + bgUi.parameters[DefaultShapes::Line::Width];
 		const float labelBottom = labelTransform.position.y - 40.0f;
-		require(bgUi.groupIdx < fuelUi.groupIdx,
-				"Fuel bar fill must use a higher SDF group than its track so it is not masked.");
+		require(bgUi.layer < fuelUi.layer,
+				"Fuel bar fill must use a higher SDF layer than its track so it is not masked.");
 		require(labelBottom > trackTop + 4.0f, "FUEL label must sit cleanly above the fuel bar without overlap.");
 		require(bgUi.material != fuelUi.material, "Fuel fill and background track must use distinct materials.");
 
@@ -906,10 +906,10 @@ namespace
 			const auto& surgeFill = registry.getComponent<UIShape>(state.surgeFillBars[i]);
 			const auto& duckTrack = registry.getComponent<UIShape>(state.duckTrackBars[i]);
 			const auto& duckFill = registry.getComponent<UIShape>(state.duckFillBars[i]);
-			require(surgeTrack.groupIdx < surgeFill.groupIdx && duckTrack.groupIdx < duckFill.groupIdx,
-					"Surge and duck equalizer fills must draw in a higher SDF group than their tracks.");
-			require(surgeFill.parameters[DefaultShapes::RoundBox::PosY] < 0.0f &&
-						duckFill.parameters[DefaultShapes::RoundBox::PosY] < 0.0f,
+			require(surgeTrack.layer < surgeFill.layer && duckTrack.layer < duckFill.layer,
+					"Surge and duck equalizer fills must draw in a higher SDF layer than their tracks.");
+			require(surgeFill.parameters[DefaultShapes::Box::PosY] < 0.0f &&
+						duckFill.parameters[DefaultShapes::Box::PosY] < 0.0f,
 					"Idle equalizer fill bars must park off-screen.");
 		}
 
@@ -937,7 +937,7 @@ namespace
 		MusicSceneNamespace::statusTextSystem(registry, services);
 		require(state.isPlaying && services.audio().music().getSurgeLevel() > 0.15f,
 				"Clicking MusicScene SURGE TextButton must play and activate surge.");
-		require(registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] > 0.0f,
+		require(registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::Box::PosY] > 0.0f,
 				"Active surge level must position equalizer fill bars visibly on screen.");
 		require(registry.getComponent<Shape>(state.backgroundShape).parameters[2] > 5.2f,
 				"Active surge must expand background grid visual energy.");
@@ -954,16 +954,15 @@ namespace
 		MusicSceneNamespace::dynamicControlsSystem(registry, services);
 		require(services.audio().music().getDuckingLevel() > 0.15f,
 				"Clicking MusicScene DUCK TextButton must raise ducking level.");
-		require(registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] > 0.0f,
+		require(registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::Box::PosY] > 0.0f,
 				"Active duck level must position duck equalizer fill bars visibly on screen.");
 
 		// Verify clearing engine dynamic effects parks equalizer fill bars cleanly off-screen
 		services.audio().resetDynamicEffects();
 		MusicSceneNamespace::dynamicControlsSystem(registry, services);
-		require(
-			registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] < 0.0f &&
-				registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::RoundBox::PosY] < 0.0f,
-			"Zeroed surge/duck effects must park equalizer fill bars off-screen.");
+		require(registry.getComponent<UIShape>(state.surgeFillBars[0]).parameters[DefaultShapes::Box::PosY] < 0.0f &&
+					registry.getComponent<UIShape>(state.duckFillBars[0]).parameters[DefaultShapes::Box::PosY] < 0.0f,
+				"Zeroed surge/duck effects must park equalizer fill bars off-screen.");
 
 		// Verify track toggle mutation propagates both from ShapeToggle pill and TextToggle label
 		registry.getComponent<ShapeToggle>(state.trackToggles[0]).active = false;
@@ -991,8 +990,8 @@ namespace
 		for (size_t i = 0; i < MusicSceneNamespace::State::NUM_GAUGE_BARS; ++i)
 		{
 			const auto& bar = registry.getComponent<UIShape>(state.surgeTrackBars[i]);
-			require(bar.parameters[DefaultShapes::RoundBox::PosX] > 420.0f &&
-						bar.parameters[DefaultShapes::RoundBox::PosX] < 635.0f,
+			require(bar.parameters[DefaultShapes::Box::PosX] > 420.0f &&
+						bar.parameters[DefaultShapes::Box::PosX] < 635.0f,
 					"MusicScene equalizer gauges must stay within 640x480 right panel bounds.");
 		}
 		services.audio().resetDynamicEffects();
@@ -1018,28 +1017,27 @@ namespace
 		require(state.keys.size() == 24, "InstrumentScene must instantiate all 14 white + 10 black keys.");
 		const auto& firstWhite = registry.getComponent<UIShape>(state.keys[0].entity);
 		const auto& firstBlack = registry.getComponent<UIShape>(state.keys[14].entity);
-		require(firstWhite.groupIdx == 0 && firstBlack.groupIdx == 1,
-				"Black piano keys must use a higher SDF group so they render cleanly above white keys.");
+		require(firstWhite.layer == 0 && firstBlack.layer == 1,
+				"Black piano keys must use a higher SDF layer so they render cleanly above white keys.");
 
-		const float whiteTop = firstWhite.parameters[DefaultShapes::RoundBox::PosY] +
-							   firstWhite.parameters[DefaultShapes::RoundBox::SizeY];
-		const float blackTop = firstBlack.parameters[DefaultShapes::RoundBox::PosY] +
-							   firstBlack.parameters[DefaultShapes::RoundBox::SizeY];
-		require(std::abs(blackTop - whiteTop) < 3.0f && firstBlack.parameters[DefaultShapes::RoundBox::PosY] >
-															firstWhite.parameters[DefaultShapes::RoundBox::PosY],
+		const float whiteTop =
+			firstWhite.parameters[DefaultShapes::Box::PosY] + firstWhite.parameters[DefaultShapes::Box::SizeY];
+		const float blackTop =
+			firstBlack.parameters[DefaultShapes::Box::PosY] + firstBlack.parameters[DefaultShapes::Box::SizeY];
+		require(std::abs(blackTop - whiteTop) < 3.0f &&
+					firstBlack.parameters[DefaultShapes::Box::PosY] > firstWhite.parameters[DefaultShapes::Box::PosY],
 				"Black piano keys must anchor along the top edge of the white keys.");
 
 		// Verify 2D world chassis cutout framing the piano + tight centered oscilloscope dot ribbon
 		require(registry.isEntityValid(state.worldCutout) && registry.hasComponent<Shape>(state.worldCutout),
 				"InstrumentScene must create a 2D world cutout framing the piano bay.");
 		const auto& cut800 = registry.getComponent<Shape>(state.worldCutout);
-		const float cutSizeX800 = cut800.parameters[DefaultShapes::RoundedBox::SizeX];
-		const float cutSizeY800 = cut800.parameters[DefaultShapes::RoundedBox::SizeY];
-		const float cutPosY800 = cut800.parameters[DefaultShapes::RoundedBox::PosY];
+		const float cutSizeX800 = cut800.parameters[DefaultShapes::Box::SizeX];
+		const float cutSizeY800 = cut800.parameters[DefaultShapes::Box::SizeY];
+		const float cutPosY800 = cut800.parameters[DefaultShapes::Box::PosY];
 		const float camPosY800 = registry.getComponent<Transform>(services.render().getCameraEntity()).position.y;
-		require(cut800.distanceFieldId == DefaultShapes::RoundedBox &&
-					cut800.combination == CombinationType::Subtraction && cutSizeX800 > cutSizeY800 &&
-					cutSizeY800 > 1.0f && cutPosY800 < camPosY800,
+		require(cut800.distanceFieldId == DefaultShapes::Box && cut800.combination == CombinationType::Subtraction &&
+					cutSizeX800 > cutSizeY800 && cutSizeY800 > 1.0f && cutPosY800 < camPosY800,
 				"Piano bay world cutout must be a wide landscape Subtraction RoundedBox aligned in Y-up space.");
 
 		const float scopeFirstX = registry.getComponent<Transform>(state.scopeDots.front()).position.x;
@@ -1062,7 +1060,7 @@ namespace
 		// Verify downward key press motion and glow dot activation
 		InstrumentSceneNamespace::updateVisualsSystem(registry, services);
 		const auto& pressedBlack = registry.getComponent<UIShape>(state.keys[14].entity);
-		require(pressedBlack.parameters[DefaultShapes::RoundBox::PosY] < state.keys[14].basePosY,
+		require(pressedBlack.parameters[DefaultShapes::Box::PosY] < state.keys[14].basePosY,
 				"Pressed piano keys must depress downward in screen Y-up space.");
 		require(registry.getComponent<Transform>(state.keys[14].glowDot).position.y > 0.0f,
 				"Active key press must reveal the key indicator glow dot.");
@@ -1079,8 +1077,8 @@ namespace
 
 		// Verify dynamic Sound & Timbre controls based on active instrument and waveform
 		require(state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_TIMBRE] == "SIN" &&
-					state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_MOD] == "--",
-				"Lead SoftSine must show SIN and disabled -- in Sound & Timbre slots.");
+					state.cachedActionLabels[InstrumentSceneNamespace::State::ACT_MOD] == "-",
+				"Lead SoftSine must show SIN and disabled - in Sound & Timbre slots.");
 
 		auto clickActionLabel = [&](InstrumentSceneNamespace::State::ActionBtn btn)
 		{
@@ -1133,7 +1131,7 @@ namespace
 		require(state.lastWidth == 640 && state.lastHeight == 480,
 				"InstrumentScene must detect viewport resize and reflow layout.");
 		const auto& cut640 = registry.getComponent<Shape>(state.worldCutout);
-		require(std::abs(cut640.parameters[DefaultShapes::RoundedBox::SizeX] - cutSizeX800) > 0.1f,
+		require(std::abs(cut640.parameters[DefaultShapes::Box::SizeX] - cutSizeX800) > 0.1f,
 				"Piano bay world cutout must recompute world bounds cleanly on viewport resize.");
 		require(state.cachedHudNote.find('#') == std::string::npos,
 				"On-screen note HUD must avoid '#' characters missing from the bitmap font.");
@@ -1832,52 +1830,50 @@ namespace
 			return val;
 		};
 
-		// BoxRotated: halfSize=(2, 1), angle=pi/4 around origin -> (sqrt(2), 0) has distance < 0, (2.2, 0) > 0
+		// Box with Angle != 0: halfSize=(2, 1), angle=pi/2 around origin -> swaps X/Y extents
 		constexpr float kPiOver4 = 0.78539816339f;
 		constexpr float kPiOver2 = 1.57079632679f;
-		const float rotBoxVars[8] = {0.0f, 0.0f, 2.0f, 1.0f, kPiOver2, 0.0f, 0.0f, 0.0f};
-		require(evalBuiltin(DefaultShapes::BoxRotated, rotBoxVars, {0.5f, 1.5f}) < 0.0f &&
-					evalBuiltin(DefaultShapes::BoxRotated, rotBoxVars, {1.5f, 0.5f}) > 0.0f,
-				"BoxRotated at 90deg must swap X/Y extents.");
+		const float rotBoxVars[8] = {0.0f, 0.0f, 2.0f, 1.0f, 0.0f, kPiOver2, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::Box, rotBoxVars, {0.5f, 1.5f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::Box, rotBoxVars, {1.5f, 0.5f}) > 0.0f,
+				"Rotated Box at 90deg must swap X/Y extents.");
 
-		// TriangleRotated: 90deg rotation places apex along X instead of +Y
-		const float rotTriVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, kPiOver4, 0.0f, 0.0f, 0.0f};
-		require(evalBuiltin(DefaultShapes::TriangleRotated, rotTriVars, {0.0f, 0.0f}) < 0.0f,
-				"TriangleRotated must contain its local origin.");
+		// Triangle with Angle != 0: contains local origin
+		const float rotTriVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 0.0f, kPiOver4, 0.0f, 0.0f};
+		require(evalBuiltin(DefaultShapes::Triangle, rotTriVars, {0.0f, 0.0f}) < 0.0f,
+				"Rotated Triangle must contain its local origin.");
 
-		// RoundTriangle: unrounded (r=0) matches Triangle; rounded (r=0.25) preserves flat bottom & rounds apex
+		// Triangle: unrounded (r=0) has sharp apex; rounded (r=0.25) preserves flat bottom & rounds apex
 		const float triVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 		const float roundTriVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 0.25f, 0.0f, 0.0f, 0.0f};
 		const float sharpApex = evalBuiltin(DefaultShapes::Triangle, triVars, {0.0f, 4.0f / 3.0f});
-		const float zeroRadApex = evalBuiltin(DefaultShapes::RoundTriangle, triVars, {0.0f, 4.0f / 3.0f});
-		require(std::abs(sharpApex) < 1e-4f && std::abs(zeroRadApex) < 1e-4f,
-				"RoundTriangle with radius=0 must match Triangle.");
+		require(std::abs(sharpApex) < 1e-4f, "Triangle with radius=0 must have sharp apex at 2h/3.");
 
-		const float roundedBottomMid = evalBuiltin(DefaultShapes::RoundTriangle, roundTriVars, {0.0f, -2.0f / 3.0f});
-		const float roundedApex = evalBuiltin(DefaultShapes::RoundTriangle, roundTriVars, {0.0f, 4.0f / 3.0f});
+		const float roundedBottomMid = evalBuiltin(DefaultShapes::Triangle, roundTriVars, {0.0f, -2.0f / 3.0f});
+		const float roundedApex = evalBuiltin(DefaultShapes::Triangle, roundTriVars, {0.0f, 4.0f / 3.0f});
 		require(std::abs(roundedBottomMid) < 1e-3f && roundedApex > 0.25f,
-				"RoundTriangle must keep the bottom midpoint on the boundary and pull back the sharp apex.");
+				"Rounded Triangle must keep the bottom midpoint on the boundary and pull back the sharp apex.");
 
 		// Excessive radius must clamp cleanly without NaN and remain inside/tangent to the triangle
 		const float clampedVars[8] = {0.0f, 0.0f, 2.0f, 2.0f, 50.0f, 0.0f, 0.0f, 0.0f};
-		require(evalBuiltin(DefaultShapes::RoundTriangle, clampedVars, {0.0f, -2.0f / 3.0f + 0.618f}) < 0.0f &&
-					evalBuiltin(DefaultShapes::RoundTriangle, clampedVars, {0.0f, 1.3f}) > 0.0f,
-				"RoundTriangle must clamp oversized radius to inscribed circle without NaN.");
+		require(evalBuiltin(DefaultShapes::Triangle, clampedVars, {0.0f, -2.0f / 3.0f + 0.618f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::Triangle, clampedVars, {0.0f, 1.3f}) > 0.0f,
+				"Triangle must clamp oversized radius to inscribed circle without NaN.");
 
-		// RoundTriangleRotated: verify GLSL print and rotation
+		// Rotated + rounded Triangle: verify GLSL print and rotation
 		const float rotRoundTriVars[8] = {1.0f, -2.0f, 2.0f, 2.0f, 0.25f, kPiOver2, 0.0f, 0.0f};
-		require(evalBuiltin(DefaultShapes::RoundTriangleRotated, rotRoundTriVars, {1.0f, -2.0f}) < 0.0f,
-				"RoundTriangleRotated must contain its translated center.");
-		std::string glsl = builtins[DefaultShapes::RoundTriangle]->print();
+		require(evalBuiltin(DefaultShapes::Triangle, rotRoundTriVars, {1.0f, -2.0f}) < 0.0f,
+				"Rotated rounded Triangle must contain its translated center.");
+		std::string glsl = builtins[DefaultShapes::Triangle]->print();
 		require(!glsl.empty() && glsl.find("nan") == std::string::npos,
-				"RoundTriangle GLSL expression generation must succeed.");
+				"Triangle GLSL expression generation must succeed.");
 
-		// RoundBoxRotated: 90deg rotation swaps SizeX/SizeY and rounds corners
+		// Rotated + rounded Box: 90deg rotation swaps SizeX/SizeY and rounds corners
 		const float rotRoundBoxVars[8] = {1.0f, -2.0f, 2.0f, 1.0f, 0.3f, kPiOver2, 0.0f, 0.0f};
-		require(evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {1.5f, -0.5f}) < 0.0f &&
-					evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {2.5f, -1.5f}) > 0.0f &&
-					evalBuiltin(DefaultShapes::RoundBoxRotated, rotRoundBoxVars, {2.0f, 0.0f}) > 0.0f,
-				"RoundBoxRotated must rotate extents and round sharp corners.");
+		require(evalBuiltin(DefaultShapes::Box, rotRoundBoxVars, {1.5f, -0.5f}) < 0.0f &&
+					evalBuiltin(DefaultShapes::Box, rotRoundBoxVars, {2.5f, -1.5f}) > 0.0f &&
+					evalBuiltin(DefaultShapes::Box, rotRoundBoxVars, {2.0f, 0.0f}) > 0.0f,
+				"Rotated rounded Box must rotate extents and round sharp corners.");
 
 		// Verify DefaultShapes::Star exposes its named parameter indices
 		static_assert(DefaultShapes::Star::PosX == 0 && DefaultShapes::Star::PosY == 1 &&
@@ -1896,7 +1892,7 @@ namespace
 				"NodeGraph round_triangle node must evaluate and print GLSL.");
 	}
 
-	void testGpuShape2DPackingParity()
+	void testShape2DPackingParity()
 	{
 		Scene::registerBuiltinSDFs();
 		const auto builtins = Scene::getBuiltinSDFs();
@@ -1908,15 +1904,15 @@ namespace
 			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
 			const uint16_t shapeId = static_cast<uint16_t>(packed0 & 0xFFFFu);
 			const uint32_t flags = packed0 >> 19u;
-			const float onionThickness = meta.w;
+			const float outlineThickness = meta.w;
 
 			float dist = 10000.0f;
 			switch (shapeId)
 			{
-				case GpuShape2D::Circle:
+				case Shape2D::Circle:
 					dist = glm::length(p - vec2(p0.x, p0.y)) - p0.z;
 					break;
-				case GpuShape2D::Box:
+				case Shape2D::Box:
 				{
 					vec2 q = p - vec2(p0.x, p0.y);
 					q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
@@ -1924,7 +1920,7 @@ namespace
 					dist = glm::length(glm::max(d, vec2(0.0f))) + std::min(std::max(d.x, d.y), 0.0f) - p1.z;
 					break;
 				}
-				case GpuShape2D::Triangle:
+				case Shape2D::Triangle:
 				{
 					vec2 q = p - vec2(p0.x, p0.y);
 					q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
@@ -1950,7 +1946,7 @@ namespace
 					dist = -std::sqrt(dx) * signDy - p1.z;
 					break;
 				}
-				case GpuShape2D::Line:
+				case Shape2D::Line:
 				{
 					const vec2 pa = p - vec2(p0.x, p0.y);
 					const vec2 ba(p0.z, p0.w);
@@ -1958,7 +1954,7 @@ namespace
 					dist = glm::length(pa - ba * h) - p1.y;
 					break;
 				}
-				case GpuShape2D::Ramp:
+				case Shape2D::Ramp:
 				{
 					vec2 q = p - vec2(p0.x, p0.y);
 					q = vec2(p1.y * q.x - p1.z * q.y, p1.z * q.x + p1.y * q.y);
@@ -1983,10 +1979,10 @@ namespace
 					dist = std::sqrt(std::min(dx0, dx1)) * signMdy;
 					break;
 				}
-				case GpuShape2D::SineWave:
+				case Shape2D::SineWave:
 					dist = (p.y - p0.w) - p0.x * std::sin(p0.y * p.x + p0.z * kTime);
 					break;
-				case GpuShape2D::Star:
+				case Shape2D::Star:
 				{
 					const vec2 q = p - vec2(p0.x, p0.y);
 					const float d = glm::length(q) - p0.z;
@@ -1998,9 +1994,9 @@ namespace
 					break;
 			}
 
-			if ((flags & GpuShape2D::FLAG_ONION) != 0u)
+			if ((flags & Shape2D::FLAG_OUTLINE) != 0u)
 			{
-				dist = std::abs(dist) - onionThickness;
+				dist = std::abs(dist) - outlineThickness;
 			}
 			return dist;
 		};
@@ -2009,32 +2005,35 @@ namespace
 		{
 			ShapeId id;
 			float vars[8];
+			bool expectRotatedFlag;
 		};
 
 		const BuiltinCase cases[] = {
-			{DefaultShapes::Circle, {1.2f, -0.7f, 2.5f, 0, 0, 0, 0, 0}},
-			{DefaultShapes::CircleLine, {1.2f, -0.7f, 2.5f, 0.25f, 0, 0, 0, 0}},
-			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0, 0}},
-			{DefaultShapes::BoxLine, {-1.5f, 0.8f, 2.2f, 1.1f, 0.2f, 0, 0, 0}},
-			{DefaultShapes::RoundBox, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0, 0}},
-			{DefaultShapes::RoundBoxLine, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0.15f, 0, 0}},
-			{DefaultShapes::RoundedBox, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0, 0, 0}},
-			{DefaultShapes::RoundedBoxLine, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0.12f, 0, 0}},
-			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0, 0}},
-			{DefaultShapes::TriangleLine, {0.5f, -0.4f, 2.6f, 2.1f, 0.18f, 0, 0, 0}},
-			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0, 0, 0}},
-			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0, 0}},
-			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0, 0, 0, 0}},
-			{DefaultShapes::Star, {-0.6f, 0.7f, 2.0f, 0.45f, 5.0f, 1.3f, 0, 0}},
-			{DefaultShapes::BoxRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0, 0, 0}},
-			{DefaultShapes::BoxLineRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0.18f, 0, 0}},
-			{DefaultShapes::TriangleRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0, 0, 0}},
-			{DefaultShapes::TriangleLineRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0.15f, 0, 0}},
-			{DefaultShapes::RampRotated, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0, 0}},
-			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0, 0}},
-			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, -2.0f, 0.3f, 0, 0, 0}},
-			{DefaultShapes::RoundTriangleRotated, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0, 0}},
-			{DefaultShapes::RoundBoxRotated, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0, 0}},
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.5f, 0.0f, 0, 0, 0, 0}, false},
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.5f, 0.25f, 0, 0, 0, 0}, false},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0.0f, 0}, false},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0.2f, 0}, false},
+			{DefaultShapes::Box, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0.0f, 0}, false},
+			{DefaultShapes::Box, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0.15f, 0}, false},
+			{DefaultShapes::Box, {1.0f, -1.0f, 2.4f, 0.9f, 0.0f, 0.65f, 0.0f, 0}, true},
+			{DefaultShapes::Box, {1.0f, -1.0f, 2.4f, 0.9f, 0.0f, 0.65f, 0.18f, 0}, true},
+			{DefaultShapes::Box, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0.0f, 0}, true},
+			{DefaultShapes::Box, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0.14f, 0}, true},
+			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0.0f, 0}, false},
+			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0.18f, 0}, false},
+			{DefaultShapes::Triangle, {-0.8f, 0.5f, 2.5f, 1.9f, 0.0f, -0.9f, 0.0f, 0}, true},
+			{DefaultShapes::Triangle, {-0.8f, 0.5f, 2.5f, 1.9f, 0.0f, -0.9f, 0.15f, 0}, true},
+			{DefaultShapes::Triangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0.0f, 0}, false},
+			{DefaultShapes::Triangle, {0.3f, 0.4f, 2.4f, -2.0f, 0.3f, 0, 0.0f, 0}, false},
+			{DefaultShapes::Triangle, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0.12f, 0}, true},
+			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0.0f, 0, 0}, false},
+			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0.1f, 0, 0}, false},
+			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0.0f, 0}, false},
+			{DefaultShapes::Ramp, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0.1f, 0}, true},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0.0f, 0, 0, 0}, false},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0.2f, 0, 0, 0}, false},
+			{DefaultShapes::Star, {-0.6f, 0.7f, 2.0f, 0.45f, 5.0f, 1.3f, 0.0f, 0}, false},
+			{DefaultShapes::Star, {-0.6f, 0.7f, 2.0f, 0.45f, 5.0f, 1.3f, 0.15f, 0}, false},
 		};
 
 		const vec2 samplePoints[] = {
@@ -2044,19 +2043,46 @@ namespace
 		for (const auto& tc : cases)
 		{
 			vec4 meta, p0, p1;
-			GpuShape2D::packInstance(tc.id, CombinationType::Addition, 0, 3, 1.0f, tc.vars, meta, p0, p1);
+			Shape2D::packInstance(tc.id, CombinationType::Addition, 0, 3, 1.0f, tc.vars, meta, p0, p1);
+			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+			const uint16_t gpuId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+			const uint32_t flags = packed0 >> 19u;
+			const float outline = Shape2D::getOutlineThickness(tc.id, tc.vars);
+			require(((flags & Shape2D::FLAG_ROTATED) != 0u) == tc.expectRotatedFlag,
+					"FLAG_ROTATED must be set iff Angle != 0.");
+			require(((flags & Shape2D::FLAG_OUTLINE) != 0u) == (outline > 0.0f),
+					"FLAG_OUTLINE must be set iff OutlineThickness > 0.");
+
 			for (const vec2& pt : samplePoints)
 			{
 				float fullParams[12];
 				packSdfParameters(fullParams, tc.vars, kTime, pt, 0.0f);
 				const float refDist = builtins[tc.id]->getValue(fullParams);
 				const float gpuDist = evalPackedBuiltin(meta, p0, p1, pt);
-				require(std::isfinite(gpuDist) && std::abs(refDist - gpuDist) < 1e-4f,
-						"Collapsed GPU builtin evaluator must match reference AST SDF for all 22 built-in shapes.");
+				const float cpuFastDist = Shape2D::evalPackedBuiltin(gpuId, flags, meta.w, p0, p1, pt, kTime);
+				require(
+					std::isfinite(gpuDist) && std::abs(refDist - gpuDist) < 1e-4f &&
+						std::abs(gpuDist - cpuFastDist) < 1e-5f,
+					"Canonical GPU and CPU evaluators must match reference AST SDF across all modifier combinations.");
 			}
 		}
 
-		// Verify metadata bit packing, custom shape passthrough, and group sorting in packShapes
+		// Verify BuiltinShapes string round-trip for all 2D and 3D built-ins (and collision-free 2D vs 3D Box)
+		{
+			for (ShapeId id = 0; id < static_cast<ShapeId>(DefaultShapes3D::TOTAL_BUILTIN_SHAPES); ++id)
+			{
+				const char* name = BuiltinShapes::toName(id);
+				require(name != nullptr && name[0] != '\0', "Every built-in 2D and 3D shape must have a string name.");
+				ShapeId parsed = 0xFFFFu;
+				require(BuiltinShapes::fromName(name, parsed) && parsed == id,
+						"BuiltinShapes::fromName must round-trip BuiltinShapes::toName for every built-in shape.");
+			}
+			require(std::string_view(BuiltinShapes::toName(DefaultShapes::Box)) == "Box" &&
+						std::string_view(BuiltinShapes::toName(DefaultShapes3D::Box)) == "3D/Box",
+					"2D Box and 3D Box must serialize to distinct string names.");
+		}
+
+		// Verify metadata bit packing, custom shape passthrough, and (layer, order) sorting in packShapes
 		Registry reg;
 		reg.registerComponent<Shape>();
 		const Entity eGlobal = reg.createEntity();
@@ -2064,37 +2090,49 @@ namespace
 			auto& s = reg.addComponent<Shape>(eGlobal);
 			s.distanceFieldId = DefaultShapes::Circle;
 			s.combination = CombinationType::SmoothSubtraction;
-			s.groupIdx = Shape::GLOBAL_GROUP;
+			s.layer = Shape::GLOBAL_LAYER;
+			s.order = 0;
 			s.material = 12;
 			s.smoothFactor = 2.5f;
 		}
-		const Entity eGroup2 = reg.createEntity();
+		const Entity eLayer2Late = reg.createEntity();
 		{
-			auto& s = reg.addComponent<Shape>(eGroup2);
+			auto& s = reg.addComponent<Shape>(eLayer2Late);
 			s.distanceFieldId = static_cast<ShapeId>(DefaultShapes3D::TOTAL_BUILTIN_SHAPES + 3);
 			s.combination = CombinationType::SmoothAddition;
-			s.groupIdx = 2;
+			s.layer = 2;
+			s.order = 10;
 			s.material = 7;
 			s.smoothFactor = 0.75f;
 			s.parameters[0] = 42.0f;
 			s.parameters[7] = -9.5f;
 		}
-		const Entity eGroup0 = reg.createEntity();
+		const Entity eLayer2Early = reg.createEntity();
 		{
-			auto& s = reg.addComponent<Shape>(eGroup0);
-			s.distanceFieldId = DefaultShapes::BoxLine;
+			auto& s = reg.addComponent<Shape>(eLayer2Early);
+			s.distanceFieldId = DefaultShapes::Triangle;
 			s.combination = CombinationType::Addition;
-			s.groupIdx = 0;
+			s.layer = 2;
+			s.order = 2;
+			s.material = 4;
+		}
+		const Entity eLayer0 = reg.createEntity();
+		{
+			auto& s = reg.addComponent<Shape>(eLayer0);
+			s.distanceFieldId = DefaultShapes::Box;
+			s.combination = CombinationType::Addition;
+			s.layer = 0;
+			s.order = 5;
 			s.material = 15;
-			s.parameters[DefaultShapes::BoxLine::Thickness] = 0.3f;
+			s.parameters[DefaultShapes::Box::OutlineThickness] = 0.3f;
 		}
 
 		std::vector<vec4> packed;
 		std::vector<size_t> scratch;
 		uint32_t shapeCount = 0;
-		GpuShape2D::packShapes<Shape>(reg, packed, scratch, shapeCount);
+		Shape2D::packShapes<Shape>(reg, packed, scratch, shapeCount);
 
-		require(shapeCount == 3 && packed.size() == 9, "packShapes must emit 3 vec4s per shape.");
+		require(shapeCount == 4 && packed.size() == 12, "packShapes must emit 3 vec4s per shape.");
 
 		auto unpack = [&](size_t idx)
 		{
@@ -2106,10 +2144,10 @@ namespace
 				uint16_t shapeId;
 				uint16_t comb;
 				uint32_t flags;
-				uint16_t group;
+				uint16_t layer;
 				uint16_t mat;
 				float smooth;
-				float onion;
+				float outline;
 			};
 			return Unpacked{static_cast<uint16_t>(p0Bits & 0xFFFFu),
 							static_cast<uint16_t>((p0Bits >> 16u) & 0x7u),
@@ -2123,17 +2161,20 @@ namespace
 		const auto u0 = unpack(0);
 		const auto u1 = unpack(1);
 		const auto u2 = unpack(2);
-		require(u0.group == 0 && u0.shapeId == GpuShape2D::Box && (u0.flags & GpuShape2D::FLAG_ONION) != 0u &&
-					u0.mat == 15 && std::abs(u0.onion - 0.3f) < 1e-5f,
-				"First sorted shape must be group 0 BoxLine collapsed to Box with FLAG_ONION.");
-		require(u1.group == 2 && u1.shapeId == DefaultShapes3D::TOTAL_BUILTIN_SHAPES + 3 &&
-					u1.comb == static_cast<uint16_t>(CombinationType::SmoothAddition) && u1.mat == 7 &&
-					std::abs(u1.smooth - 0.75f) < 1e-5f && packed[4].x == 42.0f && packed[5].w == -9.5f,
-				"Second sorted shape must preserve custom ShapeId and raw parameters.");
-		require(u2.group == Shape::GLOBAL_GROUP && (u2.flags & GpuShape2D::FLAG_GLOBAL_GROUP) != 0u &&
-					u2.shapeId == GpuShape2D::Circle &&
-					u2.comb == static_cast<uint16_t>(CombinationType::SmoothSubtraction) && u2.mat == 12,
-				"GLOBAL_GROUP shape must sort last with FLAG_GLOBAL_GROUP set.");
+		const auto u3 = unpack(3);
+		require(u0.layer == 0 && u0.shapeId == Shape2D::Box && (u0.flags & Shape2D::FLAG_OUTLINE) != 0u &&
+					u0.mat == 15 && std::abs(u0.outline - 0.3f) < 1e-5f,
+				"First sorted shape must be layer 0 Box with FLAG_OUTLINE.");
+		require(u1.layer == 2 && u1.shapeId == Shape2D::Triangle && u1.mat == 4,
+				"Earlier order within layer 2 must sort before later order regardless of insertion order.");
+		require(u2.layer == 2 && u2.shapeId == DefaultShapes3D::TOTAL_BUILTIN_SHAPES + 3 &&
+					u2.comb == static_cast<uint16_t>(CombinationType::SmoothAddition) && u2.mat == 7 &&
+					std::abs(u2.smooth - 0.75f) < 1e-5f && packed[7].x == 42.0f && packed[8].w == -9.5f,
+				"Later order within layer 2 must preserve custom ShapeId and raw parameters.");
+		require(u3.layer == Shape::GLOBAL_LAYER && (u3.flags & Shape2D::FLAG_GLOBAL_LAYER) != 0u &&
+					u3.shapeId == Shape2D::Circle &&
+					u3.comb == static_cast<uint16_t>(CombinationType::SmoothSubtraction) && u3.mat == 12,
+				"GLOBAL_LAYER shape must sort last with FLAG_GLOBAL_LAYER set.");
 
 		// Verify ShapeService increments sdfDefinitionsVersion on registerSDF
 		uint64_t defVersion = 1;
@@ -2154,7 +2195,7 @@ namespace
 		constexpr float kTime = 1.25f;
 		constexpr float kAudio = 0.6f;
 
-		// 1. Verify computeBuiltinBounds encloses every inside point for all 22 built-in shapes
+		// 1. Verify computeBuiltinBounds encloses every inside point across canonical primitives & modifiers
 		struct BuiltinBoundsCase
 		{
 			ShapeId id;
@@ -2164,40 +2205,35 @@ namespace
 		};
 
 		const BuiltinBoundsCase cases[] = {
-			{DefaultShapes::Circle, {1.2f, -0.7f, 2.0f, 0, 0, 0, 0, 0}, true, true},
-			{DefaultShapes::CircleLine, {1.2f, -0.7f, 2.0f, 0.3f, 0, 0, 0, 0}, true, true},
-			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0, 0}, true, true},
-			{DefaultShapes::BoxLine, {-1.5f, 0.8f, 2.2f, 1.1f, 0.25f, 0, 0, 0}, true, true},
-			{DefaultShapes::RoundBox, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0, 0}, true, true},
-			{DefaultShapes::RoundBoxLine, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0.2f, 0, 0}, true, true},
-			{DefaultShapes::RoundedBox, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0, 0, 0}, true, true},
-			{DefaultShapes::RoundedBoxLine, {-0.3f, 0.9f, 1.8f, 1.2f, 0.4f, 0.15f, 0, 0}, true, true},
-			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0, 0}, true, true},
-			{DefaultShapes::TriangleLine, {0.5f, -0.4f, 2.6f, 2.1f, 0.2f, 0, 0, 0}, true, true},
-			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0, 0, 0}, true, true},
-			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0, 0}, true, true},
-			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0, 0, 0, 0}, false, false},
-			{DefaultShapes::Star, {-0.6f, 0.7f, 1.8f, 0.45f, 5.0f, 1.3f, 0, 0}, true, true},
-			{DefaultShapes::BoxRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0, 0, 0}, true, true},
-			{DefaultShapes::BoxLineRotated, {1.0f, -1.0f, 2.4f, 0.9f, 0.65f, 0.2f, 0, 0}, true, true},
-			{DefaultShapes::TriangleRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0, 0, 0}, true, true},
-			{DefaultShapes::TriangleLineRotated, {-0.8f, 0.5f, 2.5f, 1.9f, -0.9f, 0.15f, 0, 0}, true, true},
-			{DefaultShapes::RampRotated, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0, 0}, true, true},
-			{DefaultShapes::RoundTriangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0, 0}, true, true},
-			{DefaultShapes::RoundTriangleRotated, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0, 0}, true, true},
-			{DefaultShapes::RoundBoxRotated, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0, 0}, true, true},
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.0f, 0.0f, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::Circle, {1.2f, -0.7f, 2.0f, 0.3f, 0, 0, 0, 0}, true, true},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0.0f, 0}, true, true},
+			{DefaultShapes::Box, {-1.5f, 0.8f, 2.2f, 1.1f, 0, 0, 0.25f, 0}, true, true},
+			{DefaultShapes::Box, {0.4f, -1.1f, 2.0f, 1.5f, 0.35f, 0, 0.2f, 0}, true, true},
+			{DefaultShapes::Box, {1.0f, -1.0f, 2.4f, 0.9f, 0.0f, 0.65f, 0.2f, 0}, true, true},
+			{DefaultShapes::Box, {0.9f, 0.2f, 2.1f, 1.3f, 0.35f, -0.7f, 0.15f, 0}, true, true},
+			{DefaultShapes::Triangle, {0.5f, -0.4f, 2.6f, 2.1f, 0, 0, 0.2f, 0}, true, true},
+			{DefaultShapes::Triangle, {-0.8f, 0.5f, 2.5f, 1.9f, 0.0f, -0.9f, 0.15f, 0}, true, true},
+			{DefaultShapes::Triangle, {0.3f, 0.4f, 2.4f, 2.0f, 0.3f, 0, 0.0f, 0}, true, true},
+			{DefaultShapes::Triangle, {-0.5f, -0.6f, 2.2f, -1.8f, 0.25f, 1.1f, 0.0f, 0}, true, true},
+			{DefaultShapes::Line, {-2.0f, -1.0f, 3.0f, 1.5f, 0.4f, 0.1f, 0, 0}, true, true},
+			{DefaultShapes::Ramp, {0.2f, 0.3f, 2.0f, 1.2f, 0.6f, 0, 0.0f, 0}, true, true},
+			{DefaultShapes::Ramp, {0.7f, -0.2f, 1.8f, 1.1f, -0.5f, 0.8f, 0.15f, 0}, true, true},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0.0f, 0, 0, 0}, false, false},
+			{DefaultShapes::SineWave, {0.8f, 1.5f, 2.2f, -0.5f, 0.2f, 0, 0, 0}, false, true},
+			{DefaultShapes::Star, {-0.6f, 0.7f, 1.8f, 0.45f, 5.0f, 1.3f, 0.15f, 0}, true, true},
 		};
 
 		for (const auto& tc : cases)
 		{
 			vec4 meta, p0, p1;
-			GpuShape2D::packInstance(tc.id, CombinationType::Addition, 0, 1, 1.0f, tc.vars, meta, p0, p1);
+			Shape2D::packInstance(tc.id, CombinationType::Addition, 0, 1, 1.0f, tc.vars, meta, p0, p1);
 			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
 			const uint16_t gpuId = static_cast<uint16_t>(packed0 & 0xFFFFu);
 			const uint32_t flags = packed0 >> 19u;
 
 			vec2 bMin, bMax;
-			GpuShape2D::computeBuiltinBounds(gpuId, flags, meta.w, p0, p1, bMin, bMax);
+			Shape2D::computeBuiltinBounds(gpuId, flags, meta.w, p0, p1, bMin, bMax);
 
 			if (tc.expectFiniteX)
 			{
@@ -2226,9 +2262,7 @@ namespace
 				for (int gx = -16; gx <= 16; ++gx)
 				{
 					const vec2 pt(gx * 0.35f, gy * 0.35f);
-					float params[12];
-					packSdfParameters(params, tc.vars, kTime, pt, kAudio);
-					const float d = builtins[tc.id]->getValue(params);
+					const float d = Shape2D::evalPackedBuiltin(gpuId, flags, meta.w, p0, p1, pt, kTime);
 					if (d <= 0.0f)
 					{
 						require(pt.x >= bMin.x - 1e-3f && pt.x <= bMax.x + 1e-3f && pt.y >= bMin.y - 1e-3f &&
@@ -2350,7 +2384,7 @@ namespace
 			std::vector<Shape2DAABB> aabbs;
 			std::vector<size_t> scratch;
 			uint32_t shapeCount = 0;
-			GpuShape2D::packShapes<Shape>(reg, packed, scratch, shapeCount, &aabbs, &sdfBounds, kTime, kAudio);
+			Shape2D::packShapes<Shape>(reg, packed, scratch, shapeCount, &aabbs, &sdfBounds, kTime, kAudio);
 			require(shapeCount == 3 && aabbs.size() == 3, "packShapes must emit parallel AABBs.");
 			require(std::abs(aabbs[0].min.x - 1.0f) < 1e-4f && std::abs(aabbs[0].max.x - 5.0f) < 1e-4f,
 					"Auto-derived custom bounds must evaluate via packShapes.");
@@ -2724,11 +2758,16 @@ namespace
 			shape.parameters[1] = -2.0f;
 			shape.parameters[2] = 1.25f;
 			shape.parameters[3] = 0.75f;
+			shape.parameters[DefaultShapes::Box::OutlineThickness] = 0.15f;
 			shape.material = 4;
 			services.names().setName(srcBox, "UndoBox");
 			services.tags().addTag(srcBox, "editable");
 
 			savedJson = SceneSerializer::serializeToJson(scene);
+			require(savedJson["entities"].size() == 1 &&
+						!savedJson["entities"][0]["shape"].contains("distanceFieldId") &&
+						savedJson["entities"][0]["shape"].value("type", "") == "Box",
+					"Serialized built-in Shape JSON must store string 'type' without numeric 'distanceFieldId'.");
 			savedJson.erase("camera");
 		}
 
@@ -2756,8 +2795,244 @@ namespace
 			require(services.tags().hasTag(restoredBox, "editable"),
 					"In-memory loadFromJson must restore entity tags.");
 			const auto& restoredShape = registry.getComponent<Shape>(restoredBox);
-			require(std::abs(restoredShape.parameters[0] - 3.5f) < 1e-4f && restoredShape.material == 4,
-					"In-memory loadFromJson must restore Shape parameters and material.");
+			require(restoredShape.distanceFieldId == DefaultShapes::Box &&
+						std::abs(restoredShape.parameters[0] - 3.5f) < 1e-4f &&
+						std::abs(restoredShape.parameters[DefaultShapes::Box::OutlineThickness] - 0.15f) < 1e-4f &&
+						restoredShape.material == 4,
+					"In-memory loadFromJson must restore Shape type, parameters, OutlineThickness, and material.");
+		}
+	}
+
+	void testShapeLayerOrderPhysicsAndSerialization(SceneManager& manager, const std::string& namePrefix, bool threaded)
+	{
+		WeirdRenderer::Display::width = 800;
+		WeirdRenderer::Display::height = 800;
+		manager.setAssetsPath(ASSETS_PATH);
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-src");
+		manager.registerScene<InspectableScene<Scene>>(namePrefix + "-dst");
+		manager.loadScene(namePrefix + "-src");
+
+		nlohmann::json savedJson;
+		{
+			auto& scene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *scene.registry;
+			auto& services = *scene.services;
+
+			services.physics().setGravity(0.0f);
+			services.physics().setDamping(0.95f);
+
+			// 1. Verify per-layer automatic order assignment
+			const Entity eAdd = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+															.variables = {{DefaultShapes::Circle::PosX, 0.0f},
+																		  {DefaultShapes::Circle::PosY, 0.0f},
+																		  {DefaultShapes::Circle::Radius, 4.0f}},
+															.material = 1,
+															.combination = CombinationType::Addition,
+															.hasCollision = true,
+															.layer = 0});
+			const Entity eSub = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+															.variables = {{DefaultShapes::Circle::PosX, 0.0f},
+																		  {DefaultShapes::Circle::PosY, 0.0f},
+																		  {DefaultShapes::Circle::Radius, 4.0f}},
+															.material = 2,
+															.combination = CombinationType::Subtraction,
+															.hasCollision = true,
+															.layer = 0});
+			const Entity eOtherLayer = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+																   .variables = {{DefaultShapes::Circle::PosX, 50.0f},
+																				 {DefaultShapes::Circle::PosY, 50.0f},
+																				 {DefaultShapes::Circle::Radius, 1.0f}},
+																   .material = 3,
+																   .combination = CombinationType::Addition,
+																   .hasCollision = true,
+																   .layer = 2});
+
+			require(registry.getComponent<Shape>(eAdd).order == 0 && registry.getComponent<Shape>(eSub).order == 1 &&
+						registry.getComponent<Shape>(eOtherLayer).order == 0,
+					"ShapeService::addShape must assign sequential per-layer orders starting at 0.");
+			require(ShapeService::computeNextOrder<Shape>(registry, 0) == 2 &&
+						ShapeService::computeNextOrder<Shape>(registry, 2) == 1 &&
+						ShapeService::computeNextOrder<Shape>(registry, 5) == 0,
+					"ShapeService::computeNextOrder must return per-layer max + 1 (or 0 for empty layer).");
+
+			// 2. Verify Simulation2D respects intra-layer order (both single-threaded and threaded)
+			{
+				PhysicsSettings settings;
+				settings.runSimulationInThread = threaded;
+				settings.gravity = 0.0f;
+				settings.damping = 0.95f;
+				Simulation2D sim(16, settings);
+				if (threaded)
+				{
+					sim.startSimulationThread();
+				}
+
+				Registry simReg;
+				simReg.registerComponent<Transform>();
+				simReg.registerComponent<Shape>();
+				simReg.registerComponent<RigidBody2D>(std::make_shared<RigidBodyManager>(sim));
+				ECS::PhysicsSystem2D::init(simReg, sim);
+
+				const Entity simAdd = simReg.createEntity();
+				{
+					auto& s = simReg.addComponent<Shape>(simAdd);
+					s.distanceFieldId = DefaultShapes::Circle;
+					s.parameters[DefaultShapes::Circle::PosX] = 0.0f;
+					s.parameters[DefaultShapes::Circle::PosY] = 0.0f;
+					s.parameters[DefaultShapes::Circle::Radius] = 4.0f;
+					s.combination = CombinationType::Addition;
+					s.hasCollisions = true;
+					s.layer = 0;
+					s.order = 0;
+					simReg.setComponentDirty(s);
+				}
+				const Entity simSub = simReg.createEntity();
+				{
+					auto& s = simReg.addComponent<Shape>(simSub);
+					s.distanceFieldId = DefaultShapes::Circle;
+					s.parameters[DefaultShapes::Circle::PosX] = 0.0f;
+					s.parameters[DefaultShapes::Circle::PosY] = 0.0f;
+					s.parameters[DefaultShapes::Circle::Radius] = 4.0f;
+					s.combination = CombinationType::Subtraction;
+					s.hasCollisions = true;
+					s.layer = 0;
+					s.order = 1;
+					simReg.setComponentDirty(s);
+				}
+
+				const Entity bodyEnt = simReg.createEntity();
+				auto& bodyTransform = simReg.addComponent<Transform>(bodyEnt);
+				bodyTransform.position = vec3(1.5f, 0.0f, 0.0f);
+				auto& bodyRb = simReg.addComponent<RigidBody2D>(bodyEnt);
+				bodyRb.mass = 1.0f;
+				bodyRb.type = BodyType::Dynamic;
+				bodyRb.enableShapeCollision = true;
+				simReg.setComponentDirty(bodyTransform);
+				simReg.setComponentDirty(bodyRb);
+
+				auto stepSim = [&](int count)
+				{
+					for (int step = 0; step < count; ++step)
+					{
+						ECS::PhysicsSystem2D::update(simReg, sim);
+						sim.update(1.0 / 60.0);
+						if (threaded)
+						{
+							std::this_thread::sleep_for(std::chrono::milliseconds(4));
+						}
+					}
+					ECS::PhysicsSystem2D::update(simReg, sim);
+				};
+
+				// Initial order: Addition (0) then Subtraction (1) -> interior is carved out
+				stepSim(10);
+				const vec2 posCarved(simReg.getComponent<Transform>(bodyEnt).position);
+				require(glm::length(posCarved - vec2(1.5f, 0.0f)) < 0.25f,
+						"Simulation2D must not push body out when Subtraction has higher order than Addition.");
+
+				// Swap order: Subtraction (0) then Addition (1) -> interior is solid
+				{
+					auto& sSub = simReg.getComponent<Shape>(simSub);
+					auto& sAdd = simReg.getComponent<Shape>(simAdd);
+					sSub.order = 0;
+					sAdd.order = 1;
+					simReg.setComponentDirty(sSub);
+					simReg.setComponentDirty(sAdd);
+				}
+
+				stepSim(30);
+				const vec2 posSolid(simReg.getComponent<Transform>(bodyEnt).position);
+				require(glm::length(posSolid) > 3.5f,
+						"Simulation2D must re-sort shapes on order change and push body out of solid Addition.");
+
+				if (threaded)
+				{
+					sim.stopSimulationThread();
+				}
+			}
+
+			// 3. Verify PhysicsService::sampleAt respects intra-layer order and GLOBAL_LAYER subtraction
+			const RaymarchResult carvedSample = services.physics().sampleAt(vec2(1.5f, 0.0f), false);
+			require(carvedSample.distance > 0.0f,
+					"PhysicsService::sampleAt must evaluate Subtraction after Addition when Subtraction has higher order.");
+
+			{
+				auto& sSub = registry.getComponent<Shape>(eSub);
+				auto& sAdd = registry.getComponent<Shape>(eAdd);
+				sSub.order = 0;
+				sAdd.order = 1;
+				registry.setComponentDirty(sSub);
+				registry.setComponentDirty(sAdd);
+			}
+			const RaymarchResult solidSample = services.physics().sampleAt(vec2(1.5f, 0.0f), false);
+			require(solidSample.distance < -2.0f && solidSample.entity == eAdd,
+					"PhysicsService::sampleAt must report solid Addition when Addition has higher order than Subtraction.");
+
+			const Entity eGlobalSub = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+																  .variables = {{DefaultShapes::Circle::PosX, 0.0f},
+																				{DefaultShapes::Circle::PosY, 0.0f},
+																				{DefaultShapes::Circle::Radius, 5.0f}},
+																  .material = 0,
+																  .combination = CombinationType::Subtraction,
+																  .hasCollision = true,
+																  .layer = Shape::GLOBAL_LAYER});
+			const RaymarchResult globalCutSample = services.physics().sampleAt(vec2(1.5f, 0.0f), false);
+			require(globalCutSample.distance > 0.0f,
+					"PhysicsService::sampleAt must apply GLOBAL_LAYER subtraction after regular layers.");
+
+			// 4. Verify SceneSerializer round-trips non-default layer & order for Shape and UIShape
+			auto& sAdd = registry.getComponent<Shape>(eAdd);
+			sAdd.layer = 3;
+			sAdd.order = 7;
+			auto& sSub = registry.getComponent<Shape>(eSub);
+			sSub.layer = 3;
+			sSub.order = 2;
+			auto& sGlobal = registry.getComponent<Shape>(eGlobalSub);
+			sGlobal.order = 4;
+
+			const Entity eUi = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+															 .variables = {10.0f, 20.0f, 30.0f, 40.0f},
+															 .material = 1,
+															 .combination = CombinationType::Addition,
+															 .layer = 5});
+			registry.getComponent<UIShape>(eUi).order = 9;
+
+			services.names().setName(eAdd, "OrderAdd");
+			services.names().setName(eSub, "OrderSub");
+			services.names().setName(eGlobalSub, "OrderGlobal");
+			services.names().setName(eUi, "OrderUI");
+
+			savedJson = SceneSerializer::serializeToJson(scene);
+			savedJson.erase("camera");
+		}
+
+		manager.loadScene(namePrefix + "-dst");
+		{
+			auto& dstScene = *static_cast<InspectableScene<Scene>*>(manager.getCurrentScene());
+			auto& registry = *dstScene.registry;
+			auto& services = *dstScene.services;
+
+			SceneSerializer::loadFromJson(dstScene, savedJson, "", nullptr, false);
+
+			const Entity rAdd = services.names().getEntityByName("OrderAdd");
+			const Entity rSub = services.names().getEntityByName("OrderSub");
+			const Entity rGlobal = services.names().getEntityByName("OrderGlobal");
+			const Entity rUi = services.names().getEntityByName("OrderUI");
+
+			require(rAdd != INVALID_ENTITY && rSub != INVALID_ENTITY && rGlobal != INVALID_ENTITY &&
+						rUi != INVALID_ENTITY,
+					"SceneSerializer must restore all named shapes for layer/order round-trip.");
+
+			const auto& rsAdd = registry.getComponent<Shape>(rAdd);
+			const auto& rsSub = registry.getComponent<Shape>(rSub);
+			const auto& rsGlobal = registry.getComponent<Shape>(rGlobal);
+			const auto& rsUi = registry.getComponent<UIShape>(rUi);
+
+			require(rsAdd.layer == 3 && rsAdd.order == 7, "Shape layer and order must round-trip through JSON.");
+			require(rsSub.layer == 3 && rsSub.order == 2, "Second shape layer and order must round-trip through JSON.");
+			require(rsGlobal.layer == Shape::GLOBAL_LAYER && rsGlobal.order == 4,
+					"GLOBAL_LAYER shape layer and order must round-trip through JSON.");
+			require(rsUi.layer == 5 && rsUi.order == 9, "UIShape layer and order must round-trip through JSON.");
 		}
 	}
 } // namespace
@@ -2789,8 +3064,8 @@ int main()
 		testTextButtonAndToggleComponents();
 		std::cout << "Checking builtin rotated and rounded shapes.\n" << std::flush;
 		testBuiltinRotatedAndRoundedShapes();
-		std::cout << "Checking GPU 2D shape packing parity.\n" << std::flush;
-		testGpuShape2DPackingParity();
+		std::cout << "Checking 2D shape packing parity.\n" << std::flush;
+		testShape2DPackingParity();
 		std::cout << "Checking Bounds2DExpr and auto-propagation.\n" << std::flush;
 		testBounds2DExprAndAutoPropagation();
 		auto& manager = SceneManager::getInstance();
@@ -2814,6 +3089,8 @@ int main()
 			testClusterReloadPreservesSceneOverrides(manager, "test-cluster-ov" + suffix);
 			std::cout << "Checking SceneSerializerJson" << suffix << ".\n" << std::flush;
 			testSceneSerializerInMemoryRoundTrip(manager, "test-serializer-json" + suffix);
+			std::cout << "Checking ShapeLayerOrder" << suffix << ".\n" << std::flush;
+			testShapeLayerOrderPhysicsAndSerialization(manager, "test-layer-order" + suffix, threaded);
 			std::cout << "Checking MusicScene" << suffix << ".\n" << std::flush;
 			testMusicScene(manager, "test-music" + suffix);
 			std::cout << "Checking InstrumentScene" << suffix << ".\n" << std::flush;

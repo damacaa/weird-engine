@@ -745,11 +745,11 @@ namespace InstrumentSceneNamespace
 		const float sizeY = 0.5f * std::abs(worldB.y - worldA.y);
 
 		auto& cut = registry.getComponent<Shape>(state.worldCutout);
-		cut.parameters[DefaultShapes::RoundedBox::PosX] = 0.5f * (worldA.x + worldB.x);
-		cut.parameters[DefaultShapes::RoundedBox::PosY] = 0.5f * (worldA.y + worldB.y);
-		cut.parameters[DefaultShapes::RoundedBox::SizeX] = sizeX;
-		cut.parameters[DefaultShapes::RoundedBox::SizeY] = sizeY;
-		cut.parameters[DefaultShapes::RoundedBox::Radius] = (std::min)(0.45f, 0.08f * (std::min)(sizeX, sizeY));
+		cut.parameters[DefaultShapes::Box::PosX] = 0.5f * (worldA.x + worldB.x);
+		cut.parameters[DefaultShapes::Box::PosY] = 0.5f * (worldA.y + worldB.y);
+		cut.parameters[DefaultShapes::Box::SizeX] = sizeX;
+		cut.parameters[DefaultShapes::Box::SizeY] = sizeY;
+		cut.parameters[DefaultShapes::Box::Radius] = (std::min)(0.45f, 0.08f * (std::min)(sizeX, sizeY));
 		registry.setComponentDirty(cut);
 	}
 
@@ -802,10 +802,10 @@ namespace InstrumentSceneNamespace
 			if (registry.isEntityValid(kv.entity) && registry.hasComponent<UIShape>(kv.entity))
 			{
 				auto& s = registry.getComponent<UIShape>(kv.entity);
-				s.parameters[DefaultShapes::RoundBox::PosX] = kv.basePosX;
-				s.parameters[DefaultShapes::RoundBox::PosY] = kv.basePosY;
-				s.parameters[DefaultShapes::RoundBox::SizeX] = kv.sizeX;
-				s.parameters[DefaultShapes::RoundBox::SizeY] = kv.sizeY;
+				s.parameters[DefaultShapes::Box::PosX] = kv.basePosX;
+				s.parameters[DefaultShapes::Box::PosY] = kv.basePosY;
+				s.parameters[DefaultShapes::Box::SizeX] = kv.sizeX;
+				s.parameters[DefaultShapes::Box::SizeY] = kv.sizeY;
 			}
 		}
 
@@ -861,12 +861,12 @@ namespace InstrumentSceneNamespace
 									.combination = CombinationType::Addition,
 									.hasCollision = false});
 
-		state.worldCutout = services.shapes().addShape({.shapeId = DefaultShapes::RoundedBox,
-														.variables = {{DefaultShapes::RoundedBox::PosX, 0.0f},
-																	  {DefaultShapes::RoundedBox::PosY, 0.0f},
-																	  {DefaultShapes::RoundedBox::SizeX, 10.0f},
-																	  {DefaultShapes::RoundedBox::SizeY, 4.0f},
-																	  {DefaultShapes::RoundedBox::Radius, 0.35f}},
+		state.worldCutout = services.shapes().addShape({.shapeId = DefaultShapes::Box,
+														.variables = {{DefaultShapes::Box::PosX, 0.0f},
+																	  {DefaultShapes::Box::PosY, 0.0f},
+																	  {DefaultShapes::Box::SizeX, 10.0f},
+																	  {DefaultShapes::Box::SizeY, 4.0f},
+																	  {DefaultShapes::Box::Radius, 0.35f}},
 														.material = state.worldWallMat,
 														.combination = CombinationType::Subtraction,
 														.hasCollision = false});
@@ -883,21 +883,21 @@ namespace InstrumentSceneNamespace
 			return dot;
 		};
 
-		// First create white keys (group 0)
+		// First create white keys (layer 0)
 		for (size_t i = 0; i < NUM_WHITE_KEYS; ++i)
 		{
 			float kx = l.startX + static_cast<float>(i) * l.whiteW + l.whiteW * 0.5f;
 			float ky = l.startY + l.whiteH * 0.5f;
 
 			auto entity =
-				services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
-											  .variables = {{DefaultShapes::RoundBox::PosX, kx},
-															{DefaultShapes::RoundBox::PosY, ky},
-															{DefaultShapes::RoundBox::SizeX, (l.whiteW - 3.0f) * 0.5f},
-															{DefaultShapes::RoundBox::SizeY, (l.whiteH - 3.0f) * 0.5f},
-															{DefaultShapes::RoundBox::Radius, 4.0f}},
+				services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+											  .variables = {{DefaultShapes::Box::PosX, kx},
+															{DefaultShapes::Box::PosY, ky},
+															{DefaultShapes::Box::SizeX, (l.whiteW - 3.0f) * 0.5f},
+															{DefaultShapes::Box::SizeY, (l.whiteH - 3.0f) * 0.5f},
+															{DefaultShapes::Box::Radius, 4.0f}},
 											  .material = state.whiteKeyMat,
-											  .group = 0});
+											  .layer = 0});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
 			btn.requireClickStart = false;
@@ -914,21 +914,21 @@ namespace InstrumentSceneNamespace
 			state.keys.push_back(kv);
 		}
 
-		// Then create black keys along the top edge (group 1 renders cleanly above white keys)
+		// Then create black keys along the top edge (layer 1 renders cleanly above white keys)
 		for (size_t i = 0; i < NUM_BLACK_KEYS; ++i)
 		{
 			const auto& bd = BLACK_DEFS[i];
 			float kx = l.startX + static_cast<float>(bd.afterWhiteIdx + 1) * l.whiteW;
 			float ky = l.startY + l.whiteH - l.blackH * 0.5f;
 
-			auto entity = services.shapes().addUIShape({.shapeId = DefaultShapes::RoundBox,
-														.variables = {{DefaultShapes::RoundBox::PosX, kx},
-																	  {DefaultShapes::RoundBox::PosY, ky},
-																	  {DefaultShapes::RoundBox::SizeX, l.blackW * 0.5f},
-																	  {DefaultShapes::RoundBox::SizeY, l.blackH * 0.5f},
-																	  {DefaultShapes::RoundBox::Radius, 3.0f}},
+			auto entity = services.shapes().addUIShape({.shapeId = DefaultShapes::Box,
+														.variables = {{DefaultShapes::Box::PosX, kx},
+																	  {DefaultShapes::Box::PosY, ky},
+																	  {DefaultShapes::Box::SizeX, l.blackW * 0.5f},
+																	  {DefaultShapes::Box::SizeY, l.blackH * 0.5f},
+																	  {DefaultShapes::Box::Radius, 3.0f}},
 														.material = state.blackKeyMat,
-														.group = 1});
+														.layer = 1});
 			auto& btn = registry.addComponent<ShapeButton>(entity);
 			btn.clickPadding = 0.0f;
 			btn.requireClickStart = false;
@@ -945,13 +945,13 @@ namespace InstrumentSceneNamespace
 			state.keys.push_back(kv);
 		}
 
-		// Selection dot rendered above both white (group 0) and black (group 1) piano keys
+		// Selection dot rendered above both white (layer 0) and black (layer 1) piano keys
 		state.selectionDot = services.shapes().addUIShape({.shapeId = DefaultShapes::Circle,
 														   .variables = {{DefaultShapes::Circle::PosX, -10000.0f},
 																		 {DefaultShapes::Circle::PosY, -10000.0f},
 																		 {DefaultShapes::Circle::Radius, 0.0f}},
 														   .material = state.accentAmberMat,
-														   .group = 2});
+														   .layer = 2});
 
 		// Top-right last played note readout
 		{
@@ -1552,13 +1552,13 @@ namespace InstrumentSceneNamespace
 			float targetSizeX = k.sizeX * (1.0f - 0.06f * pressRatio);
 			float targetSizeY = k.sizeY * (1.0f - 0.05f * pressRatio);
 
-			if (std::abs(shape.parameters[DefaultShapes::RoundBox::PosY] - targetPosY) > 0.01f ||
-				std::abs(shape.parameters[DefaultShapes::RoundBox::SizeX] - targetSizeX) > 0.01f ||
-				std::abs(shape.parameters[DefaultShapes::RoundBox::SizeY] - targetSizeY) > 0.01f)
+			if (std::abs(shape.parameters[DefaultShapes::Box::PosY] - targetPosY) > 0.01f ||
+				std::abs(shape.parameters[DefaultShapes::Box::SizeX] - targetSizeX) > 0.01f ||
+				std::abs(shape.parameters[DefaultShapes::Box::SizeY] - targetSizeY) > 0.01f)
 			{
-				shape.parameters[DefaultShapes::RoundBox::PosY] = targetPosY;
-				shape.parameters[DefaultShapes::RoundBox::SizeX] = targetSizeX;
-				shape.parameters[DefaultShapes::RoundBox::SizeY] = targetSizeY;
+				shape.parameters[DefaultShapes::Box::PosY] = targetPosY;
+				shape.parameters[DefaultShapes::Box::SizeX] = targetSizeX;
+				shape.parameters[DefaultShapes::Box::SizeY] = targetSizeY;
 				registry.setComponentDirty(shape);
 			}
 

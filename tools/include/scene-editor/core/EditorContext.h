@@ -45,6 +45,16 @@ namespace WeirdEngine::Tools::SceneEd
 		}
 	};
 
+	enum class ViewportGizmoHandle : uint8_t
+	{
+		None = 0,
+		MoveFree,
+		MoveX,
+		MoveY,
+		LineStart,
+		LineEnd
+	};
+
 	struct EditorContext
 	{
 		Scene2D* scene = nullptr;
@@ -90,6 +100,20 @@ namespace WeirdEngine::Tools::SceneEd
 		vec2 dragStartPos{0.0f, 0.0f};
 		std::unordered_map<Entity, vec2> dragEntityStartPositions;
 		std::unordered_map<uint32_t, vec2> dragClusterStartPositions;
+		std::unordered_map<Entity, vec2> dragEntityOffsets;
+		std::unordered_map<uint32_t, vec2> dragClusterOffsets;
+		ViewportGizmoHandle activeGizmoHandle = ViewportGizmoHandle::None;
+		ViewportGizmoHandle hoveredGizmoHandle = ViewportGizmoHandle::None;
+		Entity gizmoTargetEntity = INVALID_ENTITY;
+		vec2 dragHandleStartPos{0.0f, 0.0f};
+		vec2 dragHandleOffset{0.0f, 0.0f};
+
+		// Box select state
+		bool isBoxSelecting = false;
+		vec2 boxSelectStartWorld{0.0f, 0.0f};
+		vec2 boxSelectCurrentWorld{0.0f, 0.0f};
+		std::unordered_set<Entity> boxSelectBaseEntities;
+		std::unordered_set<uint32_t> boxSelectBaseClusterIds;
 
 		// Camera control state
 		bool middleWasDown = false;
@@ -122,6 +146,9 @@ namespace WeirdEngine::Tools::SceneEd
 		char newTagBuf[64] = "";
 		uint32_t renamingGroupId = 0;
 		char renameGroupBuf[128] = "";
+		Entity layerEditEntity = INVALID_ENTITY;
+		int layerEditValue = 0;
+		int multiSelectShapeLayer = 0;
 
 		// Materials editor state
 		bool selectMaterialsTab = false;
@@ -172,6 +199,27 @@ namespace WeirdEngine::Tools::SceneEd
 				   !selectedEntities.empty() || !selectedClusterIds.empty();
 		}
 
+		void clearDragState()
+		{
+			isDragging = false;
+			dragHasMoved = false;
+			dragEntityStartPositions.clear();
+			dragClusterStartPositions.clear();
+			dragEntityOffsets.clear();
+			dragClusterOffsets.clear();
+			activeGizmoHandle = ViewportGizmoHandle::None;
+			gizmoTargetEntity = INVALID_ENTITY;
+			dragHandleStartPos = vec2(0.0f);
+			dragHandleOffset = vec2(0.0f);
+		}
+
+		void clearBoxSelectState()
+		{
+			isBoxSelecting = false;
+			boxSelectBaseEntities.clear();
+			boxSelectBaseClusterIds.clear();
+		}
+
 		void deselectAll()
 		{
 			selectedEntities.clear();
@@ -179,9 +227,8 @@ namespace WeirdEngine::Tools::SceneEd
 			selectedEntity = INVALID_ENTITY;
 			selectedClusterId = 0;
 			selectedGroupId = 0;
-			isDragging = false;
-			dragEntityStartPositions.clear();
-			dragClusterStartPositions.clear();
+			hoveredGizmoHandle = ViewportGizmoHandle::None;
+			clearDragState();
 			hasShiftAnchor = false;
 		}
 

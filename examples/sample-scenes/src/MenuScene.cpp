@@ -276,12 +276,12 @@ namespace MenuSceneNamespace
 		// Active Category Focus Indicator (small triangle at the left pointing at the icon)
 		{
 			state.categoryIndicator = services.shapes().addUIShape({
-				.shapeId = DefaultShapes::TriangleRotated,
-				.variables = {{DefaultShapes::TriangleRotated::PosX, 0.0f},
-							  {DefaultShapes::TriangleRotated::PosY, 0.0f},
-							  {DefaultShapes::TriangleRotated::Width, 14.0f},
-							  {DefaultShapes::TriangleRotated::Height, 14.0f},
-							  {DefaultShapes::TriangleRotated::Angle, 1.5707963f}},
+				.shapeId = DefaultShapes::Triangle,
+				.variables = {{DefaultShapes::Triangle::PosX, 0.0f},
+							  {DefaultShapes::Triangle::PosY, 0.0f},
+							  {DefaultShapes::Triangle::Width, 14.0f},
+							  {DefaultShapes::Triangle::Height, 14.0f},
+							  {DefaultShapes::Triangle::Angle, 1.5707963f}},
 				.material = uiAccent,
 			});
 		}
@@ -407,7 +407,7 @@ namespace MenuSceneNamespace
 									.material = mat.id,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
-									.group = 0});
+									.layer = 0});
 	}
 
 	void updateBackgroundSystem(Registry& registry, ServiceProvider& services) {}
@@ -985,12 +985,11 @@ namespace MenuSceneNamespace
 		if (registry.isEntityValid(state.categoryIndicator))
 		{
 			auto& ui = registry.getComponent<UIShape>(state.categoryIndicator);
-			ui.parameters[DefaultShapes::TriangleRotated::PosX] = focusX - 58.0f;
-			ui.parameters[DefaultShapes::TriangleRotated::PosY] = categoryY;
-			ui.parameters[DefaultShapes::TriangleRotated::Width] = 14.0f;
-			ui.parameters[DefaultShapes::TriangleRotated::Height] = 14.0f;
-			ui.parameters[DefaultShapes::TriangleRotated::Angle] =
-				1.5707963f; // 90 degrees, pointing right towards icon
+			ui.parameters[DefaultShapes::Triangle::PosX] = focusX - 58.0f;
+			ui.parameters[DefaultShapes::Triangle::PosY] = categoryY;
+			ui.parameters[DefaultShapes::Triangle::Width] = 14.0f;
+			ui.parameters[DefaultShapes::Triangle::Height] = 14.0f;
+			ui.parameters[DefaultShapes::Triangle::Angle] = 1.5707963f; // 90 degrees, pointing right towards icon
 			registry.setComponentDirty(ui);
 		}
 

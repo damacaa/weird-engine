@@ -57,7 +57,7 @@ private:
 									.material = orangeMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
-									.group = 0});
+									.layer = 0});
 
 		services.shapes().addShape({.shapeId = DefaultShapes3D::Plane,
 									.variables = {},

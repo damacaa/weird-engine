@@ -437,7 +437,7 @@ private:
 		m_blurShader.setUniform("t_colorTexture", 0);
 
 		bool horizontal = true;
-		static int amount = 10;
+		static unsigned int amount = 10;
 
 		for (unsigned int i = 0; i < amount; i++)
 		{

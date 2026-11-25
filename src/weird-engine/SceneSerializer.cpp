@@ -2,6 +2,7 @@
 #include "weird-engine/Scene.h"
 
 #include "weird-engine/components/Transform.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 #include "weird-physics/components/DistanceConstraint.h"
 
 #include "weird-physics/components/RigidBody.h"
@@ -14,6 +15,7 @@
 #include <iostream>
 #include <json/json.h>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace WeirdEngine
 {
@@ -22,7 +24,7 @@ namespace WeirdEngine
 		using json = nlohmann::json;
 
 		json j;
-		j["version"] = 1;
+		j["version"] = 2;
 
 		// Save camera state
 		{
@@ -81,17 +83,21 @@ namespace WeirdEngine
 					continue;
 				auto& s = shapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
-				json shapeJson = {{"distanceFieldId", s.distanceFieldId},
-								  {"combination", static_cast<int>(s.combination)},
+				json shapeJson = {{"combination", static_cast<int>(s.combination)},
 								  {"parameters", json(s.parameters)},
 								  {"hasCollisions", s.hasCollisions},
-								  {"groupIdx", s.groupIdx},
+								  {"layer", s.layer},
+								  {"order", s.order},
 								  {"material", s.material},
 								  {"smoothFactor", s.smoothFactor}};
 				if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
 				{
 					shapeJson["assetPath"] =
 						scene.m_services.resources().makePortableAssetPath(customData->filePath, referencePath);
+				}
+				else if (const char* builtinName = BuiltinShapes::toName(s.distanceFieldId))
+				{
+					shapeJson["type"] = builtinName;
 				}
 				ej["shape"] = std::move(shapeJson);
 			}
@@ -104,12 +110,22 @@ namespace WeirdEngine
 					continue;
 				auto& s = uiShapeArray->getDataAtIdx(i);
 				auto& ej = collectEntity(e);
-				ej["uiShape"] = {{"distanceFieldId", s.distanceFieldId},
-								 {"combination", static_cast<int>(s.combination)},
-								 {"parameters", json(s.parameters)},
-								 {"groupIdx", s.groupIdx},
-								 {"material", s.material},
-								 {"smoothFactor", s.smoothFactor}};
+				json uiShapeJson = {{"combination", static_cast<int>(s.combination)},
+									{"parameters", json(s.parameters)},
+									{"layer", s.layer},
+									{"order", s.order},
+									{"material", s.material},
+									{"smoothFactor", s.smoothFactor}};
+				if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
+				{
+					uiShapeJson["assetPath"] =
+						scene.m_services.resources().makePortableAssetPath(customData->filePath, referencePath);
+				}
+				else if (const char* builtinName = BuiltinShapes::toName(s.distanceFieldId))
+				{
+					uiShapeJson["type"] = builtinName;
+				}
+				ej["uiShape"] = std::move(uiShapeJson);
 			}
 
 			// Dot
@@ -154,10 +170,8 @@ namespace WeirdEngine
 					{"text", tr.text}, {"material", tr.material}, {"width", tr.width}, {"height", tr.height}};
 			}
 
-			// Save entities in order of their ID
-			// Entity order is very important for correct SDF operations
-			// BIG TODO: when entities are added/removed, ensure this order is maintained
-			// (deleted entitiy ids can be reused)
+			// Save entities in deterministic ID order (SDF evaluation order is persisted explicitly via Shape::layer and
+			// Shape::order).
 			for (Entity e = 0; e < scene.m_registry.getEntityCount(); ++e)
 			{
 				if (isBlacklisted(e))
@@ -443,15 +457,17 @@ namespace WeirdEngine
 					scene.m_registry.getComponentArray<Transform>()->setEntityDirty(entity, true);
 				}
 
-				if (ej.contains("shape") || ej.contains("customShape"))
+				if (ej.contains("shape"))
 				{
+					const auto& sj = ej["shape"];
+					const uint16_t layer = static_cast<uint16_t>(sj.value("layer", 0));
+					const int32_t defaultOrder = ShapeService::computeNextOrder<Shape>(scene.m_registry, layer);
 					auto& s = scene.m_registry.addComponent<Shape>(entity);
-					// "customShape" is the legacy key used by scenes saved before the component rename
-					const auto& sj = ej.contains("shape") ? ej["shape"] : ej["customShape"];
-					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
 					s.combination = static_cast<CombinationType>(sj.value("combination", 0));
 					s.hasCollisions = sj.value("hasCollisions", true);
-					s.groupIdx = static_cast<uint16_t>(sj.value("groupIdx", 0));
+					s.layer = layer;
+					s.order = sj.contains("order") && sj["order"].is_number_integer() ? sj["order"].get<int32_t>()
+																					  : defaultOrder;
 					s.material = static_cast<uint16_t>(sj.value("material", 0));
 					s.smoothFactor = sj.value("smoothFactor", 1.0f);
 					if (sj.contains("assetPath") && sj["assetPath"].is_string())
@@ -462,6 +478,19 @@ namespace WeirdEngine
 							std::string resolvedPath =
 								scene.m_services.resources().resolveAssetPath(assetPath, referencePath);
 							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(resolvedPath);
+						}
+					}
+					else if (sj.contains("type") && sj["type"].is_string())
+					{
+						ShapeId builtinId = 0;
+						if (BuiltinShapes::fromName(sj["type"].get<std::string>(), builtinId))
+						{
+							s.distanceFieldId = builtinId;
+						}
+						else
+						{
+							Logger::error("[SceneSerializer] Unknown built-in shape type: " +
+										  sj["type"].get<std::string>());
 						}
 					}
 					if (sj.contains("parameters"))
@@ -481,18 +510,49 @@ namespace WeirdEngine
 
 				if (ej.contains("uiShape"))
 				{
-					auto& s = scene.m_registry.addComponent<UIShape>(entity);
 					const auto& sj = ej["uiShape"];
-					s.distanceFieldId = static_cast<uint16_t>(sj.value("distanceFieldId", 0));
+					const uint16_t layer = static_cast<uint16_t>(sj.value("layer", 0));
+					const int32_t defaultOrder = ShapeService::computeNextOrder<UIShape>(scene.m_registry, layer);
+					auto& s = scene.m_registry.addComponent<UIShape>(entity);
 					s.combination = static_cast<CombinationType>(sj.value("combination", 0));
-					s.groupIdx = static_cast<uint16_t>(sj.value("groupIdx", 0));
+					s.layer = layer;
+					s.order = sj.contains("order") && sj["order"].is_number_integer() ? sj["order"].get<int32_t>()
+																					  : defaultOrder;
 					s.material = static_cast<uint16_t>(sj.value("material", 0));
 					s.smoothFactor = sj.value("smoothFactor", 10.0f);
+					if (sj.contains("assetPath") && sj["assetPath"].is_string())
+					{
+						std::string assetPath = sj["assetPath"].get<std::string>();
+						if (!assetPath.empty())
+						{
+							std::string resolvedPath =
+								scene.m_services.resources().resolveAssetPath(assetPath, referencePath);
+							s.distanceFieldId = scene.m_services.shapes().loadCustomShape(resolvedPath);
+						}
+					}
+					else if (sj.contains("type") && sj["type"].is_string())
+					{
+						ShapeId builtinId = 0;
+						if (BuiltinShapes::fromName(sj["type"].get<std::string>(), builtinId))
+						{
+							s.distanceFieldId = builtinId;
+						}
+						else
+						{
+							Logger::error("[SceneSerializer] Unknown built-in UI shape type: " +
+										  sj["type"].get<std::string>());
+						}
+					}
 					if (sj.contains("parameters"))
 					{
 						for (int pi = 0; pi < (int)std::size(s.parameters) && pi < (int)sj["parameters"].size(); pi++)
 							s.parameters[pi] =
 								(sj["parameters"][pi].is_number() ? sj["parameters"][pi].get<float>() : 0.0f);
+					}
+					else if (const auto* customData = scene.m_services.shapes().getCustomShapeData(s.distanceFieldId))
+					{
+						std::copy(customData->defaultParameters.begin(), customData->defaultParameters.end(),
+								  s.parameters);
 					}
 					scene.m_UIRenderContext.shapesNeedUpdate = true;
 				}

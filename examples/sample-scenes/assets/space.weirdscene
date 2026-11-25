@@ -337,8 +337,7 @@
             "id": 7,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 0,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 15,
                 "parameters": [
@@ -351,15 +350,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Circle"
             }
         },
         {
             "id": 8,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 0,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 6,
                 "parameters": [
@@ -372,15 +371,15 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Circle"
             }
         },
         {
             "id": 9,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 13,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 8,
                 "parameters": [
@@ -393,7 +392,8 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Star"
             }
         },
         {
@@ -1244,5 +1244,5 @@
         ],
         "springs": []
     },
-    "version": 1
+    "version": 2
 }

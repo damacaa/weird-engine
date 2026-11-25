@@ -198,8 +198,7 @@
             "id": 1,
             "shape": {
                 "combination": 0,
-                "distanceFieldId": 4,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 1,
                 "parameters": [
@@ -212,7 +211,8 @@
                     0.0,
                     0.0
                 ],
-                "smoothFactor": 1.0
+                "smoothFactor": 1.0,
+                "type": "Box"
             }
         },
         {
@@ -220,8 +220,7 @@
             "shape": {
                 "assetPath": "Fan.weirdshape",
                 "combination": 0,
-                "distanceFieldId": 29,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 2,
                 "parameters": [
@@ -600,7 +599,7 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    17.694839477539063,
+                    17.694839477539062,
                     11.98453140258789
                 ],
                 "simulationId": 9,
@@ -873,7 +872,7 @@
                 "enableShapeCollision": true,
                 "mass": 1.0,
                 "physicsPosition": [
-                    13.249526977539063,
+                    13.249526977539062,
                     13.444437026977539
                 ],
                 "simulationId": 16,
@@ -1451,8 +1450,7 @@
             "shape": {
                 "assetPath": "Fan.weirdshape",
                 "combination": 0,
-                "distanceFieldId": 29,
-                "groupIdx": 0,
+                "layer": 0,
                 "hasCollisions": true,
                 "material": 2,
                 "parameters": [
@@ -2493,5 +2491,5 @@
             }
         ]
     },
-    "version": 1
+    "version": 2
 }

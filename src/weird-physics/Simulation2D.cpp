@@ -6,6 +6,7 @@
 #include "glm/gtx/norm.hpp"
 #include "weird-engine/Assert.h"
 #include "weird-engine/Logger.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 
 namespace WeirdEngine
 {
@@ -800,171 +801,111 @@ namespace WeirdEngine
 		closestShape = 0;
 
 		float d = 1000.0f;
-		float minD = d;
 
-		struct GroupState
+		int currentLayer = -1;
+		float currentLayerDist = 100000.0f;
+		int currentLayerClosestShape = 0;
+
+		auto flushLayer = [&]()
 		{
-			uint16_t id;
-			float minDistance;
+			if (currentLayer != -1 && currentLayer != Shape::GLOBAL_LAYER)
+			{
+				if (currentLayerDist < d)
+				{
+					d = currentLayerDist;
+					closestShape = currentLayerClosestShape;
+				}
+			}
 		};
 
-		// Retain capacity across samples without limiting scene geometry.
-		thread_local std::vector<GroupState> groups;
-		thread_local std::vector<int> globalShapes;
-		groups.clear();
-		globalShapes.clear();
+		const float simTime = static_cast<float>(m_simulationTime);
+		const float audioVol = m_audioVolume.load(std::memory_order_relaxed);
+		auto evalObjectDist = [&](const DistanceFieldObject2D& obj, float& outDist) -> bool
+		{
+			if (obj.gpuShapeId < Shape2D::BuiltinCount)
+			{
+				outDist = Shape2D::evalPackedBuiltin(obj.gpuShapeId, obj.packedFlags, obj.packedOutline, obj.packedP0,
+													 obj.packedP1, p, simTime);
+				return true;
+			}
 
-		for (int i = 0; i < m_objects.size(); i++)
+			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size() ||
+				!(*m_sdfsSnapshot)[obj.distanceFieldId])
+			{
+				return false;
+			}
+
+			float params[12];
+			packSdfParameters(params, obj.parameters, simTime, p, audioVol);
+			outDist = (*m_sdfsSnapshot)[obj.distanceFieldId]->getValue(params);
+			return true;
+		};
+
+		// m_objects is kept sorted by (layer, order, insertionSeq), so GLOBAL_LAYER always runs last.
+		for (int i = 0; i < static_cast<int>(m_objects.size()); i++)
 		{
 			DistanceFieldObject2D& obj = m_objects[i];
-			if (obj.groupId == Shape::GLOBAL_GROUP)
+
+			const int layer = static_cast<int>(obj.layer);
+			if (layer != currentLayer)
 			{
-				globalShapes.push_back(i);
+				flushLayer();
+				currentLayer = layer;
+				currentLayerDist = 100000.0f;
+				currentLayerClosestShape = i;
+			}
+
+			float dist = 10000.0f;
+			if (!evalObjectDist(obj, dist))
+			{
 				continue;
 			}
+			WEIRD_ASSERT(!std::isnan(dist), "NAN in layer shape");
 
-			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size())
-			{
-				continue;
-			}
-
-			float params[12];
-			packSdfParameters(params, obj.parameters, static_cast<float>(m_simulationTime), p,
-							  m_audioVolume.load(std::memory_order_relaxed));
-
-			// Distance
-
-			float dist = (*m_sdfsSnapshot)[obj.distanceFieldId]->getValue(params);
-			WEIRD_ASSERT(!std::isnan(dist), "NAN in group shape");
-
-			float currentMinDistance = d;
-			GroupState* groupState = nullptr;
-
-			for (size_t g = 0; g < groups.size(); ++g)
-			{
-				if (groups[g].id == obj.groupId)
-				{
-					groupState = &groups[g];
-					break;
-				}
-			}
-
-			if (groupState == nullptr)
-			{
-				groups.push_back({obj.groupId, 100000.0f});
-				groupState = &groups.back();
-			}
-
-			currentMinDistance = groupState->minDistance;
+			const bool isGlobal = (obj.layer == Shape::GLOBAL_LAYER);
+			float& targetDist = isGlobal ? d : currentLayerDist;
+			int& targetClosest = isGlobal ? closestShape : currentLayerClosestShape;
+			const float prevDist = targetDist;
 
 			// Combination
 			switch (obj.combinationId)
 			{
 				case CombinationType::Addition:
 				{
-					currentMinDistance = std::min(currentMinDistance, dist);
+					targetDist = std::min(targetDist, dist);
 					break;
 				}
 				case CombinationType::Subtraction:
 				{
-					currentMinDistance = std::max(currentMinDistance, -dist);
+					targetDist = std::max(targetDist, -dist);
 					break;
 				}
 				case CombinationType::Intersection:
 				{
-					currentMinDistance = std::max(currentMinDistance, dist);
+					targetDist = std::max(targetDist, dist);
 					break;
 				}
 				case CombinationType::SmoothAddition:
 				{
-					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, obj.smoothRadius);
+					targetDist = fOpUnionSoft(targetDist, dist, obj.smoothRadius);
 					break;
 				}
 				case CombinationType::SmoothSubtraction:
 				{
-					currentMinDistance = fOpSubSoft(currentMinDistance, dist, obj.smoothRadius);
+					targetDist = fOpSubSoft(targetDist, dist, obj.smoothRadius);
 					break;
 				}
 				default:
 					break;
 			}
 
-			if (currentMinDistance < minD)
+			if (targetDist < prevDist)
 			{
-				minD = currentMinDistance;
-				closestShape = i;
+				targetClosest = i;
 			}
-
-			groupState->minDistance = currentMinDistance;
 		}
 
-		for (size_t g = 0; g < groups.size(); ++g)
-		{
-			d = std::min(d, groups[g].minDistance);
-		}
-
-		// Apply global shapes as well, but without grouping (they affect everything)
-		for (size_t g = 0; g < globalShapes.size(); ++g)
-		{
-			int shapeIdx = globalShapes[g];
-			DistanceFieldObject2D& obj = m_objects[shapeIdx];
-
-			if (!m_sdfsSnapshot || obj.distanceFieldId >= m_sdfsSnapshot->size())
-			{
-				continue;
-			}
-
-			float params[12];
-			packSdfParameters(params, obj.parameters, static_cast<float>(m_simulationTime), p,
-							  m_audioVolume.load(std::memory_order_relaxed));
-
-			// Distance
-
-			float dist = (*m_sdfsSnapshot)[obj.distanceFieldId]->getValue(params);
-			WEIRD_ASSERT(!std::isnan(dist), "NAN in global shape");
-
-			float currentMinDistance = d;
-
-			// Combination
-			switch (obj.combinationId)
-			{
-				case CombinationType::Addition:
-				{
-					currentMinDistance = std::min(currentMinDistance, dist);
-					break;
-				}
-				case CombinationType::Subtraction:
-				{
-					currentMinDistance = std::max(currentMinDistance, -dist);
-					break;
-				}
-				case CombinationType::Intersection:
-				{
-					currentMinDistance = std::max(currentMinDistance, dist);
-					break;
-				}
-				case CombinationType::SmoothAddition:
-				{
-					currentMinDistance = fOpUnionSoft(currentMinDistance, dist, obj.smoothRadius);
-					break;
-				}
-				case CombinationType::SmoothSubtraction:
-				{
-					currentMinDistance = fOpSubSoft(currentMinDistance, dist, obj.smoothRadius);
-					break;
-				}
-				default:
-					break;
-			}
-
-			if (currentMinDistance < minD)
-			{
-				minD = currentMinDistance;
-				closestShape = shapeIdx;
-			}
-
-			d = currentMinDistance;
-		}
+		flushLayer();
 
 		return d - 0.05f;
 	}
@@ -1879,6 +1820,25 @@ namespace WeirdEngine
 		m_sdfs = std::make_shared<std::vector<std::shared_ptr<IMathExpression>>>(sdfs);
 	}
 
+	void Simulation2D::sortShapes()
+	{
+		std::sort(m_objects.begin(), m_objects.end(),
+				  [](const DistanceFieldObject2D& a, const DistanceFieldObject2D& b)
+				  {
+					  if (a.layer != b.layer)
+						  return a.layer < b.layer;
+					  if (a.order != b.order)
+						  return a.order < b.order;
+					  return a.insertionSeq < b.insertionSeq;
+				  });
+
+		m_entityToObjectsIdx.clear();
+		for (size_t i = 0; i < m_objects.size(); ++i)
+		{
+			m_entityToObjectsIdx[m_objects[i].owner] = static_cast<uint16_t>(i);
+		}
+	}
+
 	void Simulation2D::internalUpdateShape(Entity owner, Shape& shape)
 	{
 		if (!shape.hasCollisions)
@@ -1887,27 +1847,52 @@ namespace WeirdEngine
 			return;
 		}
 
-		WEIRD_ASSERT(!m_sdfs || shape.distanceFieldId < m_sdfs->size(),
+		WEIRD_ASSERT(!m_sdfs || shape.distanceFieldId < DefaultShapes::COUNT_2D ||
+						 shape.distanceFieldId < m_sdfs->size(),
 					 "Shape registered with unregistered distanceFieldId");
 
-		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.groupIdx, shape.parameters,
-								  shape.smoothFactor);
-
-		// Check if the key exists
 		auto it = m_entityToObjectsIdx.find(owner);
+		const uint64_t seq = (it != m_entityToObjectsIdx.end()) ? m_objects[it->second].insertionSeq
+																: m_nextShapeInsertionSeq++;
+
+		DistanceFieldObject2D sdf(owner, shape.distanceFieldId, shape.combination, shape.layer, shape.order, seq,
+								  shape.parameters, shape.smoothFactor);
+		const auto builtins = Scene::getBuiltinSDFs();
+		const bool isCanonicalBuiltin =
+			shape.distanceFieldId < DefaultShapes::COUNT_2D &&
+			(!m_sdfs || m_sdfs->empty() ||
+			 (shape.distanceFieldId < m_sdfs->size() && shape.distanceFieldId < builtins.size() &&
+			  builtins[shape.distanceFieldId] != nullptr &&
+			  (*m_sdfs)[shape.distanceFieldId].get() == builtins[shape.distanceFieldId].get()));
+		if (isCanonicalBuiltin)
+		{
+			vec4 meta{0.0f};
+			Shape2D::packInstance(shape.distanceFieldId, shape.combination, shape.layer, shape.material,
+								  shape.smoothFactor, shape.parameters, meta, sdf.packedP0, sdf.packedP1);
+			const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+			sdf.gpuShapeId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+			sdf.packedFlags = packed0 >> 19u;
+			sdf.packedOutline = meta.w;
+		}
+
 		if (it != m_entityToObjectsIdx.end())
 		{
-			// Key exists, get the value
 			auto id = it->second;
+			const bool sortKeyChanged = (m_objects[id].layer != sdf.layer || m_objects[id].order != sdf.order);
 			m_objects[id] = sdf;
+			if (sortKeyChanged)
+			{
+				sortShapes();
+			}
 		}
 		else
 		{
-			// Key does not exist
 			m_objects.push_back(sdf);
-			ShapeId id = static_cast<ShapeId>(m_objects.size() - 1);
-			m_entityToObjectsIdx[owner] = id;
-			shape.simulationId = id;
+			m_entityToObjectsIdx[owner] = static_cast<uint16_t>(m_objects.size() - 1);
+			if (m_objects.size() > 1)
+			{
+				sortShapes();
+			}
 		}
 	}
 
@@ -1924,23 +1909,13 @@ namespace WeirdEngine
 			return;
 		}
 
-		// Get delete idx
 		auto idx = it->second;
-
-		if (idx < m_objects.size() - 1)
-		{
-			// Replace the element at idx with the last element
-			m_objects[idx] = m_objects.back();
-
-			// Point last objects entity to the new vector position
-			m_entityToObjectsIdx[m_objects[idx].owner] = idx;
-		}
-
-		// Remove the last element
-		m_objects.pop_back();
-
-		// Remove from map
+		m_objects.erase(m_objects.begin() + idx);
 		m_entityToObjectsIdx.erase(it);
+		for (size_t i = idx; i < m_objects.size(); ++i)
+		{
+			m_entityToObjectsIdx[m_objects[i].owner] = static_cast<uint16_t>(i);
+		}
 	}
 
 	void Simulation2D::updateShape(Entity owner, Shape& shape)
@@ -2050,6 +2025,7 @@ namespace WeirdEngine
 				m_gravitationalConstraints.clear();
 				m_objects.clear();
 				m_entityToObjectsIdx.clear();
+				m_nextShapeInsertionSeq = 0;
 				m_pendingShapeUpdates.clear();
 			});
 	}

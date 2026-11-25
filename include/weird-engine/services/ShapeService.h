@@ -373,6 +373,31 @@ namespace WeirdEngine
 			return m_sdfs;
 		}
 
+		const std::vector<std::shared_ptr<Bounds2DExpr>>* getSDFBounds() const
+		{
+			return m_sdfBounds;
+		}
+
+		float evaluateShape2D(const Shape& shape, vec2 p, float time = 0.0f, float audioVolume = 0.0f) const;
+		float evaluateUIShape2D(const UIShape& shape, vec2 p, float time = 0.0f, float audioVolume = 0.0f) const;
+
+		template <typename ShapeClass> static int32_t computeNextOrder(Registry& registry, uint16_t layer)
+		{
+			int32_t maxOrder = -1;
+			if (auto arr = registry.getComponentArray<ShapeClass>())
+			{
+				for (size_t i = 0; i < arr->getSize(); ++i)
+				{
+					const auto& existing = arr->getDataAtIdx(i);
+					if (existing.layer == layer)
+					{
+						maxOrder = (std::max)(maxOrder, existing.order);
+					}
+				}
+			}
+			return maxOrder + 1;
+		}
+
 		Entity addShape(const ShapeConfig& config)
 		{
 			Entity entity = m_registry.createEntity();
@@ -380,11 +405,14 @@ namespace WeirdEngine
 			{
 				return INVALID_ENTITY;
 			}
+			const uint16_t layer = static_cast<uint16_t>(config.layer);
+			const int32_t nextOrder = computeNextOrder<Shape>(m_registry, layer);
 			Shape& shape = m_registry.addComponent<Shape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
 			shape.hasCollisions = config.hasCollision;
-			shape.groupIdx = config.group;
+			shape.layer = layer;
+			shape.order = nextOrder;
 			shape.material = config.material.id;
 
 			std::copy_n(config.variables.data, 8, shape.parameters);
@@ -399,10 +427,13 @@ namespace WeirdEngine
 			{
 				return INVALID_ENTITY;
 			}
+			const uint16_t layer = static_cast<uint16_t>(config.layer);
+			const int32_t nextOrder = computeNextOrder<UIShape>(m_registry, layer);
 			UIShape& shape = m_registry.addComponent<UIShape>(entity);
 			shape.distanceFieldId = config.shapeId;
 			shape.combination = config.combination;
-			shape.groupIdx = config.group;
+			shape.layer = layer;
+			shape.order = nextOrder;
 			shape.material = config.material.id;
 
 			std::copy_n(config.variables.data, 8, shape.parameters);

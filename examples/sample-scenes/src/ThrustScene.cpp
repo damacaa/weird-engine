@@ -161,7 +161,7 @@ namespace ThrustSceneNamespace
 		State& state = getState(registry);
 		const FuelUiLayout layout = computeFuelUiLayout();
 
-		// Fuel bar track (background line in group 0)
+		// Fuel bar track (background line in layer 0)
 		state.fuelBgLineEntity = services.shapes().addUIShape(
 			{.shapeId = DefaultShapes::Line,
 			 .variables = {{DefaultShapes::Line::StartX, layout.barStartX},
@@ -170,9 +170,9 @@ namespace ThrustSceneNamespace
 						   {DefaultShapes::Line::EndY, layout.barY},
 						   {DefaultShapes::Line::Width, layout.trackRadius}},
 			 .material = state.fuelBgMaterial,
-			 .group = 0});
+			 .layer = 0});
 
-		// Active fuel fill rendered above track (higher group avoids track SDF shadowing fill)
+		// Active fuel fill rendered above track (higher layer avoids track SDF shadowing fill)
 		state.fuelLineEntity = services.shapes().addUIShape(
 			{.shapeId = DefaultShapes::Line,
 			 .variables = {{DefaultShapes::Line::StartX, layout.barStartX},
@@ -181,7 +181,7 @@ namespace ThrustSceneNamespace
 						   {DefaultShapes::Line::EndY, layout.barY},
 						   {DefaultShapes::Line::Width, layout.fillRadius}},
 			 .material = state.fuelMaterial,
-			 .group = 1});
+			 .layer = 1});
 
 		// Fuel text label anchored strictly above the bar
 		state.fuelLabelEntity = registry.createEntity();

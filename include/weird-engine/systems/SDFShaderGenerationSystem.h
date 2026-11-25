@@ -33,7 +33,8 @@
  *    - Each component stores:
  *        * `distanceFieldId`: Index identifying which AST to evaluate.
  *        * `parameters[8]`: Dynamic per-instance data (position, scale, rotation, animation vars).
- *        * `groupIdx`: Groups shapes that blend or combine together before updating global distance.
+ *        * `layer`: Layers shapes that blend or combine together before updating global distance.
+ *        * `order`: Explicit CSG evaluation order within a layer.
  *        * `material`: Material/color palette index.
  *        * `combination`: CSG operation (Addition, Subtraction, Intersection, SmoothAddition, etc.).
  *        * `smoothFactor`: Blend radius parameter used for smooth CSG unions/subtractions.
@@ -50,7 +51,7 @@
  *       - Receives all GLSL helper routines:
  *           * `fetchShapeParams(...)` to read instance parameters from `t_shapeBuffer`.
  *           * `applyShapeAddition(...)`, `applyShapeSmoothAddition(...)`, etc. for CSG math.
- *           * `flushShapeGroup(...)` for group-level distance and material accumulation.
+ *           * `flushShapeLayer(...)` for layer-level distance and material accumulation.
  *           * Unique helper functions required by specific AST nodes (e.g., `sdTriangle_impl`).
  *           * Dedicated `evaluate_sdf_<id>(p, parameters0, parameters1)` functions for each unique shape.
  *
@@ -60,7 +61,7 @@
  *           * Fetches parameters from texture memory (`t_shapeBuffer`).
  *           * Calls `evaluate_sdf_<id>(p, p0, p1)`.
  *           * Applies the CSG combination and material tracking.
- *           * Flushes group bounds into global `minDist` and `finalMaterialId`.
+ *           * Flushes layer bounds into global `minDist` and `finalMaterialId`.
  *
  * 3. Frontend Optimizations:
  *    - Constant Folding: Handled during AST construction in `MathExpressions.h`.
@@ -312,7 +313,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	 * @brief Primary entry point for updating SDF shader code from ECS components.
 	 *
 	 * Inspects all active shapes of type `ShapeClass` (e.g. `Shape` or `UIShape`), sorts
-	 * them by `groupIdx`, generates dedicated evaluation functions with CSE, and injects
+	 * them by `(layer, order)`, generates dedicated evaluation functions with CSE, and injects
 	 * both helper functions (Slot 0) and the evaluation loop (Slot 1) into the target shader.
 	 *
 	 * @tparam ShapeClass ECS component type (`Shape` or `UIShape`).
@@ -350,18 +351,18 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		std::ostringstream functionsOss; // Slot 0: injected into #include "helper_functions"
 
 		// =========================================================================================
-		// 1. Sort Shapes by Group Index
+		// 1. Sort Shapes by Layer and Order
 		// =========================================================================================
 		oss << "///////////////////////////////////////////\n";
 		oss << "int dataOffset = u_loadedObjects - (2 * u_shapeCount);\n";
-		oss << "int currentGroupColor = -1;\n";
+		oss << "int currentLayerColor = -1;\n";
 
-		int currentGroup = -1;
-		std::string groupDistanceVariable;
-		std::string groupBlendVariable;
+		int currentLayer = -1;
+		std::string layerDistanceVariable;
+		std::string layerBlendVariable;
 
 		ShapeClass dummyShape;
-		dummyShape.groupIdx = Shape::GLOBAL_GROUP - 1;
+		dummyShape.layer = Shape::GLOBAL_LAYER - 1;
 
 		std::vector<size_t> orderedIndices;
 		orderedIndices.reserve(componentArray->getSize());
@@ -372,8 +373,15 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		}
 
 		std::stable_sort(orderedIndices.begin(), orderedIndices.end(),
-						 [&](size_t a, size_t b) {
-							 return componentArray->getDataAtIdx(a).groupIdx < componentArray->getDataAtIdx(b).groupIdx;
+						 [&](size_t a, size_t b)
+						 {
+							 const auto& sa = componentArray->getDataAtIdx(a);
+							 const auto& sb = componentArray->getDataAtIdx(b);
+							 if (sa.layer != sb.layer)
+							 {
+								 return sa.layer < sb.layer;
+							 }
+							 return sa.order < sb.order;
 						 });
 
 		// =========================================================================================
@@ -399,33 +407,33 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 		{
 			size_t i = idx == componentArray->getSize() ? 0 : orderedIndices.at(idx);
 			const ShapeClass& shape = idx == componentArray->getSize() ? dummyShape : componentArray->getDataAtIdx(i);
-			const int group = shape.groupIdx;
+			const int layer = shape.layer;
 
-			// Handle Group Transitions and Group Flushes
-			if (group != currentGroup)
+			// Handle Layer Transitions and Layer Flushes
+			if (layer != currentLayer)
 			{
-				if (currentGroup != -1)
+				if (currentLayer != -1)
 				{
-					oss << "flushShapeGroup(" << groupDistanceVariable << ", " << groupBlendVariable
-						<< ", currentGroupColor, minDist, globalBlend, finalMaterialId);\n";
+					oss << "flushShapeLayer(" << layerDistanceVariable << ", " << layerBlendVariable
+						<< ", currentLayerColor, minDist, globalBlend, finalMaterialId);\n";
 				}
 
-				currentGroup = group;
-				groupDistanceVariable = "d" + std::to_string(currentGroup);
-				groupBlendVariable = "b" + std::to_string(currentGroup);
-				oss << "float " << groupDistanceVariable << " = 10000.0;\n";
-				oss << "float " << groupBlendVariable << " = 0.0;\n";
+				currentLayer = layer;
+				layerDistanceVariable = "d" + std::to_string(currentLayer);
+				layerBlendVariable = "b" + std::to_string(currentLayer);
+				oss << "float " << layerDistanceVariable << " = 10000.0;\n";
+				oss << "float " << layerBlendVariable << " = 0.0;\n";
 			}
 
-			if (group == Shape::GLOBAL_GROUP - 1)
+			if (layer == Shape::GLOBAL_LAYER - 1)
 			{
 				break;
 			}
 
-			bool globalEffect = group == Shape::GLOBAL_GROUP;
-			std::string targetDist = globalEffect ? "minDist" : groupDistanceVariable;
-			std::string targetBlend = globalEffect ? "globalBlend" : groupBlendVariable;
-			std::string targetColor = globalEffect ? "finalMaterialId" : "currentGroupColor";
+			bool globalEffect = layer == Shape::GLOBAL_LAYER;
+			std::string targetDist = globalEffect ? "minDist" : layerDistanceVariable;
+			std::string targetBlend = globalEffect ? "globalBlend" : layerBlendVariable;
+			std::string targetColor = globalEffect ? "finalMaterialId" : "currentLayerColor";
 
 			// Per-Instance Evaluation & CSG Combination Block
 			oss << "{\n";
@@ -517,7 +525,7 @@ namespace WeirdEngine::SDFShaderGenerationSystem
 	 * dispatch cases (Slot 1) for custom registered SDFs (`id >= customShapeStartId`).
 	 * Recompilation only happens when custom SDF definitions change (e.g. scene start,
 	 * `registerSDF`, custom shape hot-reload) or when an explicit disk reload is requested —
-	 * never when shape instances are spawned, destroyed, or have material/group/CSG changed.
+	 * never when shape instances are spawned, destroyed, or have material/layer/CSG changed.
 	 */
 	template <typename ShapeClass, typename RenderContext>
 	inline void update2D(Registry& registry, RenderContext& ctx, WeirdRenderer::Shader& shader,

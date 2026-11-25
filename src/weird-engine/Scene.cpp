@@ -470,7 +470,7 @@ namespace WeirdEngine
 
 				float relSpeed = glm::length(ev.relativeVelocity);
 				float impactIntensity = std::clamp(relSpeed * 0.08f + ev.impulse * 0.04f, 0.0f, 1.0f);
-				if (impactIntensity > 0.025f)
+				if (impactIntensity > 0.1f)
 				{
 					if (canTriggerImpact(ev.bodyA) || canTriggerImpact(ev.bodyB))
 					{
@@ -535,7 +535,7 @@ namespace WeirdEngine
 						float penetrationFactor = std::sqrt((std::min)(2.0f * ev.penetration, 1.0f));
 						float impactIntensity = std::clamp(normalSpeed * 0.12f + penetrationFactor * 0.3f, 0.0f, 1.0f);
 
-						if (impactIntensity > 0.02f && canTriggerImpact(ev.body))
+						if (impactIntensity > 0.1f && canTriggerImpact(ev.body))
 						{
 							markImpactTriggered(ev.body);
 
@@ -665,9 +665,9 @@ namespace WeirdEngine
 		SDFRenderSystem::updateDots<Dot, TextRenderer>(m_registry, m_2DWorldRenderContext,
 													   m_2DWorldRenderContext.dotBuffer);
 		const float audioVol = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
-		GpuShape2D::packShapes<Shape>(m_registry, m_2DWorldRenderContext.shapeBuffer,
-									  m_2DWorldRenderContext.shapeOrderScratch, shapeCount,
-									  &m_2DWorldRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(), audioVol);
+		Shape2D::packShapes<Shape>(m_registry, m_2DWorldRenderContext.shapeBuffer,
+								   m_2DWorldRenderContext.shapeOrderScratch, shapeCount,
+								   &m_2DWorldRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(), audioVol);
 		dotCount = static_cast<uint32_t>(m_2DWorldRenderContext.dotBuffer.size());
 		dotData = dotCount > 0 ? m_2DWorldRenderContext.dotBuffer.data() : nullptr;
 		shapeData = shapeCount > 0 ? m_2DWorldRenderContext.shapeBuffer.data() : nullptr;
@@ -687,9 +687,9 @@ namespace WeirdEngine
 		// PROFILE_SCOPE("Fetch UI Data");
 		SDFRenderSystem::updateDots<UIDot, UITextRenderer>(m_registry, m_UIRenderContext, m_UIRenderContext.dotBuffer);
 		const float audioVol = WeirdAudio::AudioEngine::getInstance().getAudioVolume();
-		GpuShape2D::packShapes<UIShape>(m_registry, m_UIRenderContext.shapeBuffer, m_UIRenderContext.shapeOrderScratch,
-										shapeCount, &m_UIRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(),
-										audioVol);
+		Shape2D::packShapes<UIShape>(m_registry, m_UIRenderContext.shapeBuffer, m_UIRenderContext.shapeOrderScratch,
+									 shapeCount, &m_UIRenderContext.shapeBoundsBuffer, &m_sdfBounds, getTime(),
+									 audioVol);
 		dotCount = static_cast<uint32_t>(m_UIRenderContext.dotBuffer.size());
 		dotData = dotCount > 0 ? m_UIRenderContext.dotBuffer.data() : nullptr;
 		shapeData = shapeCount > 0 ? m_UIRenderContext.shapeBuffer.data() : nullptr;

@@ -57,7 +57,7 @@ uniform mat4 u_camMatrix;
 #define var6 parameters1.z
 #define var7 parameters1.w
 
-// Canonical built-in GPU primitive IDs (must match GpuShape2D::BuiltinType)
+// Canonical built-in 2D primitive IDs (must match Shape2D::BuiltinType)
 const int GPU_SHAPE_CIRCLE = 0;
 const int GPU_SHAPE_BOX = 1;
 const int GPU_SHAPE_TRIANGLE = 2;
@@ -66,8 +66,9 @@ const int GPU_SHAPE_RAMP = 4;
 const int GPU_SHAPE_SINE_WAVE = 5;
 const int GPU_SHAPE_STAR = 6;
 
-const uint FLAG_ONION = 1u;
-const uint FLAG_GLOBAL_GROUP = 2u;
+const uint FLAG_OUTLINE = 1u;
+const uint FLAG_GLOBAL_LAYER = 2u;
+const uint FLAG_ROTATED = 4u; // Used on CPU; GPU keeps 2-FMA rotation branchless with identity (1, 0) when Angle == 0.
 
 const int COMB_ADDITION = 0;
 const int COMB_SUBTRACTION = 1;
@@ -214,11 +215,11 @@ void fetchShapeInstance(int shapeIndex, out vec4 meta, out vec4 p0, out vec4 p1)
 	p1 = texelFetch(t_shapeBuffer, ivec2(idx2 & 16383, idx2 >> 14), 0);
 }
 
-void applyShapeAddition(float dist, mediump int material, inout float currentMinDist, inout mediump int groupColor)
+void applyShapeAddition(float dist, mediump int material, inout float currentMinDist, inout mediump int layerColor)
 {
 	if (dist <= currentMinDist)
 	{
-		groupColor = material;
+		layerColor = material;
 	}
 	currentMinDist = min(currentMinDist, dist);
 }
@@ -234,12 +235,12 @@ void applyShapeIntersection(float dist, inout float currentMinDist)
 }
 
 void applyShapeSmoothAddition(float dist, mediump int material, float smoothFactor, inout float currentMinDist,
-							  inout mediump int groupColor)
+							  inout mediump int layerColor)
 {
 	float res = fOpUnionSoft(currentMinDist, dist, smoothFactor);
 	if (dist <= res)
 	{
-		groupColor = material;
+		layerColor = material;
 	}
 	currentMinDist = res;
 }
@@ -274,13 +275,13 @@ void applyShapeCombination(mediump int combination, float dist, mediump int mate
 	}
 }
 
-void flushShapeGroup(float groupDist, mediump int groupColor, inout float minDist, inout mediump int finalMaterialId)
+void flushShapeLayer(float layerDist, mediump int layerColor, inout float minDist, inout mediump int finalMaterialId)
 {
-	if (groupDist <= max(minDist, 0.0))
+	if (layerDist <= max(minDist, 0.0))
 	{
-		finalMaterialId = groupColor;
+		finalMaterialId = layerColor;
 	}
-	minDist = min(minDist, groupDist);
+	minDist = min(minDist, layerDist);
 }
 
 vec2 getShapeDistanceMaterial(vec2 p, uint tileStart, uint tileCount)
@@ -288,9 +289,9 @@ vec2 getShapeDistanceMaterial(vec2 p, uint tileStart, uint tileCount)
 	float minDist = 50000.0;
 	mediump int finalMaterialId = 0;
 
-	int currentGroup = -1;
-	float groupDist = 10000.0;
-	mediump int currentGroupColor = -1;
+	int currentLayer = -1;
+	float layerDist = 10000.0;
+	mediump int currentLayerColor = -1;
 
 	for (uint k = 0u; k < tileCount; ++k)
 	{
@@ -308,37 +309,37 @@ vec2 getShapeDistanceMaterial(vec2 p, uint tileStart, uint tileCount)
 		uint packed1 = uint(meta.y + 0.5);
 		mediump int combination = int((packed0 >> 16u) & 0x7u);
 		mediump uint flags = packed0 >> 19u;
-		int group = int(packed1 & 0xFFFFu);
+		int layer = int(packed1 & 0xFFFFu);
 		mediump int material = int((packed1 >> 16u) & 0x3Fu);
 
-		if (group != currentGroup)
+		if (layer != currentLayer)
 		{
-			if (currentGroup != -1 && currentGroup != 65535)
+			if (currentLayer != -1 && currentLayer != 65535)
 			{
-				flushShapeGroup(groupDist, currentGroupColor, minDist, finalMaterialId);
+				flushShapeLayer(layerDist, currentLayerColor, minDist, finalMaterialId);
 			}
-			currentGroup = group;
-			groupDist = 10000.0;
+			currentLayer = layer;
+			layerDist = 10000.0;
 		}
 
-		if ((flags & FLAG_ONION) != 0u)
+		if ((flags & FLAG_OUTLINE) != 0u)
 		{
 			dist = abs(dist) - meta.w;
 		}
 
-		if ((flags & FLAG_GLOBAL_GROUP) != 0u)
+		if ((flags & FLAG_GLOBAL_LAYER) != 0u)
 		{
 			applyShapeCombination(combination, dist, material, meta.z, minDist, finalMaterialId);
 		}
 		else
 		{
-			applyShapeCombination(combination, dist, material, meta.z, groupDist, currentGroupColor);
+			applyShapeCombination(combination, dist, material, meta.z, layerDist, currentLayerColor);
 		}
 	}
 
-	if (currentGroup != -1 && currentGroup != 65535)
+	if (currentLayer != -1 && currentLayer != 65535)
 	{
-		flushShapeGroup(groupDist, currentGroupColor, minDist, finalMaterialId);
+		flushShapeLayer(layerDist, currentLayerColor, minDist, finalMaterialId);
 	}
 
 	return vec2(minDist, max(float(finalMaterialId), 0.0));

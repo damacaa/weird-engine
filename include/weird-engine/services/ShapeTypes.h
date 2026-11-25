@@ -110,7 +110,7 @@ namespace WeirdEngine
 		ShapeMaterial material = 0;
 		CombinationType combination = CombinationType::Addition;
 		bool hasCollision = true;
-		int group = 0;
+		int layer = 0;
 	};
 
 	struct UIShapeConfig
@@ -119,6 +119,6 @@ namespace WeirdEngine
 		ShapeVariables variables{};
 		ShapeMaterial material = 0;
 		CombinationType combination = CombinationType::Addition;
-		int group = 0;
+		int layer = 0;
 	};
 } // namespace WeirdEngine

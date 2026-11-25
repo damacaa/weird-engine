@@ -5,6 +5,7 @@
 #include "weird-engine/Input.h"
 #include "weird-engine/math/MathExpressions.h"
 #include "weird-engine/systems/SDFRenderSystem.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 #include "weird-renderer/components/Button.h"
 #include "weird-renderer/components/Shape.h"
 #include "weird-renderer/components/TextRenderer.h"
@@ -225,10 +226,7 @@ namespace WeirdEngine
 			registry.forEach<ShapeButton, UIShape>(
 				[&](Entity buttonOwner, ShapeButton& buttonComponent, UIShape& shape)
 				{
-					float parameters[12];
-					packSdfParameters(parameters, shape.parameters, time, mousePos, audioVolume);
-
-					const float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
+					const float distance = Shape2D::evaluate(shape, sdfs, mousePos, time, audioVolume);
 					buttonComponent.hovered = distance < buttonComponent.clickPadding;
 
 					const ButtonTransition transition =
@@ -262,10 +260,7 @@ namespace WeirdEngine
 			registry.forEach<ShapeToggle, UIShape>(
 				[&](Entity toggleOwner, ShapeToggle& toggleComponent, UIShape& shape)
 				{
-					float parameters[12];
-					packSdfParameters(parameters, shape.parameters, time, mousePos, audioVolume);
-
-					const float distance = sdfs[shape.distanceFieldId]->getValue(parameters);
+					const float distance = Shape2D::evaluate(shape, sdfs, mousePos, time, audioVolume);
 					toggleComponent.hovered = distance < toggleComponent.clickPadding;
 
 					const ButtonTransition transition = stepToggleState(

@@ -109,7 +109,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		worldConfig.material = mat1;
 		worldConfig.combination = CombinationType::Addition;
 		worldConfig.hasCollision = true;
-		worldConfig.group = 0;
+		worldConfig.layer = 0;
 		std::copy_n(params.data(), 8, worldConfig.variables.data);
 
 		m_worldEntity = services.shapes().addShape(worldConfig);

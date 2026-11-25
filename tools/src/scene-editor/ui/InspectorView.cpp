@@ -8,6 +8,7 @@
 #include "weird-engine/components/FlyMovement2D.h"
 #include "weird-engine/components/Transform.h"
 #include "weird-engine/math/Default2DSDFs.h"
+#include "weird-engine/math/Default3DSDFs.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
@@ -40,28 +41,16 @@ namespace WeirdEngine::Tools::SceneEd
 				return nullptr;
 			}
 			static const std::unordered_map<ShapeId, std::array<const char*, 8>> s_labels = {
-				{DefaultShapes::Circle, {"Pos X", "Pos Y", "Radius"}},
-				{DefaultShapes::CircleLine, {"Pos X", "Pos Y", "Radius", "Thickness"}},
-				{DefaultShapes::Box, {"Pos X", "Pos Y", "Size X", "Size Y"}},
-				{DefaultShapes::BoxLine, {"Pos X", "Pos Y", "Size X", "Size Y", "Thickness"}},
-				{DefaultShapes::BoxRotated, {"Pos X", "Pos Y", "Size X", "Size Y", "Angle (rad)"}},
-				{DefaultShapes::BoxLineRotated, {"Pos X", "Pos Y", "Size X", "Size Y", "Angle (rad)", "Thickness"}},
-				{DefaultShapes::RoundBox, {"Pos X", "Pos Y", "Size X", "Size Y", "Radius"}},
-				{DefaultShapes::RoundBoxRotated, {"Pos X", "Pos Y", "Size X", "Size Y", "Radius", "Angle (rad)"}},
-				{DefaultShapes::RoundBoxLine, {"Pos X", "Pos Y", "Size X", "Size Y", "Radius", "Thickness"}},
-				{DefaultShapes::RoundedBox, {"Pos X", "Pos Y", "Size X", "Size Y", "Radius"}},
-				{DefaultShapes::RoundedBoxLine, {"Pos X", "Pos Y", "Size X", "Size Y", "Radius", "Thickness"}},
-				{DefaultShapes::Triangle, {"Pos X", "Pos Y", "Width", "Height"}},
-				{DefaultShapes::TriangleLine, {"Pos X", "Pos Y", "Width", "Height", "Thickness"}},
-				{DefaultShapes::TriangleRotated, {"Pos X", "Pos Y", "Width", "Height", "Angle (rad)"}},
-				{DefaultShapes::TriangleLineRotated, {"Pos X", "Pos Y", "Width", "Height", "Angle (rad)", "Thickness"}},
-				{DefaultShapes::RoundTriangle, {"Pos X", "Pos Y", "Width", "Height", "Radius"}},
-				{DefaultShapes::RoundTriangleRotated, {"Pos X", "Pos Y", "Width", "Height", "Radius", "Angle (rad)"}},
-				{DefaultShapes::Line, {"Start X", "Start Y", "End X", "End Y", "Width"}},
-				{DefaultShapes::Ramp, {"Pos X", "Pos Y", "Width", "Height", "Skew"}},
-				{DefaultShapes::RampRotated, {"Pos X", "Pos Y", "Width", "Height", "Skew", "Angle (rad)"}},
-				{DefaultShapes::SineWave, {"Amplitude", "Period", "Speed", "Offset"}},
-				{DefaultShapes::Star, {"Pos X", "Pos Y", "Radius", "Displace", "Points", "Speed"}},
+				{DefaultShapes::Circle, {"Pos X", "Pos Y", "Radius", "Outline Thickness"}},
+				{DefaultShapes::Box,
+				 {"Pos X", "Pos Y", "Size X", "Size Y", "Radius", "Angle (rad)", "Outline Thickness"}},
+				{DefaultShapes::Triangle,
+				 {"Pos X", "Pos Y", "Width", "Height", "Radius", "Angle (rad)", "Outline Thickness"}},
+				{DefaultShapes::Line, {"Start X", "Start Y", "End X", "End Y", "Width", "Outline Thickness"}},
+				{DefaultShapes::Ramp,
+				 {"Pos X", "Pos Y", "Width", "Height", "Skew", "Angle (rad)", "Outline Thickness"}},
+				{DefaultShapes::SineWave, {"Amplitude", "Period", "Speed", "Offset", "Outline Thickness"}},
+				{DefaultShapes::Star, {"Pos X", "Pos Y", "Radius", "Displace", "Points", "Speed", "Outline Thickness"}},
 			};
 			auto it = s_labels.find(shapeId);
 			return (it != s_labels.end()) ? it->second[static_cast<size_t>(paramIdx)] : nullptr;
@@ -220,6 +209,61 @@ namespace WeirdEngine::Tools::SceneEd
 			return;
 		}
 
+		// Batch Layer Assignment for selected shapes (including shapes inside selected clusters)
+		std::vector<Entity> selectedShapes;
+		std::unordered_set<Entity> seenShapeEntities;
+		auto collectShapeEntity = [&](Entity e)
+		{
+			if (ctx.registry->isEntityAlive(e) && ctx.registry->hasComponent<Shape>(e) &&
+				seenShapeEntities.insert(e).second)
+			{
+				selectedShapes.push_back(e);
+			}
+		};
+		for (Entity e : ctx.selectedEntities)
+		{
+			collectShapeEntity(e);
+		}
+		for (uint32_t cId : ctx.selectedClusterIds)
+		{
+			if (const auto* cluster = ctx.services->clusters().getById(cId))
+			{
+				for (Entity member : cluster->entities)
+				{
+					collectShapeEntity(member);
+				}
+			}
+		}
+		if (!selectedShapes.empty())
+		{
+			ImGui::Spacing();
+			ImGui::Text("Shape Layer (%zu shapes):", selectedShapes.size());
+			ImGui::SetNextItemWidth(110.0f);
+			if (ImGui::InputInt("##MultiShapeLayer", &ctx.multiSelectShapeLayer, 1, 1))
+			{
+				ctx.multiSelectShapeLayer =
+					std::clamp(ctx.multiSelectShapeLayer, 0, static_cast<int>(Shape::GLOBAL_LAYER) - 1);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Set Layer"))
+			{
+				ctx.multiSelectShapeLayer =
+					std::clamp(ctx.multiSelectShapeLayer, 0, static_cast<int>(Shape::GLOBAL_LAYER) - 1);
+				for (Entity se : selectedShapes)
+				{
+					sceneOps.setShapeLayer(se, static_cast<uint16_t>(ctx.multiSelectShapeLayer));
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Global"))
+			{
+				for (Entity se : selectedShapes)
+				{
+					sceneOps.setShapeLayer(se, Shape::GLOBAL_LAYER);
+				}
+			}
+		}
+
 		if (ctx.selectedEntities.size() == 2 && ctx.selectedClusterIds.empty())
 		{
 			if (ImGui::Button("Create Spring Between Pair", ImVec2(-1.0f, 24.0f)))
@@ -264,6 +308,25 @@ namespace WeirdEngine::Tools::SceneEd
 			}
 		}
 
+		float avail = ImGui::GetContentRegionAvail().x;
+		float thirdW = (avail - 8.0f) / 3.0f;
+		if (ImGui::Button("Copy", ImVec2(thirdW, 22.0f)))
+		{
+			sceneOps.copySelected();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cut", ImVec2(thirdW, 22.0f)))
+		{
+			sceneOps.cutSelected();
+			return;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Duplicate", ImVec2(thirdW, 22.0f)))
+		{
+			sceneOps.duplicateSelected();
+			return;
+		}
+
 		if (ImGui::Button("Delete Selected (Del)", ImVec2(-1.0f, 24.0f)))
 		{
 			sceneOps.deleteSelected();
@@ -300,7 +363,8 @@ namespace WeirdEngine::Tools::SceneEd
 		auto* cluster = ctx.services->clusters().getById(ctx.selectedClusterId);
 		if (!cluster)
 		{
-			ctx.selectedClusterId = 0;
+			ctx.selectedClusterIds.erase(ctx.selectedClusterId);
+			ctx.selectedClusterId = ctx.selectedClusterIds.empty() ? 0 : *ctx.selectedClusterIds.begin();
 			return;
 		}
 
@@ -530,8 +594,9 @@ namespace WeirdEngine::Tools::SceneEd
 				if (ImGui::Selectable((entLabel + "##c_insp_" + std::to_string(static_cast<uint32_t>(e))).c_str(),
 									  false))
 				{
-					ctx.selectedEntity = e;
-					ctx.selectedClusterId = 0;
+					sceneOps.selectEntity(e, false);
+					ctx.shiftAnchorItem = {HierarchyItemType::Entity, static_cast<uint32_t>(e)};
+					ctx.hasShiftAnchor = true;
 				}
 				if (ImGui::IsItemHovered())
 				{
@@ -561,8 +626,9 @@ namespace WeirdEngine::Tools::SceneEd
 			ImGui::SameLine();
 			if (ImGui::SmallButton("Select Cluster##from_ent"))
 			{
-				ctx.selectedClusterId = parentCluster->id;
-				ctx.selectedEntity = INVALID_ENTITY;
+				sceneOps.selectCluster(parentCluster->id, false);
+				ctx.shiftAnchorItem = {HierarchyItemType::Cluster, parentCluster->id};
+				ctx.hasShiftAnchor = true;
 				return;
 			}
 
@@ -695,14 +761,31 @@ namespace WeirdEngine::Tools::SceneEd
 			{
 				auto& s = ctx.registry->getComponent<Shape>(e);
 
-				// Shape ID
-				int shapeId = static_cast<int>(s.distanceFieldId);
-				if (ImGui::InputInt("DistanceField ID", &shapeId))
+				// Shape Type / Custom Asset
+				if (const auto* customShapeInfo = ctx.services->shapes().getCustomShapeData(s.distanceFieldId))
 				{
-					s.distanceFieldId = static_cast<uint16_t>(shapeId);
-					ctx.registry->setComponentDirty(s);
-					ctx.worldRenderContext->shapesNeedUpdate = true;
-					ctx.isSceneDirty = true;
+					std::string relPath = ctx.services->resources().makePortableAssetPath(customShapeInfo->filePath);
+					ImGui::Text("Custom Asset: %s", relPath.c_str());
+				}
+				else if (s.distanceFieldId < DefaultShapes::COUNT_2D)
+				{
+					static const char* builtin2DNames[] = {
+#define WEIRD_INSPECTOR_SHAPE_NAME(Name, params, expr) #Name,
+						WEIRD_BUILTIN_SHAPES_2D(WEIRD_INSPECTOR_SHAPE_NAME)
+#undef WEIRD_INSPECTOR_SHAPE_NAME
+					};
+					int shapeIdx = static_cast<int>(s.distanceFieldId);
+					if (ImGui::Combo("Shape Type", &shapeIdx, builtin2DNames, IM_ARRAYSIZE(builtin2DNames)))
+					{
+						s.distanceFieldId = static_cast<uint16_t>(shapeIdx);
+						ctx.registry->setComponentDirty(s);
+						ctx.worldRenderContext->shapesNeedUpdate = true;
+						ctx.isSceneDirty = true;
+					}
+				}
+				else if (const char* builtinName = BuiltinShapes::toName(s.distanceFieldId))
+				{
+					ImGui::Text("Built-in Shape: %s", builtinName);
 				}
 
 				// CSG Combination
@@ -737,6 +820,94 @@ namespace WeirdEngine::Tools::SceneEd
 					ctx.services->clusters().markEntityOverride(e, ClusterOverrideFlag::ShapeMaterial);
 					ctx.worldRenderContext->shapesNeedUpdate = true;
 					ctx.isSceneDirty = true;
+				}
+
+				// Layer & CSG Evaluation Order
+				{
+					bool isGlobal = (s.layer == Shape::GLOBAL_LAYER);
+					if (ImGui::Checkbox("Global Layer", &isGlobal))
+					{
+						sceneOps.setShapeLayer(e, isGlobal ? Shape::GLOBAL_LAYER : 0);
+					}
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip("Applies across all layers after regular layers are composited.");
+					}
+
+					if (!isGlobal)
+					{
+						if (ctx.layerEditEntity != e)
+						{
+							ctx.layerEditEntity = e;
+							ctx.layerEditValue = static_cast<int>(s.layer);
+						}
+
+						const bool layerChanged = ImGui::InputInt("Layer", &ctx.layerEditValue, 1, 1);
+						const bool layerActive = ImGui::IsItemActive();
+						if (ImGui::IsItemDeactivatedAfterEdit() || (layerChanged && !layerActive))
+						{
+							ctx.layerEditValue =
+								std::clamp(ctx.layerEditValue, 0, static_cast<int>(Shape::GLOBAL_LAYER) - 1);
+							sceneOps.setShapeLayer(e, static_cast<uint16_t>(ctx.layerEditValue));
+						}
+						else if (!layerActive)
+						{
+							ctx.layerEditValue = static_cast<int>(s.layer);
+						}
+
+						if (ImGui::IsItemHovered())
+						{
+							ImGui::SetTooltip("Shapes on the same layer combine via CSG. Higher layers draw on top of "
+											  "lower layers.");
+						}
+					}
+
+					auto layerShapes = sceneOps.getShapesInLayer(s.layer);
+					auto posIt = std::find(layerShapes.begin(), layerShapes.end(), e);
+					const size_t pos =
+						(posIt != layerShapes.end()) ? static_cast<size_t>(posIt - layerShapes.begin()) : 0;
+					const size_t total = layerShapes.size();
+					const bool canMoveUp = (pos > 0);
+					const bool canMoveDown = (total > 0 && pos + 1 < total);
+
+					ImGui::Text("Order in Layer: %zu / %zu", total > 0 ? (pos + 1) : 0, total);
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SetTooltip("CSG evaluation order within this layer (earlier shapes evaluate first). "
+										  "You can also drag shapes in the Hierarchy to reorder.");
+					}
+
+					float avail = ImGui::GetContentRegionAvail().x;
+					float btnW = (avail - 12.0f) * 0.25f;
+
+					if (!canMoveUp)
+						ImGui::BeginDisabled();
+					if (ImGui::Button("First##OrderFirst", ImVec2(btnW, 22.0f)))
+					{
+						sceneOps.moveShapeToLayerEdge(e, false);
+					}
+					ImGui::SameLine(0.0f, 4.0f);
+					if (ImGui::Button("Up##OrderUp", ImVec2(btnW, 22.0f)))
+					{
+						sceneOps.moveShapeOrderInLayer(e, -1);
+					}
+					if (!canMoveUp)
+						ImGui::EndDisabled();
+
+					ImGui::SameLine(0.0f, 4.0f);
+					if (!canMoveDown)
+						ImGui::BeginDisabled();
+					if (ImGui::Button("Down##OrderDown", ImVec2(btnW, 22.0f)))
+					{
+						sceneOps.moveShapeOrderInLayer(e, +1);
+					}
+					ImGui::SameLine(0.0f, 4.0f);
+					if (ImGui::Button("Last##OrderLast", ImVec2(btnW, 22.0f)))
+					{
+						sceneOps.moveShapeToLayerEdge(e, true);
+					}
+					if (!canMoveDown)
+						ImGui::EndDisabled();
 				}
 
 				// Collision

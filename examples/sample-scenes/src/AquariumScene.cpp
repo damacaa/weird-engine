@@ -287,10 +287,10 @@ vec3 getBackground(vec2 uv, vec2 worldPos)
 				if (state.waterRippleEntity != INVALID_ENTITY && registry.hasComponent<Shape>(state.waterRippleEntity))
 				{
 					auto& shape = registry.getComponent<Shape>(state.waterRippleEntity);
-					shape.parameters[DefaultShapes::CircleLine::PosX] = center.x;
-					shape.parameters[DefaultShapes::CircleLine::PosY] = center.y;
-					shape.parameters[DefaultShapes::CircleLine::Radius] = 0.8f;
-					shape.parameters[DefaultShapes::CircleLine::Thickness] = 0.22f;
+					shape.parameters[DefaultShapes::Circle::PosX] = center.x;
+					shape.parameters[DefaultShapes::Circle::PosY] = center.y;
+					shape.parameters[DefaultShapes::Circle::Radius] = 0.8f;
+					shape.parameters[DefaultShapes::Circle::OutlineThickness] = 0.22f;
 				}
 			}
 
@@ -455,7 +455,7 @@ vec3 getBackground(vec2 uv, vec2 worldPos)
 					 .material = mat,
 					 .combination = CombinationType::Addition,
 					 .hasCollision = false,
-					 .group = 0}); // Rendered before sand (group 2) so shallow roots stay occluded
+					 .layer = 0}); // Rendered before sand (layer 2) so shallow roots stay occluded
 			}
 
 			// Undulating translucent waterline meniscus inside tank glass
@@ -470,19 +470,17 @@ vec3 getBackground(vec2 uv, vec2 worldPos)
 										.material = state.glassMaterial,
 										.combination = CombinationType::Addition,
 										.hasCollision = false,
-										.group = 35});
+										.layer = 35});
 
 			// Click / glass tap ripple indicator
-			state.waterRippleEntity =
-				services.shapes().addShape({.shapeId = DefaultShapes::CircleLine,
-											.variables = {{DefaultShapes::CircleLine::PosX, -5000.0f},
-														  {DefaultShapes::CircleLine::PosY, -5000.0f},
-														  {DefaultShapes::CircleLine::Radius, 0.8f},
-														  {DefaultShapes::CircleLine::Thickness, 0.0f}},
-											.material = state.pearlMaterial,
-											.combination = CombinationType::Addition,
-											.hasCollision = false,
-											.group = 36});
+			state.waterRippleEntity = services.shapes().addShape({.shapeId = DefaultShapes::Circle,
+																  .variables = {{DefaultShapes::Circle::PosX, -5000.0f},
+																				{DefaultShapes::Circle::PosY, -5000.0f},
+																				{DefaultShapes::Circle::Radius, 0.8f}},
+																  .material = state.pearlMaterial,
+																  .combination = CombinationType::Addition,
+																  .hasCollision = false,
+																  .layer = 36});
 
 			// Sculpted parametric tropical fish SDF shared by all hero fish entities:
 			// var(0..1)=pos, var(2..3)=heading, var(4)=scale, var(5)=wag, var(6)=upSign
@@ -646,7 +644,7 @@ vec3 getBackground(vec2 uv, vec2 worldPos)
 					 .material = mat,
 					 .combination = CombinationType::Addition,
 					 .hasCollision = false,
-					 .group = Shape::GLOBAL_GROUP});
+					 .layer = Shape::GLOBAL_LAYER});
 
 				Entity head = registry.createEntity();
 				auto& t = registry.addComponent<Transform>(head);
@@ -873,17 +871,17 @@ vec3 getBackground(vec2 uv, vec2 worldPos)
 				if (state.rippleTimer > 0.0f)
 				{
 					float progress = 1.0f - (state.rippleTimer / std::max(state.rippleDuration, 0.001f));
-					shape.parameters[DefaultShapes::CircleLine::PosX] = state.rippleCenter.x;
-					shape.parameters[DefaultShapes::CircleLine::PosY] = state.rippleCenter.y;
-					shape.parameters[DefaultShapes::CircleLine::Radius] = 0.6f + progress * 6.0f;
-					shape.parameters[DefaultShapes::CircleLine::Thickness] = 0.22f * (1.0f - progress);
+					shape.parameters[DefaultShapes::Circle::PosX] = state.rippleCenter.x;
+					shape.parameters[DefaultShapes::Circle::PosY] = state.rippleCenter.y;
+					shape.parameters[DefaultShapes::Circle::Radius] = 0.6f + progress * 6.0f;
+					shape.parameters[DefaultShapes::Circle::OutlineThickness] = 0.22f * (1.0f - progress);
 				}
-				else if (shape.parameters[DefaultShapes::CircleLine::PosX] > -4000.0f)
+				else if (shape.parameters[DefaultShapes::Circle::PosX] > -4000.0f)
 				{
-					shape.parameters[DefaultShapes::CircleLine::PosX] = -5000.0f;
-					shape.parameters[DefaultShapes::CircleLine::PosY] = -5000.0f;
-					shape.parameters[DefaultShapes::CircleLine::Radius] = 0.0f;
-					shape.parameters[DefaultShapes::CircleLine::Thickness] = 0.0f;
+					shape.parameters[DefaultShapes::Circle::PosX] = -5000.0f;
+					shape.parameters[DefaultShapes::Circle::PosY] = -5000.0f;
+					shape.parameters[DefaultShapes::Circle::Radius] = 0.0f;
+					shape.parameters[DefaultShapes::Circle::OutlineThickness] = 0.0f;
 				}
 			}
 		}

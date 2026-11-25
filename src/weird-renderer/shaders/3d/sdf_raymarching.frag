@@ -322,12 +322,12 @@ void fetchShapeParams(int idx, out vec4 p0, out vec4 p1)
 }
 
 void applyShapeAddition(float dist, int material, inout float currentMinDist, inout float currentBlend,
-						inout int groupColor)
+						inout int layerColor)
 {
 	if (dist <= currentMinDist)
 	{
 		currentBlend = 0.0;
-		groupColor = material;
+		layerColor = material;
 	}
 	currentMinDist = min(currentMinDist, dist);
 }
@@ -343,7 +343,7 @@ void applyShapeIntersection(float dist, inout float currentMinDist)
 }
 
 void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inout float currentMinDist,
-							  inout float currentBlend, inout int groupColor)
+							  inout float currentBlend, inout int layerColor)
 {
 	vec2 res = fOpUnionSoft_blend(currentMinDist, dist, smoothFactor);
 	if (res.y > 0.0)
@@ -356,7 +356,7 @@ void applyShapeSmoothAddition(float dist, int material, float smoothFactor, inou
 	}
 	if (dist <= res.x)
 	{
-		groupColor = material;
+		layerColor = material;
 	}
 	currentMinDist = res.x;
 }
@@ -366,20 +366,20 @@ void applyShapeSmoothSubtraction(float dist, float smoothFactor, inout float cur
 	currentMinDist = fOpSubSoft(currentMinDist, dist, smoothFactor);
 }
 
-void flushShapeGroup(float groupDist, float groupBlend, int groupColor, inout float minDist, inout float globalBlend,
+void flushShapeLayer(float layerDist, float layerBlend, int layerColor, inout float minDist, inout float globalBlend,
 					 inout int finalMaterialId)
 {
-	if (groupDist <= max(minDist, 0.0))
+	if (layerDist <= max(minDist, 0.0))
 	{
-		finalMaterialId = groupColor;
+		finalMaterialId = layerColor;
 	}
-	if (groupDist <= minDist)
+	if (layerDist <= minDist)
 	{
-		globalBlend = groupBlend;
+		globalBlend = layerBlend;
 	}
-	if (minDist > groupDist)
+	if (minDist > layerDist)
 	{
-		minDist = groupDist;
+		minDist = layerDist;
 	}
 }
 

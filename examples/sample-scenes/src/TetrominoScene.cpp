@@ -865,37 +865,37 @@ namespace TetrominoSceneNamespace
 									.material = wallMat});
 
 		// Big hole
-		services.shapes().addShape({.shapeId = DefaultShapes::RoundedBox,
-									.variables = {{DefaultShapes::RoundedBox::PosX, 0.0f},
-												  {DefaultShapes::RoundedBox::PosY, 0.0f},
-												  {DefaultShapes::RoundedBox::SizeX, 5.0f},
-												  {DefaultShapes::RoundedBox::SizeY, 10.0f},
-												  {DefaultShapes::RoundedBox::Radius, 0.5f}},
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
+									.variables = {{DefaultShapes::Box::PosX, 0.0f},
+												  {DefaultShapes::Box::PosY, 0.0f},
+												  {DefaultShapes::Box::SizeX, 5.0f},
+												  {DefaultShapes::Box::SizeY, 10.0f},
+												  {DefaultShapes::Box::Radius, 0.5f}},
 									.material = wallMat,
 									.combination = CombinationType::Subtraction});
 
 		// Hold box hole (left)
-		services.shapes().addShape({.shapeId = DefaultShapes::RoundedBox,
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
 									.variables =
 										{
-											{DefaultShapes::RoundedBox::PosX, HOLD_PREVIEW_POS.x},
-											{DefaultShapes::RoundedBox::PosY, HOLD_PREVIEW_POS.y},
-											{DefaultShapes::RoundedBox::SizeX, 2.5f},
-											{DefaultShapes::RoundedBox::SizeY, 2.5f},
-											{DefaultShapes::RoundedBox::Radius, 0.5f},
+											{DefaultShapes::Box::PosX, HOLD_PREVIEW_POS.x},
+											{DefaultShapes::Box::PosY, HOLD_PREVIEW_POS.y},
+											{DefaultShapes::Box::SizeX, 2.5f},
+											{DefaultShapes::Box::SizeY, 2.5f},
+											{DefaultShapes::Box::Radius, 0.5f},
 										},
 									.material = wallMat,
 									.combination = CombinationType::Subtraction});
 
 		// Next box hole (right)
-		services.shapes().addShape({.shapeId = DefaultShapes::RoundedBox,
+		services.shapes().addShape({.shapeId = DefaultShapes::Box,
 									.variables =
 										{
-											{DefaultShapes::RoundedBox::PosX, NEXT_PREVIEW_POS.x},
-											{DefaultShapes::RoundedBox::PosY, NEXT_PREVIEW_POS.y},
-											{DefaultShapes::RoundedBox::SizeX, 2.5f},
-											{DefaultShapes::RoundedBox::SizeY, 2.5f},
-											{DefaultShapes::RoundedBox::Radius, 0.5f},
+											{DefaultShapes::Box::PosX, NEXT_PREVIEW_POS.x},
+											{DefaultShapes::Box::PosY, NEXT_PREVIEW_POS.y},
+											{DefaultShapes::Box::SizeX, 2.5f},
+											{DefaultShapes::Box::SizeY, 2.5f},
+											{DefaultShapes::Box::Radius, 0.5f},
 										},
 									.material = wallMat,
 									.combination = CombinationType::Subtraction});

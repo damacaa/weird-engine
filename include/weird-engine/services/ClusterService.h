@@ -27,7 +27,7 @@ namespace WeirdEngine
 		constexpr uint32_t ShapeHasCollisions = 1u << 7;
 		constexpr uint32_t ShapeCombination = 1u << 8;
 		constexpr uint32_t ShapeSmoothFactor = 1u << 9;
-		constexpr uint32_t ShapeGroupIdx = 1u << 10;
+		constexpr uint32_t ShapeLayer = 1u << 10;
 		constexpr uint32_t ShapeParameters = 1u << 11;
 		constexpr uint32_t Position = 1u << 12;
 		constexpr uint32_t Rotation = 1u << 13;
@@ -37,6 +37,7 @@ namespace WeirdEngine
 		constexpr uint32_t TextMaterial = 1u << 17;
 		constexpr uint32_t TextContent = 1u << 18;
 		constexpr uint32_t TextSize = 1u << 19;
+		constexpr uint32_t ShapeOrder = 1u << 20;
 	} // namespace ClusterOverrideFlag
 
 	struct ClusterInstance

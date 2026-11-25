@@ -51,7 +51,7 @@ namespace ShapeCombinationsNamespace
 									.material = floorMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
-									.group = 0});
+									.layer = 0});
 
 		std::random_device rd;
 		std::mt19937 gen(rd());
@@ -66,7 +66,7 @@ namespace ShapeCombinationsNamespace
 									.material = circleMat,
 									.combination = CombinationType::Addition,
 									.hasCollision = true,
-									.group = 2});
+									.layer = 2});
 
 		// Subtract star
 		services.shapes().addShape({.shapeId = DefaultShapes::Star,
@@ -74,7 +74,7 @@ namespace ShapeCombinationsNamespace
 									.material = voidMat,
 									.combination = CombinationType::SmoothSubtraction,
 									.hasCollision = true,
-									.group = 2});
+									.layer = 2});
 
 		// Cursor circle
 		state.circle = services.shapes().addShape(
@@ -83,7 +83,7 @@ namespace ShapeCombinationsNamespace
 			 .material = voidMat,
 			 .combination = CombinationType::Subtraction,
 			 .hasCollision = true,
-			 .group = Shape::GLOBAL_GROUP});
+			 .layer = Shape::GLOBAL_LAYER});
 
 		services.shapes().addShape({.shapeId = DefaultShapes::Circle,
 									.variables = {{DefaultShapes::Circle::PosX, 15.0f},
@@ -92,7 +92,7 @@ namespace ShapeCombinationsNamespace
 									.material = voidMat,
 									.combination = CombinationType::Intersection,
 									.hasCollision = true,
-									.group = Shape::GLOBAL_GROUP});
+									.layer = Shape::GLOBAL_LAYER});
 	}
 
 	void cursorCircleSystem(Registry& registry, ServiceProvider& services)

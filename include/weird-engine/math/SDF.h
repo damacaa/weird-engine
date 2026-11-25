@@ -1100,6 +1100,21 @@ namespace WeirdEngine
 			return res;
 		}
 
+		// Hollow outline when thickness > 0; solid shape when thickness <= 0.
+		inline Expr sdfOutline(const Expr& d, const Expr& thickness)
+		{
+			Expr res = ternary(step(1e-7f, thickness), abs(d) - thickness, d);
+			if (d.bounds)
+			{
+				Bounds2DExpr expB = boundsExpand(*d.bounds, max(thickness, 0.0f) * d.bounds->metricScale);
+				if (!expB.isUnbounded)
+				{
+					res.bounds = std::make_shared<Bounds2DExpr>(std::move(expB));
+				}
+			}
+			return res;
+		}
+
 		inline Expr sdfRound(const Expr& d, const Expr& radius)
 		{
 			Expr res = d - radius;

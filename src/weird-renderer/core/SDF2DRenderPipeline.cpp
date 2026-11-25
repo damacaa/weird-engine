@@ -699,7 +699,7 @@ namespace WeirdEngine
 			m_shapeTileObjBounds.resize(count);
 			m_shapeTileCounts.assign(numTiles, 0u);
 
-			// 1. Compute global smooth radius from GLOBAL_GROUP (if present at tail of sorted shape list)
+			// 1. Compute global smooth radius from GLOBAL_LAYER (if present at tail of sorted shape list)
 			float globalMaxSmooth = 0.0f;
 			uint32_t globalStart = count;
 			if (shapeBounds)
@@ -707,7 +707,7 @@ namespace WeirdEngine
 				for (uint32_t i = count; i > 0; --i)
 				{
 					const Shape2DAABB& b = shapeBounds[i - 1];
-					if (b.groupIdx != Shape::GLOBAL_GROUP)
+					if (b.layer != Shape::GLOBAL_LAYER)
 					{
 						break;
 					}
@@ -723,47 +723,47 @@ namespace WeirdEngine
 			auto expandAxisMin = [](float v, float pad) -> float { return std::isfinite(v) ? (v - pad) : v; };
 			auto expandAxisMax = [](float v, float pad) -> float { return std::isfinite(v) ? (v + pad) : v; };
 
-			// 2. Per-group padding + backward Intersection AABB clamping (preserves exact CSG semantics!)
+			// 2. Per-layer padding + backward Intersection AABB clamping (preserves exact CSG semantics!)
 			vec2 globalClipMin(kNegInf, kNegInf);
 			vec2 globalClipMax(kPosInf, kPosInf);
 			bool hasGlobalClip = false;
 
 			if (shapeBounds)
 			{
-				uint32_t gStart = 0;
-				while (gStart < count)
+				uint32_t lStart = 0;
+				while (lStart < count)
 				{
-					const uint16_t groupId = shapeBounds[gStart].groupIdx;
-					uint32_t gEnd = gStart + 1;
-					float groupMaxSmooth = 0.0f;
-					while (gEnd < count && shapeBounds[gEnd].groupIdx == groupId)
+					const uint16_t layerId = shapeBounds[lStart].layer;
+					uint32_t lEnd = lStart + 1;
+					float layerMaxSmooth = 0.0f;
+					while (lEnd < count && shapeBounds[lEnd].layer == layerId)
 					{
-						++gEnd;
+						++lEnd;
 					}
 
-					for (uint32_t i = gStart; i < gEnd; ++i)
+					for (uint32_t i = lStart; i < lEnd; ++i)
 					{
 						const auto comb = shapeBounds[i].combination;
 						if (comb == CombinationType::SmoothAddition || comb == CombinationType::SmoothSubtraction)
 						{
-							groupMaxSmooth = std::max(groupMaxSmooth, std::max(shapeBounds[i].smoothFactor, 0.0f));
+							layerMaxSmooth = std::max(layerMaxSmooth, std::max(shapeBounds[i].smoothFactor, 0.0f));
 						}
 					}
 
-					const float groupPad = basePad + groupMaxSmooth + globalMaxSmooth;
-					for (uint32_t i = gStart; i < gEnd; ++i)
+					const float layerPad = basePad + layerMaxSmooth + globalMaxSmooth;
+					for (uint32_t i = lStart; i < lEnd; ++i)
 					{
-						m_shapePaddedMin[i] = vec2(expandAxisMin(shapeBounds[i].min.x, groupPad),
-												   expandAxisMin(shapeBounds[i].min.y, groupPad));
-						m_shapePaddedMax[i] = vec2(expandAxisMax(shapeBounds[i].max.x, groupPad),
-												   expandAxisMax(shapeBounds[i].max.y, groupPad));
+						m_shapePaddedMin[i] = vec2(expandAxisMin(shapeBounds[i].min.x, layerPad),
+												   expandAxisMin(shapeBounds[i].min.y, layerPad));
+						m_shapePaddedMax[i] = vec2(expandAxisMax(shapeBounds[i].max.x, layerPad),
+												   expandAxisMax(shapeBounds[i].max.y, layerPad));
 					}
 
-					// Backward pass: an Intersection clamps all preceding shapes in the same group
+					// Backward pass: an Intersection clamps all preceding shapes in the same layer
 					vec2 clipMin(kNegInf, kNegInf);
 					vec2 clipMax(kPosInf, kPosInf);
 					bool hasClip = false;
-					for (uint32_t i = gEnd; i > gStart; --i)
+					for (uint32_t i = lEnd; i > lStart; --i)
 					{
 						const uint32_t idx = i - 1;
 						if (hasClip)
@@ -779,14 +779,14 @@ namespace WeirdEngine
 						}
 					}
 
-					if (groupId == Shape::GLOBAL_GROUP && hasClip)
+					if (layerId == Shape::GLOBAL_LAYER && hasClip)
 					{
 						globalClipMin = clipMin;
 						globalClipMax = clipMax;
 						hasGlobalClip = true;
 					}
 
-					gStart = gEnd;
+					lStart = lEnd;
 				}
 
 				if (hasGlobalClip)
@@ -875,7 +875,7 @@ namespace WeirdEngine
 				}
 			}
 
-			// 4. Prefix sum offsets & fill compact uint16_t tile index table (preserves sorted group/CSG order)
+			// 4. Prefix sum offsets & fill compact uint16_t tile index table (preserves sorted layer/CSG order)
 			m_shapeTileOffsets.resize(numTiles);
 			m_shapeTileHeader.resize(static_cast<size_t>(numTiles) * 2);
 			uint32_t totalIndices = 0;

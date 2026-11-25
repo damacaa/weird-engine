@@ -25,12 +25,12 @@ namespace WeirdEngine
 		CombinationType combination = CombinationType::Addition;
 		float parameters[8] = {0.0f};
 		bool hasCollisions = true;
-		uint16_t groupIdx = 0;
+		uint16_t layer = 0;
+		int32_t order = 0;
 		uint16_t material = 0;
-		ShapeId simulationId = 0;
 		float smoothFactor = 1.0f;
 
-		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
+		static constexpr uint16_t GLOBAL_LAYER = std::numeric_limits<uint16_t>::max();
 	};
 
 	struct UIShape
@@ -38,11 +38,12 @@ namespace WeirdEngine
 		uint16_t distanceFieldId = 0;
 		CombinationType combination = CombinationType::Addition;
 		float parameters[8] = {0.0f};
-		uint16_t groupIdx = 0;
+		uint16_t layer = 0;
+		int32_t order = 0;
 		uint16_t material = 0;
 		float smoothFactor = 10.0f;
 
-		static constexpr uint16_t GLOBAL_GROUP = std::numeric_limits<uint16_t>::max();
+		static constexpr uint16_t GLOBAL_LAYER = std::numeric_limits<uint16_t>::max();
 	};
 
 	// World-space (or UI screen-space) AABB + CSG metadata for one packed 2D shape instance.
@@ -50,7 +51,7 @@ namespace WeirdEngine
 	{
 		vec2 min = vec2(-std::numeric_limits<float>::infinity());
 		vec2 max = vec2(std::numeric_limits<float>::infinity());
-		uint16_t groupIdx = 0;
+		uint16_t layer = 0;
 		CombinationType combination = CombinationType::Addition;
 		float smoothFactor = 0.0f;
 	};

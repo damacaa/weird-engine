@@ -34,7 +34,7 @@ namespace WeirdEngine
 		SongVisualizationMode mode = SongVisualizationMode::None;
 		ShapeMaterial material = -1;
 		CombinationType combination = CombinationType::Addition;
-		int group = 0;
+		int layer = 0;
 	};
 
 	class AudioService

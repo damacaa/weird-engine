@@ -483,10 +483,14 @@ namespace ImageSceneNamespace
 
 		// 3. Button 3: Third button (90-degree rotated triangle ▶) that reruns simulation
 		{
-			state.rerunButton = services.shapes().addUIShape(
-				{.shapeId = DefaultShapes::TriangleRotated,
-				 .variables = {{0, btn3CenterX}, {1, btnY}, {2, BTN_SIZE}, {3, BTN_SIZE}, {4, 1.5707963f}},
-				 .material = 5});
+			state.rerunButton =
+				services.shapes().addUIShape({.shapeId = DefaultShapes::Triangle,
+											  .variables = {{DefaultShapes::Triangle::PosX, btn3CenterX},
+															{DefaultShapes::Triangle::PosY, btnY},
+															{DefaultShapes::Triangle::Width, BTN_SIZE},
+															{DefaultShapes::Triangle::Height, BTN_SIZE},
+															{DefaultShapes::Triangle::Angle, 1.5707963f}},
+											  .material = 5});
 
 			auto& btn = registry.addComponent<ShapeButton>(state.rerunButton);
 			btn.clickPadding = 4.0f;

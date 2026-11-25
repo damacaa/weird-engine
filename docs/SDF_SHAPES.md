@@ -29,25 +29,19 @@ Weird Engine includes pre-registered 2D and 3D default shape primitives.
 
 Defined in `include/weird-engine/math/Default2DSDFs.h` under namespace `WeirdEngine::DefaultShapes`:
 
-- **Standard Shapes**: `Circle`, `Box`, `Triangle`, `Line`, `Ramp`, `SineWave`, `Star`
-- **Border / Line Shapes**: `CircleLine`, `BoxLine`, `TriangleLine`
-- **Rotated Shapes**: `BoxRotated`, `TriangleRotated`, `RampRotated`
-- **Rotated Border Shapes**: `BoxLineRotated`, `TriangleLineRotated`
+- **Canonical Primitives**: `Circle`, `Box`, `Triangle`, `Line`, `Ramp`, `SineWave`, `Star`
+- **Modifiers**:
+  - `Radius`, `Angle`, and `OutlineThickness` parameters default to `0.0f`. When `0.0f`, rounding, rotation trig/transforms, and outline (`abs(d) - thickness`) math are skipped on the CPU packer, GPU shader, and physics evaluator.
 
 #### Parameter Constants (2D)
 
-- `Circle::PosX`, `PosY`, `Radius`
-- `CircleLine::PosX`, `PosY`, `Radius`, `Thickness`
-- `Box::PosX`, `PosY`, `SizeX`, `SizeY` (half-extents)
-- `BoxLine::PosX`, `PosY`, `SizeX`, `SizeY`, `Thickness`
-- `Triangle::PosX`, `PosY`, `Width`, `Height`
-- `TriangleLine::PosX`, `PosY`, `Width`, `Height`, `Thickness`
-- `Line::StartX`, `StartY`, `EndX`, `EndY`, `Width`
-- `Ramp::PosX`, `PosY`, `Width`, `Height`, `Skew`
-- `SineWave::Amplitude`, `Period`, `Speed`, `Offset`
-- `BoxRotated::PosX`, `PosY`, `SizeX`, `SizeY`, `Angle`
-- `TriangleRotated::PosX`, `PosY`, `Width`, `Height`, `Angle`
-- `RampRotated::PosX`, `PosY`, `Width`, `Height`, `Skew`, `Angle`
+- `Circle::PosX`, `PosY`, `Radius`, `OutlineThickness`
+- `Box::PosX`, `PosY`, `SizeX`, `SizeY`, `Radius`, `Angle`, `OutlineThickness` (`SizeX`, `SizeY` are half-extents)
+- `Triangle::PosX`, `PosY`, `Width`, `Height`, `Radius`, `Angle`, `OutlineThickness`
+- `Line::StartX`, `StartY`, `EndX`, `EndY`, `Width`, `OutlineThickness`
+- `Ramp::PosX`, `PosY`, `Width`, `Height`, `Skew`, `Angle`, `OutlineThickness`
+- `SineWave::Amplitude`, `Period`, `Speed`, `Offset`, `OutlineThickness`
+- `Star::PosX`, `PosY`, `Radius`, `Displacement`, `Points`, `Speed`, `OutlineThickness`
 
 ### 2.2 Default 3D Shapes (`DefaultShapes3D`)
 

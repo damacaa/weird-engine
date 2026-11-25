@@ -70,7 +70,7 @@ namespace WeirdEngine::Tools::ShapeEd
 		visualOptions.mode = SongVisualizationMode::UI;
 		visualOptions.material = 0;
 		visualOptions.combination = CombinationType::Addition;
-		visualOptions.group = 0;
+		visualOptions.layer = 0;
 
 		Entity previewEntity = services.audio().setSong(m_song, visualOptions, false);
 		if (previewEntity != INVALID_ENTITY && services.registry().hasComponent<UIShape>(previewEntity))

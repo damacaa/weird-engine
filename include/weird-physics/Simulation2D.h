@@ -411,6 +411,7 @@ namespace WeirdEngine
 
 		void internalUpdateShape(Entity owner, Shape& shape);
 		void internalRemoveShape(Entity owner, Shape& shape);
+		void sortShapes();
 
 		struct Collision
 		{
@@ -456,19 +457,28 @@ namespace WeirdEngine
 		{
 			Entity owner = INVALID_ENTITY;
 			uint16_t distanceFieldId = 0;
+			uint16_t gpuShapeId = 0xFFFFu;
+			uint32_t packedFlags = 0u;
 			CombinationType combinationId = CombinationType::Addition;
-			uint16_t groupId = 0;
+			uint16_t layer = 0;
+			int32_t order = 0;
+			uint64_t insertionSeq = 0;
 			float parameters[12] = {0.0f};
 			float smoothRadius = 1.0f;
+			float packedOutline = 0.0f;
+			vec4 packedP0{0.0f};
+			vec4 packedP1{0.0f};
 
 			DistanceFieldObject2D() = default;
 
-			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t groupId,
-								  float* params, float smoothRadius = 1.0f)
+			DistanceFieldObject2D(Entity owner, uint16_t id, CombinationType combinationId, uint16_t layer,
+								  int32_t order, uint64_t insertionSeq, float* params, float smoothRadius = 1.0f)
 				: owner(owner)
 				, distanceFieldId(id)
 				, combinationId(combinationId)
-				, groupId(groupId)
+				, layer(layer)
+				, order(order)
+				, insertionSeq(insertionSeq)
 				, smoothRadius(smoothRadius)
 			{
 				std::copy(params, params + 8, parameters); // Copy params into parameters
@@ -537,6 +547,7 @@ namespace WeirdEngine
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfs;
 		std::shared_ptr<std::vector<std::shared_ptr<IMathExpression>>> m_sdfsSnapshot; // sim-thread-only copy
 		std::vector<DistanceFieldObject2D> m_objects;
+		uint64_t m_nextShapeInsertionSeq = 0;
 
 		std::vector<uint8_t> m_collisionMap;
 		std::vector<PhysicsShapeCollisionEvent> m_collisionQueue;

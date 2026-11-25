@@ -16,9 +16,9 @@
 
 namespace WeirdEngine
 {
-	namespace GpuShape2D
+	namespace Shape2D
 	{
-		// Canonical built-in 2D GPU primitive IDs (collapsed from the 22 DefaultShapes variants).
+		// Canonical built-in 2D GPU primitive IDs (1:1 with DefaultShapes).
 		// Must stay in sync with GPU_SHAPE_* constants in shaders/2d/sdf_shapes.frag.
 		enum BuiltinType : uint16_t
 		{
@@ -33,202 +33,134 @@ namespace WeirdEngine
 			Invalid = 0xFFFFu
 		};
 
+		static_assert(DefaultShapes::Circle == BuiltinType::Circle && DefaultShapes::Box == BuiltinType::Box &&
+						  DefaultShapes::Triangle == BuiltinType::Triangle &&
+						  DefaultShapes::Line == BuiltinType::Line && DefaultShapes::Ramp == BuiltinType::Ramp &&
+						  DefaultShapes::SineWave == BuiltinType::SineWave &&
+						  DefaultShapes::Star == BuiltinType::Star &&
+						  DefaultShapes::COUNT_2D == BuiltinType::BuiltinCount,
+					  "DefaultShapes and Shape2D::BuiltinType must match 1:1.");
 		static_assert(DefaultShapes3D::TOTAL_BUILTIN_SHAPES > BuiltinCount,
 					  "Custom ShapeIds must never overlap canonical GPU built-in IDs.");
-		static_assert(DefaultShapes::COUNT_2D == 22,
-					  "Update GpuShape2D::packInstance when adding or removing built-in 2D shapes.");
 
-		constexpr uint32_t FLAG_ONION = 1u << 0;
-		constexpr uint32_t FLAG_GLOBAL_GROUP = 1u << 1;
+		constexpr uint32_t FLAG_OUTLINE = 1u << 0;
+		constexpr uint32_t FLAG_GLOBAL_LAYER = 1u << 1;
+		constexpr uint32_t FLAG_ROTATED = 1u << 2;
 		constexpr uint32_t VEC4S_PER_SHAPE = 3;
 
+		inline float getOutlineThickness(uint16_t shapeId, const float (&params)[8])
+		{
+			switch (shapeId)
+			{
+				case DefaultShapes::Circle:
+					return params[DefaultShapes::Circle::OutlineThickness];
+				case DefaultShapes::Box:
+					return params[DefaultShapes::Box::OutlineThickness];
+				case DefaultShapes::Triangle:
+					return params[DefaultShapes::Triangle::OutlineThickness];
+				case DefaultShapes::Line:
+					return params[DefaultShapes::Line::OutlineThickness];
+				case DefaultShapes::Ramp:
+					return params[DefaultShapes::Ramp::OutlineThickness];
+				case DefaultShapes::SineWave:
+					return params[DefaultShapes::SineWave::OutlineThickness];
+				case DefaultShapes::Star:
+					return params[DefaultShapes::Star::OutlineThickness];
+				default:
+					return 0.0f;
+			}
+		}
+
 		// Packs one 2D Shape/UIShape instance into 3 vec4 slots:
-		//   outMeta = vec4(packed0, packed1, smoothFactor, onionThickness)
-		//     packed0 = gpuShapeId (16b) | (combination (3b) << 16) | (flags (2b) << 19)
-		//     packed1 = groupIdx (16b)   | (materialId (6b) << 16)
-		//   outP0, outP1 = normalized per-primitive parameters (trig & constant subexpressions hoisted on CPU)
-		inline void packInstance(uint16_t shapeId, CombinationType combination, uint16_t groupIdx, uint16_t material,
+		//   outMeta = vec4(packed0, packed1, smoothFactor, outlineThickness)
+		//     packed0 = gpuShapeId (16b) | (combination (3b) << 16) | (flags (3b) << 19)
+		//     packed1 = layer (16b)      | (materialId (6b) << 16)
+		//   outP0, outP1 = normalized per-primitive parameters (trig & rounding subexpressions hoisted on CPU;
+		//                  skipped completely when Angle == 0 or Radius <= 0)
+		inline void packInstance(uint16_t shapeId, CombinationType combination, uint16_t layer, uint16_t material,
 								 float smoothFactor, const float (&params)[8], vec4& outMeta, vec4& outP0, vec4& outP1)
 		{
 			uint16_t gpuShapeId = BuiltinType::Invalid;
-			uint32_t flags = (groupIdx == Shape::GLOBAL_GROUP) ? FLAG_GLOBAL_GROUP : 0u;
-			float onionThickness = 0.0f;
+			uint32_t flags = (layer == Shape::GLOBAL_LAYER) ? FLAG_GLOBAL_LAYER : 0u;
+			const float rawOutline = getOutlineThickness(shapeId, params);
+			const float effOutline = (rawOutline > 0.0f) ? rawOutline : 0.0f;
+			if (effOutline > 0.0f)
+			{
+				flags |= FLAG_OUTLINE;
+			}
 
 			outP0 = vec4(0.0f);
 			outP1 = vec4(0.0f);
 
-			auto packBox = [&](float px, float py, float sx, float sy, float angle, float roundR, bool applyRound)
-			{
-				gpuShapeId = BuiltinType::Box;
-				const float r = applyRound ? std::max(roundR, 0.0f) : 0.0f;
-				const float bx = applyRound ? std::max(sx - r, 0.0f) : sx;
-				const float by = applyRound ? std::max(sy - r, 0.0f) : sy;
-				const float cosA = (angle != 0.0f) ? std::cos(angle) : 1.0f;
-				const float sinA = (angle != 0.0f) ? std::sin(angle) : 0.0f;
-				outP0 = vec4(px, py, bx, by);
-				outP1 = vec4(cosA, sinA, r, 0.0f);
-			};
-
-			auto packTriangle = [&](float px, float py, float w, float h, float angle)
-			{
-				gpuShapeId = BuiltinType::Triangle;
-				const float cosA = (angle != 0.0f) ? std::cos(angle) : 1.0f;
-				const float sinA = (angle != 0.0f) ? std::sin(angle) : 0.0f;
-				outP0 = vec4(px, py, w, h);
-				outP1 = vec4(cosA, sinA, 0.0f, 0.0f);
-			};
-
-			auto packRoundTriangle = [&](float px, float py, float w, float h, float radius, float angle)
-			{
-				gpuShapeId = BuiltinType::Triangle;
-				const float aw = std::max(std::abs(w), 1e-4f);
-				const float ah = std::max(std::abs(h), 1e-4f);
-				const float sy = (h >= 0.0f) ? 1.0f : -1.0f;
-				const float halfW = aw * 0.5f;
-				const float leg = std::hypot(halfW, ah);
-				const float inradius = (halfW * ah) / (halfW + leg);
-				const float r = std::min(std::max(radius, 0.0f), inradius * 0.998f);
-				const float scale = 1.0f - r / inradius;
-				const float shiftY = (1.0f - scale) * (inradius - ah / 3.0f);
-				const float cosA = (angle != 0.0f) ? std::cos(angle) : 1.0f;
-				const float sinA = (angle != 0.0f) ? std::sin(angle) : 0.0f;
-
-				// Mirroring both q.y and triangle height leaves distance and winding unchanged.
-				outP0 = vec4(px, py, aw * scale, sy * ah * scale);
-				outP1 = vec4(cosA, sinA, r, sy * shiftY);
-			};
-
-			auto packRamp = [&](float px, float py, float wi, float he, float sk, float angle)
-			{
-				gpuShapeId = BuiltinType::Ramp;
-				const float cosA = (angle != 0.0f) ? std::cos(angle) : 1.0f;
-				const float sinA = (angle != 0.0f) ? std::sin(angle) : 0.0f;
-				const float dotEE = wi * wi + sk * sk;
-				const float invDotEE = (dotEE > 1e-12f) ? (1.0f / dotEE) : 0.0f;
-				outP0 = vec4(px, py, wi, he);
-				outP1 = vec4(sk, cosA, sinA, invDotEE);
-			};
-
 			if (shapeId < DefaultShapes::COUNT_2D)
 			{
+				gpuShapeId = shapeId;
 				switch (shapeId)
 				{
 					case DefaultShapes::Circle:
-						gpuShapeId = BuiltinType::Circle;
 						outP0 = vec4(params[DefaultShapes::Circle::PosX], params[DefaultShapes::Circle::PosY],
 									 params[DefaultShapes::Circle::Radius], 0.0f);
 						break;
-					case DefaultShapes::CircleLine:
-						gpuShapeId = BuiltinType::Circle;
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::CircleLine::Thickness];
-						outP0 = vec4(params[DefaultShapes::CircleLine::PosX], params[DefaultShapes::CircleLine::PosY],
-									 params[DefaultShapes::CircleLine::Radius], 0.0f);
-						break;
 					case DefaultShapes::Box:
-						packBox(params[DefaultShapes::Box::PosX], params[DefaultShapes::Box::PosY],
-								params[DefaultShapes::Box::SizeX], params[DefaultShapes::Box::SizeY], 0.0f, 0.0f,
-								false);
+					{
+						const float r = std::max(params[DefaultShapes::Box::Radius], 0.0f);
+						const float bx = std::max(params[DefaultShapes::Box::SizeX] - r, 0.0f);
+						const float by = std::max(params[DefaultShapes::Box::SizeY] - r, 0.0f);
+						const float angle = params[DefaultShapes::Box::Angle];
+						float cosA = 1.0f;
+						float sinA = 0.0f;
+						if (angle != 0.0f)
+						{
+							flags |= FLAG_ROTATED;
+							cosA = std::cos(angle);
+							sinA = std::sin(angle);
+						}
+						outP0 = vec4(params[DefaultShapes::Box::PosX], params[DefaultShapes::Box::PosY], bx, by);
+						outP1 = vec4(cosA, sinA, r, 0.0f);
 						break;
-					case DefaultShapes::BoxLine:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::BoxLine::Thickness];
-						packBox(params[DefaultShapes::BoxLine::PosX], params[DefaultShapes::BoxLine::PosY],
-								params[DefaultShapes::BoxLine::SizeX], params[DefaultShapes::BoxLine::SizeY], 0.0f,
-								0.0f, false);
-						break;
-					case DefaultShapes::RoundBox:
-						packBox(params[DefaultShapes::RoundBox::PosX], params[DefaultShapes::RoundBox::PosY],
-								params[DefaultShapes::RoundBox::SizeX], params[DefaultShapes::RoundBox::SizeY], 0.0f,
-								params[DefaultShapes::RoundBox::Radius], true);
-						break;
-					case DefaultShapes::RoundBoxLine:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::RoundBoxLine::Thickness];
-						packBox(params[DefaultShapes::RoundBoxLine::PosX], params[DefaultShapes::RoundBoxLine::PosY],
-								params[DefaultShapes::RoundBoxLine::SizeX], params[DefaultShapes::RoundBoxLine::SizeY],
-								0.0f, params[DefaultShapes::RoundBoxLine::Radius], true);
-						break;
-					case DefaultShapes::RoundedBox:
-						packBox(params[DefaultShapes::RoundedBox::PosX], params[DefaultShapes::RoundedBox::PosY],
-								params[DefaultShapes::RoundedBox::SizeX], params[DefaultShapes::RoundedBox::SizeY],
-								0.0f, params[DefaultShapes::RoundedBox::Radius], true);
-						break;
-					case DefaultShapes::RoundedBoxLine:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::RoundedBoxLine::Thickness];
-						packBox(
-							params[DefaultShapes::RoundedBoxLine::PosX], params[DefaultShapes::RoundedBoxLine::PosY],
-							params[DefaultShapes::RoundedBoxLine::SizeX], params[DefaultShapes::RoundedBoxLine::SizeY],
-							0.0f, params[DefaultShapes::RoundedBoxLine::Radius], true);
-						break;
-					case DefaultShapes::BoxRotated:
-						packBox(params[DefaultShapes::BoxRotated::PosX], params[DefaultShapes::BoxRotated::PosY],
-								params[DefaultShapes::BoxRotated::SizeX], params[DefaultShapes::BoxRotated::SizeY],
-								params[DefaultShapes::BoxRotated::Angle], 0.0f, false);
-						break;
-					case DefaultShapes::BoxLineRotated:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::BoxLineRotated::Thickness];
-						packBox(
-							params[DefaultShapes::BoxLineRotated::PosX], params[DefaultShapes::BoxLineRotated::PosY],
-							params[DefaultShapes::BoxLineRotated::SizeX], params[DefaultShapes::BoxLineRotated::SizeY],
-							params[DefaultShapes::BoxLineRotated::Angle], 0.0f, false);
-						break;
-					case DefaultShapes::RoundBoxRotated:
-						packBox(params[DefaultShapes::RoundBoxRotated::PosX],
-								params[DefaultShapes::RoundBoxRotated::PosY],
-								params[DefaultShapes::RoundBoxRotated::SizeX],
-								params[DefaultShapes::RoundBoxRotated::SizeY],
-								params[DefaultShapes::RoundBoxRotated::Angle],
-								params[DefaultShapes::RoundBoxRotated::Radius], true);
-						break;
+					}
 					case DefaultShapes::Triangle:
-						packTriangle(params[DefaultShapes::Triangle::PosX], params[DefaultShapes::Triangle::PosY],
-									 params[DefaultShapes::Triangle::Width], params[DefaultShapes::Triangle::Height],
-									 0.0f);
+					{
+						const float px = params[DefaultShapes::Triangle::PosX];
+						const float py = params[DefaultShapes::Triangle::PosY];
+						const float w = params[DefaultShapes::Triangle::Width];
+						const float h = params[DefaultShapes::Triangle::Height];
+						const float radius = params[DefaultShapes::Triangle::Radius];
+						const float angle = params[DefaultShapes::Triangle::Angle];
+						const float aw = std::max(std::abs(w), 1e-4f);
+						const float ah = std::max(std::abs(h), 1e-4f);
+						const float sy = (h >= 0.0f) ? 1.0f : -1.0f;
+
+						float cosA = 1.0f;
+						float sinA = 0.0f;
+						if (angle != 0.0f)
+						{
+							flags |= FLAG_ROTATED;
+							cosA = std::cos(angle);
+							sinA = std::sin(angle);
+						}
+
+						if (radius > 0.0f)
+						{
+							const float halfW = aw * 0.5f;
+							const float leg = std::hypot(halfW, ah);
+							const float inradius = (halfW * ah) / (halfW + leg);
+							const float r = std::min(radius, inradius * 0.998f);
+							const float scale = 1.0f - r / inradius;
+							const float shiftY = (1.0f - scale) * (inradius - ah / 3.0f);
+							// Mirroring both q.y and triangle height leaves distance and winding unchanged.
+							outP0 = vec4(px, py, aw * scale, sy * ah * scale);
+							outP1 = vec4(cosA, sinA, r, sy * shiftY);
+						}
+						else
+						{
+							outP0 = vec4(px, py, aw, sy * ah);
+							outP1 = vec4(cosA, sinA, 0.0f, 0.0f);
+						}
 						break;
-					case DefaultShapes::TriangleLine:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::TriangleLine::Thickness];
-						packTriangle(params[DefaultShapes::TriangleLine::PosX],
-									 params[DefaultShapes::TriangleLine::PosY],
-									 params[DefaultShapes::TriangleLine::Width],
-									 params[DefaultShapes::TriangleLine::Height], 0.0f);
-						break;
-					case DefaultShapes::TriangleRotated:
-						packTriangle(params[DefaultShapes::TriangleRotated::PosX],
-									 params[DefaultShapes::TriangleRotated::PosY],
-									 params[DefaultShapes::TriangleRotated::Width],
-									 params[DefaultShapes::TriangleRotated::Height],
-									 params[DefaultShapes::TriangleRotated::Angle]);
-						break;
-					case DefaultShapes::TriangleLineRotated:
-						flags |= FLAG_ONION;
-						onionThickness = params[DefaultShapes::TriangleLineRotated::Thickness];
-						packTriangle(params[DefaultShapes::TriangleLineRotated::PosX],
-									 params[DefaultShapes::TriangleLineRotated::PosY],
-									 params[DefaultShapes::TriangleLineRotated::Width],
-									 params[DefaultShapes::TriangleLineRotated::Height],
-									 params[DefaultShapes::TriangleLineRotated::Angle]);
-						break;
-					case DefaultShapes::RoundTriangle:
-						packRoundTriangle(
-							params[DefaultShapes::RoundTriangle::PosX], params[DefaultShapes::RoundTriangle::PosY],
-							params[DefaultShapes::RoundTriangle::Width], params[DefaultShapes::RoundTriangle::Height],
-							params[DefaultShapes::RoundTriangle::Radius], 0.0f);
-						break;
-					case DefaultShapes::RoundTriangleRotated:
-						packRoundTriangle(params[DefaultShapes::RoundTriangleRotated::PosX],
-										  params[DefaultShapes::RoundTriangleRotated::PosY],
-										  params[DefaultShapes::RoundTriangleRotated::Width],
-										  params[DefaultShapes::RoundTriangleRotated::Height],
-										  params[DefaultShapes::RoundTriangleRotated::Radius],
-										  params[DefaultShapes::RoundTriangleRotated::Angle]);
-						break;
+					}
 					case DefaultShapes::Line:
 					{
-						gpuShapeId = BuiltinType::Line;
 						const float ax = params[DefaultShapes::Line::StartX];
 						const float ay = params[DefaultShapes::Line::StartY];
 						const float bax = params[DefaultShapes::Line::EndX] - ax;
@@ -240,29 +172,38 @@ namespace WeirdEngine
 						break;
 					}
 					case DefaultShapes::Ramp:
-						packRamp(params[DefaultShapes::Ramp::PosX], params[DefaultShapes::Ramp::PosY],
-								 params[DefaultShapes::Ramp::Width], params[DefaultShapes::Ramp::Height],
-								 params[DefaultShapes::Ramp::Skew], 0.0f);
+					{
+						const float wi = params[DefaultShapes::Ramp::Width];
+						const float he = params[DefaultShapes::Ramp::Height];
+						const float sk = params[DefaultShapes::Ramp::Skew];
+						const float angle = params[DefaultShapes::Ramp::Angle];
+						float cosA = 1.0f;
+						float sinA = 0.0f;
+						if (angle != 0.0f)
+						{
+							flags |= FLAG_ROTATED;
+							cosA = std::cos(angle);
+							sinA = std::sin(angle);
+						}
+						const float dotEE = wi * wi + sk * sk;
+						const float invDotEE = (dotEE > 1e-12f) ? (1.0f / dotEE) : 0.0f;
+						outP0 = vec4(params[DefaultShapes::Ramp::PosX], params[DefaultShapes::Ramp::PosY], wi, he);
+						outP1 = vec4(sk, cosA, sinA, invDotEE);
 						break;
-					case DefaultShapes::RampRotated:
-						packRamp(params[DefaultShapes::RampRotated::PosX], params[DefaultShapes::RampRotated::PosY],
-								 params[DefaultShapes::RampRotated::Width], params[DefaultShapes::RampRotated::Height],
-								 params[DefaultShapes::RampRotated::Skew], params[DefaultShapes::RampRotated::Angle]);
-						break;
+					}
 					case DefaultShapes::SineWave:
-						gpuShapeId = BuiltinType::SineWave;
 						outP0 =
 							vec4(params[DefaultShapes::SineWave::Amplitude], params[DefaultShapes::SineWave::Period],
 								 params[DefaultShapes::SineWave::Speed], params[DefaultShapes::SineWave::Offset]);
 						break;
 					case DefaultShapes::Star:
-						gpuShapeId = BuiltinType::Star;
 						outP0 = vec4(params[DefaultShapes::Star::PosX], params[DefaultShapes::Star::PosY],
 									 params[DefaultShapes::Star::Radius], params[DefaultShapes::Star::Displacement]);
 						outP1 =
 							vec4(params[DefaultShapes::Star::Points], params[DefaultShapes::Star::Speed], 0.0f, 0.0f);
 						break;
 					default:
+						gpuShapeId = BuiltinType::Invalid;
 						break;
 				}
 			}
@@ -273,24 +214,165 @@ namespace WeirdEngine
 				outP1 = vec4(params[4], params[5], params[6], params[7]);
 			}
 
-			// Both packed integers stay below 2^23 so they are represented exactly in IEEE-754 float.
+			// Both packed integers stay below 2^23 so they are represented with 0-ULP exactness in IEEE-754 float.
 			const uint32_t packed0 = (static_cast<uint32_t>(gpuShapeId) & 0xFFFFu) |
-									 ((static_cast<uint32_t>(combination) & 0x7u) << 16) | ((flags & 0x3u) << 19);
+									 ((static_cast<uint32_t>(combination) & 0x7u) << 16) | ((flags & 0x7u) << 19);
 			const uint32_t packed1 =
-				(static_cast<uint32_t>(groupIdx) & 0xFFFFu) | ((static_cast<uint32_t>(material) & 0x3Fu) << 16);
+				(static_cast<uint32_t>(layer) & 0xFFFFu) | ((static_cast<uint32_t>(material) & 0x3Fu) << 16);
 
-			outMeta = vec4(static_cast<float>(packed0), static_cast<float>(packed1), smoothFactor, onionThickness);
+			outMeta = vec4(static_cast<float>(packed0), static_cast<float>(packed1), smoothFactor, effOutline);
 		}
 
-		// Computes an exact tight world-space AABB for any collapsed built-in GPU primitive directly from packed
-		// params.
-		inline void computeBuiltinBounds(uint16_t gpuShapeId, uint32_t flags, float onionThickness, const vec4& p0,
+		// CPU evaluator matching the 7 canonical GLSL primitives in shaders/2d/sdf_shapes.frag.
+		// Skips rotation math when FLAG_ROTATED is unset and skips onion math when FLAG_OUTLINE is unset.
+		inline float evalPackedBuiltin(uint16_t gpuShapeId, uint32_t flags, float outlineThickness, const vec4& p0,
+									   const vec4& p1, vec2 p, float time = 0.0f)
+		{
+			float dist = 10000.0f;
+			switch (gpuShapeId)
+			{
+				case BuiltinType::Circle:
+					dist = glm::length(p - vec2(p0.x, p0.y)) - p0.z;
+					break;
+				case BuiltinType::Box:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					if ((flags & FLAG_ROTATED) != 0u)
+					{
+						q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
+					}
+					const vec2 d = glm::abs(q) - vec2(p0.z, p0.w);
+					dist = glm::length(glm::max(d, vec2(0.0f))) + std::min(std::max(d.x, d.y), 0.0f) - p1.z;
+					break;
+				}
+				case BuiltinType::Triangle:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					if ((flags & FLAG_ROTATED) != 0u)
+					{
+						q = vec2(p1.x * q.x - p1.y * q.y, p1.y * q.x + p1.x * q.y);
+					}
+					q.y -= p1.w;
+					const float w = p0.z;
+					const float h = p0.w;
+					const vec2 v0(-w * 0.5f, -h / 3.0f);
+					const vec2 v1(w * 0.5f, -h / 3.0f);
+					const vec2 v2(0.0f, 2.0f * h / 3.0f);
+					const vec2 e0 = v1 - v0, e1 = v2 - v1, e2 = v0 - v2;
+					const vec2 d0 = q - v0, d1 = q - v1, d2 = q - v2;
+					const vec2 pq0 =
+						d0 - e0 * std::clamp(glm::dot(d0, e0) / std::max(glm::dot(e0, e0), 1e-12f), 0.0f, 1.0f);
+					const vec2 pq1 =
+						d1 - e1 * std::clamp(glm::dot(d1, e1) / std::max(glm::dot(e1, e1), 1e-12f), 0.0f, 1.0f);
+					const vec2 pq2 =
+						d2 - e2 * std::clamp(glm::dot(d2, e2) / std::max(glm::dot(e2, e2), 1e-12f), 0.0f, 1.0f);
+					const float crossW = e0.x * e2.y - e0.y * e2.x;
+					const float s = (crossW > 0.0f) ? 1.0f : ((crossW < 0.0f) ? -1.0f : 0.0f);
+					const float dx = std::min({glm::dot(pq0, pq0), glm::dot(pq1, pq1), glm::dot(pq2, pq2)});
+					const float dy = std::min({s * (d0.x * e0.y - d0.y * e0.x), s * (d1.x * e1.y - d1.y * e1.x),
+											   s * (d2.x * e2.y - d2.y * e2.x)});
+					const float signDy = (dy > 0.0f) ? 1.0f : ((dy < 0.0f) ? -1.0f : 0.0f);
+					dist = -std::sqrt(dx) * signDy - p1.z;
+					break;
+				}
+				case BuiltinType::Line:
+				{
+					const vec2 pa = p - vec2(p0.x, p0.y);
+					const vec2 ba(p0.z, p0.w);
+					const float h = std::clamp(glm::dot(pa, ba) * p1.x, 0.0f, 1.0f);
+					dist = glm::length(pa - ba * h) - p1.y;
+					break;
+				}
+				case BuiltinType::Ramp:
+				{
+					vec2 q = p - vec2(p0.x, p0.y);
+					if ((flags & FLAG_ROTATED) != 0u)
+					{
+						q = vec2(p1.y * q.x - p1.z * q.y, p1.z * q.x + p1.y * q.y);
+					}
+					const float wi = p0.z;
+					const float he = p0.w;
+					const float sk = p1.x;
+					const vec2 e(wi, sk);
+					q *= (q.x >= 0.0f ? 1.0f : -1.0f);
+					const vec2 w = q - e;
+					const vec2 wClamped(w.x, w.y - std::clamp(w.y, -he, he));
+					const float dx0 = glm::dot(wClamped, wClamped);
+					const float dy0 = -w.x;
+					const float s = q.y * e.x - q.x * e.y;
+					q *= (s >= 0.0f ? 1.0f : -1.0f);
+					vec2 v = q - vec2(0.0f, he);
+					const float h = std::clamp(glm::dot(v, e) * p1.w, -1.0f, 1.0f);
+					v -= e * h;
+					const float dx1 = glm::dot(v, v);
+					const float dy1 = wi * he - std::abs(s);
+					const float mdy = -std::min(dy0, dy1);
+					const float signMdy = (mdy > 0.0f) ? 1.0f : ((mdy < 0.0f) ? -1.0f : 0.0f);
+					dist = std::sqrt(std::min(dx0, dx1)) * signMdy;
+					break;
+				}
+				case BuiltinType::SineWave:
+					dist = (p.y - p0.w) - p0.x * std::sin(p0.y * p.x + p0.z * time);
+					break;
+				case BuiltinType::Star:
+				{
+					const vec2 q = p - vec2(p0.x, p0.y);
+					const float d = glm::length(q) - p0.z;
+					const float angle = p1.x * std::atan2(q.y, q.x) - p1.y * time;
+					dist = d + p0.w * std::sin(angle);
+					break;
+				}
+				default:
+					break;
+			}
+
+			if ((flags & FLAG_OUTLINE) != 0u)
+			{
+				dist = std::abs(dist) - outlineThickness;
+			}
+			return dist;
+		}
+
+		// Evaluates any 2D Shape or UIShape on the CPU, fast-pathing built-ins.
+		template <typename ShapeLike>
+		inline float evaluate(const ShapeLike& shape, const std::vector<std::shared_ptr<IMathExpression>>& sdfs, vec2 p,
+							  float time = 0.0f, float audioVolume = 0.0f)
+		{
+			const auto builtins = Scene::getBuiltinSDFs();
+			const bool isCanonicalBuiltin =
+				shape.distanceFieldId < DefaultShapes::COUNT_2D &&
+				(sdfs.empty() || (shape.distanceFieldId < sdfs.size() && shape.distanceFieldId < builtins.size() &&
+								  builtins[shape.distanceFieldId] != nullptr &&
+								  sdfs[shape.distanceFieldId].get() == builtins[shape.distanceFieldId].get()));
+			if (isCanonicalBuiltin)
+			{
+				vec4 meta, p0, p1;
+				packInstance(shape.distanceFieldId, shape.combination, shape.layer, shape.material,
+							 shape.smoothFactor, shape.parameters, meta, p0, p1);
+				const uint32_t packed0 = static_cast<uint32_t>(meta.x + 0.5f);
+				const uint16_t gpuId = static_cast<uint16_t>(packed0 & 0xFFFFu);
+				const uint32_t flags = packed0 >> 19u;
+				return evalPackedBuiltin(gpuId, flags, meta.w, p0, p1, p, time);
+			}
+
+			if (shape.distanceFieldId < sdfs.size() && sdfs[shape.distanceFieldId])
+			{
+				float evalParams[12];
+				packSdfParameters(evalParams, shape.parameters, time, p, audioVolume);
+				return sdfs[shape.distanceFieldId]->getValue(evalParams);
+			}
+			return 10000.0f;
+		}
+
+		// Computes an exact tight world-space AABB for any canonical GPU primitive directly from packed params.
+		inline void computeBuiltinBounds(uint16_t gpuShapeId, uint32_t flags, float outlineThickness, const vec4& p0,
 										 const vec4& p1, vec2& outMin, vec2& outMax)
 		{
 			constexpr float kNegInf = -std::numeric_limits<float>::infinity();
 			constexpr float kPosInf = std::numeric_limits<float>::infinity();
-			const bool isOnion = (flags & FLAG_ONION) != 0u;
-			const float onion = isOnion ? std::max(onionThickness, 0.0f) : 0.0f;
+			const bool isOnion = (flags & FLAG_OUTLINE) != 0u;
+			const bool isRotated = (flags & FLAG_ROTATED) != 0u;
+			const float onion = isOnion ? std::max(outlineThickness, 0.0f) : 0.0f;
 
 			switch (gpuShapeId)
 			{
@@ -305,11 +387,16 @@ namespace WeirdEngine
 				{
 					const float bx = std::abs(p0.z);
 					const float by = std::abs(p0.w);
-					const float ac = std::abs(p1.x);
-					const float as = std::abs(p1.y);
 					const float r = std::max(p1.z, 0.0f) + onion;
-					const float hx = ac * bx + as * by + r;
-					const float hy = as * bx + ac * by + r;
+					float hx = bx + r;
+					float hy = by + r;
+					if (isRotated)
+					{
+						const float ac = std::abs(p1.x);
+						const float as = std::abs(p1.y);
+						hx = ac * bx + as * by + r;
+						hy = as * bx + ac * by + r;
+					}
 					outMin = vec2(p0.x - hx, p0.y - hy);
 					outMax = vec2(p0.x + hx, p0.y + hy);
 					return;
@@ -318,15 +405,25 @@ namespace WeirdEngine
 				{
 					const float w = p0.z;
 					const float h = p0.w;
-					const float cosA = p1.x;
-					const float sinA = p1.y;
 					const float expand = std::max(p1.z, 0.0f) + onion;
 					const float shiftY = p1.w;
+					const float yBot = -h / 3.0f + shiftY;
+					const float yTop = (2.0f * h) / 3.0f + shiftY;
 
+					if (!isRotated)
+					{
+						const float hw = std::abs(w) * 0.5f;
+						outMin = vec2(p0.x - hw - expand, p0.y + std::min(yBot, yTop) - expand);
+						outMax = vec2(p0.x + hw + expand, p0.y + std::max(yBot, yTop) + expand);
+						return;
+					}
+
+					const float cosA = p1.x;
+					const float sinA = p1.y;
 					const vec2 localVerts[3] = {
-						{-w * 0.5f, -h / 3.0f + shiftY},
-						{w * 0.5f, -h / 3.0f + shiftY},
-						{0.0f, (2.0f * h) / 3.0f + shiftY},
+						{-w * 0.5f, yBot},
+						{w * 0.5f, yBot},
+						{0.0f, yTop},
 					};
 
 					vec2 mn(kPosInf, kPosInf);
@@ -361,15 +458,17 @@ namespace WeirdEngine
 					const float wi = p0.z;
 					const float he = p0.w;
 					const float sk = p1.x;
-					const float cosA = p1.y;
-					const float sinA = p1.z;
-
 					const float c0y = sk + he;
 					const float c1y = sk - he;
-					const float hx =
-						std::max(std::abs(cosA * wi + sinA * c0y), std::abs(cosA * wi + sinA * c1y)) + onion;
-					const float hy =
-						std::max(std::abs(-sinA * wi + cosA * c0y), std::abs(-sinA * wi + cosA * c1y)) + onion;
+					float hx = std::abs(wi) + onion;
+					float hy = std::max(std::abs(c0y), std::abs(c1y)) + onion;
+					if (isRotated)
+					{
+						const float cosA = p1.y;
+						const float sinA = p1.z;
+						hx = std::max(std::abs(cosA * wi + sinA * c0y), std::abs(cosA * wi + sinA * c1y)) + onion;
+						hy = std::max(std::abs(-sinA * wi + cosA * c0y), std::abs(-sinA * wi + cosA * c1y)) + onion;
+					}
 					outMin = vec2(p0.x - hx, p0.y - hy);
 					outMax = vec2(p0.x + hx, p0.y + hy);
 					return;
@@ -404,7 +503,7 @@ namespace WeirdEngine
 			}
 		}
 
-		// Collects, group-sorts, and packs all 2D shape instances into a contiguous GPU upload buffer,
+		// Collects, layer/order-sorts, and packs all 2D shape instances into a contiguous GPU upload buffer,
 		// optionally computing parallel world-space AABBs for the screen-space tile acceleration grid.
 		template <typename ShapeClass>
 		inline void packShapes(Registry& registry, std::vector<vec4>& outShapeBuffer, std::vector<size_t>& scratchOrder,
@@ -442,8 +541,17 @@ namespace WeirdEngine
 				scratchOrder[i] = i;
 			}
 
-			std::stable_sort(scratchOrder.begin(), scratchOrder.end(), [&](size_t a, size_t b)
-							 { return shapeArray->getDataAtIdx(a).groupIdx < shapeArray->getDataAtIdx(b).groupIdx; });
+			std::stable_sort(scratchOrder.begin(), scratchOrder.end(),
+							 [&](size_t a, size_t b)
+							 {
+								 const auto& sa = shapeArray->getDataAtIdx(a);
+								 const auto& sb = shapeArray->getDataAtIdx(b);
+								 if (sa.layer != sb.layer)
+								 {
+									 return sa.layer < sb.layer;
+								 }
+								 return sa.order < sb.order;
+							 });
 
 			outShapeBuffer.resize(count * VEC4S_PER_SHAPE);
 			if (outBoundsBuffer)
@@ -462,13 +570,13 @@ namespace WeirdEngine
 				vec4& meta = outShapeBuffer[base];
 				vec4& p0 = outShapeBuffer[base + 1];
 				vec4& p1 = outShapeBuffer[base + 2];
-				packInstance(s.distanceFieldId, s.combination, s.groupIdx, s.material, s.smoothFactor, s.parameters,
-							 meta, p0, p1);
+				packInstance(s.distanceFieldId, s.combination, s.layer, s.material, s.smoothFactor, s.parameters, meta,
+							 p0, p1);
 
 				if (outBoundsBuffer)
 				{
 					Shape2DAABB& aabb = (*outBoundsBuffer)[outIdx];
-					aabb.groupIdx = s.groupIdx;
+					aabb.layer = s.layer;
 					aabb.combination = s.combination;
 					aabb.smoothFactor = s.smoothFactor;
 
@@ -482,7 +590,8 @@ namespace WeirdEngine
 					else if (sdfBounds && s.distanceFieldId < sdfBounds->size() && (*sdfBounds)[s.distanceFieldId])
 					{
 						std::copy_n(s.parameters, 8, evalParams);
-						(*sdfBounds)[s.distanceFieldId]->evaluate(evalParams, aabb.min, aabb.max);
+						const auto& boundsExpr = (*sdfBounds)[s.distanceFieldId];
+						boundsExpr->evaluate(evalParams, aabb.min, aabb.max);
 					}
 					else
 					{
@@ -492,5 +601,5 @@ namespace WeirdEngine
 				}
 			}
 		}
-	} // namespace GpuShape2D
+	} // namespace Shape2D
 } // namespace WeirdEngine

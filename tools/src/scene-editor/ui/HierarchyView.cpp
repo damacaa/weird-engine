@@ -5,12 +5,71 @@
 #include "weird-engine.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/Spring.h"
+#include "weird-renderer/components/Shape.h"
 
 #include <algorithm>
 #include <imgui.h>
 
 namespace WeirdEngine::Tools::SceneEd
 {
+	namespace
+	{
+		void sortEntitiesForHierarchy(std::vector<Entity>& entities, const EditorContext& ctx)
+		{
+			const Entity camEntity = ctx.services->render().getCameraEntity();
+			std::sort(entities.begin(), entities.end(),
+					  [&](Entity a, Entity b)
+					  {
+						  if (a == camEntity)
+							  return true;
+						  if (b == camEntity)
+							  return false;
+
+						  const bool aShape = ctx.registry->hasComponent<Shape>(a);
+						  const bool bShape = ctx.registry->hasComponent<Shape>(b);
+						  if (aShape != bShape)
+							  return aShape;
+
+						  if (aShape && bShape)
+						  {
+							  const auto& sa = ctx.registry->getComponent<Shape>(a);
+							  const auto& sb = ctx.registry->getComponent<Shape>(b);
+							  if (sa.layer != sb.layer)
+								  return sa.layer < sb.layer;
+							  if (sa.order != sb.order)
+								  return sa.order < sb.order;
+						  }
+
+						  return a < b;
+					  });
+		}
+
+		std::string formatShapeHierarchyPrefix(const Shape& s)
+		{
+			std::string prefix =
+				(s.layer == Shape::GLOBAL_LAYER) ? "[Global" : ("[L" + std::to_string(s.layer));
+			switch (s.combination)
+			{
+				case CombinationType::Subtraction:
+					prefix += " -";
+					break;
+				case CombinationType::Intersection:
+					prefix += " &";
+					break;
+				case CombinationType::SmoothAddition:
+					prefix += " ~+";
+					break;
+				case CombinationType::SmoothSubtraction:
+					prefix += " ~-";
+					break;
+				case CombinationType::Addition:
+				default:
+					break;
+			}
+			prefix += "] ";
+			return prefix;
+		}
+	} // namespace
 	void HierarchyView::renderHierarchyTab(EditorContext& ctx, SceneOperations& sceneOps,
 										   ExternalToolsManager& toolsMgr)
 	{
@@ -101,6 +160,7 @@ namespace WeirdEngine::Tools::SceneEd
 		}
 
 		// C) Root Entities (alive entities not in any cluster and not in any group)
+		std::vector<Entity> rootEntities;
 		for (Entity e = 0; e < ctx.registry->getEntityCount(); ++e)
 		{
 			if (!ctx.registry->isEntityAlive(e))
@@ -112,7 +172,64 @@ namespace WeirdEngine::Tools::SceneEd
 			if (groupedEntities.count(e) > 0)
 				continue;
 
+			rootEntities.push_back(e);
+		}
+		sortEntitiesForHierarchy(rootEntities, ctx);
+
+		for (Entity e : rootEntities)
+		{
 			renderHierarchyEntityItem(e, nullptr, searchStr, ctx, sceneOps);
+		}
+
+		// Drop zone below root items to drag grouped entities/clusters back out to Root
+		if (const ImGuiPayload* activePayload = ImGui::GetDragDropPayload())
+		{
+			bool canDropToRoot = false;
+			if (activePayload->IsDataType("HIER_ENTITY") && activePayload->DataSize == sizeof(Entity))
+			{
+				Entity draggedEnt = *static_cast<const Entity*>(activePayload->Data);
+				canDropToRoot = (ctx.services->clusters().getClusterForEntity(draggedEnt) == nullptr &&
+								 sceneOps.isEntityInAnyGroup(draggedEnt));
+			}
+			else if (activePayload->IsDataType("HIER_CLUSTER") && activePayload->DataSize == sizeof(uint32_t))
+			{
+				uint32_t draggedCluster = *static_cast<const uint32_t*>(activePayload->Data);
+				canDropToRoot = sceneOps.isClusterInAnyGroup(draggedCluster);
+			}
+
+			if (canDropToRoot)
+			{
+				ImGui::Spacing();
+				const float dropW = (std::max)(ImGui::GetContentRegionAvail().x, 40.0f);
+				const float dropH = (std::max)(ImGui::GetContentRegionAvail().y, 32.0f);
+				ImGui::Dummy(ImVec2(dropW, dropH));
+
+				const ImVec2 mn = ImGui::GetItemRectMin();
+				const ImVec2 mx = ImGui::GetItemRectMax();
+				ImDrawList* drawList = ImGui::GetWindowDrawList();
+				const bool hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+				drawList->AddRectFilled(mn, mx, hovered ? IM_COL32(60, 140, 200, 45) : IM_COL32(120, 120, 130, 22), 4.0f);
+				drawList->AddRect(mn, mx, hovered ? IM_COL32(80, 200, 255, 220) : IM_COL32(140, 140, 150, 120), 4.0f);
+				const char* dropText = "Drop here to move to Root";
+				const ImVec2 textSz = ImGui::CalcTextSize(dropText);
+				drawList->AddText(ImVec2(mn.x + (dropW - textSz.x) * 0.5f, mn.y + (dropH - textSz.y) * 0.5f),
+								  hovered ? IM_COL32(180, 235, 255, 255) : IM_COL32(180, 180, 190, 190), dropText);
+
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIER_ENTITY"))
+					{
+						Entity e = *static_cast<const Entity*>(payload->Data);
+						sceneOps.removeFromAllGroups(e);
+					}
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIER_CLUSTER"))
+					{
+						uint32_t cId = *static_cast<const uint32_t*>(payload->Data);
+						sceneOps.removeClusterFromAllGroups(cId);
+					}
+					ImGui::EndDragDropTarget();
+				}
+			}
 		}
 
 		// Context menu on empty area
@@ -143,7 +260,12 @@ namespace WeirdEngine::Tools::SceneEd
 												  const std::string& searchStr, EditorContext& ctx,
 												  SceneOperations& sceneOps)
 	{
+		const bool hasShape = ctx.registry->hasComponent<Shape>(e);
 		std::string label = sceneOps.formatEntityLabel(e, parentCluster);
+		if (hasShape)
+		{
+			label = formatShapeHierarchyPrefix(ctx.registry->getComponent<Shape>(e)) + label;
+		}
 
 		if (!searchStr.empty())
 		{
@@ -163,14 +285,35 @@ namespace WeirdEngine::Tools::SceneEd
 		ImGui::PushID(static_cast<int>(e));
 		ImGui::TreeNodeEx((void*)(uintptr_t)e, flags, "%s", label.c_str());
 
+		const ImVec2 itemMin = ImGui::GetItemRectMin();
+		const ImVec2 itemMax = ImGui::GetItemRectMax();
+
 		ctx.visibleHierarchyItems.push_back({HierarchyItemType::Entity, static_cast<uint32_t>(e)});
 
-		if (ImGui::IsItemHovered())
+		if (ImGui::IsItemHovered() && ImGui::GetDragDropPayload() == nullptr)
 		{
 			auto compIDs = ctx.registry->getComponentTypes(e);
 			if (!compIDs.empty())
 			{
 				ImGui::BeginTooltip();
+				if (hasShape)
+				{
+					const auto& s = ctx.registry->getComponent<Shape>(e);
+					auto layerShapes = sceneOps.getShapesInLayer(s.layer);
+					auto posIt = std::find(layerShapes.begin(), layerShapes.end(), e);
+					int posInLayer = (posIt != layerShapes.end()) ? static_cast<int>(posIt - layerShapes.begin()) + 1 : 0;
+					if (s.layer == Shape::GLOBAL_LAYER)
+					{
+						ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Global Layer | Order: %d / %zu",
+										   posInLayer, layerShapes.size());
+					}
+					else
+					{
+						ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Layer %u | Order: %d / %zu", s.layer,
+										   posInLayer, layerShapes.size());
+					}
+					ImGui::Separator();
+				}
 				ImGui::TextDisabled("Attached Components:");
 				for (size_t compID : compIDs)
 				{
@@ -193,13 +336,64 @@ namespace WeirdEngine::Tools::SceneEd
 			sceneOps.handleHierarchyItemClick({HierarchyItemType::Entity, static_cast<uint32_t>(e)});
 		}
 
-		// Drag source
-		if (parentCluster == nullptr && ImGui::BeginDragDropSource())
+		// Drag source (root entities or any shape entity for layer/order reordering)
+		if ((parentCluster == nullptr || hasShape) && ImGui::BeginDragDropSource())
 		{
 			Entity payload = e;
 			ImGui::SetDragDropPayload("HIER_ENTITY", &payload, sizeof(Entity));
 			ImGui::Text("%s", label.c_str());
+			if (hasShape)
+			{
+				ImGui::TextDisabled("Drop above/below a shape to reorder or change layer");
+			}
 			ImGui::EndDragDropSource();
+		}
+
+		// Drag-and-drop target on shape entities for direct CSG order & layer reordering
+		if (hasShape && ImGui::BeginDragDropTarget())
+		{
+			const ImGuiDragDropFlags dropFlags =
+				ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect;
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIER_ENTITY", dropFlags))
+			{
+				Entity srcEntity = *static_cast<const Entity*>(payload->Data);
+				if (srcEntity != e && ctx.registry->isEntityAlive(srcEntity) &&
+					ctx.registry->hasComponent<Shape>(srcEntity))
+				{
+					const float midY = (itemMin.y + itemMax.y) * 0.5f;
+					const bool insertAfter = (ImGui::GetMousePos().y >= midY);
+					const float lineY = insertAfter ? itemMax.y : itemMin.y;
+
+					ImDrawList* drawList = ImGui::GetWindowDrawList();
+					drawList->AddLine(ImVec2(itemMin.x, lineY), ImVec2(itemMax.x, lineY),
+									  IM_COL32(80, 200, 255, 255), 2.5f);
+
+					if (payload->IsDelivery())
+					{
+						sceneOps.reorderShapeRelativeTo(srcEntity, e, insertAfter);
+
+						// Keep editor group membership consistent when both entities are standalone
+						if (parentCluster == nullptr &&
+							ctx.services->clusters().getClusterForEntity(srcEntity) == nullptr)
+						{
+							const uint32_t dstGroupId = sceneOps.getEntityGroupId(e);
+							const uint32_t srcGroupId = sceneOps.getEntityGroupId(srcEntity);
+							if (dstGroupId != srcGroupId)
+							{
+								if (dstGroupId != 0)
+								{
+									sceneOps.addEntityToGroup(dstGroupId, srcEntity);
+								}
+								else
+								{
+									sceneOps.removeFromAllGroups(srcEntity);
+								}
+							}
+						}
+					}
+				}
+			}
+			ImGui::EndDragDropTarget();
 		}
 
 		// Context menu
@@ -208,6 +402,59 @@ namespace WeirdEngine::Tools::SceneEd
 			if (ImGui::MenuItem("Select"))
 			{
 				sceneOps.selectEntity(e, false);
+			}
+			if (hasShape)
+			{
+				const auto& s = ctx.registry->getComponent<Shape>(e);
+				auto layerShapes = sceneOps.getShapesInLayer(s.layer);
+				auto posIt = std::find(layerShapes.begin(), layerShapes.end(), e);
+				const size_t pos = (posIt != layerShapes.end()) ? static_cast<size_t>(posIt - layerShapes.begin()) : 0;
+
+				ImGui::Separator();
+				if (ImGui::MenuItem("Move Earlier in Layer", nullptr, false, pos > 0))
+				{
+					sceneOps.moveShapeOrderInLayer(e, -1);
+				}
+				if (ImGui::MenuItem("Move Later in Layer", nullptr, false,
+									!layerShapes.empty() && pos + 1 < layerShapes.size()))
+				{
+					sceneOps.moveShapeOrderInLayer(e, +1);
+				}
+				if (ImGui::BeginMenu("Set Layer"))
+				{
+					auto usedLayers = sceneOps.getUsedShapeLayers();
+					uint16_t maxRegular = 0;
+					bool hasRegular = false;
+					for (uint16_t l : usedLayers)
+					{
+						if (l != Shape::GLOBAL_LAYER)
+						{
+							maxRegular = hasRegular ? (std::max)(maxRegular, l) : l;
+							hasRegular = true;
+							std::string layerLabel = "Layer " + std::to_string(l);
+							if (ImGui::MenuItem(layerLabel.c_str(), nullptr, s.layer == l))
+							{
+								sceneOps.setShapeLayer(e, l);
+							}
+						}
+					}
+					const uint16_t nextLayer = hasRegular ? static_cast<uint16_t>(maxRegular + 1) : 0;
+					if (nextLayer < Shape::GLOBAL_LAYER)
+					{
+						ImGui::Separator();
+						std::string nextLabel = "+ New Layer (" + std::to_string(nextLayer) + ")";
+						if (ImGui::MenuItem(nextLabel.c_str()))
+						{
+							sceneOps.setShapeLayer(e, nextLayer);
+						}
+					}
+					ImGui::Separator();
+					if (ImGui::MenuItem("Global Layer", nullptr, s.layer == Shape::GLOBAL_LAYER))
+					{
+						sceneOps.setShapeLayer(e, Shape::GLOBAL_LAYER);
+					}
+					ImGui::EndMenu();
+				}
 			}
 			if (sceneOps.canGroupSelected())
 			{
@@ -309,6 +556,10 @@ namespace WeirdEngine::Tools::SceneEd
 				for (Entity member : cluster.entities)
 				{
 					std::string mLabel = sceneOps.formatEntityLabel(member, &cluster);
+					if (ctx.registry->hasComponent<Shape>(member))
+					{
+						mLabel = formatShapeHierarchyPrefix(ctx.registry->getComponent<Shape>(member)) + mLabel;
+					}
 					std::transform(mLabel.begin(), mLabel.end(), mLabel.begin(), ::tolower);
 					if (mLabel.find(searchStr) != std::string::npos)
 					{
@@ -406,12 +657,19 @@ namespace WeirdEngine::Tools::SceneEd
 
 		if (open)
 		{
+			std::vector<Entity> sortedMembers;
+			sortedMembers.reserve(cluster.entities.size());
 			for (Entity e : cluster.entities)
 			{
 				if (ctx.registry->isEntityAlive(e))
 				{
-					renderHierarchyEntityItem(e, &cluster, searchStr, ctx, sceneOps);
+					sortedMembers.push_back(e);
 				}
+			}
+			sortEntitiesForHierarchy(sortedMembers, ctx);
+			for (Entity e : sortedMembers)
+			{
+				renderHierarchyEntityItem(e, &cluster, searchStr, ctx, sceneOps);
 			}
 			ImGui::TreePop();
 		}
@@ -448,6 +706,10 @@ namespace WeirdEngine::Tools::SceneEd
 					for (Entity e : group.entities)
 					{
 						std::string eLower = sceneOps.formatEntityLabel(e);
+						if (ctx.registry->hasComponent<Shape>(e))
+						{
+							eLower = formatShapeHierarchyPrefix(ctx.registry->getComponent<Shape>(e)) + eLower;
+						}
 						std::transform(eLower.begin(), eLower.end(), eLower.begin(), ::tolower);
 						if (eLower.find(searchStr) != std::string::npos)
 						{
@@ -481,7 +743,10 @@ namespace WeirdEngine::Tools::SceneEd
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIER_ENTITY"))
 			{
 				Entity e = *static_cast<const Entity*>(payload->Data);
-				sceneOps.addEntityToGroup(group.id, e);
+				if (ctx.services->clusters().getClusterForEntity(e) == nullptr)
+				{
+					sceneOps.addEntityToGroup(group.id, e);
+				}
 			}
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIER_CLUSTER"))
 			{
@@ -529,12 +794,20 @@ namespace WeirdEngine::Tools::SceneEd
 				}
 			}
 
+			std::vector<Entity> sortedGroupEntities;
+			sortedGroupEntities.reserve(group.entities.size());
 			for (Entity e : group.entities)
 			{
 				if (ctx.registry->isEntityAlive(e))
 				{
-					renderHierarchyEntityItem(e, nullptr, searchStr, ctx, sceneOps);
+					sortedGroupEntities.push_back(e);
 				}
+			}
+			sortEntitiesForHierarchy(sortedGroupEntities, ctx);
+
+			for (Entity e : sortedGroupEntities)
+			{
+				renderHierarchyEntityItem(e, nullptr, searchStr, ctx, sceneOps);
 			}
 
 			ImGui::TreePop();

@@ -278,7 +278,7 @@ namespace WeirdEngine::Tools
 		static constexpr float CAMERA_ZOOM_STEP = 0.12f;
 		static constexpr float TAG_OUTER_RADIUS = 30.0f;
 		static constexpr float TAG_INNER_RADIUS = 25.0f;
-		static constexpr int TAG_RING_GROUP = 8;
+		static constexpr int TAG_RING_LAYER = 8;
 		static constexpr float PANEL_WIDTH = 300.0f;
 
 		static bool isValidEntityId(Entity e)
@@ -6034,14 +6034,14 @@ namespace WeirdEngine::Tools
 																   .variables = p,
 																   .material = 7,
 																   .combination = CombinationType::Addition,
-																   .group = TAG_RING_GROUP});
+																   .layer = TAG_RING_LAYER});
 				m_tempSvc->serialization().blacklistEntity(m_tagCircleOuter);
 
 				m_tagCircleInner = m_tempSvc->shapes().addUIShape({.shapeId = DefaultShapes::Circle,
 																   .variables = p,
 																   .material = 7,
 																   .combination = CombinationType::Subtraction,
-																   .group = TAG_RING_GROUP});
+																   .layer = TAG_RING_LAYER});
 				m_tempSvc->serialization().blacklistEntity(m_tagCircleInner);
 			}
 

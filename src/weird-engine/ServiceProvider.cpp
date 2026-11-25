@@ -5,6 +5,7 @@
 #include "weird-engine/Scene.h"
 #include "weird-engine/SceneSerializer.h"
 #include "weird-engine/systems/PhysicsSystem2D.h"
+#include "weird-engine/systems/Shape2DPacking.h"
 #include "weird-physics/components/DistanceConstraint.h"
 #include "weird-physics/components/RigidBody.h"
 #include "weird-physics/components/Spring.h"
@@ -313,7 +314,7 @@ namespace WeirdEngine
 		config.shapeId = shapeId;
 		config.material = visualOptions.material;
 		config.combination = visualOptions.combination;
-		config.group = visualOptions.group;
+		config.layer = visualOptions.layer;
 		std::copy_n(song->getParameters(), 8, config.variables.data);
 
 		m_visualizationEntity = m_shapes->addUIShape(config);
@@ -476,9 +477,9 @@ namespace WeirdEngine
 
 	namespace
 	{
-		// Evaluates the scene SDF (shape combination and group logic) plus optional
+		// Evaluates the scene SDF (shape combination, layer, and order logic) plus optional
 		// rigidbodies (spatial grid snapshot) at a single world point. One instance
-		// per query; caches the component arrays and reuses the group scratch buffer
+		// per query; caches the component arrays and reuses the layer scratch buffer
 		// across raymarch steps.
 		class SceneSampler
 		{
@@ -494,116 +495,109 @@ namespace WeirdEngine
 				{
 					m_gridSnapshot = simulation->getSpatialGridSnapshot();
 				}
+				if (m_shapes)
+				{
+					const size_t count = m_shapes->getSize();
+					m_orderedShapeIndices.resize(count);
+					for (size_t i = 0; i < count; ++i)
+					{
+						m_orderedShapeIndices[i] = i;
+					}
+					std::stable_sort(m_orderedShapeIndices.begin(), m_orderedShapeIndices.end(),
+									 [&](size_t a, size_t b)
+									 {
+										 const auto& sa = m_shapes->getDataAtIdx(a);
+										 const auto& sb = m_shapes->getDataAtIdx(b);
+										 if (sa.layer != sb.layer)
+										 {
+											 return sa.layer < sb.layer;
+										 }
+										 return sa.order < sb.order;
+									 });
+				}
 			}
 
 			RaymarchResult sample(glm::vec2 point)
 			{
-				m_groups.clear();
-
 				float d = 1000.0f;
-				float minD = d;
 				Entity closestEntity = INVALID_ENTITY;
 
-				for (size_t j = 0; j < m_shapes->getSize(); j++)
+				int currentLayer = -1;
+				float layerMinDistance = 1000.0f;
+				Entity layerClosestEntity = INVALID_ENTITY;
+
+				auto flushLayer = [&]()
 				{
-					auto& shape = m_shapes->getDataAtIdx(j);
+					if (currentLayer != -1 && currentLayer != Shape::GLOBAL_LAYER)
+					{
+						if (layerMinDistance < d)
+						{
+							d = layerMinDistance;
+							closestEntity = layerClosestEntity;
+						}
+					}
+				};
+
+				for (size_t idx : m_orderedShapeIndices)
+				{
+					auto& shape = m_shapes->getDataAtIdx(idx);
 
 					if (!shape.hasCollisions)
 						continue;
 
-					if (shape.distanceFieldId >= m_sdfs.size())
+					if (shape.distanceFieldId >= DefaultShapes::COUNT_2D && shape.distanceFieldId >= m_sdfs.size())
 						continue;
 
-					float parameters[12];
-					packSdfParameters(parameters, shape.parameters, m_time, point,
-									  WeirdAudio::AudioEngine::getInstance().getAudioVolume());
-
-					float dist = m_sdfs[shape.distanceFieldId]->getValue(parameters);
-					float currentMinDistance = d;
-					Entity currentEntity = INVALID_ENTITY;
-
-					GroupState* groupState = nullptr;
-					for (auto& group : m_groups)
+					const int layer = shape.layer;
+					if (layer != currentLayer)
 					{
-						if (group.id == shape.groupIdx)
-						{
-							groupState = &group;
-							currentMinDistance = groupState->minDistance;
-							currentEntity = groupState->closestEntity;
-							break;
-						}
+						flushLayer();
+						currentLayer = layer;
+						layerMinDistance = 1000.0f;
+						layerClosestEntity = INVALID_ENTITY;
 					}
 
-					if (!groupState && shape.groupIdx != Shape::GLOBAL_GROUP)
-					{
-						m_groups.push_back({static_cast<uint16_t>(shape.groupIdx), 1000.0f, INVALID_ENTITY});
-						groupState = &m_groups.back();
-						currentMinDistance = groupState->minDistance;
-					}
+					float dist = Shape2D::evaluate(shape, m_sdfs, point, m_time,
+												   WeirdAudio::AudioEngine::getInstance().getAudioVolume());
+
+					const bool isGlobal = (shape.layer == Shape::GLOBAL_LAYER);
+					float& targetDist = isGlobal ? d : layerMinDistance;
+					Entity& targetEntity = isGlobal ? closestEntity : layerClosestEntity;
 
 					bool closestEntityUpdated = false;
 					switch (shape.combination)
 					{
 						case CombinationType::Addition:
-							if (dist < currentMinDistance)
+							if (dist < targetDist)
 							{
 								closestEntityUpdated = true;
-								currentMinDistance = dist;
+								targetDist = dist;
 							}
 							break;
 						case CombinationType::Subtraction:
-							currentMinDistance = std::max(currentMinDistance, -dist);
+							targetDist = std::max(targetDist, -dist);
 							break;
 						case CombinationType::SmoothAddition:
-							dist = fOpUnionSoft(dist, currentMinDistance, shape.smoothFactor);
-							if (dist < currentMinDistance)
+							dist = fOpUnionSoft(dist, targetDist, shape.smoothFactor);
+							if (dist < targetDist)
 								closestEntityUpdated = true;
-							currentMinDistance = dist;
+							targetDist = dist;
 							break;
 						case CombinationType::SmoothSubtraction:
-							currentMinDistance = fOpSubSoft(currentMinDistance, dist, shape.smoothFactor);
+							targetDist = fOpSubSoft(targetDist, dist, shape.smoothFactor);
 							break;
 						case CombinationType::Intersection:
-							currentMinDistance = std::max(currentMinDistance, dist);
+							targetDist = std::max(targetDist, dist);
 							break;
 					}
 
 					if (closestEntityUpdated)
 					{
-						currentEntity = m_shapes->getEntityAtIdx(j);
-					}
-
-					if (shape.groupIdx == Shape::GLOBAL_GROUP)
-					{
-						d = currentMinDistance;
-						if (d < minD)
-						{
-							minD = d;
-							closestEntity = currentEntity;
-						}
-					}
-					else
-					{
-						groupState->minDistance = currentMinDistance;
-						if (closestEntityUpdated)
-						{
-							groupState->closestEntity = currentEntity;
-						}
+						targetEntity = m_shapes->getEntityAtIdx(idx);
 					}
 				}
 
-				for (const auto& group : m_groups)
-				{
-					if (group.minDistance < d)
-					{
-						d = group.minDistance;
-						closestEntity = group.closestEntity;
-					}
-					if (d < minD)
-					{
-						minD = d;
-					}
-				}
+				flushLayer();
 
 				// Evaluate Rigidbodies using the Spatial Grid Snapshot
 				if (m_gridSnapshot)
@@ -662,29 +656,18 @@ namespace WeirdEngine
 						d = minRigidbodyDist;
 						closestEntity = closestRbEntity;
 					}
-					if (d < minD)
-					{
-						minD = d;
-					}
 				}
 
 				return {d, closestEntity};
 			}
 
 		private:
-			struct GroupState
-			{
-				uint16_t id;
-				float minDistance;
-				Entity closestEntity;
-			};
-
 			std::vector<std::shared_ptr<IMathExpression>>& m_sdfs;
 			float m_time;
 			std::shared_ptr<ComponentArray<Shape>> m_shapes;
 			std::shared_ptr<ComponentArray<RigidBody2D>> m_rigidBodies;
 			std::shared_ptr<SpatialGridSnapshot> m_gridSnapshot;
-			std::vector<GroupState> m_groups;
+			std::vector<size_t> m_orderedShapeIndices;
 		};
 	} // namespace
 
@@ -1512,9 +1495,14 @@ namespace WeirdEngine
 					s.smoothFactor = oldSnap.shape.smoothFactor;
 					dirtyShape = true;
 				}
-				if (mask & ClusterOverrideFlag::ShapeGroupIdx)
+				if (mask & ClusterOverrideFlag::ShapeLayer)
 				{
-					s.groupIdx = oldSnap.shape.groupIdx;
+					s.layer = oldSnap.shape.layer;
+					dirtyShape = true;
+				}
+				if (mask & ClusterOverrideFlag::ShapeOrder)
+				{
+					s.order = oldSnap.shape.order;
 					dirtyShape = true;
 				}
 				if (mask & ClusterOverrideFlag::ShapeParameters)
@@ -1908,6 +1896,16 @@ namespace WeirdEngine
 			m_nextClusterId = instance.id + 1;
 		m_clusters.push_back(std::move(instance));
 		return m_clusters.back();
+	}
+
+	float ShapeService::evaluateShape2D(const Shape& shape, vec2 p, float time, float audioVolume) const
+	{
+		return Shape2D::evaluate(shape, m_sdfs, p, time, audioVolume);
+	}
+
+	float ShapeService::evaluateUIShape2D(const UIShape& shape, vec2 p, float time, float audioVolume) const
+	{
+		return Shape2D::evaluate(shape, m_sdfs, p, time, audioVolume);
 	}
 
 } // namespace WeirdEngine

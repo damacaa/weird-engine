@@ -58,11 +58,18 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Configure CMake (Desktop)
         if: matrix.target != 'web'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_ENGINE_BUILD_TOOLS=ON -DWEIRD_TEST_HOOKS=ON
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWEIRD_ENGINE_BUILD_EXAMPLES=ON -DWEIRD_ENGINE_BUILD_TOOLS=ON -DWEIRD_ENGINE_BUILD_TESTS=ON -DWEIRD_ENGINE_ENABLE_ASSERTS=ON -DWEIRD_TEST_HOOKS=ON
 
       - name: Build (Desktop)
         if: matrix.target != 'web'
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: Run Regression Tests (Desktop)
+        if: matrix.target != 'web'
+        env:
+          SDL_AUDIODRIVER: dummy
+          SDL_VIDEODRIVER: dummy
+        run: ctest --test-dir ${{github.workspace}}/build -C ${{env.BUILD_TYPE}} --output-on-failure --parallel 4
 
       - name: Test (Linux)
         if: matrix.target == 'linux'

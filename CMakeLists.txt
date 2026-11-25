@@ -266,7 +266,7 @@ if(WEIRD_ENGINE_BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
 
-option(WEIRD_ENGINE_BUILD_TESTS "Build snapshot regression tests" OFF)
+option(WEIRD_ENGINE_BUILD_TESTS "Build engine regression tests" OFF)
 if(WEIRD_ENGINE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

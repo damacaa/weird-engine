@@ -11,13 +11,15 @@ cmake --build build
 ./build/examples/sample-scenes/WeirdSamples
 ```
 
-Optional snapshot regression tests run without opening a window:
+Optional regression tests run without opening a window:
 
 ```bash
 cmake -B build -DWEIRD_ENGINE_BUILD_TESTS=ON
-cmake --build build --target WeirdSnapshotTests
+cmake --build build --target WeirdTests
 ctest --test-dir build --output-on-failure
 ```
+
+Individual suites (`WeirdSnapshotTests`, `WeirdShapeTests`, `WeirdUITests`, `WeirdPhysicsTests`, `WeirdSerializationTests`, `WeirdSampleSceneTests`) can also be built and run directly, with an optional test-name filter argument.
 
 For multi-configuration generators, use `--config Debug` when building and `-C Debug` when running CTest.
 

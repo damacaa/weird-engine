@@ -94,25 +94,27 @@ void main()
 	c = vec4(toLinear(c.rgb), c.a);
 
 #ifdef MATERIAL_BLENDING
-	// Get current material color
+	// Reproject into previous frame's accumulated material texture
 	float oldZoom = max(-u_oldCamMatrix[3].z, 0.001);
 	float zoomRatio = zoom / oldZoom;
+	vec2 camPosChange = u_oldCamMatrix[3].xy - u_camMatrix[3].xy;
 	vec2 prevTexCoord;
-	prevTexCoord.x = zoomRatio * (screenUV.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio);
-	prevTexCoord.y = zoomRatio * (screenUV.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / oldZoom;
+	prevTexCoord.x = zoomRatio * (screenUV.x - 0.5) + 0.5 + 0.5 * camPosChange.x / (oldZoom * aspectRatio);
+	prevTexCoord.y = zoomRatio * (screenUV.y - 0.5) + 0.5 + 0.5 * camPosChange.y / oldZoom;
 
-	vec4 currentColor = texture(t_currentColorTexture, prevTexCoord);
-	currentColor = clamp(currentColor, 0.0, 1.0);
+	bool validHistory =
+		prevTexCoord.x >= 0.0 && prevTexCoord.x <= 1.0 && prevTexCoord.y >= 0.0 && prevTexCoord.y <= 1.0;
+	if (validHistory)
+	{
+		vec4 currentColor = texture(t_currentColorTexture, prevTexCoord);
+		currentColor = clamp(currentColor, 0.0, 1.0);
 
-	// Blend new color with current color
-	float zoomFactor = (zoom - 10.0) * 0.02;
-	zoomFactor = smoothstep(0.0, 1.0, zoomFactor);
+		vec4 diff = clamp((c - currentColor), -1.0, 1.0);
+		vec4 blendedColor = currentColor + (min(u_deltaTime * u_materialBlendSpeed, 1.0) * diff);
 
-	vec4 diff = clamp((c - currentColor), -1.0, 1.0);
-	vec4 blendedColor = currentColor + (min(u_deltaTime * u_materialBlendSpeed, 1.0) * diff);
-
-	// Use the mask to force the centers of the dots to get the instantaneous color every frame
-	c = mix(blendedColor, c, clamp(mask, 0.0, 1.0));
+		// Use the mask to force the centers of the dots to get the instantaneous color every frame
+		c = mix(blendedColor, c, clamp(mask, 0.0, 1.0));
+	}
 #endif
 
 	FragColor = c;

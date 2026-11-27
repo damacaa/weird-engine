@@ -209,38 +209,46 @@ void main()
 #else
 	float overscanScale = 1.0 + u_overscan;
 #endif
+	vec2 camPosChange = u_oldCamMatrix[3].xy - u_camMatrix[3].xy;
 	vec2 prevTexCoord;
 	prevTexCoord.x =
-		zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * u_camPositionChange.x / (oldZoom * aspectRatio * overscanScale);
-	prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * u_camPositionChange.y / (oldZoom * overscanScale);
+		zoomRatio * (v_texCoord.x - 0.5) + 0.5 + 0.5 * camPosChange.x / (oldZoom * aspectRatio * overscanScale);
+	prevTexCoord.y = zoomRatio * (v_texCoord.y - 0.5) + 0.5 + 0.5 * camPosChange.y / (oldZoom * overscanScale);
 
-	// Sample previous texture with bilinear filtering
-	vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
-	float previousDistance = previousData.x;
+	bool validHistory =
+		prevTexCoord.x >= 0.0 && prevTexCoord.x <= 1.0 && prevTexCoord.y >= 0.0 && prevTexCoord.y <= 1.0;
+	if (validHistory)
+	{
+		// Sample previous texture with bilinear filtering
+		vec2 previousData = smoothSample(t_colorTexture, prevTexCoord);
+		float previousDistance = previousData.x;
 
-	vec4 previousDataExact = texture(t_colorTexture, prevTexCoord);
-	float previousMaterial = previousDataExact.y;
+		// Fetch previous material ID without linear filtering (t_colorTexture is LinearData)
+		ivec2 prevTexSize = textureSize(t_colorTexture, 0);
+		ivec2 prevTexel = clamp(ivec2(floor(prevTexCoord * vec2(prevTexSize))), ivec2(0), prevTexSize - 1);
+		float previousMaterial = texelFetch(t_colorTexture, prevTexel, 0).y;
 
-	material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
+		material = finalDistance >= 0.0 && previousDistance < 0.0 ? previousMaterial : material;
 
-	float distanceChange = finalDistance - previousDistance;
-	float blendDistance;
+		float distanceChange = finalDistance - previousDistance;
+		float blendDistance;
 
 #ifdef MOTION_BLUR_FILL_OVERRIDE
-	float fadeStep = u_deltaTime * u_motionBlurBlendSpeed * 0.1;
-	blendDistance = min(previousDistance + fadeStep, finalDistance);
+		float fadeStep = u_deltaTime * u_motionBlurBlendSpeed * 0.1;
+		blendDistance = min(previousDistance + fadeStep, finalDistance);
 #else
-	float blendRate = u_deltaTime * u_motionBlurBlendSpeed * (distanceChange < 0.0 ? 5.0 : 1.0);
-	blendDistance = previousDistance + (distanceChange * clamp(blendRate, 0.0, 1.0));
+		float blendRate = u_deltaTime * u_motionBlurBlendSpeed * (distanceChange < 0.0 ? 5.0 : 1.0);
+		blendDistance = previousDistance + (distanceChange * clamp(blendRate, 0.0, 1.0));
 #endif
 
-	blendDistance = clamp(blendDistance, -0.1, 0.1);
+		blendDistance = clamp(blendDistance, -0.1, 0.1);
 
 #ifdef UI_PIPELINE
-	finalDistance = blendDistance;
+		finalDistance = blendDistance;
 #else
-	finalDistance = mix(blendDistance, finalDistance, mask);
+		finalDistance = mix(blendDistance, finalDistance, mask);
 #endif
+	}
 
 #endif
 

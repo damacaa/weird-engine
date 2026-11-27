@@ -193,11 +193,12 @@ namespace WeirdEngine
 			m_colorRender.bindColorTextureToFrameBuffer(m_colorTexture);
 
 			m_postProcessTextureFront =
-				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::LinearData);
 			m_postProcessRenderFront = RenderTarget(false);
 			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
 
-			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessTextureBack =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::LinearData);
 			m_postProcessRenderBack = RenderTarget(false);
 			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
 
@@ -338,10 +339,11 @@ namespace WeirdEngine
 			m_colorRender.bindColorTextureToFrameBuffer(m_colorTexture);
 
 			m_postProcessTextureFront =
-				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::LinearData);
 			m_postProcessRenderFront.bindColorTextureToFrameBuffer(m_postProcessTextureFront);
 
-			m_postProcessTextureBack = Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::Data);
+			m_postProcessTextureBack =
+				Texture(m_config.renderWidth, m_config.renderHeight, Texture::TextureType::LinearData);
 			m_postProcessRenderBack.bindColorTextureToFrameBuffer(m_postProcessTextureBack);
 
 			m_backgroundTextureFront =
@@ -354,6 +356,8 @@ namespace WeirdEngine
 				Texture(m_config.renderWidth, m_config.renderHeight,
 						m_config.renderScale <= 0.5f ? Texture::TextureType::RetroColor : Texture::TextureType::Data);
 			m_litSceneRender.bindColorTextureToFrameBuffer(m_litSceneTexture);
+
+			m_resetCameraReprojection = true;
 		}
 
 		Texture& SDF2DRenderPipeline::render(const vec4* dotData, uint32_t dotCount, const vec4* shapeData,

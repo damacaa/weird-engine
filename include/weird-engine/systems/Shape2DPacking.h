@@ -33,13 +33,16 @@ namespace WeirdEngine
 			Invalid = 0xFFFFu
 		};
 
-		static_assert(DefaultShapes::Circle == BuiltinType::Circle && DefaultShapes::Box == BuiltinType::Box &&
-						  DefaultShapes::Triangle == BuiltinType::Triangle &&
-						  DefaultShapes::Line == BuiltinType::Line && DefaultShapes::Ramp == BuiltinType::Ramp &&
-						  DefaultShapes::SineWave == BuiltinType::SineWave &&
-						  DefaultShapes::Star == BuiltinType::Star &&
-						  DefaultShapes::COUNT_2D == BuiltinType::BuiltinCount,
-					  "DefaultShapes and Shape2D::BuiltinType must match 1:1.");
+		static_assert(
+			static_cast<uint16_t>(DefaultShapes::Circle) == static_cast<uint16_t>(BuiltinType::Circle) &&
+				static_cast<uint16_t>(DefaultShapes::Box) == static_cast<uint16_t>(BuiltinType::Box) &&
+				static_cast<uint16_t>(DefaultShapes::Triangle) == static_cast<uint16_t>(BuiltinType::Triangle) &&
+				static_cast<uint16_t>(DefaultShapes::Line) == static_cast<uint16_t>(BuiltinType::Line) &&
+				static_cast<uint16_t>(DefaultShapes::Ramp) == static_cast<uint16_t>(BuiltinType::Ramp) &&
+				static_cast<uint16_t>(DefaultShapes::SineWave) == static_cast<uint16_t>(BuiltinType::SineWave) &&
+				static_cast<uint16_t>(DefaultShapes::Star) == static_cast<uint16_t>(BuiltinType::Star) &&
+				static_cast<uint16_t>(DefaultShapes::COUNT_2D) == static_cast<uint16_t>(BuiltinType::BuiltinCount),
+			"DefaultShapes and Shape2D::BuiltinType must match 1:1.");
 		static_assert(DefaultShapes3D::TOTAL_BUILTIN_SHAPES > BuiltinCount,
 					  "Custom ShapeIds must never overlap canonical GPU built-in IDs.");
 

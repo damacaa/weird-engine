@@ -107,6 +107,7 @@ namespace MusicSceneNamespace
 	void songLayoutSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void uiDotsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void updateWorldVisualsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void imguiRenderSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace MusicSceneNamespace
 
 class MusicScene : public WeirdEngine::Scene2D
@@ -130,7 +131,7 @@ public:
 		addUpdateSystem(MusicSceneNamespace::songLayoutSystem);
 		addUpdateSystem(MusicSceneNamespace::uiDotsSystem);
 		addUpdateSystem(MusicSceneNamespace::updateWorldVisualsSystem);
-	}
 
-	void onImGuiRender(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override;
+		addImGuiRenderSystem(MusicSceneNamespace::imguiRenderSystem);
+	}
 };

@@ -51,8 +51,12 @@ namespace WeirdEngine
 
 	// ---- System Signatures ----
 	using CoreSystem = std::function<void(Registry&, ServiceProvider&)>;
+	using CustomRenderSystem = std::function<void(Registry&, ServiceProvider&, WeirdRenderer::RenderTarget&)>;
 	using EntityCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityCollisionEvent&)>;
 	using EntityShapeCollisionSystem = std::function<void(Registry&, ServiceProvider&, EntityShapeCollisionEvent&)>;
+	using PhysicsStepSystem = std::function<void(Simulation2D&)>;
+	using PhysicsRigidBodyCollisionSystem = std::function<void(Simulation2D&, PhysicsCollisionEvent&)>;
+	using PhysicsShapeCollisionSystem = std::function<void(Simulation2D&, PhysicsShapeCollisionEvent&)>;
 
 	namespace WeirdAudio
 	{
@@ -123,9 +127,21 @@ namespace WeirdEngine
 		{
 			m_destroySystems.push_back(std::move(system));
 		}
+		void addSnapshotLoadedSystem(CoreSystem system)
+		{
+			m_snapshotLoadedSystems.push_back(std::move(system));
+		}
 		void addImGuiRenderSystem(CoreSystem system)
 		{
 			m_imguiSystems.push_back(std::move(system));
+		}
+		void addCustomUISystem(CoreSystem system)
+		{
+			m_customUISystems.push_back(std::move(system));
+		}
+		void addRenderSystem(CustomRenderSystem system)
+		{
+			m_renderSystems.push_back(std::move(system));
 		}
 		void addEntityCollisionSystem(EntityCollisionSystem system)
 		{
@@ -134,6 +150,18 @@ namespace WeirdEngine
 		void addEntityShapeCollisionSystem(EntityShapeCollisionSystem system)
 		{
 			m_entityShapeCollisionSystems.push_back(std::move(system));
+		}
+		void addPhysicsStepSystem(PhysicsStepSystem system)
+		{
+			m_physicsStepSystems.push_back(std::move(system));
+		}
+		void addPhysicsRigidBodyCollisionSystem(PhysicsRigidBodyCollisionSystem system)
+		{
+			m_physicsRigidBodyCollisionSystems.push_back(std::move(system));
+		}
+		void addPhysicsShapeCollisionSystem(PhysicsShapeCollisionSystem system)
+		{
+			m_physicsShapeCollisionSystems.push_back(std::move(system));
 		}
 		void setSnapshotHotkeysEnabled(bool enabled)
 		{
@@ -466,9 +494,15 @@ namespace WeirdEngine
 		std::vector<CoreSystem> m_startSystems;
 		std::vector<CoreSystem> m_updateSystems;
 		std::vector<CoreSystem> m_destroySystems;
+		std::vector<CoreSystem> m_snapshotLoadedSystems;
 		std::vector<CoreSystem> m_imguiSystems;
+		std::vector<CoreSystem> m_customUISystems;
+		std::vector<CustomRenderSystem> m_renderSystems;
 		std::vector<EntityCollisionSystem> m_entityCollisionSystems;
 		std::vector<EntityShapeCollisionSystem> m_entityShapeCollisionSystems;
+		std::vector<PhysicsStepSystem> m_physicsStepSystems;
+		std::vector<PhysicsRigidBodyCollisionSystem> m_physicsRigidBodyCollisionSystems;
+		std::vector<PhysicsShapeCollisionSystem> m_physicsShapeCollisionSystems;
 
 		float m_lastDelta = 0.0f;
 		uint64_t m_sceneInstanceId = 0;

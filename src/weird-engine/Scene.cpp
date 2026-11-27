@@ -621,12 +621,20 @@ namespace WeirdEngine
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsStep(self->m_simulation2D);
+		for (auto& sys : self->m_physicsStepSystems)
+		{
+			sys(self->m_simulation2D);
+		}
 	}
 
 	void Scene::handleCollision(PhysicsCollisionEvent& event, void* userData)
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsRigidBodyCollision(self->m_simulation2D, event);
+		for (auto& sys : self->m_physicsRigidBodyCollisionSystems)
+		{
+			sys(self->m_simulation2D, event);
+		}
 
 		if (event.ignoreCollision)
 			return;
@@ -639,6 +647,10 @@ namespace WeirdEngine
 	{
 		Scene* self = static_cast<Scene*>(userData);
 		self->onPhysicsShapeCollision(self->m_simulation2D, event);
+		for (auto& sys : self->m_physicsShapeCollisionSystems)
+		{
+			sys(self->m_simulation2D, event);
+		}
 
 		{
 			std::lock_guard<std::mutex> lock(self->m_collisionQueueMutex);
@@ -752,6 +764,10 @@ namespace WeirdEngine
 		if (m_renderMode == RenderMode::RayMarching3D || m_renderMode == RenderMode::RayMarchingBoth)
 		{
 			onRender(m_registry, m_services, renderTarget);
+			for (auto& sys : m_renderSystems)
+			{
+				sys(m_registry, m_services, renderTarget);
+			}
 		}
 	}
 
@@ -1855,6 +1871,10 @@ namespace WeirdEngine
 #ifndef WEIRD_DISABLE_IMGUI
 		renderConstraintsDebug();
 		onCustomUI(m_registry, m_services);
+		for (auto& sys : m_customUISystems)
+		{
+			sys(m_registry, m_services);
+		}
 #endif
 	}
 

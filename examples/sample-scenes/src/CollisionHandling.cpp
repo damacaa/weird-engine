@@ -283,34 +283,34 @@ namespace CollisionHandlingNamespace
 		services.audio().playSound({0.02f, 750.0f, true, vec3(event.raw.position, 0.0f), 1});
 	}
 
-} // namespace CollisionHandlingNamespace
-
-void CollisionHandlingScene::onPhysicsShapeCollision(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)
-{
-	vec2 pos = simulation.getPosition(event.body);
-
-	// Lane 2 Launch Pad: if body is hitting near pad X: [4..8], Y: [-2..1], apply strong launch impulse
-	if (pos.x >= 4.0f && pos.x <= 8.0f && pos.y <= 1.5f)
+	void physicsShapeCollisionSystem(Simulation2D& simulation, PhysicsShapeCollisionEvent& event)
 	{
-		simulation.addImpulseForce(event.body, vec2(0.0f, 25.0f));
-	}
-}
+		vec2 pos = simulation.getPosition(event.body);
 
-void CollisionHandlingScene::onPhysicsRigidBodyCollision(Simulation2D& simulation, PhysicsCollisionEvent& event)
-{
-	vec2 posA = simulation.getPosition(event.bodyA);
-	vec2 posB = simulation.getPosition(event.bodyB);
-
-	// Lane 3 Elastic Bouncers: boost repulsion between balls in Lane 3 (X > 16)
-	if (posA.x > 16.0f && posB.x > 16.0f)
-	{
-		vec2 diff = posA - posB;
-		float d = glm::length(diff);
-		if (d > 0.001f)
+		// Lane 2 Launch Pad: if body is hitting near pad X: [4..8], Y: [-2..1], apply strong launch impulse
+		if (pos.x >= 4.0f && pos.x <= 8.0f && pos.y <= 1.5f)
 		{
-			vec2 dir = diff / d;
-			simulation.addImpulseForce(event.bodyA, dir * 8.0f);
-			simulation.addImpulseForce(event.bodyB, -dir * 8.0f);
+			simulation.addImpulseForce(event.body, vec2(0.0f, 25.0f));
 		}
 	}
-}
+
+	void physicsRigidBodyCollisionSystem(Simulation2D& simulation, PhysicsCollisionEvent& event)
+	{
+		vec2 posA = simulation.getPosition(event.bodyA);
+		vec2 posB = simulation.getPosition(event.bodyB);
+
+		// Lane 3 Elastic Bouncers: boost repulsion between balls in Lane 3 (X > 16)
+		if (posA.x > 16.0f && posB.x > 16.0f)
+		{
+			vec2 diff = posA - posB;
+			float d = glm::length(diff);
+			if (d > 0.001f)
+			{
+				vec2 dir = diff / d;
+				simulation.addImpulseForce(event.bodyA, dir * 8.0f);
+				simulation.addImpulseForce(event.bodyB, -dir * 8.0f);
+			}
+		}
+	}
+
+} // namespace CollisionHandlingNamespace

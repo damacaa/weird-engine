@@ -542,43 +542,41 @@ namespace RopeSceneNamespace
 		}
 	}
 
-} // namespace RopeSceneNamespace
-
-void RopeScene::onSnapshotLoaded(Registry& registry, ServiceProvider& services)
-{
-	using namespace RopeSceneNamespace;
-	registry.forEach<RopeBall, RigidBody2D>(
-		[&](Entity, RopeBall& ball, RigidBody2D& rb)
-		{
-			auto data = std::make_unique<BallData>();
-			data->shouldClamp = ball.shouldClamp;
-			services.physics().setUserData(rb.simulationId, std::move(data));
-		});
-}
-
-void RopeScene::onPhysicsStep(Simulation2D& simulation)
-{
-	using namespace RopeSceneNamespace;
-	float dt = static_cast<float>(simulation.getDeltaTime());
-
-	simulation.forEachUserData(
-		[&](SimulationID id, BodyUserData& data)
-		{
-			if (data.type == BallData::TYPE)
+	void snapshotLoadedSystem(Registry& registry, ServiceProvider& services)
+	{
+		registry.forEach<RopeBall, RigidBody2D>(
+			[&](Entity, RopeBall& ball, RigidBody2D& rb)
 			{
-				auto& ballData = static_cast<BallData&>(data);
-				if (ballData.shouldClamp)
+				auto data = std::make_unique<BallData>();
+				data->shouldClamp = ball.shouldClamp;
+				services.physics().setUserData(rb.simulationId, std::move(data));
+			});
+	}
+
+	void physicsStepSystem(Simulation2D& simulation)
+	{
+		float dt = static_cast<float>(simulation.getDeltaTime());
+
+		simulation.forEachUserData(
+			[&](SimulationID id, BodyUserData& data)
+			{
+				if (data.type == BallData::TYPE)
 				{
-					vec2 pos = simulation.getPhysicsPosition(id);
+					auto& ballData = static_cast<BallData&>(data);
+					if (ballData.shouldClamp)
+					{
+						vec2 pos = simulation.getPhysicsPosition(id);
 
-					vec2 force(0.0f, 0.0f);
-					force.x += pos.x < 2.5f ? -pos.x + 2.5f : 0.0f;
-					force.x -= pos.x > 27.5f ? pos.x - 27.5f : 0.0f;
-					force.x = (10.0f / dt) * glm::clamp(force.x, -1.0f, 1.0f);
-					force.y += pos.y < 0.0f ? -pos.y : 0.0f;
+						vec2 force(0.0f, 0.0f);
+						force.x += pos.x < 2.5f ? -pos.x + 2.5f : 0.0f;
+						force.x -= pos.x > 27.5f ? pos.x - 27.5f : 0.0f;
+						force.x = (10.0f / dt) * glm::clamp(force.x, -1.0f, 1.0f);
+						force.y += pos.y < 0.0f ? -pos.y : 0.0f;
 
-					simulation.addImpulseForce(id, force * dt);
+						simulation.addImpulseForce(id, force * dt);
+					}
 				}
-			}
-		});
-}
+			});
+	}
+
+} // namespace RopeSceneNamespace

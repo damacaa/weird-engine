@@ -203,6 +203,10 @@ namespace WeirdEngine
 		}
 
 		m_scene.onSnapshotLoaded(m_scene.m_registry, m_scene.m_services);
+		for (auto& sys : m_scene.m_snapshotLoadedSystems)
+		{
+			sys(m_scene.m_registry, m_scene.m_services);
+		}
 		ECS::PhysicsSystem2D::update(m_scene.m_registry, m_scene.m_simulation2D);
 		m_scene.m_simulation2D.restoreSnapshotSettings(physicsSettings);
 

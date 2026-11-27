@@ -18,6 +18,11 @@ namespace WeirdEngine
 			return static_cast<float>(m_simulation.getSimulationTime());
 		}
 
+		void setTime(double time)
+		{
+			m_simulation.setSimulationTime(time);
+		}
+
 		float deltaTime() const
 		{
 			return m_delta;

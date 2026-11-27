@@ -1680,9 +1680,11 @@ InstrumentScene::InstrumentScene()
 	addUpdateSystem(InstrumentSceneNamespace::inputHandlingSystem);
 	addUpdateSystem(InstrumentSceneNamespace::sequencerSystem);
 	addUpdateSystem(InstrumentSceneNamespace::updateVisualsSystem);
+
+	addImGuiRenderSystem(InstrumentSceneNamespace::imguiRenderSystem);
 }
 
-void InstrumentScene::onImGuiRender(Registry& registry, ServiceProvider& services)
+void InstrumentSceneNamespace::imguiRenderSystem(Registry& registry, ServiceProvider& services)
 {
 #ifndef WEIRD_DISABLE_IMGUI
 	auto* pState = registry.getState<InstrumentSceneNamespace::State>();

@@ -39,6 +39,10 @@ namespace CollisionHandlingNamespace
 									  WeirdEngine::EntityShapeCollisionEvent& event);
 	void onEntityCollisionSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services,
 								 WeirdEngine::EntityCollisionEvent& event);
+	void physicsShapeCollisionSystem(WeirdEngine::Simulation2D& simulation,
+									 WeirdEngine::PhysicsShapeCollisionEvent& event);
+	void physicsRigidBodyCollisionSystem(WeirdEngine::Simulation2D& simulation,
+										 WeirdEngine::PhysicsCollisionEvent& event);
 } // namespace CollisionHandlingNamespace
 
 class CollisionHandlingScene : public WeirdEngine::Scene2D
@@ -59,10 +63,8 @@ public:
 
 		addEntityCollisionSystem(CollisionHandlingNamespace::onEntityCollisionSystem);
 		addEntityShapeCollisionSystem(CollisionHandlingNamespace::onEntityShapeCollisionSystem);
-	}
 
-	void onPhysicsShapeCollision(WeirdEngine::Simulation2D& simulation,
-								 WeirdEngine::PhysicsShapeCollisionEvent& event) override;
-	void onPhysicsRigidBodyCollision(WeirdEngine::Simulation2D& simulation,
-									 WeirdEngine::PhysicsCollisionEvent& event) override;
+		addPhysicsShapeCollisionSystem(CollisionHandlingNamespace::physicsShapeCollisionSystem);
+		addPhysicsRigidBodyCollisionSystem(CollisionHandlingNamespace::physicsRigidBodyCollisionSystem);
+	}
 };

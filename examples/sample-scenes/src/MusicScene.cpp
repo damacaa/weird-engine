@@ -1189,7 +1189,7 @@ namespace MusicSceneNamespace
 
 } // namespace MusicSceneNamespace
 
-void MusicScene::onImGuiRender(Registry& registry, ServiceProvider& services)
+void MusicSceneNamespace::imguiRenderSystem(Registry& registry, ServiceProvider& services)
 {
 #ifndef WEIRD_DISABLE_IMGUI
 	auto* pState = registry.getState<MusicSceneNamespace::State>();

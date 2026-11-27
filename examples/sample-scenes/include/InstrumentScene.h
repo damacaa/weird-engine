@@ -129,12 +129,11 @@ namespace InstrumentSceneNamespace
 	void inputHandlingSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void sequencerSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void updateVisualsSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void imguiRenderSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 } // namespace InstrumentSceneNamespace
 
 class InstrumentScene : public WeirdEngine::Scene2D
 {
 public:
 	InstrumentScene();
-
-	void onImGuiRender(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override;
 };

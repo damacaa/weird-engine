@@ -71,6 +71,8 @@ namespace RopeSceneNamespace
 	void ballDragSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void ropeCleanupSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void fallCleanupSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void snapshotLoadedSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+	void physicsStepSystem(WeirdEngine::Simulation2D& simulation);
 } // namespace RopeSceneNamespace
 
 class RopeScene : public WeirdEngine::Scene2D
@@ -92,8 +94,8 @@ public:
 		addUpdateSystem(RopeSceneNamespace::ballDragSystem);
 		addUpdateSystem(RopeSceneNamespace::ropeCleanupSystem);
 		addUpdateSystem(RopeSceneNamespace::fallCleanupSystem);
-	}
 
-	void onPhysicsStep(WeirdEngine::Simulation2D& simulation) override;
-	void onSnapshotLoaded(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override;
+		addSnapshotLoadedSystem(RopeSceneNamespace::snapshotLoadedSystem);
+		addPhysicsStepSystem(RopeSceneNamespace::physicsStepSystem);
+	}
 };

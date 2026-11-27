@@ -103,6 +103,22 @@ namespace TetrominoSceneNamespace
 	void stateInitSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void setupEnvironmentSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
 	void updateTetrominoSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services);
+
+	inline void snapshotLoadedSystem(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& /*services*/)
+	{
+		const auto& state = getState(registry);
+		g_isGameOverPhysics.store(state.isGameOver, std::memory_order_relaxed);
+	}
+
+	inline void physicsShapeCollisionSystem(WeirdEngine::Simulation2D& /*simulation*/,
+											WeirdEngine::PhysicsShapeCollisionEvent& event)
+	{
+		if (!g_isGameOverPhysics.load(std::memory_order_relaxed))
+		{
+			event.friction = 0.0f;
+			event.penetration = std::sqrt(std::max(0.0f, event.penetration));
+		}
+	}
 } // namespace TetrominoSceneNamespace
 
 class TetrominoScene : public WeirdEngine::Scene2D
@@ -115,22 +131,8 @@ public:
 
 		addUpdateSystem(GlobalSystems::sceneControlSystem);
 		addUpdateSystem(TetrominoSceneNamespace::updateTetrominoSystem);
-	}
 
-protected:
-	void onSnapshotLoaded(WeirdEngine::Registry& registry, WeirdEngine::ServiceProvider& services) override
-	{
-		const auto& state = TetrominoSceneNamespace::getState(registry);
-		TetrominoSceneNamespace::g_isGameOverPhysics.store(state.isGameOver, std::memory_order_relaxed);
-	}
-
-	void onPhysicsShapeCollision(WeirdEngine::Simulation2D& simulation,
-								 WeirdEngine::PhysicsShapeCollisionEvent& event) override
-	{
-		if (!TetrominoSceneNamespace::g_isGameOverPhysics.load(std::memory_order_relaxed))
-		{
-			event.friction = 0.0f;
-			event.penetration = std::sqrt(std::max(0.0f, event.penetration));
-		}
+		addSnapshotLoadedSystem(TetrominoSceneNamespace::snapshotLoadedSystem);
+		addPhysicsShapeCollisionSystem(TetrominoSceneNamespace::physicsShapeCollisionSystem);
 	}
 };

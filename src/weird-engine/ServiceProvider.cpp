@@ -489,9 +489,10 @@ namespace WeirdEngine
 		{
 		public:
 			SceneSampler(Registry& registry, std::vector<std::shared_ptr<IMathExpression>>& sdfs, float time,
-						 Simulation2D* simulation)
+						 Simulation2D* simulation, int layerFilter = -1)
 				: m_sdfs(sdfs)
 				, m_time(time)
+				, m_layerFilter(layerFilter)
 				, m_shapes(registry.getComponentArray<Shape>())
 				, m_rigidBodies(registry.getComponentArray<RigidBody2D>())
 			{
@@ -547,6 +548,10 @@ namespace WeirdEngine
 					auto& shape = m_shapes->getDataAtIdx(idx);
 
 					if (!shape.hasCollisions)
+						continue;
+
+					if (m_layerFilter >= 0 && shape.layer != static_cast<uint16_t>(m_layerFilter) &&
+						shape.layer != Shape::GLOBAL_LAYER)
 						continue;
 
 					if (shape.distanceFieldId >= DefaultShapes::COUNT_2D && shape.distanceFieldId >= m_sdfs.size())
@@ -668,6 +673,7 @@ namespace WeirdEngine
 		private:
 			std::vector<std::shared_ptr<IMathExpression>>& m_sdfs;
 			float m_time;
+			int m_layerFilter = -1;
 			std::shared_ptr<ComponentArray<Shape>> m_shapes;
 			std::shared_ptr<ComponentArray<RigidBody2D>> m_rigidBodies;
 			std::shared_ptr<SpatialGridSnapshot> m_gridSnapshot;
@@ -675,16 +681,16 @@ namespace WeirdEngine
 		};
 	} // namespace
 
-	RaymarchResult PhysicsService::sampleAt(vec2 point, bool includeRigidbodies)
+	RaymarchResult PhysicsService::sampleAt(vec2 point, bool includeRigidbodies, int layerFilter)
 	{
 		SceneSampler sampler(m_registry, m_sdfs, static_cast<float>(m_simulation.getSimulationTime()),
-							 includeRigidbodies ? &m_simulation : nullptr);
+							 includeRigidbodies ? &m_simulation : nullptr, layerFilter);
 		return sampler.sample(point);
 	}
 
-	float PhysicsService::sampleDistance(vec2 point, bool includeRigidbodies)
+	float PhysicsService::sampleDistance(vec2 point, bool includeRigidbodies, int layerFilter)
 	{
-		return sampleAt(point, includeRigidbodies).distance;
+		return sampleAt(point, includeRigidbodies, layerFilter).distance;
 	}
 
 	RaymarchResult PhysicsService::raymarch(glm::vec2 origin, glm::vec2 direction, float epsilon, float maxDistance,
@@ -718,7 +724,7 @@ namespace WeirdEngine
 		return {traveled, INVALID_ENTITY};
 	}
 
-	glm::vec2 PhysicsService::sampleGradient(vec2 point, bool includeRigidbodies, float epsilon)
+	glm::vec2 PhysicsService::sampleGradient(vec2 point, bool includeRigidbodies, float epsilon, int layerFilter)
 	{
 		if (epsilon <= 0.0f)
 		{
@@ -726,7 +732,7 @@ namespace WeirdEngine
 		}
 
 		SceneSampler sampler(m_registry, m_sdfs, static_cast<float>(m_simulation.getSimulationTime()),
-							 includeRigidbodies ? &m_simulation : nullptr);
+							 includeRigidbodies ? &m_simulation : nullptr, layerFilter);
 
 		float dx =
 			sampler.sample(point + vec2(epsilon, 0.0f)).distance - sampler.sample(point - vec2(epsilon, 0.0f)).distance;

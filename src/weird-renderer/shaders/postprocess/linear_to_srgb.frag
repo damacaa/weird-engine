@@ -5,6 +5,12 @@ in vec2 v_texCoord;
 out vec4 FragColor;
 
 uniform sampler2D t_input;
+uniform float u_contrast;
+
+vec3 applyContrast(vec3 linearCol)
+{
+	return clamp(mix(vec3(0.5), linearCol, u_contrast), 0.0, 1.0);
+}
 
 #ifdef FXAA
 
@@ -16,7 +22,7 @@ const float FXAA_SUBPIX_TRIM = 0.75;
 
 vec3 sampleLinear(vec2 uv)
 {
-	return texture(t_input, uv).rgb;
+	return applyContrast(texture(t_input, uv).rgb);
 }
 
 vec3 linearToSRGB(vec3 linearCol)
@@ -172,6 +178,7 @@ void main()
 	FragColor = vec4(applyFXAA(v_texCoord), texture(t_input, v_texCoord).a);
 #else
 	vec4 col = texture(t_input, v_texCoord);
-	FragColor = vec4(pow(max(col.rgb, vec3(0.0)), vec3(0.4545)), col.a);
+	vec3 toned = applyContrast(col.rgb);
+	FragColor = vec4(pow(toned, vec3(0.4545)), col.a);
 #endif
 }

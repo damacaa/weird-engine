@@ -213,9 +213,6 @@ uniform float u_far;
 
 const float DOT_BLEND_K = 0.2;
 
-// === Render Style Parameters (Post-Processing) =================
-// contrast: artificially boosts contrast and crushes colors for that raw 90s CG render look
-uniform float u_contrast;
 // Hash
 float hash(vec2 p)
 {
@@ -728,7 +725,8 @@ vec3 getNormal(vec3 p)
 {
 	vec2 e = vec2(NORMAL_EPSILON, 0.0);
 	vec3 n = vec3(sceneSdf(p).x) - vec3(sceneSdf(p - e.xyy).x, sceneSdf(p - e.yxy).x, sceneSdf(p - e.yyx).x);
-	return normalize(n);
+	float nLen = length(n);
+	return nLen > 1e-5 ? n / nLen : vec3(0.0, 1.0, 0.0);
 }
 
 // Random functions for path tracing
@@ -740,30 +738,27 @@ uint pcg(inout uint state)
 	return (word >> 22u) ^ word;
 }
 
-float randomFloat(inout float seed)
+float randomFloat(inout uint state)
 {
-	uint state = floatBitsToUint(seed);
-	float result = float(pcg(state)) * (1.0 / 4294967296.0); // 2^-32
-	seed = uintBitsToFloat(state);
-	return result;
+	return float(pcg(state)) * (1.0 / 4294967296.0); // 2^-32
 }
 
-vec2 hash2(inout float seed)
+vec2 hash2(inout uint state)
 {
-	return vec2(randomFloat(seed), randomFloat(seed));
+	return vec2(randomFloat(state), randomFloat(state));
 }
 
-vec3 hash3(inout float seed)
+vec3 hash3(inout uint state)
 {
-	return vec3(randomFloat(seed), randomFloat(seed), randomFloat(seed));
+	return vec3(randomFloat(state), randomFloat(state), randomFloat(state));
 }
 
-vec3 cosineSampleHemisphere(vec3 N, inout float seed)
+vec3 cosineSampleHemisphere(vec3 N, inout uint state)
 {
-	vec2 xi = hash2(seed);
+	vec2 xi = hash2(state);
 	float phi = 2.0 * 3.14159265359 * xi.x;
 	float cosTheta = sqrt(xi.y);
-	float sinTheta = sqrt(1.0 - xi.y);
+	float sinTheta = sqrt(max(1.0 - xi.y, 0.0));
 
 	vec3 H;
 	H.x = cos(phi) * sinTheta;
@@ -771,7 +766,9 @@ vec3 cosineSampleHemisphere(vec3 N, inout float seed)
 	H.z = cosTheta;
 
 	vec3 up = abs(N.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-	vec3 tangent = normalize(cross(up, N));
+	vec3 tVec = cross(up, N);
+	float tLen = length(tVec);
+	vec3 tangent = tLen > 1e-4 ? tVec / tLen : vec3(1, 0, 0);
 	vec3 bitangent = cross(N, tangent);
 
 	return tangent * H.x + bitangent * H.y + N * H.z;
@@ -873,10 +870,10 @@ vec3 dither3(float salt)
 // averages it into soft shadows.
 // Realtime: zero — exact light directions; shadow softness comes from the
 // SDF penumbra estimate in softShadow() instead.
-vec3 shadowJitter(float scale, inout float seed)
+vec3 shadowJitter(float scale, inout uint state)
 {
 #ifdef PATH_TRACING
-	return (vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0) * scale;
+	return (hash3(state) * 2.0 - 1.0) * scale;
 #else
 	return vec3(0.0);
 #endif
@@ -905,7 +902,7 @@ float softShadow(vec3 ro, vec3 rd, float lightDist, float k)
 // both modes. Only the shadow technique differs: the path tracer jitters the
 // light direction stochastically (accumulates into soft shadows), realtime
 // uses exact directions with an analytic SDF penumbra.
-vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, float fresnel, inout float seed)
+vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, float fresnel, inout uint state)
 {
 	vec3 V = -rd;
 	vec3 directLighting = vec3(0.0);
@@ -966,7 +963,7 @@ vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, f
 		}
 
 		// Stochastic jitter in the path tracer only (see shadowJitter)
-		L = normalize(L + shadowJitter(softness, seed));
+		L = normalize(L + shadowJitter(softness, state));
 
 		// Shadowing
 #ifdef PATH_TRACING
@@ -980,7 +977,9 @@ vec3 evalDirectLighting(vec3 p, vec3 N, vec3 rd, vec3 albedo, float roughness, f
 		{
 			vec3 diffuse = albedo * max(dot(N, L), 0.0) * (1.0 - fresnel);
 
-			vec3 H = normalize(L + V);
+			vec3 hVec = L + V;
+			float hLen = length(hVec);
+			vec3 H = hLen > 1e-4 ? hVec / hLen : N;
 			float specPow = pow(max(dot(N, H), 0.0), specExponentFromRoughness(roughness));
 			vec3 specular = SPEC_MULTIPLIER * specPow * fresnel;
 
@@ -1024,7 +1023,7 @@ float sdfAmbientOcclusion(vec3 p, vec3 N)
 //   • Mesh surfaces: pass the GBuffer normal directly.
 // All secondary-bounce normals are always derived from the SDF analytically.
 // ─────────────────────────────────────────────────────────────────────────────
-vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout float seed)
+vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, inout uint state)
 {
 	int currentMatId = clamp(materialId, 0, 15);
 
@@ -1061,11 +1060,11 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		}
 
 		// Choose ray type probability based on Fresnel
-		float randVal = hash2(seed).x;
+		float randVal = randomFloat(state);
 		bool isSpecular = randVal < fresnel;
 
 		// 1. Direct lighting from all active lights (stochastic soft shadows)
-		finalColor += throughput * evalDirectLighting(p, N, currentRd, currentAlbedo, currentRoughness, fresnel, seed);
+		finalColor += throughput * evalDirectLighting(p, N, currentRd, currentAlbedo, currentRoughness, fresnel, state);
 
 		if (bounce == u_rayBounces)
 		{
@@ -1079,11 +1078,15 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 		}
 
 		// 2. Indirect bounce (Calculated once per bounce path)
-		vec3 diffuseDir = cosineSampleHemisphere(N, seed);
+		vec3 diffuseDir = cosineSampleHemisphere(N, state);
 
 		vec3 reflectDir = reflect(currentRd, N);
-		vec3 jitter = normalize(vec3(hash2(seed), hash2(seed).x) * 2.0 - 1.0);
-		vec3 specularDir = normalize(reflectDir + jitter * currentRoughness);
+		vec3 jVec = hash3(state) * 2.0 - 1.0;
+		float jLen = length(jVec);
+		vec3 jitter = jLen > 1e-4 ? jVec / jLen : vec3(0.0);
+		vec3 sVec = reflectDir + jitter * currentRoughness;
+		float sLen = length(sVec);
+		vec3 specularDir = sLen > 1e-4 ? sVec / sLen : reflectDir;
 		if (dot(specularDir, N) < 0.0)
 			specularDir = reflectDir; // prevent pointing inside
 
@@ -1137,7 +1140,7 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 			float bounceBlend = preBounceScene.z;
 			float bounceJitterMask = smoothstep(0.0, 0.5, bounceBlend);
 
-			vec3 bounceMaterialPos = p + (hash3(seed) - 0.5) * 0.04 * max(d, 1.0) * bounceJitterMask;
+			vec3 bounceMaterialPos = p + (hash3(state) - 0.5) * 0.04 * max(d, 1.0) * bounceJitterMask;
 			vec3 bounceScene = sceneSdf(bounceMaterialPos);
 			int bounceMatId = clamp(int(bounceScene.y), 0, 15);
 			vec3 bounceMaterial = getMaterial(bounceMaterialPos, bounceMatId);
@@ -1160,7 +1163,7 @@ vec3 integrate(vec3 p, vec3 rd, vec3 initialColor, int materialId, vec3 firstN, 
 	float fresnel = computeFresnel(f0, dot(-rd, N));
 
 	// 1. Direct lighting (dithered soft shadows)
-	finalColor += evalDirectLighting(p, N, rd, currentAlbedo, roughness, fresnel, seed);
+	finalColor += evalDirectLighting(p, N, rd, currentAlbedo, roughness, fresnel, state);
 
 	// 2. Sky reflection, dither-blurred by roughness. Matches the path tracer's
 	//    expected specular-branch value: fresnel * metallicTint * sky(mirrorDir).
@@ -1205,7 +1208,7 @@ float linearizeGBufferDepth(float d)
 	return (2.0 * u_near * u_far) / (u_far + u_near - z_n * (u_far - u_near));
 }
 
-vec4 render(in vec2 uv)
+vec4 render(in vec2 uv, ivec2 pixelCoord, inout uint state)
 {
 	// Ray origin
 	vec3 ro = -u_camMatrix[3].xyz;
@@ -1222,11 +1225,10 @@ vec4 render(in vec2 uv)
 	rd = (vec4(rd, 0) * u_camMatrix).xyz;
 #endif
 
-	float _ar = u_resolution.x / u_resolution.y;
-	vec2 gbufferUV = vec2(uv.x / _ar, uv.y) * 0.5 + 0.5;
-
-	float meshDepthSample = texture(t_depthTexture, gbufferUV).r;	// [0,1], 1.0 = no mesh
-	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample); // eye-space metres
+	// Use integer texelFetch for primary GBuffer lookups so subpixel AA jitter
+	// never bilinearly blends mesh silhouettes with empty sky pixels.
+	float meshDepthSample = texelFetch(t_depthTexture, pixelCoord, 0).r; // [0,1], 1.0 = no mesh
+	float meshDepthLinear = linearizeGBufferDepth(meshDepthSample);		 // eye-space metres
 
 	// Ray march SDF
 	RayHit sdfHit = rayMarch(ro, rd);
@@ -1242,7 +1244,7 @@ vec4 render(in vec2 uv)
 	float minDepth = planarDepth;
 
 	// Compute the SDF hit depth in the same NDC [0,1] space so gl_FragDepth is consistent
-	float z_e = planarDepth;
+	float z_e = max(planarDepth, u_near);
 	float z_n = (u_far + u_near - (2.0 * u_near * u_far) / z_e) / (u_far - u_near);
 	float sdfDepthNDC = (z_n + 1.0) * 0.5;
 
@@ -1260,37 +1262,27 @@ vec4 render(in vec2 uv)
 
 	// Output color for sky / infinite distance:
 	// If looking below horizon into empty distance, fade into horizon fog rather than fake dark ground bounce
-	vec3 col = (rd.y < 0.0) ? fogColor : getSkyColor(rd);
-
-	// alpha: 1.0 = SDF/sky path (accumulate), 0.0 = mesh path (skip accumulation)
-	float accumAlpha = 1.0;
+	vec3 fallbackSky = (rd.y < 0.0) ? fogColor : getSkyColor(rd);
+	vec3 col = fallbackSky;
+	vec3 hitAlbedo = vec3(1.0);
+	bool hitSurface = false;
 	float finalDepth = 1.0;
-
-	uint state = floatBitsToUint(uv.x) ^ floatBitsToUint(uv.y) ^ uint(u_frameCounter);
-	pcg(state); // Warm up the state
-	float seed = uintBitsToFloat(state);
 
 	if (meshInFront)
 	{
-		// -------------------------------------------------------
-		// GBuffer depth comparison
-		// -------------------------------------------------------
-		// Convert the aspect-corrected (possibly AA-jittered) uv back to [0,1] texcoord.
-		// When AA is active this shifts the GBuffer lookup by the same sub-pixel jitter,
-		// so mesh shading varies per frame and accumulates correctly in the temporal denoiser.
-		// Note: this can produce edge artifacts when the jitter pushes the lookup outside
-		// the mesh silhouette — that is an accepted trade-off.
 		// --- Mesh surface is in front: apply SDF-aware deferred lighting ---
-		vec3 meshAlbedo = texture(t_gbufferAlbedo, gbufferUV).rgb;
-		vec3 meshWorldPos = texture(t_gbufferWorldPos, gbufferUV).rgb;
-		// float meshSpecVal  = texture(t_gbufferAlbedo,   gbufferUV).a;
-		vec3 meshNormal = normalize(texture(t_gbufferNormal, gbufferUV).rgb);
+		vec3 meshAlbedo = texelFetch(t_gbufferAlbedo, pixelCoord, 0).rgb;
+		vec3 meshWorldPos = texelFetch(t_gbufferWorldPos, pixelCoord, 0).rgb;
+		vec3 rawNorm = texelFetch(t_gbufferNormal, pixelCoord, 0).rgb;
+		vec3 meshNormal = length(rawNorm) > 0.001 ? normalize(rawNorm) : vec3(0.0, 1.0, 0.0);
 
-		int materialId = texture(t_gbufferMaterial, gbufferUV).r;
+		int materialId = texelFetch(t_gbufferMaterial, pixelCoord, 0).r;
 		meshAlbedo *= getMaterial(meshWorldPos, materialId, meshNormal, dFdx(meshWorldPos),
 								  dFdy(meshWorldPos)); // Apply material palette color to mesh albedo
 
-		col = integrate(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, seed);
+		col = integrate(meshWorldPos, rd, meshAlbedo, materialId, meshNormal, state);
+		hitAlbedo = meshAlbedo;
+		hitSurface = true;
 
 		// Fog at mesh depth (Euclidean distance along ray)
 		float meshEuclideanDist = meshDepthLinear / absCosAngle;
@@ -1313,7 +1305,7 @@ vec4 render(in vec2 uv)
 		float blendFactor = preScene.z;
 		float jitterMask = smoothstep(0.0, 0.5, blendFactor);
 
-		vec3 materialSamplePos = p + (hash3(seed) - 0.5) * 0.01 * max(object, 5.0) * jitterMask;
+		vec3 materialSamplePos = p + (hash3(state) - 0.5) * 0.01 * max(object, 5.0) * jitterMask;
 #else
 		vec3 materialSamplePos = p;
 #endif
@@ -1331,7 +1323,9 @@ vec4 render(in vec2 uv)
 
 		vec3 baseColor = getMaterial(materialSamplePos, materialId, N, dpdx, dpdy);
 
-		col = integrate(p, rd, baseColor, materialId, N, seed);
+		col = integrate(p, rd, baseColor, materialId, N, state);
+		hitAlbedo = baseColor;
+		hitSurface = true;
 
 		// Fog at SDF depth (Euclidean distance along ray)
 		float fog = smoothstep(fogStart, fogEnd, object);
@@ -1345,31 +1339,39 @@ vec4 render(in vec2 uv)
 		finalDepth = 1.0;
 	}
 
-	return vec4(col, finalDepth);
-}
+	if (isnan(col.r) || isnan(col.g) || isnan(col.b) || isinf(col.r) || isinf(col.g) || isinf(col.b))
+	{
+		col = hitSurface ? hitAlbedo * 0.15 : fallbackSky;
+	}
 
-float rand(vec2 co)
-{
-	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+	return vec4(col, finalDepth);
 }
 
 void main()
 {
-	vec2 screenUV = v_texCoord;
 	vec2 uv = (2.0 * v_texCoord) - 1.0;
 	float aspectRatio = u_resolution.x / u_resolution.y; // TODO: uniform
 
+	// Integer PCG state seeded from pixel coordinate, frame counter, and time so
+	// subpixel AA jitter and path samples remain uncorrelated even when u_time is frozen.
+	ivec2 pixelCoord = ivec2(gl_FragCoord.xy);
+	uvec2 pixelCoordU = uvec2(pixelCoord);
+	uint timeBits = floatBitsToUint(u_time);
+	uint h = (pixelCoordU.x * 374761393u) ^ (pixelCoordU.y * 668265263u) ^ (uint(u_frameCounter) * 3266489917u) ^
+			 (timeBits * 1274126177u);
+	h = (h ^ (h >> 13u)) * 1274126177u;
+	h = h ^ (h >> 16u);
+	uint state = h * 747796405u + 2891336453u;
+
 #ifdef PATH_TRACING
 #ifdef ANTIALIASING
-	if (u_frameCounter > 0)
-	{
-		uv += (vec2(rand(uv + u_time), rand(uv + u_time * 1.5)) - 0.5) * 2.0 / u_resolution;
-	}
+	vec2 jitter = hash2(state) - 0.5;
+	uv += jitter * 2.0 / u_resolution;
 #endif
 #endif
 
 	uv.x *= aspectRatio;
-	vec4 data = render(uv);
+	vec4 data = render(uv, pixelCoord, state);
 	vec3 col = data.xyz;
 	gl_FragDepth = data.w;
 
@@ -1383,19 +1385,14 @@ void main()
 		col *= 3.0 / maxComp;
 	}
 
-	// Apply contrast pivoting around mid-gray
-	col = mix(vec3(0.5), col, u_contrast);
-	// Clamp to ensure no weird artifacts from exceeding bounds
-	col = clamp(col, 0.0, 1.0);
-
 #ifdef PATH_TRACING
 	if (u_frameCounter > 0)
 	{
-		vec4 prevColor = texture(t_previousColor, screenUV);
-		float weight = max(1.0 / float(u_frameCounter + 1), 0.02);
+		vec4 prevColor = texelFetch(t_previousColor, pixelCoord, 0);
+		float weight = 1.0 / float(u_frameCounter + 1);
 		col = mix(prevColor.xyz, col, weight);
 	}
 #endif
 
-	FragColor = vec4(col, 1.0); // output linear color for accumulation
+	FragColor = vec4(col, 1.0); // output linear radiance for accumulation
 }

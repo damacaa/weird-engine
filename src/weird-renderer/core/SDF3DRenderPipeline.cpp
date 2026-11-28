@@ -77,6 +77,7 @@ namespace WeirdEngine
 			if (m_config.enableAntialiasing != enable)
 			{
 				m_config.enableAntialiasing = enable;
+				m_frameCounter = 0;
 				updatePipelineDefines();
 			}
 		}
@@ -104,94 +105,99 @@ namespace WeirdEngine
 			if (!m_config.enablePathTracer)
 				m_frameCounter = 0;
 
+			// Trigger shader hot-reload/recompilation checks before deciding whether to raymarch
+			bool shaderChanged = m_sdfShader.hasRecompiled();
+			m_sdfShader.use();
+			shaderChanged = shaderChanged || m_sdfShader.hasRecompiled();
+
 			// Detect camera movement and restart accumulation
 			bool cameraMoved = (m_oldCameraMatrix != camera.view);
-			if (cameraMoved || m_sdfShader.hasRecompiled())
+			if (cameraMoved || shaderChanged)
 			{
 				m_frameCounter = 0;
 				m_oldCameraMatrix = camera.view;
 			}
 
-			int previousAccumIdx = m_accumIdx;
-			m_accumIdx = (m_accumIdx + 1) % 2;
-
-			m_accumRender[m_accumIdx].bind();
-
-			m_sdfShader.use();
-
-			float shaderFov = 1.0f / tan(camera.fov * 0.5f * 0.01745329f); // PI / 180
-			m_sdfShader.setUniform("u_camMatrix", camera.view);
-			m_sdfShader.setUniform("u_viewProjection", camera.cameraMatrix);
-			m_sdfShader.setUniform("u_fov", shaderFov);
-			m_sdfShader.setUniform("u_time", (float)time);
-			m_sdfShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
-			m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
-			for (int i = 0; i < 16; i++)
+			bool shouldRaymarch = !m_config.enablePathTracer || (m_frameCounter < m_config.maxAccumulationFrames);
+			if (shouldRaymarch)
 			{
-				std::string prefix = "u_materials[" + std::to_string(i) + "].";
-				m_sdfShader.setUniform(prefix + "color", materials[i].color);
-				m_sdfShader.setUniform(prefix + "metallic", materials[i].metallic);
-				m_sdfShader.setUniform(prefix + "roughness", materials[i].roughness);
-				m_sdfShader.setUniform(prefix + "pattern", (int)materials[i].pattern);
-				m_sdfShader.setUniform(prefix + "patternScale", materials[i].patternScale);
-				m_sdfShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
-				m_sdfShader.setUniform(prefix + "emission", materials[i].emission);
-			}
-			m_sdfShader.setUniform("u_near", camera.nearPlane);
-			m_sdfShader.setUniform("u_far", camera.farPlane);
-			m_sdfShader.setUniform("u_frameCounter", m_frameCounter);
-			m_sdfShader.setUniform("u_rayBounces", m_config.rayBounces);
-			m_sdfShader.setUniform("u_contrast", m_config.contrast);
+				int previousAccumIdx = m_accumIdx;
+				m_accumIdx = (m_accumIdx + 1) % 2;
 
-			int numLights = std::min((int)lights.size(), 8);
-			m_sdfShader.setUniform("u_numLights", numLights);
-			for (int i = 0; i < numLights; i++)
-			{
-				std::string prefix = "u_lights[" + std::to_string(i) + "].";
-				m_sdfShader.setUniform(prefix + "position", lights[i].position);
-				m_sdfShader.setUniform(prefix + "direction", lights[i].rotation);
-				m_sdfShader.setUniform(prefix + "color", lights[i].color);
-				m_sdfShader.setUniform(prefix + "type", (int)lights[i].type);
-			}
+				m_accumRender[m_accumIdx].bind();
 
-			// Previous accumulation frame and GBuffer textures
-			m_sdfShader.setUniform("t_previousColor", 0);
-			m_accumTexture[previousAccumIdx].bind(0);
+				float shaderFov = 1.0f / tan(camera.fov * 0.5f * 0.01745329f); // PI / 180
+				m_sdfShader.setUniform("u_camMatrix", camera.view);
+				m_sdfShader.setUniform("u_viewProjection", camera.cameraMatrix);
+				m_sdfShader.setUniform("u_fov", shaderFov);
+				m_sdfShader.setUniform("u_time", (float)time);
+				m_sdfShader.setUniform("u_audioVolume", WeirdAudio::AudioEngine::getInstance().getAudioVolume());
+				m_sdfShader.setUniform("u_resolution", glm::vec2(m_config.renderWidth, m_config.renderHeight));
+				for (int i = 0; i < 16; i++)
+				{
+					std::string prefix = "u_materials[" + std::to_string(i) + "].";
+					m_sdfShader.setUniform(prefix + "color", materials[i].color);
+					m_sdfShader.setUniform(prefix + "metallic", materials[i].metallic);
+					m_sdfShader.setUniform(prefix + "roughness", materials[i].roughness);
+					m_sdfShader.setUniform(prefix + "pattern", (int)materials[i].pattern);
+					m_sdfShader.setUniform(prefix + "patternScale", materials[i].patternScale);
+					m_sdfShader.setUniform(prefix + "secondaryColor", materials[i].secondaryColor);
+					m_sdfShader.setUniform(prefix + "emission", materials[i].emission);
+				}
+				m_sdfShader.setUniform("u_near", camera.nearPlane);
+				m_sdfShader.setUniform("u_far", camera.farPlane);
+				m_sdfShader.setUniform("u_frameCounter", m_frameCounter);
+				m_sdfShader.setUniform("u_rayBounces", m_config.rayBounces);
 
-			m_sdfShader.setUniform("t_depthTexture", 1);
-			gbuffer.depth.bind(1);
+				int numLights = std::min((int)lights.size(), 8);
+				m_sdfShader.setUniform("u_numLights", numLights);
+				for (int i = 0; i < numLights; i++)
+				{
+					std::string prefix = "u_lights[" + std::to_string(i) + "].";
+					m_sdfShader.setUniform(prefix + "position", lights[i].position);
+					m_sdfShader.setUniform(prefix + "direction", lights[i].rotation);
+					m_sdfShader.setUniform(prefix + "color", lights[i].color);
+					m_sdfShader.setUniform(prefix + "type", (int)lights[i].type);
+				}
 
-			// Shape data buffer
-			m_sdfShader.setUniform("t_shapeBuffer", 2);
-			m_shapeDataBuffer->uploadData<vec4>(shapeData, dataSize);
-			m_shapeDataBuffer->bind(2);
+				// Previous accumulation frame and GBuffer textures
+				m_sdfShader.setUniform("t_previousColor", 0);
+				m_accumTexture[previousAccumIdx].bind(0);
 
-			// GBuffer colour attachments
-			m_sdfShader.setUniform("t_gbufferAlbedo", 3);
-			gbuffer.albedo.bind(3);
-			m_sdfShader.setUniform("t_gbufferWorldPos", 4);
-			gbuffer.worldPos.bind(4);
-			m_sdfShader.setUniform("t_gbufferNormal", 5);
-			gbuffer.normal.bind(5);
-			m_sdfShader.setUniform("t_gbufferMaterial", 6);
-			gbuffer.material.bind(6);
+				m_sdfShader.setUniform("t_depthTexture", 1);
+				gbuffer.depth.bind(1);
 
-			m_sdfShader.setUniform("t_gbufferBackDepth", 7);
-			gbuffer.backDepth.bind(7);
+				// Shape data buffer
+				m_sdfShader.setUniform("t_shapeBuffer", 2);
+				m_shapeDataBuffer->uploadData<vec4>(shapeData, dataSize);
+				m_shapeDataBuffer->bind(2);
 
-			m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
-			m_sdfShader.setUniform("u_shapeCount", (int)shapeCount);
+				// GBuffer colour attachments
+				m_sdfShader.setUniform("t_gbufferAlbedo", 3);
+				gbuffer.albedo.bind(3);
+				m_sdfShader.setUniform("t_gbufferWorldPos", 4);
+				gbuffer.worldPos.bind(4);
+				m_sdfShader.setUniform("t_gbufferNormal", 5);
+				gbuffer.normal.bind(5);
+				m_sdfShader.setUniform("t_gbufferMaterial", 6);
+				gbuffer.material.bind(6);
 
-			if (!m_config.enablePathTracer || m_frameCounter < m_config.maxAccumulationFrames)
+				m_sdfShader.setUniform("t_gbufferBackDepth", 7);
+				gbuffer.backDepth.bind(7);
+
+				m_sdfShader.setUniform("u_loadedObjects", (int)dataSize);
+				m_sdfShader.setUniform("u_shapeCount", (int)shapeCount);
+
 				m_renderPlane.draw(m_sdfShader);
+				m_frameCounter++;
+			}
 
-			m_frameCounter++;
-
-			// Resolve accumulation result to the main output target (applying gamma)
+			// Resolve accumulation result to the main output target (applying contrast & gamma)
 			m_outputRender.bind();
 
 			m_resolveShader.use();
 			m_resolveShader.setUniform("t_input", 0);
+			m_resolveShader.setUniform("u_contrast", m_config.contrast);
 			m_resolveShader.setUniform("u_inverseResolution",
 									   glm::vec2(1.0f / m_config.renderWidth, 1.0f / m_config.renderHeight));
 			m_accumTexture[m_accumIdx].bind(0);
@@ -274,13 +280,11 @@ namespace WeirdEngine
 			{
 				WeirdEngine::Logger::log(std::string("Anti-Aliasing ") +
 										 (m_config.enableAntialiasing ? "enabled" : "disabled"));
+				m_frameCounter = 0;
 				updatePipelineDefines();
 			}
 
-			if (ImGui::SliderFloat("Contrast", &m_config.contrast, 1.0f, 10.0f))
-			{
-				m_frameCounter = 0;
-			}
+			ImGui::SliderFloat("Contrast", &m_config.contrast, 1.0f, 10.0f);
 
 			if (m_config.enablePathTracer)
 			{
